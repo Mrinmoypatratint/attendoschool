@@ -1,0 +1,9 @@
+{
+  "name": "School Attendance SaaS",
+  "short_name": "Attendance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "description": "School attendance PWA"
+}
