@@ -147,7 +147,7 @@ r.post('/schools',async(req:AuthRequest,res)=>{
      const hash=await bcrypt.hash(adminPassword,10);
      await client.query(`INSERT INTO users(school_id,name,email,password_hash,role,is_active) VALUES($1,$2,$3,$4,'SCHOOL_ADMIN',true)`,
        [schoolId,adminName,adminEmail,hash]);
-     await client.query(`INSERT INTO classes(school_id,class_number) SELECT $1,x FROM generate_series(1,12) x ON CONFLICT DO NOTHING`,[schoolId]);
+     await client.query(`INSERT INTO classes(school_id,class_number) SELECT $1,x FROM generate_series(5,12) x ON CONFLICT DO NOTHING`,[schoolId]);
       let selectedPlanId = planId;
       const plan=await client.query('SELECT id,price_monthly FROM subscription_plans WHERE id::text=$1 OR LOWER(name)=LOWER($2) AND is_active=true LIMIT 1',[planId, String(planId).replace(/^plan-/i, '')]);
       let price = 999;
@@ -172,6 +172,7 @@ r.post('/schools',async(req:AuthRequest,res)=>{
    }catch(e:any){await client.query('ROLLBACK');throw e;}
    finally{client.release()}
  } catch(e:any) {
+   console.error('Database create school failed:', e);
    if (e.status === 409) return res.status(409).json({ message: e.message });
    // Database unavailable — register the new admin in the in-memory store
    // so they can log in immediately after school creation
