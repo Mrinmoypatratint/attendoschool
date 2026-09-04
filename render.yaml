@@ -1,6 +1,6 @@
 services:
   # -------------------------------------------------------------
-  # 1. AttendoSchool Backend Web Service (Node.js / Express 5)
+  # AttendoSchool Backend Web Service (Node.js / Express 5)
   # -------------------------------------------------------------
   - type: web
     name: attendoschool-backend
@@ -8,8 +8,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: npm install && npm run build
-    preDeployCommand: npm run db:migrate
-    startCommand: npm run start
+    startCommand: npm run db:migrate && npm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -29,30 +28,9 @@ services:
       - key: COMPANY_GST_RATE
         value: "18"
 
-  # -------------------------------------------------------------
-  # 2. AttendoSchool Frontend (Static Site / CDN)
-  # -------------------------------------------------------------
-  - type: web
-    name: attendoschool-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: attendoschool-backend
-          property: host
-          envVarKey: VITE_API_URL
-
 databases:
   # -------------------------------------------------------------
-  # 3. AttendoSchool PostgreSQL 16 Database
+  # AttendoSchool PostgreSQL 16 Database
   # -------------------------------------------------------------
   - name: attendoschool-db
     databaseName: attendoschool
