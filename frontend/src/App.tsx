@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
-import {api} from './api';
+import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
 import AttendanceReports from './AttendanceReports';
 import AttendanceCorrections from './AttendanceCorrections';
@@ -1758,7 +1758,7 @@ function SubscriptionPage(){
  <div className="two-col"><div className="panel"><h3>Current subscription</h3>
    <div className="list"><div className="list-row"><b>Start</b><span>{s?.start_date?.slice(0,10)||'—'}</span></div><div className="list-row"><b>End</b><span>{s?.end_date?.slice(0,10)||'—'}</span></div><div className="list-row"><b>Student limit</b><span>{s?.max_students??'—'}</span></div><div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly||0).toLocaleString('en-IN')}</span></div></div>
  </div><div className="panel"><h3>Renew online</h3><label>Renewal period<select value={subDays} onChange={e=>setSubDays(Number(e.target.value))}><option value={30}>30 days</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select></label><p className="muted">Use mock mode for local testing. If Razorpay is configured on the server, the production checkout endpoint is available.</p><button disabled={busy} onClick={renew}>{busy?'Processing…':`Pay & renew ${subDays} days (Test)`}</button>{msg&&<div className="success">{msg}</div>}</div></div>
- <div className="panel"><h3>Payment history</h3><div className="table-wrap"><table><thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead><tbody>{payments.map(p=><tr key={p.id}><td>{p.created_at?.slice(0,19).replace('T',' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number||'—'}</td><td>{p.receipt_number||'—'} {p.invoice_id&&<button className="small-btn" onClick={()=>window.open(`${import.meta.env.VITE_API_URL||'http://localhost:5000/api'}/super-admin/invoices/${p.invoice_id}/receipt`,'_blank')}>Receipt</button>}</td></tr>)}</tbody></table></div></div>
+ <div className="panel"><h3>Payment history</h3><div className="table-wrap"><table><thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead><tbody>{payments.map(p=><tr key={p.id}><td>{p.created_at?.slice(0,19).replace('T',' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number||'—'}</td><td>{p.receipt_number||'—'} {p.invoice_id&&<button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${p.invoice_id}/receipt`,'_blank')}>Receipt</button>}</td></tr>)}</tbody></table></div></div>
  </Layout>
 }
 
@@ -1768,7 +1768,7 @@ function Invoices(){
  useEffect(()=>{api.get('/super-admin/invoices').then(x=>setRows(x.data)).catch(()=>{})},[]);
  return <Layout><PageHead title="Invoices & Receipts" sub="Generated subscription invoices and payment receipts."/>
  <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>School</th><th>Receipt</th><th>Amount</th><th>Status</th><th>Paid</th><th>Receipt</th></tr></thead>
- <tbody>{rows.map(x=><tr key={x.id}><td><b>{x.invoice_number}</b></td><td>{x.school_name}</td><td>{x.receipt_number||'—'}</td><td>₹{Number(x.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{x.status}</span></td><td>{x.paid_at?.slice(0,19).replace('T',' ')||'—'}</td><td><button className="small-btn" onClick={()=>window.open(`${import.meta.env.VITE_API_URL||'http://localhost:5000/api'}/super-admin/invoices/${x.id}/receipt`,'_blank')}>Open</button></td></tr>)}</tbody></table></div>
+ <tbody>{rows.map(x=><tr key={x.id}><td><b>{x.invoice_number}</b></td><td>{x.school_name}</td><td>{x.receipt_number||'—'}</td><td>₹{Number(x.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{x.status}</span></td><td>{x.paid_at?.slice(0,19).replace('T',' ')||'—'}</td><td><button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${x.id}/receipt`,'_blank')}>Open</button></td></tr>)}</tbody></table></div>
  </Layout>
 }
 
