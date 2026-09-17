@@ -86,7 +86,7 @@
 
 The core value proposition centers on eliminating administrative overhead in attendance recording, guaranteeing instantaneous notification to guardians when a student is absent, preventing unauthorized attendance tampering through audit-trailed correction requests, managing routine and timetable conflict resolution, and providing commercial SaaS subscription billing with automated Indian GST tax invoicing.
 
-The application is structured as a decoupled **Client-Server Architecture** comprising a Single Page Application (SPA) frontend built on React 19 and Vite 7, a RESTful backend API powered by Express 5 and TypeScript running on Node.js (tested on Node 20.x, 24.x), and a relational persistence layer running on PostgreSQL 16 consisting of 62 tables managed through 28 incremental migration files.
+The application is structured as a decoupled **Client-Server Architecture** comprising a Single Page Application (SPA) frontend built on React 19 and Vite 7, a RESTful backend API powered by Express 5 and TypeScript running on Node.js (tested on Node 20.x, 24.x), and a **dual-database persistence architecture** supporting **Firebase Cloud Firestore** (with local emulator support for zero-config offline development) alongside an enterprise **PostgreSQL 16** relational persistence layer consisting of 62 tables managed through 28 incremental migration files.
 
 ---
 
@@ -180,7 +180,9 @@ AttendoSchool follows a **Decoupled Modular Client-Server Architecture**:
 
 - **Frontend Tier**: Single Page Application built on React 19, React Router 7, and Vite 7. Styling is delivered via custom Vanilla CSS (`frontend/src/styles.css`) featuring native CSS variables, responsive layouts, and dark/light theme switching.
 - **API / Application Tier**: Express 5 application written in TypeScript (`backend/src/server.ts`, `backend/src/app.ts`). Express 5 routing handles requests, passes them through global security middleware, verifies JWT bearer tokens, enforces tenant isolation, and dispatches to route modules and service handlers.
-- **Persistence Tier**: PostgreSQL 16 database running with connection pooling via the `pg` driver (`backend/src/db.ts`). Database migrations are tracked across 28 sequential SQL files (`database/migrations/`).
+- **Persistence Tier**: Dual persistence architecture:
+  - **Firebase Cloud Firestore**: Cloud NoSQL document store and local Firebase Emulator suite (`127.0.0.1:8080`, Web UI `127.0.0.1:4000/firestore`) initialized via `firebase-admin` (`backend/src/firebase.ts`).
+  - **PostgreSQL 16**: Relational database running with connection pooling via the `pg` driver (`backend/src/db.ts`). Database migrations are tracked across 28 sequential SQL files (`database/migrations/`).
 - **Worker / Background Tier**: Asynchronous background jobs (`smsWorker.ts`, `notificationWorker.ts`, `subscriptionWorker.ts`, `productionWorker.ts`) execute decoupled tasks like queue processing and subscription expiry synchronization.
 
 ---
@@ -216,6 +218,7 @@ flowchart TD
         SubMW["Subscription Enforcement MW"]
         
         subgraph Services["Core Business Services"]
+            S_FS["Firestore Service (CRUD / Collections)"]
             S_Att["Attendance & Correction Service"]
             S_Time["Timetable & Conflict Engine"]
             S_Promo["Student Promotion Service"]
@@ -233,7 +236,8 @@ flowchart TD
         W_Prod["Production Maintenance Worker"]
     end
 
-    subgraph DatabaseTier["Persistence Layer (PostgreSQL 16)"]
+    subgraph DatabaseTier["Dual Persistence Layer"]
+        FS[("Firebase Cloud Firestore\n(Local Emulator: 8080 / Cloud)\nDocument Collections")]
         PG[("PostgreSQL 16 Database\n(school_attendance)\n62 Tables")]
     end
 
@@ -249,6 +253,7 @@ flowchart TD
 
     SPA -->|Axios REST| AppServer
     AppServer --> SecMW --> AuthMW --> SubMW --> Services
+    Services --> FS
     Services --> PG
 
     BackgroundWorkers --> PG
@@ -430,8 +435,11 @@ GST Invoice & Receipt generated with PDF download
 | **Backend Framework** | Express | `^5.1.0` | REST API routing and middleware pipeline |
 | **Language** | TypeScript | `^5.9.2` | Type definitions and compilation for backend & frontend |
 | **TypeScript Execution**| tsx | `^4.20.3` | Fast TypeScript watch & execution runner for backend |
-| **Database Driver** | pg (node-postgres) | `^8.16.3` | PostgreSQL connection pooling and parameterized query client |
-| **Database Engine** | PostgreSQL | `16-alpine` | Relational multi-tenant database (62 tables) |
+| **Firebase Admin SDK** | `firebase-admin` | `^14.4.0` | Cloud Firestore initialization, collections & document CRUD (`backend/package.json`) |
+| **Firebase CLI / Tools**| `firebase-tools` | `v15.28.2` | Local Firestore Emulator suite & web UI (`firebase.json`, `firestore.rules`) |
+| **Primary Document DB** | Firebase Cloud Firestore | Emulator / Cloud | Document store for schools, users, rosters, sessions, and subscriptions |
+| **Relational Database** | PostgreSQL | `16-alpine` | Relational multi-tenant engine (62 tables) |
+| **Database Driver (PG)** | pg (node-postgres) | `^8.16.3` | PostgreSQL connection pooling and parameterized query client |
 | **Authentication** | JSON Web Tokens (`jsonwebtoken`) | `^9.0.2` | Stateless HMAC-SHA256 bearer token issuance & validation |
 | **Password Hashing** | bcryptjs | `^3.0.2` | Salted password hashing (cost factor 10) |
 | **PDF Generation** | PDFKit | `^0.16.0` | Server-side generation of Indian GST tax invoices |
@@ -448,18 +456,24 @@ GST Invoice & Receipt generated with PDF download
 
 ```
 attendoschool/
+├── .env                             # Root environment configuration (Emulator & local ports)
 ├── .env.production.example          # Production environment template
+├── .firebaserc                      # Firebase project selector (attendoschool-saas)
 ├── .gitignore                       # Git exclusion rules
 ├── CLOUD-DEPLOYMENT-GUIDE.md        # Cloud setup documentation (Vercel/Render/Neon)
+├── DOCUMENTATION.md                 # System Architecture & Technical Documentation
 ├── PRODUCTION-DEPLOYMENT.md         # On-premise / Docker deployment runbook
 ├── README.md                        # Project introduction, feature overview & quick start
+├── SETUP.md                         # Detailed developer setup, emulator & operational guide
 ├── docker-compose.yml               # Local development PostgreSQL container configuration
 ├── docker-compose.production.yml    # Production multi-service Docker Compose (Nginx + Apps + DB)
+├── firebase.json                    # Firebase Emulator suite config (Firestore: 8080, UI: 4000)
+├── firestore.rules                  # Cloud Firestore security rules
 ├── playwright.config.ts             # Playwright configuration for E2E testing
 ├── render.yaml                      # Render.com Blueprint configuration (Web + Managed DB)
 │
 ├── backend/                         # Backend Application Root
-│   ├── .env.example                 # Backend environment variable example
+│   ├── .env.example                 # Backend environment variable template
 │   ├── Dockerfile                   # Multi-stage production build (Node 20 Alpine)
 │   ├── Procfile                     # Process file for Render / Heroku deployment
 │   ├── package.json                 # Backend dependencies and execution scripts
@@ -468,6 +482,7 @@ attendoschool/
 │   │   ├── app.ts                   # Express application setup, security middleware, route mounts
 │   │   ├── server.ts                # Server entry point & graceful shutdown handlers
 │   │   ├── db.ts                    # PostgreSQL connection pool with cloud SSL detection
+│   │   ├── firebase.ts              # Firebase Admin SDK & Cloud Firestore initialization
 │   │   ├── smsWorker.ts             # Dedicated background worker for SMS queue processing
 │   │   ├── notificationWorker.ts    # Background worker for multi-channel notifications
 │   │   ├── subscriptionWorker.ts    # Background worker for subscription status synchronization
@@ -476,14 +491,17 @@ attendoschool/
 │   │   ├── middleware/
 │   │   │   ├── auth.ts              # JWT verification (`requireAuth`) & role guard (`requireRoles`)
 │   │   │   ├── security.ts          # Security headers, requestContext, and IP rate limiter
-│   │   │   ├── subscriptionEnforcement.ts # Checks school subscription validity on protected operations
-│   │   │   └── finalIntegrationMiddleware.ts # Idempotency, SHA-256 helper, role checking
+│   │   │   └── subscriptionEnforcement.ts # Checks school subscription validity on protected operations
 │   │   ├── routes/                  # 32 modular Express route controllers
-│   │   ├── services/                # 26 business logic and data access services
+│   │   ├── services/                # Business logic and data access services
+│   │   │   └── firestoreService.ts  # Cloud Firestore query & document mutation service
+│   │   ├── types/
+│   │   │   └── firestoreSchema.ts   # Typed interfaces for Firestore collections
 │   │   ├── store/
 │   │   │   └── demoUsers.ts         # In-memory user fallback store when DB is disconnected
 │   │   ├── scripts/
-│   │   │   └── migrate.ts           # Automated migration runner (schema.sql -> migrations -> seed.sql)
+│   │   │   ├── migrate.ts           # PostgreSQL migration runner
+│   │   │   └── seedFirestore.ts     # Cloud Firestore seeder script (`npm run seed:firestore`)
 │   │   └── workers/
 │   │       └── productionWorker.ts  # Master maintenance worker (cleanups, retentions, subscriptions)
 │   └── tests/                       # Backend test suites
@@ -513,7 +531,7 @@ attendoschool/
 │   │   └── _redirects               # Netlify SPA rewrite configuration
 │   └── src/                         # Frontend React Components & Modules
 │       ├── main.tsx                 # React DOM mount point (`createRoot`)
-│       ├── App.tsx                  # Master routing, navigation layouts & core view components
+│       ├── App.tsx                  # Split-screen Login UI, master routing & core view components
 │       ├── api.ts                   # Axios HTTP client with JWT interceptor & auto-base URL
 │       ├── styles.css               # Comprehensive custom design system (Vanilla CSS)
 │       ├── AcademicYears.tsx        # Session creation & academic year activation view
@@ -522,7 +540,6 @@ attendoschool/
 │       ├── AttendanceReports.tsx    # Summary, student-wise, daily breakdown & Excel export
 │       ├── Backup.tsx               # Database backup creation, restore testing & history
 │       ├── Communication.tsx        # Announcements creation, publishing & recipient counts
-│       ├── IntegrationHub.tsx       # System health & API smoke inspection dashboard
 │       ├── OfflineAttendance.tsx    # Offline attendance recording & batch sync UI
 │       ├── offlineAttendanceQueue.ts# LocalStorage queue & sync dispatcher
 │       ├── ParentCommunication.tsx  # Parent notice inbox & read acknowledgements
@@ -534,7 +551,6 @@ attendoschool/
 │       ├── SubscriptionEnforcement.tsx # Subscription plan status & feature quota view
 │       ├── Timetable.tsx            # Period timing, timetable matrix, conflict checker & substitutes
 │       ├── components/
-│       │   ├── LoadingSkeleton.tsx  # Skeleton loader UI for asynchronous data
 │       │   └── Toast.tsx            # Global toast notifications
 │       └── hooks/
 │           └── useAuth.tsx          # AuthContext, AuthProvider, useAuth, Guard, RoleGuard
@@ -613,13 +629,39 @@ The backend is structured as an Express 5 REST API written in TypeScript.
    - `requireRoles(...roles)`: Verifies if `req.user.role` matches the route requirements.
 5. **Subscription Gate**: `requireSubscription('ATTENDANCE' | 'GENERAL')` executes `checkAccess()` in [backend/src/services/subscriptionEnforcementService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/subscriptionEnforcementService.ts) to verify active subscription or grace period before allowing write operations.
 6. **Controller & Service Layer**: The route handler delegates business logic to specialized services in `backend/src/services/`.
-7. **Database Pool**: Queries use parameterized SQL (`$1, $2, ...`) via `pool.query()` from [backend/src/db.ts](file:///d:/Project_Abir/attendoschool/backend/src/db.ts).
-8. **Centralized Error Handler**: Any uncaught errors are caught by `app.use((err, req, res, next))` returning JSON `{ message: err.message }` and HTTP status codes.
+7. **Database Persistence**:
+   - **Firestore Service**: Resolves requests via `firestoreService.ts` against Cloud Firestore collections (`users`, `schools`, `students`, etc.) or the local Firestore Emulator.
+   - **PostgreSQL Pool**: Queries use parameterized SQL (`$1, $2, ...`) via `pool.query()` from [backend/src/db.ts](file:///d:/Project_Abir/attendoschool/backend/src/db.ts).
+   - **In-Memory Demo Store**: Automatic fallback in [backend/src/store/demoUsers.ts](file:///d:/Project_Abir/attendoschool/backend/src/store/demoUsers.ts) ensures system resilience during offline testing.
+8. **Dual Health Checking**: The `/api/health` route tests connectivity to both PostgreSQL and Cloud Firestore simultaneously and reports individual status flags.
+9. **Centralized Error Handler**: Any uncaught errors are caught by `app.use((err, req, res, next))` returning JSON `{ message: err.message }` and HTTP status codes.
 
 ---
 
 ## 14. Database Architecture
 
+AttendoSchool features a **dual database architecture** supporting both modern document persistence and relational SQL storage:
+
+### 14.1 Firebase Cloud Firestore (Primary Document Engine)
+- **Engine**: Google Cloud Firestore (Serverless NoSQL Document Database)
+- **Local Development**: Firebase Emulator Suite (`firebase-tools`) listening on port `8080`, with real-time web emulator UI on `http://127.0.0.1:4000/firestore`.
+- **SDK**: `firebase-admin` v14.4.0 with modular imports (`firebase-admin/app`, `firebase-admin/firestore`).
+- **Initialization**: Managed by [backend/src/firebase.ts](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts), supporting service account keys (`FIREBASE_SERVICE_ACCOUNT_PATH`), direct environment credentials (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), or local emulator (`FIRESTORE_EMULATOR_HOST`).
+- **Typed Schema Models**: Defined in [backend/src/types/firestoreSchema.ts](file:///d:/Project_Abir/attendoschool/backend/src/types/firestoreSchema.ts).
+- **Core Collections**:
+  - `schools`: Tenant organization details, plan references, student limits, contact metadata.
+  - `users`: Super Admin, School Admin, Teacher, and Parent accounts with hashed passwords and roles.
+  - `students`: Student rosters, admission numbers, class/section assignments, and guardian contacts.
+  - `classes` & `sections`: Class structure (1 to 12) and section groupings.
+  - `attendance_sessions`: Daily attendance batches marked by teachers with status (`PENDING`, `SUBMITTED`).
+  - `attendance_records`: Individual student presence flags (`PRESENT`, `ABSENT`).
+  - `subscription_plans`: Available SaaS tiers (`Basic`, `Standard`, `Enterprise`) with pricing and features.
+  - `payments` & `invoices`: Transaction records and generated GST invoices.
+  - `timetables`: Routine slots, period mappings, room assignments.
+  - `notifications` & `announcements`: Multi-channel alerts and school-wide broadcast notices.
+  - `audit_logs`: Administrative actions and security events.
+
+### 14.2 PostgreSQL 16 (Relational Engine)
 - **Engine**: PostgreSQL 16
 - **Connection Mechanism**: Connection pool managed via `pg.Pool` with SSL mode auto-detection for cloud providers (`neon.tech`, `render.com`, `railway.app`, `supabase.co`).
 - **Isolation Model**: Multi-tenant with shared database and shared schema (`public`). Multi-tenancy is enforced through `school_id` foreign keys indexed across operational tables.
@@ -1376,10 +1418,14 @@ A thorough static and behavioral code review of the repository identified the fo
 
 ## 28. Development Setup
 
+> [!NOTE]
+> For a quick step-by-step developer walkthrough, see **[SETUP.md](file:///d:/Project_Abir/attendoschool/SETUP.md)**.
+
 ### Prerequisites
-- **Node.js**: `v20.x` or `v24.x`
-- **npm**: `v10.x` or `v11.x`
-- **PostgreSQL**: `v16.x` (Local native service or Docker container)
+- **Node.js**: `v20.x` or `v22.x`+ (LTS)
+- **npm**: `v10.x`+
+- **Java JRE/JDK**: Version 11 or 21+ (Required by the Firebase Local Emulator Suite)
+- **PostgreSQL**: `v16.x` *(Optional, if utilizing PostgreSQL persistence engine)*
 
 ---
 
@@ -1403,16 +1449,27 @@ npm install
 
 ---
 
-## 30. Database Setup & Migrations
+## 30. Database Setup & Seeding
 
-### Option A: Using Docker
-```bash
-# In repository root
-docker compose up -d postgres
-```
+### Option A: Firebase Cloud Firestore Emulator (Recommended for Local Dev)
+1. In `backend/.env`, ensure `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` and `FIREBASE_PROJECT_ID=attendoschool-saas` are configured.
+2. Launch the emulator:
+   ```bash
+   cd backend
+   npm run emulator:firestore
+   ```
+   *(Emulator runs on `127.0.0.1:8080`, Web console at `http://127.0.0.1:4000/firestore`)*
+3. Seed the emulator with demo institutions, accounts, and student rosters:
+   ```bash
+   cd backend
+   npm run seed:firestore
+   ```
 
-### Option B: Using Existing / Managed PostgreSQL
-1. Ensure PostgreSQL is listening on port `5432` with a database named `school_attendance`.
+### Option B: PostgreSQL Relational Database
+1. Launch container via Docker:
+   ```bash
+   docker compose up -d postgres
+   ```
 2. Configure `DATABASE_URL` in `backend/.env`:
    ```env
    DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/school_attendance
@@ -1420,32 +1477,40 @@ docker compose up -d postgres
 3. Execute automated schema creation and all 28 migrations:
    ```bash
    cd backend
-   npx tsx src/scripts/migrate.ts
+   npm run db:migrate
    ```
 
 ---
 
 ## 31. Running the Application
 
-### 1. Start Backend Dev Server
+For local development with the Firebase Emulator, maintain three terminal processes:
+
+### Terminal 1: Firebase Firestore Emulator
+```bash
+cd backend
+npm run emulator:firestore
+```
+
+### Terminal 2: Backend API Server
 ```bash
 cd backend
 npm run dev
 ```
 *API server listens on **http://localhost:5000**.*
 
-### 2. Start Frontend Dev Server
-In a separate terminal:
+### Terminal 3: Frontend Web Application
 ```bash
 cd frontend
 npm run dev
 ```
 *Vite web application is live at **http://localhost:5173**.*
 
-### 3. Initial Login Credentials
-- **Role**: Company Super Admin
-- **Email**: `superadmin@attendance.local`
-- **Password**: `ChangeMe123!`
+### Initial Demo Accounts & Credentials
+All seeded development accounts use the password: **`ChangeMe123!`**
+- **Platform Super Admin**: `superadmin@attendance.local`
+- **School Administrator**: `admin@demo-school.local`
+- **Classroom Teacher**: `rahul@demo-school.local`
 
 ---
 
@@ -1693,10 +1758,9 @@ sequenceDiagram
 
 ## 36. Known Issues & Discrepancies
 
-1. **Seed Data vs README Documentation Discrepancy**:
-   - `README.md` (lines 78–80) documents demo accounts `admin@demo-school.local`, `rahul@demo-school.local`, and `priya@demo-school.local`.
-   - In actual database initialization ([database/seed.sql](file:///d:/Project_Abir/attendoschool/database/seed.sql)), only `superadmin@attendance.local` is seeded.
-   - The demo school admin and teacher accounts exist only in the in-memory fallback store [backend/src/store/demoUsers.ts](file:///d:/Project_Abir/attendoschool/backend/src/store/demoUsers.ts), which is only invoked if the database query throws an error. When running against a connected PostgreSQL database, logging in with `admin@demo-school.local` fails unless previously created by the Super Admin.
+1. **Seed Data in Dual-Engine Environments**:
+   - When running with the Firebase Cloud Firestore Emulator, executing `npm run seed:firestore` seeds all 3 primary roles (`superadmin@attendance.local`, `admin@demo-school.local`, `rahul@demo-school.local`), Greenwood International School, Class 10-A students, and subscription plans.
+   - When running on pure PostgreSQL without Firestore, the baseline [database/seed.sql](file:///d:/Project_Abir/attendoschool/database/seed.sql) seeds only `superadmin@attendance.local`, and additional schools and faculty accounts must be created through the Super Admin onboarding interface.
 2. **Offline Attendance Insert Constraint Violation**:
    - In [backend/src/services/offlineAttendanceService.ts:41-44](file:///d:/Project_Abir/attendoschool/backend/src/services/offlineAttendanceService.ts#L41-L44), `processBatch()` attempts to insert into `attendance_records(attendance_session_id, student_id, status)`.
    - However, the `attendance_records` table schema has `is_present boolean NOT NULL` with no default value.

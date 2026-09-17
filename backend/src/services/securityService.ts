@@ -1,5 +1,4 @@
 import {pool} from '../db';
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 const MAX_ATTEMPTS=5, LOCK_MINUTES=15;

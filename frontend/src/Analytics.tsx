@@ -3,13 +3,9 @@ import { api } from './api';
 import { 
   BarChart3, 
   TrendingUp, 
-  Users, 
-  GraduationCap, 
   AlertTriangle, 
   CheckCircle2, 
   Calendar,
-  Layers,
-  ArrowUpRight,
   Mail,
   Phone
 } from 'lucide-react';

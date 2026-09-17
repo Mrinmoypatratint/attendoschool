@@ -1,22 +1,36 @@
-# School Attendance SaaS (v28 Production Release)
+# AttendoSchool — Enterprise Attendance & School Operations Platform
 
-> A production-grade, multi-tenant SaaS platform for school attendance tracking, multi-channel parent communication (SMS, WhatsApp, Email), timetable management, automated student promotions, and subscription billing with GST invoicing.
+> A production-grade, multi-tenant SaaS platform for school attendance tracking, multi-channel guardian notifications (SMS, WhatsApp, Email), timetable management, automated student promotions, and subscription billing with Indian GST invoicing.
 
-[![Version](https://img.shields.io/badge/version-v28.0.0-blue.svg)](file:///c:/Users/Mrinmoy/Downloads/School-Attendance-SaaS-v28-COMPLETE-FIXED-3/README.md)
-[![Backend](https://img.shields.io/badge/backend-Express%205%20%7C%20TypeScript-green.svg)](file:///c:/Users/Mrinmoy/Downloads/School-Attendance-SaaS-v28-COMPLETE-FIXED-3/backend)
-[![Frontend](https://img.shields.io/badge/frontend-React%2019%20%7C%20Vite%207-indigo.svg)](file:///c:/Users/Mrinmoy/Downloads/School-Attendance-SaaS-v28-COMPLETE-FIXED-3/frontend)
-[![Database](https://img.shields.io/badge/database-PostgreSQL%2016-blue.svg)](file:///c:/Users/Mrinmoy/Downloads/School-Attendance-SaaS-v28-COMPLETE-FIXED-3/database)
-[![Tests](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](file:///c:/Users/Mrinmoy/Downloads/School-Attendance-SaaS-v28-COMPLETE-FIXED-3/backend/tests)
+[![Release](https://img.shields.io/badge/release-v28%20Production-blue.svg)](#)
+[![Backend](https://img.shields.io/badge/backend-Express%205%20%7C%20TypeScript-green.svg)](file:///d:/Project_Abir/attendoschool/backend)
+[![Frontend](https://img.shields.io/badge/frontend-React%2019%20%7C%20Vite%207-indigo.svg)](file:///d:/Project_Abir/attendoschool/frontend)
+[![Primary DB](https://img.shields.io/badge/database-Cloud%20Firestore%20%2F%20Emulator-amber.svg)](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts)
+[![Relational DB](https://img.shields.io/badge/database-PostgreSQL%2016-blue.svg)](file:///d:/Project_Abir/attendoschool/database)
+[![Tests](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](file:///d:/Project_Abir/attendoschool/backend/tests)
+
+---
+
+## Quick Navigation
+
+- **[Detailed Setup Guide (SETUP.md)](file:///d:/Project_Abir/attendoschool/SETUP.md)** — Step-by-step installation, environment variables, Firebase emulator, and troubleshooting.
+- **[System Architecture & Documentation (DOCUMENTATION.md)](file:///d:/Project_Abir/attendoschool/DOCUMENTATION.md)** — Comprehensive 1,800+ line technical architecture, schemas, and API documentation.
+- **[Cloud Deployment Guide (CLOUD-DEPLOYMENT-GUIDE.md)](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** — Cloud deployment instructions for Render, Vercel, and Docker.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Architecture](#architecture)
+- [System Architecture](#system-architecture)
+- [Key Features](#key-features)
 - [User Roles & Demo Credentials](#user-roles--demo-credentials)
-- [Feature Modules](#feature-modules)
 - [Quick Start Guide](#quick-start-guide)
+  - [1. Clone & Install Dependencies](#1-clone--install-dependencies)
+  - [2. Start the Firebase Firestore Emulator](#2-start-the-firebase-firestore-emulator)
+  - [3. Seed Demo Data](#3-seed-demo-data)
+  - [4. Launch Backend API Server](#4-launch-backend-api-server)
+  - [5. Launch Frontend Web App](#5-launch-frontend-web-app)
 - [Environment Configuration](#environment-configuration)
 - [Testing & Quality Assurance](#testing--quality-assurance)
 - [API Reference](#api-reference)
@@ -27,147 +41,125 @@
 
 ## Overview
 
-**School Attendance SaaS** is designed for educational institutions ranging from single independent schools to multi-branch school networks. It simplifies daily attendance, immediately alerts parents of absent students, tracks academic calendars across sessions, and manages commercial SaaS subscriptions with GST-compliant billing.
+**AttendoSchool** is built for educational institutions ranging from single independent academies to multi-branch school networks. It automates daily attendance taking, instantly notifies parents of absent students, schedules class routines across academic years, and manages commercial SaaS subscriptions with 18% GST tax invoices.
 
 ### Key Highlights
-- **Multi-Tenant Architecture**: Strict school-level data isolation backed by PostgreSQL foreign keys and role-based access control.
-- **Fast Attendance Taking**: Teachers can mark a class of 50+ students in under 15 seconds. Checked students are marked present; unchecked students automatically become absent.
-- **Automated Absence Alerts**: Instant dispatch across SMS, WhatsApp, and Email with dynamic template variables (`{student_name}`, `{class_name}`, `{time}`, `{teacher_name}`).
-- **Offline Attendance**: Progressive Web capability allowing teachers to take attendance without active internet connectivity and synchronize once reconnected.
-- **Complete Billing Lifecycle**: Starter, Growth, and Enterprise plans, 18% GST split (CGST 9% + SGST 9%), PDF invoice generation, Razorpay integration, and automated expiry workflows.
-- **Modern UI/UX**: Built with a custom design system featuring dark/light mode toggle, toast notifications, skeleton loaders, and responsive layouts.
+- **Dual Database Persistence**: First-class support for **Firebase Cloud Firestore** (with offline local emulator) as the primary document store, alongside **PostgreSQL 16** (28 incremental migrations).
+- **Sub-15-Second Attendance**: Intuitive UI allowing teachers to mark a class of 50+ students in under 15 seconds. Present students are confirmed with bulk controls; unmarked students are flagged absent.
+- **Automated Absence Alerts**: Instant dispatch across SMS, WhatsApp, and Email with dynamic placeholders (`{student_name}`, `{class_name}`, `{time}`, `{teacher_name}`).
+- **Split-Screen Authentication UI**: Modern split layout featuring a campus visual hero, live statistics badge (`99.8% Attendance Sync`), feature highlights, and a 1-click demo role switcher.
+- **Audit-Trailed Corrections**: Post-submission attendance modifications require structured correction tickets with teacher remarks and administrator approval.
+- **Complete Billing Lifecycle**: Starter, Standard, and Enterprise tiers, 18% GST split (CGST 9% + SGST 9%), downloadable PDF tax invoices via PDFKit, and Razorpay integration.
+- **Offline Attendance**: Progressive offline queueing in IndexedDB/localStorage with automated synchronization when internet connectivity restores.
 
 ---
 
-## Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Frontend (React 19 + Vite 7)             │
-│    SPA Architecture · Dark/Light Mode · Context Auth API   │
+│               Frontend Client (React 19 + Vite 7)           │
+│   Split-Screen Login · Super Admin / School Admin / Teacher │
+│   Role-Based Dashboards · Toast Alerts · Dark/Light Mode    │
 └──────────────────────────────┬──────────────────────────────┘
                                │ HTTP / REST (Axios)
 ┌──────────────────────────────▼──────────────────────────────┐
-│                    Backend (Node.js + Express 5)            │
-│  TypeScript · JWT Auth · Security Headers · Rate Limiter    │
-│  Centralized Error Handler · Graceful Shutdown Engine       │
-└──────┬───────────────────────┬───────────────────────┬──────┘
-       │                       │                       │
-┌──────▼──────┐         ┌──────▼──────┐         ┌──────▼──────┐
-│ PostgreSQL  │         │ Notification│         │ Background  │
-│ Database    │         │ Queue Worker│         │ Workers     │
-│ 28 Migrs.   │         │ SMS/WA/Mail │         │ Subscription│
-└─────────────┘         └─────────────┘         └─────────────┘
+│                  Backend API (Node.js + Express 5)          │
+│   TypeScript · JWT Auth · Security Headers · Rate Limiter   │
+│   Firestore Data Service · Centralized Error Handler        │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │                             │
+    ┌───────────▼────────────┐    ┌───────────▼───────────┐
+    │ Firebase Cloud Firestore│    │  PostgreSQL 16 Engine │
+    │ (Local Emulator / Cloud)│    │  (28 Migrations)      │
+    │ Collections: users,     │    │  Relational Storage   │
+    │ schools, students, etc. │    │  & Historical Audits  │
+    └─────────────────────────┘    └───────────────────────┘
+                │                             │
+    ┌───────────▼────────────┐    ┌───────────▼───────────┐
+    │ Notification Dispatch  │    │ Background Workers    │
+    │ SMS · WhatsApp · Email │    │ Subscription Sync     │
+    └─────────────────────────┘    └───────────────────────┘
 ```
 
 ### Technology Stack
 - **Frontend**: React 19, TypeScript, Vite 7, React Router 7, Axios, Lucide Icons, Vanilla CSS Design System.
-- **Backend**: Express 5, TypeScript, `pg` (PostgreSQL client pool), `bcryptjs`, `jsonwebtoken`, `pdfkit` (invoice generation), `nodemailer`.
-- **Database**: PostgreSQL 16 with 28 incremental migration files (`007_v07` to `028_v28`).
-- **Security**: Strict HTTP security headers (`nosniff`, `DENY` frames, referrer policy), memory-bucket API rate limiting (120 req/min), PBKDF2/bcrypt hashing, and request ID context propagation.
+- **Backend**: Node.js, Express 5, TypeScript, Firebase Admin SDK (`firebase-admin` v14), PostgreSQL client (`pg`), `bcryptjs`, `jsonwebtoken`, `pdfkit`, `nodemailer`.
+- **Database**:
+  - **Firebase Cloud Firestore**: Cloud NoSQL document store with Firebase Local Emulator (`127.0.0.1:8080`, UI `127.0.0.1:4000/firestore`).
+  - **PostgreSQL 16**: Relational storage engine with 28 migrations (`007_v07` to `028_v28`).
+- **Security**: Strict HTTP security headers (`nosniff`, `X-Frame-Options: DENY`, referrer policy), memory-bucket rate limiting (120 req/min), PBKDF2/bcrypt hashing, and request ID context propagation.
 
 ---
 
 ## User Roles & Demo Credentials
 
-The platform provides dedicated workflows and dashboards tailored to each role:
+All seeded accounts share the development password: **`ChangeMe123!`**
 
 | Persona | Role Key | Email | Password | Primary Capabilities |
 |---|---|---|---|---|
-| **Company Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School onboarding, plan management, global SaaS revenue monitoring, system backups, RBAC policies |
+| **Platform Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School onboarding, plan management, global SaaS revenue monitoring, system backups, RBAC policies |
 | **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student/Teacher roster, Class 1-12 routines, reports, attendance corrections, academic year promotions, billing |
-| **Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's assigned schedule, classroom attendance submission, attendance history, offline mode |
-| **Teacher (Alt)** | `TEACHER` | `priya@demo-school.local` | `ChangeMe123!` | Secondary demo teacher account |
-| **Parent** | `PARENT` | Onboarded via SMS/Email | — | Child attendance record lookup, attendance percentage, school notices |
+| **Classroom Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's assigned schedule, classroom attendance submission, attendance history, offline mode |
+| **Classroom Teacher (Alt)** | `TEACHER` | `priya@demo-school.local` | `ChangeMe123!` | Secondary demo teacher account |
+| **Parent / Guardian** | `PARENT` | Registered via student phone | — | Child attendance record lookup, attendance percentage, school notices |
 
----
-
-## Feature Modules
-
-### 1. Attendance & Operations
-- **Classroom Attendance**: Teachers view only their assigned routine slots for the day. Unmarked students are automatically flagged absent.
-- **Attendance Corrections**: Formal audit workflow allowing teachers to submit correction requests with approval notes and reasons.
-- **Comprehensive Reports**: Student-wise and class-wise attendance percentages, presence/absence tallies, and one-click CSV export.
-- **Offline Attendance Mode**: Local queueing in IndexedDB/localStorage with auto-sync when network connectivity is restored.
-
-### 2. Parent Communication & Notifications
-- **Multi-Channel Dispatch**: Native support for SMS, WhatsApp, and Email alerts.
-- **Template Customization**: Per-channel custom templates with automated placeholder injection:
-  - `{student_name}`, `{class_name}`, `{section}`, `{time}`, `{teacher_name}`, `{enquiry_number}`
-- **School Announcements**: Broadcast announcements targeted to the entire school, specific grades, sections, or parents with priority tags (`NORMAL`, `HIGH`, `EMERGENCY`).
-
-### 3. Academic Structure & Management
-- **Academic Years**: Session management allowing creation, activation, and archiving of academic years without losing historical data.
-- **Student Promotions**: Multi-student batch promotions (`PROMOTED`, `RETAINED`, `GRADUATED`, `TRANSFERRED`) carry students forward into new academic sessions.
-- **Timetable & Period Engine**: Period configurations, break slots, room assignments, teacher conflict detection, and substitute teacher allocation.
-- **Routines & Subjects**: Class 1 to 12 structure with custom sections (A, B, C...) and subject-teacher mapping.
-
-### 4. SaaS Billing, Subscriptions & GST
-- **Tiered Plans**: Starter, Standard, and Enterprise plans with student and teacher quota limits.
-- **Indian GST Compliance**: Automated 18% GST calculation (split into CGST 9% and SGST 9%) with downloadable PDF tax invoices and receipts.
-- **Payment Providers**: Mock payment gateway for local sandboxing and plug-and-play Razorpay integration for production.
-- **Subscription Enforcement**: Automatic expiry calculation with configurable grace periods before restricting attendance operations.
-
-### 5. Security & Disaster Recovery
-- **Security Hardening**: Real-time password policy validator, brute force defense, and audit logging of all administrative actions.
-- **Database Backups**: On-demand and scheduled backup creation with SHA-256 integrity checksum calculation and retention cleanup.
-- **Advanced Analytics**: Platform-wide attendance ranking, daily attendance snapshot trends, and revenue metrics.
+> [!TIP]
+> On the login page, click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`) to auto-populate credentials instantly.
 
 ---
 
 ## Quick Start Guide
 
 ### Prerequisites
-- **Node.js**: v20.x or v22.x+
+- **Node.js**: v20.x or v22.x+ (LTS)
 - **npm**: v10.x+
-- **Docker & Docker Compose** (Optional, for local PostgreSQL)
+- **Java**: JRE/JDK 11+ or 21+ (required for Firebase Firestore Emulator)
 
-### 1. Clone & Setup Workspace
+### 1. Clone & Install Dependencies
 ```bash
-git clone https://github.com/your-org/school-attendance-saas.git
-cd school-attendance-saas
-```
+# Navigate to project root
+cd attendoschool
 
-### 2. Start PostgreSQL (Docker)
-A ready-to-use Docker Compose configuration is included:
-```bash
-docker compose up -d postgres
-```
-*Note: This automatically initializes PostgreSQL 16 on port `5432` and applies the baseline schema and seed data.*
-
-### 3. Install & Start Backend
-```bash
+# Install Backend Dependencies
 cd backend
 npm install
+
+# Install Frontend Dependencies
+cd ../frontend
+npm install
+```
+
+### 2. Start the Firebase Firestore Emulator
+In terminal 1 (from `backend/` or repo root):
+```bash
+cd backend
+npm run emulator:firestore
+```
+*The emulator starts on `127.0.0.1:8080`, and the Emulator UI is available at [http://127.0.0.1:4000/firestore](http://127.0.0.1:4000/firestore).*
+
+### 3. Seed Demo Data
+In terminal 2 (from `backend/`):
+```bash
+cd backend
+npm run seed:firestore
+```
+*Seeds Greenwood International School, Super Admin, School Admin, Teacher, demo students, and subscription plans.*
+
+### 4. Launch Backend API Server
+In terminal 2 (after seeding):
+```bash
 npm run dev
 ```
-The API server starts on **http://localhost:5000**.
+*Backend API server is live on [http://localhost:5000](http://localhost:5000).*
 
-### 4. Install & Start Frontend
-In a new terminal:
+### 5. Launch Frontend Web App
+In terminal 3 (from `frontend/`):
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
-The web application is live at **http://localhost:5173**.
-
-### 5. Initial Platform Access (Clean Slate)
-The application starts with a clean database containing only the master platform Super Admin account:
-- **Role**: Company Super Admin
-- **Email**: `superadmin@attendance.local`
-- **Password**: `ChangeMe123!`
-
-All schools, school administrators, teachers, classes, and students are created dynamically by the Super Admin and School Admins through the platform.
-
-### 6. (Optional) Run Background Workers
-To run the automated background workers:
-```bash
-# In backend directory:
-npm run worker                # SMS processing worker
-npm run notification-worker   # Multi-channel notification worker
-npm run subscription-worker   # Subscription expiry synchronization
-```
+*Frontend application is live on [http://localhost:5173](http://localhost:5173).*
 
 ---
 
@@ -176,27 +168,27 @@ npm run subscription-worker   # Subscription expiry synchronization
 ### Backend (`backend/.env`)
 ```env
 PORT=5000
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/school_attendance
-JWT_SECRET=super-secret-jwt-key-for-local-testing-12345
 CORS_ORIGIN=http://localhost:5173
+JWT_SECRET=super-secret-jwt-key-for-local-testing-12345
 
-# Payment Gateway (Optional in Mock mode)
-RAZORPAY_KEY_ID=rzp_test_mock12345
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
+# Database Selection ('firebase' | 'postgres')
+DB_DRIVER=firebase
 
-# Email SMTP (Optional)
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM="School Attendance <no-reply@attendance.local>"
+# Firebase Firestore Emulator Configuration
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+FIREBASE_PROJECT_ID=attendoschool-saas
+
+# PostgreSQL (Optional fallback)
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/school_attendance
+
+# Communications (Mock for local dev)
+SMS_PROVIDER=mock
 
 # Company & Tax Details
-COMPANY_NAME="School Attendance SaaS"
+COMPANY_NAME="AttendoSchool Technologies Inc."
 COMPANY_GSTIN="19AAACB1234P1Z5"
-COMPANY_ADDRESS="Kolkata, WB, India"
-COMPANY_PHONE="9000000000"
+COMPANY_ADDRESS="Campus 4, Tech Park Boulevard, Bengaluru, Karnataka"
+COMPANY_PHONE="+91 90000 00000"
 COMPANY_GST_RATE=18
 ```
 
@@ -210,30 +202,26 @@ VITE_RAZORPAY_KEY_ID=rzp_test_mock12345
 
 ## Testing & Quality Assurance
 
-The codebase includes two automated test suites covering both backend unit/integration tests and end-to-end user persona journeys:
+The codebase includes comprehensive automated test suites:
 
-### 1. Comprehensive Backend Test Suite
-Executes 50 tests verifying schema tables, cryptographic hashing, JWT verification, rate limiting, security headers, template substitutions, GST tax calculations, and route authorization.
+### 1. Backend Integration & Unit Tests (50 Tests)
+Tests schema tables, cryptographic hashing, JWT verification, rate limiting, security headers, template substitutions, GST calculations, and route authorization:
 ```bash
 cd backend
 npm test
 ```
 
-### 2. End-to-End Persona Journey Test Suite
-Tests 43 live scenarios simulating School Admin, Teacher, and Super Admin workflows, verifying HTML assets, CSS design tokens, and API endpoints.
+### 2. End-to-End Persona Journey Suite (43 Tests)
+Simulates School Admin, Teacher, and Super Admin workflows, checking API endpoints, tokens, and payloads:
 ```bash
 cd backend
 npx tsx tests/automated-e2e-journey.ts
 ```
 
-### 3. TypeScript Build Verification
-Verify clean compilation across both projects:
+### 3. TypeScript Typecheck & Build
 ```bash
-# Backend compilation check
 cd backend && npm run build
-
-# Frontend bundle compilation check
-cd frontend && npm run build
+cd ../frontend && npm run build
 ```
 
 ---
@@ -245,9 +233,9 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 ### Authentication & Core
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| `POST` | `/api/auth/login` | Public | Authenticate user and obtain JWT token |
+| `POST` | `/api/auth/login` | Public | Authenticate user (Firestore + PostgreSQL fallback) |
 | `GET` | `/api/auth/me` | Authenticated | Retrieve authenticated user profile |
-| `GET` | `/api/health` | Public | Health check with database connection status |
+| `GET` | `/api/health` | Public | Health check with Firestore and PostgreSQL status |
 | `GET` | `/api/production-v26/health` | Public | Production memory and uptime status |
 
 ### School Administration
@@ -271,7 +259,7 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 | `POST` | `/api/teacher/attendance` | `TEACHER` | Submit attendance session |
 | `GET` | `/api/teacher/attendance/history` | `TEACHER` | View previously submitted sessions |
 
-### Company Super Admin
+### Platform Super Admin
 | Method | Endpoint | Role | Description |
 |---|---|---|---|
 | `GET` | `/api/super-admin/overview` | `SUPER_ADMIN` | SaaS platform metrics and revenue |
@@ -300,12 +288,7 @@ docker compose -f docker-compose.production.yml up -d --build
 curl http://localhost/api/production-v26/health
 ```
 
-### Production Checklist
-- [ ] Ensure `JWT_SECRET` is set to a secure, randomly generated string (minimum 32 characters).
-- [ ] Configure TLS/SSL certificate termination via Nginx or Cloudflare.
-- [ ] Set up automated PostgreSQL daily backups via cron or managed database provider.
-- [ ] Map production SMS provider gateway credentials in `backend/.env`.
-- [ ] Connect production Razorpay API keys and configure webhook secret.
+Refer to **[CLOUD-DEPLOYMENT-GUIDE.md](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** for detailed cloud deployment guides on Render, Railway, AWS, and Vercel.
 
 ---
 

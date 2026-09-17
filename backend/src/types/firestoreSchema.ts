@@ -1,0 +1,104 @@
+export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT';
+
+export interface FirestoreSchool {
+  id: string;
+  name: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  planId?: string;
+  planName?: string;
+  maxStudents?: number;
+  subscriptionStart?: string;
+  subscriptionEnd?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FirestoreUser {
+  id: string;
+  schoolId: string | null;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole;
+  phone?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface FirestoreStudent {
+  id: string;
+  schoolId: string;
+  admissionNumber: string;
+  fullName: string;
+  className: string;
+  section: string;
+  rollNumber?: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  parentUserId?: string;
+  status: 'ACTIVE' | 'ARCHIVED' | 'TRANSFERRED';
+  createdAt: string;
+}
+
+export interface FirestoreAttendanceSession {
+  id: string;
+  schoolId: string;
+  className: string;
+  section: string;
+  sessionDate: string; // YYYY-MM-DD
+  periodNumber?: number;
+  takenByUserId: string;
+  takenByUserName?: string;
+  totalStudents: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount?: number;
+  createdAt: string;
+}
+
+export interface FirestoreAttendanceRecord {
+  id: string;
+  sessionId: string;
+  schoolId: string;
+  studentId: string;
+  studentName?: string;
+  status: 'PRESENT' | 'ABSENT' | 'LATE';
+  remarks?: string;
+  createdAt: string;
+}
+
+export interface FirestoreSubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string;
+  priceMonthly: number;
+  priceYearly?: number;
+  maxStudents: number;
+  features: string[];
+  status: 'ACTIVE' | 'DEPRECATED';
+  createdAt: string;
+}
+
+export interface FirestorePayment {
+  id: string;
+  schoolId: string;
+  schoolName?: string;
+  planId?: string;
+  planName?: string;
+  amount: number;
+  currency: string;
+  provider: string; // 'RAZORPAY' | 'MANUAL'
+  providerOrderId?: string;
+  providerPaymentId?: string;
+  status: 'PAID' | 'FAILED' | 'PENDING';
+  invoiceNumber?: string;
+  receiptNumber?: string;
+  createdAt: string;
+  paidAt?: string;
+}

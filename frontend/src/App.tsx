@@ -18,14 +18,16 @@ import OfflineAttendance from './OfflineAttendance';
 import Analytics from './Analytics';
 import Communication from './Communication';
 import ParentCommunication from './ParentCommunication';
+import { SuperAdminDashboard } from './SuperAdminDashboard';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard,Users,GraduationCap,BookOpen,Layers,LogOut,Plus,
   CalendarDays,ClipboardCheck,School,CheckCircle2,MessageSquare,BarChart3,
   FileText,Shield,Database,Clock,Wifi,UserPlus,Settings,Moon,Sun,
   ArrowUpDown,Bell,CreditCard,Eye,FileSpreadsheet,Download,Trash2,
-  UploadCloud,CheckSquare,Square,RefreshCw,Send,Lock,ShieldCheck,Mail,Server,
-  Search,Sparkles,ArrowRight,Activity,Zap,EyeOff,ArrowLeft
+  UploadCloud,Send,ShieldCheck,Mail,Server,
+  Search,EyeOff,ArrowLeft,
+  Menu,ChevronDown,Calendar,Globe,Lock,ArrowRight
 } from 'lucide-react';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
@@ -45,160 +47,373 @@ function useTheme(){
   return {dark,toggle:()=>setDark(d=>!d)};
 }
 
-/* ────── Login ────── */
-function Login(){
-  const nav=useNavigate();
-  const {login}=useAuth();
-  const [email,setEmail]=useState('admin@demo-school.local');
-  const [password,setPassword]=useState('ChangeMe123!');
-  const [showPassword,setShowPassword]=useState(false);
-  const [agree,setAgree]=useState(true);
-  const [error,setError]=useState('');
-  const [loading,setLoading]=useState(false);
+function AttendoEmblem({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M6 10C12 10 18 8 24 6V36C18 38 12 40 6 40V10Z" fill="url(#heroBookL)" />
+      <path d="M42 10C36 10 30 8 24 6V36C30 38 36 40 42 40V10Z" fill="url(#heroBookR)" />
+      <path d="M24 6V36" stroke="#ffffff" strokeWidth="1.5" strokeOpacity="0.4" />
+      <circle cx="24" cy="14" r="3.5" fill="#f59e0b" />
+      <path d="M19 28L23 32L30 22" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="heroBookL" x1="6" y1="6" x2="24" y2="40" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#1d4ed8" />
+        </linearGradient>
+        <linearGradient id="heroBookR" x1="42" y1="6" x2="24" y2="40" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#60a5fa" />
+          <stop offset="1" stopColor="#2563eb" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
 
-  async function submit(e:React.FormEvent){
-    e.preventDefault();setError('');setLoading(true);
-    try{
-      const{data}=await api.post('/auth/login',{email,password});
-      login(data.token,data.user);
+function GoogleGLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.37 7.33 24 12 24z"/>
+      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
+      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+    </svg>
+  );
+}
+
+const DEMO_INSTITUTES = [
+  { id: 'greenwood', name: 'Greenwood International School', email: 'admin@demo-school.local', role: 'School Admin' },
+  { id: 'delhi', name: 'Delhi Public Academy', email: 'rahul@demo-school.local', role: 'Teacher' },
+  { id: 'central', name: 'Central Cloud Administration', email: 'superadmin@attendance.local', role: 'Super Admin' },
+  { id: 'custom', name: 'Other School / Custom Institute', email: '', role: 'Custom' }
+];
+
+/* ────── Login ────── */
+function Login() {
+  const nav = useNavigate();
+  const { login } = useAuth();
+  const [institute, setInstitute] = useState('greenwood');
+  const [email, setEmail] = useState('admin@demo-school.local');
+  const [password, setPassword] = useState('ChangeMe123!');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  function handleInstituteChange(val: string) {
+    setInstitute(val);
+    const found = DEMO_INSTITUTES.find(i => i.id === val);
+    if (found && found.email) {
+      setEmail(found.email);
+      setPassword('ChangeMe123!');
+    }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      login(data.token, data.user);
       nav('/dashboard');
-    }catch(e:any){setError(e?.response?.data?.message||'Login failed')}
-    finally{setLoading(false)}
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Invalid institute credentials. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="edu-auth-wrapper">
-      <div className="edu-auth-card">
-        {/* Left Side: Educational Hero Showcase */}
-        <div className="edu-auth-hero">
-          <img
-            src="/educational_student_campus.jpg"
-            alt="AttendoSchool Campus & Academic Excellence"
-            className="edu-auth-hero-img"
-          />
-          <div className="edu-auth-hero-scrim" />
+    <div className="as-login-page">
+      {/* Left Column: Atmospheric Campus Hero Showcase */}
+      <div className="as-login-hero">
+        <div className="as-login-hero-overlay" />
 
-          {/* Official Full Uncropped Brand Logo (Emblem with Name Underneath as in Logo) */}
-          <div className="edu-auth-emblem">
-            <img src="/attendo-school-logo.png" alt="AttendoSchool" />
+        {/* Top Branding */}
+        <div className="as-hero-content as-hero-brand">
+          <AttendoEmblem size={38} />
+          <div className="as-brand-text">
+            <h2>AttendoSchool</h2>
+            <p>Attendance Today · Brighter Tomorrow</p>
+          </div>
+        </div>
+
+        {/* Center Hero Message */}
+        <div className="as-hero-content as-hero-main">
+          <div className="as-hero-kicker-wrap">
+            <div className="as-hero-kicker-line" />
+            <span className="as-hero-kicker">TRUSTED BY 500+ SCHOOLS ACROSS INDIA</span>
           </div>
 
-          {/* Bottom Telemetry Scrim */}
-          <div className="edu-auth-hero-bottom">
-            <div className="edu-live-pill">
-              <span className="edu-live-dot"></span>
-              <span>98.6% Daily Attendance Verified</span>
+          <h1 className="as-hero-title">
+            Empowering<br />
+            Schools Through<br />
+            <span className="as-hero-title-highlight">Smart Attendance</span>
+          </h1>
+
+          <p className="as-hero-description">
+            A complete school management platform for attendance, timetables, communication, analytics and more — built for modern education.
+          </p>
+
+          <div className="as-hero-features">
+            <div className="as-feature-item">
+              <div className="as-feature-icon">
+                <Users size={18} />
+              </div>
+              <div className="as-feature-text">
+                <h4>Attendance Automation</h4>
+                <p>Save time, improve accuracy</p>
+              </div>
             </div>
-            <p className="edu-hero-tagline">
-              "Attendance Today — Brighter Tomorrow"
-            </p>
-            <div className="edu-hero-badge-row">
-              <GraduationCap size={13} />
-              <span>CBSE · ICSE · ISO 9001:2015 Accredited</span>
+
+            <div className="as-feature-item">
+              <div className="as-feature-icon">
+                <MessageSquare size={18} />
+              </div>
+              <div className="as-feature-text">
+                <h4>Parent Communication</h4>
+                <p>SMS, WhatsApp & Email</p>
+              </div>
+            </div>
+
+            <div className="as-feature-item">
+              <div className="as-feature-icon">
+                <Calendar size={18} />
+              </div>
+              <div className="as-feature-text">
+                <h4>Timetable & Academics</h4>
+                <p>Plan, manage, grow</p>
+              </div>
+            </div>
+
+            <div className="as-feature-item">
+              <div className="as-feature-icon">
+                <BarChart3 size={18} />
+              </div>
+              <div className="as-feature-text">
+                <h4>Actionable Reports</h4>
+                <p>Make data-driven decisions</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Clean Professional Form (Matches Mockup) */}
-        <div className="edu-auth-form-side">
-          <button type="button" className="edu-back-link" onClick={() => { setEmail('admin@demo-school.local'); setPassword('ChangeMe123!'); }}>
-            <ArrowLeft size={14} /> <span>Back</span>
+        {/* Bottom Floating Stats Pill */}
+        <div className="as-hero-stats-card">
+          <div className="as-hero-stat-col">
+            <div className="as-stat-icon-wrap">
+              <School size={18} />
+            </div>
+            <div className="as-stat-meta">
+              <h5>500+</h5>
+              <span>Schools</span>
+            </div>
+          </div>
+
+          <div className="as-hero-stat-col">
+            <div className="as-stat-icon-wrap">
+              <Users size={18} />
+            </div>
+            <div className="as-stat-meta">
+              <h5>2 Lakh+</h5>
+              <span>Students</span>
+            </div>
+          </div>
+
+          <div className="as-hero-stat-col">
+            <div className="as-stat-icon-wrap">
+              <ShieldCheck size={18} />
+            </div>
+            <div className="as-stat-meta">
+              <h5>99.9%</h5>
+              <span>Uptime</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Baseline */}
+        <div className="as-hero-footer">
+          <span>Better Attendance. Brighter Futures.</span>
+          <div className="as-hero-footer-line" />
+        </div>
+      </div>
+
+      {/* Right Column: Clean White Sign In Canvas */}
+      <div className="as-login-canvas">
+        {/* Top Bar with Language Selector */}
+        <div className="as-canvas-topbar">
+          <button type="button" className="as-lang-btn" onClick={() => {}}>
+            <Globe size={14} color="#64748b" />
+            <span>English</span>
+            <ChevronDown size={13} color="#94a3b8" />
           </button>
+        </div>
 
-          <h1 className="edu-form-title">Log in</h1>
-          <p className="edu-form-sub">
-            Institutional Academic & Attendance Management Portal
-          </p>
-
-          {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
-
-          <form onSubmit={submit}>
-            <div className="edu-form-group">
-              <label>Email Address</label>
-              <div className="edu-input-wrap">
-                <input
-                  required
-                  type="email"
-                  className="edu-input"
-                  placeholder="john52martinez@gmail.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
+        {/* Centered Sign-In Card */}
+        <div className="as-card-container">
+          <div className="as-signin-card">
+            <div className="as-card-header">
+              <div className="as-card-logo">
+                <div className="as-card-logo-row">
+                  <AttendoEmblem size={34} />
+                  <span className="as-card-logo-name">AttendoSchool</span>
+                </div>
+                <span className="as-card-logo-sub">Attendance Today · Brighter Tomorrow</span>
               </div>
+
+              <h1 className="as-card-title">Sign In</h1>
+              <p className="as-card-subtitle">Access your school/institute account</p>
             </div>
 
-            <div className="edu-form-group">
-              <label>Password</label>
-              <div className="edu-input-wrap">
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  className="edu-input"
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="edu-eye-btn"
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword(s => !s)}
+            {error && <div className="as-error-alert">{error}</div>}
+
+            <form onSubmit={submit}>
+              {/* Select Institute */}
+              <div className="as-field-group">
+                <label className="as-field-label">
+                  Select Institute <span className="as-field-required">*</span>
+                </label>
+                <div className="as-input-box">
+                  <div className="as-input-icon">
+                    <School size={16} />
+                  </div>
+                  <select
+                    className="as-select"
+                    value={institute}
+                    onChange={e => handleInstituteChange(e.target.value)}
+                  >
+                    {DEMO_INSTITUTES.map(inst => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={15} className="as-select-chevron" />
+                </div>
+                <p className="as-field-help">Choose your school/institute to continue</p>
+              </div>
+
+              {/* Email Address */}
+              <div className="as-field-group">
+                <label className="as-field-label">
+                  Email Address <span className="as-field-required">*</span>
+                </label>
+                <div className="as-input-box">
+                  <div className="as-input-icon">
+                    <Mail size={16} />
+                  </div>
+                  <input
+                    required
+                    type="email"
+                    className="as-input"
+                    placeholder="you@school.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="as-field-group">
+                <label className="as-field-label">
+                  Password <span className="as-field-required">*</span>
+                </label>
+                <div className="as-input-box">
+                  <div className="as-input-icon">
+                    <Lock size={16} />
+                  </div>
+                  <input
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    className="as-input"
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="as-toggle-eye"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword(s => !s)}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me & Forgot Password */}
+              <div className="as-form-actions-row">
+                <label className="as-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                  />
+                  <span>Remember me</span>
+                </label>
+                <a
+                  href="#forgot"
+                  onClick={e => {
+                    e.preventDefault();
+                    alert('Please contact your institutional school administrator or central support to reset your credentials.');
+                  }}
+                  className="as-forgot-link"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                  Forgot password?
+                </a>
               </div>
-              <a href="#forgot" onClick={(e) => { e.preventDefault(); alert('Please contact your institutional school administrator to reset your credentials.'); }} className="edu-forgot-link">
-                Forgot Password?
-              </a>
+
+              {/* Sign In CTA */}
+              <button type="submit" className="as-btn-submit" disabled={loading}>
+                {loading ? (
+                  <span>Signing in…</span>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* OR Divider */}
+            <div className="as-divider">
+              <span>OR</span>
             </div>
 
-            <label className="edu-terms-row">
-              <input
-                type="checkbox"
-                checked={agree}
-                onChange={e => setAgree(e.target.checked)}
-              />
-              <span>I agree to the <b>Terms & Conditions</b></span>
-            </label>
-
-            <button type="submit" className="edu-btn-login" disabled={loading || !agree}>
-              {loading ? 'Logging in…' : 'Log in'}
+            {/* Continue with Google */}
+            <button
+              type="button"
+              className="as-btn-google"
+              onClick={() => {
+                alert('Google Workspace for Education SSO is active. Please authenticate using your institution Google account.');
+              }}
+            >
+              <GoogleGLogo />
+              <span>Continue with Google</span>
             </button>
-          </form>
 
-          <div className="edu-divider">
-            <span>or</span>
+            {/* Security Multi-tenant Badge */}
+            <div className="as-trust-badge">
+              <ShieldCheck size={18} className="as-trust-icon" />
+              <div className="as-trust-text">
+                <h6>Secure • Multi-tenant • Trusted by 500+ Schools</h6>
+                <p>Your data stays isolated and secure within your institute.</p>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div className="edu-demo-pills">
-            <button
-              type="button"
-              className="edu-demo-btn"
-              onClick={() => { setEmail('superadmin@attendance.local'); setPassword('ChangeMe123!'); }}
-              title="Quick Super Admin Demo Login"
-            >
-              <ShieldCheck size={14} className="edu-role-icon" style={{ color: '#7c3aed' }} />
-              <span>Super Admin</span>
-            </button>
-            <button
-              type="button"
-              className="edu-demo-btn"
-              onClick={() => { setEmail('admin@demo-school.local'); setPassword('ChangeMe123!'); }}
-              title="Quick School Admin Demo Login"
-            >
-              <School size={14} className="edu-role-icon" style={{ color: '#059669' }} />
-              <span>School Admin</span>
-            </button>
-            <button
-              type="button"
-              className="edu-demo-btn"
-              onClick={() => { setEmail('rahul@demo-school.local'); setPassword('ChangeMe123!'); }}
-              title="Quick Teacher Demo Login"
-            >
-              <GraduationCap size={14} className="edu-role-icon" style={{ color: '#d97706' }} />
-              <span>Teacher</span>
-            </button>
+        {/* Canvas Footer */}
+        <div className="as-canvas-footer">
+          <div className="as-footer-links">
+            <a href="#privacy" onClick={e => e.preventDefault()}>Privacy Policy</a>
+            <span>|</span>
+            <a href="#terms" onClick={e => e.preventDefault()}>Terms of Service</a>
+            <span>|</span>
+            <a href="#support" onClick={e => e.preventDefault()}>Support</a>
           </div>
+          <div>© 2025 AttendoSchool. All rights reserved.</div>
         </div>
       </div>
     </div>
@@ -252,17 +467,19 @@ function Layout({children}:{children:React.ReactNode}){
   ];
 
   const superAdminLinks:any[]=[
-    ['—','MAIN'],
     ['/dashboard','Overview',LayoutDashboard],
     ['/super-admin','Schools',School],
+    ['/subscription-enforcement','Subscriptions',CalendarDays],
     ['/payments','Payments',CreditCard],
-    ['/invoices','Invoices',BookOpen],
+    ['/invoices','Invoices',FileText],
     ['/monitor','Monitoring',Eye],
-    ['—','PLATFORM'],
-    ['/analytics','Analytics',BarChart3],
-    ['/people','People',UserPlus],
+    ['/attendance-reports','Reports',BarChart3],
+    ['—','ADMINISTRATION'],
+    ['/people','People',Users],
     ['/permissions','Permissions',Shield],
-    ['/security','Security',Shield],
+    ['/permissions','Roles',ShieldCheck],
+    ['/security','Settings',Settings],
+    ['/attendance-corrections','Audit Logs',FileSpreadsheet],
   ];
 
   const parentLinks:any[]=[
@@ -283,66 +500,137 @@ function Layout({children}:{children:React.ReactNode}){
           <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
         </div>
         <div className="school-info">
-          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool Platform':'AttendoSchool · Demo High'}</span>
-          <span className="school-meta">Attendance Today · Brighter Tomorrow</span>
+          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':'AttendoSchool · Demo High'}</span>
+          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Attendance Today - Brighter Tomorrow':'Attendance Today · Brighter Tomorrow'}</span>
         </div>
       </div>
       <div className="sidebar-nav-container">
         <nav>
           {links.map(([p,l,I]:any,i:number)=>{
             if(p==='—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
-            return <button key={p} className={loc.pathname===p?'nav-active':''} onClick={()=>nav(p)}>
+            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>nav(p)}>
               <I size={16}/> <span>{l}</span>
             </button>;
           })}
         </nav>
       </div>
-      <div className="sidebar-footer">
-        <button className="theme-toggle" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
-          {dark?<Sun size={15}/>:<Moon size={15}/>} <span>{dark?'Light Mode':'Dark Mode'}</span>
-        </button>
-        <button className="logout" onClick={()=>{logout();nav('/login')}}>
-          <LogOut size={15}/> <span>Sign out</span>
-        </button>
+      {user.role === 'SUPER_ADMIN' && (
+        <div className="sidebar-promo-card">
+          <div className="sidebar-promo-badge">
+            <GraduationCap size={20} color="#60a5fa" />
+          </div>
+          <div className="sidebar-promo-title">Smart Attendance</div>
+          <div className="sidebar-promo-subtitle">Smarter Schools</div>
+          <div className="sidebar-promo-desc">Empowering education through technology.</div>
+        </div>
+      )}
+      <div className="sidebar-footer" style={user.role === 'SUPER_ADMIN' ? { borderTop: 'none', paddingTop: 0 } : {}}>
+        {user.role === 'SUPER_ADMIN' ? (
+          <>
+            <div className="sidebar-darkmode-row">
+              <div className="sidebar-darkmode-label">
+                <Moon size={15} />
+                <span>Dark Mode</span>
+              </div>
+              <label className="sidebar-toggle-switch">
+                <input type="checkbox" checked={dark} onChange={toggle} />
+                <span className="sidebar-slider"></span>
+              </label>
+            </div>
+            <div className="sidebar-version-tag">v2.1.0</div>
+          </>
+        ) : (
+          <>
+            <button className="theme-toggle" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
+              {dark?<Sun size={15}/>:<Moon size={15}/>} <span>{dark?'Light Mode':'Dark Mode'}</span>
+            </button>
+            <button className="logout" onClick={()=>{logout();nav('/login')}}>
+              <LogOut size={15}/> <span>Sign out</span>
+            </button>
+          </>
+        )}
       </div>
     </aside>
     <main>
-      <header>
-        <div className="header-meta">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-            <p className="eyebrow" style={{ margin: 0 }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
-          </div>
-          <h2>{user.name}</h2>
-        </div>
-        <div className="header-search">
-          <Search size={15}/>
-          <input placeholder="Search records, students, classes..." />
-          <span className="header-kbd">⌘K</span>
-        </div>
-        <div className="header-right">
-          <div className="session-pill">
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-            2025–26 ACADEMIC SESSION
-          </div>
-          <button className="header-icon-btn" title="Notifications" onClick={()=>nav(user.role==='TEACHER'?'/teacher-history':'/notifications')}>
-            <Bell size={16}/>
-            <span className="header-badge-dot"></span>
-          </button>
-          <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
-            {dark?<Sun size={16}/>:<Moon size={16}/>}
-          </button>
-          <div className="profile-pill">
-            <div className="user-avatar">
-              {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
-            </div>
-            <div className="profile-info">
-              <span className="profile-name">{user.name}</span>
-              <span className="profile-role">{user.email}</span>
+      {user.role === 'SUPER_ADMIN' ? (
+        <header>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button className="header-icon-btn" title="Toggle menu" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
+              <Menu size={16} />
+            </button>
+            <div className="header-search" style={{ width: 340 }}>
+              <Search size={15}/>
+              <input placeholder="Search schools, students, invoices..." />
+              <span className="header-kbd">Ctrl + K</span>
             </div>
           </div>
-        </div>
-      </header>
+          <div className="header-right">
+            <div className="session-pill" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+              <Calendar size={14} />
+              <span>2025–26 Academic Session</span>
+              <ChevronDown size={14} style={{ opacity: 0.7 }} />
+            </div>
+            <button className="header-icon-btn" title="Notifications" onClick={()=>nav('/notifications')}>
+              <Bell size={16}/>
+              <span className="header-badge-num">3</span>
+            </button>
+            <div className="profile-pill">
+              <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
+                CS
+              </div>
+              <div className="profile-info">
+                <span className="profile-name">Company Super Admin</span>
+                <span className="profile-role">superadmin@attendoschool.com</span>
+              </div>
+              <button 
+                className="header-icon-btn" 
+                title="Sign out" 
+                style={{ width: 28, height: 28, marginLeft: 2 }}
+                onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          </div>
+        </header>
+      ) : (
+        <header>
+          <div className="header-meta">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
+              <p className="eyebrow" style={{ margin: 0 }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+            </div>
+            <h2>{user.name}</h2>
+          </div>
+          <div className="header-search">
+            <Search size={15}/>
+            <input placeholder="Search records, students, classes..." />
+            <span className="header-kbd">⌘K</span>
+          </div>
+          <div className="header-right">
+            <div className="session-pill">
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+              2025–26 ACADEMIC SESSION
+            </div>
+            <button className="header-icon-btn" title="Notifications" onClick={()=>nav(user.role==='TEACHER'?'/teacher-history':'/notifications')}>
+              <Bell size={16}/>
+              <span className="header-badge-dot"></span>
+            </button>
+            <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
+              {dark?<Sun size={16}/>:<Moon size={16}/>}
+            </button>
+            <div className="profile-pill">
+              <div className="user-avatar">
+                {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
+              </div>
+              <div className="profile-info">
+                <span className="profile-name">{user.name}</span>
+                <span className="profile-role">{user.email}</span>
+              </div>
+            </div>
+          </div>
+        </header>
+      )}
       {children}
     </main>
   </div>
@@ -1809,130 +2097,12 @@ function Payments(){
 }
 
 /* ────── Super Admin Home ────── */
-const DEFAULT_PLANS = [
-  { id: 'e7377e37-9267-487b-817e-606370af60d9', name: 'Basic', max_students: 300, price_monthly: 499 },
-  { id: '59b51bb8-25c3-4417-8663-13836440f77d', name: 'Standard', max_students: 1000, price_monthly: 999 },
-  { id: '97279b50-bc33-4e64-a69a-9bc837ce9361', name: 'Enterprise', max_students: 5000, price_monthly: 1999 }
-];
-
 function SuperAdminHome(){
- const {user}=useAuth();
- const [data,setData]=useState<any>(null);
- const [schools,setSchools]=useState<any[]>([]);
- const [plans,setPlans]=useState<any[]>(DEFAULT_PLANS);
- const [timeframe,setTimeframe]=useState('All Time');
- const [open,setOpen]=useState(false);
- const [renew,setRenew]=useState<any>(null);
- const [msg,setMsg]=useState('');
- const [f,setF]=useState<any>({startDate:new Date().toISOString().slice(0,10), planId: DEFAULT_PLANS[0].id});
-
- async function load(){
-   try {
-     const [a,b,c] = await Promise.all([
-       api.get('/super-admin/overview').catch(() => ({ data: null })),
-       api.get('/super-admin/schools').catch(() => ({ data: [] })),
-       api.get('/super-admin/plans').catch(() => ({ data: [] }))
-     ]);
-     if (a?.data) setData(a.data);
-     if (Array.isArray(b?.data)) setSchools(b.data);
-     const loadedPlans = Array.isArray(c?.data) && c.data.length > 0 ? c.data : DEFAULT_PLANS;
-     setPlans(loadedPlans);
-     setF((prev: any) => ({ ...prev, planId: prev.planId || loadedPlans[0]?.id }));
-   } catch (err) {
-     console.error('SuperAdmin load error:', err);
-   }
- }
- useEffect(()=>{load()},[]);
-
- async function createSchool(e:React.FormEvent){
-   e.preventDefault();setMsg('');
-   try{
-     await api.post('/super-admin/schools',f);
-     setOpen(false);
-     setF({startDate:new Date().toISOString().slice(0,10), planId: plans[0]?.id || DEFAULT_PLANS[0].id});
-     load();
-   } catch(e:any){
-     setMsg(e?.response?.data?.message||'Could not create school');
-   }
- }
-
- async function toggle(id:string,status:string){
-   try{await api.put('/super-admin/schools/'+id+'/status',{status});load()}
-   catch(e:any){alert(e?.response?.data?.message||'Could not update status')}
- }
-
- async function doRenew(e:React.FormEvent){
-   e.preventDefault();
-   try{await api.post('/super-admin/schools/'+renew.id+'/renew',renew.form);setRenew(null);load()}
-   catch(e:any){alert(e?.response?.data?.message||'Could not renew')}
- }
-
- const money=(n:any)=>`₹${Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}`;
-
- return <Layout>
-   <PageHead title="Company Super Admin" sub="Manage schools, subscriptions, payments and SaaS usage." button="Create school" onClick={()=>{
-     setF((prev: any) => ({ ...prev, planId: prev.planId || plans[0]?.id || DEFAULT_PLANS[0].id }));
-     setOpen(true);
-   }}/>
-   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-     <div className="date-filter-group">
-       {['Today', 'Weekly', 'Monthly', 'All Time'].map(tab => (
-         <button key={tab} className={`date-filter-btn ${timeframe === tab ? 'active' : ''}`} onClick={()=>setTimeframe(tab)}>{tab}</button>
-       ))}
-     </div>
-     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-       Multi-Tenant Cloud SIS · Auto-sync active
-     </div>
-   </div>
-   <div className="stats">
-     <Stat label="Total schools" value={data?.totalSchools ?? data?.total_schools ?? '—'} trend="+100%" sub="platform growth"/>
-     <Stat label="Active" value={data?.activeSchools ?? data?.active_schools ?? '—'} trend="Healthy" sub="100% operational"/>
-     <Stat label="Expired" value={data?.expiredSchools ?? data?.expired_schools ?? '—'} trend="0% expired" sub="grace period"/>
-     <Stat label="Students" value={data?.totalStudents ?? data?.total_students ?? '—'} trend="+14" sub="active enrolled"/>
-     <Stat label="Revenue" value={money(data?.totalRevenue ?? data?.total_revenue)} trend="+24%" sub="gross run-rate"/>
-     <Stat label="Pending payments" value={data?.pendingPayments ?? data?.pending_payments ?? '—'} trend="0 due" sub="all cleared"/>
-   </div>
-   <div className="two-col">
-     <div className="panel"><h3>Subscription health</h3>
-       <div className="list">
-         <div className="list-row"><b>Active ratio</b><span>{data?.activeRatio??0}%</span></div>
-         <div className="list-row"><b>Expired ratio</b><span>{data?.expiredRatio??0}%</span></div>
-         <div className="list-row"><b>Suspended</b><span>{data?.suspendedSchools ?? data?.suspended_schools ?? 0}</span></div>
-       </div>
-     </div>
-     <div className="panel"><h3>Plans</h3>
-       <div className="list">{plans.map(p=><div className="list-row" key={p.id}><b>{p.name}</b><span>{money(p.price_monthly)}/month · {p.max_students} students</span></div>)}</div>
-     </div>
-   </div>
-   <div className="panel"><div className="panel-head"><h3>Schools</h3><span className="muted">{schools.length} records</span></div>
-    <div className="table-wrap"><table><thead><tr><th>School</th><th>Admin</th><th>Students</th><th>Plan</th><th>Validity</th><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>{schools.map(s=><tr key={s.id}><td><b>{s.name}</b><small className="table-sub">{s.code}</small></td><td>{s.admin_email||'—'}</td><td>{s.student_count}</td><td>{s.plan_name||'—'}</td><td>{s.start_date?.slice(0,10)||'—'} → {s.end_date?.slice(0,10)||'—'}</td><td><span className="badge">{s.computed_status}</span></td>
-    <td><div className="action-row"><button className="small-btn" onClick={()=>setRenew({id:s.id,form:{days:30,amount:s.plan_price_monthly||0}})}>Renew</button>{s.status==='SUSPENDED'?<button className="small-btn" onClick={()=>toggle(s.id,'ACTIVE')}>Activate</button>:<button className="small-btn danger-btn" onClick={()=>toggle(s.id,'SUSPENDED')}>Suspend</button>}</div></td></tr>)}</tbody></table></div>
-   </div>
-   {open&&<Modal title="Create school" close={()=>setOpen(false)}><form className="modal-form" onSubmit={createSchool}>
-     <label>School name<input required value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/></label>
-     <label>School code<input required value={f.code||''} onChange={e=>setF({...f,code:e.target.value.toUpperCase()})}/></label>
-     <label>Enquiry number<input required value={f.enquiryNumber||''} onChange={e=>setF({...f,enquiryNumber:e.target.value})}/></label>
-     <label>Admin name<input required value={f.adminName||''} onChange={e=>setF({...f,adminName:e.target.value})}/></label>
-     <label>Admin email<input required type="email" value={f.adminEmail||''} onChange={e=>setF({...f,adminEmail:e.target.value})}/></label>
-     <label>Admin password<input required type="password" value={f.adminPassword||''} onChange={e=>setF({...f,adminPassword:e.target.value})}/></label>
-     <label>Subscription plan
-       <select required value={f.planId||plans[0]?.id||''} onChange={e=>setF({...f,planId:e.target.value})}>
-         <option value="">Select plan</option>
-         {plans.map(p=><option key={p.id} value={p.id}>{p.name} · ₹{Number(p.price_monthly).toLocaleString('en-IN')}/month</option>)}
-       </select>
-     </label>
-     <label>Start date<input required type="date" value={f.startDate||''} onChange={e=>setF({...f,startDate:e.target.value})}/></label>
-     <label>Validity (days)<input required type="number" min="1" value={f.days||30} onChange={e=>setF({...f,days:Number(e.target.value)})}/></label>
-     {msg&&<div className="error">{msg}</div>}<button>Create school</button>
-   </form></Modal>}
-   {renew&&<Modal title="Renew subscription" close={()=>setRenew(null)}><form className="modal-form" onSubmit={doRenew}>
-     <label>Renewal days<input type="number" min="1" value={renew.form.days} onChange={e=>setRenew({...renew,form:{...renew.form,days:Number(e.target.value)}})}/></label>
-     <label>Payment amount<input type="number" min="0" step="0.01" value={renew.form.amount} onChange={e=>setRenew({...renew,form:{...renew.form,amount:Number(e.target.value)}})}/></label>
-     <p className="muted">V05 uses a mock payment flow for testing. A real gateway can be connected in the next version.</p>
-     <button>Renew & record payment</button>
-   </form></Modal>}
- </Layout>
+  return (
+    <Layout>
+      <SuperAdminDashboard />
+    </Layout>
+  );
 }
 
 /* ────── Routes ────── */

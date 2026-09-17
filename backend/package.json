@@ -9,10 +9,12 @@
     "worker": "tsx src/smsWorker.ts",
     "subscription-worker": "tsx src/subscriptionWorker.ts",
     "notification-worker": "tsx src/notificationWorker.ts",
-    "v27:smoke": "tsx scripts/v27-integration-smoke.ts",
-    "worker:production": "node dist/workers/productionWorkerV26.js",
+    "v27:smoke": "tsx ../scripts/v27-integration-smoke.ts",
+    "worker:production": "tsx src/workers/productionWorker.ts",
     "test": "tsx tests/comprehensive-test-suite.ts",
     "db:migrate": "node dist/scripts/migrate.js",
+    "seed:firestore": "tsx src/scripts/seedFirestore.ts",
+    "emulator:firestore": "npx firebase emulators:start --only firestore",
     "v28:smoke": "tsx ../scripts/v28-api-smoke.ts",
     "release:check": "npm run build && npm run v28:smoke"
   },
@@ -26,12 +28,12 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "firebase-admin": "^14.4.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "pdfkit": "^0.16.0",
     "nodemailer": "^7.0.6",
+    "pdfkit": "^0.16.0",
+    "pg": "^8.16.3",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2"
-  },
-  "devDependencies": {}
+  }
 }

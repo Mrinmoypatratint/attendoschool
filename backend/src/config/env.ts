@@ -18,4 +18,11 @@ export const env = {
   companyAddress: process.env.COMPANY_ADDRESS || '',
   companyPhone: process.env.COMPANY_PHONE || '',
   companyGstRate: Number(process.env.COMPANY_GST_RATE || 18),
+  // Firebase configuration
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'attendoschool-saas',
+  firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
+  firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
+  firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
+  firestoreEmulatorHost: process.env.FIRESTORE_EMULATOR_HOST || '',
+  dbDriver: (process.env.DB_DRIVER || 'firebase').toLowerCase(), // 'firebase' | 'postgres'
 };
