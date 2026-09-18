@@ -566,7 +566,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => navigateTo('/super-admin/monitor')}
+              onClick={() => navigateTo('/super-admin/monitoring')}
             >
               <span>Platform Health</span> <ChevronRight size={14} />
             </button>

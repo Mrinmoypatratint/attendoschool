@@ -1737,19 +1737,19 @@ function Layout({children}:{children:React.ReactNode}){
   ];
 
   const superAdminLinks:any[]=[
-    ['/dashboard','Overview',LayoutDashboard],
-    ['/super-admin','Schools',School],
-    ['/subscription-enforcement','Subscriptions',CalendarDays],
-    ['/payments','Payments',CreditCard],
-    ['/invoices','Invoices',FileText],
-    ['/monitor','Monitoring',Eye],
-    ['/attendance-reports','Reports',BarChart3],
+    ['/super-admin','Overview',LayoutDashboard],
+    ['/super-admin/schools','Schools',School],
+    ['/super-admin/subscriptions','Subscriptions',CalendarDays],
+    ['/super-admin/payments','Payments',CreditCard],
+    ['/super-admin/invoices','Invoices',FileText],
+    ['/super-admin/monitoring','Monitoring',Eye],
+    ['/super-admin/reports','Reports',BarChart3],
     ['—','ADMINISTRATION'],
-    ['/people','People',Users],
-    ['/permissions','Permissions',Shield],
-    ['/permissions','Roles',ShieldCheck],
-    ['/security','Settings',Settings],
-    ['/attendance-corrections','Audit Logs',FileSpreadsheet],
+    ['/super-admin/people','People',Users],
+    ['/super-admin/permissions','Roles & Permissions',ShieldCheck],
+    ['/super-admin/security','Security',Shield],
+    ['/super-admin/audit-logs','Audit Logs',FileSpreadsheet],
+    ['/super-admin/backups','Backups',Database],
   ];
 
   const links=user.role==='SUPER_ADMIN'?superAdminLinks:
@@ -5077,6 +5077,7 @@ function App(){return <Routes>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+  <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
   <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>

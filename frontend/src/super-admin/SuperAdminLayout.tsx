@@ -204,7 +204,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
       title: 'INSIGHTS',
       items: [
         { path: '/super-admin/analytics', label: 'Analytics', icon: BarChart3 },
-        { path: '/attendance-reports', label: 'Reports', icon: FileText }
+        { path: '/super-admin/reports', label: 'Reports', icon: FileText }
       ]
     },
     {
@@ -219,8 +219,8 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     {
       title: 'SYSTEM',
       items: [
-        { path: '/super-admin/monitor', label: 'System Health', icon: Server },
-        { path: '/backups', label: 'Backups', icon: RefreshCw },
+        { path: '/super-admin/monitoring', label: 'System Health', icon: Server },
+        { path: '/super-admin/backups', label: 'Backups', icon: RefreshCw },
         { path: '/super-admin/settings', label: 'Settings', icon: Settings }
       ]
     }
@@ -228,7 +228,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
 
   // Breadcrumbs calculation (Phase 37)
   function renderBreadcrumbs() {
-    const p = location.pathname;
+    const p = currentPath || location.pathname || window.location.hash;
     let section = 'Overview';
     let sub = '';
 
@@ -236,12 +236,14 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     else if (p.includes('/subscriptions')) { section = 'Subscriptions'; sub = 'Licensing & Tier Management'; }
     else if (p.includes('/payments')) { section = 'Payments'; sub = 'Transaction Ledger'; }
     else if (p.includes('/invoices')) { section = 'Invoices'; sub = 'Billing & Receipts'; }
-    else if (p.includes('/monitoring')) { section = 'Monitoring'; sub = 'Platform & System Pulse'; }
+    else if (p.includes('/monitoring') || p.includes('/monitor')) { section = 'Monitoring'; sub = 'Platform & System Pulse'; }
     else if (p.includes('/analytics')) { section = 'Analytics'; sub = 'Platform Usage Insights'; }
-    else if (p.includes('/people')) { section = 'People'; sub = 'User Directory'; }
-    else if (p.includes('/permissions')) { section = 'Roles & Permissions'; sub = 'RBAC Enforcement'; }
+    else if (p.includes('/reports')) { section = 'Reports'; sub = 'Attendance & Compliance'; }
+    else if (p.includes('/people') || p.includes('/users')) { section = 'People'; sub = 'User Directory'; }
+    else if (p.includes('/permissions') || p.includes('/roles')) { section = 'Roles & Permissions'; sub = 'RBAC Enforcement'; }
     else if (p.includes('/security')) { section = 'Security'; sub = 'Policy Hardening'; }
     else if (p.includes('/audit-logs')) { section = 'Audit Logs'; sub = 'Immutable Activity Stream'; }
+    else if (p.includes('/backups')) { section = 'Backups'; sub = 'Snapshot & Disaster Recovery'; }
     else if (p.includes('/settings')) { section = 'Settings'; sub = 'Global SaaS Configuration'; }
 
     return (
