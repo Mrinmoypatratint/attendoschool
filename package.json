@@ -1,0 +1,16 @@
+{
+  "name": "attendoschool-workspace",
+  "version": "0.11.0",
+  "private": true,
+  "description": "AttendoSchool Multi-Tenant Attendance SaaS Monorepo Root",
+  "scripts": {
+    "test:firebase": "npm --prefix backend run test:firebase",
+    "seed:firestore": "npm --prefix backend run seed:firestore",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend run test"
+  }
+}
