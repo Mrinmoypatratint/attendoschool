@@ -8,7 +8,14 @@ import {
 const router = Router();
 
 function schoolId(req: Request) {
-  return (req as any).user?.schoolId;
+  const qId = (req as any).query?.schoolId;
+  if (qId === 'all') return 'all';
+  if (qId) return qId;
+  const user = (req as any).user;
+  if (user?.role === 'SUPER_ADMIN') {
+    return 'all';
+  }
+  return user?.schoolId || '00000000-0000-0000-0000-000000000001';
 }
 
 function validDate(v: any) {

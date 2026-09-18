@@ -1,37 +1,50 @@
 import { pool } from '../db';
 
 export async function attendanceSummary(
-  schoolId: string,
+  schoolId: string | null | undefined,
   from: string,
   to: string
 ) {
-  const { rows } = await pool.query(
-    `SELECT
-       COUNT(*) FILTER (WHERE ar.status = 'PRESENT')::int AS present,
-       COUNT(*) FILTER (WHERE ar.status = 'ABSENT')::int AS absent,
-       COUNT(*)::int AS marked
-     FROM attendance_sessions s
-     JOIN attendance_records ar ON ar.attendance_session_id = s.id
-     WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3`,
-    [schoolId, from, to]
-  );
+  const isGlobal = !schoolId || schoolId === 'all';
+  const query = isGlobal
+    ? `SELECT
+         COUNT(*) FILTER (WHERE ar.status = 'PRESENT')::int AS present,
+         COUNT(*) FILTER (WHERE ar.status = 'ABSENT')::int AS absent,
+         COUNT(*)::int AS marked
+       FROM attendance_sessions s
+       JOIN attendance_records ar ON ar.attendance_session_id = s.id
+       WHERE s.attendance_date BETWEEN $1 AND $2`
+    : `SELECT
+         COUNT(*) FILTER (WHERE ar.status = 'PRESENT')::int AS present,
+         COUNT(*) FILTER (WHERE ar.status = 'ABSENT')::int AS absent,
+         COUNT(*)::int AS marked
+       FROM attendance_sessions s
+       JOIN attendance_records ar ON ar.attendance_session_id = s.id
+       WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3`;
+  const params = isGlobal ? [from, to] : [schoolId, from, to];
+  const { rows } = await pool.query(query, params);
   const r = rows[0] || { present: 0, absent: 0, marked: 0 };
   const percentage = Number(r.marked) ? Number(((Number(r.present) / Number(r.marked)) * 100).toFixed(2)) : 0;
   return { ...r, percentage };
 }
 
 export async function studentAttendanceReport(
-  schoolId: string,
+  schoolId: string | null | undefined,
   from: string,
   to: string,
   studentId?: string
 ) {
-  const params: any[] = [schoolId, from, to];
+  const isGlobal = !schoolId || schoolId === 'all';
+  const params: any[] = isGlobal ? [from, to] : [schoolId, from, to];
   let studentFilter = '';
   if (studentId) {
     params.push(studentId);
-    studentFilter = ` AND ar.student_id = $4`;
+    studentFilter = ` AND ar.student_id = $${params.length}`;
   }
+
+  const whereClause = isGlobal
+    ? `WHERE s.attendance_date BETWEEN $1 AND $2 ${studentFilter}`
+    : `WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3 ${studentFilter}`;
 
   const { rows } = await pool.query(
     `SELECT
@@ -53,9 +66,7 @@ export async function studentAttendanceReport(
      JOIN students st ON st.id = ar.student_id
      LEFT JOIN classes c ON c.id = st.class_id
      LEFT JOIN sections sec ON sec.id = st.section_id
-     WHERE s.school_id = $1
-       AND s.attendance_date BETWEEN $2 AND $3
-       ${studentFilter}
+     ${whereClause}
      GROUP BY ar.student_id, st.name, st.roll, c.name, sec.name
      ORDER BY c.name, sec.name, st.roll, st.name`,
     params
@@ -64,10 +75,16 @@ export async function studentAttendanceReport(
 }
 
 export async function dailyAttendanceReport(
-  schoolId: string,
+  schoolId: string | null | undefined,
   from: string,
   to: string
 ) {
+  const isGlobal = !schoolId || schoolId === 'all';
+  const params = isGlobal ? [from, to] : [schoolId, from, to];
+  const whereClause = isGlobal
+    ? `WHERE s.attendance_date BETWEEN $1 AND $2`
+    : `WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3`;
+
   const { rows } = await pool.query(
     `SELECT
        s.attendance_date,
@@ -76,10 +93,10 @@ export async function dailyAttendanceReport(
        COUNT(*)::int AS marked
      FROM attendance_sessions s
      JOIN attendance_records ar ON ar.attendance_session_id = s.id
-     WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3
+     ${whereClause}
      GROUP BY s.attendance_date
      ORDER BY s.attendance_date`,
-    [schoolId, from, to]
+    params
   );
   return rows;
 }

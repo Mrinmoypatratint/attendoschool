@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {api} from './api';
+import { Navigate } from 'react-router-dom';
+import { api } from './api';
+import { useAuth } from './hooks/useAuth';
 
 type Row = {
   student_id: string;
@@ -14,6 +16,11 @@ type Row = {
 };
 
 export default function AttendanceReportsV12() {
+  const { user } = useAuth();
+  if (user?.role === 'SUPER_ADMIN') {
+    return <Navigate to="/super-admin/reports" replace />;
+  }
+
   const today = new Date();
   const to = today.toISOString().slice(0, 10);
   const fromDate = new Date(today);
