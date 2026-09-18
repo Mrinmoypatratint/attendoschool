@@ -7849,5 +7849,534 @@ header {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   ATTENDOSCHOOL SIMPLE LOGIN REDESIGN
+   - Centered, minimalist, professional
+   - Official Logo & Website Name
+   - Two-step role selection flow
+   - Frosted glassmorphism, no clutter, no navbar
+   ───────────────────────────────────────────────────────────── */
+
+.as-simple-page {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: url('/educational-hero-bg.jpg') center/cover no-repeat fixed;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.as-simple-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.72) 0%, rgba(10, 15, 29, 0.88) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Floating Top-Right Utility Bar */
+.as-simple-top-bar {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.as-simple-util-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.as-simple-util-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Main Centered Container */
+.as-simple-main {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  padding: 30px 16px;
+  margin: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.as-simple-container {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 28px;
+  padding: 36px 32px 30px 32px;
+  box-shadow: 
+    0 25px 60px -15px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Brand Header: Official Logo + Website Name */
+.as-simple-brand-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 22px;
+  width: 100%;
+}
+
+.as-simple-logo-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 18px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  padding: 6px;
+  box-sizing: border-box;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s ease;
+}
+
+.as-simple-logo-img:hover {
+  transform: scale(1.05);
+}
+
+.as-simple-brand-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.as-simple-brand-tagline {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 4px 0 0 0;
+  letter-spacing: 0.01em;
+}
+
+/* Step 1: Role Selection Prompt & 2x2 Grid */
+.as-simple-step1 {
+  width: 100%;
+}
+
+.as-simple-prompt-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  margin: 0 0 16px 0;
+}
+
+.as-simple-role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.as-simple-role-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.as-simple-role-card:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.as-simple-role-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.as-simple-role-icon.role-admin {
+  background: rgba(37, 99, 235, 0.4);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.as-simple-role-icon.role-school-admin {
+  background: rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.as-simple-role-icon.role-teacher {
+  background: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.as-simple-role-icon.role-student {
+  background: rgba(139, 92, 246, 0.4);
+  color: #d8b4fe;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+}
+
+.as-simple-role-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.as-simple-role-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.as-simple-role-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 2px;
+}
+
+/* Step 2: Form & Fields */
+.as-simple-step2-form {
+  width: 100%;
+}
+
+.as-simple-role-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.as-simple-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.as-simple-back-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.as-simple-active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fed7aa;
+  background: rgba(249, 115, 22, 0.25);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  padding: 4px 12px;
+  border-radius: 9999px;
+}
+
+.as-simple-demo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 7px 12px;
+  margin-bottom: 16px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.as-simple-demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 87, 34, 0.25);
+  border: 1px solid rgba(255, 87, 34, 0.5);
+  color: #fed7aa;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.as-simple-demo-btn:hover {
+  background: rgba(255, 87, 34, 0.4);
+}
+
+.as-simple-field {
+  margin-bottom: 15px;
+}
+
+.as-simple-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 6px;
+}
+
+.as-simple-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.as-simple-input {
+  width: 100%;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  padding: 0 16px;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.as-simple-input:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
+}
+
+.as-simple-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.as-simple-eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.as-simple-eye-btn:hover {
+  color: #ffffff;
+}
+
+.as-simple-select-trigger {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  padding: 0 14px;
+  color: #ffffff;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.as-simple-select-trigger:focus,
+.as-simple-select-trigger.focused {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
+}
+
+.as-simple-inst-summary {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-simple-inst-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #ffffff;
+}
+
+.as-simple-inst-code {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.as-simple-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.as-simple-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.as-simple-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  accent-color: #f97316;
+  cursor: pointer;
+}
+
+.as-simple-forgot-link {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.as-simple-forgot-link:hover {
+  color: #fed7aa;
+  text-decoration: underline;
+}
+
+.as-simple-submit-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff5722 0%, #f97316 100%);
+  border: none;
+  color: #ffffff;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(255, 87, 34, 0.45);
+  transition: all 0.2s ease;
+}
+
+.as-simple-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 0 12px 28px rgba(255, 87, 34, 0.6);
+  filter: brightness(1.06);
+}
+
+.as-simple-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.as-simple-help-tag {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.as-simple-help-tag a {
+  color: #ffedd5;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.as-simple-help-tag a:hover {
+  text-decoration: underline;
+}
+
+.as-simple-footer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 480px) {
+  .as-simple-container {
+    padding: 28px 20px 24px 20px;
+    border-radius: 22px;
+  }
+  .as-simple-brand-title {
+    font-size: 24px;
+  }
+  .as-simple-role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 
 

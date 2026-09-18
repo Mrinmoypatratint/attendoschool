@@ -40,7 +40,6 @@ import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { ThreeDBackground } from './components/ThreeDBackground';
-import { VismeAnimatedHero } from './components/VismeAnimatedHero';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -321,119 +320,65 @@ function Login() {
   }
 
   return (
-    <div className="as-wonder-page">
-      <div className="as-wonder-overlay" aria-hidden="true" />
+    <div className="as-simple-page">
+      <div className="as-simple-overlay" aria-hidden="true" />
 
-      {/* Top Navigation Bar */}
-      <header className="as-wonder-navbar">
-        <div className="as-wonder-brand" onClick={() => nav('/')}>
-          <div className="as-wonder-logo-icon">
-            <Sparkles size={20} color="#ffffff" />
-          </div>
-          <span className="as-wonder-brand-name">
-            AttendoSchool <span className="as-wonder-spark">✦</span>
-          </span>
-        </div>
-
-        <nav className="as-wonder-links">
-          <span className="as-wonder-nav-link" onClick={() => nav('/')}>Home</span>
-          <span className="as-wonder-nav-link" onClick={() => alert('AttendoSchool: Integrated Cloud Attendance, Routine & Marks Platform')}>About Us</span>
-          <span className="as-wonder-nav-link" onClick={() => alert('Courses, Academics & Routine scheduling across schools.')}>Courses</span>
-          <span className="as-wonder-nav-link" onClick={() => alert('Daily Attendance, Leave Applications, and Student Activities.')}>Activities</span>
-          <span className="as-wonder-nav-link" onClick={() => alert('System Documentation, API Docs, and Help Center.')}>Resources</span>
-          <span className="as-wonder-nav-link" onClick={() => handleSelectRole('STUDENT')}>Parent's Corner</span>
-          <span className="as-wonder-nav-link" onClick={() => setShowHelp(true)}>Contact Us</span>
-        </nav>
-
-        <div className="as-wonder-nav-actions">
-          {/* Language Selector */}
-          <div className="as-lang-menu-container">
-            <button
-              type="button"
-              className="as-wonder-util-btn"
-              onClick={() => setShowLang(l => !l)}
-              title="Change Language"
-            >
-              <Globe size={13} />
-              <span>{selectedLang}</span>
-              <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
-            </button>
-            {showLang && (
-              <div className="as-lang-popover">
-                {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
-                  <div
-                    key={l}
-                    className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedLang(l.split(' ')[0]);
-                      setShowLang(false);
-                    }}
-                  >
-                    {l}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Theme Switcher */}
+      {/* Floating Top-Right Utility: Theme & Language */}
+      <div className="as-simple-top-bar">
+        {/* Language Selector */}
+        <div className="as-lang-menu-container">
           <button
             type="button"
-            className="as-wonder-util-btn"
-            onClick={toggle}
-            title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="as-simple-util-btn"
+            onClick={() => setShowLang(l => !l)}
+            title="Change Language"
           >
-            {dark ? <Sun size={13} color="#f59e0b" /> : <Moon size={13} color="#e2e8f0" />}
+            <Globe size={14} />
+            <span>{selectedLang}</span>
+            <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
           </button>
-
-          {/* Login Pill Button */}
-          <button
-            type="button"
-            className="as-wonder-login-pill"
-            onClick={() => setSelectedRole(null)}
-          >
-            Login
-          </button>
-
-          {/* Sign Up / Support Pill */}
-          <button
-            type="button"
-            className="as-wonder-signup-pill"
-            onClick={() => setShowHelp(true)}
-          >
-            Sign Up
-          </button>
+          {showLang && (
+            <div className="as-lang-popover">
+              {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
+                <div
+                  key={l}
+                  className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedLang(l.split(' ')[0]);
+                    setShowLang(false);
+                  }}
+                >
+                  {l}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </header>
 
-      {/* Main Split Layout matching Screenshot */}
-      <main className="as-wonder-content">
-        {/* Left Side: Exact Typography & Narrative */}
-        <div className="as-wonder-left animate-fade-in">
-          <h1 className="as-wonder-heading">Login</h1>
-          <p className="as-wonder-sub">Sign in to continue</p>
-          <p className="as-wonder-desc">
-            Login: Sign in to your AttendoSchool account to continue the learning journey and access exciting educational content.
-          </p>
-          
-          <div className="as-wonder-divider" aria-hidden="true">
-            <div className="as-wonder-bar-1" />
-            <div className="as-wonder-bar-2" />
+        {/* Theme Switcher */}
+        <button
+          type="button"
+          className="as-simple-util-btn"
+          onClick={toggle}
+          title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {dark ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#e2e8f0" />}
+        </button>
+      </div>
+
+      {/* Centered Main Login Content */}
+      <main className="as-simple-main">
+        <div className="as-simple-container animate-fade-in">
+          {/* Brand Header: Official Logo + Website Name */}
+          <div className="as-simple-brand-header">
+            <img
+              src="/attendo-school-logo.png"
+              alt="AttendoSchool Logo"
+              className="as-simple-logo-img"
+            />
+            <h1 className="as-simple-brand-title">AttendoSchool</h1>
+            <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
           </div>
-
-          <p className="as-wonder-quote">
-            Open the doors to AttendoSchool and let the magic of learning begin!
-          </p>
-        </div>
-
-        {/* Right Side: Floating Frosted Glass Card */}
-        <div className="as-wonder-card animate-fade-in">
-          <h2 className="as-wonder-card-title">Wonder Sign In</h2>
-          <p className="as-wonder-card-sub">
-            {selectedRole === null
-              ? 'Select your login type to continue'
-              : `Signing in as ${currentConfig.roleName}`}
-          </p>
 
           {/* Validation Error Banner */}
           {error && (
@@ -443,95 +388,96 @@ function Login() {
             </div>
           )}
 
-          {/* ─────────────────────────────────────────────────────────────
-              STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student)
-              Email and Password fields are NOT shown at this stage.
-             ───────────────────────────────────────────────────────────── */}
+          {/* STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student) */}
           {selectedRole === null ? (
-            <div className="as-wonder-step1-wrap animate-fade-in">
-              <div className="as-wonder-role-grid">
+            <div className="as-simple-step1 animate-fade-in">
+              <p className="as-simple-prompt-text">Select your login role to continue</p>
+
+              <div className="as-simple-role-grid">
                 {/* 1. Administrator */}
-                <div
-                  className="as-wonder-role-card"
+                <button
+                  type="button"
+                  className="as-simple-role-card"
                   onClick={() => handleSelectRole('ADMIN')}
                   id="role-select-admin"
                 >
-                  <div className="as-wonder-role-icon" style={{ background: 'rgba(37, 99, 235, 0.35)', color: '#60a5fa' }}>
+                  <div className="as-simple-role-icon role-admin">
                     <Building2 size={24} />
                   </div>
-                  <span className="as-wonder-role-name">Administrator</span>
-                  <span className="as-wonder-role-desc">Platform Central Admin</span>
-                </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Administrator</span>
+                    <span className="as-simple-role-sub">Central Platform Admin</span>
+                  </div>
+                </button>
 
                 {/* 2. School Admin */}
-                <div
-                  className="as-wonder-role-card"
+                <button
+                  type="button"
+                  className="as-simple-role-card"
                   onClick={() => handleSelectRole('SCHOOL_ADMIN')}
                   id="role-select-school-admin"
                 >
-                  <div className="as-wonder-role-icon" style={{ background: 'rgba(16, 185, 129, 0.35)', color: '#34d399' }}>
+                  <div className="as-simple-role-icon role-school-admin">
                     <School size={24} />
                   </div>
-                  <span className="as-wonder-role-name">School Admin</span>
-                  <span className="as-wonder-role-desc">Principal & School Portal</span>
-                </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">School Admin</span>
+                    <span className="as-simple-role-sub">Principal & Administration</span>
+                  </div>
+                </button>
 
                 {/* 3. Teacher */}
-                <div
-                  className="as-wonder-role-card"
+                <button
+                  type="button"
+                  className="as-simple-role-card"
                   onClick={() => handleSelectRole('TEACHER')}
                   id="role-select-teacher"
                 >
-                  <div className="as-wonder-role-icon" style={{ background: 'rgba(245, 158, 11, 0.35)', color: '#fbbf24' }}>
+                  <div className="as-simple-role-icon role-teacher">
                     <GraduationCap size={24} />
                   </div>
-                  <span className="as-wonder-role-name">Teacher</span>
-                  <span className="as-wonder-role-desc">Faculty & Class Routine</span>
-                </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Teacher</span>
+                    <span className="as-simple-role-sub">Faculty & Routine</span>
+                  </div>
+                </button>
 
                 {/* 4. Student */}
-                <div
-                  className="as-wonder-role-card"
+                <button
+                  type="button"
+                  className="as-simple-role-card"
                   onClick={() => handleSelectRole('STUDENT')}
                   id="role-select-student"
                 >
-                  <div className="as-wonder-role-icon" style={{ background: 'rgba(139, 92, 246, 0.35)', color: '#c4b5fd' }}>
+                  <div className="as-simple-role-icon role-student">
                     <BookOpen size={24} />
                   </div>
-                  <span className="as-wonder-role-name">Student</span>
-                  <span className="as-wonder-role-desc">Student & Guardian Portal</span>
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'center', fontSize: 12.5, color: 'rgba(255, 255, 255, 0.72)', marginTop: 8 }}>
-                ✨ Choose your role above to enter credentials
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Student</span>
+                    <span className="as-simple-role-sub">Student & Guardian Portal</span>
+                  </div>
+                </button>
               </div>
             </div>
           ) : (
-            /* ─────────────────────────────────────────────────────────────
-               STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE
-               - School selector for School Admin, Teacher, Student
-               - Email Address input
-               - Password input
-               - Keep me logged in + Forgot password
-               - Sign In ✦ button
-               ───────────────────────────────────────────────────────────── */
-            <form className="as-wonder-step2-form animate-fade-in" onSubmit={submit}>
-              {/* Role Header with Change Role Back Button */}
-              <div className="as-wonder-role-header">
+            /* STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE */
+            <form className="as-simple-step2-form animate-fade-in" onSubmit={submit}>
+              {/* Active Role Bar with Change Role Button */}
+              <div className="as-simple-role-bar">
                 <button
                   type="button"
-                  className="as-wonder-change-role-btn"
+                  className="as-simple-back-btn"
                   onClick={() => {
                     setSelectedRole(null);
                     setError('');
                   }}
-                  title="Choose a different login type"
+                  title="Choose a different role"
                 >
-                  <ArrowLeft size={13} />
+                  <ArrowLeft size={14} />
                   <span>Change Role</span>
                 </button>
-                <div className="as-wonder-active-role-tag">
+
+                <div className="as-simple-active-tag">
                   {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
                    loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
                    loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
@@ -540,12 +486,12 @@ function Login() {
                 </div>
               </div>
 
-              {/* Quick Demo Auto-Fill Bar */}
-              <div className="as-wonder-demo-chip">
-                <span>⚡ Test Credentials</span>
+              {/* Quick Demo Auto-Fill Button */}
+              <div className="as-simple-demo-row">
+                <span className="as-simple-demo-label">⚡ Test Mode</span>
                 <button
                   type="button"
-                  className="as-wonder-demo-btn"
+                  className="as-simple-demo-btn"
                   onClick={() => {
                     const cfg = LOGIN_ROLES[loginRole];
                     setEmail(cfg.defaultEmail);
@@ -556,31 +502,31 @@ function Login() {
                     }
                   }}
                 >
-                  <Sparkles size={11} />
+                  <Sparkles size={12} />
                   Auto-fill {currentConfig.roleName}
                 </button>
               </div>
 
               {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
               {currentConfig.needsSchool && (
-                <div className="as-wonder-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
-                  <label className="as-wonder-label">
+                <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
+                  <label className="as-simple-label">
                     Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
                   </label>
                   <button
                     type="button"
-                    className={`as-wonder-select-trigger ${instituteOpen ? 'focused' : ''}`}
+                    className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
                     onClick={() => setInstituteOpen(o => !o)}
                     id="institute-trigger-btn"
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
                       <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
-                      <div className="as-wonder-inst-summary">
-                        <span className="as-wonder-inst-name">
+                      <div className="as-simple-inst-summary">
+                        <span className="as-simple-inst-name">
                           {selectedInstitute?.name || 'Choose your school...'}
                         </span>
                         {selectedInstitute && (
-                          <span className="as-wonder-inst-code">
+                          <span className="as-simple-inst-code">
                             Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Main Campus'}
                           </span>
                         )}
@@ -603,25 +549,20 @@ function Login() {
                           className="as-popover-search-input"
                         />
                       </div>
-                      <div className="as-popover-options-list">
+                      <div className="as-inst-popover-list">
                         {filteredInstitutes.length === 0 ? (
-                          <div className="as-popover-empty">No matching institutes found.</div>
+                          <div className="as-inst-empty">No institutes match your search</div>
                         ) : (
                           filteredInstitutes.map(inst => (
                             <div
                               key={inst.id}
-                              className={`as-inst-option-item ${inst.id === instituteId ? 'active' : ''}`}
+                              className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
                               onClick={() => {
                                 setInstituteId(inst.id);
                                 setInstituteOpen(false);
-                                setInstituteSearch('');
-                                setError('');
                               }}
                             >
-                              <div className="as-inst-option-icon">
-                                <Building2 size={16} />
-                              </div>
-                              <div className="as-inst-option-text">
+                              <div>
                                 <div className="as-inst-option-title">{inst.name}</div>
                                 <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
                               </div>
@@ -635,30 +576,30 @@ function Login() {
                 </div>
               )}
 
-              {/* Email Address Input (styled exactly like image) */}
-              <div className="as-wonder-field">
-                <label className="as-wonder-label">
+              {/* Email Address Input */}
+              <div className="as-simple-field">
+                <label className="as-simple-label">
                   Email Address <span style={{ color: '#fb923c' }}>*</span>
                 </label>
-                <div className="as-wonder-input-wrap">
+                <div className="as-simple-input-wrap">
                   <input
                     required
                     type="text"
-                    placeholder="sparkymcwonder@gmail.com"
+                    placeholder="name@school.edu"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     id="identifier-input"
-                    className="as-wonder-input"
+                    className="as-simple-input"
                   />
                 </div>
               </div>
 
-              {/* Password Input (styled exactly like image) */}
-              <div className="as-wonder-field">
-                <label className="as-wonder-label">
+              {/* Password Input */}
+              <div className="as-simple-field">
+                <label className="as-simple-label">
                   Password <span style={{ color: '#fb923c' }}>*</span>
                 </label>
-                <div className="as-wonder-input-wrap">
+                <div className="as-simple-input-wrap">
                   <input
                     required
                     type={showPassword ? 'text' : 'password'}
@@ -666,11 +607,11 @@ function Login() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     id="password-input"
-                    className="as-wonder-input"
+                    className="as-simple-input"
                   />
                   <button
                     type="button"
-                    className="as-wonder-eye-btn"
+                    className="as-simple-eye-btn"
                     onClick={() => setShowPassword(s => !s)}
                     title={showPassword ? "Hide password" : "Show password"}
                   >
@@ -680,19 +621,19 @@ function Login() {
               </div>
 
               {/* Keep me logged in + Forgot password? */}
-              <div className="as-wonder-meta-row">
-                <label className="as-wonder-checkbox-label">
+              <div className="as-simple-meta-row">
+                <label className="as-simple-checkbox-label">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
-                    className="as-wonder-checkbox"
+                    className="as-simple-checkbox"
                   />
                   <span>Keep me logged in</span>
                 </label>
                 <a
                   href="#forgot"
-                  className="as-wonder-forgot-link"
+                  className="as-simple-forgot-link"
                   onClick={e => {
                     e.preventDefault();
                     setForgotEmail(email && email.includes('@') ? email : '');
@@ -704,10 +645,10 @@ function Login() {
                 </a>
               </div>
 
-              {/* Radiant CTA Button */}
+              {/* Sign In CTA Button */}
               <button
                 type="submit"
-                className="as-wonder-submit-btn"
+                className="as-simple-submit-btn"
                 disabled={loading}
                 id="submit-auth-btn"
               >
@@ -716,17 +657,22 @@ function Login() {
                 ) : (
                   <>
                     <span>Sign In</span>
-                    <Sparkles size={16} />
+                    <ArrowRight size={16} />
                   </>
                 )}
               </button>
-
-              {/* Bottom Tagline from Screenshot */}
-              <div className="as-wonder-bottom-tag">
-                Ready to Join the Fun? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Started Now!</a>
+              {/* Bottom Help Link */}
+              <div className="as-simple-help-tag">
+                Need account assistance? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Help & Support</a>
               </div>
             </form>
           )}
+
+          {/* Bottom subtle trust indicator */}
+          <div className="as-simple-footer-pill">
+            <ShieldCheck size={14} style={{ color: '#34d399' }} />
+            <span>Secure Educational Cloud Platform</span>
+          </div>
         </div>
       </main>
 
