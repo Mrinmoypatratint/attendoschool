@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface ThreeDBackgroundProps {
   dark?: boolean;
@@ -18,6 +18,40 @@ interface Node3D {
   pulseSpeed: number;
 }
 
+export interface EducationalScene {
+  id: string;
+  image: string;
+  title: string;
+  badge: string;
+}
+
+export const EDUCATIONAL_SCENES: EducationalScene[] = [
+  {
+    id: 'library',
+    image: '/educational_library.jpg',
+    title: 'University Grand Library',
+    badge: '📚 Grand Library'
+  },
+  {
+    id: 'lab',
+    image: '/educational_lab.jpg',
+    title: 'Modern Science & STEM Lab',
+    badge: '🔬 STEM Laboratory'
+  },
+  {
+    id: 'books',
+    image: '/educational_books.jpg',
+    title: 'Academic Literature & Study',
+    badge: '📖 Classical Study'
+  },
+  {
+    id: 'campus',
+    image: '/educational-hero-bg.jpg',
+    title: 'Smart Educational Campus',
+    badge: '🎓 Academic Campus'
+  }
+];
+
 const EDUCATIONAL_GLYPHS = ['🎓', '📖', '⚛️', '✨', '💡', '📐', 'A+', 'π', 'Σ', '🔬', '🌍'];
 
 export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true }) => {
@@ -25,6 +59,18 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
   const mouseTargetRef = useRef({ x: 0, y: 0 });
   const mouseSmoothRef = useRef({ x: 0, y: 0 });
 
+  // Dynamic Background Photo Slideshow State
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const slideTimer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % EDUCATIONAL_SCENES.length);
+    }, 9000); // Crossfades every 9 seconds
+
+    return () => clearInterval(slideTimer);
+  }, []);
+
+  // 3D Canvas Perspective Projection Engine
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -72,22 +118,22 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
     ];
 
     const currentPalette = dark ? darkPalette : lightPalette;
-    const count = Math.min(55, Math.floor((width * height) / 22000) + 20);
+    const count = Math.min(50, Math.floor((width * height) / 24000) + 18);
     const nodes: Node3D[] = [];
 
     const fieldDepth = 800;
     const fov = 380;
 
     for (let i = 0; i < count; i++) {
-      const isGlyph = i < 16;
+      const isGlyph = i < 15;
       nodes.push({
         x: (Math.random() - 0.5) * width * 1.5,
         y: (Math.random() - 0.5) * height * 1.5,
         z: Math.random() * fieldDepth - fieldDepth / 2,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        vz: (Math.random() - 0.5) * 0.5,
-        radius: isGlyph ? 14 : Math.random() * 2.4 + 1.2,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+        vz: (Math.random() - 0.5) * 0.45,
+        radius: isGlyph ? 14 : Math.random() * 2.2 + 1.1,
         color: currentPalette[Math.floor(Math.random() * currentPalette.length)]!,
         glyph: isGlyph ? EDUCATIONAL_GLYPHS[i % EDUCATIONAL_GLYPHS.length] : undefined,
         pulsePhase: Math.random() * Math.PI * 2,
@@ -98,14 +144,14 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
     let angleY = 0;
 
     const render = () => {
-      // Smooth mouse follow
+      // Smooth mouse follow with damping
       mouseSmoothRef.current.x += (mouseTargetRef.current.x - mouseSmoothRef.current.x) * 0.05;
       mouseSmoothRef.current.y += (mouseTargetRef.current.y - mouseSmoothRef.current.y) * 0.05;
 
       ctx.clearRect(0, 0, width, height);
 
       // Continuous subtle ambient rotation + mouse tilt
-      angleY += 0.0012;
+      angleY += 0.001;
       const targetRotY = angleY + mouseSmoothRef.current.x * 0.35;
       const targetRotX = mouseSmoothRef.current.y * 0.25;
 
@@ -135,7 +181,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
         if (n.z < -boundZ) n.z = boundZ;
         if (n.z > boundZ) n.z = -boundZ;
 
-        // 3D rotation
+        // 3D rotation matrix
         const x1 = n.x * cosY - n.z * sinY;
         const z1 = n.z * cosY + n.x * sinY;
         const y1 = n.y * cosX - z1 * sinX;
@@ -160,8 +206,8 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
       // Sort by Z for realistic depth
       projected.sort((a, b) => b.z - a.z);
 
-      // Draw connection vectors (constellation)
-      const maxDist = 140;
+      // Draw constellation connection vectors
+      const maxDist = 135;
       for (let i = 0; i < projected.length; i++) {
         const a = projected[i]!;
         for (let j = i + 1; j < projected.length; j++) {
@@ -171,14 +217,14 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < maxDist) {
-            const alpha = (1 - dist / maxDist) * 0.22 * Math.min(a.scale, b.scale);
+            const alpha = (1 - dist / maxDist) * 0.2 * Math.min(a.scale, b.scale);
             ctx.beginPath();
             ctx.moveTo(a.projX, a.projY);
             ctx.lineTo(b.projX, b.projY);
             ctx.strokeStyle = dark
               ? `rgba(99, 102, 241, ${alpha})`
               : `rgba(37, 99, 235, ${alpha * 0.85})`;
-            ctx.lineWidth = Math.max(0.4, 1.2 * a.scale);
+            ctx.lineWidth = Math.max(0.4, 1.1 * a.scale);
             ctx.stroke();
           }
         }
@@ -199,7 +245,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
           ctx.font = `${fontSize}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.globalAlpha = dark ? alpha * 0.75 : alpha * 0.6;
+          ctx.globalAlpha = dark ? alpha * 0.72 : alpha * 0.58;
           ctx.fillText(item.node.glyph, item.projX, item.projY);
           ctx.restore();
         } else {
@@ -230,8 +276,14 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
 
   return (
     <div className="as-3d-backdrop-container" aria-hidden="true">
-      {/* Background Wallpaper */}
-      <div className="as-3d-backdrop-image" />
+      {/* Dynamic Background Image Crossfade Layers */}
+      {EDUCATIONAL_SCENES.map((scene, idx) => (
+        <div
+          key={scene.id}
+          className={`as-3d-slide ${idx === activeSlide ? 'active' : ''}`}
+          style={{ backgroundImage: `url(${scene.image})` }}
+        />
+      ))}
 
       {/* Luminous ambient floating light orbs */}
       <div className="as-ambient-orb orb-1" />
@@ -243,6 +295,23 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
 
       {/* Geometric grid overlay */}
       <div className="as-3d-grid-overlay" />
+
+      {/* Subtle Bottom Scene Navigation Pill */}
+      <div className="as-scene-indicator-bar">
+        {EDUCATIONAL_SCENES.map((scene, idx) => (
+          <button
+            key={scene.id}
+            type="button"
+            className={`as-scene-dot ${idx === activeSlide ? 'active' : ''}`}
+            onClick={() => setActiveSlide(idx)}
+            title={`Switch background to ${scene.title}`}
+            aria-label={`Background: ${scene.title}`}
+          >
+            <span className="as-scene-dot-inner" />
+            <span className="as-scene-tooltip">{scene.badge}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

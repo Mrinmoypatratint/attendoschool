@@ -7859,7 +7859,7 @@ header {
    - Perfect symmetrical alignment
    ───────────────────────────────────────────────────────────── */
 
-/* ─── 3D Educational Dynamic Animated Background ─── */
+/* ─── 3D Educational Dynamic Animated Background & Photo Slideshow ─── */
 .as-3d-backdrop-container {
   position: fixed;
   inset: 0;
@@ -7868,19 +7868,31 @@ header {
   z-index: 0;
 }
 
-.as-3d-backdrop-image {
+/* Dynamic Educational Background Photo Slides (Library, Science Lab, Books, Campus) */
+.as-3d-slide {
   position: absolute;
   inset: -30px;
-  background: url('/educational-hero-bg.jpg') center/cover no-repeat;
-  filter: blur(16px) brightness(0.55);
-  transform: scale(1.08);
-  opacity: 0.55;
-  transition: opacity 0.4s ease;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(14px) brightness(0.52);
+  transform: scale(1.05);
+  opacity: 0;
+  transition: opacity 1.8s ease-in-out, transform 12s ease-out;
+  pointer-events: none;
 }
 
-[data-theme="light"] .as-3d-backdrop-image {
-  filter: blur(20px) brightness(0.85);
-  opacity: 0.35;
+.as-3d-slide.active {
+  opacity: 0.65;
+  transform: scale(1.12);
+}
+
+[data-theme="light"] .as-3d-slide {
+  filter: blur(18px) brightness(0.82);
+}
+
+[data-theme="light"] .as-3d-slide.active {
+  opacity: 0.4;
 }
 
 .as-3d-canvas-elem {
@@ -7949,6 +7961,64 @@ header {
   z-index: 1;
 }
 
+/* Subtle Bottom Scene Navigation Pill */
+.as-scene-indicator-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 32px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.as-scene-dot {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
+  position: relative;
+}
+
+.as-scene-dot-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.25s ease;
+  display: block;
+}
+
+.as-scene-dot.active .as-scene-dot-inner {
+  background: #f97316;
+  width: 22px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.85);
+}
+
+.as-scene-tooltip {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fed7aa;
+  display: none;
+  white-space: nowrap;
+}
+
+.as-scene-dot.active .as-scene-tooltip {
+  display: inline-block;
+}
+
 /* Page Layout */
 .as-simple-page {
   min-height: 100vh;
@@ -7962,15 +8032,15 @@ header {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
   box-sizing: border-box;
-  padding: 40px 16px;
+  padding: 30px 20px;
 }
 
 .as-simple-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.6) 0%, rgba(10, 15, 29, 0.82) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.55) 0%, rgba(10, 15, 29, 0.84) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 1;
   pointer-events: none;
 }
@@ -8009,12 +8079,12 @@ header {
   transform: translateY(-1px);
 }
 
-/* Main Centered Container with Symmetrical Alignment */
+/* Main Container: Duo Split Layout (Left: Handwriting Quotes, Right: Login Form) */
 .as-simple-main {
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 490px;
+  max-width: 1060px;
   margin: auto;
   box-sizing: border-box;
   display: flex;
@@ -8022,61 +8092,79 @@ header {
   align-items: center;
 }
 
-.as-simple-container {
+.as-duo-login-container {
   width: 100%;
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
+  min-height: 590px;
+  background: rgba(15, 23, 42, 0.76);
+  backdrop-filter: blur(34px);
+  -webkit-backdrop-filter: blur(34px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 28px;
-  padding: 34px 30px 28px 30px;
+  border-radius: 32px;
   box-shadow: 
-    0 30px 70px -15px rgba(0, 0, 0, 0.75),
-    0 0 45px rgba(59, 130, 246, 0.15),
+    0 30px 80px -20px rgba(0, 0, 0, 0.8),
+    0 0 50px rgba(59, 130, 246, 0.14),
     0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  display: grid;
+  grid-template-columns: 1.14fr 1fr;
+  overflow: hidden;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
 }
 
-/* Brand Header: Official Logo + Website Name */
-.as-simple-brand-header {
+/* Left Pane: Branding & Dynamic Handwriting Typing Quote */
+.as-duo-left-pane {
+  padding: 40px 36px 36px 36px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.14) 0%, transparent 60%),
+              rgba(10, 16, 30, 0.55);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.as-left-brand-header {
+  display: flex;
   align-items: center;
-  text-align: center;
-  margin-bottom: 16px;
-  width: 100%;
+  gap: 16px;
+  text-align: left;
+  margin-bottom: 20px;
 }
 
-.as-simple-logo-img {
-  width: 76px;
-  height: 76px;
+.as-left-brand-header .as-simple-logo-img {
+  width: 64px;
+  height: 64px;
   object-fit: contain;
-  border-radius: 20px;
-  margin-bottom: 12px;
+  border-radius: 18px;
   background: #ffffff;
-  padding: 6px;
+  padding: 5px;
   box-sizing: border-box;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.2);
+  margin-bottom: 0;
+  flex-shrink: 0;
   transition: transform 0.25s ease;
 }
 
-.as-simple-logo-img:hover {
+.as-left-brand-header .as-simple-logo-img:hover {
   transform: scale(1.06) rotate(2deg);
 }
 
-.as-simple-brand-title {
-  font-size: 30px;
+.as-brand-text-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.as-left-brand-header .as-simple-brand-title {
+  font-size: 28px;
   font-weight: 800;
   color: #ffffff;
   margin: 0;
   letter-spacing: -0.02em;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+  line-height: 1.15;
 }
 
-.as-simple-brand-tagline {
+.as-left-brand-header .as-simple-brand-tagline {
   font-size: 13px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.78);
@@ -8084,114 +8172,225 @@ header {
   letter-spacing: 0.01em;
 }
 
-/* Dynamic Educational Motivation Quote Box */
-.as-simple-quote-box {
+/* Handwriting Dynamic Typing Quote Box */
+.as-handwriting-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
-  box-sizing: border-box;
+}
+
+.as-hw-badge-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  margin-bottom: 20px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
+  justify-content: space-between;
+  width: 100%;
 }
 
-.as-simple-quote-box:hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-}
-
-.as-quote-icon-bubble {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: rgba(249, 115, 22, 0.25);
-  border: 1px solid rgba(249, 115, 22, 0.4);
+.as-hw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
   color: #fed7aa;
+  background: rgba(249, 115, 22, 0.18);
+  border: 1px solid rgba(249, 115, 22, 0.38);
+  padding: 5px 13px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.as-hw-feather-icon {
+  color: #fb923c;
+  animation: as-feather-tilt 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes as-feather-tilt {
+  0% { transform: rotate(-8deg); }
+  100% { transform: rotate(14deg); }
+}
+
+.as-hw-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.as-hw-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.as-quote-sparkle-icon {
-  animation: as-sparkle-spin 6s linear infinite;
+.as-hw-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  transform: scale(1.08);
 }
 
-@keyframes as-sparkle-spin {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.15); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-.as-quote-body {
-  flex: 1;
+.as-hw-card {
+  position: relative;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 24px 22px 20px 22px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.4), 0 10px 24px rgba(0, 0, 0, 0.25);
+  min-height: 184px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  overflow: hidden;
-  text-align: left;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
 
-.as-quote-body.quote-in {
+.as-hw-quote-watermark {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  color: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.as-hw-text-area {
+  min-height: 104px;
+}
+
+.as-hw-text {
+  font-family: 'Caveat', 'Kalam', cursive, sans-serif;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.38;
+  color: #fef3c7;
+  letter-spacing: 0.015em;
+  text-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+  display: inline;
+}
+
+.as-hw-cursor {
+  font-family: 'Caveat', cursive, monospace;
+  font-size: 28px;
+  color: #f97316;
+  font-weight: 700;
+  display: inline-block;
+  margin-left: 3px;
+  animation: as-cursor-blink 0.85s steps(2, start) infinite;
+  text-shadow: 0 0 10px #f97316;
+}
+
+@keyframes as-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.as-hw-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.as-hw-author-row.visible {
   opacity: 1;
   transform: translateY(0);
 }
 
-.as-quote-body.quote-out {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-.as-quote-text {
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.92);
-  margin: 0;
-  font-style: italic;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.as-quote-author {
-  font-size: 11px;
-  font-weight: 700;
-  color: #fed7aa;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
-
-.as-quote-shuffle-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.as-hw-signature-wrap {
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.as-quote-shuffle-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
+.as-hw-dash {
+  font-family: 'Caveat', cursive;
+  font-size: 24px;
+  color: #fb923c;
+}
+
+.as-hw-author {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 23px;
+  font-weight: 700;
   color: #ffffff;
-  transform: rotate(45deg);
+}
+
+.as-hw-context {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  margin-left: 4px;
+}
+
+.as-hw-ink-flourish {
+  height: 2px;
+  width: 44px;
+  background: linear-gradient(90deg, #f97316, transparent);
+  border-radius: 2px;
+}
+
+.as-hw-pillars-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.as-hw-pillar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.as-hw-pillar-icon {
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+/* Right Pane: Login Card & Form */
+.as-duo-right-pane {
+  padding: 38px 36px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.as-duo-form-header {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.as-form-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.as-form-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 5px 0 0 0;
 }
 
 /* Step 1: Role Selection Prompt & Symmetrical 2x2 Grid */
@@ -8596,16 +8795,56 @@ header {
   align-self: center;
 }
 
-@media (max-width: 480px) {
-  .as-simple-container {
-    padding: 26px 18px 22px 18px;
+/* Responsive Duo Layout */
+@media (max-width: 960px) {
+  .as-duo-login-container {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    min-height: auto;
+  }
+  .as-duo-left-pane {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 28px 24px;
+  }
+  .as-duo-right-pane {
+    padding: 28px 24px;
+  }
+  .as-scene-indicator-bar {
+    bottom: 12px;
+    left: 16px;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 540px) {
+  .as-simple-page {
+    padding: 16px 10px;
+  }
+  .as-duo-login-container {
     border-radius: 22px;
   }
-  .as-simple-brand-title {
-    font-size: 26px;
+  .as-duo-left-pane {
+    padding: 22px 18px;
+  }
+  .as-duo-right-pane {
+    padding: 22px 18px;
+  }
+  .as-left-brand-header .as-simple-brand-title {
+    font-size: 24px;
+  }
+  .as-left-brand-header .as-simple-logo-img {
+    width: 50px;
+    height: 50px;
+  }
+  .as-hw-text {
+    font-size: 22px;
   }
   .as-simple-role-grid {
     grid-template-columns: 1fr;
+  }
+  .as-scene-indicator-bar {
+    display: none;
   }
 }
 
