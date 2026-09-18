@@ -20,10 +20,12 @@ r.get('/', async (req: AuthRequest, res) => {
   const role = req.user?.role;
   const sid = req.user?.schoolId;
   try {
-    const q = await pool.query(`SELECT i.*, s.name school_name, s.code school_code
-      FROM subscription_invoices i JOIN schools s ON s.id=i.school_id
-      ${role === 'SCHOOL_ADMIN' ? 'WHERE i.school_id=$1' : ''}
-      ORDER BY i.issued_at DESC`,
+    const q = await pool.query(
+      `SELECT i.*, s.name as school_name, s.code as school_code
+       FROM subscription_invoices i
+       JOIN schools s ON s.id = i.school_id
+       ${role === 'SCHOOL_ADMIN' ? 'WHERE i.school_id = $1' : ''}
+       ORDER BY i.issued_at DESC`,
       role === 'SCHOOL_ADMIN' ? [sid] : []
     );
     if (q.rows.length > 0) return res.json(q.rows);
@@ -74,8 +76,6 @@ r.get('/', async (req: AuthRequest, res) => {
   ];
   return res.json(demoInvoices);
 });
-
-
 r.get('/:id/pdf',async(req:AuthRequest,res)=>{
  try{
    const x=await getInvoice(String(req.params.id),req.user!.schoolId,req.user!.role);

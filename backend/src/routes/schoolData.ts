@@ -1,20 +1,21 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
-
 import { registerDemoUser } from '../store/demoUsers';
+import { createAndSendPasswordReset } from './auth';
 
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 
-const demoClasses: any[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
+export const demoClasses: any[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
   id: `cls-${n}`,
   class_number: n,
   section_count: 2
 }));
 
-const demoSections: any[] = [];
+export const demoSections: any[] = [];
 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].forEach(n => {
   demoSections.push({ id: `sec-${n}-a`, class_id: `cls-${n}`, class_number: n, name: 'A' });
   demoSections.push({ id: `sec-${n}-b`, class_id: `cls-${n}`, class_number: n, name: 'B' });
@@ -129,24 +130,32 @@ export const demoTeachers: any[] = [
 r.get('/students',...admin,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
  try {
-  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.parent_name,st.parent_sms_number,st.parent_email,st.photo_url,
+  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st JOIN classes c ON c.id=st.class_id JOIN sections sec ON sec.id=st.section_id
   WHERE st.school_id=$1 AND st.is_active=true
-  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%')
+  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY c.class_number,sec.name,st.roll_number`,[req.user!.schoolId,search]);
   res.json(q.rows);
  } catch {
   const filtered = search
-    ? demoStudents.filter(s => s.name.toLowerCase().includes(search) || String(s.roll_number).includes(search))
+    ? demoStudents.filter(s => s.name.toLowerCase().includes(search) || String(s.roll_number).includes(search) || (s.email && s.email.toLowerCase().includes(search)) || (s.parent_email && s.parent_email.toLowerCase().includes(search)))
     : demoStudents;
   res.json(filtered);
  }
 });
 
 r.post('/students',...admin,async(req:AuthRequest,res)=>{
- const {name,rollNumber,parentName,parentSmsNumber,parentEmail,classId,sectionId}=req.body;
- if(!name||!rollNumber||!parentSmsNumber||!classId||!sectionId)return res.status(400).json({message:'Name, roll, parent SMS, class and section are required'});
+ const {
+   name, rollNumber, parentName, parentSmsNumber, classId, sectionId,
+   studentEmail, email, parentEmail, loginOption, sendInviteEmail = true
+ } = req.body;
+ if(!name||!rollNumber||!parentSmsNumber||!classId||!sectionId) return res.status(400).json({message:'Name, roll, parent SMS, class and section are required'});
+ 
+ const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
+ const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
+ const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
+
  let clsNum = 8;
  let secName = 'A';
  if (typeof classId === 'string' && classId.startsWith('cls-')) {
@@ -156,18 +165,99 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    const parts = sectionId.split('-');
    secName = parts[parts.length - 1].toUpperCase() || 'A';
  }
+
+ let resetInfo: any = null;
+
  try {
   const valid=await pool.query(`SELECT s.id, s.name section_name, c.class_number FROM sections s JOIN classes c ON c.id=s.class_id WHERE s.id=$1 AND c.id=$2 AND s.school_id=$3`,[sectionId,classId,req.user!.schoolId]);
   if(valid.rowCount) {
     clsNum = valid.rows[0].class_number;
     secName = valid.rows[0].section_name;
-    const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,name,parent_name,parent_sms_number,parent_email) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [req.user!.schoolId,classId,sectionId,rollNumber,name,parentName||null,parentSmsNumber,parentEmail||null]);
-    const created = { ...q.rows[0], class_number: clsNum, section_name: secName };
+
+    let linkedUserId: string | null = null;
+    let targetLoginEmail = '';
+    if (loginOpt === 'STUDENT' && cleanStudentEmail) {
+      targetLoginEmail = cleanStudentEmail;
+    } else if (loginOpt === 'PARENT' && cleanParentEmail) {
+      targetLoginEmail = cleanParentEmail;
+    } else if (cleanStudentEmail) {
+      targetLoginEmail = cleanStudentEmail;
+    } else if (cleanParentEmail) {
+      targetLoginEmail = cleanParentEmail;
+    }
+
+    // Handle Student Portal Login Account Creation
+    if (targetLoginEmail && loginOpt !== 'NONE') {
+      const userCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [targetLoginEmail]);
+      if (userCheck.rowCount && userCheck.rowCount > 0) {
+        linkedUserId = userCheck.rows[0].id;
+      } else {
+        const tempPass = crypto.randomBytes(8).toString('hex') + 'Aa1!';
+        const tempHash = await bcrypt.hash(tempPass, 10);
+        const uq = await pool.query(
+          `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'STUDENT') RETURNING id`,
+          [req.user!.schoolId, name, targetLoginEmail, tempHash]
+        );
+        linkedUserId = uq.rows[0].id;
+      }
+      if (sendInviteEmail) {
+        try {
+          resetInfo = await createAndSendPasswordReset({
+            email: targetLoginEmail,
+            name,
+            role: 'STUDENT',
+            userId: linkedUserId || undefined,
+            schoolName: req.user?.schoolName,
+            req
+          });
+        } catch (e: any) {
+          console.warn('[StudentEnrollment] Failed to send student reset email:', e.message);
+        }
+      }
+    }
+
+    const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,name,parent_name,parent_sms_number,email,parent_email,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [req.user!.schoolId,classId,sectionId,rollNumber,name,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,linkedUserId]);
+    
+    const created = {
+      ...q.rows[0],
+      class_number: clsNum,
+      section_name: secName,
+      student_email: cleanStudentEmail,
+      parent_email: cleanParentEmail,
+      login_email: targetLoginEmail,
+      login_option: loginOpt,
+      reset_url: resetInfo?.resetUrl,
+      invite_sent: Boolean(resetInfo)
+    };
     demoStudents.unshift(created);
     return res.status(201).json(created);
   }
- } catch {}
+ } catch (err: any) {
+   console.warn('[StudentEnrollment] Database insert fallback:', err.message);
+ }
+
+ // Demo In-Memory Fallback
+ const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
+ if (targetLoginEmail && loginOpt !== 'NONE' && sendInviteEmail) {
+   try {
+     resetInfo = await createAndSendPasswordReset({
+       email: targetLoginEmail,
+       name,
+       role: 'STUDENT',
+       schoolName: req.user?.schoolName,
+       req
+     });
+     registerDemoUser({
+       id: `usr-st-${Date.now()}`,
+       schoolId: req.user!.schoolId,
+       name,
+       email: targetLoginEmail,
+       role: 'STUDENT',
+       password: 'ChangeMe123!'
+     });
+   } catch {}
+ }
 
  const newStudent = {
    id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -175,11 +265,16 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    roll_number: rollNumber,
    parent_name: parentName || '—',
    parent_sms_number: parentSmsNumber,
-   parent_email: parentEmail || '',
+   email: cleanStudentEmail,
+   student_email: cleanStudentEmail,
+   parent_email: cleanParentEmail,
    class_number: clsNum,
    section_name: secName,
    class_id: classId,
-   section_id: sectionId
+   section_id: sectionId,
+   login_option: loginOpt,
+   reset_url: resetInfo?.resetUrl,
+   invite_sent: Boolean(resetInfo)
  };
  demoStudents.unshift(newStudent);
  res.status(201).json(newStudent);
@@ -253,18 +348,85 @@ r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
- const {name,rollNumber,parentName,parentSmsNumber,parentEmail,classId,sectionId}=req.body;
+ const {name,rollNumber,parentName,parentSmsNumber,studentEmail,email,parentEmail,classId,sectionId}=req.body;
+ const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
+ const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
  try {
-  const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,parent_name=$3,parent_sms_number=$4,parent_email=$5,class_id=$6,section_id=$7,updated_at=NOW()
-  WHERE id=$8 AND school_id=$9 RETURNING *`,[name,rollNumber,parentName||null,parentSmsNumber,parentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
+  const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,parent_name=$3,parent_sms_number=$4,email=$5,parent_email=$6,class_id=$7,section_id=$8,updated_at=NOW()
+  WHERE id=$9 AND school_id=$10 RETURNING *`,[name,rollNumber,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
   if(!q.rowCount)return res.status(404).json({message:'Student not found'});
-  res.json(q.rows[0]);
+  res.json({ ...q.rows[0], student_email: cleanStudentEmail, parent_email: cleanParentEmail });
  } catch {
-  const updated = {id:req.params.id,name,roll_number:rollNumber,parent_name:parentName,parent_sms_number:parentSmsNumber,parent_email:parentEmail,class_id:classId,section_id:sectionId};
+  const updated = {
+    id: req.params.id,
+    name,
+    roll_number: rollNumber,
+    parent_name: parentName,
+    parent_sms_number: parentSmsNumber,
+    email: cleanStudentEmail,
+    student_email: cleanStudentEmail,
+    parent_email: cleanParentEmail,
+    class_id: classId,
+    section_id: sectionId
+  };
   const idx = demoStudents.findIndex(s => s.id === req.params.id);
   if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...updated };
   res.json(updated);
  }
+});
+
+r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
+  const studentId = req.params.id;
+  let targetEmail = '';
+  let studentName = 'Student';
+  let role = 'STUDENT';
+  let userId: string | undefined = undefined;
+
+  try {
+    const q = await pool.query(
+      `SELECT st.id, st.name, st.email, st.parent_email, st.user_id, st.parent_name
+       FROM students st WHERE st.id = $1 AND st.school_id = $2 LIMIT 1`,
+      [studentId, req.user!.schoolId]
+    );
+    if (q.rowCount && q.rowCount > 0) {
+      const st = q.rows[0];
+      studentName = st.name;
+      userId = st.user_id;
+      if (st.email) {
+        targetEmail = st.email;
+      } else if (st.parent_email) {
+        targetEmail = st.parent_email;
+      }
+    }
+  } catch {}
+
+  if (!targetEmail) {
+    const demo = demoStudents.find(s => s.id === studentId);
+    if (demo) {
+      studentName = demo.name;
+      targetEmail = demo.email || demo.student_email || demo.parent_email;
+    }
+  }
+
+  if (!targetEmail) {
+    return res.status(400).json({ message: 'No email address found for this student. Please add a student or parent email first.' });
+  }
+
+  const resetResult = await createAndSendPasswordReset({
+    email: targetEmail,
+    name: studentName,
+    role: 'STUDENT',
+    userId,
+    schoolName: req.user?.schoolName,
+    req
+  });
+
+  return res.json({
+    success: true,
+    message: `Password setup email dispatched to ${targetEmail} (Student Portal).`,
+    email: targetEmail,
+    resetUrl: resetResult.resetUrl
+  });
 });
 
 r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
@@ -288,42 +450,132 @@ r.get('/teachers',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
- const {name,email,password,employeeId,mobile}=req.body;
- if(!name||!email||!password||!employeeId)return res.status(400).json({message:'Name, email, password and employee ID are required'});
+ const {name,email,password,employeeId,mobile,sendInviteEmail=true}=req.body;
+ if(!name||!email||!employeeId) return res.status(400).json({message:'Name, email, and employee ID are required'});
+ const cleanEmail = String(email).trim().toLowerCase();
+ const rawPassword = password || (crypto.randomBytes(8).toString('hex') + 'Tt1!');
+ let resetInfo: any = null;
+
  try {
   const client=await pool.connect();
   try {
    await client.query('BEGIN');
-   const hash=await bcrypt.hash(password,10);
+   const hash=await bcrypt.hash(rawPassword,10);
    const u=await client.query(`INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER') RETURNING id,name,email`,
-    [req.user!.schoolId,name,email,hash]);
+    [req.user!.schoolId,name,cleanEmail,hash]);
    await client.query(`INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)`,[u.rows[0].id,employeeId,mobile||null]);
    await client.query('COMMIT');
-   const created = { ...u.rows[0], employee_id: employeeId, mobile: mobile || '—', is_active: true };
+   
+   if (sendInviteEmail) {
+     try {
+       resetInfo = await createAndSendPasswordReset({
+         email: cleanEmail,
+         name,
+         role: 'TEACHER',
+         userId: u.rows[0].id,
+         schoolName: req.user?.schoolName,
+         req
+       });
+     } catch (err: any) {
+       console.warn('[TeacherOnboarding] Email invite failed:', err.message);
+     }
+   }
+
+   const created = {
+     ...u.rows[0],
+     employee_id: employeeId,
+     mobile: mobile || '—',
+     is_active: true,
+     reset_url: resetInfo?.resetUrl,
+     invite_sent: Boolean(resetInfo)
+   };
    demoTeachers.unshift(created);
    return res.status(201).json(created);
   } catch(e){await client.query('ROLLBACK');throw e;}
   finally{client.release();}
- } catch {
-   const newTeacher = {
-     id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-     name,
-     email,
-     employee_id: employeeId,
-     mobile: mobile || '—',
-     is_active: true
-   };
-   demoTeachers.unshift(newTeacher);
-   registerDemoUser({
-     id: newTeacher.id,
-     schoolId: req.user!.schoolId,
-     name,
-     email,
-     role: 'TEACHER',
-     password: password || 'ChangeMe123!'
-   });
-   res.status(201).json(newTeacher);
+ } catch (err: any) {
+   console.warn('[TeacherOnboarding] Database fallback:', err.message);
  }
+
+ if (sendInviteEmail) {
+   try {
+     resetInfo = await createAndSendPasswordReset({
+       email: cleanEmail,
+       name,
+       role: 'TEACHER',
+       schoolName: req.user?.schoolName,
+       req
+     });
+   } catch {}
+ }
+
+ const newTeacher = {
+   id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+   name,
+   email: cleanEmail,
+   employee_id: employeeId,
+   mobile: mobile || '—',
+   is_active: true,
+   reset_url: resetInfo?.resetUrl,
+   invite_sent: Boolean(resetInfo)
+ };
+ demoTeachers.unshift(newTeacher);
+ registerDemoUser({
+   id: newTeacher.id,
+   schoolId: req.user!.schoolId,
+   name,
+   email: cleanEmail,
+   role: 'TEACHER',
+   password: rawPassword
+ });
+ res.status(201).json(newTeacher);
+});
+
+r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
+  const teacherId = req.params.id;
+  let teacherEmail = '';
+  let teacherName = 'Teacher';
+  let userId: string | undefined = undefined;
+
+  try {
+    const q = await pool.query(
+      `SELECT u.id, u.name, u.email FROM users u WHERE u.id = $1 AND u.school_id = $2 AND u.role = 'TEACHER' LIMIT 1`,
+      [teacherId, req.user!.schoolId]
+    );
+    if (q.rowCount && q.rowCount > 0) {
+      userId = q.rows[0].id;
+      teacherName = q.rows[0].name;
+      teacherEmail = q.rows[0].email;
+    }
+  } catch {}
+
+  if (!teacherEmail) {
+    const demo = demoTeachers.find(t => t.id === teacherId);
+    if (demo) {
+      teacherEmail = demo.email;
+      teacherName = demo.name;
+    }
+  }
+
+  if (!teacherEmail) {
+    return res.status(404).json({ message: 'Teacher record not found or has no email address.' });
+  }
+
+  const resetResult = await createAndSendPasswordReset({
+    email: teacherEmail,
+    name: teacherName,
+    role: 'TEACHER',
+    userId,
+    schoolName: req.user?.schoolName,
+    req
+  });
+
+  return res.json({
+    success: true,
+    message: `Password setup email dispatched to faculty member ${teacherEmail}.`,
+    email: teacherEmail,
+    resetUrl: resetResult.resetUrl
+  });
 });
 
 r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
@@ -452,4 +704,91 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
  if (idx >= 0) demoSubjects.splice(idx, 1);
  res.json({success:true});
 });
+
+r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
+ const sid = req.user!.schoolId!;
+ try {
+  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, created_at FROM schools WHERE id = $1', [sid]);
+  if (q.rowCount) return res.json(q.rows[0]);
+ } catch {}
+ res.json({
+  id: sid,
+  name: 'Greenwood International School',
+  code: 'GIS001',
+  status: 'ACTIVE',
+  enquiry_number: '1800123456',
+  address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka'
+ });
+});
+
+r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
+ const sid = req.user!.schoolId!;
+ const { enquiryNumber, address } = req.body || {};
+ try {
+  const q = await pool.query(
+    'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address) WHERE id = $3 RETURNING id, name, code, status, enquiry_number, address',
+    [enquiryNumber, address, sid]
+  );
+  if (q.rowCount) return res.json(q.rows[0]);
+ } catch {}
+ res.json({ id: sid, enquiry_number: enquiryNumber, address });
+});
+
+/* ── Global Search ── */
+r.get('/search', ...admin, async (req: AuthRequest, res) => {
+  const q = String(req.query.q || '').trim();
+  if (!q || q.length < 2) return res.json({ students: [], teachers: [], classes: [] });
+  const sid = req.user!.schoolId;
+  const pattern = `%${q}%`;
+  const results: any = { students: [], teachers: [], classes: [] };
+
+  try {
+    // Students
+    const stRes = await pool.query(
+      `SELECT st.id, st.roll_number, st.name, st.parent_email AS email, c.class_number, sec.name AS section_name
+       FROM students st
+       JOIN classes c ON c.id = st.class_id
+       JOIN sections sec ON sec.id = st.section_id
+       WHERE st.school_id = $1 AND st.is_active = true
+         AND (st.name ILIKE $2 OR st.roll_number ILIKE $2 OR COALESCE(st.parent_email,'') ILIKE $2)
+       ORDER BY st.name ASC LIMIT 8`,
+      [sid, pattern]
+    );
+    results.students = stRes.rows.map((r: any) => ({
+      id: r.id, name: r.name, email: r.email, roll: r.roll_number,
+      class: r.class_number ? `Class ${r.class_number}` : null,
+      section: r.section_name, type: 'student'
+    }));
+
+    // Teachers
+    const tRes = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true
+         AND (LOWER(name) LIKE LOWER($2) OR LOWER(email) LIKE LOWER($2))
+       ORDER BY name ASC LIMIT 8`,
+      [sid, pattern]
+    );
+    results.teachers = tRes.rows.map((r: any) => ({
+      id: r.id, name: r.name, email: r.email, type: 'teacher'
+    }));
+
+    // Classes
+    const cRes = await pool.query(
+      `SELECT c.id, c.class_number, COUNT(s.id)::int AS section_count
+       FROM classes c LEFT JOIN sections s ON s.class_id = c.id
+       WHERE c.school_id = $1 AND CAST(c.class_number AS TEXT) LIKE $2
+       GROUP BY c.id ORDER BY c.class_number LIMIT 8`,
+      [sid, pattern]
+    );
+    results.classes = cRes.rows.map((r: any) => ({
+      id: r.id, name: `Class ${r.class_number}`, sections: r.section_count, type: 'class'
+    }));
+  } catch (_e) {
+    // DB unavailable — return empty
+  }
+
+  res.json(results);
+});
+
 export default r;

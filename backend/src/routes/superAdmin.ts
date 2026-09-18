@@ -143,12 +143,12 @@ export let systemSettings = {
 export const demoSchools: any[] = [
   {
     id: '00000000-0000-0000-0000-000000000001',
-    name: 'Demo Higher Secondary School',
-    code: 'DEMO001',
+    name: 'Greenwood International School',
+    code: 'GIS001',
     status: 'ACTIVE',
-    enquiry_number: '9000000000',
-    student_count: 10,
-    teacher_count: 3,
+    enquiry_number: '1800123456',
+    student_count: 150,
+    teacher_count: 12,
     plan_name: 'Standard Growth',
     end_date: '2027-12-31',
     computed_status: 'ACTIVE',

@@ -272,16 +272,23 @@ npm run dev
 
 ## 6. Default User Accounts & Credentials
 
+The AttendoSchool sign-in interface provides 4 specialized login portals:
+1. **Administrator Login**: Central platform and SaaS administration. Bypasses school selection with global multi-tenant access.
+2. **School Admin Login**: Institutional management and Principal portal. Enforces selecting the school name before entering credentials.
+3. **Teacher Login**: Faculty portal for daily attendance and timetable. Enforces selecting the school name before entering credentials.
+4. **Student Login**: Student portal for attendance, timetables, homework, and exams. Enforces selecting the school name before entering credentials.
+
 All seeded accounts share the default development password: **`ChangeMe123!`**
 
-| Persona | Role | Email | Password | Accessible Features |
+| Login Portal | Role | Identifier / Email | School Selection | Accessible Features |
 |---|---|---|---|---|
-| **Platform Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School Onboarding, Subscriptions, Platform Analytics, System Backups, RBAC Management |
-| **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student & Teacher Directories, Routines, Attendance Corrections, Classrooms, Billing |
-| **Classroom Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's Assigned Timetable Slots, Class Attendance Taking, History, Offline Mode |
+| **Administrator Login** | `SUPER_ADMIN` | `superadmin@attendance.local` | *Not required (Global)* | School Onboarding, Subscriptions, Platform Analytics, System Backups, RBAC Management |
+| **School Admin Login** | `SCHOOL_ADMIN` | `admin@demo-school.local` | Greenwood International School | Student & Teacher Directories, Routines, Attendance Corrections, Classrooms, Billing |
+| **Teacher Login** | `TEACHER` | `rahul@demo-school.local`<br>`priya@demo-school.local` | Greenwood International School | Today's Assigned Timetable Slots, Class Attendance Taking, History, Offline Mode |
+| **Student Login** | `STUDENT` | `student@greenwood.local`<br>(or Roll No. `25`) | Greenwood International School | Today Timetable, Attendance KPI, Homework & Assignments, Exams & Results, Leave Requests |
 
 > [!TIP]
-> Use the **Quick Demo Switcher** buttons on the redesigned login screen (`Super Admin`, `School Admin`, `Teacher`) to auto-fill credentials instantly.
+> On the sign-in screen at `http://localhost:5173`, click on any of the 4 tabs (**Administrator**, **School Admin**, **Teacher**, **Student**) to switch portals. Each tab features a 1-click **"Autofill Demo Credentials"** button for immediate testing.
 
 ---
 
@@ -361,6 +368,34 @@ npx tsx tests/automated-e2e-journey.ts
 cd backend && npm run build
 cd ../frontend && npm run build
 ```
+
+### 9.1 Onboarding & Password Setup Verification
+
+When enrolling students or faculty, the system dispatches an anti-spam compliant transactional password setup email.
+
+1. **Testing Student Onboarding**:
+   - Navigate to **Students** tab in the School Admin portal.
+   - Click **Add Student**.
+   - Enter Student Name, Roll Number, Class, Section.
+   - Under **Portal Login Account**, choose either:
+     - 🎓 *Use Student Email for Student Portal Login*
+     - 👨‍👩‍👧 *Use Parent Email for Student Portal Login*
+   - Check **Send Password Setup Email**.
+   - Click **Enroll Student**. The system returns an immediate setup link in the UI toast banner and logs the clickable link to the backend console.
+
+2. **Testing Password Reset URL Directly**:
+   - Open the generated link in your browser:
+     ```
+     http://localhost:5174/#/reset-password?token=<TOKEN>&email=<EMAIL>
+     ```
+   - The dedicated light institutional password setup interface will open.
+   - Enter your new password meeting the live checklist criteria (8+ characters, letters and numbers, matching confirmation).
+   - Submit and verify the success screen, then click **Proceed to Login** to sign in.
+
+3. **Forgot Password Self-Service**:
+   - On the login screen (`/login`), click **Forgot Password?**.
+   - Enter the student, parent, or faculty email address.
+   - Click **Send Reset Link** to receive an instant recovery link.
 
 ---
 

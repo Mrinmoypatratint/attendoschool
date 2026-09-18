@@ -48,7 +48,7 @@ const demoUsers: DemoUser[] = [
   },
   {
     id: '00000000-0000-0000-0000-000000000025',
-    schoolId: 'school-greenwood-001',
+    schoolId: '00000000-0000-0000-0000-000000000001',
     name: 'Rohan Sharma',
     email: 'student@greenwood.local',
     role: 'STUDENT',

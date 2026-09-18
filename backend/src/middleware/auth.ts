@@ -2,14 +2,25 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-export type Role = 'SUPER_ADMIN'|'SCHOOL_ADMIN'|'TEACHER'|'PARENT';
-export type AuthUser = { id:string; schoolId:string|null; name:string; email:string; role:Role };
+export type Role = 'SUPER_ADMIN'|'SCHOOL_ADMIN'|'TEACHER'|'PARENT'|'STUDENT';
+export type AuthUser = {
+  id: string;
+  schoolId: string | null;
+  name: string;
+  email: string;
+  role: Role;
+  studentId?: string;
+  classId?: string;
+  sectionId?: string;
+  schoolName?: string;
+};
 export interface AuthRequest extends Request { user?: AuthUser }
 
 export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
   const h=req.headers.authorization;
-  if(!h?.startsWith('Bearer ')) return res.status(401).json({message:'Authentication required'});
-  try { req.user=jwt.verify(h.slice(7),env.jwtSecret) as AuthUser; next(); }
+  const token = h?.startsWith('Bearer ') ? h.slice(7) : (req.query?.token as string);
+  if(!token) return res.status(401).json({message:'Authentication required'});
+  try { req.user=jwt.verify(token,env.jwtSecret) as AuthUser; next(); }
   catch { return res.status(401).json({message:'Invalid or expired token'}); }
 }
 export function requireRoles(...roles:Role[]) {

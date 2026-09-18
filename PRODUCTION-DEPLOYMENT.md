@@ -52,5 +52,5 @@ Monitor:
 - notification provider failures
 
 ## 10. Launch gate
-Do not launch until the critical V26 checklist items are resolved and an end-to-end test passes for:
-login → school setup → student → teacher → routine → attendance → correction → parent → notification → subscription → payment → report → backup/restore.
+Do not launch until all critical checklist items are resolved and an end-to-end test passes for:
+login → school setup → student (with student/parent email login setup) → teacher (with invite email) → password setup & reset → routine → attendance → correction → student portal → notification → subscription → payment → report → backup/restore.

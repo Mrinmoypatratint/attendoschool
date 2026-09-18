@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT';
+export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
 
 export type User = {
   id: string;
@@ -10,6 +10,14 @@ export type User = {
   name: string;
   email: string;
   role: Role;
+  studentId?: string;
+  classId?: string;
+  sectionId?: string;
+  className?: string;
+  sectionName?: string;
+  rollNumber?: string;
+  schoolName?: string;
+  avatarUrl?: string;
 };
 
 type AuthContextType = {

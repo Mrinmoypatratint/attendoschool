@@ -45,9 +45,12 @@
 
 ### Key Highlights
 - **Dual Database Persistence**: First-class support for **Firebase Cloud Firestore** (with offline local emulator) as the primary document store, alongside **PostgreSQL 16** (28 incremental migrations).
+- **Unified Student Portal**: Comprehensive student portal (`/student/dashboard`) providing daily routines, subject-wise attendance analytics, assignments & homework submissions, examination timetables & grade cards, leave applications, and campus notice announcements.
+- **Role-Based Email Onboarding**: When registering students, administrators can configure Student Portal login using the student's direct email or the parent/guardian's email. When registering faculty, official emails are linked for Faculty Portal access.
+- **Anti-Spam Welcome & Password Setup**: RFC-compliant multipart transactional emails with high-deliverability headers, spam filter avoidance, and single-use 24-hour setup links.
+- **Dedicated Password Reset Interface**: Clean, institutional `/reset-password` page with real-time password requirement checklists, hash routing resilience, and a self-service "Forgot Password?" flow on the login page.
 - **Sub-15-Second Attendance**: Intuitive UI allowing teachers to mark a class of 50+ students in under 15 seconds. Present students are confirmed with bulk controls; unmarked students are flagged absent.
 - **Automated Absence Alerts**: Instant dispatch across SMS, WhatsApp, and Email with dynamic placeholders (`{student_name}`, `{class_name}`, `{time}`, `{teacher_name}`).
-- **Split-Screen Authentication UI**: Modern split layout featuring a campus visual hero, live statistics badge (`99.8% Attendance Sync`), feature highlights, and a 1-click demo role switcher.
 - **Audit-Trailed Corrections**: Post-submission attendance modifications require structured correction tickets with teacher remarks and administrator approval.
 - **Complete Billing Lifecycle**: Starter, Standard, and Enterprise tiers, 18% GST split (CGST 9% + SGST 9%), downloadable PDF tax invoices via PDFKit, and Razorpay integration.
 - **Offline Attendance**: Progressive offline queueing in IndexedDB/localStorage with automated synchronization when internet connectivity restores.
@@ -59,14 +62,14 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │               Frontend Client (React 19 + Vite 7)           │
-│   Split-Screen Login · Super Admin / School Admin / Teacher │
-│   Role-Based Dashboards · Toast Alerts · Dark/Light Mode    │
+│   Split-Screen Login · Super Admin · School Admin · Teacher │
+│   Student Portal · Password Reset · Light Institutional UI  │
 └──────────────────────────────┬──────────────────────────────┘
                                │ HTTP / REST (Axios)
 ┌──────────────────────────────▼──────────────────────────────┐
 │                  Backend API (Node.js + Express 5)          │
 │   TypeScript · JWT Auth · Security Headers · Rate Limiter   │
-│   Firestore Data Service · Centralized Error Handler        │
+│   Anti-Spam Email Service · Centralized Error Handler       │
 └───────────────┬─────────────────────────────┬───────────────┘
                 │                             │
     ┌───────────▼────────────┐    ┌───────────▼───────────┐
@@ -83,7 +86,7 @@
 ```
 
 ### Technology Stack
-- **Frontend**: React 19, TypeScript, Vite 7, React Router 7, Axios, Lucide Icons, Vanilla CSS Design System.
+- **Frontend**: React 19, TypeScript, Vite 7, React Router 7, Axios, Lucide Icons, Clean Light Institutional Design System.
 - **Backend**: Node.js, Express 5, TypeScript, Firebase Admin SDK (`firebase-admin` v14), PostgreSQL client (`pg`), `bcryptjs`, `jsonwebtoken`, `pdfkit`, `nodemailer`.
 - **Database**:
   - **Firebase Cloud Firestore**: Cloud NoSQL document store with Firebase Local Emulator (`127.0.0.1:8080`, UI `127.0.0.1:4000/firestore`).
@@ -96,16 +99,20 @@
 
 All seeded accounts share the development password: **`ChangeMe123!`**
 
-| Persona | Role Key | Email | Password | Primary Capabilities |
+| Persona | Role Key | Email / Identifier | Password | Primary Capabilities |
 |---|---|---|---|---|
 | **Platform Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School onboarding, plan management, global SaaS revenue monitoring, system backups, RBAC policies |
 | **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student/Teacher roster, Class 1-12 routines, reports, attendance corrections, academic year promotions, billing |
 | **Classroom Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's assigned schedule, classroom attendance submission, attendance history, offline mode |
 | **Classroom Teacher (Alt)** | `TEACHER` | `priya@demo-school.local` | `ChangeMe123!` | Secondary demo teacher account |
-| **Parent / Guardian** | `PARENT` | Registered via student phone | — | Child attendance record lookup, attendance percentage, school notices |
+| **Student Portal** | `STUDENT` | `student@greenwood.local` or Roll `25` | `ChangeMe123!` | Timetable, attendance percentage, homework & assignments, exam marks, announcements, leave requests |
+
+> [!IMPORTANT]
+> **Scope Boundary: Unified Student Portal Only**
+> There is **no separate Parent Portal** in AttendoSchool. Guardians who need access to their child's academic tracking are configured during student enrollment using **"Use Parent Email for Student Portal Login"**, which creates a Student Portal user account (`role = 'STUDENT'`). All guardian and student tracking is centralized within the **Student Portal** (`/student/dashboard`).
 
 > [!TIP]
-> On the login page, click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`) to auto-populate credentials instantly.
+> On the login page, click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`, `Student`) to auto-populate credentials instantly.
 
 ---
 
