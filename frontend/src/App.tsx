@@ -41,6 +41,7 @@ import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { LoginLogoHero } from './components/LoginLogoHero';
+import { AnimatedMascot, MascotMood } from './components/AnimatedMascot';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -195,6 +196,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusField, setFocusField] = useState<'email' | 'password' | 'school' | null>(null);
   const [videoError, setVideoError] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showLang, setShowLang] = useState(false);
@@ -240,6 +242,12 @@ function Login() {
   }, []);
 
   const currentConfig = LOGIN_ROLES[loginRole];
+  const mascotMood: MascotMood = 
+    focusField === 'password' ? 'focus-password' :
+    focusField === 'email' || focusField === 'school' ? 'focus-email' :
+    loading ? 'success' :
+    error ? 'error' :
+    'idle';
   const selectedInstitute = institutes.find(i => i.id === instituteId);
   const filteredInstitutes = institutes.filter(i => 
     i.name.toLowerCase().includes(instituteSearch.toLowerCase()) ||
@@ -394,8 +402,15 @@ function Login() {
             </button>
           </div>
 
-          {/* Welcome Title Block */}
+          {/* Welcome Title Block with Interactive Animated Mascot */}
           <div className="as-auth-header">
+            <AnimatedMascot
+              mood={mascotMood}
+              isPasswordVisible={showPassword}
+              isSubmitting={loading}
+              hasError={Boolean(error)}
+              textLength={email.length}
+            />
             <span className="as-auth-kicker">Welcome to</span>
             <div className="as-auth-brand-row">
               <h2 className="as-auth-brand-title">AttendoSchool</h2>
@@ -505,6 +520,8 @@ function Login() {
                     type="button"
                     className={`as-selector-trigger ${instituteOpen ? 'focused' : ''}`}
                     onClick={() => setInstituteOpen(o => !o)}
+                    onFocus={() => setFocusField('school')}
+                    onBlur={() => setFocusField(null)}
                     id="institute-trigger-btn"
                   >
                     <School size={16} className="as-trigger-lead-icon" />
@@ -583,6 +600,8 @@ function Login() {
                   placeholder={currentConfig.emailPlaceholder}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  onFocus={() => setFocusField('email')}
+                  onBlur={() => setFocusField(null)}
                   id="identifier-input"
                   className="as-text-input"
                 />
@@ -604,12 +623,15 @@ function Login() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onFocus={() => setFocusField('password')}
+                  onBlur={() => setFocusField(null)}
                   id="password-input"
                   className="as-text-input"
                 />
                 <button
                   type="button"
                   className="as-eye-toggle-btn"
+                  onMouseDown={e => e.preventDefault()}
                   onClick={() => setShowPassword(s => !s)}
                   title={showPassword ? "Hide password" : "Show password"}
                 >
