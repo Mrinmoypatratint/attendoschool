@@ -39,6 +39,7 @@ import communication from './routes/communication';
 import production from './routes/production';
 import parentOnboarding from './routes/parentOnboarding';
 import finalIntegration from './routes/finalIntegration';
+import student from './routes/student';
 
 const app = express();
 
@@ -145,6 +146,7 @@ app.use('/api', schoolData);
 app.use('/api/routines', routines);
 app.use('/api/teacher', teacher);
 app.use('/api/notifications', notifications);
+app.use('/api/student', student);
 
 // 404 handler
 app.use((_q, res) => res.status(404).json({ message: 'API route not found' }));

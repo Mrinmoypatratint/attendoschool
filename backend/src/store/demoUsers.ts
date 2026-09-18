@@ -45,12 +45,24 @@ const demoUsers: DemoUser[] = [
     email: 'priya@demo-school.local',
     role: 'TEACHER',
     password: 'ChangeMe123!'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000025',
+    schoolId: '00000000-0000-0000-0000-000000000001',
+    name: 'Rohan Sharma',
+    email: 'student@greenwood.local',
+    role: 'STUDENT',
+    password: 'ChangeMe123!'
   }
 ];
 
-/** Find a demo user by email (case-insensitive) */
-export function findDemoUser(email: string): DemoUser | undefined {
-  return demoUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+/** Find a demo user by email or student identifier (case-insensitive) */
+export function findDemoUser(identifier: string): DemoUser | undefined {
+  const clean = String(identifier || '').trim().toLowerCase();
+  return demoUsers.find(u =>
+    u.email.toLowerCase() === clean ||
+    (u.role === 'STUDENT' && (clean === '25' || clean === 'rohan' || clean === 'stu025' || clean === 'student@greenwood.local' || clean === 'rohan.sharma@greenwood.local'))
+  );
 }
 
 /** Register a new user in the in-memory store */

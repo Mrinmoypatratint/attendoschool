@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "prestart": "npm run build",
     "build": "tsc",
     "start": "node dist/server.js",
     "worker": "tsx src/smsWorker.ts",
@@ -12,6 +13,7 @@
     "v27:smoke": "tsx scripts/v27-integration-smoke.ts",
     "worker:production": "node dist/workers/productionWorkerV26.js",
     "test": "tsx tests/comprehensive-test-suite.ts",
+    "test:student": "tsx tests/student-portal-e2e.ts",
     "db:migrate": "node dist/scripts/migrate.js",
     "v28:smoke": "tsx ../scripts/v28-api-smoke.ts",
     "release:check": "npm run build && npm run v28:smoke"

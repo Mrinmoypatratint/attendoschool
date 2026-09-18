@@ -25,8 +25,18 @@ import {
   FileText,Shield,Database,Clock,Wifi,UserPlus,Settings,Moon,Sun,
   ArrowUpDown,Bell,CreditCard,Eye,FileSpreadsheet,Download,Trash2,
   UploadCloud,CheckSquare,Square,RefreshCw,Send,Lock,ShieldCheck,Mail,Server,
-  Search,Sparkles,ArrowRight,Activity,Zap,EyeOff,ArrowLeft
+  Search,Sparkles,ArrowRight,Activity,Zap,EyeOff,ArrowLeft,Building2
 } from 'lucide-react';
+import { studentApi, Institute } from './services/studentApi';
+import { StudentLayout } from './components/student/StudentLayout';
+import { StudentDashboard } from './pages/student/StudentDashboard';
+import { StudentAttendance } from './pages/student/StudentAttendance';
+import { StudentTimetable } from './pages/student/StudentTimetable';
+import { StudentAssignments } from './pages/student/StudentAssignments';
+import { StudentExams } from './pages/student/StudentExams';
+import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
+import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
+import { StudentProfile } from './pages/student/StudentProfile';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -49,19 +59,37 @@ function useTheme(){
 function Login(){
   const nav=useNavigate();
   const {login}=useAuth();
-  const [email,setEmail]=useState('admin@demo-school.local');
+  const [institutes,setInstitutes]=useState<Institute[]>([]);
+  const [instituteId,setInstituteId]=useState('');
+  const [email,setEmail]=useState('student@greenwood.local');
   const [password,setPassword]=useState('ChangeMe123!');
   const [showPassword,setShowPassword]=useState(false);
   const [agree,setAgree]=useState(true);
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
 
+  useEffect(()=>{
+    studentApi.getInstitutes().then(list=>{
+      setInstitutes(list);
+      if(list.length>0){
+        const def=list.find(i=>i.name.includes('Greenwood')||i.id==='00000000-0000-0000-0000-000000000001')||list[0];
+        setInstituteId(def.id);
+      }
+    }).catch(()=>{});
+  },[]);
+
   async function submit(e:React.FormEvent){
     e.preventDefault();setError('');setLoading(true);
     try{
-      const{data}=await api.post('/auth/login',{email,password});
+      const{data}=await api.post('/auth/login',{instituteId:instituteId||undefined,email,password});
       login(data.token,data.user);
-      nav('/dashboard');
+      if(data.user.role==='STUDENT'){
+        nav('/student/dashboard');
+      } else if(data.user.role==='SUPER_ADMIN'){
+        nav('/super-admin');
+      } else {
+        nav('/dashboard');
+      }
     }catch(e:any){setError(e?.response?.data?.message||'Login failed')}
     finally{setLoading(false)}
   }
@@ -78,7 +106,7 @@ function Login(){
           />
           <div className="edu-auth-hero-scrim" />
 
-          {/* Official Full Uncropped Brand Logo (Emblem with Name Underneath as in Logo) */}
+          {/* Official Full Uncropped Brand Logo */}
           <div className="edu-auth-emblem">
             <img src="/attendo-school-logo.png" alt="AttendoSchool" />
           </div>
@@ -99,7 +127,7 @@ function Login(){
           </div>
         </div>
 
-        {/* Right Side: Clean Professional Form (Matches Mockup) */}
+        {/* Right Side: Clean Professional Form */}
         <div className="edu-auth-form-side">
           <button type="button" className="edu-back-link" onClick={() => { setEmail('admin@demo-school.local'); setPassword('ChangeMe123!'); }}>
             <ArrowLeft size={14} /> <span>Back</span>
@@ -113,14 +141,34 @@ function Login(){
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
 
           <form onSubmit={submit}>
+            {/* Multi-Tenant Institute Selector */}
             <div className="edu-form-group">
-              <label>Email Address</label>
+              <label>Select Institute / School *</label>
+              <div className="edu-input-wrap">
+                <select
+                  required
+                  className="edu-input edu-select-inst"
+                  value={instituteId}
+                  onChange={e => setInstituteId(e.target.value)}
+                >
+                  <option value="">-- Choose Your Institution --</option>
+                  {institutes.map(inst => (
+                    <option key={inst.id} value={inst.id}>
+                      {inst.name} ({inst.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="edu-form-group">
+              <label>Email / Student ID *</label>
               <div className="edu-input-wrap">
                 <input
                   required
-                  type="email"
+                  type="text"
                   className="edu-input"
-                  placeholder="john52martinez@gmail.com"
+                  placeholder="student@greenwood.local or Roll No. 25"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
@@ -167,10 +215,24 @@ function Login(){
           </form>
 
           <div className="edu-divider">
-            <span>or</span>
+            <span>or quick demo login</span>
           </div>
 
           <div className="edu-demo-pills">
+            <button
+              type="button"
+              className="edu-demo-btn"
+              onClick={() => {
+                const greenwood = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001');
+                if (greenwood) setInstituteId(greenwood.id);
+                setEmail('student@greenwood.local');
+                setPassword('ChangeMe123!');
+              }}
+              title="Quick Student Demo Login"
+            >
+              <GraduationCap size={14} className="edu-role-icon" style={{ color: '#2563eb' }} />
+              <span>Student</span>
+            </button>
             <button
               type="button"
               className="edu-demo-btn"
@@ -183,7 +245,12 @@ function Login(){
             <button
               type="button"
               className="edu-demo-btn"
-              onClick={() => { setEmail('admin@demo-school.local'); setPassword('ChangeMe123!'); }}
+              onClick={() => {
+                const def = institutes[0];
+                if (def) setInstituteId(def.id);
+                setEmail('admin@demo-school.local');
+                setPassword('ChangeMe123!');
+              }}
               title="Quick School Admin Demo Login"
             >
               <School size={14} className="edu-role-icon" style={{ color: '#059669' }} />
@@ -192,7 +259,12 @@ function Login(){
             <button
               type="button"
               className="edu-demo-btn"
-              onClick={() => { setEmail('rahul@demo-school.local'); setPassword('ChangeMe123!'); }}
+              onClick={() => {
+                const def = institutes[0];
+                if (def) setInstituteId(def.id);
+                setEmail('rahul@demo-school.local');
+                setPassword('ChangeMe123!');
+              }}
               title="Quick Teacher Demo Login"
             >
               <GraduationCap size={14} className="edu-role-icon" style={{ color: '#d97706' }} />
@@ -369,7 +441,7 @@ function PageHead({title,sub,button,onClick}:{title:string;sub:string;button?:st
 function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="overlay"><div className="modal"><div className="modal-head"><h3>{title}</h3><button className="close" onClick={close}>×</button></div>{children}</div></div>}
 
 /* ────── Dashboard ────── */
-function Dashboard(){const {user}=useAuth();if(!user)return null;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
+function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role==='STUDENT')return <Navigate to="/student/dashboard" replace/>;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
 
 function AdminHome(){
   const {user}=useAuth();
@@ -1967,6 +2039,16 @@ function App(){return <Routes>
   <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><Invoices/></RoleGuard>}/>
   <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperMonitor/></RoleGuard>}/>
   <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+  {/* Student Portal Routes */}
+  <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/homework" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
   <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
 </Routes>}
 
