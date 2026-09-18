@@ -40,7 +40,7 @@ import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { ThreeDBackground } from './components/ThreeDBackground';
-import { LoginDynamicPreview } from './components/LoginDynamicPreview';
+import { LoginLogoHero } from './components/LoginLogoHero';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -348,12 +348,9 @@ function Login() {
 
       {/* Main Split-Screen Container with 1px Subtle Border */}
       <div className="as-login-frame">
-        {/* Left Column: Interactive Dynamic Multi-Portal Preview Showcase */}
+        {/* Left Column: Official Brand Logo Showcase */}
         <div className="as-hero-col">
-          <LoginDynamicPreview
-            activeRole={loginRole}
-            onSelectRole={handleSelectRole}
-          />
+          <LoginLogoHero />
         </div>
 
         {/* Right Column: Interactive Authentication Canvas */}
