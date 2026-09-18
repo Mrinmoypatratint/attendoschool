@@ -2857,123 +2857,313 @@ header {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ANIMATED INTERACTIVE MASCOT CHARACTER
+   VISME 3D INTERACTIVE ANIMATED HERO (LEFT COLUMN)
    ═══════════════════════════════════════════════════════════════ */
-.as-mascot-container {
-  width: 140px;
-  height: 112px;
-  margin: 0 auto 8px auto;
+.as-visme-hero-container {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   position: relative;
+  z-index: 1;
+}
+
+.as-visme-halo {
+  position: absolute;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.28) 0%, rgba(16, 185, 129, 0.18) 50%, transparent 70%);
+  filter: blur(60px);
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  animation: asHaloPulse 6s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .as-visme-halo {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, rgba(16, 185, 129, 0.22) 50%, transparent 70%);
+}
+
+.as-visme-hero-nav {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.as-visme-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme="dark"] .as-visme-badge {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #93c5fd;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.as-sparkle-icon {
+  color: #f59e0b;
+}
+
+.as-visme-tabs {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  gap: 3px;
+}
+
+[data-theme="dark"] .as-visme-tabs {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+.as-visme-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .as-visme-tab-btn {
+  color: #94a3b8;
+}
+
+.as-visme-tab-btn:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .as-visme-tab-btn:hover {
+  color: #f8fafc;
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.as-visme-tab-btn.active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .as-visme-tab-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+/* Visme Iframe Glass Card */
+.as-visme-iframe-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  box-shadow: 
+    0 20px 45px -10px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme="dark"] .as-visme-iframe-card {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 25px 50px -10px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+.as-visme-card-header {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .as-visme-card-header {
+  border-bottom-color: rgba(51, 65, 85, 0.5);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.as-visme-status-dot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.as-visme-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: asLivePulse 1.8s infinite;
+}
+
+@keyframes asLivePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.as-visme-status-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+[data-theme="dark"] .as-visme-status-text {
+  color: #cbd5e1;
+}
+
+.as-visme-reload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .as-visme-reload-btn {
+  border-color: rgba(71, 85, 105, 0.8);
+  color: #94a3b8;
+}
+
+.as-visme-reload-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+}
+
+[data-theme="dark"] .as-visme-reload-btn:hover {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.as-spin {
+  animation: asSpin 1s linear infinite;
+}
+
+@keyframes asSpin {
+  100% { transform: rotate(360deg); }
+}
+
+/* Viewport for Iframe */
+.as-visme-viewport {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .as-visme-viewport {
+  background: #0f172a;
+}
+
+.as-visme-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  pointer-events: none;
-  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.12));
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.9) 0%, rgba(226, 232, 240, 0.9) 100%);
+  z-index: 2;
 }
 
-[data-theme="dark"] .as-mascot-container {
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+[data-theme="dark"] .as-visme-skeleton {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
 }
 
-.as-mascot-svg {
+.as-visme-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: asSpin 0.8s linear infinite;
+}
+
+.as-visme-loading-text {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .as-visme-loading-text {
+  color: #94a3b8;
+}
+
+.as-visme-iframe {
   width: 100%;
   height: 100%;
-  overflow: visible;
+  border: none;
+  display: block;
+  transition: opacity 0.3s ease;
 }
 
-/* Head breathing / idle animation */
-.mascot-head {
-  transform-origin: 100px 90px;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  animation: mascotBreathe 4s ease-in-out infinite alternate;
-}
-
-@keyframes mascotBreathe {
-  0% { transform: translateY(0) rotate(0deg); }
-  100% { transform: translateY(-1.5px) rotate(0.5deg); }
-}
-
-.mascot-head.head-tilt-down {
-  transform: translateY(3.5px) rotate(-1deg);
-}
-
-/* Tassel gentle sway */
-.mascot-tassel {
-  transform-origin: 100px 29px;
-  animation: mascotTasselSway 3s ease-in-out infinite alternate;
-}
-
-@keyframes mascotTasselSway {
-  0% { transform: rotate(-2.5deg); }
-  100% { transform: rotate(3.5deg); }
-}
-
-/* Eye Pupil smooth transition */
-.mascot-pupil-transition {
-  transition: cx 0.12s ease-out, cy 0.12s ease-out;
-}
-
-/* Eyelid blink */
-.mascot-eyelid {
-  transition: height 0.08s ease-in-out;
-}
-
-/* Hand movements (Covering / Peeking / Down) */
-.mascot-hand {
-  transform-origin: 100px 100px;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.mascot-hand.hand-down-left {
-  transform: translate(-14px, 52px) scale(0.78);
+.as-visme-iframe.loading {
   opacity: 0;
 }
 
-.mascot-hand.hand-down-right {
-  transform: translate(14px, 52px) scale(0.78);
-  opacity: 0;
-}
-
-.mascot-hand.hand-covering-left {
-  transform: translate(0, 0) scale(1);
+.as-visme-iframe.ready {
   opacity: 1;
 }
 
-.mascot-hand.hand-covering-right {
-  transform: translate(0, 0) scale(1);
-  opacity: 1;
+.as-visme-card-footer {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.3);
+  text-align: center;
 }
 
-.mascot-hand.hand-peeking-left {
-  transform: translate(0, 0) scale(1);
-  opacity: 1;
-}
-
-.mascot-hand.hand-peeking-right {
-  transform: translate(11px, 20px) scale(0.92) rotate(10deg);
-  opacity: 0.92;
-}
-
-/* Error state head shake */
-.as-mascot-container.mascot-error .mascot-head {
-  animation: mascotShake 0.4s ease-in-out;
-}
-
-@keyframes mascotShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px) rotate(-3deg); }
-  75% { transform: translateX(6px) rotate(3deg); }
-}
-
-/* Submitting / Success celebration */
-.as-mascot-container.mascot-submitting .mascot-head {
-  animation: mascotBounce 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes mascotBounce {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-7px); }
+[data-theme="dark"] .as-visme-card-footer {
+  border-top-color: rgba(51, 65, 85, 0.5);
+  background: rgba(15, 23, 42, 0.3);
+  color: #94a3b8;
 }
 
 /* Welcome Title Block */
