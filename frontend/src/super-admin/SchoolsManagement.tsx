@@ -329,7 +329,7 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                         <div className="sa-school-avatar">
                           {s.code ? s.code.slice(0, 2) : s.name.slice(0, 2)}
                         </div>
-                        <div>
+                        <div className="sa-school-info">
                           <strong className="sa-school-name">{s.name}</strong>
                           <span className="sa-school-code">{s.code} · {s.city || 'Campus'}</span>
                         </div>

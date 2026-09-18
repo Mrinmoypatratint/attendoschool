@@ -48,7 +48,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
 
   // Academic Sessions
   const [academicYears, setAcademicYears] = useState<any[]>([]);
-  const [activeSession, setActiveSession] = useState<string>('2025–26 Academic Session');
+  const [activeSession, setActiveSession] = useState<string>('2025–26 Session');
   const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false);
 
   // Notifications
@@ -123,8 +123,11 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
         const ayRes = await api.get('/academic-years');
         if (Array.isArray(ayRes.data) && ayRes.data.length > 0) {
           setAcademicYears(ayRes.data);
-          const active = ayRes.data.find((x: any) => x.is_active);
-          if (active) setActiveSession(`${active.name} Academic Session`);
+          const active = ayRes.data.find((x: any) => x.is_active) || ayRes.data[0];
+          if (active) {
+            const clean = active.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
+            setActiveSession(`${clean} Session`);
+          }
         }
       } catch {}
     }
@@ -372,15 +375,16 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
                         key={ay.id}
                         className={`sa-popover-item ${activeSession.includes(ay.name) ? 'active' : ''}`}
                         onClick={() => {
-                          setActiveSession(`${ay.name} Academic Session`);
+                          const clean = ay.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
+                          setActiveSession(`${clean} Session`);
                           setSessionDropdownOpen(false);
                         }}
                       >
                         <div>
-                          <strong>{ay.name} Session</strong>
+                          <strong>{ay.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim()} Session</strong>
                           <span className="sa-popover-item-sub">{ay.is_active ? 'Active Term' : 'Archived Term'}</span>
                         </div>
-                        {activeSession.includes(ay.name) && <Check size={16} className="sa-check-icon" />}
+                        {activeSession.includes(ay.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim()) && <Check size={16} className="sa-check-icon" />}
                       </div>
                     ))}
                   </div>

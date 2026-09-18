@@ -322,7 +322,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
                           <div className="sa-school-avatar">
                             {s.code ? s.code.slice(0, 2) : s.name.slice(0, 2)}
                           </div>
-                          <div>
+                          <div className="sa-school-info">
                             <strong className="sa-school-name">{s.name}</strong>
                             <span className="sa-school-code">{s.code}</span>
                           </div>
@@ -487,8 +487,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <div className="sa-engine-grid">
             <div className="sa-engine-item">
               <div className="sa-engine-left">
-                <Server size={18} />
-                <div>
+                <div className="sa-engine-icon-wrap">
+                  <Server size={18} />
+                </div>
+                <div className="sa-engine-details">
                   <strong>Backend REST API</strong>
                   <span>Express 4.19 / Node.js</span>
                 </div>
@@ -498,8 +500,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
 
             <div className="sa-engine-item">
               <div className="sa-engine-left">
-                <Database size={18} />
-                <div>
+                <div className="sa-engine-icon-wrap">
+                  <Database size={18} />
+                </div>
+                <div className="sa-engine-details">
                   <strong>Cloud Firestore Emulator</strong>
                   <span>Port 8080 (Primary SIS Document Store)</span>
                 </div>
@@ -509,8 +513,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
 
             <div className="sa-engine-item">
               <div className="sa-engine-left">
-                <Database size={18} />
-                <div>
+                <div className="sa-engine-icon-wrap">
+                  <Database size={18} />
+                </div>
+                <div className="sa-engine-details">
                   <strong>PostgreSQL Relational DB</strong>
                   <span>Port 5432 (Relational Engine)</span>
                 </div>
@@ -522,8 +528,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
 
             <div className="sa-engine-item">
               <div className="sa-engine-left">
-                <CreditCard size={18} />
-                <div>
+                <div className="sa-engine-icon-wrap">
+                  <CreditCard size={18} />
+                </div>
+                <div className="sa-engine-details">
                   <strong>Payment Processing</strong>
                   <span>Razorpay Mock Sandbox</span>
                 </div>
