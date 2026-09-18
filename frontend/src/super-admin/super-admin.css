@@ -3152,3 +3152,478 @@ p.sa-hero-sub {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   10. Subscriptions & Tier Packaging — Tier-1 Enterprise Design System
+   ═════════════════════════════════════════════════════════════════════ */
+
+.sa-subs-view {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* 4-KPI Telemetry Strip */
+.sa-subs-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .sa-subs-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .sa-subs-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sa-subs-kpi-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.15s ease;
+}
+
+.sa-subs-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .sa-subs-kpi-card {
+  background: #0f172a;
+  border-color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .sa-subs-kpi-card:hover {
+  border-color: #334155;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+.sa-subs-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sa-subs-kpi-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+[data-theme="dark"] .sa-subs-kpi-label {
+  color: #94a3b8;
+}
+
+.sa-subs-kpi-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sa-subs-kpi-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+[data-theme="dark"] .sa-subs-kpi-val {
+  color: #f8fafc;
+}
+
+.sa-subs-kpi-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+[data-theme="dark"] .sa-subs-kpi-sub {
+  color: #94a3b8;
+}
+
+/* Billing Switcher */
+.sa-billing-switch-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.sa-billing-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  gap: 4px;
+}
+
+[data-theme="dark"] .sa-billing-switch-wrap {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.sa-billing-switch-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.sa-billing-switch-btn:hover {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .sa-billing-switch-btn:hover {
+  color: #f8fafc;
+}
+
+.sa-billing-switch-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .sa-billing-switch-btn.active {
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.sa-billing-save-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"] .sa-billing-save-pill {
+  background: rgba(22, 163, 74, 0.25);
+  color: #4ade80;
+}
+
+/* Plan Cards Grid */
+.sa-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.sa-plan-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.sa-plan-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .sa-plan-card {
+  background: #0f172a;
+  border-color: #1e293b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .sa-plan-card:hover {
+  border-color: #334155;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* Institutional Featured Card (Clean Enterprise Outline, No Neon AI Ribbon) */
+.sa-plan-card.featured {
+  border-color: #2563eb;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme="dark"] .sa-plan-card.featured {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+}
+
+.sa-plan-featured-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+[data-theme="dark"] .sa-plan-featured-tag {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.sa-plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sa-plan-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sa-plan-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .sa-plan-title {
+  color: #f8fafc;
+}
+
+.sa-plan-desc {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  min-height: 40px;
+}
+
+[data-theme="dark"] .sa-plan-desc {
+  color: #94a3b8;
+}
+
+/* Pricing box */
+.sa-plan-price-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .sa-plan-price-box {
+  background: #0b1120;
+  border-color: #1e293b;
+}
+
+.sa-plan-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sa-plan-price-num {
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+[data-theme="dark"] .sa-plan-price-num {
+  color: #f8fafc;
+}
+
+.sa-plan-price-period {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .sa-plan-price-period {
+  color: #94a3b8;
+}
+
+.sa-plan-price-billed {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+[data-theme="dark"] .sa-plan-price-billed {
+  color: #4ade80;
+}
+
+/* Features checklist */
+.sa-plan-specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 22px;
+  flex: 1;
+}
+
+.sa-plan-spec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .sa-plan-spec-item {
+  color: #cbd5e1;
+}
+
+.sa-plan-spec-item strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .sa-plan-spec-item strong {
+  color: #f8fafc;
+}
+
+.sa-spec-icon-check {
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+[data-theme="dark"] .sa-spec-icon-check {
+  color: #4ade80;
+}
+
+.sa-spec-icon-star {
+  color: #2563eb;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+[data-theme="dark"] .sa-spec-icon-star {
+  color: #60a5fa;
+}
+
+/* Card footer */
+.sa-plan-footer {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .sa-plan-footer {
+  border-top-color: #1e293b;
+}
+
+.sa-plan-adoption {
+  font-size: 12px;
+  color: #64748b;
+}
+
+[data-theme="dark"] .sa-plan-adoption {
+  color: #94a3b8;
+}
+
+.sa-plan-adoption strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .sa-plan-adoption strong {
+  color: #f8fafc;
+}
+
+/* Active Tenant Ledger */
+.sa-ledger-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.sa-ledger-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .sa-ledger-progress-bar {
+  background: #334155;
+}
+
+.sa-ledger-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.sa-ledger-progress-fill.green {
+  background: #10b981;
+}
+
+.sa-ledger-progress-fill.amber {
+  background: #f59e0b;
+}
+
+.sa-ledger-progress-fill.red {
+  background: #ef4444;
+}
+
+.sa-ledger-progress-pct {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 32px;
+}
+
+[data-theme="dark"] .sa-ledger-progress-pct {
+  color: #94a3b8;
+}
+
