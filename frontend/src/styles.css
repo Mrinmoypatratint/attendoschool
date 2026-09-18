@@ -7972,66 +7972,75 @@ header {
   z-index: 2;
 }
 
-/* Subtle Bottom Scene Navigation Pill */
+/* Centered Bottom Scene Navigation Pill (completely clear of bottom-left robotic date & bottom-right clock) */
 .as-scene-indicator-bar {
-  position: absolute;
-  bottom: 24px;
-  left: 32px;
-  z-index: 25;
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15, 23, 42, 0.75);
-  padding: 6px 14px;
+  background: rgba(11, 17, 33, 0.88);
+  padding: 8px 18px;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  pointer-events: auto;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  pointer-events: auto !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(249, 115, 22, 0.22);
+  user-select: none;
 }
 
 .as-scene-label {
   font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.08em;
 }
 
 .as-scene-dot {
   background: transparent;
   border: none;
-  padding: 4px;
+  padding: 6px 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   outline: none;
   position: relative;
+  pointer-events: auto !important;
+}
+
+.as-scene-dot:hover .as-scene-dot-inner {
+  background: rgba(255, 255, 255, 0.75);
+  transform: scale(1.2);
 }
 
 .as-scene-dot-inner {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: block;
 }
 
 .as-scene-dot.active .as-scene-dot-inner {
   background: #f97316;
-  width: 22px;
-  border-radius: 4px;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.85);
+  width: 24px;
+  border-radius: 6px;
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.95);
 }
 
 .as-scene-tooltip {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fed7aa;
   display: none;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .as-scene-dot.active .as-scene-tooltip {
@@ -8976,72 +8985,295 @@ header {
   align-self: center;
 }
 
-/* Responsive Duo Layout */
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE LOGIN PAGE & MOBILE ALIGNMENT ENGINE (ATTENDOSCHOOL)
+   ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 960px) {
+  /* 1. Hide Fixed Robotic HUD Panels on mobile to prevent horizontal overflow and card overlap */
+  .as-robotic-bottom-left,
+  .as-robotic-bottom-right {
+    display: none !important;
+  }
+
+  /* 2. Mobile Page Container */
+  .as-simple-page {
+    padding: 16px 16px 70px 16px !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 3. Top Brand & Utility Header: clean alignment without collisions */
   .as-top-left-brand {
-    position: static;
-    margin-bottom: 20px;
-    align-self: flex-start;
+    position: static !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    margin: 0 auto 18px auto !important;
+    padding-right: 110px !important; /* Reserves room for absolute top bar */
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    align-self: center !important;
   }
+
   .as-top-left-brand .as-simple-logo-img {
-    width: 60px;
-    height: 60px;
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+    flex-shrink: 0 !important;
   }
+
   .as-top-left-brand .as-simple-brand-title {
-    font-size: 24px;
+    font-size: 20px !important;
+    line-height: 1.15 !important;
   }
+
+  .as-top-left-brand .as-simple-brand-tagline {
+    font-size: 11px !important;
+    margin-top: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .as-simple-top-bar {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    z-index: 50 !important;
+    gap: 6px !important;
+  }
+
+  .as-simple-util-btn {
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* 4. Main Container & Duo Split on Mobile */
+  .as-simple-main {
+    width: 100% !important;
+    max-width: 520px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
   .as-duo-login-container {
-    grid-template-columns: 1fr;
-    max-width: 520px;
-    min-height: auto;
-    gap: 24px;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 520px !important;
+    min-height: auto !important;
+    gap: 16px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
   }
+
+  /* 5. Left Pane: Dynamic Handwriting Quote on Mobile */
   .as-duo-left-pane {
-    border-right: none;
-    border-bottom: none;
-    padding: 10px 0;
+    width: 100% !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
-  .as-duo-right-pane {
-    padding: 10px 0;
+
+  .as-hw-card {
+    padding: 12px 16px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    box-sizing: border-box !important;
   }
+
+  .as-hw-text-area {
+    min-height: 44px !important;
+  }
+
   .as-hw-text {
-    font-size: 42px;
+    font-size: clamp(20px, 5.2vw, 28px) !important;
+    line-height: 1.25 !important;
   }
+
+  .as-hw-cursor {
+    font-size: clamp(20px, 5.2vw, 28px) !important;
+  }
+
+  .as-hw-author-row {
+    margin-top: 6px !important;
+    padding-top: 4px !important;
+  }
+
+  .as-hw-author {
+    font-size: 20px !important;
+  }
+
+  .as-hw-dash {
+    font-size: 20px !important;
+  }
+
+  .as-hw-context {
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+  }
+
+  /* 6. Right Pane: Glassmorphic Authentication Card */
+  .as-duo-right-pane {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: rgba(11, 17, 33, 0.82) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 24px !important;
+    padding: 24px 20px !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .as-duo-form-header {
+    margin-bottom: 16px !important;
+    text-align: center !important;
+  }
+
+  .as-form-title {
+    font-size: 22px !important;
+    line-height: 1.2 !important;
+  }
+
+  .as-form-subtitle {
+    font-size: 13px !important;
+    margin-top: 4px !important;
+  }
+
+  .as-simple-prompt-text {
+    font-size: 14.5px !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* Symmetrical 2x2 Grid for Role Cards on Mobile */
+  .as-simple-role-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .as-simple-role-card {
+    min-height: 98px !important;
+    padding: 14px 8px !important;
+    border-radius: 16px !important;
+    gap: 6px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .as-simple-role-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+
+  .as-simple-role-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .as-simple-role-title {
+    font-size: 13.5px !important;
+  }
+
+  .as-simple-role-sub {
+    font-size: 10.5px !important;
+    display: none !important;
+  }
+
+  /* Step 2 Form adjustments */
+  .as-simple-step2-form {
+    width: 100% !important;
+  }
+
+  .as-simple-role-bar {
+    margin-bottom: 12px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .as-simple-field {
+    margin-bottom: 12px !important;
+  }
+
+  .as-simple-input,
+  .as-simple-select-trigger {
+    height: 44px !important;
+    font-size: 15px !important;
+    border-radius: 10px !important;
+  }
+
+  .as-simple-meta-row {
+    margin-bottom: 16px !important;
+    font-size: 12px !important;
+  }
+
+  .as-simple-submit-btn {
+    height: 46px !important;
+    font-size: 15px !important;
+    border-radius: 10px !important;
+  }
+
+  /* 7. Scene Indicator Dots: Centered, visible, and touch-optimized on Mobile */
   .as-scene-indicator-bar {
-    bottom: 12px;
-    left: 16px;
-    padding: 4px 10px;
+    position: fixed !important;
+    bottom: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 150 !important;
+    display: flex !important;
+    padding: 6px 14px !important;
+    gap: 8px !important;
+    background: rgba(11, 17, 33, 0.92) !important;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .as-scene-dot {
+    min-width: 30px !important;
+    min-height: 30px !important;
+    padding: 4px !important;
   }
 }
 
-@media (max-width: 540px) {
+@media (max-width: 480px) {
   .as-simple-page {
-    padding: 16px 10px;
+    padding: 12px 10px 65px 10px !important;
   }
-  .as-duo-login-container {
-    border-radius: 0;
+
+  .as-top-left-brand {
+    padding-right: 96px !important;
+    margin-bottom: 12px !important;
   }
-  .as-duo-left-pane {
-    padding: 10px 0;
+
+  .as-top-left-brand .as-simple-brand-title {
+    font-size: 18px !important;
   }
+
+  .as-top-left-brand .as-simple-brand-tagline {
+    display: none !important;
+  }
+
   .as-duo-right-pane {
-    padding: 10px 0;
+    padding: 18px 14px !important;
+    border-radius: 20px !important;
   }
-  .as-left-brand-header .as-simple-brand-title {
-    font-size: 24px;
-  }
-  .as-left-brand-header .as-simple-logo-img {
-    width: 50px;
-    height: 50px;
-  }
-  .as-hw-text {
-    font-size: 28px;
-  }
-  .as-simple-role-grid {
-    grid-template-columns: 1fr;
-  }
-  .as-scene-indicator-bar {
-    display: none;
+
+  .as-hw-card {
+    padding: 8px 12px !important;
   }
 }
 

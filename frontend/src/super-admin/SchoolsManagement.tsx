@@ -109,6 +109,18 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.closest('.sa-action-dropdown') || target.closest('.sa-more-btn'))) {
+        return;
+      }
+      setActiveMenuId(null);
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // Filter & Search computation
   const filteredSchools = schools.filter(s => {
     const q = search.toLowerCase().trim();
@@ -365,7 +377,10 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                       <button
                         className="sa-more-btn"
                         title="Actions"
-                        onClick={() => setActiveMenuId(activeMenuId === s.id ? null : s.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === s.id ? null : s.id);
+                        }}
                       >
                         <MoreHorizontal size={16} />
                       </button>

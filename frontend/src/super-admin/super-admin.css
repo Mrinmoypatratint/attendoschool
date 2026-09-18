@@ -2003,21 +2003,27 @@ p.sa-hero-sub {
   right: 0;
   top: calc(100% + 4px);
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-  z-index: 50;
-  min-width: 170px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 9999 !important;
+  min-width: 180px;
   padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  animation: saDropdownIn 0.15s ease-out;
+}
+
+@keyframes saDropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 [data-theme="dark"] .sa-action-dropdown {
   background: #0f172a;
-  border-color: #1e293b;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+  border-color: #334155;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
 }
 
 .sa-action-dropdown button {

@@ -89,6 +89,18 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.closest('.sa-action-dropdown') || target.closest('.sa-more-btn'))) {
+        return;
+      }
+      setActiveMenuId(null);
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   async function handleToggleStatus(schoolId: string, currentStatus: string) {
     const nextStatus = currentStatus === 'ACTIVE' || currentStatus === 'Active' ? 'SUSPENDED' : 'ACTIVE';
     try {
@@ -441,7 +453,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
                         <button
                           className="sa-more-btn"
                           title="Actions"
-                          onClick={() => setActiveMenuId(activeMenuId === s.id ? null : s.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuId(activeMenuId === s.id ? null : s.id);
+                          }}
                         >
                           <MoreHorizontal size={16} />
                         </button>
