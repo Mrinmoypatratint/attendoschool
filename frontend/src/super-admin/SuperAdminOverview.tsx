@@ -5,7 +5,7 @@ import {
   School, Users, Clock, BarChart3, FileText,
   TrendingUp, TrendingDown, Layers, ChevronRight, MoreHorizontal,
   Plus, CreditCard, AlertTriangle, UserCheck, Server, Database,
-  RefreshCw, ShieldAlert, GraduationCap, CheckCircle2, XCircle
+  RefreshCw, ShieldAlert, GraduationCap, CheckCircle2, XCircle, Search
 } from 'lucide-react';
 import { OverviewMetrics, SchoolRecord, SubscriptionPlan, AuditLogRecord } from './types';
 
@@ -34,6 +34,18 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
   const [renewDays, setRenewDays] = useState(30);
   const [renewAmount, setRenewAmount] = useState(999);
   const [renewBusy, setRenewBusy] = useState(false);
+
+  const [tableSearch, setTableSearch] = useState('');
+  const [tableStatus, setTableStatus] = useState<'ALL' | 'ACTIVE' | 'EXPIRING' | 'SUSPENDED'>('ALL');
+
+  const navigateTo = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      window.location.hash = path;
+      try { nav(path); } catch (e) {}
+    }
+  };
 
   async function loadData() {
     setLoading(true);
@@ -113,6 +125,20 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
     ? Math.round(((metrics.expiredSchools || 0) / metrics.totalSchools) * 100)
     : 0;
 
+  const filteredSchools = schools.filter(s => {
+    const matchesSearch = !tableSearch || 
+      s.name.toLowerCase().includes(tableSearch.toLowerCase()) || 
+      (s.code && s.code.toLowerCase().includes(tableSearch.toLowerCase())) ||
+      (s.admin_email && s.admin_email.toLowerCase().includes(tableSearch.toLowerCase()));
+    const rawStatus = (s.status || '').toUpperCase();
+    const matchesStatus = 
+      tableStatus === 'ALL' ||
+      (tableStatus === 'ACTIVE' && rawStatus === 'ACTIVE') ||
+      (tableStatus === 'SUSPENDED' && rawStatus === 'SUSPENDED') ||
+      (tableStatus === 'EXPIRING' && (rawStatus.includes('EXPIR') || rawStatus === 'EXPIRING'));
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="sa-overview-view">
       {/* ─── Hero Welcome Row ─── */}
@@ -128,33 +154,29 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
               className="sa-btn-primary"
               onClick={() => {
                 if (onOpenCreateSchool) onOpenCreateSchool();
-                else nav('/super-admin/schools?action=create');
+                else navigateTo('/super-admin/schools?action=create');
               }}
             >
               <Plus size={16} /> <span>Register New School</span>
             </button>
             <button
               className="sa-btn-secondary"
-              onClick={() => nav('/super-admin/schools')}
+              onClick={() => navigateTo('/super-admin/schools')}
             >
               <span>View All Campuses</span> <ChevronRight size={15} />
             </button>
           </div>
         </div>
 
-        <div className="sa-hero-graphic">
-          <img
-            src="/school_campus_hero.jpg"
-            alt="Connected Schools"
-            className="sa-hero-campus-img"
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = 'none';
-            }}
-          />
-          <div className="sa-hero-campus-scrim" />
-          <div className="sa-hero-tag">
-            <span className="sa-hero-tag-main">Active Multi-Tenant Engine</span>
-            <span className="sa-hero-tag-sub">Dual Firestore + PostgreSQL Persistence</span>
+        <div className="sa-hero-telemetry-badge">
+          <div className="sa-telemetry-pill">
+            <span className="sa-telemetry-dot" />
+            <span>Platform Status: {systemHealth.status}</span>
+          </div>
+          <div className="sa-telemetry-meta">
+            <span>Primary SIS: <b>Firestore ({systemHealth.firestore === 'connected' ? 'Connected' : 'Active'})</b></span>
+            <span>Relational DB: <b>PostgreSQL ({systemHealth.db === 'connected' ? 'Connected' : 'Dual Standby'})</b></span>
+            <span>Gateway: <b>Razorpay Sandbox (Ready)</b></span>
           </div>
         </div>
       </div>
@@ -173,6 +195,9 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <div className="sa-stat-value">
             {loading ? '…' : (metrics?.totalSchools ?? schools.length)}
           </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-blue" style={{ width: '100%' }} />
+          </div>
           <div className="sa-stat-sub-text">
             <span>Enrolled in directory</span>
           </div>
@@ -190,6 +215,9 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <div className="sa-stat-value">
             {loading ? '…' : (metrics?.activeSchools ?? 0)}
           </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-green" style={{ width: `${Math.max(activeRatio, 5)}%` }} />
+          </div>
           <div className="sa-stat-sub-text">
             <span>Valid active subscriptions</span>
           </div>
@@ -203,9 +231,12 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <span className="sa-stat-kpi-badge warning">{expiredRatio}% Expired</span>
           </div>
-          <span className="sa-stat-label">Expired / Needs Renewal</span>
+          <span className="sa-stat-label">Expired / Attention</span>
           <div className="sa-stat-value">
             {loading ? '…' : (metrics?.expiredSchools ?? 0)}
+          </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-amber" style={{ width: `${Math.max(expiredRatio, 5)}%` }} />
           </div>
           <div className="sa-stat-sub-text">
             <span>Requires license extension</span>
@@ -224,6 +255,9 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <div className="sa-stat-value">
             {loading ? '…' : (metrics?.totalStudents ?? 0).toLocaleString('en-IN')}
           </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-purple" style={{ width: '85%' }} />
+          </div>
           <div className="sa-stat-sub-text">
             <span>Across all institutional rosters</span>
           </div>
@@ -241,6 +275,9 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <div className="sa-stat-value">
             {loading ? '…' : `₹${Number(metrics?.totalRevenue ?? 0).toLocaleString('en-IN')}`}
           </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-amber" style={{ width: '90%' }} />
+          </div>
           <div className="sa-stat-sub-text">
             <span>Total subscription collections</span>
           </div>
@@ -257,6 +294,9 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
           <span className="sa-stat-label">Pending Invoices</span>
           <div className="sa-stat-value">
             {loading ? '…' : (metrics?.pendingPayments ?? 0)}
+          </div>
+          <div className="sa-stat-micro-bar">
+            <div className="sa-micro-fill bg-slate" style={{ width: metrics?.pendingPayments ? '40%' : '8%' }} />
           </div>
           <div className="sa-stat-sub-text">
             <span>Invoices awaiting settlement</span>
@@ -278,17 +318,65 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
                 className="sa-btn-primary-small"
                 onClick={() => {
                   if (onOpenCreateSchool) onOpenCreateSchool();
-                  else nav('/super-admin/schools?action=create');
+                  else navigateTo('/super-admin/schools?action=create');
                 }}
               >
                 <Plus size={14} /> <span>New School</span>
               </button>
               <button
                 className="sa-link-btn"
-                onClick={() => nav('/super-admin/schools')}
+                onClick={() => navigateTo('/super-admin/schools')}
               >
                 <span>View Full Directory</span> <ChevronRight size={14} />
               </button>
+            </div>
+          </div>
+
+          {/* Interactive Search & Filter Controls */}
+          <div className="sa-table-controls">
+            <div className="sa-filter-tabs">
+              <button
+                className={`sa-filter-tab ${tableStatus === 'ALL' ? 'active' : ''}`}
+                onClick={() => setTableStatus('ALL')}
+              >
+                All ({schools.length})
+              </button>
+              <button
+                className={`sa-filter-tab ${tableStatus === 'ACTIVE' ? 'active' : ''}`}
+                onClick={() => setTableStatus('ACTIVE')}
+              >
+                Active ({schools.filter(s => (s.status || '').toUpperCase() === 'ACTIVE').length})
+              </button>
+              <button
+                className={`sa-filter-tab ${tableStatus === 'EXPIRING' ? 'active' : ''}`}
+                onClick={() => setTableStatus('EXPIRING')}
+              >
+                Expiring
+              </button>
+              <button
+                className={`sa-filter-tab ${tableStatus === 'SUSPENDED' ? 'active' : ''}`}
+                onClick={() => setTableStatus('SUSPENDED')}
+              >
+                Suspended ({schools.filter(s => (s.status || '').toUpperCase() === 'SUSPENDED').length})
+              </button>
+            </div>
+            <div className="sa-inline-search">
+              <Search size={14} style={{ color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder="Filter by name or code..."
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+              />
+              {tableSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTableSearch('')}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           </div>
 
@@ -307,14 +395,14 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
                 </tr>
               </thead>
               <tbody>
-                {schools.length === 0 ? (
+                {filteredSchools.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="sa-td-empty">
-                      No schools registered in the database yet.
+                      {schools.length === 0 ? 'No schools registered in the database yet.' : 'No schools matching current filter criteria.'}
                     </td>
                   </tr>
                 ) : (
-                  schools.slice(0, 5).map((s, idx) => (
+                  filteredSchools.slice(0, 6).map((s, idx) => (
                     <tr key={s.id}>
                       <td className="sa-td-num">{idx + 1}</td>
                       <td>
@@ -392,7 +480,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => nav('/super-admin/subscriptions')}
+              onClick={() => navigateTo('/super-admin/subscriptions')}
             >
               <span>Manage Plans</span> <ChevronRight size={14} />
             </button>
@@ -407,7 +495,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
               <div
                 key={p.id}
                 className="sa-plan-row"
-                onClick={() => nav('/super-admin/subscriptions')}
+                onClick={() => navigateTo('/super-admin/subscriptions')}
               >
                 <div className="sa-plan-row-left">
                   <div className="sa-plan-icon-wrap">
@@ -439,7 +527,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => nav('/super-admin/audit-logs')}
+              onClick={() => navigateTo('/super-admin/audit-logs')}
             >
               <span>View Full Trail</span> <ChevronRight size={14} />
             </button>
@@ -478,7 +566,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => nav('/super-admin/monitoring')}
+              onClick={() => navigateTo('/super-admin/monitor')}
             >
               <span>Platform Health</span> <ChevronRight size={14} />
             </button>

@@ -29,7 +29,7 @@ export const SuperAdminModule: React.FC = () => {
     if (hash === '/subscriptions') return '/super-admin/subscriptions';
     if (hash === '/payments') return '/super-admin/payments';
     if (hash === '/invoices') return '/super-admin/invoices';
-    if (hash === '/monitor') return '/super-admin/monitor';
+    if (hash === '/monitor' || hash === '/monitoring') return '/super-admin/monitor';
     if (hash === '/analytics') return '/super-admin/analytics';
     if (hash === '/people' || hash === '/users') return '/super-admin/users';
     if (hash === '/permissions' || hash === '/roles') return '/super-admin/roles';
@@ -67,12 +67,15 @@ export const SuperAdminModule: React.FC = () => {
       case '/super-admin/invoices':
         return <InvoicesManagement />;
       case '/super-admin/monitor':
+      case '/super-admin/monitoring':
         return <MonitoringHealth />;
       case '/super-admin/analytics':
         return <PlatformAnalytics />;
       case '/super-admin/users':
+      case '/super-admin/people':
         return <PeopleDirectory />;
       case '/super-admin/roles':
+      case '/super-admin/permissions':
         return <RolesPermissions />;
       case '/super-admin/security':
         return <SecurityCenter />;

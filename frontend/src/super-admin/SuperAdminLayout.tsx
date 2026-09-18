@@ -32,11 +32,10 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  // Dark mode
+  // Dark mode (default to crisp light enterprise theme)
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return saved === 'dark';
   });
 
   useEffect(() => {
@@ -188,7 +187,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
         { path: '/super-admin/subscriptions', label: 'Subscriptions', icon: Layers },
         { path: '/super-admin/payments', label: 'Payments', icon: CreditCard },
         { path: '/super-admin/invoices', label: 'Invoices', icon: FileText },
-        { path: '/super-admin/monitoring', label: 'Monitoring', icon: Eye }
+        { path: '/super-admin/monitor', label: 'Monitoring', icon: Eye }
       ]
     },
     {
@@ -210,7 +209,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     {
       title: 'SYSTEM',
       items: [
-        { path: '/super-admin/monitoring', label: 'System Health', icon: Server },
+        { path: '/super-admin/monitor', label: 'System Health', icon: Server },
         { path: '/backups', label: 'Backups', icon: RefreshCw },
         { path: '/super-admin/settings', label: 'Settings', icon: Settings }
       ]
