@@ -272,16 +272,23 @@ npm run dev
 
 ## 6. Default User Accounts & Credentials
 
+The AttendoSchool sign-in interface provides 4 specialized login portals:
+1. **Administrator Login**: Central platform and SaaS administration. Bypasses school selection with global multi-tenant access.
+2. **School Admin Login**: Institutional management and Principal portal. Enforces selecting the school name before entering credentials.
+3. **Teacher Login**: Faculty portal for daily attendance and timetable. Enforces selecting the school name before entering credentials.
+4. **Student Login**: Student portal for attendance, timetables, homework, and exams. Enforces selecting the school name before entering credentials.
+
 All seeded accounts share the default development password: **`ChangeMe123!`**
 
-| Persona | Role | Email | Password | Accessible Features |
+| Login Portal | Role | Identifier / Email | School Selection | Accessible Features |
 |---|---|---|---|---|
-| **Platform Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School Onboarding, Subscriptions, Platform Analytics, System Backups, RBAC Management |
-| **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student & Teacher Directories, Routines, Attendance Corrections, Classrooms, Billing |
-| **Classroom Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's Assigned Timetable Slots, Class Attendance Taking, History, Offline Mode |
+| **Administrator Login** | `SUPER_ADMIN` | `superadmin@attendance.local` | *Not required (Global)* | School Onboarding, Subscriptions, Platform Analytics, System Backups, RBAC Management |
+| **School Admin Login** | `SCHOOL_ADMIN` | `admin@demo-school.local` | Greenwood International School | Student & Teacher Directories, Routines, Attendance Corrections, Classrooms, Billing |
+| **Teacher Login** | `TEACHER` | `rahul@demo-school.local`<br>`priya@demo-school.local` | Greenwood International School | Today's Assigned Timetable Slots, Class Attendance Taking, History, Offline Mode |
+| **Student Login** | `STUDENT` | `student@greenwood.local`<br>(or Roll No. `25`) | Greenwood International School | Today Timetable, Attendance KPI, Homework & Assignments, Exams & Results, Leave Requests |
 
 > [!TIP]
-> Use the **Quick Demo Switcher** buttons on the redesigned login screen (`Super Admin`, `School Admin`, `Teacher`) to auto-fill credentials instantly.
+> On the sign-in screen at `http://localhost:5173`, click on any of the 4 tabs (**Administrator**, **School Admin**, **Teacher**, **Student**) to switch portals. Each tab features a 1-click **"Autofill Demo Credentials"** button for immediate testing.
 
 ---
 

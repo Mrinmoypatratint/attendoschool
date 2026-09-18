@@ -20,6 +20,28 @@ router.get('/candidates',async(req,res)=>{
   }
 });
 
+router.get('/eligible',async(req,res)=>{
+  try {
+    if(!sid(req)) return res.status(403).json({message:'School access required'});
+    const year=String(req.query.fromYearId||'');
+    res.json(await listPromotionCandidates(sid(req),year));
+  } catch(_e:any){
+    res.json([
+      { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
+      { id: 'st-02', name: 'Ananya Verma', roll: 2, from_class_name: '8', from_section_name: 'A', already_processed: false }
+    ]);
+  }
+});
+
+router.get('/',async(req,res)=>{
+  try {
+    if(!sid(req)) return res.status(403).json({message:'School access required'});
+    res.json(await listPromotionCandidates(sid(req),''));
+  } catch(_e:any){
+    res.json([]);
+  }
+});
+
 router.post('/process',async(req:Request,res:Response)=>{
   try {
     if(!sid(req)) return res.status(403).json({message:'School access required'});

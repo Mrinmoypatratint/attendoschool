@@ -12,13 +12,15 @@ export type AuthUser = {
   studentId?: string;
   classId?: string;
   sectionId?: string;
+  schoolName?: string;
 };
 export interface AuthRequest extends Request { user?: AuthUser }
 
 export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
   const h=req.headers.authorization;
-  if(!h?.startsWith('Bearer ')) return res.status(401).json({message:'Authentication required'});
-  try { req.user=jwt.verify(h.slice(7),env.jwtSecret) as AuthUser; next(); }
+  const token = h?.startsWith('Bearer ') ? h.slice(7) : (req.query?.token as string);
+  if(!token) return res.status(401).json({message:'Authentication required'});
+  try { req.user=jwt.verify(token,env.jwtSecret) as AuthUser; next(); }
   catch { return res.status(401).json({message:'Invalid or expired token'}); }
 }
 export function requireRoles(...roles:Role[]) {

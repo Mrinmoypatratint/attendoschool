@@ -31,11 +31,11 @@ async function seed() {
   });
 
   // 2. Demo School: Greenwood International School
-  const schoolRef = collections.schools().doc('school-greenwood-001');
-  batch.set(schoolRef, {
-    id: 'school-greenwood-001',
+  const schoolId = '00000000-0000-0000-0000-000000000001';
+  const schoolData = {
+    id: schoolId,
     name: 'Greenwood International School',
-    code: 'GWIS-2025',
+    code: 'GIS001',
     address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka',
     phone: '+91 98765 43210',
     email: 'contact@greenwood.edu.in',
@@ -46,13 +46,16 @@ async function seed() {
     subscriptionStart: now,
     subscriptionEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: now
-  });
+  };
+  batch.set(collections.schools().doc(schoolId), schoolData);
+  // Alias for compatibility
+  batch.set(collections.schools().doc('school-greenwood-001'), { ...schoolData, id: 'school-greenwood-001' });
 
   // 3. School Admin: admin@demo-school.local
   const schoolAdminRef = collections.users().doc('user-schooladmin-001');
   batch.set(schoolAdminRef, {
     id: 'user-schooladmin-001',
-    schoolId: 'school-greenwood-001',
+    schoolId: schoolId,
     name: 'Greenwood Principal Admin',
     email: 'admin@demo-school.local',
     passwordHash,
@@ -62,16 +65,44 @@ async function seed() {
     createdAt: now
   });
 
-  // 4. Demo Teacher: rahul@demo-school.local
+  // 4. Demo Teacher 1: rahul@demo-school.local
   const teacherRef = collections.users().doc('user-teacher-001');
   batch.set(teacherRef, {
     id: 'user-teacher-001',
-    schoolId: 'school-greenwood-001',
+    schoolId: schoolId,
     name: 'Rahul Sen (Senior Faculty)',
     email: 'rahul@demo-school.local',
     passwordHash,
     role: 'TEACHER',
     phone: '+91 98765 43212',
+    status: 'ACTIVE',
+    createdAt: now
+  });
+
+  // 4b. Demo Teacher 2: priya@demo-school.local
+  const teacher2Ref = collections.users().doc('user-teacher-002');
+  batch.set(teacher2Ref, {
+    id: 'user-teacher-002',
+    schoolId: schoolId,
+    name: 'Priya Patel (Science Dept)',
+    email: 'priya@demo-school.local',
+    passwordHash,
+    role: 'TEACHER',
+    phone: '+91 98765 43213',
+    status: 'ACTIVE',
+    createdAt: now
+  });
+
+  // 4c. Demo Student: student@greenwood.local
+  const studentUserRef = collections.users().doc('user-student-001');
+  batch.set(studentUserRef, {
+    id: 'user-student-001',
+    schoolId: schoolId,
+    name: 'Rohan Sharma',
+    email: 'student@greenwood.local',
+    passwordHash,
+    role: 'STUDENT',
+    phone: '+91 98000 11003',
     status: 'ACTIVE',
     createdAt: now
   });
@@ -125,7 +156,7 @@ async function seed() {
     const stRef = collections.students().doc(st.id);
     batch.set(stRef, {
       ...st,
-      schoolId: 'school-greenwood-001',
+      schoolId: schoolId,
       status: 'ACTIVE',
       createdAt: now
     });
@@ -136,7 +167,8 @@ async function seed() {
   console.log('   - 1 Super Admin: superadmin@attendance.local');
   console.log('   - 1 Demo School: Greenwood International School (school-greenwood-001)');
   console.log('   - 1 School Admin: admin@demo-school.local');
-  console.log('   - 1 Teacher: rahul@demo-school.local');
+  console.log('   - 2 Teachers: rahul@demo-school.local, priya@demo-school.local');
+  console.log('   - 1 Student: student@greenwood.local');
   console.log('   - 3 Subscription Plans (Basic, Standard, Enterprise)');
   console.log('   - 5 Demo Students in Class 10-A');
 }

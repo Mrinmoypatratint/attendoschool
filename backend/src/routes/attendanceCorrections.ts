@@ -27,6 +27,18 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(demoCorrections);
 });
 
+router.get('/history', async (req: Request, res: Response) => {
+  try {
+    const sid = schoolId(req);
+    if (!sid) return res.status(403).json({ message: 'School access required' });
+    const list = await listCorrections(sid);
+    if (list && list.length) {
+      return res.json(list.filter((c: any) => c.status !== 'PENDING'));
+    }
+  } catch (_e: any) {}
+  res.json(demoCorrections.filter(c => c.status !== 'PENDING'));
+});
+
 router.post('/', async (req: Request, res: Response) => {
   try {
     const u = user(req);

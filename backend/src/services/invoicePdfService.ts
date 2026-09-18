@@ -4,7 +4,7 @@ import { pool } from '../db';
 import { env } from '../config/env';
 
 export async function buildInvoicePdf(invoiceId:string):Promise<Buffer>{
- const q=await pool.query(`SELECT i.*,s.name school_name,s.code school_code,s.gstin,billing_address,s.enquiry_number,
+ const q=await pool.query(`SELECT i.*,s.name school_name,s.code school_code,s.gstin,i.billing_address,s.enquiry_number,
    p.provider,p.provider_order_id,p.provider_payment_id
    FROM subscription_invoices i JOIN schools s ON s.id=i.school_id JOIN payments p ON p.id=i.payment_id
    WHERE i.id=$1`,[invoiceId]);

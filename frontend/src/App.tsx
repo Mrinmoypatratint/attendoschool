@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useRef} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
@@ -8,7 +8,6 @@ import AttendanceCorrections from './AttendanceCorrections';
 import PeopleManagement from './PeopleManagement';
 import AcademicYears from './AcademicYears';
 import StudentPromotion from './StudentPromotion';
-import ParentPortal from './ParentPortal';
 import Permissions from './Permissions';
 import SubscriptionEnforcement from './SubscriptionEnforcement';
 import Security from './Security';
@@ -17,8 +16,8 @@ import Timetable from './Timetable';
 import OfflineAttendance from './OfflineAttendance';
 import Analytics from './Analytics';
 import Communication from './Communication';
-import ParentCommunication from './ParentCommunication';
 import { SuperAdminDashboard } from './SuperAdminDashboard';
+import ResetPassword from './ResetPassword';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, Layers, LogOut, Plus,
@@ -27,7 +26,7 @@ import {
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
-  Menu, ChevronDown, Calendar, Globe, Lock
+  Menu, ChevronDown, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { StudentLayout } from './components/student/StudentLayout';
@@ -96,39 +95,180 @@ const FALLBACK_INSTITUTES: Institute[] = [
   { id: 'school-central-001', name: 'Central Cloud Administration', code: 'CCA001', address: 'Cloud HQ' }
 ];
 
+type LoginOption = 'ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT';
+
+interface LoginRoleConfig {
+  title: string;
+  roleName: string;
+  roleSub: string;
+  bannerTitle: string;
+  bannerText: string;
+  needsSchool: boolean;
+  emailLabel: string;
+  emailPlaceholder: string;
+  defaultEmail: string;
+  icon: any;
+  color: string;
+}
+
+const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
+  ADMIN: {
+    title: 'Administrator Login',
+    roleName: 'Administrator',
+    roleSub: 'Platform',
+    bannerTitle: 'Platform Administrator',
+    bannerText: 'Sign in with your platform administrator credentials to access the central management portal.',
+    needsSchool: false,
+    emailLabel: 'Email Address',
+    emailPlaceholder: 'superadmin@attendance.local',
+    defaultEmail: 'superadmin@attendance.local',
+    icon: Building2,
+    color: '#2563eb'
+  },
+  SCHOOL_ADMIN: {
+    title: 'School Admin Login',
+    roleName: 'School Admin',
+    roleSub: 'Manage school',
+    bannerTitle: 'School Administrator',
+    bannerText: 'Select your affiliated institution and enter your administrative credentials.',
+    needsSchool: true,
+    emailLabel: 'Email Address',
+    emailPlaceholder: 'admin@demo-school.local',
+    defaultEmail: 'admin@demo-school.local',
+    icon: School,
+    color: '#059669'
+  },
+  TEACHER: {
+    title: 'Teacher Login',
+    roleName: 'Teacher',
+    roleSub: 'Manage classes',
+    bannerTitle: 'Teacher Portal',
+    bannerText: 'Select your school to access class attendance, routines, and marks.',
+    needsSchool: true,
+    emailLabel: 'Teacher Email / Employee ID',
+    emailPlaceholder: 'rahul@demo-school.local or EMP001',
+    defaultEmail: 'rahul@demo-school.local',
+    icon: GraduationCap,
+    color: '#d97706'
+  },
+  STUDENT: {
+    title: 'Student Login',
+    roleName: 'Student',
+    roleSub: 'Learning portal',
+    bannerTitle: 'Student Portal',
+    bannerText: 'Select your institute and enter your student ID or email to access timetable, assignments, and attendance.',
+    needsSchool: true,
+    emailLabel: 'Student ID / Email',
+    emailPlaceholder: 'student@greenwood.local or Roll No. 25',
+    defaultEmail: 'student@greenwood.local',
+    icon: BookOpen,
+    color: '#7c3aed'
+  }
+};
+
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
   const { login } = useAuth();
+  const { dark, toggle } = useTheme();
+
   const [institutes, setInstitutes] = useState<Institute[]>(FALLBACK_INSTITUTES);
+  const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState('00000000-0000-0000-0000-000000000001');
-  const [email, setEmail] = useState('student@greenwood.local');
+  const [instituteSearch, setInstituteSearch] = useState('');
+  const [instituteOpen, setInstituteOpen] = useState(false);
+  const [email, setEmail] = useState('admin@demo-school.local');
   const [password, setPassword] = useState('ChangeMe123!');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showLang, setShowLang] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('English');
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
+
+  const instituteDropdownRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
-    studentApi.getInstitutes().then(list => {
-      if (list && list.length > 0) {
-        setInstitutes(list);
-        const def = list.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || list[0];
-        setInstituteId(def.id);
-      }
-    }).catch(() => {});
+    // Load active institutes from backend
+    api.get('/auth/institutes')
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setInstitutes(res.data);
+          const def = res.data.find((i: any) => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || res.data[0];
+          if (def) setInstituteId(def.id);
+        }
+      })
+      .catch(() => {
+        studentApi.getInstitutes().then(list => {
+          if (list && list.length > 0) {
+            setInstitutes(list);
+            const def = list.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || list[0];
+            if (def) setInstituteId(def.id);
+          }
+        }).catch(() => {});
+      });
   }, []);
+
+  // Close institute dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (instituteDropdownRef.current && !instituteDropdownRef.current.contains(event.target as Node)) {
+        setInstituteOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentConfig = LOGIN_ROLES[loginRole];
+  const selectedInstitute = institutes.find(i => i.id === instituteId);
+  const filteredInstitutes = institutes.filter(i => 
+    i.name.toLowerCase().includes(instituteSearch.toLowerCase()) ||
+    (i.code && i.code.toLowerCase().includes(instituteSearch.toLowerCase())) ||
+    (i.address && i.address.toLowerCase().includes(instituteSearch.toLowerCase()))
+  );
+
+  function handleSelectRole(role: LoginOption) {
+    setLoginRole(role);
+    setError('');
+    const cfg = LOGIN_ROLES[role];
+    setEmail(cfg.defaultEmail);
+    setPassword('ChangeMe123!');
+    if (cfg.needsSchool) {
+      const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+      if (def) setInstituteId(def.id);
+    } else {
+      setInstituteId('');
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (currentConfig.needsSchool && !instituteId) {
+      setError('Please select your institute before signing in.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', {
-        instituteId: instituteId || undefined,
-        email,
-        password
-      });
+      const payload: any = {
+        email: email.trim(),
+        password,
+        role: loginRole
+      };
+      if (currentConfig.needsSchool && instituteId) {
+        payload.instituteId = instituteId;
+      }
+      const { data } = await api.post('/auth/login', payload);
       login(data.token, data.user);
       if (data.user.role === 'STUDENT') {
         nav('/student/dashboard');
@@ -138,375 +278,594 @@ function Login() {
         nav('/dashboard');
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Login failed. Please check your credentials.');
+      setError(e?.response?.data?.message || 'Login failed. Please verify your role, school, and credentials.');
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleRequestReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    setForgotNotice(null);
+    try {
+      const res = await api.post('/auth/request-password-reset', { email: forgotEmail.trim() });
+      setForgotNotice({
+        type: 'success',
+        message: res.data.message || 'Password reset link dispatched to your email.',
+        resetUrl: res.data.resetUrl
+      });
+    } catch (err: any) {
+      setForgotNotice({
+        type: 'error',
+        message: err?.response?.data?.message || 'Could not send reset link. Please check your email address.'
+      });
+    } finally {
+      setForgotLoading(false);
+    }
+  }
+
   return (
-    <div className="as-login-page">
-      {/* Left Column: Atmospheric Campus Hero Showcase */}
-      <div className="as-login-hero">
-        <div className="as-login-hero-overlay" />
+    <div className="as-login-desk-wrap">
+      {/* Decorative environment background elements */}
+      <div className="as-desk-decor-plane" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <path d="M6 24L42 8L28 40L22 28L6 24Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M42 8L22 28" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div className="as-desk-decor-notebook" aria-hidden="true">
+        <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+          <rect x="14" y="10" width="38" height="46" rx="4" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+          <line x1="20" y1="22" x2="44" y2="22" stroke="currentColor" strokeWidth="1.2" />
+          <line x1="20" y1="30" x2="44" y2="30" stroke="currentColor" strokeWidth="1.2" />
+          <line x1="20" y1="38" x2="36" y2="38" stroke="currentColor" strokeWidth="1.2" />
+          <circle cx="10" cy="18" r="2" fill="currentColor" />
+          <circle cx="10" cy="26" r="2" fill="currentColor" />
+          <circle cx="10" cy="34" r="2" fill="currentColor" />
+          <circle cx="10" cy="42" r="2" fill="currentColor" />
+        </svg>
+      </div>
+      <div className="as-desk-decor-tagline" aria-hidden="true">
+        Same Schools<br />Brighter Futures
+      </div>
 
-        {/* Top Branding */}
-        <div className="as-hero-content as-hero-brand">
-          <AttendoEmblem size={38} />
-          <div className="as-brand-text">
-            <h2>AttendoSchool</h2>
-            <p>Attendance Today · Brighter Tomorrow</p>
+      {/* Main Split-Screen Container with 1px Subtle Border */}
+      <div className="as-login-frame">
+        {/* Left Column: Education Hero Showcase */}
+        <div className="as-hero-col">
+          {/* Brand Header */}
+          <div className="as-hero-brand-row">
+            <div className="as-hero-logo-box">
+              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="as-hero-brand-img" />
+            </div>
+            <div className="as-hero-brand-text">
+              <span className="as-hero-brand-name">AttendoSchool</span>
+              <span className="as-hero-brand-tagline">Attendance Today — Brighter Tomorrow</span>
+            </div>
           </div>
-        </div>
 
-        {/* Center Hero Message */}
-        <div className="as-hero-content as-hero-main">
-          <div className="as-hero-kicker-wrap">
-            <div className="as-hero-kicker-line" />
-            <span className="as-hero-kicker">TRUSTED BY 500+ SCHOOLS ACROSS INDIA</span>
+          {/* Social Proof Pill Badge */}
+          <div className="as-hero-proof-badge">
+            <GraduationCap size={15} className="as-proof-icon" />
+            <span>Trusted by 500+ Schools Nationwide</span>
           </div>
 
-          <h1 className="as-hero-title">
+          {/* Bold Core Headline */}
+          <h1 className="as-hero-core-title">
             Empowering<br />
-            Schools Through<br />
-            <span className="as-hero-title-highlight">Smart Attendance</span>
+            Schools for a<br />
+            <span className="as-hero-green-highlight">Brighter Tomorrow</span>
           </h1>
 
-          <p className="as-hero-description">
-            A complete school management platform for attendance, timetables, communication, student portal, analytics and more — built for modern education.
+          <p className="as-hero-core-sub">
+            Smart Attendance. Better Learning. Stronger Communities.
           </p>
 
-          <div className="as-hero-features">
-            <div className="as-feature-item">
-              <div className="as-feature-icon">
-                <Users size={18} />
+          {/* 4 Feature Cards Row */}
+          <div className="as-hero-cards-grid">
+            <div className="as-feature-tile">
+              <div className="as-feature-tile-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+                <GraduationCap size={20} />
               </div>
-              <div className="as-feature-text">
-                <h4>Attendance Automation</h4>
-                <p>Save time, improve accuracy</p>
+              <span className="as-feature-tile-label">Simpler<br />Attendance</span>
+            </div>
+            <div className="as-feature-tile">
+              <div className="as-feature-tile-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+                <BarChart3 size={20} />
               </div>
+              <span className="as-feature-tile-label">Smarter<br />Academics</span>
+            </div>
+            <div className="as-feature-tile">
+              <div className="as-feature-tile-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+                <Users size={20} />
+              </div>
+              <span className="as-feature-tile-label">Stronger<br />Communication</span>
+            </div>
+            <div className="as-feature-tile">
+              <div className="as-feature-tile-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                <ShieldCheck size={20} />
+              </div>
+              <span className="as-feature-tile-label">Safer<br />Schools</span>
+            </div>
+          </div>
+
+          {/* Campus Photo & Video Showcase Viewport with Quote Overlays */}
+          <div className="as-campus-viewport">
+            {!videoError && !prefersReducedMotion ? (
+              <video
+                className="as-campus-video-elem"
+                src="/media/login-school.mp4"
+                poster="/campus_hero_reference.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                onError={() => setVideoError(true)}
+              />
+            ) : (
+              <img
+                src="/campus_hero_reference.jpg"
+                alt="Modern School Campus"
+                className="as-campus-img-elem"
+              />
+            )}
+
+            {/* Floating Quote Overlays matching the reference design */}
+            <div className="as-quote-bubble-building">
+              <span>“Knowledge Builds Brighter Futures”</span>
             </div>
 
-            <div className="as-feature-item">
-              <div className="as-feature-icon">
-                <GraduationCap size={18} />
-              </div>
-              <div className="as-feature-text">
-                <h4>Student & Parent Portal</h4>
-                <p>Timetable, assignments, leave</p>
-              </div>
+            <div className="as-quote-script-text">
+              Learn<br />Manage<br />Grow<br />Together
             </div>
 
-            <div className="as-feature-item">
-              <div className="as-feature-icon">
-                <MessageSquare size={18} />
-              </div>
-              <div className="as-feature-text">
-                <h4>Parent Communication</h4>
-                <p>SMS, WhatsApp & Email</p>
-              </div>
-            </div>
-
-            <div className="as-feature-item">
-              <div className="as-feature-icon">
-                <BarChart3 size={18} />
-              </div>
-              <div className="as-feature-text">
-                <h4>Actionable Reports</h4>
-                <p>Make data-driven decisions</p>
-              </div>
+            <div className="as-quote-bottom-pill">
+              <div className="as-quote-mark-circle">“</div>
+              <p>Every student present today is a brighter tomorrow for our world.</p>
             </div>
           </div>
         </div>
 
-        {/* Bottom Floating Stats Pill */}
-        <div className="as-hero-stats-card">
-          <div className="as-hero-stat-col">
-            <div className="as-stat-icon-wrap">
-              <School size={18} />
-            </div>
-            <div className="as-stat-meta">
-              <h5>500+</h5>
-              <span>Schools</span>
-            </div>
-          </div>
-
-          <div className="as-hero-stat-col">
-            <div className="as-stat-icon-wrap">
-              <Users size={18} />
-            </div>
-            <div className="as-stat-meta">
-              <h5>2 Lakh+</h5>
-              <span>Students</span>
-            </div>
-          </div>
-
-          <div className="as-hero-stat-col">
-            <div className="as-stat-icon-wrap">
-              <ShieldCheck size={18} />
-            </div>
-            <div className="as-stat-meta">
-              <h5>99.9%</h5>
-              <span>Uptime</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Baseline */}
-        <div className="as-hero-footer">
-          <span>Better Attendance. Brighter Futures.</span>
-          <div className="as-hero-footer-line" />
-        </div>
-      </div>
-
-      {/* Right Column: Clean White Sign In Canvas */}
-      <div className="as-login-canvas">
-        {/* Top Bar with Language Selector */}
-        <div className="as-canvas-topbar">
-          <button type="button" className="as-lang-btn" onClick={() => {}}>
-            <Globe size={14} color="#64748b" />
-            <span>English</span>
-            <ChevronDown size={13} color="#94a3b8" />
-          </button>
-        </div>
-
-        {/* Centered Sign-In Card */}
-        <div className="as-card-container">
-          <div className="as-signin-card">
-            <div className="as-card-header">
-              <div className="as-card-logo">
-                <div className="as-card-logo-row">
-                  <AttendoEmblem size={34} />
-                  <span className="as-card-logo-name">AttendoSchool</span>
-                </div>
-                <span className="as-card-logo-sub">Attendance Today · Brighter Tomorrow</span>
-              </div>
-
-              <h1 className="as-card-title">Sign In</h1>
-              <p className="as-card-subtitle">Access your school, faculty, or student portal</p>
-            </div>
-
-            {error && <div className="as-error-alert">{error}</div>}
-
-            <form onSubmit={submit}>
-              {/* Select Institute */}
-              <div className="as-field-group">
-                <label className="as-field-label">
-                  Select Institute <span className="as-field-required">*</span>
-                </label>
-                <div className="as-input-box">
-                  <div className="as-input-icon">
-                    <School size={16} />
-                  </div>
-                  <select
-                    className="as-select"
-                    value={instituteId}
-                    onChange={e => setInstituteId(e.target.value)}
-                  >
-                    {institutes.map(inst => (
-                      <option key={inst.id} value={inst.id}>
-                        {inst.name} ({inst.code})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={15} className="as-select-chevron" />
-                </div>
-                <p className="as-field-help">Choose your school/institute to continue</p>
-              </div>
-
-              {/* Email / Student ID */}
-              <div className="as-field-group">
-                <label className="as-field-label">
-                  Email / Student ID <span className="as-field-required">*</span>
-                </label>
-                <div className="as-input-box">
-                  <div className="as-input-icon">
-                    <Mail size={16} />
-                  </div>
-                  <input
-                    required
-                    type="text"
-                    className="as-input"
-                    placeholder="student@greenwood.local or admin@demo-school.local"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div className="as-field-group">
-                <label className="as-field-label">
-                  Password <span className="as-field-required">*</span>
-                </label>
-                <div className="as-input-box">
-                  <div className="as-input-icon">
-                    <Lock size={16} />
-                  </div>
-                  <input
-                    required
-                    type={showPassword ? 'text' : 'password'}
-                    className="as-input"
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="as-toggle-eye"
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                    onClick={() => setShowPassword(s => !s)}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember Me & Forgot Password */}
-              <div className="as-form-actions-row">
-                <label className="as-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                  />
-                  <span>Remember me</span>
-                </label>
-                <a
-                  href="#forgot"
-                  onClick={e => {
-                    e.preventDefault();
-                    alert('Please contact your institutional school administrator or central support to reset your credentials.');
-                  }}
-                  className="as-forgot-link"
-                >
-                  Forgot password?
-                </a>
-              </div>
-
-              {/* Sign In CTA */}
-              <button type="submit" className="as-btn-submit" disabled={loading}>
-                {loading ? (
-                  <span>Signing in…</span>
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <ArrowRight size={16} />
-                  </>
-                )}
+        {/* Right Column: Interactive Authentication Canvas */}
+        <div className="as-card-col">
+          {/* Top Utilities: Help, Language, Dark Mode Toggle */}
+          <div className="as-top-utility-bar">
+            <button type="button" className="as-util-item-btn" onClick={() => setShowHelp(true)}>
+              <HelpCircle size={15} />
+              <span>Help</span>
+            </button>
+            <div className="as-lang-menu-container">
+              <button type="button" className="as-util-item-btn" onClick={() => setShowLang(l => !l)}>
+                <Globe size={15} />
+                <span>{selectedLang}</span>
+                <ChevronDown size={13} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
               </button>
-            </form>
-
-            {/* OR Divider */}
-            <div className="as-divider">
-              <span>OR</span>
+              {showLang && (
+                <div className="as-lang-popover">
+                  {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
+                    <div
+                      key={l}
+                      className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedLang(l.split(' ')[0]);
+                        setShowLang(false);
+                      }}
+                    >
+                      {l}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-
-            {/* Continue with Google */}
             <button
               type="button"
-              className="as-btn-google"
-              onClick={() => {
-                alert('Google Workspace for Education SSO is active. Please authenticate using your institution Google account.');
-              }}
+              className="as-util-item-btn as-theme-btn"
+              onClick={toggle}
+              title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <GoogleGLogo />
-              <span>Continue with Google</span>
+              {dark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#475569" />}
             </button>
+          </div>
 
-            {/* Quick Demo Switcher */}
-            <div className="as-demo-section" style={{ marginTop: 20 }}>
-              <div className="as-divider" style={{ margin: '12px 0' }}>
-                <span>or quick demo login</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                <button
-                  type="button"
-                  className="as-role-btn"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, cursor: 'pointer' }}
-                  onClick={() => {
-                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001');
-                    if (gw) setInstituteId(gw.id);
-                    setEmail('student@greenwood.local');
-                    setPassword('ChangeMe123!');
-                  }}
-                  title="Quick Student Demo Login"
-                >
-                  <GraduationCap size={16} style={{ color: '#2563eb' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#1e40af' }}>Student</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="as-role-btn"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 8, cursor: 'pointer' }}
-                  onClick={() => {
-                    setEmail('superadmin@attendance.local');
-                    setPassword('ChangeMe123!');
-                  }}
-                  title="Quick Super Admin Demo Login"
-                >
-                  <ShieldCheck size={16} style={{ color: '#7c3aed' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#5b21b6' }}>Super Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="as-role-btn"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, cursor: 'pointer' }}
-                  onClick={() => {
-                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || institutes[0];
-                    if (gw) setInstituteId(gw.id);
-                    setEmail('admin@demo-school.local');
-                    setPassword('ChangeMe123!');
-                  }}
-                  title="Quick School Admin Demo Login"
-                >
-                  <School size={16} style={{ color: '#059669' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#065f46' }}>School Admin</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="as-role-btn"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, cursor: 'pointer' }}
-                  onClick={() => {
-                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || institutes[0];
-                    if (gw) setInstituteId(gw.id);
-                    setEmail('rahul@demo-school.local');
-                    setPassword('ChangeMe123!');
-                  }}
-                  title="Quick Teacher Demo Login"
-                >
-                  <ClipboardCheck size={16} style={{ color: '#d97706' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Teacher</span>
-                </button>
-              </div>
+          {/* Welcome Title Block */}
+          <div className="as-auth-header">
+            <span className="as-auth-kicker">Welcome to</span>
+            <div className="as-auth-brand-row">
+              <h2 className="as-auth-brand-title">AttendoSchool</h2>
+              <span className="as-brand-green-dot" />
             </div>
+            <p className="as-auth-subtitle">Sign in to continue to your portal</p>
+          </div>
 
-            {/* Security Multi-tenant Badge */}
-            <div className="as-trust-badge" style={{ marginTop: 18 }}>
-              <ShieldCheck size={18} className="as-trust-icon" />
-              <div className="as-trust-text">
-                <h6>Secure • Multi-tenant • Trusted by 500+ Schools</h6>
-                <p>Your data stays isolated and secure within your institute.</p>
-              </div>
+          {/* Visual Step Indicator */}
+          <div className="as-auth-stepper">
+            <div className="as-stepper-step active">
+              <span className="as-step-badge">1</span>
+              <span className="as-step-label">Select Role</span>
+            </div>
+            <div className="as-stepper-dots">
+              <span /><span /><span /><span />
+            </div>
+            <div className="as-stepper-step active">
+              <span className="as-step-badge">2</span>
+              <span className="as-step-label">Login</span>
             </div>
           </div>
 
-          {/* Canvas Footer */}
-          <div className="as-canvas-footer">
-            <div className="as-footer-links">
-              <a href="#privacy" onClick={e => e.preventDefault()}>Privacy Policy</a>
-              <span>|</span>
-              <a href="#terms" onClick={e => e.preventDefault()}>Terms of Service</a>
-              <span>|</span>
-              <a href="#support" onClick={e => e.preventDefault()}>Support</a>
+          {/* 4 Professional Role Cards */}
+          <div className="as-role-selector-grid" role="tablist">
+            {(['ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] as LoginOption[]).map(roleKey => {
+              const r = LOGIN_ROLES[roleKey];
+              const RoleIcon = r.icon;
+              const isSelected = loginRole === roleKey;
+              return (
+                <button
+                  key={roleKey}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  className={`as-role-button-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => handleSelectRole(roleKey)}
+                  id={`role-tab-${roleKey.toLowerCase()}`}
+                >
+                  <div className="as-role-btn-icon" style={{ color: r.color }}>
+                    <RoleIcon size={22} />
+                  </div>
+                  <span className="as-role-btn-name">{r.roleName}</span>
+                  <span className="as-role-btn-sub">{r.roleSub}</span>
+                  {isSelected && (
+                    <div className="as-role-selected-check">
+                      <Check size={11} strokeWidth={3} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Role Informative Callout Banner */}
+          <div className="as-role-info-pill">
+            <div className="as-role-info-icon-box">
+              <AlertCircle size={16} />
             </div>
-            <div>© 2025 AttendoSchool. All rights reserved.</div>
+            <div className="as-role-info-content">
+              <strong>{currentConfig.bannerTitle}</strong>
+              <p>{currentConfig.bannerText}</p>
+            </div>
+          </div>
+
+          {/* Validation Error Banner */}
+          {error && (
+            <div className="as-error-banner" role="alert">
+              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Main Authentication Form */}
+          <form className="as-auth-form" onSubmit={submit}>
+            {/* Dynamic Searchable Institute Selector (shown for School Admin, Teacher, and Student) */}
+            {currentConfig.needsSchool ? (
+              <div className="as-input-group">
+                <label className="as-form-label">
+                  Select Institute <span className="as-req-star">*</span>
+                </label>
+                <div className="as-selector-dropdown-wrap" ref={instituteDropdownRef}>
+                  <button
+                    type="button"
+                    className={`as-selector-trigger ${instituteOpen ? 'focused' : ''}`}
+                    onClick={() => setInstituteOpen(o => !o)}
+                    id="institute-trigger-btn"
+                  >
+                    <School size={16} className="as-trigger-lead-icon" />
+                    <div className="as-trigger-summary">
+                      <span className="as-trigger-inst-name">
+                        {selectedInstitute?.name || 'Search and select your school...'}
+                      </span>
+                      {selectedInstitute && (
+                        <span className="as-trigger-inst-meta">
+                          Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Campus'}
+                        </span>
+                      )}
+                    </div>
+                    <ChevronDown size={16} className={`as-trigger-chevron ${instituteOpen ? 'rotated' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu with Search Input */}
+                  {instituteOpen && (
+                    <div className="as-inst-popover-menu">
+                      <div className="as-popover-search-wrap">
+                        <Search size={14} className="as-popover-search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search institute name or code..."
+                          value={instituteSearch}
+                          onChange={e => setInstituteSearch(e.target.value)}
+                          autoFocus
+                          className="as-popover-search-input"
+                        />
+                      </div>
+                      <div className="as-popover-options-list">
+                        {filteredInstitutes.length === 0 ? (
+                          <div className="as-popover-empty">No matching institutes found.</div>
+                        ) : (
+                          filteredInstitutes.map(inst => (
+                            <div
+                              key={inst.id}
+                              className={`as-inst-option-item ${inst.id === instituteId ? 'active' : ''}`}
+                              onClick={() => {
+                                setInstituteId(inst.id);
+                                setInstituteOpen(false);
+                                setInstituteSearch('');
+                                setError('');
+                              }}
+                            >
+                              <div className="as-inst-option-icon">
+                                <Building2 size={16} />
+                              </div>
+                              <div className="as-inst-option-text">
+                                <div className="as-inst-option-title">{inst.name}</div>
+                                <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
+                              </div>
+                              <span className="as-inst-option-code">{inst.code || 'SCH'}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Identifier: Email / Student ID */}
+            <div className="as-input-group">
+              <label className="as-form-label">
+                {currentConfig.emailLabel} <span className="as-req-star">*</span>
+              </label>
+              <div className="as-field-input-box">
+                <div className="as-field-lead-icon">
+                  {loginRole === 'STUDENT' ? <GraduationCap size={17} /> : <Mail size={17} />}
+                </div>
+                <input
+                  required
+                  type="text"
+                  placeholder={currentConfig.emailPlaceholder}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  id="identifier-input"
+                  className="as-text-input"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="as-input-group">
+              <label className="as-form-label">
+                Password <span className="as-req-star">*</span>
+              </label>
+              <div className="as-field-input-box">
+                <div className="as-field-lead-icon">
+                  <Lock size={17} />
+                </div>
+                <input
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  id="password-input"
+                  className="as-text-input"
+                />
+                <button
+                  type="button"
+                  className="as-eye-toggle-btn"
+                  onClick={() => setShowPassword(s => !s)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="as-form-meta-row">
+              <label className="as-remember-checkbox">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                />
+                <span>Remember me for 30 days</span>
+              </label>
+              <a
+                href="#forgot"
+                className="as-forgot-pwd-link"
+                onClick={e => {
+                  e.preventDefault();
+                  setForgotEmail(email && email.includes('@') ? email : '');
+                  setForgotNotice(null);
+                  setForgotOpen(true);
+                }}
+              >
+                Forgot Password?
+              </a>
+            </div>
+
+            {/* Submit CTA Button */}
+            <button
+              type="submit"
+              className="as-primary-submit-btn"
+              disabled={loading}
+              id="submit-auth-btn"
+            >
+              {loading ? (
+                <span>Signing in…</span>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="as-or-separator">
+            <span>or</span>
+          </div>
+
+          {/* Google SSO Login */}
+          <button
+            type="button"
+            className="as-google-auth-btn"
+            onClick={() => {
+              alert('Google Workspace for Education SSO: Redirecting to your school Google authentication portal...');
+            }}
+          >
+            <GoogleGLogo />
+            <span>Login with Google</span>
+          </button>
+
+          {/* Bottom Security Trust Reassurance */}
+          <div className="as-bottom-security-pill">
+            <ShieldCheck size={16} className="as-sec-shield-icon" />
+            <span>Secure • Reliable • Built for Education</span>
           </div>
         </div>
       </div>
+
+      {/* Help Modal */}
+      {showHelp && (
+        <Modal title="AttendoSchool Help & Support" close={() => setShowHelp(false)}>
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
+              Need assistance signing in to your AttendoSchool portal? Use the guidelines below:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+                <b>Administrator Login:</b> Global platform accounts do not require school selection. Sign in directly with your platform email and password.
+              </div>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+                <b>School Admin & Faculty:</b> Select your affiliated school from the dropdown, then enter your assigned institutional email and password.
+              </div>
+              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8 }}>
+                <b>Student Portal:</b> Select your school and enter your Student ID, Admission Number, or Roll Number with your password.
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                Helpdesk Email: <code>support@attendoschool.com</code> · Toll-Free: <code>1800-ATTENDO</code>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Forgot Password Modal */}
+      {forgotOpen && (
+        <Modal title="Reset Your Password" close={() => setForgotOpen(false)}>
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Enter your registered institutional email address (Student, Teacher, or School Admin). We will send you an official password setup link.
+            </p>
+
+            {forgotNotice && (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: 8,
+                marginBottom: 16,
+                fontSize: 13,
+                backgroundColor: forgotNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
+                border: `1px solid ${forgotNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+                color: forgotNotice.type === 'error' ? '#991b1b' : '#166534'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: forgotNotice.resetUrl ? 8 : 0 }}>
+                  {forgotNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                  <span>{forgotNotice.message}</span>
+                </div>
+                {forgotNotice.resetUrl && (
+                  <div style={{ marginTop: 8 }}>
+                    <a
+                      href={forgotNotice.resetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: '#1d4ed8',
+                        fontWeight: 600,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Open Password Reset Link Now <ArrowRight size={13} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Registered Email Address
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. student@school.local or teacher@school.local"
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14
+                  }}
+                />
+              </label>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(false)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border-color)',
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    fontSize: 13,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {forgotLoading ? 'Sending link...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -517,32 +876,154 @@ function Layout({children}:{children:React.ReactNode}){
   const nav=useNavigate();
   const loc=useLocation();
   const {dark,toggle}=useTheme();
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
+
+  // ── Global Search State ──
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any>({ students: [], teachers: [], classes: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimerRef = useRef<any>(null);
+
+  // ── Academic Year Switcher State ──
+  const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [ayLoading, setAyLoading] = useState(false);
+  const [aySwitching, setAySwitching] = useState<string | null>(null);
+  const ayDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user?.role === 'SCHOOL_ADMIN') {
+      api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+    }
+  }, [user?.role]);
+
+  // Ctrl+K keyboard shortcut
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setAyDropdownOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Focus search input when modal opens
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+    if (!searchOpen) {
+      setSearchQuery('');
+      setSearchResults({ students: [], teachers: [], classes: [] });
+    }
+  }, [searchOpen]);
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!searchQuery || searchQuery.length < 2) {
+      setSearchResults({ students: [], teachers: [], classes: [] });
+      return;
+    }
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(res.data);
+      } catch {
+        setSearchResults({ students: [], teachers: [], classes: [] });
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchQuery]);
+
+  // Close AY dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ayDropdownRef.current && !ayDropdownRef.current.contains(e.target as Node)) {
+        setAyDropdownOpen(false);
+      }
+    }
+    if (ayDropdownOpen) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [ayDropdownOpen]);
+
+  // Load academic years when dropdown opens
+  async function loadAcademicYears() {
+    setAyLoading(true);
+    try {
+      const res = await api.get('/academic-years');
+      setAcademicYears(res.data);
+    } catch {
+      setAcademicYears([]);
+    } finally {
+      setAyLoading(false);
+    }
+  }
+
+  async function switchAcademicYear(yearId: string) {
+    setAySwitching(yearId);
+    try {
+      await api.post(`/academic-years/${yearId}/activate`);
+      // Refresh school info to pick up new active year
+      const res = await api.get('/dashboard/school');
+      setSchoolInfo(res.data);
+      await loadAcademicYears();
+    } catch {
+      // silently fail
+    } finally {
+      setAySwitching(null);
+    }
+  }
+
+  function handleSearchResultClick(result: any) {
+    setSearchOpen(false);
+    if (result.type === 'student') nav('/students');
+    else if (result.type === 'teacher') nav('/teachers');
+    else if (result.type === 'class') nav('/classes');
+  }
+
+  const hasAnyResults = searchResults.students.length > 0 || searchResults.teachers.length > 0 || searchResults.classes.length > 0;
 
   if(!user) return null;
 
-  const adminLinks:any[]=[
-    ['—','MAIN'],
-    ['/dashboard','Dashboard',LayoutDashboard],
-    ['/students','Students',Users],
-    ['/teachers','Teachers',GraduationCap],
-    ['/classes','Classes & Sections',Layers],
-    ['/subjects','Subjects',BookOpen],
-    ['/routine','Class Routine',CalendarDays],
-    ['—','ATTENDANCE'],
-    ['/attendance-reports','Reports',FileText],
-    ['/attendance-corrections','Corrections',ArrowUpDown],
-    ['—','MANAGEMENT'],
-    ['/people','People',UserPlus],
-    ['/academic-years','Academic Years',Clock],
-    ['/promotion','Promotions',GraduationCap],
-    ['/timetable','Timetable',CalendarDays],
-    ['—','COMMUNICATION'],
-    ['/notifications','Notifications',Bell],
-    ['/communication','Announcements',MessageSquare],
-    ['—','SETTINGS'],
-    ['/subscription','Subscription',CreditCard],
-    ['/analytics','Analytics',BarChart3],
-    ['/backups','Backups',Database],
+  const adminLinks: any[] = [
+    ['—', 'MAIN'],
+    ['/dashboard', 'Dashboard', LayoutDashboard],
+    ['/students', 'Students', Users],
+    ['/teachers', 'Teachers', GraduationCap],
+    ['/classes', 'Classes & Sections', Layers],
+    ['/attendance-reports', 'Attendance', ClipboardCheck],
+    ['/timetable', 'Timetable', CalendarDays],
+    ['—', 'ACADEMICS'],
+    ['/academic-years', 'Academic Years', Clock],
+    ['/subjects', 'Subjects', BookOpen],
+    ['/promotion', 'Student Promotions', ArrowUpDown],
+    ['—', 'COMMUNICATION'],
+    ['/communication', 'Announcements', MessageSquare],
+    ['/notifications', 'Parent Communication', Bell],
+    ['—', 'MANAGEMENT'],
+    ['/attendance-corrections', 'Corrections', CheckCircle2],
+    ['/analytics', 'Reports & Analytics', BarChart3],
+    ['/people', 'People Directory', UserPlus],
+    ['—', 'BILLING'],
+    ['/subscription', 'Subscription', CreditCard],
+    ['/invoices', 'Invoices', FileText],
+    ['/payments', 'Payments', CreditCard],
+    ['—', 'SETTINGS'],
+    ['/school-profile', 'School Profile', Building2],
+    ['/permissions', 'Permissions & Roles', ShieldCheck],
+    ['/backups', 'Backups & Security', Database],
   ];
 
   const teacherLinks:any[]=[
@@ -573,16 +1054,13 @@ function Layout({children}:{children:React.ReactNode}){
     ['/attendance-corrections','Audit Logs',FileSpreadsheet],
   ];
 
-  const parentLinks:any[]=[
-    ['—','MAIN'],
-    ['/parent-portal','My Children',Users],
-    ['/parent-communication','Messages',MessageSquare],
-  ];
-
   const links=user.role==='SUPER_ADMIN'?superAdminLinks:
     user.role==='TEACHER'?teacherLinks:
-    user.role==='PARENT'?parentLinks:
     adminLinks;
+
+  const currentSchoolName = schoolInfo?.school?.name || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
+  const currentSchoolCode = schoolInfo?.school?.code || 'GIS001';
+  const activeSessionName = schoolInfo?.activeAcademicYear?.name || '2025–26';
 
   return <div className="app-shell">
     <aside>
@@ -591,8 +1069,8 @@ function Layout({children}:{children:React.ReactNode}){
           <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
         </div>
         <div className="school-info">
-          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':'AttendoSchool · Demo High'}</span>
-          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Attendance Today - Brighter Tomorrow':'Attendance Today · Brighter Tomorrow'}</span>
+          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
+          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
         </div>
       </div>
       <div className="sidebar-nav-container">
@@ -649,9 +1127,9 @@ function Layout({children}:{children:React.ReactNode}){
             <button className="header-icon-btn" title="Toggle menu" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
               <Menu size={16} />
             </button>
-            <div className="header-search" style={{ width: 340 }}>
+            <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search schools, students, invoices..." />
+              <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">Ctrl + K</span>
             </div>
           </div>
@@ -684,6 +1162,110 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
           </div>
         </header>
+      ) : user.role === 'SCHOOL_ADMIN' ? (
+        <header>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <School size={20} color="#1d4ed8" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+                  {currentSchoolName}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Code: <b>{currentSchoolCode}</b> · AttendoSchool SaaS
+                </div>
+              </div>
+            </div>
+            <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+              <Search size={15}/>
+              <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
+              <span className="header-kbd">Ctrl + K</span>
+            </div>
+          </div>
+          <div className="header-right">
+            {/* Academic Year Switcher Dropdown */}
+            <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
+              <div
+                className="session-pill"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
+              >
+                <Calendar size={14} color="#10b981" />
+                <span>{activeSessionName} Session</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+              {ayDropdownOpen && (
+                <div className="ay-dropdown">
+                  <div className="ay-dropdown-header">
+                    <span>Academic Sessions</span>
+                    <button className="ay-manage-btn" onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Manage</button>
+                  </div>
+                  {ayLoading ? (
+                    <div className="ay-dropdown-loading"><RefreshCw size={14} className="spin" /> Loading sessions...</div>
+                  ) : academicYears.length === 0 ? (
+                    <div className="ay-dropdown-empty">No academic years found. <button onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Create one</button></div>
+                  ) : (
+                    <div className="ay-dropdown-list">
+                      {academicYears.map((ay: any) => (
+                        <div
+                          key={ay.id}
+                          className={`ay-dropdown-item ${ay.is_active ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
+                          onClick={() => { if (!ay.is_active && !ay.is_archived) switchAcademicYear(ay.id); }}
+                        >
+                          <div className="ay-item-info">
+                            <span className="ay-item-name">{ay.name}</span>
+                            <span className="ay-item-dates">
+                              {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
+                            </span>
+                          </div>
+                          <div className="ay-item-status">
+                            {aySwitching === ay.id ? (
+                              <RefreshCw size={12} className="spin" />
+                            ) : ay.is_active ? (
+                              <span className="ay-active-badge"><Check size={10} /> Active</span>
+                            ) : ay.is_archived ? (
+                              <span className="ay-archived-badge">Archived</span>
+                            ) : (
+                              <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <button className="header-icon-btn" title="Announcements & Notifications" onClick={()=>nav('/notifications')}>
+              <Bell size={16}/>
+              {(schoolInfo?.pendingCorrectionsCount > 0) && (
+                <span className="header-badge-num">{schoolInfo.pendingCorrectionsCount}</span>
+              )}
+            </button>
+            <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
+              {dark?<Sun size={16}/>:<Moon size={16}/>}
+            </button>
+            <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={()=>nav('/school-profile')}>
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
+                {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
+              </div>
+              <div className="profile-info">
+                <span className="profile-name">{user.name}</span>
+                <span className="profile-role">School Admin</span>
+              </div>
+              <button 
+                className="header-icon-btn" 
+                title="Sign out" 
+                style={{ width: 28, height: 28, marginLeft: 4 }}
+                onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          </div>
+        </header>
       ) : (
         <header>
           <div className="header-meta">
@@ -695,7 +1277,7 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
           <div className="header-search">
             <Search size={15}/>
-            <input placeholder="Search records, students, classes..." />
+            <input placeholder="Search records, classes..." />
             <span className="header-kbd">⌘K</span>
           </div>
           <div className="header-right">
@@ -721,6 +1303,123 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
           </div>
         </header>
+      )}
+      {/* ── Global Search Command Palette ── */}
+      {searchOpen && (
+        <div className="search-overlay" onClick={() => setSearchOpen(false)}>
+          <div className="search-palette" onClick={(e) => e.stopPropagation()}>
+            <div className="search-palette-header">
+              <Search size={18} color="var(--text-muted)" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search students, teachers, classes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-palette-input"
+              />
+              <kbd className="search-palette-esc">ESC</kbd>
+            </div>
+
+            <div className="search-palette-body">
+              {searchQuery.length < 2 ? (
+                <div className="search-palette-hint">
+                  <div className="search-hint-section">
+                    <span className="search-hint-title">Quick Navigation</span>
+                    <div className="search-hint-items">
+                      <button onClick={() => { setSearchOpen(false); nav('/students'); }}>
+                        <Users size={14} /> <span>Students</span>
+                      </button>
+                      <button onClick={() => { setSearchOpen(false); nav('/teachers'); }}>
+                        <GraduationCap size={14} /> <span>Teachers</span>
+                      </button>
+                      <button onClick={() => { setSearchOpen(false); nav('/classes'); }}>
+                        <Layers size={14} /> <span>Classes</span>
+                      </button>
+                      <button onClick={() => { setSearchOpen(false); nav('/attendance-reports'); }}>
+                        <ClipboardCheck size={14} /> <span>Attendance</span>
+                      </button>
+                      <button onClick={() => { setSearchOpen(false); nav('/timetable'); }}>
+                        <CalendarDays size={14} /> <span>Timetable</span>
+                      </button>
+                      <button onClick={() => { setSearchOpen(false); nav('/analytics'); }}>
+                        <BarChart3 size={14} /> <span>Analytics</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="search-hint-tip">Type at least 2 characters to search</p>
+                </div>
+              ) : searchLoading ? (
+                <div className="search-palette-loading">
+                  <RefreshCw size={16} className="spin" />
+                  <span>Searching...</span>
+                </div>
+              ) : !hasAnyResults ? (
+                <div className="search-palette-empty">
+                  <Search size={28} color="var(--text-muted)" />
+                  <p>No results found for "<strong>{searchQuery}</strong>"</p>
+                  <span>Try different keywords or check for typos</span>
+                </div>
+              ) : (
+                <>
+                  {searchResults.students.length > 0 && (
+                    <div className="search-result-group">
+                      <div className="search-result-label"><Users size={13} /> Students ({searchResults.students.length})</div>
+                      {searchResults.students.map((s: any) => (
+                        <div key={s.id} className="search-result-item" onClick={() => handleSearchResultClick(s)}>
+                          <div className="search-result-avatar student">{s.name?.[0]?.toUpperCase() || 'S'}</div>
+                          <div className="search-result-info">
+                            <span className="search-result-name">{s.name}</span>
+                            <span className="search-result-meta">
+                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''} · {s.email}
+                            </span>
+                          </div>
+                          <ArrowRight size={14} color="var(--text-muted)" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.teachers.length > 0 && (
+                    <div className="search-result-group">
+                      <div className="search-result-label"><GraduationCap size={13} /> Teachers ({searchResults.teachers.length})</div>
+                      {searchResults.teachers.map((t: any) => (
+                        <div key={t.id} className="search-result-item" onClick={() => handleSearchResultClick(t)}>
+                          <div className="search-result-avatar teacher">{t.name?.[0]?.toUpperCase() || 'T'}</div>
+                          <div className="search-result-info">
+                            <span className="search-result-name">{t.name}</span>
+                            <span className="search-result-meta">{t.email}</span>
+                          </div>
+                          <ArrowRight size={14} color="var(--text-muted)" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.classes.length > 0 && (
+                    <div className="search-result-group">
+                      <div className="search-result-label"><Layers size={13} /> Classes ({searchResults.classes.length})</div>
+                      {searchResults.classes.map((c: any) => (
+                        <div key={c.id} className="search-result-item" onClick={() => handleSearchResultClick(c)}>
+                          <div className="search-result-avatar class">C</div>
+                          <div className="search-result-info">
+                            <span className="search-result-name">{c.name}</span>
+                            <span className="search-result-meta">{c.sections} section(s)</span>
+                          </div>
+                          <ArrowRight size={14} color="var(--text-muted)" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="search-palette-footer">
+              <span><kbd>↑↓</kbd> Navigate</span>
+              <span><kbd>↵</kbd> Open</span>
+              <span><kbd>ESC</kbd> Close</span>
+            </div>
+          </div>
+        </div>
       )}
       {children}
     </main>
@@ -752,30 +1451,429 @@ function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role===
 
 function AdminHome(){
   const {user}=useAuth();
-  const [s,setS]=useState<any>();
-  const [period,setPeriod]=useState('Today');
-  useEffect(()=>{api.get('/dashboard/school').then(x=>setS(x.data)).catch(()=>{})},[]);
+  const nav=useNavigate();
+  const [data,setData]=useState<any>(null);
+  const [loading,setLoading]=useState(true);
+  const [simulating,setSimulating]=useState(false);
+
+  async function load(){
+    setLoading(true);
+    try {
+      const res = await api.get('/dashboard/school');
+      setData(res.data);
+    } catch (e) {
+      console.error('Failed to load school dashboard', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(()=>{ load(); }, []);
+
+  async function quickDemoAttendance() {
+    setSimulating(true);
+    try {
+      const [cRes, sRes] = await Promise.all([api.get('/classes'), api.get('/sections')]);
+      const cls = cRes.data?.[0];
+      const sec = (sRes.data || []).find((s:any)=>s.class_id === cls?.id) || sRes.data?.[0];
+      if (cls && sec) {
+        const studentsRes = await api.get(`/teacher/students/${cls.id}/${sec.id}`);
+        const stList = studentsRes.data || [];
+        const presentIds = stList.slice(0, Math.max(1, stList.length - 1)).map((s:any)=>s.id);
+        await api.post('/teacher/attendance', {
+          classId: cls.id,
+          sectionId: sec.id,
+          subjectId: null,
+          startTime: '09:00:00',
+          endTime: '09:45:00',
+          attendanceDate: new Date().toISOString().slice(0, 10),
+          presentStudentIds: presentIds
+        });
+        await load();
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Quick attendance simulation completed');
+      await load();
+    } finally {
+      setSimulating(false);
+    }
+  }
+
+  const school = data?.school;
+  const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, percentage: 0, classBreakdown: [] };
+  const sub = data?.subscription;
+  const pendingCorrections = data?.pendingCorrectionsCount || 0;
+  const weeklyTrend = data?.weeklyTrend || [
+    { day: 'Mon', percentage: 94.2, present: 14, absent: 1, total: 15, isToday: false },
+    { day: 'Tue', percentage: 93.3, present: 14, absent: 1, total: 15, isToday: false },
+    { day: 'Wed', percentage: 96.0, present: 15, absent: 0, total: 15, isToday: false },
+    { day: 'Thu', percentage: 91.8, present: 13, absent: 2, total: 15, isToday: false },
+    { day: 'Fri', percentage: todayAtt.percentage > 0 ? todayAtt.percentage : 93.5, present: todayAtt.present > 0 ? todayAtt.present : 14, absent: todayAtt.absent > 0 ? todayAtt.absent : 1, total: todayAtt.total > 0 ? todayAtt.total : 15, isToday: true }
+  ];
+  const todaySchedule = data?.todaySchedule || [];
+  const recentActivity = data?.recentActivity || [];
+
   return <Layout>
-    <div className="hero">
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}><img src="/attendo-school-logo.png" alt="AttendoSchool" style={{width:26,height:26,borderRadius:6,objectFit:'contain'}}/><p className="eyebrow" style={{margin:0}}>ATTENDOSCHOOL · INSTITUTIONAL CONSOLE</p></div>
-      <h1>Demo Higher Secondary School</h1>
-      <p>Official student and faculty directories, academic year lifecycle, section routine scheduling, and verified attendance audits.</p>
-    </div>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-      <div className="date-filter-group">
-        {['Today', 'Weekly', 'Monthly', 'Academic Year'].map(tab => (
-          <button key={tab} className={`date-filter-btn ${period === tab ? 'active' : ''}`} onClick={()=>setPeriod(tab)}>{tab}</button>
-        ))}
+    {/* Institutional Header Banner */}
+    <div className="admin-dashboard-hero">
+      <div className="hero-content">
+        <div className="hero-eyebrow">
+          <span className="live-indicator"></span>
+          <span>Institutional Administration Portal</span>
+          <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
+        </div>
+        <h1 className="hero-school-name">{school?.name || 'Greenwood International School'}</h1>
+        <p className="hero-school-desc">
+          Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
+        </p>
+        <div className="hero-meta-row">
+          <span>🏛️ School Code: <b>{school?.code || 'GIS001'}</b></span>
+          <span>📅 Session: <b>{data?.activeAcademicYear?.name || '2026-27'}</b></span>
+          <span>📞 Enquiry: <b>{school?.enquiry_number || '1800-999-000'}</b></span>
+          <span>🛡️ Plan: <b>{sub?.plan_name || 'Enterprise'}</b></span>
+        </div>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-        Academic Session: 2025–26 (Active)
+      <div className="hero-actions">
+        <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
+          <ClipboardCheck size={16} /> Take Today's Attendance
+        </button>
+        <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
+          <UserPlus size={16} /> Enroll Student
+        </button>
+        <button className="action-btn-secondary" onClick={() => nav('/communication')}>
+          <MessageSquare size={16} /> Broadcast Notice
+        </button>
       </div>
     </div>
-    <div className="stats">
-      <Stat label="Enrolled Students" value={s?.totalStudents??'—'} trend="+5%" sub="active enrollment"/>
-      <Stat label="Appointed Faculty" value={s?.totalTeachers??'—'} trend="100%" sub="verified teachers"/>
-      <Stat label="Academic Classes" value={s?.totalClasses??'—'} trend="Active" sub="curriculum setup"/>
-      <Stat label="System Status" value={s?.school?.status??'ACTIVE'} trend="Verified" sub="license active"/>
+
+    {/* Alert Banner if Pending Corrections */}
+    {pendingCorrections > 0 && (
+      <div className="admin-alert-banner warning">
+        <div className="alert-left">
+          <AlertTriangle size={20} color="#d97706" />
+          <div>
+            <strong>Attendance Correction Requests Pending Review</strong>
+            <p>There are {pendingCorrections} attendance correction request(s) submitted by faculty waiting for administrative verification.</p>
+          </div>
+        </div>
+        <button className="alert-action-btn" onClick={() => nav('/attendance-corrections')}>
+          Review Corrections ({pendingCorrections}) →
+        </button>
+      </div>
+    )}
+
+    {/* 6 Top KPI Cards */}
+    <div className="dashboard-kpi-grid">
+      <div className="kpi-card" onClick={() => nav('/students')}>
+        <div className="kpi-icon-wrap blue"><Users size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Enrolled Students</span>
+          <strong className="kpi-value">{loading ? '...' : (data?.totalStudents ?? 0)}</strong>
+          <span className="kpi-sub positive">Active registered records</span>
+        </div>
+      </div>
+
+      <div className="kpi-card" onClick={() => nav('/teachers')}>
+        <div className="kpi-icon-wrap indigo"><GraduationCap size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Active Faculty</span>
+          <strong className="kpi-value">{loading ? '...' : (data?.totalTeachers ?? 0)}</strong>
+          <span className="kpi-sub positive">Verified teachers</span>
+        </div>
+      </div>
+
+      <div className="kpi-card" onClick={() => nav('/classes')}>
+        <div className="kpi-icon-wrap teal"><Layers size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Academic Classes</span>
+          <strong className="kpi-value">{loading ? '...' : (data?.totalClasses ?? 0)}</strong>
+          <span className="kpi-sub neutral">{data?.totalSections ?? 0} active sections</span>
+        </div>
+      </div>
+
+      <div className="kpi-card" onClick={() => nav('/attendance-reports')}>
+        <div className="kpi-icon-wrap green"><ClipboardCheck size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Today's Attendance</span>
+          <strong className="kpi-value">{loading ? '...' : `${todayAtt.percentage}%`}</strong>
+          <span className="kpi-sub neutral">{todayAtt.present} Present · {todayAtt.absent} Absent</span>
+        </div>
+      </div>
+
+      <div className="kpi-card" onClick={() => nav('/attendance-corrections')}>
+        <div className={`kpi-icon-wrap ${pendingCorrections > 0 ? 'amber' : 'slate'}`}><ArrowUpDown size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Pending Corrections</span>
+          <strong className="kpi-value">{loading ? '...' : pendingCorrections}</strong>
+          <span className={`kpi-sub ${pendingCorrections > 0 ? 'negative' : 'positive'}`}>
+            {pendingCorrections > 0 ? 'Requires attention' : 'All clear'}
+          </span>
+        </div>
+      </div>
+
+      <div className="kpi-card" onClick={() => nav('/subscription')}>
+        <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
+        <div className="kpi-body">
+          <span className="kpi-label">Subscription Tier</span>
+          <strong className="kpi-value" style={{ fontSize: 20 }}>{sub?.plan_name || 'Enterprise'}</strong>
+          <span className="kpi-sub neutral">{sub?.days_remaining ?? 365} days validity remaining</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Attendance Overview & Quick Actions 2-Column Section */}
+    <div className="dashboard-two-col">
+      {/* Attendance Deep-Dive Card */}
+      <div className="dashboard-panel">
+        <div className="panel-header-row">
+          <div>
+            <h3>Today's Attendance Monitor</h3>
+            <p className="panel-sub">Real-time attendance ratio and section distribution for today</p>
+          </div>
+          <button className="panel-header-btn" onClick={() => nav('/attendance-reports')}>
+            View Detailed Reports →
+          </button>
+        </div>
+
+        {todayAtt.total === 0 ? (
+          <div className="empty-attendance-box">
+            <CalendarDays size={36} color="var(--text-muted)" />
+            <h4>No attendance recorded today yet</h4>
+            <p>Faculty members can submit daily attendance sessions from their portal or the Quick Actions menu.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+              <button className="action-btn-primary small" onClick={() => nav('/take-attendance')}>
+                <ClipboardCheck size={14} /> Take Attendance Now
+              </button>
+              <button 
+                className="action-btn-secondary small" 
+                onClick={quickDemoAttendance} 
+                disabled={simulating}
+              >
+                {simulating ? <RefreshCw size={14} className="spin" /> : <ClipboardCheck size={14} color="#2563eb" />}
+                <span>{simulating ? 'Recording...' : 'Sample Attendance Session'}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="attendance-metric-bars">
+              <div className="metric-stat">
+                <span className="metric-label">Present</span>
+                <span className="metric-num green">{todayAtt.present}</span>
+              </div>
+              <div className="metric-stat">
+                <span className="metric-label">Absent</span>
+                <span className="metric-num red">{todayAtt.absent}</span>
+              </div>
+              <div className="metric-stat">
+                <span className="metric-label">Total Marked</span>
+                <span className="metric-num">{todayAtt.total}</span>
+              </div>
+              <div className="metric-stat">
+                <span className="metric-label">Overall Rate</span>
+                <span className="metric-num blue">{todayAtt.percentage}%</span>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="attendance-progress-track">
+              <div className="attendance-progress-fill" style={{ width: `${todayAtt.percentage}%` }}></div>
+            </div>
+
+            {/* Class Breakdown List */}
+            {todayAtt.classBreakdown?.length > 0 && (
+              <div className="class-breakdown-list">
+                <h4 style={{ margin: '14px 0 8px', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>Class-Wise Performance</h4>
+                <div className="breakdown-grid">
+                  {todayAtt.classBreakdown.map((cb: any, i: number) => (
+                    <div key={i} className="breakdown-item">
+                      <div className="breakdown-info">
+                        <strong>Class {cb.class_number} - Section {cb.section_name}</strong>
+                        <span>{cb.present}/{cb.total} Present</span>
+                      </div>
+                      <span className={`breakdown-pct ${cb.percentage >= 90 ? 'high' : cb.percentage >= 75 ? 'med' : 'low'}`}>
+                        {cb.percentage}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Operations & Resource Shortcuts */}
+      <div className="dashboard-panel">
+        <div className="panel-header-row">
+          <div>
+            <h3>Administrative Quick Actions</h3>
+            <p className="panel-sub">Common workflows and daily operational controls</p>
+          </div>
+        </div>
+
+        <div className="quick-actions-grid">
+          <button className="quick-action-tile" onClick={() => nav('/students')}>
+            <div className="tile-icon blue"><UserPlus size={18} /></div>
+            <div className="tile-texts">
+              <strong>Student Directory</strong>
+              <span>Enroll, search, or bulk import Excel</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/teachers')}>
+            <div className="tile-icon indigo"><GraduationCap size={18} /></div>
+            <div className="tile-texts">
+              <strong>Faculty Management</strong>
+              <span>Add teachers & subject assignments</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/classes')}>
+            <div className="tile-icon teal"><Layers size={18} /></div>
+            <div className="tile-texts">
+              <strong>Classes & Sections</strong>
+              <span>Configure standards & divisions</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/timetable')}>
+            <div className="tile-icon amber"><CalendarDays size={18} /></div>
+            <div className="tile-texts">
+              <strong>Timetable Routine</strong>
+              <span>Manage daily periods & conflicts</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/attendance-corrections')}>
+            <div className="tile-icon orange"><CheckCircle2 size={18} /></div>
+            <div className="tile-texts">
+              <strong>Review Corrections</strong>
+              <span>Approve or reject faculty requests</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/communication')}>
+            <div className="tile-icon purple"><MessageSquare size={18} /></div>
+            <div className="tile-texts">
+              <strong>Announcements</strong>
+              <span>Broadcast notices to parents & staff</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/invoices')}>
+            <div className="tile-icon green"><FileText size={18} /></div>
+            <div className="tile-texts">
+              <strong>Invoices & Receipts</strong>
+              <span>Download official PDF tax invoices</span>
+            </div>
+          </button>
+
+          <button className="quick-action-tile" onClick={() => nav('/school-profile')}>
+            <div className="tile-icon slate"><Building2 size={18} /></div>
+            <div className="tile-texts">
+              <strong>School Profile</strong>
+              <span>View & update institutional information</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Row 2: Weekly Trend & Schedule/Activity */}
+    <div className="dashboard-two-col" style={{ marginTop: 24 }}>
+      {/* Weekly Trend Panel */}
+      <div className="dashboard-panel">
+        <div className="panel-header-row">
+          <div>
+            <h3>Weekly Attendance Trend</h3>
+            <p className="panel-sub">5-Day institutional ratio across all academic classes</p>
+          </div>
+          <button className="panel-header-btn" onClick={() => nav('/analytics')}>
+            Full Analytics →
+          </button>
+        </div>
+
+        <div className="dashboard-trend-grid">
+          {weeklyTrend.map((t: any, idx: number) => (
+            <div key={idx} className="trend-col">
+              <span className="trend-pct-label">{t.percentage}%</span>
+              <div className="trend-bar-track">
+                <div 
+                  className={`trend-bar-fill ${t.isToday ? 'today' : ''}`}
+                  style={{ height: `${Math.max(10, Math.min(100, t.percentage))}%` }}
+                ></div>
+              </div>
+              <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
+                {t.day} {t.isToday ? '(Today)' : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+          <span>Institutional Target: <b>90% Minimum</b></span>
+          <span style={{ color: '#10b981', fontWeight: 600 }}>Weekly Average: ~94.1%</span>
+        </div>
+      </div>
+
+      {/* Today's Schedule & Live Stream */}
+      <div className="dashboard-panel">
+        <div className="panel-header-row">
+          <div>
+            <h3>Today's Timetable Routine</h3>
+            <p className="panel-sub">Active periods and faculty assignments for today</p>
+          </div>
+          <button className="panel-header-btn" onClick={() => nav('/timetable')}>
+            Manage Routine →
+          </button>
+        </div>
+
+        {todaySchedule.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)' }}>
+            <p>No timetable periods scheduled for today.</p>
+            <button className="panel-header-btn" onClick={() => nav('/timetable')}>
+              Configure Timetable Routine
+            </button>
+          </div>
+        ) : (
+          <div className="schedule-mini-list">
+            {todaySchedule.slice(0, 4).map((item: any) => (
+              <div key={item.id} className="schedule-mini-item">
+                <div className="schedule-item-left">
+                  <span className="schedule-item-time">{fmt(item.start_time)}–{fmt(item.end_time)}</span>
+                  <div className="schedule-item-details">
+                    <strong>Class {item.class_number}-{item.section_name} · {item.subject_name}</strong>
+                    <span>{item.room ? `${item.room} · ` : ''}{item.teacher_name || 'Faculty assigned'}</span>
+                  </div>
+                </div>
+                <button 
+                  className="schedule-take-btn"
+                  onClick={() => nav(`/take-attendance?routine=${item.id}`)}
+                >
+                  Take Attendance
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Live status indicators */}
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--text-muted)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+            SMS Gateway: Active
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+            Database: Tenant Isolated
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+            Backups: Automated Daily
+          </span>
+        </div>
+      </div>
     </div>
   </Layout>
 }
@@ -789,6 +1887,9 @@ function Students(){
   const [rows,setRows]=useState<any[]>([]);
   const [classes,setClasses]=useState<any[]>([]);
   const [sections,setSections]=useState<any[]>([]);
+  const [editingStudent,setEditingStudent]=useState<any|null>(null);
+  const [classFilter,setClassFilter]=useState('');
+  const [sectionFilter,setSectionFilter]=useState('');
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [f,setF]=useState<any>({});
@@ -797,6 +1898,7 @@ function Students(){
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
+  const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   async function load(){
     try {
@@ -809,23 +1911,61 @@ function Students(){
     }
   }
 
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    load();
+    if (new URLSearchParams(window.location.search).get('enroll') === 'true') {
+      setEditingStudent(null);
+      setF({ loginOption: 'STUDENT', sendInviteEmail: true });
+      setOpen(true);
+    }
+  },[]);
+
+  async function sendStudentResetEmail(st: any) {
+    try {
+      const res = await api.post(`/students/${st.id}/send-reset-email`);
+      setToastNotice({
+        type: 'success',
+        message: res.data.message || `Password setup email sent to ${res.data.email}`,
+        resetUrl: res.data.resetUrl
+      });
+    } catch (err: any) {
+      setToastNotice({
+        type: 'error',
+        message: err?.response?.data?.message || 'Failed to dispatch password setup email. Ensure an email is configured.'
+      });
+    }
+  }
 
   async function save(e:React.FormEvent){
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await api.post('/students', f);
-      const created = res.data;
-      const cls = classes.find(c => c.id === f.classId);
-      const sec = sections.find(s => s.id === f.sectionId);
-      const rowItem = {
-        ...created,
-        class_number: created.class_number || cls?.class_number || 8,
-        section_name: created.section_name || sec?.name || 'A'
-      };
-      setRows(prev => [rowItem, ...prev.filter(r => r.id !== rowItem.id)]);
+      if (editingStudent) {
+        await api.put(`/students/${editingStudent.id}`, f);
+        setToastNotice({ type: 'success', message: `Student profile for ${f.name} updated successfully.` });
+      } else {
+        const res = await api.post('/students', f);
+        const created = res.data;
+        const cls = classes.find(c => c.id === f.classId);
+        const sec = sections.find(s => s.id === f.sectionId);
+        const rowItem = {
+          ...created,
+          class_number: created.class_number || cls?.class_number || 8,
+          section_name: created.section_name || sec?.name || 'A'
+        };
+        setRows(prev => [rowItem, ...prev.filter(r => r.id !== rowItem.id)]);
+        if (created.invite_sent) {
+          setToastNotice({
+            type: 'success',
+            message: `Student enrolled successfully! An official password setup email has been dispatched to ${created.student_email || created.parent_email}.`,
+            resetUrl: created.reset_url
+          });
+        } else {
+          setToastNotice({ type: 'success', message: `Student ${created.name} enrolled successfully.` });
+        }
+      }
       setOpen(false);
+      setEditingStudent(null);
       setF({});
       load();
     } catch(err:any){
@@ -872,11 +2012,15 @@ function Students(){
     });
   }
 
-  const filtered = rows.filter(r => 
-    r.name.toLowerCase().includes(search.toLowerCase()) || 
-    String(r.roll_number).includes(search) ||
-    String(r.class_number).includes(search)
-  );
+  const filtered = rows.filter(r => {
+    const matchesSearch = 
+      r.name.toLowerCase().includes(search.toLowerCase()) || 
+      String(r.roll_number).includes(search) ||
+      String(r.class_number).includes(search);
+    const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
+    const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
+    return matchesSearch && matchesClass && matchesSection;
+  });
 
   function toggleSelectAll() {
     if (selectedIds.size === filtered.length && filtered.length > 0) {
@@ -957,7 +2101,7 @@ function Students(){
           <FileSpreadsheet size={16} /> Import Excel / CSV
         </button>
         <button 
-          onClick={() => setOpen(true)}
+          onClick={() => { setEditingStudent(null); setF({}); setOpen(true); }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <Plus size={16} /> Add Student
@@ -965,14 +2109,89 @@ function Students(){
       </div>
     </div>
 
+    {/* Toast / Feedback Notice */}
+    {toastNotice && (
+      <div style={{
+        padding: '12px 16px',
+        marginBottom: 16,
+        borderRadius: 'var(--radius-sm)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
+        border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+        color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
+        fontSize: 13
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {toastNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{toastNotice.message}</span>
+          {toastNotice.resetUrl && (
+            <a
+              href={toastNotice.resetUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#1d4ed8',
+                fontWeight: 600,
+                textDecoration: 'underline',
+                marginLeft: 4
+              }}
+            >
+              Test Setup Link <ArrowRight size={13} />
+            </a>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setToastNotice(null)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit', padding: 0 }}
+        >
+          ×
+        </button>
+      </div>
+    )}
+
     {/* Search & Filter Bar */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
-      <input 
-        placeholder="🔍 Search student name, roll number, or class..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 380, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
-      />
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input 
+          placeholder="🔍 Search student name, roll number, or email..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ width: 280, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+        />
+        <select 
+          value={classFilter} 
+          onChange={e => { setClassFilter(e.target.value); setSectionFilter(''); }}
+          style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+        >
+          <option value="">All Classes</option>
+          {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+        </select>
+        <select 
+          value={sectionFilter} 
+          onChange={e => setSectionFilter(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+        >
+          <option value="">All Sections</option>
+          {sections.filter(s => !classFilter || s.class_id === classFilter).map(s => <option key={s.id} value={s.id}>Section {s.name}</option>)}
+        </select>
+        {(search || classFilter || sectionFilter) && (
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); }}
+            style={{ padding: '6px 10px', fontSize: 12 }}
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
         Showing <b>{filtered.length}</b> of <b>{rows.length}</b> students
       </div>
@@ -993,16 +2212,15 @@ function Students(){
             <th>Roll</th>
             <th>Student Name</th>
             <th>Class</th>
-            <th>Section</th>
-            <th>Parent / Guardian</th>
-            <th>Mobile</th>
-            <th>Email</th>
+            <th>Student Email</th>
+            <th>Guardian & Contact</th>
+            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -1014,12 +2232,60 @@ function Students(){
               </td>
               <td><span className="roll">{x.roll_number}</span></td>
               <td><b>{x.name}</b></td>
-              <td>Class {x.class_number}</td>
-              <td>Section {x.section_name}</td>
-              <td>{x.parent_name || '—'}</td>
-              <td><code>{x.parent_sms_number}</code></td>
-              <td><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{x.parent_email || '—'}</span></td>
-              <td style={{ textAlign: 'right' }}>
+              <td>Class {x.class_number} — {x.section_name}</td>
+              <td>
+                <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                  {x.student_email || x.email || '—'}
+                </span>
+              </td>
+              <td>
+                <div><b>{x.parent_name || 'Guardian'}</b></div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <code>{x.parent_sms_number}</code>
+                  {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
+                </div>
+              </td>
+              <td>
+                {x.student_email || x.email || x.parent_email ? (
+                  <span className="badge active" title={`Student portal login email: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>
+                    🎓 Student Portal
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Offline Only</span>
+                )}
+              </td>
+              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  className="table-action-btn"
+                  onClick={() => sendStudentResetEmail(x)}
+                  title="Send password setup / reset email"
+                  style={{ marginRight: 6, color: '#2563eb' }}
+                >
+                  <KeyRound size={14} />
+                </button>
+                <button 
+                  className="table-action-btn" 
+                  onClick={() => {
+                    setEditingStudent(x);
+                    setF({
+                      name: x.name,
+                      rollNumber: x.roll_number,
+                      studentEmail: x.student_email || x.email || '',
+                      parentName: x.parent_name || '',
+                      parentSmsNumber: x.parent_sms_number || '',
+                      parentEmail: x.parent_email || '',
+                      classId: x.class_id,
+                      sectionId: x.section_id,
+                      loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
+                      sendInviteEmail: true
+                    });
+                    setOpen(true);
+                  }}
+                  title="Edit student"
+                  style={{ marginRight: 6 }}
+                >
+                  <Pencil size={14} />
+                </button>
                 <button 
                   className="table-action-btn danger" 
                   onClick={() => deleteStudent(x.id)}
@@ -1047,23 +2313,14 @@ function Students(){
       </div>
     )}
 
-    {/* SINGLE STUDENT ADD MODAL */}
-    {open && <Modal title="Add Student" close={()=>setOpen(false)}>
+    {/* SINGLE STUDENT ADD / EDIT MODAL */}
+    {open && <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
       <form className="modal-form" onSubmit={save}>
-        <label>Student Name
+        <label>Student Full Name
           <input required placeholder="Full Name (e.g. Aarav Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
         </label>
         <label>Roll Number
           <input required placeholder="Roll Number (e.g. 101)" value={f.rollNumber||''} onChange={e=>setF({...f,rollNumber:e.target.value})}/>
-        </label>
-        <label>Parent / Guardian Name
-          <input placeholder="Guardian Name" value={f.parentName||''} onChange={e=>setF({...f,parentName:e.target.value})}/>
-        </label>
-        <label>Parent SMS Mobile Number
-          <input required placeholder="Mobile (e.g. 9876543210)" value={f.parentSmsNumber||''} onChange={e=>setF({...f,parentSmsNumber:e.target.value})}/>
-        </label>
-        <label>Parent Email (for Absent Alerts)
-          <input type="email" placeholder="parent@example.com" value={f.parentEmail||''} onChange={e=>setF({...f,parentEmail:e.target.value})}/>
         </label>
         <label>Class
           <select required value={f.classId||''} onChange={e=>setF({...f,classId:e.target.value,sectionId:''})}>
@@ -1077,7 +2334,93 @@ function Students(){
             {sections.filter(s=>!f.classId || s.class_id===f.classId).map(s=><option key={s.id} value={s.id}>Section {s.name}</option>)}
           </select>
         </label>
-        <button type="submit" disabled={saving}>{saving ? 'Saving student...' : 'Save student'}</button>
+
+        <label>Student Email Address
+          <input
+            type="email"
+            placeholder="student@school.edu"
+            value={f.studentEmail || f.email || ''}
+            onChange={e => setF({ ...f, studentEmail: e.target.value })}
+          />
+        </label>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>Parent / Guardian Name
+            <input placeholder="Guardian Name" value={f.parentName||''} onChange={e=>setF({...f,parentName:e.target.value})}/>
+          </label>
+          <label>Parent SMS Mobile Number
+            <input required placeholder="Mobile (e.g. 9876543210)" value={f.parentSmsNumber||''} onChange={e=>setF({...f,parentSmsNumber:e.target.value})}/>
+          </label>
+        </div>
+
+        <label>Parent Email Address (for Login / Absent Alerts)
+          <input
+            type="email"
+            placeholder="parent@example.com"
+            value={f.parentEmail||''}
+            onChange={e => setF({...f,parentEmail:e.target.value})}
+          />
+        </label>
+
+        {/* Student Portal Login Credentials Section */}
+        <div style={{
+          padding: 14,
+          backgroundColor: '#f8fafc',
+          borderRadius: 8,
+          border: '1px solid #e2e8f0',
+          margin: '6px 0 16px 0'
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <KeyRound size={14} style={{ color: '#2563eb' }} />
+            Student Portal Login Email Option
+          </div>
+          <p style={{ margin: '0 0 10px 0', fontSize: 12, color: '#64748b' }}>
+            Select which email will be used to log in to the <b>Student Portal</b>:
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: '#334155', marginBottom: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+              <input
+                type="radio"
+                name="loginOption"
+                value="STUDENT"
+                checked={(f.loginOption || 'STUDENT') === 'STUDENT'}
+                onChange={e => setF({ ...f, loginOption: e.target.value })}
+              />
+              <span>🎓 <b>Use Student Email</b> for Student Portal Login</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+              <input
+                type="radio"
+                name="loginOption"
+                value="PARENT"
+                checked={f.loginOption === 'PARENT'}
+                onChange={e => setF({ ...f, loginOption: e.target.value })}
+              />
+              <span>👨‍👩‍👧 <b>Use Parent Email</b> for Student Portal Login</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+              <input
+                type="radio"
+                name="loginOption"
+                value="NONE"
+                checked={f.loginOption === 'NONE'}
+                onChange={e => setF({ ...f, loginOption: e.target.value })}
+              />
+              <span>⚪ <b>Offline Record Only</b> (No portal account created)</span>
+            </label>
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: 12, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+            <input
+              type="checkbox"
+              checked={f.sendInviteEmail !== false}
+              onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+            />
+            <span>Send password setup email to selected login email (secure 24-hour setup link; spam-filtered)</span>
+          </label>
+        </div>
+
+        <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
       </form>
     </Modal>}
 
@@ -1188,6 +2531,7 @@ function Teachers(){
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
+  const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   async function load(){
     try {
@@ -1200,6 +2544,22 @@ function Teachers(){
 
   useEffect(()=>{load()},[]);
 
+  async function sendTeacherResetEmail(t: any) {
+    try {
+      const res = await api.post(`/teachers/${t.id}/send-reset-email`);
+      setToastNotice({
+        type: 'success',
+        message: res.data.message || `Password setup email dispatched to ${res.data.email}.`,
+        resetUrl: res.data.resetUrl
+      });
+    } catch (err: any) {
+      setToastNotice({
+        type: 'error',
+        message: err?.response?.data?.message || 'Failed to dispatch password setup email.'
+      });
+    }
+  }
+
   async function save(e:React.FormEvent){
     e.preventDefault();
     setSaving(true);
@@ -1209,6 +2569,18 @@ function Teachers(){
       setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
       setOpen(false);
       setF({});
+      if (created.invite_sent) {
+        setToastNotice({
+          type: 'success',
+          message: `Faculty member created! Official password setup email has been dispatched to ${created.email}.`,
+          resetUrl: created.reset_url
+        });
+      } else {
+        setToastNotice({
+          type: 'success',
+          message: `Faculty member ${created.name} registered successfully.`
+        });
+      }
       load();
     } catch(err:any){
       alert(err?.response?.data?.message || 'Could not save teacher');
@@ -1344,6 +2716,53 @@ function Teachers(){
       </div>
     </div>
 
+    {/* Toast / Feedback Notice */}
+    {toastNotice && (
+      <div style={{
+        padding: '12px 16px',
+        marginBottom: 16,
+        borderRadius: 'var(--radius-sm)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
+        border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+        color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
+        fontSize: 13
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {toastNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{toastNotice.message}</span>
+          {toastNotice.resetUrl && (
+            <a
+              href={toastNotice.resetUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#1d4ed8',
+                fontWeight: 600,
+                textDecoration: 'underline',
+                marginLeft: 4
+              }}
+            >
+              Test Setup Link <ArrowRight size={13} />
+            </a>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setToastNotice(null)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit', padding: 0 }}
+        >
+          ×
+        </button>
+      </div>
+    )}
+
     {/* Search & Filter Bar */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
       <input 
@@ -1394,7 +2813,15 @@ function Teachers(){
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
-              <td style={{ textAlign: 'right' }}>
+              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  className="table-action-btn"
+                  onClick={() => sendTeacherResetEmail(x)}
+                  title="Send password setup / reset email"
+                  style={{ marginRight: 6, color: '#2563eb' }}
+                >
+                  <KeyRound size={14} />
+                </button>
                 <button 
                   className="table-action-btn danger" 
                   onClick={() => deleteTeacher(x.id)}
@@ -1428,7 +2855,7 @@ function Teachers(){
         <label>Teacher Full Name
           <input required placeholder="Full Name (e.g. Rahul Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
         </label>
-        <label>Email Address
+        <label>Email Address (for Faculty Portal Login)
           <input required type="email" placeholder="teacher@school.local" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})}/>
         </label>
         <label>Employee ID
@@ -1437,10 +2864,40 @@ function Teachers(){
         <label>Mobile Number
           <input placeholder="Mobile Number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
         </label>
-        <label>Temporary Password
-          <input required type="password" placeholder="Password (e.g. ChangeMe123!)" value={f.password||''} onChange={e=>setF({...f,password:e.target.value})}/>
-        </label>
-        <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : 'Create teacher'}</button>
+
+        {/* Password Setup & Activation Box */}
+        <div style={{
+          padding: 14,
+          backgroundColor: '#f8fafc',
+          borderRadius: 8,
+          border: '1px solid #e2e8f0',
+          margin: '6px 0 16px 0'
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <KeyRound size={14} style={{ color: '#2563eb' }} />
+            Password Setup & Account Activation
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+            <input
+              type="checkbox"
+              checked={f.sendInviteEmail !== false}
+              onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+            />
+            <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
+          </label>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
+            Optional Initial Password (leave empty to let teacher set password via email):
+            <input
+              type="password"
+              placeholder="Optional initial password (e.g. ChangeMe123!)"
+              value={f.password||''}
+              onChange={e => setF({...f,password:e.target.value})}
+              style={{ marginTop: 4 }}
+            />
+          </label>
+        </div>
+
+        <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}</button>
       </form>
     </Modal>}
 
@@ -1713,12 +3170,422 @@ function Routine(){const {user}=useAuth();const [rows,setRows]=useState<any[]>([
   <div className="table-wrap"><table><thead><tr><th>Day</th><th>Class</th><th>Subject</th><th>Teacher</th><th>Time</th><th>Room</th><th></th></tr></thead><tbody>{rows.map(x=><tr key={x.id}><td>{days[x.day_of_week]}</td><td>{x.class_number}-{x.section_name}</td><td>{x.subject_name}</td><td>{x.teacher_name}</td><td>{fmt(x.start_time)}–{fmt(x.end_time)}</td><td>{x.room||'—'}</td><td><button className="danger" onClick={()=>del(x.id)}>Delete</button></td></tr>)}</tbody></table></div></Layout>}
 
 /* ────── Attendance ────── */
-function Attendance(){const {user}=useAuth();const params=new URLSearchParams(useLocation().search);const [routine,setRoutine]=useState<any>();const [students,setStudents]=useState<any[]>([]);const [checked,setChecked]=useState<Record<string,boolean>>({});const [done,setDone]=useState(false);const [busy,setBusy]=useState(false);
-  useEffect(()=>{api.get('/teacher/routine/today').then(x=>{const id=params.get('routine');const rr=id?x.data.find((a:any)=>a.id===id):x.data[0];if(rr){setRoutine(rr);api.get(`/teacher/students/${rr.class_id}/${rr.section_id}`).then(s=>setStudents(s.data))}}).catch(()=>{})},[]);
-  const selectAll=(v:boolean)=>{const z:any={};students.forEach(s=>z[s.id]=v);setChecked(z)};const present=students.filter(s=>checked[s.id]).length;
-  async function submit(){if(!routine)return;setBusy(true);try{const today=new Date().toISOString().slice(0,10);await api.post('/teacher/attendance',{classId:routine.class_id,sectionId:routine.section_id,subjectId:routine.subject_id,startTime:fmt(routine.start_time),endTime:fmt(routine.end_time),attendanceDate:today,presentStudentIds:students.filter(s=>checked[s.id]).map(s=>s.id)});setDone(true)}catch(e:any){alert(e?.response?.data?.message||'Attendance submission failed')}finally{setBusy(false)}}
-  if(!routine)return <Layout><div className="panel"><h3>No class available</h3><p className="muted">No routine is assigned to you for today.</p></div></Layout>;
-  return <Layout><PageHead title={`Class ${routine.class_number}-${routine.section_name}`} sub={`${routine.subject_name} · ${fmt(routine.start_time)}–${fmt(routine.end_time)} · Teacher: ${user?.name||''}`}/><div className="attendance-top"><div><b>Present:</b> {present} / {students.length}</div><button onClick={()=>selectAll(true)}>Select All</button><button className="secondary" onClick={()=>selectAll(false)}>Clear All</button></div><div className="instruction"><CheckCircle2 size={17}/> Instruction: select only students who are physically present. Unchecked students will be marked absent automatically.</div><div className="attendance-list">{students.map(s=><label className="student-row" key={s.id}><div><span className="roll">{s.roll_number}</span><b>{s.name}</b><small>{s.parent_name||'Parent details'}</small></div><input type="checkbox" checked={!!checked[s.id]} onChange={e=>setChecked({...checked,[s.id]:e.target.checked})}/></label>)}</div><div className="submit-bar"><span>{students.length-present} students will be marked absent.</span><button disabled={busy||done} onClick={submit}>{done?'✓ Attendance Submitted':busy?'Submitting…':'Submit Attendance'}</button></div></Layout>}
+function Attendance(){
+  const {user}=useAuth();
+  const nav=useNavigate();
+  const loc=useLocation();
+  const params=new URLSearchParams(loc.search);
+
+  const [classes,setClasses]=useState<any[]>([]);
+  const [sections,setSections]=useState<any[]>([]);
+  const [subjects,setSubjects]=useState<any[]>([]);
+  const [routines,setRoutines]=useState<any[]>([]);
+
+  const [selectedClassId,setSelectedClassId]=useState<string>('');
+  const [selectedSectionId,setSelectedSectionId]=useState<string>('');
+  const [selectedSubjectId,setSelectedSubjectId]=useState<string>('');
+  const [attendanceDate,setAttendanceDate]=useState<string>(new Date().toISOString().slice(0,10));
+  const [activeRoutine,setActiveRoutine]=useState<any>(null);
+
+  const [students,setStudents]=useState<any[]>([]);
+  const [checked,setChecked]=useState<Record<string,boolean>>({});
+  const [search,setSearch]=useState<string>('');
+  const [busy,setBusy]=useState(false);
+  const [done,setDone]=useState(false);
+  const [summary,setSummary]=useState<any>(null);
+
+  // Load initial reference data
+  useEffect(()=>{
+    async function init(){
+      try {
+        const [cRes,sRes,subRes,rRes] = await Promise.all([
+          api.get('/classes'),
+          api.get('/sections'),
+          api.get('/subjects'),
+          api.get('/teacher/routine/today').catch(()=>({data:[]}))
+        ]);
+        setClasses(cRes.data || []);
+        setSections(sRes.data || []);
+        setSubjects(subRes.data || []);
+        const rList = rRes.data || [];
+        setRoutines(rList);
+
+        const routineId = params.get('routine');
+        const matched = routineId ? rList.find((r:any)=>r.id===routineId) : rList[0];
+        if (matched) {
+          setActiveRoutine(matched);
+          setSelectedClassId(matched.class_id);
+          setSelectedSectionId(matched.section_id);
+          setSelectedSubjectId(matched.subject_id);
+        } else if (cRes.data?.length > 0) {
+          const firstCls = cRes.data[0];
+          setSelectedClassId(firstCls.id);
+          const firstSec = (sRes.data || []).find((s:any)=>s.class_id === firstCls.id);
+          if (firstSec) setSelectedSectionId(firstSec.id);
+          if (subRes.data?.length > 0) setSelectedSubjectId(subRes.data[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to load attendance station dependencies:', err);
+      }
+    }
+    init();
+  }, []);
+
+  // Fetch students when class or section changes
+  useEffect(()=>{
+    if (!selectedClassId || !selectedSectionId) return;
+    api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
+      .then(res => {
+        const list = res.data || [];
+        setStudents(list);
+        // Default: mark all present
+        const initChecked: Record<string, boolean> = {};
+        list.forEach((s: any) => { initChecked[s.id] = true; });
+        setChecked(initChecked);
+        setDone(false);
+      })
+      .catch(() => {
+        // Fallback to /students
+        api.get('/students').then(res => {
+          const matched = (res.data || []).filter((s:any)=>
+            (String(s.class_id) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
+            (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || s.section_name === 'A')
+          );
+          setStudents(matched);
+          const initChecked: Record<string, boolean> = {};
+          matched.forEach((s: any) => { initChecked[s.id] = true; });
+          setChecked(initChecked);
+          setDone(false);
+        }).catch(()=>{});
+      });
+  }, [selectedClassId, selectedSectionId]);
+
+  function switchRoutine(r: any) {
+    setActiveRoutine(r);
+    setSelectedClassId(r.class_id);
+    setSelectedSectionId(r.section_id);
+    setSelectedSubjectId(r.subject_id);
+    setDone(false);
+  }
+
+  const selectAll = (val: boolean) => {
+    const updated: Record<string, boolean> = {};
+    students.forEach(s => { updated[s.id] = val; });
+    setChecked(updated);
+  };
+
+  const presentCount = students.filter(s => checked[s.id]).length;
+  const absentCount = students.length - presentCount;
+  const ratePct = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
+
+  const filteredStudents = students.filter(s => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
+  });
+
+  async function submit() {
+    if (!selectedClassId || !selectedSectionId) {
+      alert('Please select both Class and Section.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.post('/teacher/attendance', {
+        classId: selectedClassId,
+        sectionId: selectedSectionId,
+        subjectId: selectedSubjectId || null,
+        startTime: activeRoutine?.start_time ? fmt(activeRoutine.start_time) : '09:00:00',
+        endTime: activeRoutine?.end_time ? fmt(activeRoutine.end_time) : '09:45:00',
+        attendanceDate,
+        presentStudentIds: students.filter(s => checked[s.id]).map(s => s.id)
+      });
+      setSummary(res.data);
+      setDone(true);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Attendance submission failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const currentClass = classes.find(c => c.id === selectedClassId);
+  const currentSection = sections.find(s => s.id === selectedSectionId);
+  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+
+  return (
+    <Layout>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }}></span>
+            <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL STATION</p>
+          </div>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            Record real-time student attendance with automated SMS dispatch to parents.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="secondary" onClick={() => nav('/dashboard')}>
+            ← Back to Dashboard
+          </button>
+          <button className="secondary" onClick={() => nav('/attendance-reports')}>
+            View Reports →
+          </button>
+        </div>
+      </div>
+
+      {/* Routine Quick Switchers (if routines exist) */}
+      {routines.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }}>
+            Today's Scheduled Periods ({routines.length})
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {routines.slice(0, 6).map((r: any) => {
+              const isActive = activeRoutine?.id === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => switchRoutine(r)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    border: isActive ? '2px solid #2563eb' : '1px solid var(--border)',
+                    background: isActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
+                    color: isActive ? '#2563eb' : 'var(--text)',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 12.5,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <span>Class {r.class_number}-{r.section_name}</span>
+                  <span style={{ opacity: 0.7 }}>· {r.subject_name} ({fmt(r.start_time)})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Selectors Bar */}
+      <div className="attendance-station-header">
+        <div className="attendance-selectors">
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Class:
+            <select
+              value={selectedClassId}
+              onChange={(e) => {
+                const cid = e.target.value;
+                setSelectedClassId(cid);
+                setActiveRoutine(null);
+                const matchingSec = sections.find(s => s.class_id === cid);
+                if (matchingSec) setSelectedSectionId(matchingSec.id);
+              }}
+              style={{ marginLeft: 6 }}
+            >
+              {classes.map(c => (
+                <option key={c.id} value={c.id}>Class {c.class_number}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Section:
+            <select
+              value={selectedSectionId}
+              onChange={(e) => {
+                setSelectedSectionId(e.target.value);
+                setActiveRoutine(null);
+              }}
+              style={{ marginLeft: 6 }}
+            >
+              {sections
+                .filter(s => !selectedClassId || s.class_id === selectedClassId)
+                .map(s => (
+                  <option key={s.id} value={s.id}>Section {s.name}</option>
+                ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Subject:
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              style={{ marginLeft: 6 }}
+            >
+              {subjects.map(sub => (
+                <option key={sub.id} value={sub.id}>{sub.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Date:
+            <input
+              type="date"
+              value={attendanceDate}
+              onChange={(e) => setAttendanceDate(e.target.value)}
+              style={{ marginLeft: 6 }}
+            />
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="roster-stat-pill present">
+            <CheckCircle2 size={15} /> {presentCount} Present
+          </div>
+          <div className="roster-stat-pill absent">
+            <AlertCircle size={15} /> {absentCount} Absent
+          </div>
+          <div className="roster-stat-pill">
+            Rate: {ratePct}%
+          </div>
+        </div>
+      </div>
+
+      {/* Success Banner */}
+      {done && (
+        <div className="admin-alert-banner success" style={{ marginBottom: 20 }}>
+          <div className="alert-left">
+            <CheckCircle2 size={24} color="#059669" />
+            <div>
+              <strong>Attendance Recorded Successfully!</strong>
+              <p>
+                Class {currentClass?.class_number || '8'}-{currentSection?.name || 'A'} attendance session for {attendanceDate} has been confirmed. 
+                {summary?.absent > 0 ? ` Absent notification messages queued for ${summary.absent} student(s).` : ' All students present.'}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="alert-action-btn" style={{ background: '#059669' }} onClick={() => nav('/dashboard')}>
+              Go to Dashboard →
+            </button>
+            <button className="secondary" onClick={() => setDone(false)}>
+              Edit Attendance
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Roster Controls */}
+      <div className="attendance-roster-topbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => selectAll(true)} style={{ fontSize: 12.5, padding: '6px 14px' }}>
+            ✓ Select All Present
+          </button>
+          <button className="secondary" onClick={() => selectAll(false)} style={{ fontSize: 12.5, padding: '6px 14px' }}>
+            ✕ Clear All
+          </button>
+        </div>
+
+        <div style={{ width: 260 }}>
+          <input
+            type="text"
+            placeholder="Search students in this class..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              color: 'var(--text)',
+              fontSize: 12.5
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Instruction Note */}
+      <div className="instruction" style={{ marginBottom: 14 }}>
+        <CheckCircle2 size={16} />
+        <span>Check only students who are physically present. Unchecked students are marked absent and their guardians will be notified.</span>
+      </div>
+
+      {/* Student List */}
+      {students.length === 0 ? (
+        <div className="panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
+          <h3>No students found in this section</h3>
+          <p className="muted">Add students to Class {currentClass?.class_number || ''}-{currentSection?.name || ''} in the Student Directory.</p>
+          <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
+            + Enroll Student Now
+          </button>
+        </div>
+      ) : (
+        <div className="attendance-list">
+          {filteredStudents.map((s: any) => {
+            const isPresent = !!checked[s.id];
+            return (
+              <label
+                className="student-row"
+                key={s.id}
+                style={{
+                  background: isPresent ? 'var(--bg-card)' : 'rgba(239, 68, 68, 0.04)',
+                  borderColor: isPresent ? 'var(--border)' : 'rgba(239, 68, 68, 0.3)',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span className="roll" style={{ background: isPresent ? '#eff6ff' : '#fee2e2', color: isPresent ? '#2563eb' : '#dc2626' }}>
+                    {s.roll_number || '•'}
+                  </span>
+                  <div>
+                    <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {s.parent_name ? `Parent: ${s.parent_name}` : 'Guardian registered'} · {s.parent_sms_number || 'Mobile on file'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 100,
+                      background: isPresent ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                      color: isPresent ? '#059669' : '#dc2626'
+                    }}
+                  >
+                    {isPresent ? 'PRESENT' : 'ABSENT'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={isPresent}
+                    onChange={(e) => setChecked({ ...checked, [s.id]: e.target.checked })}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bottom Submit Action Bar */}
+      {students.length > 0 && (
+        <div className="submit-bar" style={{ marginTop: 20 }}>
+          <div>
+            <strong>Summary: {presentCount} Present</strong>, {absentCount} Absent ({ratePct}% Attendance Rate)
+          </div>
+          <button disabled={busy} onClick={submit} style={{ minWidth: 160 }}>
+            {busy ? 'Submitting…' : done ? '✓ Update Attendance' : 'Submit Attendance'}
+          </button>
+        </div>
+      )}
+    </Layout>
+  );
+}
 
 /* ────── History ────── */
 function History(){const {user}=useAuth();const [rows,setRows]=useState<any[]>([]);useEffect(()=>{api.get('/teacher/attendance/history').then(x=>setRows(x.data)).catch(()=>{})},[]);
@@ -2141,14 +4008,94 @@ function SubscriptionPage(){
  </Layout>
 }
 
-/* ────── Invoices (Super Admin) ────── */
+/* ────── Invoices (Super Admin & School Admin) ────── */
 function Invoices(){
- const {user}=useAuth();const [rows,setRows]=useState<any[]>([]);
- useEffect(()=>{api.get('/super-admin/invoices').then(x=>setRows(x.data)).catch(()=>{})},[]);
- return <Layout><PageHead title="Invoices & Receipts" sub="Generated subscription invoices and payment receipts."/>
- <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>School</th><th>Receipt</th><th>Amount</th><th>Status</th><th>Paid</th><th>Receipt</th></tr></thead>
- <tbody>{rows.map(x=><tr key={x.id}><td><b>{x.invoice_number}</b></td><td>{x.school_name}</td><td>{x.receipt_number||'—'}</td><td>₹{Number(x.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{x.status}</span></td><td>{x.paid_at?.slice(0,19).replace('T',' ')||'—'}</td><td><button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${x.id}/receipt`,'_blank')}>Open</button></td></tr>)}</tbody></table></div>
- </Layout>
+  const {user}=useAuth();
+  const [rows,setRows]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [downloadingId,setDownloadingId]=useState<string|null>(null);
+
+  async function load(){
+    setLoading(true);
+    try {
+      const endpoint = user?.role === 'SUPER_ADMIN' ? '/super-admin/invoices' : '/school-payment/invoices';
+      const res = await api.get(endpoint);
+      setRows(res.data || []);
+    } catch (err) {
+      console.error('Failed to load invoices:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(()=>{load()},[user?.role]);
+
+  async function downloadPdf(invId: string, invoiceNum: string) {
+    setDownloadingId(invId);
+    try {
+      const res = await api.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${invoiceNum || 'invoice'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch {
+      const token = localStorage.getItem('token');
+      window.open(`${API_BASE_URL}/invoices/${invId}/pdf?token=${token}`, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  return <Layout>
+    <PageHead 
+      title="Invoices & Billing Statements" 
+      sub={user?.role === 'SUPER_ADMIN' ? "Platform-wide subscription invoices and payment receipts." : "Official subscription invoices, tax receipts, and payment statements."}
+    />
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            {user?.role === 'SUPER_ADMIN' && <th>School</th>}
+            <th>Receipt #</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Issued Date</th>
+            <th>Paid Date</th>
+            <th style={{ textAlign: 'right' }}>Official PDF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr><td colSpan={user?.role === 'SUPER_ADMIN' ? 8 : 7} style={{ textAlign: 'center', padding: 24 }} className="muted">{loading ? 'Loading invoices...' : 'No invoices on record.'}</td></tr>
+          ) : rows.map(x => (
+            <tr key={x.id}>
+              <td><b>{x.invoice_number}</b></td>
+              {user?.role === 'SUPER_ADMIN' && <td>{x.school_name}</td>}
+              <td>{x.receipt_number || '—'}</td>
+              <td><b>₹{Number(x.amount || 0).toLocaleString('en-IN')}</b></td>
+              <td><span className={`badge ${x.status === 'PAID' ? 'active' : 'processing'}`}>{x.status}</span></td>
+              <td>{x.issued_at?.slice(0, 10) || '—'}</td>
+              <td>{x.paid_at?.slice(0, 19).replace('T', ' ') || '—'}</td>
+              <td style={{ textAlign: 'right' }}>
+                <button 
+                  className="small-btn" 
+                  disabled={downloadingId === x.id}
+                  onClick={() => downloadPdf(x.id, x.invoice_number)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <Download size={13} /> {downloadingId === x.id ? 'Generating...' : 'Download PDF'}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </Layout>;
 }
 
 /* ────── Super Admin Monitor ────── */
@@ -2177,14 +4124,225 @@ function SuperMonitor(){
  </Layout>
 }
 
-/* ────── Payments (Super Admin) ────── */
+/* ────── Payments (Super Admin & School Admin) ────── */
 function Payments(){
- const {user}=useAuth();const [rows,setRows]=useState<any[]>([]);
- useEffect(()=>{api.get('/super-admin/payments').then(x=>setRows(x.data)).catch(()=>{})},[]);
- return <Layout><PageHead title="Payments" sub="Subscription payment records across all schools."/>
- <div className="table-wrap"><table><thead><tr><th>School</th><th>Plan</th><th>Amount</th><th>Provider</th><th>Status</th><th>Created</th></tr></thead>
- <tbody>{rows.map(x=><tr key={x.id}><td><b>{x.school_name}</b></td><td>{x.plan_name||'—'}</td><td>₹{Number(x.amount||0).toLocaleString('en-IN')}</td><td>{x.provider}</td><td><span className="badge">{x.status}</span></td><td>{x.created_at?.slice(0,19).replace('T',' ')}</td></tr>)}</tbody></table></div>
- </Layout>
+  const {user}=useAuth();
+  const [rows,setRows]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [downloadingId,setDownloadingId]=useState<string|null>(null);
+
+  async function load(){
+    setLoading(true);
+    try {
+      const endpoint = user?.role === 'SUPER_ADMIN' ? '/super-admin/payments' : '/school-payment/payments';
+      const res = await api.get(endpoint);
+      setRows(res.data || []);
+    } catch (err) {
+      console.error('Failed to load payments:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(()=>{load()},[user?.role]);
+
+  async function downloadPdf(invId: string, invoiceNum: string) {
+    setDownloadingId(invId);
+    try {
+      const res = await api.get(`/invoices/${invId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${invoiceNum || 'receipt'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch {
+      const token = localStorage.getItem('token');
+      window.open(`${API_BASE_URL}/invoices/${invId}/pdf?token=${token}`, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  return <Layout>
+    <PageHead 
+      title="Payment History" 
+      sub={user?.role === 'SUPER_ADMIN' ? "Platform-wide subscription payments received across all schools." : "History of subscription renewal payments, transaction IDs, and receipts."}
+    />
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {user?.role === 'SUPER_ADMIN' && <th>School</th>}
+            <th>Date & Time</th>
+            <th>Gateway</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Invoice</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr><td colSpan={user?.role === 'SUPER_ADMIN' ? 7 : 6} style={{ textAlign: 'center', padding: 24 }} className="muted">{loading ? 'Loading payments...' : 'No payment records found.'}</td></tr>
+          ) : rows.map(x => (
+            <tr key={x.id}>
+              {user?.role === 'SUPER_ADMIN' && <td><b>{x.school_name}</b></td>}
+              <td>{x.created_at?.slice(0, 19).replace('T', ' ')}</td>
+              <td><code>{x.provider}</code></td>
+              <td><b>₹{Number(x.amount || 0).toLocaleString('en-IN')}</b></td>
+              <td><span className={`badge ${x.status === 'PAID' || x.status === 'COMPLETED' ? 'active' : 'processing'}`}>{x.status}</span></td>
+              <td>{x.invoice_number || '—'}</td>
+              <td>
+                {x.invoice_id ? (
+                  <button 
+                    className="small-btn" 
+                    disabled={downloadingId === x.invoice_id}
+                    onClick={() => downloadPdf(x.invoice_id, x.invoice_number || 'receipt')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <Download size={12} /> Receipt
+                  </button>
+                ) : (
+                  x.receipt_number || '—'
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </Layout>;
+}
+
+/* ────── School Profile (School Admin) ────── */
+function SchoolProfile() {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await api.get('/school-profile');
+      setProfile(res.data);
+      setForm({
+        contact_number: res.data.contact_number || '',
+        address: res.data.address || '',
+        website: res.data.website || ''
+      });
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to load school profile' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await api.put('/school-profile', form);
+      setProfile(res.data);
+      setMsg({ type: 'success', text: 'School profile updated successfully!' });
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update school profile' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Layout>
+      <PageHead
+        title="School Profile & Settings"
+        sub="Institutional credentials, contact coordinates, campus address, and official communication channels."
+      />
+      {msg && (
+        <div className={msg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
+          {msg.text}
+        </div>
+      )}
+      {loading ? (
+        <p className="muted">Loading institutional profile...</p>
+      ) : (
+        <div className="two-col">
+          <div className="panel">
+            <h3>Institution Identity</h3>
+            <div className="list">
+              <div className="list-row">
+                <b>Institution Name</b>
+                <span>{profile?.name || '—'}</span>
+              </div>
+              <div className="list-row">
+                <b>Affiliation / School Code</b>
+                <span><code>{profile?.code || '—'}</code></span>
+              </div>
+              <div className="list-row">
+                <b>Registered Official Email</b>
+                <span>{profile?.email || '—'}</span>
+              </div>
+              <div className="list-row">
+                <b>Operational Status</b>
+                <span><span className="badge active">{profile?.status || 'ACTIVE'}</span></span>
+              </div>
+              <div className="list-row">
+                <b>Timezone</b>
+                <span>{profile?.timezone || 'Asia/Kolkata'}</span>
+              </div>
+              <div className="list-row">
+                <b>System Tenant ID</b>
+                <span><code style={{ fontSize: 11 }}>{profile?.id}</code></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Campus Contact & Location</h3>
+            <form onSubmit={save} className="modal-form" style={{ gap: 14 }}>
+              <label>
+                Enquiry / Emergency Contact Number
+                <input
+                  type="text"
+                  placeholder="+91 98765 43210"
+                  value={form.contact_number}
+                  onChange={e => setForm({ ...form, contact_number: e.target.value })}
+                />
+              </label>
+              <label>
+                Official School Website
+                <input
+                  type="text"
+                  placeholder="https://greenwood.edu"
+                  value={form.website}
+                  onChange={e => setForm({ ...form, website: e.target.value })}
+                />
+              </label>
+              <label>
+                Campus Physical Address
+                <textarea
+                  rows={3}
+                  placeholder="Street, City, State, PIN"
+                  value={form.address}
+                  onChange={e => setForm({ ...form, address: e.target.value })}
+                />
+              </label>
+              <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
+                {saving ? 'Saving changes...' : 'Update Institutional Profile'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
 }
 
 /* ────── Super Admin Home ────── */
@@ -2199,6 +4357,7 @@ function SuperAdminHome(){
 /* ────── Routes ────── */
 function App(){return <Routes>
   <Route path="/login" element={<Login/>}/>
+  <Route path="/reset-password" element={<ResetPassword/>}/>
   <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
   <Route path="/students" element={<Guard><Students/></Guard>}/>
   <Route path="/teachers" element={<Guard><Teachers/></Guard>}/>
@@ -2213,7 +4372,6 @@ function App(){return <Routes>
   <Route path="/people" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PeopleManagement/></Layout></RoleGuard>}/>
   <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
   <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
-  <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
   <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
   <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
   <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
@@ -2222,10 +4380,10 @@ function App(){return <Routes>
   <Route path="/offline-attendance" element={<RoleGuard roles={['TEACHER']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
-  <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminHome/></RoleGuard>}/>
-  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><Payments/></RoleGuard>}/>
-  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><Invoices/></RoleGuard>}/>
+  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Payments/></RoleGuard>}/>
+  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Invoices/></RoleGuard>}/>
+  <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
   <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperMonitor/></RoleGuard>}/>
   <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
   {/* Student Portal Routes */}

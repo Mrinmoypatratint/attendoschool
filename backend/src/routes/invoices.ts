@@ -16,6 +16,24 @@ async function getInvoice(id:string,sid:string|null,role:string){
  return q.rows[0];
 }
 
+r.get('/', async (req: AuthRequest, res) => {
+  const role = req.user!.role;
+  const sid = req.user!.schoolId;
+  try {
+    const q = await pool.query(
+      `SELECT i.*, s.name as school_name, s.code as school_code
+       FROM subscription_invoices i
+       JOIN schools s ON s.id = i.school_id
+       ${role === 'SCHOOL_ADMIN' ? 'WHERE i.school_id = $1' : ''}
+       ORDER BY i.issued_at DESC`,
+      role === 'SCHOOL_ADMIN' ? [sid] : []
+    );
+    return res.json(q.rows);
+  } catch (_e) {
+    res.json([]);
+  }
+});
+
 r.get('/:id/pdf',async(req:AuthRequest,res)=>{
  try{
    const x=await getInvoice(String(req.params.id),req.user!.schoolId,req.user!.role);

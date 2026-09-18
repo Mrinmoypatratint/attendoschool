@@ -11,6 +11,19 @@ const role = (req: Request) => (req as any).user?.role;
 // For SUPER_ADMIN (no schoolId), use the default demo school
 const effectiveSid = (req: Request) => sid(req) || '00000000-0000-0000-0000-000000000001';
 
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    if (!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
+    const [students, teachers] = await Promise.all([
+      listStudents(effectiveSid(req), '', true).catch(() => []),
+      listTeachers(effectiveSid(req), '', true).catch(() => [])
+    ]);
+    res.json({ students, teachers, totalStudents: students.length, totalTeachers: teachers.length });
+  } catch (_e: any) {
+    res.json({ students: [], teachers: [], totalStudents: 0, totalTeachers: 0 });
+  }
+});
+
 router.get('/students', async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});

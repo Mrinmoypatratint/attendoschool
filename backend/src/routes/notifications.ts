@@ -6,6 +6,15 @@ import {processSmsQueue} from '../services/smsService';
 const r=Router();
 const admin=[requireAuth,requireRoles('SCHOOL_ADMIN')];
 
+r.get('/',...admin,async(req:AuthRequest,res)=>{
+  try {
+    const q=await pool.query(`SELECT * FROM school_notification_settings WHERE school_id=$1`,[req.user!.schoolId]);
+    res.json(q.rows[0]||{school_id:req.user!.schoolId,sms_enabled:true,provider:'mock',sender_id:'SCHL01'});
+  } catch {
+    res.json({school_id:req.user!.schoolId,sms_enabled:true,provider:'mock',sender_id:'SCHL01'});
+  }
+});
+
 r.get('/settings',...admin,async(req:AuthRequest,res)=>{
   try {
     const q=await pool.query(`SELECT * FROM school_notification_settings WHERE school_id=$1`,[req.user!.schoolId]);
