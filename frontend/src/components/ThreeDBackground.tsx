@@ -220,6 +220,15 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
 
   return (
     <div className="as-3d-backdrop-container" aria-hidden="true">
+      {/* Ambient background photo layer with atmospheric blur and smooth depth */}
+      <div 
+        className="as-3d-backdrop-image"
+        style={{
+          backgroundImage: 'url(/campus_hero_reference.jpg)',
+          opacity: dark ? 0.24 : 0.18
+        }}
+      />
+
       {/* Optional ambient video layer */}
       <video
         className="as-3d-video-layer"
