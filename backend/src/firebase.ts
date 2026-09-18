@@ -2,52 +2,97 @@ import 'dotenv/config';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore, CollectionReference, DocumentData } from 'firebase-admin/firestore';
 import * as fs from 'fs';
+import * as path from 'path';
 import { env } from './config/env';
 
 let firebaseApp: App;
+let connectionMode: 'live_cloud' | 'emulator' | 'local_unconfigured' = 'local_unconfigured';
+let credentialSource: string = 'None';
+let resolvedProjectId: string = env.firebaseProjectId || 'attendoschool-saas';
 
-// Configure emulator if specified
-if (env.firestoreEmulatorHost) {
-  process.env.FIRESTORE_EMULATOR_HOST = env.firestoreEmulatorHost;
+/**
+ * Automatically locate service account key file if present
+ */
+function resolveServiceAccountPath(): string | null {
+  const candidates = [
+    env.firebaseServiceAccountPath,
+    path.resolve(process.cwd(), 'serviceAccountKey.json'),
+    path.resolve(process.cwd(), 'backend/serviceAccountKey.json'),
+    path.resolve(__dirname, '../serviceAccountKey.json'),
+    path.resolve(__dirname, '../../serviceAccountKey.json'),
+    process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ].filter(Boolean) as string[];
+
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+        return p;
+      }
+    } catch {}
+  }
+  return null;
 }
+
+const serviceAccountFilePath = resolveServiceAccountPath();
 
 try {
   const existingApps = getApps();
   if (existingApps.length > 0) {
     firebaseApp = existingApps[0]!;
-  } else if (env.firebaseServiceAccountPath && fs.existsSync(env.firebaseServiceAccountPath)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(env.firebaseServiceAccountPath, 'utf8'));
+    connectionMode = 'live_cloud';
+    credentialSource = 'Existing App Instance';
+  } else if (serviceAccountFilePath) {
+    // 1. Live Google Cloud credentials via Service Account JSON File
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountFilePath, 'utf8'));
+    resolvedProjectId = serviceAccount.project_id || env.firebaseProjectId;
     firebaseApp = initializeApp({
       credential: cert(serviceAccount),
-      projectId: serviceAccount.project_id || env.firebaseProjectId
+      projectId: resolvedProjectId
     });
-    console.log('[Firebase] Initialized with service account file:', env.firebaseServiceAccountPath);
+    connectionMode = 'live_cloud';
+    credentialSource = `Service Account File: ${path.basename(serviceAccountFilePath)}`;
+    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId})`);
   } else if (env.firebaseClientEmail && env.firebasePrivateKey) {
+    // 2. Live Google Cloud credentials via Direct Environment Variables
+    resolvedProjectId = env.firebaseProjectId;
     firebaseApp = initializeApp({
       credential: cert({
-        projectId: env.firebaseProjectId,
+        projectId: resolvedProjectId,
         clientEmail: env.firebaseClientEmail,
         privateKey: env.firebasePrivateKey,
       }),
-      projectId: env.firebaseProjectId
+      projectId: resolvedProjectId
     });
-    console.log('[Firebase] Initialized with environment credentials for project:', env.firebaseProjectId);
-  } else {
-    // Default development / emulator initialization
+    connectionMode = 'live_cloud';
+    credentialSource = 'Environment Variables (FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)';
+    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId})`);
+  } else if (env.firestoreEmulatorHost) {
+    // 3. Local Firestore Emulator
+    process.env.FIRESTORE_EMULATOR_HOST = env.firestoreEmulatorHost;
     firebaseApp = initializeApp({
-      projectId: env.firebaseProjectId || 'attendoschool-saas'
+      projectId: resolvedProjectId
     });
-    console.log('[Firebase] Initialized in local/emulator mode (Project:', env.firebaseProjectId || 'attendoschool-saas', ')');
+    connectionMode = 'emulator';
+    credentialSource = `Local Emulator: ${env.firestoreEmulatorHost}`;
+    console.log(`[Firebase] Initialized in Emulator mode (Host: ${env.firestoreEmulatorHost}, Project: ${resolvedProjectId})`);
+  } else {
+    // 4. Default fallback development
+    firebaseApp = initializeApp({
+      projectId: resolvedProjectId
+    });
+    connectionMode = 'local_unconfigured';
+    credentialSource = 'Default Development ID';
+    console.log(`[Firebase] Initialized in local dev mode (Project: ${resolvedProjectId})`);
   }
 } catch (error: any) {
   console.warn('[Firebase] Warning during initialization:', error.message);
   const apps = getApps();
-  firebaseApp = apps.length > 0 ? apps[0]! : initializeApp({ projectId: 'attendoschool-saas' });
+  firebaseApp = apps.length > 0 ? apps[0]! : initializeApp({ projectId: resolvedProjectId });
 }
 
 export const firestore: Firestore = getFirestore(firebaseApp);
 
-// Optional settings for Firestore
+// Settings for Firestore
 try {
   firestore.settings({ ignoreUndefinedProperties: true });
 } catch {}
@@ -72,29 +117,59 @@ export const collections = {
 };
 
 export function isFirebaseConfigured(): boolean {
-  return Boolean(
-    env.firestoreEmulatorHost ||
-    (env.firebaseServiceAccountPath && fs.existsSync(env.firebaseServiceAccountPath)) ||
-    (env.firebaseClientEmail && env.firebasePrivateKey) ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS
-  );
+  return connectionMode === 'live_cloud' || connectionMode === 'emulator';
+}
+
+export function getFirebaseStatus() {
+  return {
+    configured: isFirebaseConfigured(),
+    mode: connectionMode,
+    projectId: resolvedProjectId,
+    credentialSource,
+    serviceAccountDetected: Boolean(serviceAccountFilePath)
+  };
 }
 
 /**
  * Health check helper for Cloud Firestore
  */
-export async function checkFirestoreHealth(): Promise<{ ok: boolean; message: string; timestamp?: string }> {
+export async function checkFirestoreHealth(): Promise<{
+  ok: boolean;
+  message: string;
+  mode?: string;
+  projectId?: string;
+  credentialSource?: string;
+  timestamp?: string;
+}> {
   if (!isFirebaseConfigured()) {
     return {
       ok: false,
-      message: 'Firebase credentials pending. Add FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_CLIENT_EMAIL to .env'
+      message: 'Firebase credentials pending. Place serviceAccountKey.json in backend/ or set FIREBASE_CLIENT_EMAIL in .env',
+      mode: connectionMode,
+      projectId: resolvedProjectId,
+      credentialSource
     };
   }
   try {
     const testDoc = await firestore.collection('_system_health').doc('ping').get();
-    return { ok: true, message: 'Firestore connection active', timestamp: new Date().toISOString() };
+    return {
+      ok: true,
+      message: connectionMode === 'live_cloud'
+        ? 'Live Google Cloud Firestore connection active'
+        : 'Firestore connection active (Emulator mode)',
+      mode: connectionMode,
+      projectId: resolvedProjectId,
+      credentialSource,
+      timestamp: new Date().toISOString()
+    };
   } catch (err: any) {
-    return { ok: false, message: err.message };
+    return {
+      ok: false,
+      message: `Firestore connection error: ${err.message}`,
+      mode: connectionMode,
+      projectId: resolvedProjectId,
+      credentialSource
+    };
   }
 }
 

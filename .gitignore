@@ -11,5 +11,7 @@ dist/
 backups/
 deploy/nginx/certs/*.key
 deploy/nginx/certs/*.pem
-.vercel/
 attendoschool/
+serviceAccountKey.json
+*serviceAccount*.json
+*.serviceAccount.json
