@@ -185,6 +185,7 @@ function Login() {
   const { dark, toggle } = useTheme();
 
   const [institutes, setInstitutes] = useState<Institute[]>(FALLBACK_INSTITUTES);
+  const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState('00000000-0000-0000-0000-000000000001');
   const [instituteSearch, setInstituteSearch] = useState('');
@@ -248,6 +249,7 @@ function Login() {
   );
 
   function handleSelectRole(role: LoginOption) {
+    setSelectedRole(role);
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
@@ -319,211 +321,277 @@ function Login() {
   }
 
   return (
-    <div className="as-login-desk-wrap">
-      {/* 3D Dynamic Ambient Canvas Background */}
-      <ThreeDBackground dark={dark} />
+    <div className="as-wonder-page">
+      <div className="as-wonder-overlay" aria-hidden="true" />
 
-      {/* Decorative environment background elements */}
-      <div className="as-desk-decor-plane" aria-hidden="true">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <path d="M6 24L42 8L28 40L22 28L6 24Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M42 8L22 28" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <div className="as-desk-decor-notebook" aria-hidden="true">
-        <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-          <rect x="14" y="10" width="38" height="46" rx="4" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
-          <line x1="20" y1="22" x2="44" y2="22" stroke="currentColor" strokeWidth="1.2" />
-          <line x1="20" y1="30" x2="44" y2="30" stroke="currentColor" strokeWidth="1.2" />
-          <line x1="20" y1="38" x2="36" y2="38" stroke="currentColor" strokeWidth="1.2" />
-          <circle cx="10" cy="18" r="2" fill="currentColor" />
-          <circle cx="10" cy="26" r="2" fill="currentColor" />
-          <circle cx="10" cy="34" r="2" fill="currentColor" />
-          <circle cx="10" cy="42" r="2" fill="currentColor" />
-        </svg>
-      </div>
-      <div className="as-desk-decor-tagline" aria-hidden="true">
-        Same Schools<br />Brighter Futures
-      </div>
-
-      {/* Main Split-Screen Container with 1px Subtle Border */}
-      <div className="as-login-frame">
-        {/* Left Column: Interactive 3D Visme Animated Hero & Brand Showcase */}
-        <div className="as-hero-col">
-          <VismeAnimatedHero />
+      {/* Top Navigation Bar */}
+      <header className="as-wonder-navbar">
+        <div className="as-wonder-brand" onClick={() => nav('/')}>
+          <div className="as-wonder-logo-icon">
+            <Sparkles size={20} color="#ffffff" />
+          </div>
+          <span className="as-wonder-brand-name">
+            AttendoSchool <span className="as-wonder-spark">✦</span>
+          </span>
         </div>
 
-        {/* Right Column: Interactive Authentication Canvas */}
-        <div className="as-card-col">
-          {/* Top Utilities: Help, Language, Dark Mode Toggle */}
-          <div className="as-top-utility-bar">
-            <button type="button" className="as-util-item-btn" onClick={() => setShowHelp(true)}>
-              <HelpCircle size={15} />
-              <span>Help</span>
-            </button>
-            <div className="as-lang-menu-container">
-              <button type="button" className="as-util-item-btn" onClick={() => setShowLang(l => !l)}>
-                <Globe size={15} />
-                <span>{selectedLang}</span>
-                <ChevronDown size={13} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
-              </button>
-              {showLang && (
-                <div className="as-lang-popover">
-                  {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
-                    <div
-                      key={l}
-                      className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedLang(l.split(' ')[0]);
-                        setShowLang(false);
-                      }}
-                    >
-                      {l}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        <nav className="as-wonder-links">
+          <span className="as-wonder-nav-link" onClick={() => nav('/')}>Home</span>
+          <span className="as-wonder-nav-link" onClick={() => alert('AttendoSchool: Integrated Cloud Attendance, Routine & Marks Platform')}>About Us</span>
+          <span className="as-wonder-nav-link" onClick={() => alert('Courses, Academics & Routine scheduling across schools.')}>Courses</span>
+          <span className="as-wonder-nav-link" onClick={() => alert('Daily Attendance, Leave Applications, and Student Activities.')}>Activities</span>
+          <span className="as-wonder-nav-link" onClick={() => alert('System Documentation, API Docs, and Help Center.')}>Resources</span>
+          <span className="as-wonder-nav-link" onClick={() => handleSelectRole('STUDENT')}>Parent's Corner</span>
+          <span className="as-wonder-nav-link" onClick={() => setShowHelp(true)}>Contact Us</span>
+        </nav>
+
+        <div className="as-wonder-nav-actions">
+          {/* Language Selector */}
+          <div className="as-lang-menu-container">
             <button
               type="button"
-              className="as-util-item-btn as-theme-btn"
-              onClick={toggle}
-              title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="as-wonder-util-btn"
+              onClick={() => setShowLang(l => !l)}
+              title="Change Language"
             >
-              {dark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#475569" />}
+              <Globe size={13} />
+              <span>{selectedLang}</span>
+              <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
             </button>
-          </div>
-
-          {/* Welcome Title Block */}
-          <div className="as-auth-header">
-            <span className="as-auth-kicker">Welcome to</span>
-            <div className="as-auth-brand-row">
-              <h2 className="as-auth-brand-title">AttendoSchool</h2>
-              <span className="as-brand-green-dot" />
-            </div>
-            <p className="as-auth-subtitle">Sign in to continue to your portal</p>
-          </div>
-
-          {/* Visual Step Indicator */}
-          <div className="as-auth-stepper">
-            <div className="as-stepper-step active">
-              <span className="as-step-badge">1</span>
-              <span className="as-step-label">Select Role</span>
-            </div>
-            <div className="as-stepper-dots">
-              <span /><span /><span /><span />
-            </div>
-            <div className="as-stepper-step active">
-              <span className="as-step-badge">2</span>
-              <span className="as-step-label">Login</span>
-            </div>
-          </div>
-
-          {/* 4 Professional Role Cards */}
-          <div className="as-role-selector-grid" role="tablist">
-            {(['ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] as LoginOption[]).map(roleKey => {
-              const r = LOGIN_ROLES[roleKey];
-              const RoleIcon = r.icon;
-              const isSelected = loginRole === roleKey;
-              return (
-                <button
-                  key={roleKey}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  className={`as-role-button-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleSelectRole(roleKey)}
-                  id={`role-tab-${roleKey.toLowerCase()}`}
-                >
-                  <div className="as-role-btn-icon" style={{ color: r.color }}>
-                    <RoleIcon size={22} />
+            {showLang && (
+              <div className="as-lang-popover">
+                {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
+                  <div
+                    key={l}
+                    className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedLang(l.split(' ')[0]);
+                      setShowLang(false);
+                    }}
+                  >
+                    {l}
                   </div>
-                  <span className="as-role-btn-name">{r.roleName}</span>
-                  <span className="as-role-btn-sub">{r.roleSub}</span>
-                  {isSelected && (
-                    <div className="as-role-selected-check">
-                      <Check size={11} strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Quick Demo Auto-Fill Bar for Instant Testing */}
-          <div className="as-demo-fill-bar">
-            <span>💡 Need instant test credentials?</span>
-            <button
-              type="button"
-              className="as-demo-fill-btn"
-              onClick={() => {
-                const cfg = LOGIN_ROLES[loginRole];
-                setEmail(cfg.defaultEmail);
-                setPassword('ChangeMe123!');
-                if (cfg.needsSchool) {
-                  const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
-                  if (def) setInstituteId(def.id);
-                } else {
-                  setInstituteId('');
-                }
-              }}
-            >
-              <Sparkles size={13} />
-              Auto-fill {currentConfig.roleName}
-            </button>
+          {/* Theme Switcher */}
+          <button
+            type="button"
+            className="as-wonder-util-btn"
+            onClick={toggle}
+            title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {dark ? <Sun size={13} color="#f59e0b" /> : <Moon size={13} color="#e2e8f0" />}
+          </button>
+
+          {/* Login Pill Button */}
+          <button
+            type="button"
+            className="as-wonder-login-pill"
+            onClick={() => setSelectedRole(null)}
+          >
+            Login
+          </button>
+
+          {/* Sign Up / Support Pill */}
+          <button
+            type="button"
+            className="as-wonder-signup-pill"
+            onClick={() => setShowHelp(true)}
+          >
+            Sign Up
+          </button>
+        </div>
+      </header>
+
+      {/* Main Split Layout matching Screenshot */}
+      <main className="as-wonder-content">
+        {/* Left Side: Exact Typography & Narrative */}
+        <div className="as-wonder-left animate-fade-in">
+          <h1 className="as-wonder-heading">Login</h1>
+          <p className="as-wonder-sub">Sign in to continue</p>
+          <p className="as-wonder-desc">
+            Login: Sign in to your AttendoSchool account to continue the learning journey and access exciting educational content.
+          </p>
+          
+          <div className="as-wonder-divider" aria-hidden="true">
+            <div className="as-wonder-bar-1" />
+            <div className="as-wonder-bar-2" />
           </div>
 
-          {/* Role Informative Callout Banner */}
-          <div className="as-role-info-pill">
-            <div className="as-role-info-icon-box">
-              <AlertCircle size={16} />
-            </div>
-            <div className="as-role-info-content">
-              <strong>{currentConfig.bannerTitle}</strong>
-              <p>{currentConfig.bannerText}</p>
-            </div>
-          </div>
+          <p className="as-wonder-quote">
+            Open the doors to AttendoSchool and let the magic of learning begin!
+          </p>
+        </div>
+
+        {/* Right Side: Floating Frosted Glass Card */}
+        <div className="as-wonder-card animate-fade-in">
+          <h2 className="as-wonder-card-title">Wonder Sign In</h2>
+          <p className="as-wonder-card-sub">
+            {selectedRole === null
+              ? 'Select your login type to continue'
+              : `Signing in as ${currentConfig.roleName}`}
+          </p>
 
           {/* Validation Error Banner */}
           {error && (
-            <div className="as-error-banner" role="alert">
+            <div className="as-error-banner" role="alert" style={{ marginBottom: 16 }}>
               <AlertTriangle size={15} style={{ flexShrink: 0 }} />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Main Authentication Form */}
-          <form className="as-auth-form" onSubmit={submit}>
-            {/* Dynamic Searchable Institute Selector (shown for School Admin, Teacher, and Student) */}
-            {currentConfig.needsSchool ? (
-              <div className="as-input-group">
-                <label className="as-form-label">
-                  Select Institute <span className="as-req-star">*</span>
-                </label>
-                <div className="as-selector-dropdown-wrap" ref={instituteDropdownRef}>
+          {/* ─────────────────────────────────────────────────────────────
+              STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student)
+              Email and Password fields are NOT shown at this stage.
+             ───────────────────────────────────────────────────────────── */}
+          {selectedRole === null ? (
+            <div className="as-wonder-step1-wrap animate-fade-in">
+              <div className="as-wonder-role-grid">
+                {/* 1. Administrator */}
+                <div
+                  className="as-wonder-role-card"
+                  onClick={() => handleSelectRole('ADMIN')}
+                  id="role-select-admin"
+                >
+                  <div className="as-wonder-role-icon" style={{ background: 'rgba(37, 99, 235, 0.35)', color: '#60a5fa' }}>
+                    <Building2 size={24} />
+                  </div>
+                  <span className="as-wonder-role-name">Administrator</span>
+                  <span className="as-wonder-role-desc">Platform Central Admin</span>
+                </div>
+
+                {/* 2. School Admin */}
+                <div
+                  className="as-wonder-role-card"
+                  onClick={() => handleSelectRole('SCHOOL_ADMIN')}
+                  id="role-select-school-admin"
+                >
+                  <div className="as-wonder-role-icon" style={{ background: 'rgba(16, 185, 129, 0.35)', color: '#34d399' }}>
+                    <School size={24} />
+                  </div>
+                  <span className="as-wonder-role-name">School Admin</span>
+                  <span className="as-wonder-role-desc">Principal & School Portal</span>
+                </div>
+
+                {/* 3. Teacher */}
+                <div
+                  className="as-wonder-role-card"
+                  onClick={() => handleSelectRole('TEACHER')}
+                  id="role-select-teacher"
+                >
+                  <div className="as-wonder-role-icon" style={{ background: 'rgba(245, 158, 11, 0.35)', color: '#fbbf24' }}>
+                    <GraduationCap size={24} />
+                  </div>
+                  <span className="as-wonder-role-name">Teacher</span>
+                  <span className="as-wonder-role-desc">Faculty & Class Routine</span>
+                </div>
+
+                {/* 4. Student */}
+                <div
+                  className="as-wonder-role-card"
+                  onClick={() => handleSelectRole('STUDENT')}
+                  id="role-select-student"
+                >
+                  <div className="as-wonder-role-icon" style={{ background: 'rgba(139, 92, 246, 0.35)', color: '#c4b5fd' }}>
+                    <BookOpen size={24} />
+                  </div>
+                  <span className="as-wonder-role-name">Student</span>
+                  <span className="as-wonder-role-desc">Student & Guardian Portal</span>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'center', fontSize: 12.5, color: 'rgba(255, 255, 255, 0.72)', marginTop: 8 }}>
+                ✨ Choose your role above to enter credentials
+              </div>
+            </div>
+          ) : (
+            /* ─────────────────────────────────────────────────────────────
+               STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE
+               - School selector for School Admin, Teacher, Student
+               - Email Address input
+               - Password input
+               - Keep me logged in + Forgot password
+               - Sign In ✦ button
+               ───────────────────────────────────────────────────────────── */
+            <form className="as-wonder-step2-form animate-fade-in" onSubmit={submit}>
+              {/* Role Header with Change Role Back Button */}
+              <div className="as-wonder-role-header">
+                <button
+                  type="button"
+                  className="as-wonder-change-role-btn"
+                  onClick={() => {
+                    setSelectedRole(null);
+                    setError('');
+                  }}
+                  title="Choose a different login type"
+                >
+                  <ArrowLeft size={13} />
+                  <span>Change Role</span>
+                </button>
+                <div className="as-wonder-active-role-tag">
+                  {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
+                   loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
+                   loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
+                   <Building2 size={13} />}
+                  <span>{currentConfig.roleName}</span>
+                </div>
+              </div>
+
+              {/* Quick Demo Auto-Fill Bar */}
+              <div className="as-wonder-demo-chip">
+                <span>⚡ Test Credentials</span>
+                <button
+                  type="button"
+                  className="as-wonder-demo-btn"
+                  onClick={() => {
+                    const cfg = LOGIN_ROLES[loginRole];
+                    setEmail(cfg.defaultEmail);
+                    setPassword('ChangeMe123!');
+                    if (cfg.needsSchool) {
+                      const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+                      if (def) setInstituteId(def.id);
+                    }
+                  }}
+                >
+                  <Sparkles size={11} />
+                  Auto-fill {currentConfig.roleName}
+                </button>
+              </div>
+
+              {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
+              {currentConfig.needsSchool && (
+                <div className="as-wonder-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
+                  <label className="as-wonder-label">
+                    Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
+                  </label>
                   <button
                     type="button"
-                    className={`as-selector-trigger ${instituteOpen ? 'focused' : ''}`}
+                    className={`as-wonder-select-trigger ${instituteOpen ? 'focused' : ''}`}
                     onClick={() => setInstituteOpen(o => !o)}
                     id="institute-trigger-btn"
                   >
-                    <School size={16} className="as-trigger-lead-icon" />
-                    <div className="as-trigger-summary">
-                      <span className="as-trigger-inst-name">
-                        {selectedInstitute?.name || 'Search and select your school...'}
-                      </span>
-                      {selectedInstitute && (
-                        <span className="as-trigger-inst-meta">
-                          Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Campus'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                      <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
+                      <div className="as-wonder-inst-summary">
+                        <span className="as-wonder-inst-name">
+                          {selectedInstitute?.name || 'Choose your school...'}
                         </span>
-                      )}
+                        {selectedInstitute && (
+                          <span className="as-wonder-inst-code">
+                            Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Main Campus'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <ChevronDown size={16} className={`as-trigger-chevron ${instituteOpen ? 'rotated' : ''}`} />
+                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} />
                   </button>
 
-                  {/* Dropdown Menu with Search Input */}
+                  {/* Searchable Dropdown Popover */}
                   {instituteOpen && (
-                    <div className="as-inst-popover-menu">
+                    <div className="as-inst-popover-menu" style={{ zIndex: 100, position: 'absolute', top: '100%', left: 0, right: 0 }}>
                       <div className="as-popover-search-wrap">
                         <Search size={14} className="as-popover-search-icon" />
                         <input
@@ -565,126 +633,102 @@ function Login() {
                     </div>
                   )}
                 </div>
-              </div>
-            ) : null}
-
-            {/* Identifier: Email / Student ID */}
-            <div className="as-input-group">
-              <label className="as-form-label">
-                {currentConfig.emailLabel} <span className="as-req-star">*</span>
-              </label>
-              <div className="as-field-input-box">
-                <div className="as-field-lead-icon">
-                  {loginRole === 'STUDENT' ? <GraduationCap size={17} /> : <Mail size={17} />}
-                </div>
-                <input
-                  required
-                  type="text"
-                  placeholder={currentConfig.emailPlaceholder}
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  id="identifier-input"
-                  className="as-text-input"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="as-input-group">
-              <label className="as-form-label">
-                Password <span className="as-req-star">*</span>
-              </label>
-              <div className="as-field-input-box">
-                <div className="as-field-lead-icon">
-                  <Lock size={17} />
-                </div>
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  id="password-input"
-                  className="as-text-input"
-                />
-                <button
-                  type="button"
-                  className="as-eye-toggle-btn"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => setShowPassword(s => !s)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="as-form-meta-row">
-              <label className="as-remember-checkbox">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                />
-                <span>Remember me for 30 days</span>
-              </label>
-              <a
-                href="#forgot"
-                className="as-forgot-pwd-link"
-                onClick={e => {
-                  e.preventDefault();
-                  setForgotEmail(email && email.includes('@') ? email : '');
-                  setForgotNotice(null);
-                  setForgotOpen(true);
-                }}
-              >
-                Forgot Password?
-              </a>
-            </div>
-
-            {/* Submit CTA Button */}
-            <button
-              type="submit"
-              className="as-primary-submit-btn"
-              disabled={loading}
-              id="submit-auth-btn"
-            >
-              {loading ? (
-                <span>Signing in…</span>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight size={16} />
-                </>
               )}
-            </button>
-          </form>
 
-          {/* Divider */}
-          <div className="as-or-separator">
-            <span>or</span>
-          </div>
+              {/* Email Address Input (styled exactly like image) */}
+              <div className="as-wonder-field">
+                <label className="as-wonder-label">
+                  Email Address <span style={{ color: '#fb923c' }}>*</span>
+                </label>
+                <div className="as-wonder-input-wrap">
+                  <input
+                    required
+                    type="text"
+                    placeholder="sparkymcwonder@gmail.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    id="identifier-input"
+                    className="as-wonder-input"
+                  />
+                </div>
+              </div>
 
-          {/* Google SSO Login */}
-          <button
-            type="button"
-            className="as-google-auth-btn"
-            onClick={() => {
-              alert('Google Workspace for Education SSO: Redirecting to your school Google authentication portal...');
-            }}
-          >
-            <GoogleGLogo />
-            <span>Login with Google</span>
-          </button>
+              {/* Password Input (styled exactly like image) */}
+              <div className="as-wonder-field">
+                <label className="as-wonder-label">
+                  Password <span style={{ color: '#fb923c' }}>*</span>
+                </label>
+                <div className="as-wonder-input-wrap">
+                  <input
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    id="password-input"
+                    className="as-wonder-input"
+                  />
+                  <button
+                    type="button"
+                    className="as-wonder-eye-btn"
+                    onClick={() => setShowPassword(s => !s)}
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
-          {/* Bottom Security Trust Reassurance */}
-          <div className="as-bottom-security-pill">
-            <ShieldCheck size={16} className="as-sec-shield-icon" />
-            <span>Secure • Reliable • Built for Education</span>
-          </div>
+              {/* Keep me logged in + Forgot password? */}
+              <div className="as-wonder-meta-row">
+                <label className="as-wonder-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                    className="as-wonder-checkbox"
+                  />
+                  <span>Keep me logged in</span>
+                </label>
+                <a
+                  href="#forgot"
+                  className="as-wonder-forgot-link"
+                  onClick={e => {
+                    e.preventDefault();
+                    setForgotEmail(email && email.includes('@') ? email : '');
+                    setForgotNotice(null);
+                    setForgotOpen(true);
+                  }}
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              {/* Radiant CTA Button */}
+              <button
+                type="submit"
+                className="as-wonder-submit-btn"
+                disabled={loading}
+                id="submit-auth-btn"
+              >
+                {loading ? (
+                  <span>Signing in…</span>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <Sparkles size={16} />
+                  </>
+                )}
+              </button>
+
+              {/* Bottom Tagline from Screenshot */}
+              <div className="as-wonder-bottom-tag">
+                Ready to Join the Fun? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Started Now!</a>
+              </div>
+            </form>
+          )}
         </div>
-      </div>
+      </main>
 
       {/* Help Modal */}
       {showHelp && (
