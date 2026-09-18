@@ -1570,7 +1570,13 @@ function Layout({children}:{children:React.ReactNode}){
   const loc=useLocation();
   const {dark,toggle}=useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [loc.pathname]);
 
   // ── Global Search State ──
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1799,7 +1805,15 @@ function Layout({children}:{children:React.ReactNode}){
   const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
 
   return <div className="app-shell">
-    <aside className={sidebarCollapsed ? 'sidebar-collapsed' : ''}>
+    {/* ── Mobile Sidebar Backdrop ── */}
+    {mobileSidebarOpen && (
+      <div
+        className="sidebar-backdrop"
+        onClick={() => setMobileSidebarOpen(false)}
+        aria-label="Close navigation"
+      />
+    )}
+    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
           <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
@@ -1808,12 +1822,20 @@ function Layout({children}:{children:React.ReactNode}){
           <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
           <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
         </div>
+        <button
+          type="button"
+          className="sidebar-mobile-close-btn"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
       <div className="sidebar-nav-container">
         <nav>
           {links.map(([p,l,I]:any,i:number)=>{
             if(p==='—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
-            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>nav(p)}>
+            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>{ setMobileSidebarOpen(false); nav(p); }}>
               <I size={16}/> <span>{l}</span>
             </button>;
           })}
@@ -1860,7 +1882,18 @@ function Layout({children}:{children:React.ReactNode}){
       {user.role === 'SUPER_ADMIN' ? (
         <header>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button className="header-icon-btn" title="Toggle menu" style={{ border: '1px solid var(--border)', borderRadius: 8 }} onClick={()=>setSidebarCollapsed(prev=>!prev)}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => {
+                if (window.innerWidth <= 768) {
+                  setMobileSidebarOpen(prev => !prev);
+                } else {
+                  setSidebarCollapsed(prev => !prev);
+                }
+              }}
+            >
               <Menu size={16} />
             </button>
             <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
@@ -1900,17 +1933,25 @@ function Layout({children}:{children:React.ReactNode}){
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+            >
+              <Menu size={18} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <School size={20} color="#1d4ed8" />
               </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {currentSchoolName}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Code: <b>{currentSchoolCode}</b> · AttendoSchool SaaS
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Code: <b>{currentSchoolCode}</b> · AttendoSchool
                 </div>
               </div>
             </div>
@@ -2007,16 +2048,26 @@ function Layout({children}:{children:React.ReactNode}){
         </header>
       ) : (
         <header>
-          <div className="header-meta">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-              <p className="eyebrow" style={{ margin: 0 }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+            >
+              <Menu size={18} />
+            </button>
+            <div className="header-meta" style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
+                <p className="eyebrow" style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+              </div>
+              <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 18 }}>{user.name}</h2>
             </div>
-            <h2>{user.name}</h2>
           </div>
-          <div className="header-search">
+          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
             <Search size={15}/>
-            <input placeholder="Search records, classes..." />
+            <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">⌘K</span>
           </div>
           <div className="header-right">
