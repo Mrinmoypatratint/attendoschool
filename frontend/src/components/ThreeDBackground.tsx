@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface ThreeDBackgroundProps {
   dark?: boolean;
 }
 
-interface Particle3D {
+interface Node3D {
   x: number;
   y: number;
   z: number;
@@ -12,18 +12,18 @@ interface Particle3D {
   vy: number;
   vz: number;
   radius: number;
-  baseRadius: number;
   color: string;
-  pulseSpeed: number;
+  glyph?: string;
   pulsePhase: number;
+  pulseSpeed: number;
 }
 
-export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false }) => {
+const EDUCATIONAL_GLYPHS = ['🎓', '📖', '⚛️', '✨', '💡', '📐', 'A+', 'π', 'Σ', '🔬', '🌍'];
+
+export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const mouseTargetRef = useRef({ x: 0, y: 0 });
   const mouseSmoothRef = useRef({ x: 0, y: 0 });
-  const [videoLoaded, setVideoLoaded] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -53,59 +53,59 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Particle Palette
+    // Color palettes
     const darkPalette = [
-      'rgba(59, 130, 246, 0.8)',   // Blue
-      'rgba(14, 165, 233, 0.8)',   // Cyan
-      'rgba(16, 185, 129, 0.75)',  // Emerald
-      'rgba(139, 92, 246, 0.75)',  // Purple
-      'rgba(245, 158, 11, 0.7)'    // Amber
+      'rgba(59, 130, 246, 0.85)',   // Sapphire
+      'rgba(14, 165, 233, 0.85)',   // Sky Cyan
+      'rgba(16, 185, 129, 0.8)',    // Emerald
+      'rgba(168, 85, 247, 0.8)',    // Purple
+      'rgba(249, 115, 22, 0.85)',   // Radiant Coral
+      'rgba(245, 158, 11, 0.8)'     // Amber
     ];
 
     const lightPalette = [
-      'rgba(37, 99, 235, 0.65)',   // Sapphire
-      'rgba(2, 132, 199, 0.65)',   // Sky
-      'rgba(5, 150, 105, 0.6)',    // Green
-      'rgba(124, 58, 237, 0.6)',   // Violet
-      'rgba(217, 119, 6, 0.55)'    // Warm gold
+      'rgba(37, 99, 235, 0.7)',
+      'rgba(2, 132, 199, 0.7)',
+      'rgba(5, 150, 105, 0.7)',
+      'rgba(147, 51, 234, 0.7)',
+      'rgba(234, 88, 12, 0.7)'
     ];
 
     const currentPalette = dark ? darkPalette : lightPalette;
-    const particleCount = Math.min(65, Math.floor((width * height) / 18000));
-    const particles: Particle3D[] = [];
+    const count = Math.min(55, Math.floor((width * height) / 22000) + 20);
+    const nodes: Node3D[] = [];
 
-    const fieldDepth = 900;
-    const fov = 400;
+    const fieldDepth = 800;
+    const fov = 380;
 
-    for (let i = 0; i < particleCount; i++) {
-      const r = Math.random() * 2.2 + 1.2;
-      particles.push({
-        x: (Math.random() - 0.5) * width * 1.4,
-        y: (Math.random() - 0.5) * height * 1.4,
+    for (let i = 0; i < count; i++) {
+      const isGlyph = i < 16;
+      nodes.push({
+        x: (Math.random() - 0.5) * width * 1.5,
+        y: (Math.random() - 0.5) * height * 1.5,
         z: Math.random() * fieldDepth - fieldDepth / 2,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        vz: (Math.random() - 0.5) * 0.6,
-        radius: r,
-        baseRadius: r,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        vz: (Math.random() - 0.5) * 0.5,
+        radius: isGlyph ? 14 : Math.random() * 2.4 + 1.2,
         color: currentPalette[Math.floor(Math.random() * currentPalette.length)]!,
-        pulseSpeed: 0.02 + Math.random() * 0.02,
-        pulsePhase: Math.random() * Math.PI * 2
+        glyph: isGlyph ? EDUCATIONAL_GLYPHS[i % EDUCATIONAL_GLYPHS.length] : undefined,
+        pulsePhase: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.02 + Math.random() * 0.02
       });
     }
 
     let angleY = 0;
-    let angleX = 0;
 
     const render = () => {
       // Smooth mouse follow
-      mouseSmoothRef.current.x += (mouseTargetRef.current.x - mouseSmoothRef.current.x) * 0.04;
-      mouseSmoothRef.current.y += (mouseTargetRef.current.y - mouseSmoothRef.current.y) * 0.04;
+      mouseSmoothRef.current.x += (mouseTargetRef.current.x - mouseSmoothRef.current.x) * 0.05;
+      mouseSmoothRef.current.y += (mouseTargetRef.current.y - mouseSmoothRef.current.y) * 0.05;
 
       ctx.clearRect(0, 0, width, height);
 
-      // Subtle base rotation + mouse tilt
-      angleY += 0.0015;
+      // Continuous subtle ambient rotation + mouse tilt
+      angleY += 0.0012;
       const targetRotY = angleY + mouseSmoothRef.current.x * 0.35;
       const targetRotX = mouseSmoothRef.current.y * 0.25;
 
@@ -117,58 +117,51 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
       const cx = width / 2;
       const cy = height / 2;
 
-      // Project 3D particles to 2D
-      const projected = particles.map(p => {
-        // Move
-        p.x += p.vx;
-        p.y += p.vy;
-        p.z += p.vz;
+      // Project 3D nodes to 2D
+      const projected = nodes.map(n => {
+        n.x += n.vx;
+        n.y += n.vy;
+        n.z += n.vz;
 
-        // Boundary wrap in 3D box
-        const boundX = (width * 1.4) / 2;
-        const boundY = (height * 1.4) / 2;
+        // Wrap around boundary box
+        const boundX = (width * 1.5) / 2;
+        const boundY = (height * 1.5) / 2;
         const boundZ = fieldDepth / 2;
 
-        if (p.x < -boundX) p.x = boundX;
-        if (p.x > boundX) p.x = -boundX;
-        if (p.y < -boundY) p.y = boundY;
-        if (p.y > boundY) p.y = -boundY;
-        if (p.z < -boundZ) p.z = boundZ;
-        if (p.z > boundZ) p.z = -boundZ;
+        if (n.x < -boundX) n.x = boundX;
+        if (n.x > boundX) n.x = -boundX;
+        if (n.y < -boundY) n.y = boundY;
+        if (n.y > boundY) n.y = -boundY;
+        if (n.z < -boundZ) n.z = boundZ;
+        if (n.z > boundZ) n.z = -boundZ;
 
         // 3D rotation
-        // Rotate around Y
-        const x1 = p.x * cosY - p.z * sinY;
-        const z1 = p.z * cosY + p.x * sinY;
+        const x1 = n.x * cosY - n.z * sinY;
+        const z1 = n.z * cosY + n.x * sinY;
+        const y1 = n.y * cosX - z1 * sinX;
+        const z2 = z1 * cosX + n.y * sinX;
 
-        // Rotate around X
-        const y1 = p.y * cosX - z1 * sinX;
-        const z2 = z1 * cosX + p.y * sinX;
-
-        // Perspective projection
         const distance = fov / (fov + z2 + fieldDepth / 2 + 100);
         const projX = cx + x1 * distance;
         const projY = cy + y1 * distance;
         const scale = Math.max(0.1, distance);
 
-        p.pulsePhase += p.pulseSpeed;
-        const currentRadius = p.baseRadius * (1 + Math.sin(p.pulsePhase) * 0.25) * scale * 1.8;
+        n.pulsePhase += n.pulseSpeed;
 
         return {
-          p,
+          node: n,
           projX,
           projY,
           scale,
-          z: z2,
-          radius: currentRadius
+          z: z2
         };
       });
 
-      // Sort by Z for proper depth ordering
+      // Sort by Z for realistic depth
       projected.sort((a, b) => b.z - a.z);
 
-      // Draw connecting 3D vectors
-      const maxDist = 135;
+      // Draw connection vectors (constellation)
+      const maxDist = 140;
       for (let i = 0; i < projected.length; i++) {
         const a = projected[i]!;
         for (let j = i + 1; j < projected.length; j++) {
@@ -178,32 +171,49 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < maxDist) {
-            const alpha = (1 - dist / maxDist) * 0.28 * Math.min(a.scale, b.scale);
+            const alpha = (1 - dist / maxDist) * 0.22 * Math.min(a.scale, b.scale);
             ctx.beginPath();
             ctx.moveTo(a.projX, a.projY);
             ctx.lineTo(b.projX, b.projY);
             ctx.strokeStyle = dark
               ? `rgba(99, 102, 241, ${alpha})`
-              : `rgba(37, 99, 235, ${alpha * 0.9})`;
+              : `rgba(37, 99, 235, ${alpha * 0.85})`;
             ctx.lineWidth = Math.max(0.4, 1.2 * a.scale);
             ctx.stroke();
           }
         }
       }
 
-      // Draw projected nodes
+      // Draw nodes & educational glyphs
       for (const item of projected) {
-        if (item.projX < -50 || item.projX > width + 50 || item.projY < -50 || item.projY > height + 50) {
+        if (item.projX < -60 || item.projX > width + 60 || item.projY < -60 || item.projY > height + 60) {
           continue;
         }
 
-        ctx.beginPath();
-        ctx.arc(item.projX, item.projY, Math.max(1, item.radius), 0, Math.PI * 2);
-        ctx.fillStyle = item.p.color;
-        ctx.shadowBlur = dark ? 8 * item.scale : 4 * item.scale;
-        ctx.shadowColor = item.p.color;
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        const alpha = Math.min(1, Math.max(0.2, (item.scale - 0.1) * 2.5));
+
+        if (item.node.glyph) {
+          // Draw floating educational emoji/symbol
+          const fontSize = Math.max(10, Math.floor(18 * item.scale));
+          ctx.save();
+          ctx.font = `${fontSize}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.globalAlpha = dark ? alpha * 0.75 : alpha * 0.6;
+          ctx.fillText(item.node.glyph, item.projX, item.projY);
+          ctx.restore();
+        } else {
+          // Draw glowing node
+          const r = Math.max(1, item.node.radius * item.scale * (1 + Math.sin(item.node.pulsePhase) * 0.2));
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(item.projX, item.projY, r, 0, Math.PI * 2);
+          ctx.fillStyle = item.node.color;
+          ctx.shadowBlur = dark ? 8 * item.scale : 4 * item.scale;
+          ctx.shadowColor = item.node.color;
+          ctx.fill();
+          ctx.restore();
+        }
       }
 
       animId = requestAnimationFrame(render);
@@ -220,37 +230,18 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
 
   return (
     <div className="as-3d-backdrop-container" aria-hidden="true">
-      {/* Ambient background photo layer with atmospheric blur and smooth depth */}
-      <div 
-        className="as-3d-backdrop-image"
-        style={{
-          backgroundImage: 'url(/campus_hero_reference.jpg)',
-          opacity: dark ? 0.24 : 0.18
-        }}
-      />
+      {/* Background Wallpaper */}
+      <div className="as-3d-backdrop-image" />
 
-      {/* Optional ambient video layer */}
-      <video
-        className="as-3d-video-layer"
-        src="/media/login-school.mp4"
-        poster="/campus_hero_reference.jpg"
-        autoPlay
-        muted
-        loop
-        playsInline
-        onLoadedData={() => setVideoLoaded(true)}
-        style={{ opacity: videoLoaded ? 0.35 : 0 }}
-      />
+      {/* Luminous ambient floating light orbs */}
+      <div className="as-ambient-orb orb-1" />
+      <div className="as-ambient-orb orb-2" />
+      <div className="as-ambient-orb orb-3" />
 
-      {/* Radiant ambient glow orbs behind the 3D canvas */}
-      <div className="as-ambient-orb orb-primary" />
-      <div className="as-ambient-orb orb-secondary" />
-      <div className="as-ambient-orb orb-tertiary" />
-
-      {/* Interactive 3D Canvas */}
+      {/* 3D Education Canvas Layer */}
       <canvas ref={canvasRef} className="as-3d-canvas-elem" />
 
-      {/* Smooth geometric grid overlay */}
+      {/* Geometric grid overlay */}
       <div className="as-3d-grid-overlay" />
     </div>
   );

@@ -177,6 +177,23 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
   }
 };
 
+interface EducationalQuote {
+  text: string;
+  author: string;
+}
+
+const EDUCATIONAL_QUOTES: EducationalQuote[] = [
+  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
+  { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
+  { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
+  { text: "Education is the passport to the future, for tomorrow belongs to those who prepare for it today.", author: "Malcolm X" },
+  { text: "Tell me and I forget. Teach me and I remember. Involve me and I learn.", author: "Benjamin Franklin" },
+  { text: "Knowledge is power. Information is liberating. Education is the premise of progress.", author: "Kofi Annan" },
+  { text: "The roots of education are bitter, but the fruit is sweet.", author: "Aristotle" },
+  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+  { text: "Develop a passion for learning. If you do, you will never cease to grow.", author: "Anthony J. D'Angelo" }
+];
+
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
@@ -203,6 +220,29 @@ function Login() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
+
+  // Dynamic Educational Quotes State
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const [quoteFade, setQuoteFade] = useState(true);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQuoteFade(false);
+      setTimeout(() => {
+        setQuoteIndex(prev => (prev + 1) % EDUCATIONAL_QUOTES.length);
+        setQuoteFade(true);
+      }, 250);
+    }, 6500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleNextQuote = () => {
+    setQuoteFade(false);
+    setTimeout(() => {
+      setQuoteIndex(prev => (prev + 1) % EDUCATIONAL_QUOTES.length);
+      setQuoteFade(true);
+    }, 180);
+  };
 
   const instituteDropdownRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -321,6 +361,9 @@ function Login() {
 
   return (
     <div className="as-simple-page">
+      {/* 3D Educational Dynamic Animated Background */}
+      <ThreeDBackground dark={dark} />
+
       <div className="as-simple-overlay" aria-hidden="true" />
 
       {/* Floating Top-Right Utility: Theme & Language */}
@@ -378,6 +421,31 @@ function Login() {
             />
             <h1 className="as-simple-brand-title">AttendoSchool</h1>
             <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
+          </div>
+
+          {/* Dynamic Educational Motivation Quote Card */}
+          <div
+            className="as-simple-quote-box"
+            onClick={handleNextQuote}
+            title="Click to shuffle inspiring educational quote"
+          >
+            <div className="as-quote-icon-bubble">
+              <Sparkles size={13} className="as-quote-sparkle-icon" />
+            </div>
+            <div className={`as-quote-body ${quoteFade ? 'quote-in' : 'quote-out'}`}>
+              <p className="as-quote-text">
+                “{EDUCATIONAL_QUOTES[quoteIndex].text}”
+              </p>
+              <span className="as-quote-author">— {EDUCATIONAL_QUOTES[quoteIndex].author}</span>
+            </div>
+            <button
+              type="button"
+              className="as-quote-shuffle-btn"
+              onClick={(e) => { e.stopPropagation(); handleNextQuote(); }}
+              title="Next Inspiring Quote"
+            >
+              <RefreshCw size={11} />
+            </button>
           </div>
 
           {/* Validation Error Banner */}
