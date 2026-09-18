@@ -14,7 +14,7 @@
     "test": "tsx tests/comprehensive-test-suite.ts",
     "db:migrate": "node dist/scripts/migrate.js",
     "seed:firestore": "tsx src/scripts/seedFirestore.ts",
-    "emulator:firestore": "npx firebase emulators:start --only firestore",
+    "emulator:firestore": "npx --package=firebase-tools firebase emulators:start --only firestore",
     "v28:smoke": "tsx ../scripts/v28-api-smoke.ts",
     "release:check": "npm run build && npm run v28:smoke"
   },

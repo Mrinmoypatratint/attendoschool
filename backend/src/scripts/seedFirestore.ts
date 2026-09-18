@@ -53,6 +53,8 @@ async function seed() {
   batch.set(schoolAdminRef, {
     id: 'user-schooladmin-001',
     schoolId: 'school-greenwood-001',
+    schoolName: 'Greenwood International School',
+    schoolCode: 'GWIS-2025',
     name: 'Greenwood Principal Admin',
     email: 'admin@demo-school.local',
     passwordHash,
@@ -67,11 +69,29 @@ async function seed() {
   batch.set(teacherRef, {
     id: 'user-teacher-001',
     schoolId: 'school-greenwood-001',
+    schoolName: 'Greenwood International School',
+    schoolCode: 'GWIS-2025',
     name: 'Rahul Sen (Senior Faculty)',
     email: 'rahul@demo-school.local',
     passwordHash,
     role: 'TEACHER',
     phone: '+91 98765 43212',
+    status: 'ACTIVE',
+    createdAt: now
+  });
+
+  // 4b. Demo Student User: student@greenwood.local
+  const studentUserRef = collections.users().doc('user-student-001');
+  batch.set(studentUserRef, {
+    id: 'user-student-001',
+    schoolId: 'school-greenwood-001',
+    schoolName: 'Greenwood International School',
+    schoolCode: 'GWIS-2025',
+    name: 'Rohan Sharma (Student)',
+    email: 'student@greenwood.local',
+    passwordHash,
+    role: 'STUDENT',
+    phone: '+91 98000 11003',
     status: 'ACTIVE',
     createdAt: now
   });
@@ -112,20 +132,36 @@ async function seed() {
     batch.set(pRef, p);
   }
 
-  // 6. Demo Students in Class 10 - Section A
+  // 6. Demo Students in Class 10 - Section A with complete school association
+  const schoolMeta = {
+    id: 'school-greenwood-001',
+    name: 'Greenwood International School',
+    code: 'GWIS-2025',
+    address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka',
+    phone: '+91 98765 43210',
+    email: 'contact@greenwood.edu.in'
+  };
+
   const students = [
-    { id: 'stud-001', admissionNumber: 'GW-2025-001', fullName: 'Aarav Sharma', className: '10', section: 'A', parentName: 'Vikram Sharma', parentPhone: '+91 98000 11001' },
-    { id: 'stud-002', admissionNumber: 'GW-2025-002', fullName: 'Ananya Patel', className: '10', section: 'A', parentName: 'Deepak Patel', parentPhone: '+91 98000 11002' },
-    { id: 'stud-003', admissionNumber: 'GW-2025-003', fullName: 'Rohan Verma', className: '10', section: 'A', parentName: 'Suresh Verma', parentPhone: '+91 98000 11003' },
-    { id: 'stud-004', admissionNumber: 'GW-2025-004', fullName: 'Diya Mukherjee', className: '10', section: 'A', parentName: 'Amit Mukherjee', parentPhone: '+91 98000 11004' },
-    { id: 'stud-005', admissionNumber: 'GW-2025-005', fullName: 'Vivaan Reddy', className: '10', section: 'A', parentName: 'Kiran Reddy', parentPhone: '+91 98000 11005' },
+    { id: 'stud-001', admissionNumber: 'GW-2025-001', rollNumber: '01', fullName: 'Aarav Sharma', className: '10', section: 'A', parentName: 'Vikram Sharma', parentPhone: '+91 98000 11001', parentEmail: 'vikram.sharma@gmail.com' },
+    { id: 'stud-002', admissionNumber: 'GW-2025-002', rollNumber: '02', fullName: 'Ananya Patel', className: '10', section: 'A', parentName: 'Deepak Patel', parentPhone: '+91 98000 11002', parentEmail: 'deepak.patel@gmail.com' },
+    { id: 'stud-003', admissionNumber: 'GW-2025-003', rollNumber: '03', fullName: 'Rohan Verma', className: '10', section: 'A', parentName: 'Suresh Verma', parentPhone: '+91 98000 11003', parentEmail: 'suresh.verma@gmail.com' },
+    { id: 'stud-004', admissionNumber: 'GW-2025-004', rollNumber: '04', fullName: 'Diya Mukherjee', className: '10', section: 'A', parentName: 'Amit Mukherjee', parentPhone: '+91 98000 11004', parentEmail: 'amit.mukherjee@gmail.com' },
+    { id: 'stud-005', admissionNumber: 'GW-2025-005', rollNumber: '05', fullName: 'Vivaan Reddy', className: '10', section: 'A', parentName: 'Kiran Reddy', parentPhone: '+91 98000 11005', parentEmail: 'kiran.reddy@gmail.com' },
+    { id: 'stud-025', admissionNumber: 'GW-2025-025', rollNumber: '25', fullName: 'Rohan Sharma', className: '10', section: 'A', parentName: 'Mohan Sharma', parentPhone: '+91 98000 11025', parentEmail: 'mohan.sharma@gmail.com', email: 'student@greenwood.local' },
   ];
 
   for (const st of students) {
     const stRef = collections.students().doc(st.id);
     batch.set(stRef, {
       ...st,
-      schoolId: 'school-greenwood-001',
+      schoolId: schoolMeta.id,
+      schoolName: schoolMeta.name,
+      schoolCode: schoolMeta.code,
+      schoolAddress: schoolMeta.address,
+      schoolPhone: schoolMeta.phone,
+      schoolEmail: schoolMeta.email,
+      school: schoolMeta,
       status: 'ACTIVE',
       createdAt: now
     });
@@ -137,8 +173,9 @@ async function seed() {
   console.log('   - 1 Demo School: Greenwood International School (school-greenwood-001)');
   console.log('   - 1 School Admin: admin@demo-school.local');
   console.log('   - 1 Teacher: rahul@demo-school.local');
+  console.log('   - 1 Student User: student@greenwood.local');
   console.log('   - 3 Subscription Plans (Basic, Standard, Enterprise)');
-  console.log('   - 5 Demo Students in Class 10-A');
+  console.log('   - 6 Demo Students in Class 10-A (with full school profile)');
 }
 
 seed().catch(err => {

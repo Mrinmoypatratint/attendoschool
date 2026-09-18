@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT';
+export type UserRole = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
 
 export interface FirestoreSchool {
   id: string;
@@ -20,6 +20,8 @@ export interface FirestoreSchool {
 export interface FirestoreUser {
   id: string;
   schoolId: string | null;
+  schoolName?: string;
+  schoolCode?: string;
   name: string;
   email: string;
   passwordHash: string;
@@ -33,17 +35,32 @@ export interface FirestoreUser {
 export interface FirestoreStudent {
   id: string;
   schoolId: string;
+  schoolName: string;
+  schoolCode?: string;
+  schoolEmail?: string;
+  schoolPhone?: string;
+  schoolAddress?: string;
+  school?: {
+    id: string;
+    name: string;
+    code?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
   admissionNumber: string;
   fullName: string;
   className: string;
   section: string;
   rollNumber?: string;
+  email?: string;
   parentName?: string;
   parentPhone?: string;
   parentEmail?: string;
   parentUserId?: string;
   status: 'ACTIVE' | 'ARCHIVED' | 'TRANSFERRED';
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface FirestoreAttendanceSession {

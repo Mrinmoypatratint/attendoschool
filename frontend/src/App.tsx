@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useRef} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
@@ -27,7 +27,8 @@ import {
   ArrowUpDown,Bell,CreditCard,Eye,FileSpreadsheet,Download,Trash2,
   UploadCloud,Send,ShieldCheck,Mail,Server,
   Search,EyeOff,ArrowLeft,
-  Menu,ChevronDown,Calendar,Globe,Lock,ArrowRight
+  Menu,ChevronDown,Calendar,Globe,Lock,ArrowRight,
+  Check, X, Loader2
 } from 'lucide-react';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
@@ -420,12 +421,700 @@ function Login() {
   );
 }
 
+/* ────── Super Admin Interactive Top Header ────── */
+function SuperAdminHeader({
+  user,
+  logout,
+  sidebarCollapsed,
+  setSidebarCollapsed
+}: {
+  user: any;
+  logout: () => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+  const nav = useNavigate();
+
+  // 1. Search State
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ schools: any[]; students: any[]; invoices: any[] }>({
+    schools: [],
+    students: [],
+    invoices: []
+  });
+  const [searchTotal, setSearchTotal] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTab, setSearchTab] = useState<'ALL' | 'SCHOOLS' | 'STUDENTS' | 'INVOICES'>('ALL');
+  const [detailItem, setDetailItem] = useState<any | null>(null);
+
+  // 2. Notifications State
+  const notifContainerRef = useRef<HTMLDivElement>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifFilter, setNotifFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+
+  // 3. Academic Session State
+  const sessionContainerRef = useRef<HTMLDivElement>(null);
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [currentSession, setCurrentSession] = useState(() => {
+    return localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
+  });
+
+  // Load Sessions from backend
+  useEffect(() => {
+    api.get('/academic-years')
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setSessions(res.data);
+          const active = res.data.find((s: any) => s.is_active);
+          if (active && !localStorage.getItem('attendo_academic_session')) {
+            setCurrentSession(active.name);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load Notifications from backend
+  const fetchNotifications = () => {
+    api.get('/super-admin/notifications')
+      .then(res => {
+        if (res.data) {
+          setNotifications(res.data.notifications || []);
+          setUnreadCount(res.data.unreadCount || 0);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAllRead = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.post('/super-admin/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {}
+  };
+
+  const markOneRead = async (notif: any) => {
+    try {
+      if (!notif.read) {
+        await api.post(`/super-admin/notifications/${notif.id}/read`);
+        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      setNotifOpen(false);
+      if (notif.link) nav(notif.link);
+    } catch {}
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults({ schools: [], students: [], invoices: [] });
+      setSearchTotal(0);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      api.get(`/super-admin/search?q=${encodeURIComponent(searchQuery.trim())}`)
+        .then(res => {
+          if (res.data) {
+            setSearchResults(res.data.results || { schools: [], students: [], invoices: [] });
+            setSearchTotal(res.data.total || 0);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsSearching(false));
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Global Ctrl+K & Click Outside
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setNotifOpen(false);
+        setSessionOpen(false);
+        setDetailItem(null);
+      }
+    }
+
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+      if (notifContainerRef.current && !notifContainerRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+      if (sessionContainerRef.current && !sessionContainerRef.current.contains(e.target as Node)) {
+        setSessionOpen(false);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const initials = (user.name || 'Company Super Admin')
+    .split(' ')
+    .filter(Boolean)
+    .map((w: string) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'SA';
+
+  const displayedNotifications = notifFilter === 'UNREAD'
+    ? notifications.filter(n => !n.read)
+    : notifications;
+
+  return (
+    <>
+      <header>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <button
+            className="header-icon-btn"
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setSidebarCollapsed(s => !s)}
+            style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+          >
+            <Menu size={16} />
+          </button>
+
+          {/* Connected Global Search */}
+          <div className="super-search-container" ref={searchContainerRef}>
+            <div className="super-search-input-wrap">
+              <Search size={15} style={{ color: 'var(--text-secondary)' }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search schools, students, invoices..."
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+              />
+              {isSearching ? (
+                <Loader2 size={14} className="animate-spin" style={{ opacity: 0.7 }} />
+              ) : searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'grid', placeItems: 'center', color: 'var(--text-secondary)' }}
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <span className="super-search-kbd">Ctrl + K</span>
+              )}
+            </div>
+
+            {searchOpen && searchQuery.trim() && (
+              <div className="super-search-dropdown">
+                <div className="super-search-tabs">
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${searchTab === 'ALL' ? 'active' : ''}`}
+                    onClick={() => setSearchTab('ALL')}
+                  >
+                    All ({searchTotal})
+                  </button>
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${searchTab === 'SCHOOLS' ? 'active' : ''}`}
+                    onClick={() => setSearchTab('SCHOOLS')}
+                  >
+                    Schools ({searchResults.schools.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${searchTab === 'STUDENTS' ? 'active' : ''}`}
+                    onClick={() => setSearchTab('STUDENTS')}
+                  >
+                    Students ({searchResults.students.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${searchTab === 'INVOICES' ? 'active' : ''}`}
+                    onClick={() => setSearchTab('INVOICES')}
+                  >
+                    Invoices ({searchResults.invoices.length})
+                  </button>
+                </div>
+
+                <div className="super-search-results-list">
+                  {searchTotal === 0 && !isSearching ? (
+                    <div className="super-search-empty">
+                      <Search size={24} style={{ opacity: 0.4 }} />
+                      <div>No results found for "<b>{searchQuery}</b>"</div>
+                      <span style={{ fontSize: 11.5, opacity: 0.7 }}>Try searching by school name, student admission, or invoice ID</span>
+                    </div>
+                  ) : (
+                    <>
+                      {(searchTab === 'ALL' || searchTab === 'SCHOOLS') && searchResults.schools.length > 0 && (
+                        <div>
+                          <div className="super-search-group-header">
+                            <span>Schools</span>
+                            <span>{searchResults.schools.length}</span>
+                          </div>
+                          {searchResults.schools.map((item: any) => (
+                            <button
+                              type="button"
+                              key={item.id}
+                              className="super-search-item"
+                              onClick={() => {
+                                setDetailItem({ ...item, category: 'School' });
+                                setSearchOpen(false);
+                              }}
+                            >
+                              <div className="super-search-item-left">
+                                <div className="super-search-icon icon-school">
+                                  <School size={15} />
+                                </div>
+                                <div className="super-search-text">
+                                  <span className="super-search-title">{item.title}</span>
+                                  <span className="super-search-sub">{item.subtitle}</span>
+                                </div>
+                              </div>
+                              <span className={`super-search-badge ${item.badge === 'ACTIVE' ? 'badge-active' : 'badge-expired'}`}>
+                                {item.badge}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {(searchTab === 'ALL' || searchTab === 'STUDENTS') && searchResults.students.length > 0 && (
+                        <div>
+                          <div className="super-search-group-header" style={{ marginTop: 4 }}>
+                            <span>Students</span>
+                            <span>{searchResults.students.length}</span>
+                          </div>
+                          {searchResults.students.map((item: any) => (
+                            <button
+                              type="button"
+                              key={item.id}
+                              className="super-search-item"
+                              onClick={() => {
+                                setDetailItem({ ...item, category: 'Student' });
+                                setSearchOpen(false);
+                              }}
+                            >
+                              <div className="super-search-item-left">
+                                <div className="super-search-icon icon-student">
+                                  <GraduationCap size={15} />
+                                </div>
+                                <div className="super-search-text">
+                                  <span className="super-search-title">{item.title}</span>
+                                  <span className="super-search-sub">{item.subtitle}</span>
+                                </div>
+                              </div>
+                              <span className="super-search-badge">
+                                {item.badge}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {(searchTab === 'ALL' || searchTab === 'INVOICES') && searchResults.invoices.length > 0 && (
+                        <div>
+                          <div className="super-search-group-header" style={{ marginTop: 4 }}>
+                            <span>Invoices & Subscriptions</span>
+                            <span>{searchResults.invoices.length}</span>
+                          </div>
+                          {searchResults.invoices.map((item: any) => (
+                            <button
+                              type="button"
+                              key={item.id}
+                              className="super-search-item"
+                              onClick={() => {
+                                setDetailItem({ ...item, category: 'Invoice' });
+                                setSearchOpen(false);
+                              }}
+                            >
+                              <div className="super-search-item-left">
+                                <div className="super-search-icon icon-invoice">
+                                  <FileText size={15} />
+                                </div>
+                                <div className="super-search-text">
+                                  <span className="super-search-title">{item.title}</span>
+                                  <span className="super-search-sub">{item.subtitle}</span>
+                                </div>
+                              </div>
+                              <span className="super-search-badge badge-active">
+                                {item.badge}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="super-search-footer">
+                  <span>Click any result to preview details</span>
+                  <span>Esc to dismiss</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="header-right">
+          {/* Connected Academic Session Selector */}
+          <div className="super-session-wrap" ref={sessionContainerRef}>
+            <div
+              className="session-pill"
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+              onClick={() => setSessionOpen(s => !s)}
+              title="Switch Academic Session"
+            >
+              <Calendar size={14} />
+              <span>{currentSession}</span>
+              <ChevronDown size={14} style={{ opacity: 0.7, transform: sessionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </div>
+
+            {sessionOpen && (
+              <div className="super-session-dropdown">
+                <div style={{ padding: '6px 10px 8px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
+                  Active Academic Session
+                </div>
+                {(sessions.length > 0 ? sessions : [
+                  { id: 'ay-2024-25', name: '2024–25 Academic Session', is_active: false },
+                  { id: 'ay-2025-26', name: '2025–26 Academic Session', is_active: true },
+                  { id: 'ay-2026-27', name: '2026–27 Academic Session', is_active: false }
+                ]).map((sess: any) => {
+                  const isSelected = currentSession.includes(sess.code || sess.name);
+                  return (
+                    <button
+                      type="button"
+                      key={sess.id}
+                      className={`super-session-item ${isSelected ? 'selected' : ''}`}
+                      onClick={() => {
+                        setCurrentSession(sess.name);
+                        localStorage.setItem('attendo_academic_session', sess.name);
+                        setSessionOpen(false);
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CalendarDays size={14} style={{ opacity: 0.7 }} />
+                        <span>{sess.name}</span>
+                      </div>
+                      {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Connected Notification Bell & Popover */}
+          <div className="super-notif-wrap" ref={notifContainerRef}>
+            <button
+              type="button"
+              className="header-icon-btn"
+              title="Notifications"
+              onClick={() => setNotifOpen(s => !s)}
+            >
+              <Bell size={16} />
+              {unreadCount > 0 && (
+                <span className="header-badge-num">{unreadCount}</span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="super-notif-dropdown">
+                <div className="super-notif-header">
+                  <div className="super-notif-title-row">
+                    <h4 className="super-notif-title">Notifications</h4>
+                    {unreadCount > 0 && (
+                      <span className="super-notif-count-pill">{unreadCount} new</span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button type="button" className="super-notif-readall-btn" onClick={markAllRead}>
+                      <Check size={13} />
+                      <span>Mark all read</span>
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, padding: '8px 16px', background: 'var(--gray-50)', borderBottom: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${notifFilter === 'ALL' ? 'active' : ''}`}
+                    onClick={() => setNotifFilter('ALL')}
+                  >
+                    All ({notifications.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`super-search-tab-btn ${notifFilter === 'UNREAD' ? 'active' : ''}`}
+                    onClick={() => setNotifFilter('UNREAD')}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                </div>
+
+                <div className="super-notif-list">
+                  {displayedNotifications.length === 0 ? (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
+                      No {notifFilter === 'UNREAD' ? 'unread ' : ''}notifications.
+                    </div>
+                  ) : (
+                    displayedNotifications.map((n: any) => (
+                      <div
+                        key={n.id}
+                        className={`super-notif-item ${!n.read ? 'unread' : ''}`}
+                        onClick={() => markOneRead(n)}
+                      >
+                        <div className={`super-notif-icon-wrap ${
+                          n.category === 'SCHOOL' ? 'notif-school' :
+                          n.category === 'SYSTEM' ? 'notif-system' :
+                          n.category === 'BILLING' ? 'notif-billing' : 'notif-academic'
+                        }`}>
+                          {n.category === 'SCHOOL' ? <School size={16} /> :
+                           n.category === 'SYSTEM' ? <Database size={16} /> :
+                           n.category === 'BILLING' ? <CreditCard size={16} /> : <Calendar size={16} />}
+                        </div>
+
+                        <div className="super-notif-body">
+                          <div className="super-notif-item-title">
+                            <span>{n.title}</span>
+                            <span className="super-notif-time">
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="super-notif-msg">{n.message}</p>
+                        </div>
+
+                        {!n.read && <span className="super-notif-unread-dot"></span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="super-notif-footer">
+                  <button
+                    type="button"
+                    className="super-notif-viewall"
+                    onClick={() => { setNotifOpen(false); nav('/notifications'); }}
+                  >
+                    View System Notification Logs →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Connected User Profile Pill */}
+          <div className="profile-pill">
+            <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
+              {initials}
+            </div>
+            <div className="profile-info">
+              <span className="profile-name">{user.name || 'Company Super Admin'}</span>
+              <span className="profile-role">{user.email || 'superadmin@attendoschool.com'}</span>
+            </div>
+            <button
+              type="button"
+              className="header-icon-btn"
+              title="Sign out"
+              style={{ width: 28, height: 28, marginLeft: 2 }}
+              onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Interactive Detail Modal for Search Results */}
+      {detailItem && (
+        <div className="super-modal-backdrop" onClick={() => setDetailItem(null)}>
+          <div className="super-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="super-modal-header">
+              <h3>
+                {detailItem.category === 'School' && <School size={18} color="#2563eb" />}
+                {detailItem.category === 'Student' && <GraduationCap size={18} color="#4f46e5" />}
+                {detailItem.category === 'Invoice' && <FileText size={18} color="#d97706" />}
+                <span>{detailItem.category} Details — {detailItem.title}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDetailItem(null)}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="super-modal-body">
+              {detailItem.category === 'Student' && (
+                <div className="super-detail-grid">
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Full Name</span>
+                    <span className="super-detail-value">{detailItem.meta?.fullName || detailItem.title}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Admission Number</span>
+                    <span className="super-detail-value">{detailItem.meta?.admissionNumber || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Class & Section</span>
+                    <span className="super-detail-value">Class {detailItem.meta?.className} - {detailItem.meta?.section}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Roll Number</span>
+                    <span className="super-detail-value">#{detailItem.meta?.rollNumber || '25'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Enrolled School</span>
+                    <span className="super-detail-value" style={{ color: '#2563eb' }}>
+                      {detailItem.meta?.schoolName || detailItem.meta?.school?.name || 'Greenwood International School'}
+                    </span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Parent / Guardian</span>
+                    <span className="super-detail-value">{detailItem.meta?.parentName || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Parent Phone</span>
+                    <span className="super-detail-value">{detailItem.meta?.parentPhone || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Status</span>
+                    <span className="super-search-badge badge-active" style={{ alignSelf: 'flex-start' }}>
+                      {detailItem.meta?.status || 'ACTIVE'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {detailItem.category === 'School' && (
+                <div className="super-detail-grid">
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">School Name</span>
+                    <span className="super-detail-value">{detailItem.meta?.name || detailItem.title}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">School Code</span>
+                    <span className="super-detail-value">{detailItem.meta?.code || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Address</span>
+                    <span className="super-detail-value">{detailItem.meta?.address || 'Tech Park Boulevard'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Phone</span>
+                    <span className="super-detail-value">{detailItem.meta?.phone || detailItem.meta?.enquiry_number || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Admin Email</span>
+                    <span className="super-detail-value">{detailItem.meta?.email || detailItem.meta?.admin_email || '—'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Subscription Plan</span>
+                    <span className="super-detail-value" style={{ color: '#16a34a' }}>
+                      {detailItem.meta?.planName || 'Enterprise Plan'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {detailItem.category === 'Invoice' && (
+                <div className="super-detail-grid">
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Invoice Reference</span>
+                    <span className="super-detail-value">{detailItem.meta?.number || detailItem.id}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Client School</span>
+                    <span className="super-detail-value">{detailItem.meta?.school || 'Greenwood'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Tier / Service</span>
+                    <span className="super-detail-value">{detailItem.meta?.plan || 'Enterprise'}</span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Amount</span>
+                    <span className="super-detail-value" style={{ color: '#16a34a', fontSize: 16 }}>
+                      ₹{Number(detailItem.meta?.amount || 1999).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="super-detail-cell">
+                    <span className="super-detail-label">Status</span>
+                    <span className="super-search-badge badge-active" style={{ alignSelf: 'flex-start' }}>
+                      {detailItem.meta?.status || 'PAID'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="super-modal-footer">
+              <button
+                type="button"
+                className="small-btn"
+                onClick={() => setDetailItem(null)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => {
+                  const cat = detailItem.category;
+                  setDetailItem(null);
+                  if (cat === 'School') nav('/super-admin');
+                  else if (cat === 'Student') nav('/people');
+                  else nav('/payments');
+                }}
+              >
+                Open in Management →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ────── Layout ────── */
 function Layout({children}:{children:React.ReactNode}){
   const {user,logout}=useAuth();
   const nav=useNavigate();
   const loc=useLocation();
   const {dark,toggle}=useTheme();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if(!user) return null;
 
@@ -494,7 +1183,7 @@ function Layout({children}:{children:React.ReactNode}){
     adminLinks;
 
   return <div className="app-shell">
-    <aside>
+    <aside className={sidebarCollapsed ? 'sidebar-collapsed' : ''}>
       <div className="sidebar-header">
         <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
           <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
@@ -553,46 +1242,12 @@ function Layout({children}:{children:React.ReactNode}){
     </aside>
     <main>
       {user.role === 'SUPER_ADMIN' ? (
-        <header>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button className="header-icon-btn" title="Toggle menu" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
-              <Menu size={16} />
-            </button>
-            <div className="header-search" style={{ width: 340 }}>
-              <Search size={15}/>
-              <input placeholder="Search schools, students, invoices..." />
-              <span className="header-kbd">Ctrl + K</span>
-            </div>
-          </div>
-          <div className="header-right">
-            <div className="session-pill" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-              <Calendar size={14} />
-              <span>2025–26 Academic Session</span>
-              <ChevronDown size={14} style={{ opacity: 0.7 }} />
-            </div>
-            <button className="header-icon-btn" title="Notifications" onClick={()=>nav('/notifications')}>
-              <Bell size={16}/>
-              <span className="header-badge-num">3</span>
-            </button>
-            <div className="profile-pill">
-              <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
-                CS
-              </div>
-              <div className="profile-info">
-                <span className="profile-name">Company Super Admin</span>
-                <span className="profile-role">superadmin@attendoschool.com</span>
-              </div>
-              <button 
-                className="header-icon-btn" 
-                title="Sign out" 
-                style={{ width: 28, height: 28, marginLeft: 2 }}
-                onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
-              >
-                <LogOut size={13} />
-              </button>
-            </div>
-          </div>
-        </header>
+        <SuperAdminHeader
+          user={user}
+          logout={logout}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
       ) : (
         <header>
           <div className="header-meta">
@@ -2114,7 +2769,7 @@ function App(){return <Routes>
   <Route path="/classes" element={<Guard><Classes/></Guard>}/>
   <Route path="/subjects" element={<Guard><Subjects/></Guard>}/>
   <Route path="/routine" element={<Guard><Routine/></Guard>}/>
-  <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+  <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>

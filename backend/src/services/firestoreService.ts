@@ -72,6 +72,57 @@ export async function getFirestoreStudents(schoolId: string, className?: string,
   return snapshot.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, ...(d.data() as any) }));
 }
 
+export async function getFirestoreStudentById(id: string): Promise<FirestoreStudent | null> {
+  const doc = await collections.students().doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...(doc.data() as any) } as FirestoreStudent;
+}
+
+export async function createFirestoreStudent(student: Omit<FirestoreStudent, 'id'>, customId?: string): Promise<FirestoreStudent> {
+  const docRef = customId ? collections.students().doc(customId) : collections.students().doc();
+
+  let schoolName = student.schoolName;
+  let schoolCode = student.schoolCode;
+  let schoolAddress = student.schoolAddress;
+  let schoolPhone = student.schoolPhone;
+  let schoolEmail = student.schoolEmail;
+  let schoolObj = student.school;
+
+  if (student.schoolId && (!schoolName || !schoolObj)) {
+    const sDoc = await getFirestoreSchoolById(student.schoolId);
+    if (sDoc) {
+      schoolName = schoolName || sDoc.name;
+      schoolCode = schoolCode || sDoc.code;
+      schoolAddress = schoolAddress || sDoc.address;
+      schoolPhone = schoolPhone || sDoc.phone;
+      schoolEmail = schoolEmail || sDoc.email;
+      schoolObj = schoolObj || {
+        id: sDoc.id,
+        name: sDoc.name,
+        code: sDoc.code,
+        address: sDoc.address,
+        phone: sDoc.phone,
+        email: sDoc.email
+      };
+    }
+  }
+
+  const data: FirestoreStudent = {
+    id: docRef.id,
+    ...student,
+    schoolName: schoolName || 'Greenwood International School',
+    schoolCode,
+    schoolAddress,
+    schoolPhone,
+    schoolEmail,
+    school: schoolObj,
+    createdAt: student.createdAt || new Date().toISOString()
+  };
+
+  await docRef.set(data);
+  return data;
+}
+
 /**
  * Attendance Operations
  */
