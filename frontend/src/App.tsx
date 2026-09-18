@@ -18,7 +18,7 @@ import OfflineAttendance from './OfflineAttendance';
 import Analytics from './Analytics';
 import Communication from './Communication';
 import ParentCommunication from './ParentCommunication';
-import { SuperAdminDashboard } from './SuperAdminDashboard';
+import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard,Users,GraduationCap,BookOpen,Layers,LogOut,Plus,
@@ -2753,11 +2753,7 @@ function Payments(){
 
 /* ────── Super Admin Home ────── */
 function SuperAdminHome(){
-  return (
-    <Layout>
-      <SuperAdminDashboard />
-    </Layout>
-  );
+  return <SuperAdminModule />;
 }
 
 /* ────── Routes ────── */
@@ -2787,10 +2783,11 @@ function App(){return <Routes>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
-  <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminHome/></RoleGuard>}/>
-  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><Payments/></RoleGuard>}/>
-  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><Invoices/></RoleGuard>}/>
-  <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperMonitor/></RoleGuard>}/>
+  <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+  <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+  <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
   <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
 </Routes>}

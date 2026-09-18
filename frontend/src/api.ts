@@ -17,7 +17,34 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((c) => {
-  const t = localStorage.getItem('attendance_token');
+  const t = localStorage.getItem('attendance_token') || localStorage.getItem('token');
   if (t) c.headers.Authorization = `Bearer ${t}`;
   return c;
 });
+
+export async function apiRequest<T = any>(url: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('attendance_token') || localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as any)
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const cleanUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
+  const response = await fetch(cleanUrl, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    let errorMsg = `HTTP Error ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data.message) errorMsg = data.message;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return response.json();
+}
+

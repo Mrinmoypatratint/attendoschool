@@ -119,3 +119,19 @@ export interface FirestorePayment {
   createdAt: string;
   paidAt?: string;
 }
+
+export interface FirestoreAuditLog {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  schoolId?: string | null;
+  schoolName?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+

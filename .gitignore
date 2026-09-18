@@ -12,3 +12,4 @@ backups/
 deploy/nginx/certs/*.key
 deploy/nginx/certs/*.pem
 .vercel/
+attendoschool/
