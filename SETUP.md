@@ -369,6 +369,34 @@ cd backend && npm run build
 cd ../frontend && npm run build
 ```
 
+### 9.1 Onboarding & Password Setup Verification
+
+When enrolling students or faculty, the system dispatches an anti-spam compliant transactional password setup email.
+
+1. **Testing Student Onboarding**:
+   - Navigate to **Students** tab in the School Admin portal.
+   - Click **Add Student**.
+   - Enter Student Name, Roll Number, Class, Section.
+   - Under **Portal Login Account**, choose either:
+     - 🎓 *Use Student Email for Student Portal Login*
+     - 👨‍👩‍👧 *Use Parent Email for Student Portal Login*
+   - Check **Send Password Setup Email**.
+   - Click **Enroll Student**. The system returns an immediate setup link in the UI toast banner and logs the clickable link to the backend console.
+
+2. **Testing Password Reset URL Directly**:
+   - Open the generated link in your browser:
+     ```
+     http://localhost:5174/#/reset-password?token=<TOKEN>&email=<EMAIL>
+     ```
+   - The dedicated light institutional password setup interface will open.
+   - Enter your new password meeting the live checklist criteria (8+ characters, letters and numbers, matching confirmation).
+   - Submit and verify the success screen, then click **Proceed to Login** to sign in.
+
+3. **Forgot Password Self-Service**:
+   - On the login screen (`/login`), click **Forgot Password?**.
+   - Enter the student, parent, or faculty email address.
+   - Click **Send Reset Link** to receive an instant recovery link.
+
 ---
 
 ## 10. Troubleshooting & Common Issues

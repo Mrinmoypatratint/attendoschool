@@ -1073,6 +1073,9 @@ AttendoSchool exposes **242 distinct endpoint mappings**. All operational module
 | `GET` | `/api/auth/institutes` | Public | Any | List active institutions for login tenant selector |
 | `POST` | `/api/auth/login` | Public | Any | Authenticate email/password and issue JWT |
 | `GET` | `/api/auth/me` | Required | Any | Retrieve active user identity from token |
+| `POST` | `/api/auth/request-password-reset` | Public | Any | Request a secure 24-hour setup/reset link by email |
+| `GET` | `/api/auth/verify-reset-token` | Public | Any | Verify security token validity and fetch recipient info |
+| `POST` | `/api/auth/reset-password` | Public | Any | Set new account password with verified token |
 
 #### `POST /api/auth/login`
 - **Request**:
@@ -1110,12 +1113,14 @@ AttendoSchool exposes **242 distinct endpoint mappings**. All operational module
 | `GET` | `/api/subjects` | Required | `SCHOOL_ADMIN` | List academic subjects |
 | `POST` | `/api/subjects` | Required | `SCHOOL_ADMIN` | Create subject |
 | `GET` | `/api/students` | Required | `SCHOOL_ADMIN` | List enrolled students |
-| `POST` | `/api/students` | Required | `SCHOOL_ADMIN` | Create student record |
+| `POST` | `/api/students` | Required | `SCHOOL_ADMIN` | Create student record (supports student/parent login email option and invite email dispatch) |
+| `POST` | `/api/students/:id/send-reset-email` | Required | `SCHOOL_ADMIN` | Manually re-dispatch password setup link to student/parent email |
 | `DELETE`| `/api/students/:id` | Required | `SCHOOL_ADMIN` | Remove student |
 | `POST` | `/api/students/bulk-import` | Required | `SCHOOL_ADMIN` | Bulk import students from JSON/Excel |
 | `POST` | `/api/students/bulk-delete` | Required | `SCHOOL_ADMIN` | Bulk delete students by ID array |
 | `GET` | `/api/teachers` | Required | `SCHOOL_ADMIN` | List faculty teachers |
-| `POST` | `/api/teachers` | Required | `SCHOOL_ADMIN` | Create teacher user account |
+| `POST` | `/api/teachers` | Required | `SCHOOL_ADMIN` | Create teacher user account (with optional password setup invite email) |
+| `POST` | `/api/teachers/:id/send-reset-email` | Required | `SCHOOL_ADMIN` | Manually re-dispatch password setup link to teacher email |
 | `DELETE`| `/api/teachers/:id` | Required | `SCHOOL_ADMIN` | Remove teacher account |
 | `POST` | `/api/teachers/bulk-import` | Required | `SCHOOL_ADMIN` | Bulk import teachers |
 | `POST` | `/api/teachers/bulk-delete` | Required | `SCHOOL_ADMIN` | Bulk delete teachers |
@@ -1254,22 +1259,17 @@ AttendoSchool exposes **242 distinct endpoint mappings**. All operational module
 
 ---
 
-### 19.9 Parent Portal & Onboarding
+### 19.9 Student Portal & Unified Access Model
 
-*Mounted on `/api/parent-portal` and `/api/parent-portal-v17`.*
+> [!NOTE]
+> **Unified Student Portal**: AttendoSchool centralizes all learner and guardian self-service capabilities into a single **Student Portal** (`/student/dashboard`). During student enrollment, school administrators can designate either the student's email or the parent/guardian's email as the portal login credential. User accounts created under either option receive `role: 'STUDENT'`, granting direct, comprehensive access to timetable routines, attendance metrics, homework, exams, and announcements.
 
-| Method | Endpoint | Auth | Role | Description |
-|---|---|---|---|---|
-| `GET` | `/api/parent-portal/children` | Required | `PARENT` | List wards linked to authenticated parent |
-| `GET` | `/api/parent-portal/children/:id/attendance`| Required | `PARENT` | Attendance records for selected child |
-
-*Mounted on `/api/parent-onboarding` and `/api/parent-onboarding-v27`.*
+*Mounted on `/api/parent-portal` and `/api/parent-portal-v17` (legacy alias retained for backwards compatibility).*
 
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
-| `GET` | `/api/parent-onboarding` | Public | Any | List onboarding status |
-| `POST` | `/api/parent-onboarding` | Public | Any | Register parent user account |
-| `POST` | `/api/parent-onboarding/:parentUserId/link` | Public | Any | Link student to parent account |
+| `GET` | `/api/parent-portal/children` | Required | `PARENT`, `STUDENT` | List wards or personal student identity |
+| `GET` | `/api/parent-portal/children/:id/attendance`| Required | `PARENT`, `STUDENT` | Attendance records for student |
 
 ---
 

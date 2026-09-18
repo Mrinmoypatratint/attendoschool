@@ -1,4 +1,4 @@
-﻿# AttendoSchool — Cloud Deployment Guide
+# AttendoSchool — Cloud Deployment Guide
 ### Complete Setup for Vercel / Netlify (Frontend) + Render / Railway (Backend) + Neon / Render (PostgreSQL)
 
 This production release is pre-configured for immediate one-click cloud deployment.
@@ -24,7 +24,7 @@ This production release is pre-configured for immediate one-click cloud deployme
    - Example: `postgresql://attendoschool_owner:pass@ep-cool-snowflake-12345.us-east-2.aws.neon.tech/attendoschool?sslmode=require`
 4. Run the automated migration script locally to populate the cloud database with the entire schema, 28 migrations, and initial seed data:
    ```bash
-   cd "School-Attendance-SaaS-v28-COMPLETE-FIXED-3 - Copy/backend"
+   cd backend
    $env:DATABASE_URL="your-neon-connection-string"
    npm run db:migrate
    ```
@@ -87,22 +87,16 @@ This production release is pre-configured for immediate one-click cloud deployme
 To connect your project to Vercel and Render:
 
 ```bash
-cd "d:\School-Attendance-SaaS-v28-COMPLETE-FIXED-PROD\School-Attendance-SaaS-v28-COMPLETE-FIXED-3 - Copy"
+cd attendoschool
 
-# 1. Initialize git
-git init
-
-# 2. Stage all files
+# 1. Stage all files
 git add .
 
-# 3. Commit
-git commit -m "AttendoSchool v28 Production Release with official logo & cloud configuration"
+# 2. Commit
+git commit -m "AttendoSchool Production Release with Student Portal and Password Setup Flow"
 
-# 4. Create repository on GitHub (e.g., https://github.com/your-username/attendoschool)
-# 5. Link and push:
-git remote add origin https://github.com/YOUR_USERNAME/attendoschool.git
-git branch -M main
-git push -u origin main
+# 3. Push to main
+git push origin main
 ```
 
 ---
@@ -111,11 +105,12 @@ git push -u origin main
 
 Once deployed, you can immediately log into the live platform using the pre-seeded credentials:
 
-| Persona | Email | Password | Access Portal |
+| Persona | Email / Identifier | Password | Access Portal |
 |---|---|---|---|
 | **Super Admin** | `superadmin@attendance.local` | `ChangeMe123!` | Company-wide SaaS management & schools directory |
 | **School Admin** | `admin@demo-school.local` | `ChangeMe123!` | Academic year, classes, student roster & daily attendance |
 | **Teacher** | `rahul@demo-school.local` | `ChangeMe123!` | Classroom routine & instant attendance marking |
+| **Student Portal** | `student@greenwood.local` or Roll `25` | `ChangeMe123!` | Student timetable, attendance %, homework, exams & results |
 
 ---
 
