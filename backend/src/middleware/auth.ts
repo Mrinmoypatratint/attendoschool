@@ -2,8 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-export type Role = 'SUPER_ADMIN'|'SCHOOL_ADMIN'|'TEACHER'|'PARENT';
-export type AuthUser = { id:string; schoolId:string|null; name:string; email:string; role:Role };
+export type Role = 'SUPER_ADMIN'|'SCHOOL_ADMIN'|'TEACHER'|'PARENT'|'STUDENT';
+export type AuthUser = {
+  id: string;
+  schoolId: string | null;
+  name: string;
+  email: string;
+  role: Role;
+  studentId?: string;
+  classId?: string;
+  sectionId?: string;
+};
 export interface AuthRequest extends Request { user?: AuthUser }
 
 export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {

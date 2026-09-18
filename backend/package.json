@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "prestart": "npm run build",
     "build": "tsc",
     "start": "node dist/server.js",
     "worker": "tsx src/smsWorker.ts",
@@ -12,6 +13,7 @@
     "v27:smoke": "tsx ../scripts/v27-integration-smoke.ts",
     "worker:production": "tsx src/workers/productionWorker.ts",
     "test": "tsx tests/comprehensive-test-suite.ts",
+    "test:student": "tsx tests/student-portal-e2e.ts",
     "db:migrate": "node dist/scripts/migrate.js",
     "seed:firestore": "tsx src/scripts/seedFirestore.ts",
     "emulator:firestore": "npx firebase emulators:start --only firestore",

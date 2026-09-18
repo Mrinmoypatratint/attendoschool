@@ -47,6 +47,7 @@
   - [19.16 Security Hardening & Session Management](#1916-security-hardening--session-management)
   - [19.17 Super Admin Operations & Monitoring](#1917-super-admin-operations--monitoring)
   - [19.18 Production & Health Probes](#1918-production--health-probes)
+  - [19.19 Student Portal & Academic Operations](#1919-student-portal--academic-operations)
 - [20. API Authentication](#20-api-authentication)
 - [21. Third-Party Integrations](#21-third-party-integrations)
 - [22. Environment Variables](#22-environment-variables)
@@ -82,11 +83,11 @@
 
 ## 1. Executive Summary
 
-**AttendoSchool** (internal package name `school-attendance-saas`, version `0.11.0`, marketed release `v28`) is an educational administration and student presence tracking software platform. The system operates as a **multi-tenant Software-as-a-Service (SaaS)** solution designed to serve educational institutions (K-12 schools, multi-branch networks, and colleges).
+**AttendoSchool** (internal package name `school-attendance-saas`, version `0.12.0`, marketed release `v29`) is an educational administration and student presence tracking software platform. The system operates as a **multi-tenant Software-as-a-Service (SaaS)** solution designed to serve educational institutions (K-12 schools, multi-branch networks, and colleges).
 
-The core value proposition centers on eliminating administrative overhead in attendance recording, guaranteeing instantaneous notification to guardians when a student is absent, preventing unauthorized attendance tampering through audit-trailed correction requests, managing routine and timetable conflict resolution, and providing commercial SaaS subscription billing with automated Indian GST tax invoicing.
+The core value proposition centers on eliminating administrative overhead in attendance recording, guaranteeing instantaneous notification to guardians when a student is absent, preventing unauthorized attendance tampering through audit-trailed correction requests, managing routine and timetable conflict resolution, providing dedicated student and parent portals with multi-tenant login resolution, and providing commercial SaaS subscription billing with automated Indian GST tax invoicing.
 
-The application is structured as a decoupled **Client-Server Architecture** comprising a Single Page Application (SPA) frontend built on React 19 and Vite 7, a RESTful backend API powered by Express 5 and TypeScript running on Node.js (tested on Node 20.x, 24.x), and a **dual-database persistence architecture** supporting **Firebase Cloud Firestore** (with local emulator support for zero-config offline development) alongside an enterprise **PostgreSQL 16** relational persistence layer consisting of 62 tables managed through 28 incremental migration files.
+The application is structured as a decoupled **Client-Server Architecture** comprising a Single Page Application (SPA) frontend built on React 19 and Vite 7, a RESTful backend API powered by Express 5 and TypeScript running on Node.js (tested on Node 20.x, 24.x), and a **dual-database persistence architecture** supporting **Firebase Cloud Firestore** (with local emulator support for zero-config offline development) alongside an enterprise **PostgreSQL 16** relational persistence layer consisting of 67 tables managed through 29 incremental migration files.
 
 ---
 
@@ -198,6 +199,7 @@ flowchart TD
         B_Teacher["Teacher (Desktop / Mobile PWA)"]
         B_Super["Super Admin (Console)"]
         B_Parent["Parent (Portal / SMS / WA)"]
+        B_Student["Student (Portal / Dashboard / Mobile PWA)"]
     end
 
     subgraph ReverseProxy["Ingress & Gateway Layer"]
@@ -226,6 +228,7 @@ flowchart TD
             S_Notif["Notification & SMS Dispatcher"]
             S_Sec["Security & Audit Service"]
             S_Back["Backup & Disaster Recovery"]
+            S_Student["Student Portal & Academic Service"]
         end
     end
 
@@ -238,7 +241,7 @@ flowchart TD
 
     subgraph DatabaseTier["Dual Persistence Layer"]
         FS[("Firebase Cloud Firestore\n(Local Emulator: 8080 / Cloud)\nDocument Collections")]
-        PG[("PostgreSQL 16 Database\n(school_attendance)\n62 Tables")]
+        PG[("PostgreSQL 16 Database\n(school_attendance)\n67 Tables")]
     end
 
     subgraph ExternalServices["External Providers & Integrations"]
@@ -357,38 +360,50 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    actor User as User (Admin / Teacher / Parent)
+    actor User as User (Super Admin / School Admin / Teacher / Parent / Student)
     participant UI as Login Component (React)
-    participant AuthAPI as Auth Route (/api/auth/login)
-    participant DB as PostgreSQL (users table)
+    participant AuthAPI as Auth Route (/api/auth)
+    participant DB as PostgreSQL (schools & users)
     participant Fallback as In-Memory Demo Store
     participant Storage as Browser LocalStorage
 
-    User->>UI: Enter Email & Password
-    UI->>AuthAPI: POST /api/auth/login { email, password }
+    UI->>AuthAPI: GET /api/auth/institutes
+    AuthAPI->>DB: SELECT id, name, code FROM schools WHERE status='ACTIVE'
+    DB-->>AuthAPI: Institute List (or Fallback demoSchools)
+    AuthAPI-->>UI: 200 OK [{ id, name, code }]
+
+    User->>UI: Select Institute, Enter Email/Student ID & Password
+    UI->>AuthAPI: POST /api/auth/login { instituteId, email, password }
     
-    AuthAPI->>DB: SELECT * FROM users WHERE LOWER(email)=LOWER($1)
+    AuthAPI->>DB: SELECT * FROM users WHERE LOWER(email)=LOWER($1) (or student roll_number lookup)
     alt User Found in DB
+        AuthAPI->>AuthAPI: Verify school_id === instituteId (Tenant Isolation Guard)
         AuthAPI->>AuthAPI: bcrypt.compare(password, password_hash)
         alt Password Matches & is_active = true
             AuthAPI->>AuthAPI: jwt.sign(user, JWT_SECRET, { expiresIn: '8h' })
-            AuthAPI-->>UI: 200 OK { token, user: { id, schoolId, role... } }
-        else Password Mismatch or Inactive
-            AuthAPI-->>UI: 401 Invalid email or password
+            AuthAPI-->>UI: 200 OK { token, user: { id, schoolId, role, studentProfile... } }
+        else Password Mismatch or Tenant Mismatch
+            AuthAPI-->>UI: 401 Invalid email/credentials or school mismatch
         end
-    else DB Query Throws / DB Unavailable
-        AuthAPI->>Fallback: findDemoUser(email)
+    else DB Query Throws / DB Disconnected
+        AuthAPI->>Fallback: findDemoUser(email/identifier, instituteId)
         alt In-Memory Demo User Exists & Password Matches
             AuthAPI->>AuthAPI: jwt.sign(demoUser, JWT_SECRET, { expiresIn: '8h' })
             AuthAPI-->>UI: 200 OK { token, user }
         else Demo User Not Found
-            AuthAPI-->>UI: 401 Invalid email or password
+            AuthAPI-->>UI: 401 Invalid credentials
         end
     end
 
     opt On Successful Login
         UI->>Storage: Store attendance_token & attendance_user
-        UI->>User: Redirect to /dashboard
+        alt Role is STUDENT
+            UI->>User: Redirect to /student/dashboard
+        else Role is PARENT
+            UI->>User: Redirect to /parent
+        else Role is ADMIN or TEACHER
+            UI->>User: Redirect to /dashboard
+        end
     end
 ```
 
@@ -492,19 +507,19 @@ attendoschool/
 │   │   │   ├── auth.ts              # JWT verification (`requireAuth`) & role guard (`requireRoles`)
 │   │   │   ├── security.ts          # Security headers, requestContext, and IP rate limiter
 │   │   │   └── subscriptionEnforcement.ts # Checks school subscription validity on protected operations
-│   │   ├── routes/                  # 32 modular Express route controllers
-│   │   ├── services/                # Business logic and data access services
-│   │   │   └── firestoreService.ts  # Cloud Firestore query & document mutation service
+│   │   ├── routes/                  # 33 modular Express route controllers (includes student.ts)
+│   │   ├── services/                # Business logic and data access services (includes firestoreService.ts, studentService.ts)
 │   │   ├── types/
 │   │   │   └── firestoreSchema.ts   # Typed interfaces for Firestore collections
 │   │   ├── store/
-│   │   │   └── demoUsers.ts         # In-memory user fallback store when DB is disconnected
+│   │   │   └── demoUsers.ts         # In-memory user fallback store with student demo user
 │   │   ├── scripts/
 │   │   │   ├── migrate.ts           # PostgreSQL migration runner
 │   │   │   └── seedFirestore.ts     # Cloud Firestore seeder script (`npm run seed:firestore`)
 │   │   └── workers/
 │   │       └── productionWorker.ts  # Master maintenance worker (cleanups, retentions, subscriptions)
 │   └── tests/                       # Backend test suites
+│       ├── student-portal-e2e.ts    # 41-assertion automated student portal & RBAC test suite
 │       ├── comprehensive-test-suite.ts # 93-assertion automated validation suite
 │       ├── automated-e2e-journey.ts    # End-to-end multi-tenant lifecycle journey
 │       ├── deep-feature-e2e-test.ts    # Deep API feature regression tests
@@ -551,14 +566,28 @@ attendoschool/
 │       ├── SubscriptionEnforcement.tsx # Subscription plan status & feature quota view
 │       ├── Timetable.tsx            # Period timing, timetable matrix, conflict checker & substitutes
 │       ├── components/
-│       │   └── Toast.tsx            # Global toast notifications
-│       └── hooks/
-│           └── useAuth.tsx          # AuthContext, AuthProvider, useAuth, Guard, RoleGuard
+│       │   ├── Toast.tsx            # Global toast notifications
+│       │   └── student/
+│       │       └── StudentLayout.tsx# Dedicated Student Portal ERP sidebar & topbar layout
+│       ├── hooks/
+│       │   └── useAuth.tsx          # AuthContext with STUDENT role, AuthProvider, RoleGuard
+│       ├── services/
+│       │   └── studentApi.ts        # Dedicated API client for Student Portal endpoints
+│       └── pages/
+│           └── student/             # Student Portal View Pages
+│               ├── StudentDashboard.tsx    # High-fidelity dashboard with greeting, KPIs, routine, calendar
+│               ├── StudentAttendance.tsx   # Detailed monthly attendance log, status badges, analytics
+│               ├── StudentTimetable.tsx    # Weekly schedule grid organized by day of week
+│               ├── StudentAssignments.tsx  # Pending & completed homework with submission modal
+│               ├── StudentExams.tsx        # Upcoming exams, test dates, and published marksheets
+│               ├── StudentAnnouncements.tsx# Institute notice feed with priority filtering
+│               ├── StudentLeaveRequest.tsx # Leave application submission and approval tracker
+│               └── StudentProfile.tsx      # Comprehensive student card & BCrypt password rotation
 │
 ├── database/                        # Database Definition Root
 │   ├── schema.sql                   # Base DDL schema definition
 │   ├── seed.sql                     # Base initial seed data (Super Admin & Plans)
-│   └── migrations/                  # 22 incremental migration SQL scripts (v07 to v28)
+│   └── migrations/                  # 23 incremental migration SQL scripts (v07 to v29)
 │
 ├── deploy/                          # Production Deployment Configurations
 │   └── nginx/
@@ -608,8 +637,17 @@ The frontend is an entirely client-rendered Single Page Application (SPA).
 | [frontend/src/Timetable.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Timetable.tsx) | `Timetable` | `SCHOOL_ADMIN`, `TEACHER` | Period definitions, timetable entries, substitute assignment |
 | [frontend/src/OfflineAttendance.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/OfflineAttendance.tsx) | `OfflineAttendance`| `TEACHER` | Offline roster attendance taker and queue sync status |
 | [frontend/src/Analytics.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Analytics.tsx) | `Analytics` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Daily snapshots, presence trends, school-wide ranking |
-| [frontend/src/Communication.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Communication.tsx) | `Communication` | `SCHOOL_ADMIN` | School announcement authoring, priority tags, publishing |
-| [frontend/src/ParentCommunication.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/ParentCommunication.tsx) | `ParentCommunication` | `PARENT` | Notice inbox with read receipts |
+| [frontend/src/Communication.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/Communication.tsx) | `Communication` | `SCHOOL_ADMIN` | School announcement authoring, priority tags, publishing |
+| [frontend/src/ParentCommunication.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/ParentCommunication.tsx) | `ParentCommunication` | `PARENT` | Notice inbox with read receipts |
+| [frontend/src/components/student/StudentLayout.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/components/student/StudentLayout.tsx) | `StudentLayout` | `STUDENT` | ERP sidebar navigation, institute indicator, profile badge, theme toggle |
+| [frontend/src/pages/student/StudentDashboard.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentDashboard.tsx) | `StudentDashboard` | `STUDENT` | Greeting banner, attendance KPI, upcoming exams, today schedule, calendar |
+| [frontend/src/pages/student/StudentAttendance.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAttendance.tsx) | `StudentAttendance` | `STUDENT` | Read-only presence records, month/status filters, historical session list |
+| [frontend/src/pages/student/StudentTimetable.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentTimetable.tsx) | `StudentTimetable` | `STUDENT` | Weekly class timetable schedule organized by day of week |
+| [frontend/src/pages/student/StudentAssignments.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAssignments.tsx) | `StudentAssignments` | `STUDENT` | Homework tasks, due date countdowns, file/link submission modal |
+| [frontend/src/pages/student/StudentExams.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentExams.tsx) | `StudentExams` | `STUDENT` | Exam schedule with timings, published subject marksheets, grade cards |
+| [frontend/src/pages/student/StudentAnnouncements.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAnnouncements.tsx) | `StudentAnnouncements` | `STUDENT` | School notices feed with priority badges and unread indicator |
+| [frontend/src/pages/student/StudentLeaveRequest.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentLeaveRequest.tsx) | `StudentLeaveRequest` | `STUDENT` | Leave application form (reason, dates) and administrative approval tracker |
+| [frontend/src/pages/student/StudentProfile.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentProfile.tsx) | `StudentProfile` | `STUDENT` | Student card, guardian contact details, BCrypt password change form |
 
 ---
 
@@ -667,7 +705,7 @@ AttendoSchool features a **dual database architecture** supporting both modern d
 - **Isolation Model**: Multi-tenant with shared database and shared schema (`public`). Multi-tenancy is enforced through `school_id` foreign keys indexed across operational tables.
 - **Migration Strategy**: Sequential `.sql` migration files executed in sorted order by [backend/src/scripts/migrate.ts](file:///d:/Project_Abir/attendoschool/backend/src/scripts/migrate.ts).
 
-### Database Evolution History (28 Migrations)
+### Database Evolution History (29 Migrations)
 - `schema.sql`: Baseline tables (`schools`, `users`, `classes`, `sections`, `subjects`, `students`, `class_routines`, `attendance_sessions`, `attendance_records`, `subscription_plans`, `school_subscriptions`, `payments`, `audit_logs`).
 - `migrations/007_v07_payment_invoices.sql`: Adds `subscription_invoices` table.
 - `migrations/008_v08_school_billing.sql`: Adds school billing details and automated renewal helpers.
@@ -691,12 +729,13 @@ AttendoSchool features a **dual database architecture** supporting both modern d
 - `migrations/026_v26_production.sql`: Job run monitoring and production readiness verification.
 - `migrations/027_v27_final_integration.sql`: Final integration tests and parent isolation validation.
 - `migrations/028_v28_final_integrated.sql`: Multi-channel delivery attempts and end-to-end telemetry.
+- `migrations/029_v29_student_role_and_portal.sql`: Adds `'STUDENT'` role to `user_role` ENUM/check, student login credential columns (`user_id`, `email`, `admission_number`, `date_of_birth`), `student_assignments`, `student_assignment_submissions`, `student_exams`, `student_exam_results`, and `student_leave_requests` tables.
 
 ---
 
 ## 15. Database Schema
 
-The database consists of **62 relational tables**. Below is the specification of core entities:
+The database consists of **67 relational tables** (including 5 dedicated tables introduced in migration 029 for the Student Portal). Below is the specification of core entities:
 
 ### 1. `schools`
 | Column | Type | Nullable | Default | Description |
@@ -719,7 +758,7 @@ The database consists of **62 relational tables**. Below is the specification of
 | `name` | `varchar(255)` | NO | — | Full display name |
 | `email` | `varchar(255)` | NO | — | Unique login email |
 | `password_hash` | `text` | NO | — | Salted bcrypt password hash |
-| `role` | `user_role` (ENUM) | NO | — | `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT` |
+| `role` | `user_role` (ENUM) | NO | — | `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT`, `STUDENT` |
 | `is_active` | `boolean` | NO | `true` | Account active flag |
 | `failed_login_attempts` | `integer` | YES | `0` | Consecutive login failures (locks at 5) |
 | `locked_until` | `timestamptz` | YES | — | Lock expiry timestamp |
@@ -736,8 +775,12 @@ The database consists of **62 relational tables**. Below is the specification of
 | `class_id` | `uuid` | NO | — | FK -> `classes(id)` |
 | `section_id` | `uuid` | NO | — | FK -> `sections(id)` |
 | `academic_year_id` | `uuid` | YES | — | FK -> `academic_years(id)` |
+| `user_id` | `uuid` | YES | — | FK -> `users(id)` (Dedicated Student User Account) |
 | `name` | `varchar(255)` | NO | — | Student full name |
+| `email` | `varchar(255)` | YES | — | Student portal login email |
 | `roll_number` | `varchar(50)` | NO | — | Class roll number |
+| `admission_number` | `varchar(50)` | YES | — | Institutional admission identifier |
+| `date_of_birth` | `date` | YES | — | Student birth date |
 | `parent_name` | `varchar(255)` | YES | — | Primary guardian name |
 | `parent_sms_number` | `varchar(50)` | YES | — | Guardian phone number for SMS/WhatsApp |
 | `parent_email` | `varchar(255)` | YES | — | Guardian email for notices |
@@ -812,6 +855,79 @@ The database consists of **62 relational tables**. Below is the specification of
 | `issued_at` | `timestamptz` | NO | `now()` | Issuance timestamp |
 | `paid_at` | `timestamptz` | YES | — | Settlement timestamp |
 
+### 9. `student_assignments`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | Primary Key |
+| `school_id` | `uuid` | NO | — | FK -> `schools(id)` |
+| `class_id` | `uuid` | NO | — | FK -> `classes(id)` |
+| `section_id` | `uuid` | YES | — | FK -> `sections(id)` |
+| `subject_id` | `uuid` | YES | — | FK -> `subjects(id)` |
+| `teacher_id` | `uuid` | YES | — | FK -> `users(id)` |
+| `title` | `varchar(200)` | NO | — | Assignment title |
+| `description` | `text` | YES | — | Task details, instructions, links |
+| `due_date` | `date` | NO | — | Submission deadline date |
+| `max_marks` | `numeric(5,2)` | YES | `100.00` | Maximum assignable score |
+| `created_at` | `timestamptz` | NO | `now()` | Record creation timestamp |
+| `updated_at` | `timestamptz` | NO | `now()` | Last modification timestamp |
+
+### 10. `student_assignment_submissions`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | Primary Key |
+| `school_id` | `uuid` | NO | — | FK -> `schools(id)` |
+| `assignment_id` | `uuid` | NO | — | FK -> `student_assignments(id)` |
+| `student_id` | `uuid` | NO | — | FK -> `students(id)` |
+| `status` | `varchar(30)` | NO | `'PENDING'` | `PENDING`, `SUBMITTED`, `GRADED`, `OVERDUE` |
+| `submitted_at` | `timestamptz` | YES | — | Submission completion timestamp |
+| `submission_text` | `text` | YES | — | Solution notes, repository URL, or link |
+| `marks_obtained` | `numeric(5,2)` | YES | — | Awarded marks |
+| `feedback` | `text` | YES | — | Teacher grading feedback |
+| `created_at` | `timestamptz` | NO | `now()` | Submission creation timestamp |
+
+### 11. `student_exams`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | Primary Key |
+| `school_id` | `uuid` | NO | — | FK -> `schools(id)` |
+| `class_id` | `uuid` | NO | — | FK -> `classes(id)` |
+| `subject_id` | `uuid` | YES | — | FK -> `subjects(id)` |
+| `title` | `varchar(150)` | NO | — | Examination name / term title |
+| `exam_date` | `date` | NO | — | Scheduled calendar date |
+| `start_time` | `time` | NO | — | Examination commencement time |
+| `end_time` | `time` | NO | — | Examination conclusion time |
+| `room` | `varchar(50)` | YES | — | Examination hall / room number |
+| `total_marks` | `numeric(5,2)` | NO | `100.00` | Total test marks |
+| `passing_marks` | `numeric(5,2)` | NO | `35.00` | Minimum passing threshold |
+| `created_at` | `timestamptz` | NO | `now()` | Record creation timestamp |
+
+### 12. `student_exam_results`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | Primary Key |
+| `school_id` | `uuid` | NO | — | FK -> `schools(id)` |
+| `exam_id` | `uuid` | NO | — | FK -> `student_exams(id)` |
+| `student_id` | `uuid` | NO | — | FK -> `students(id)` |
+| `marks_obtained` | `numeric(5,2)` | NO | — | Achieved exam score |
+| `grade` | `varchar(10)` | YES | — | Letter grade (A+, A, B, etc.) |
+| `remarks` | `text` | YES | — | Examiner evaluation remarks |
+| `created_at` | `timestamptz` | NO | `now()` | Record creation timestamp |
+
+### 13. `student_leave_requests`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| `id` | `uuid` | NO | `gen_random_uuid()` | Primary Key |
+| `school_id` | `uuid` | NO | — | FK -> `schools(id)` |
+| `student_id` | `uuid` | NO | — | FK -> `students(id)` |
+| `start_date` | `date` | NO | — | Leave commencement date |
+| `end_date` | `date` | NO | — | Leave conclusion date |
+| `reason` | `text` | NO | — | Student application rationale |
+| `status` | `varchar(30)` | NO | `'PENDING'` | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` |
+| `reviewed_by` | `uuid` | YES | — | FK -> `users(id)` (Approving administrator/teacher) |
+| `review_notes` | `text` | YES | — | Decision rationale or instructions |
+| `created_at` | `timestamptz` | NO | `now()` | Application submission timestamp |
+| `updated_at` | `timestamptz` | NO | `now()` | Last modification timestamp |
+
 ---
 
 ## 16. Entity Relationship Diagram
@@ -825,6 +941,8 @@ erDiagram
     schools ||--o{ academic_years : "operates"
     schools ||--o{ announcements : "broadcasts"
     schools ||--o{ backup_jobs : "generates"
+    schools ||--o{ student_assignments : "assigns"
+    schools ||--o{ student_exams : "schedules"
 
     subscription_plans ||--o{ school_subscriptions : "defines_tier"
     school_subscriptions ||--o{ payments : "billed_by"
@@ -833,6 +951,8 @@ erDiagram
     classes ||--o{ sections : "contains"
     classes ||--o{ students : "groups"
     sections ||--o{ students : "allocates"
+    classes ||--o{ student_assignments : "assigned_to"
+    classes ||--o{ student_exams : "examined_in"
 
     users ||--o{ class_routines : "taught_by"
     classes ||--o{ class_routines : "scheduled_for"
@@ -857,6 +977,15 @@ erDiagram
 
     users ||--o{ parent_student_links : "parent_guardian"
     students ||--o{ parent_student_links : "ward"
+    users ||--o{ students : "student_user_account"
+
+    student_assignments ||--o{ student_assignment_submissions : "receives"
+    students ||--o{ student_assignment_submissions : "submits"
+
+    student_exams ||--o{ student_exam_results : "produces"
+    students ||--o{ student_exam_results : "scores"
+
+    students ||--o{ student_leave_requests : "applies"
 
     attendance_sessions ||--o{ sms_logs : "triggers_sms"
     attendance_sessions ||--o{ notification_logs : "triggers_notifications"
@@ -870,20 +999,28 @@ erDiagram
 ## 17. Authentication & Authorization
 
 ### Authentication Mechanism
-1. **Credentials Validation**: Authentication is performed via `POST /api/auth/login`. Passwords are validated using `bcrypt.compare()` against `users.password_hash`.
-2. **Token Issuance**: A signed JWT bearer token is returned upon successful authentication:
+1. **Multi-Tenant Institute Resolution**: Before authentication, clients query `GET /api/auth/institutes` to fetch active schools (`{ id, name, code }`) to bind the user's session to the target institution tenant.
+2. **Credentials Validation**: Authentication is performed via `POST /api/auth/login` with `email` (or student roll number/admission identifier), `password`, and optional `instituteId`. Passwords are validated using `bcrypt.compare()` against `users.password_hash`. Tenant isolation is enforced by ensuring the user belongs to the selected school.
+3. **Token Issuance**: A signed JWT bearer token is returned upon successful authentication with full user identity and role:
    ```json
    {
-     "id": "47526c01-4c09-4a2f-8e23-a2d2463e5777",
-     "schoolId": null,
-     "name": "Company Super Admin",
-     "email": "superadmin@attendance.local",
-     "role": "SUPER_ADMIN"
+     "id": "20000000-0000-0000-0000-000000000001",
+     "schoolId": "00000000-0000-0000-0000-000000000001",
+     "name": "Rohan Sharma",
+     "email": "student@greenwood.local",
+     "role": "STUDENT",
+     "studentProfile": {
+       "studentId": "30000000-0000-0000-0000-000000000001",
+       "rollNumber": "25",
+       "className": "Class 10",
+       "sectionName": "A",
+       "schoolName": "Greenwood International School"
+     }
    }
    ```
-3. **Validity**: Tokens are signed using `env.jwtSecret` with an 8-hour expiration window (`expiresIn: '8h'`).
-4. **Transport**: Clients store the token in `localStorage.attendance_token` and inject it into the `Authorization: Bearer <token>` header via Axios interceptors.
-5. **Fallback Store**: If the PostgreSQL database is unreachable, `auth.ts` falls back to the in-memory demo store defined in [backend/src/store/demoUsers.ts](file:///d:/Project_Abir/attendoschool/backend/src/store/demoUsers.ts).
+4. **Validity**: Tokens are signed using `env.jwtSecret` with an 8-hour expiration window (`expiresIn: '8h'`).
+5. **Transport**: Clients store the token in `localStorage.attendance_token` and inject it into the `Authorization: Bearer <token>` header via Axios interceptors.
+6. **Fallback Store**: If the PostgreSQL database is unreachable, `auth.ts` falls back to the in-memory demo store defined in [backend/src/store/demoUsers.ts](file:///d:/Abir%200.1/attendoschool/backend/src/store/demoUsers.ts) with full support for student demo credentials.
 
 ---
 
@@ -891,31 +1028,40 @@ erDiagram
 
 ### Role Matrix
 
-| Capability / Resource | `SUPER_ADMIN` | `SCHOOL_ADMIN` | `TEACHER` | `PARENT` | Enforcing Middleware / Logic |
-|---|:---:|:---:|:---:|:---:|---|
-| **Platform Revenue & Multi-School Overview** |  | ❌ | ❌ | ❌ | `requireRoles('SUPER_ADMIN')` |
-| **School Onboarding & Plan Allocation** |  | ❌ | ❌ | ❌ | `requireRoles('SUPER_ADMIN')` |
-| **Trigger Full DB Backups (`pg_dump`)** |  |  *(Observed)* | ❌ | ❌ | `requireRoles('SUPER_ADMIN','SCHOOL_ADMIN')` |
-| **Class, Section & Subject Creation** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **Student & Faculty Provisioning** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **Routines & Timetable Assignment** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **Take Classroom Attendance** | ❌ | ❌ |  | ❌ | `requireRoles('TEACHER')` |
-| **Teacher Today Schedule** | ❌ | ❌ |  | ❌ | `requireRoles('TEACHER')` |
-| **Submit Attendance Correction Request** | ❌ | ❌ |  | ❌ | `requireRoles('TEACHER','SCHOOL_ADMIN')` |
-| **Approve / Reject Correction Request** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **Academic Year Promotions** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **View Attendance Reports & Analytics** |  |  |  | ❌ | `requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')` |
-| **Offline Attendance Sync Submission** | ❌ | ❌ |  | ❌ | `requireRoles('TEACHER','SCHOOL_ADMIN')` |
-| **Parent Portal Child Attendance** | ❌ | ❌ | ❌ |  | `requireRoles('PARENT')` |
-| **School Announcement Broadcasts** | ❌ |  | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
-| **Parent Read Announcements** | ❌ | ❌ | ❌ |  | `requireRoles('PARENT')` |
-| **Subscription Renewal & Payment** |  |  | ❌ | ❌ | `requireSubscription` / Role Guard |
+| Capability / Resource | `SUPER_ADMIN` | `SCHOOL_ADMIN` | `TEACHER` | `PARENT` | `STUDENT` | Enforcing Middleware / Logic |
+|---|:---:|:---:|:---:|:---:|:---:|---|
+| **Platform Revenue & Multi-School Overview** |  | ❌ | ❌ | ❌ | ❌ | `requireRoles('SUPER_ADMIN')` |
+| **School Onboarding & Plan Allocation** |  | ❌ | ❌ | ❌ | ❌ | `requireRoles('SUPER_ADMIN')` |
+| **Trigger Full DB Backups (`pg_dump`)** |  |  *(Observed)* | ❌ | ❌ | ❌ | `requireRoles('SUPER_ADMIN','SCHOOL_ADMIN')` |
+| **Class, Section & Subject Creation** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **Student & Faculty Provisioning** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **Routines & Timetable Assignment** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **Take Classroom Attendance** | ❌ | ❌ |  | ❌ | ❌ | `requireRoles('TEACHER')` |
+| **Teacher Today Schedule** | ❌ | ❌ |  | ❌ | ❌ | `requireRoles('TEACHER')` |
+| **Submit Attendance Correction Request** | ❌ | ❌ |  | ❌ | ❌ | `requireRoles('TEACHER','SCHOOL_ADMIN')` |
+| **Approve / Reject Correction Request** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **Academic Year Promotions** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **View Attendance Reports & Analytics** |  |  |  | ❌ | ❌ | `requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')` |
+| **Offline Attendance Sync Submission** | ❌ | ❌ |  | ❌ | ❌ | `requireRoles('TEACHER','SCHOOL_ADMIN')` |
+| **Parent Portal Child Attendance** | ❌ | ❌ | ❌ |  | ❌ | `requireRoles('PARENT')` |
+| **School Announcement Broadcasts** | ❌ |  | ❌ | ❌ | ❌ | `requireRoles('SCHOOL_ADMIN')` |
+| **Parent Read Announcements** | ❌ | ❌ | ❌ |  | ❌ | `requireRoles('PARENT')` |
+| **Subscription Renewal & Payment** |  |  | ❌ | ❌ | ❌ | `requireSubscription` / Role Guard |
+| **Student Dashboard & Overview KPIs** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Personal Attendance Log** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Class Routine & Timetable** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Homework & Assignments** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Submit Assignment Solution / URL** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Exam Schedule & Results** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Announcement Feed** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Apply & Track Student Leave** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
+| **Student Profile & Password Rotation** | ❌ | ❌ | ❌ | ❌ |  | `requireRoles('STUDENT')` |
 
 ---
 
 ## 19. API Documentation
 
-AttendoSchool exposes **230 distinct endpoint mappings**. All operational modules are dual-mounted on both clean URLs (e.g. `/api/timetable`) and legacy versioned aliases (e.g. `/api/timetable-v22`) for backward compatibility.
+AttendoSchool exposes **242 distinct endpoint mappings**. All operational modules are dual-mounted on both clean URLs (e.g. `/api/timetable`) and legacy versioned aliases (e.g. `/api/timetable-v22`) for backward compatibility.
 
 ### 19.1 Authentication & Health
 
@@ -924,6 +1070,7 @@ AttendoSchool exposes **230 distinct endpoint mappings**. All operational module
 | `GET` | `/health` | Public | Any | Root container/uptime health check |
 | `GET` | `/api` | Public | Any | API identity check |
 | `GET` | `/api/health` | Public | Any | Database connection health probe |
+| `GET` | `/api/auth/institutes` | Public | Any | List active institutions for login tenant selector |
 | `POST` | `/api/auth/login` | Public | Any | Authenticate email/password and issue JWT |
 | `GET` | `/api/auth/me` | Required | Any | Retrieve active user identity from token |
 
@@ -1266,6 +1413,124 @@ AttendoSchool exposes **230 distinct endpoint mappings**. All operational module
 
 ---
 
+### 19.19 Student Portal & Academic Operations
+
+*Mounted on `/api/student`.* All endpoints are strictly guarded by `[requireAuth, requireRoles('STUDENT')]`. Students cannot perform admin operations, take attendance, edit rosters, or view unauthorized peers' data.
+
+| Method | Endpoint | Auth | Role | Description |
+|---|---|---|---|---|
+| `GET` | `/api/student/me` | Required | `STUDENT` | Retrieve student profile, enrollment, and school metadata |
+| `GET` | `/api/student/dashboard` | Required | `STUDENT` | Student dashboard summary (KPIs, today routine, notices, pending tasks) |
+| `GET` | `/api/student/attendance` | Required | `STUDENT` | Personal attendance history, statistics (present/absent), and session logs |
+| `GET` | `/api/student/timetable` | Required | `STUDENT` | Complete weekly timetable organized by day of week |
+| `GET` | `/api/student/announcements` | Required | `STUDENT` | Active school circulars and priority announcements |
+| `GET` | `/api/student/assignments` | Required | `STUDENT` | Assigned homework tasks with submission state & grades |
+| `POST` | `/api/student/assignments/:id/submit` | Required | `STUDENT` | Submit assignment solution text or resource URL |
+| `GET` | `/api/student/exams` | Required | `STUDENT` | Upcoming examinations timetable and published subject marksheets |
+| `GET` | `/api/student/leave-requests` | Required | `STUDENT` | List submitted leave applications with administrative review status |
+| `POST` | `/api/student/leave-requests` | Required | `STUDENT` | Apply for formal student leave (start/end dates, reason) |
+| `PUT` | `/api/student/change-password` | Required | `STUDENT` | Update student portal login password with BCrypt hashing |
+
+#### `GET /api/student/dashboard`
+- **Response** (`200 OK`):
+  ```json
+  {
+    "student": {
+      "id": "30000000-0000-0000-0000-000000000001",
+      "name": "Rohan Sharma",
+      "rollNumber": "25",
+      "className": "Class 10",
+      "sectionName": "A",
+      "schoolName": "Greenwood International School"
+    },
+    "kpis": {
+      "attendancePercentage": 92.4,
+      "totalSessions": 45,
+      "presentCount": 42,
+      "absentCount": 3,
+      "pendingAssignments": 2,
+      "upcomingExams": 1,
+      "unreadAnnouncements": 2
+    },
+    "todayTimetable": [
+      {
+        "id": "period-1",
+        "periodName": "Period 1",
+        "subjectName": "Mathematics",
+        "teacherName": "Anita Desai",
+        "room": "Room 204",
+        "startTime": "08:30",
+        "endTime": "09:15",
+        "status": "ongoing"
+      }
+    ],
+    "announcements": [
+      {
+        "id": "ann-1",
+        "title": "Annual Sports Meet 2026",
+        "content": "Registration starts on Monday for all events.",
+        "priority": "HIGH",
+        "publishedAt": "2026-09-17T10:00:00.000Z"
+      }
+    ],
+    "pendingTasks": [
+      {
+        "id": "asgn-1",
+        "title": "Quadratic Equations Problem Set",
+        "subjectName": "Mathematics",
+        "dueDate": "2026-09-22",
+        "status": "PENDING"
+      }
+    ]
+  }
+  ```
+
+#### `POST /api/student/assignments/:id/submit`
+- **Request**:
+  ```json
+  {
+    "submissionText": "Solved all problems on paper and uploaded to school drive: https://drive.google.com/open?id=xyz"
+  }
+  ```
+- **Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "submission": {
+      "id": "sub-101",
+      "assignmentId": "asgn-1",
+      "status": "SUBMITTED",
+      "submittedAt": "2026-09-17T19:00:00.000Z"
+    }
+  }
+  ```
+
+#### `POST /api/student/leave-requests`
+- **Request**:
+  ```json
+  {
+    "startDate": "2026-09-24",
+    "endDate": "2026-09-25",
+    "reason": "Family function requiring out-of-station travel."
+  }
+  ```
+- **Response** (`201 Created`):
+  ```json
+  {
+    "success": true,
+    "leaveRequest": {
+      "id": "leave-101",
+      "startDate": "2026-09-24",
+      "endDate": "2026-09-25",
+      "reason": "Family function requiring out-of-station travel.",
+      "status": "PENDING",
+      "createdAt": "2026-09-17T19:15:00.000Z"
+    }
+  }
+  ```
+
+---
+
 ## 20. API Authentication
 
 All authenticated requests require the standard HTTP Authorization header:
@@ -1474,7 +1739,7 @@ npm install
    ```env
    DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/school_attendance
    ```
-3. Execute automated schema creation and all 28 migrations:
+3. Execute automated schema creation and all 29 migrations:
    ```bash
    cd backend
    npm run db:migrate
@@ -1509,8 +1774,9 @@ npm run dev
 ### Initial Demo Accounts & Credentials
 All seeded development accounts use the password: **`ChangeMe123!`**
 - **Platform Super Admin**: `superadmin@attendance.local`
-- **School Administrator**: `admin@demo-school.local`
-- **Classroom Teacher**: `rahul@demo-school.local`
+- **School Administrator (Greenwood International School)**: `admin@demo-school.local` / `admin@greenwood.local`
+- **Classroom Teacher (Faculty)**: `rahul@demo-school.local` / `teacher@greenwood.local`
+- **Student (Rohan Sharma, Class 10 - Section A, Roll No. 25)**: `student@greenwood.local` or Roll No. `25`
 
 ---
 
@@ -1791,17 +2057,18 @@ sequenceDiagram
 
 | Feature / Module | Status | Evidence from Codebase |
 |---|---|---|
-| **Multi-Tenant Foundation** | **Implemented** | Foreign key constraints on `school_id` across 62 database tables |
-| **Authentication & JWT** | **Implemented** | [backend/src/routes/auth.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/auth.ts), `requireAuth` middleware |
-| **Classroom Attendance Taking** | **Implemented** | [backend/src/routes/teacher.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/teacher.ts), frontend `Attendance` component |
-| **Attendance Corrections & Audit**| **Implemented** | [backend/src/routes/attendanceCorrections.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/attendanceCorrections.ts), `attendance_correction_audit` table |
-| **Academic Years & Promotions** | **Implemented** | [backend/src/routes/academicYears.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/academicYears.ts), [backend/src/routes/studentPromotions.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/studentPromotions.ts) |
-| **Timetable & Conflict Engine** | **Implemented** | [backend/src/services/timetableService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/timetableService.ts), [frontend/src/Timetable.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Timetable.tsx) |
+| **Multi-Tenant Foundation** | **Implemented** | Foreign key constraints on `school_id` across 67 database tables |
+| **Authentication & JWT** | **Implemented** | [backend/src/routes/auth.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/auth.ts), `requireAuth` middleware |
+| **Classroom Attendance Taking** | **Implemented** | [backend/src/routes/teacher.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/teacher.ts), frontend `Attendance` component |
+| **Attendance Corrections & Audit**| **Implemented** | [backend/src/routes/attendanceCorrections.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/attendanceCorrections.ts), `attendance_correction_audit` table |
+| **Academic Years & Promotions** | **Implemented** | [backend/src/routes/academicYears.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/academicYears.ts), [backend/src/routes/studentPromotions.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/studentPromotions.ts) |
+| **Timetable & Conflict Engine** | **Implemented** | [backend/src/services/timetableService.ts](file:///d:/Abir%200.1/attendoschool/backend/src/services/timetableService.ts), [frontend/src/Timetable.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/Timetable.tsx) |
 | **Offline Attendance Sync** | **Partially Implemented** | Queue implemented; insert query in `offlineAttendanceService.ts:41` lacks `is_present` |
-| **Parent Portal** | **Implemented** | [backend/src/routes/parentPortal.ts](file:///d:/Project_Abir/attendoschool/backend/src/routes/parentPortal.ts), [frontend/src/ParentPortal.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/ParentPortal.tsx) |
-| **SaaS Subscriptions & 18% GST**| **Implemented** | [backend/src/services/invoicePdfService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/invoicePdfService.ts), PDFKit invoice generation |
-| **Mock & Razorpay Payments** | **Implemented** | [backend/src/services/razorpayService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/razorpayService.ts), webhook signature verification |
-| **Disaster Recovery Backups** | **Implemented** | [backend/src/services/backupService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/backupService.ts), `pg_dump` execution & checksums |
+| **Parent Portal** | **Implemented** | [backend/src/routes/parentPortal.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/parentPortal.ts), [frontend/src/ParentPortal.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/ParentPortal.tsx) |
+| **Student Portal & RBAC (v29)** | **Implemented** | [backend/src/routes/student.ts](file:///d:/Abir%200.1/attendoschool/backend/src/routes/student.ts), [backend/src/services/studentService.ts](file:///d:/Abir%200.1/attendoschool/backend/src/services/studentService.ts), [frontend/src/pages/student/](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/), 41 automated tests |
+| **SaaS Subscriptions & 18% GST**| **Implemented** | [backend/src/services/invoicePdfService.ts](file:///d:/Abir%200.1/attendoschool/backend/src/services/invoicePdfService.ts), PDFKit invoice generation |
+| **Mock & Razorpay Payments** | **Implemented** | [backend/src/services/razorpayService.ts](file:///d:/Abir%200.1/attendoschool/backend/src/services/razorpayService.ts), webhook signature verification |
+| **Disaster Recovery Backups** | **Implemented** | [backend/src/services/backupService.ts](file:///d:/Abir%200.1/attendoschool/backend/src/services/backupService.ts), `pg_dump` execution & checksums |
 | **Automated CI/CD Pipelines** | **Missing / Not Identified** | No `.github/` workflows directory exists in the codebase |
 
 ---
@@ -1837,8 +2104,9 @@ npx tsx src/scripts/migrate.ts
 ### Running Backend Test Suites
 ```bash
 cd backend
-npm run test
-npm run v28:smoke
+npm test               # 50 comprehensive system assertions
+npm run test:student   # 41 student portal & RBAC security tests
+npm run v28:smoke      # API integration smoke script
 ```
 
 ### Code Style & Architecture Guidelines
@@ -1860,7 +2128,7 @@ npm run v28:smoke
 ## 43. Glossary
 
 - **Tenant**: An educational institution (school or college) with strictly isolated data.
-- **RBAC**: Role-Based Access Control enforcing permissions by role (`SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT`).
+- **RBAC**: Role-Based Access Control enforcing permissions by role (`SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER`, `PARENT`, `STUDENT`).
 - **CGST / SGST**: Central Goods and Services Tax (9%) and State Goods and Services Tax (9%), totaling an 18% statutory tax rate in India.
 - **Routine**: The weekly timetable schedule mapping a class, section, subject, and teacher to a time window and room.
 - **Idempotency**: Ensuring repeated API requests with the same key produce identical side-effects without duplicate billing or record creation.
@@ -1869,4 +2137,4 @@ npm run v28:smoke
 
 ## 44. Conclusion
 
-AttendoSchool is an architecturally sound, feature-complete SaaS platform designed specifically for institutional school management. Its multi-tenant relational architecture, comprehensive 62-table schema, 230 API endpoints, and Indian GST billing engine provide an enterprise foundation for scaling educational operations. This documentation serves as the authoritative source of truth for the codebase as implemented.
+AttendoSchool is an architecturally sound, feature-complete SaaS platform designed specifically for institutional school management. Its multi-tenant relational architecture, comprehensive 67-table schema, 242 API endpoints, and Indian GST billing engine provide an enterprise foundation for scaling educational operations. This documentation serves as the authoritative source of truth for the codebase as implemented.

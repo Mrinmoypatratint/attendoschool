@@ -21,14 +21,24 @@ import ParentCommunication from './ParentCommunication';
 import { SuperAdminDashboard } from './SuperAdminDashboard';
 import * as XLSX from 'xlsx';
 import {
-  LayoutDashboard,Users,GraduationCap,BookOpen,Layers,LogOut,Plus,
-  CalendarDays,ClipboardCheck,School,CheckCircle2,MessageSquare,BarChart3,
-  FileText,Shield,Database,Clock,Wifi,UserPlus,Settings,Moon,Sun,
-  ArrowUpDown,Bell,CreditCard,Eye,FileSpreadsheet,Download,Trash2,
-  UploadCloud,Send,ShieldCheck,Mail,Server,
-  Search,EyeOff,ArrowLeft,
-  Menu,ChevronDown,Calendar,Globe,Lock,ArrowRight
+  LayoutDashboard, Users, GraduationCap, BookOpen, Layers, LogOut, Plus,
+  CalendarDays, ClipboardCheck, School, CheckCircle2, MessageSquare, BarChart3,
+  FileText, Shield, Database, Clock, Wifi, UserPlus, Settings, Moon, Sun,
+  ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
+  UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
+  Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
+  Menu, ChevronDown, Calendar, Globe, Lock
 } from 'lucide-react';
+import { studentApi, Institute } from './services/studentApi';
+import { StudentLayout } from './components/student/StudentLayout';
+import { StudentDashboard } from './pages/student/StudentDashboard';
+import { StudentAttendance } from './pages/student/StudentAttendance';
+import { StudentTimetable } from './pages/student/StudentTimetable';
+import { StudentAssignments } from './pages/student/StudentAssignments';
+import { StudentExams } from './pages/student/StudentExams';
+import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
+import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
+import { StudentProfile } from './pages/student/StudentProfile';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -80,44 +90,55 @@ function GoogleGLogo() {
   );
 }
 
-const DEMO_INSTITUTES = [
-  { id: 'greenwood', name: 'Greenwood International School', email: 'admin@demo-school.local', role: 'School Admin' },
-  { id: 'delhi', name: 'Delhi Public Academy', email: 'rahul@demo-school.local', role: 'Teacher' },
-  { id: 'central', name: 'Central Cloud Administration', email: 'superadmin@attendance.local', role: 'Super Admin' },
-  { id: 'custom', name: 'Other School / Custom Institute', email: '', role: 'Custom' }
+const FALLBACK_INSTITUTES: Institute[] = [
+  { id: '00000000-0000-0000-0000-000000000001', name: 'Greenwood International School', code: 'GIS001', address: 'Main Campus' },
+  { id: 'school-delhi-001', name: 'Delhi Public Academy', code: 'DPA001', address: 'South Campus' },
+  { id: 'school-central-001', name: 'Central Cloud Administration', code: 'CCA001', address: 'Cloud HQ' }
 ];
 
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
   const { login } = useAuth();
-  const [institute, setInstitute] = useState('greenwood');
-  const [email, setEmail] = useState('admin@demo-school.local');
+  const [institutes, setInstitutes] = useState<Institute[]>(FALLBACK_INSTITUTES);
+  const [instituteId, setInstituteId] = useState('00000000-0000-0000-0000-000000000001');
+  const [email, setEmail] = useState('student@greenwood.local');
   const [password, setPassword] = useState('ChangeMe123!');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function handleInstituteChange(val: string) {
-    setInstitute(val);
-    const found = DEMO_INSTITUTES.find(i => i.id === val);
-    if (found && found.email) {
-      setEmail(found.email);
-      setPassword('ChangeMe123!');
-    }
-  }
+  useEffect(() => {
+    studentApi.getInstitutes().then(list => {
+      if (list && list.length > 0) {
+        setInstitutes(list);
+        const def = list.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || list[0];
+        setInstituteId(def.id);
+      }
+    }).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', {
+        instituteId: instituteId || undefined,
+        email,
+        password
+      });
       login(data.token, data.user);
-      nav('/dashboard');
+      if (data.user.role === 'STUDENT') {
+        nav('/student/dashboard');
+      } else if (data.user.role === 'SUPER_ADMIN') {
+        nav('/super-admin');
+      } else {
+        nav('/dashboard');
+      }
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Invalid institute credentials. Please try again.');
+      setError(e?.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +173,7 @@ function Login() {
           </h1>
 
           <p className="as-hero-description">
-            A complete school management platform for attendance, timetables, communication, analytics and more — built for modern education.
+            A complete school management platform for attendance, timetables, communication, student portal, analytics and more — built for modern education.
           </p>
 
           <div className="as-hero-features">
@@ -168,21 +189,21 @@ function Login() {
 
             <div className="as-feature-item">
               <div className="as-feature-icon">
-                <MessageSquare size={18} />
+                <GraduationCap size={18} />
               </div>
               <div className="as-feature-text">
-                <h4>Parent Communication</h4>
-                <p>SMS, WhatsApp & Email</p>
+                <h4>Student & Parent Portal</h4>
+                <p>Timetable, assignments, leave</p>
               </div>
             </div>
 
             <div className="as-feature-item">
               <div className="as-feature-icon">
-                <Calendar size={18} />
+                <MessageSquare size={18} />
               </div>
               <div className="as-feature-text">
-                <h4>Timetable & Academics</h4>
-                <p>Plan, manage, grow</p>
+                <h4>Parent Communication</h4>
+                <p>SMS, WhatsApp & Email</p>
               </div>
             </div>
 
@@ -262,7 +283,7 @@ function Login() {
               </div>
 
               <h1 className="as-card-title">Sign In</h1>
-              <p className="as-card-subtitle">Access your school/institute account</p>
+              <p className="as-card-subtitle">Access your school, faculty, or student portal</p>
             </div>
 
             {error && <div className="as-error-alert">{error}</div>}
@@ -279,12 +300,12 @@ function Login() {
                   </div>
                   <select
                     className="as-select"
-                    value={institute}
-                    onChange={e => handleInstituteChange(e.target.value)}
+                    value={instituteId}
+                    onChange={e => setInstituteId(e.target.value)}
                   >
-                    {DEMO_INSTITUTES.map(inst => (
+                    {institutes.map(inst => (
                       <option key={inst.id} value={inst.id}>
-                        {inst.name}
+                        {inst.name} ({inst.code})
                       </option>
                     ))}
                   </select>
@@ -293,10 +314,10 @@ function Login() {
                 <p className="as-field-help">Choose your school/institute to continue</p>
               </div>
 
-              {/* Email Address */}
+              {/* Email / Student ID */}
               <div className="as-field-group">
                 <label className="as-field-label">
-                  Email Address <span className="as-field-required">*</span>
+                  Email / Student ID <span className="as-field-required">*</span>
                 </label>
                 <div className="as-input-box">
                   <div className="as-input-icon">
@@ -304,9 +325,9 @@ function Login() {
                   </div>
                   <input
                     required
-                    type="email"
+                    type="text"
                     className="as-input"
-                    placeholder="you@school.com"
+                    placeholder="student@greenwood.local or admin@demo-school.local"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                   />
@@ -393,8 +414,78 @@ function Login() {
               <span>Continue with Google</span>
             </button>
 
+            {/* Quick Demo Switcher */}
+            <div className="as-demo-section" style={{ marginTop: 20 }}>
+              <div className="as-divider" style={{ margin: '12px 0' }}>
+                <span>or quick demo login</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                <button
+                  type="button"
+                  className="as-role-btn"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, cursor: 'pointer' }}
+                  onClick={() => {
+                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001');
+                    if (gw) setInstituteId(gw.id);
+                    setEmail('student@greenwood.local');
+                    setPassword('ChangeMe123!');
+                  }}
+                  title="Quick Student Demo Login"
+                >
+                  <GraduationCap size={16} style={{ color: '#2563eb' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#1e40af' }}>Student</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="as-role-btn"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 8, cursor: 'pointer' }}
+                  onClick={() => {
+                    setEmail('superadmin@attendance.local');
+                    setPassword('ChangeMe123!');
+                  }}
+                  title="Quick Super Admin Demo Login"
+                >
+                  <ShieldCheck size={16} style={{ color: '#7c3aed' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#5b21b6' }}>Super Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="as-role-btn"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, cursor: 'pointer' }}
+                  onClick={() => {
+                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || institutes[0];
+                    if (gw) setInstituteId(gw.id);
+                    setEmail('admin@demo-school.local');
+                    setPassword('ChangeMe123!');
+                  }}
+                  title="Quick School Admin Demo Login"
+                >
+                  <School size={16} style={{ color: '#059669' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#065f46' }}>School Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="as-role-btn"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, cursor: 'pointer' }}
+                  onClick={() => {
+                    const gw = institutes.find(i => i.name.includes('Greenwood') || i.id === '00000000-0000-0000-0000-000000000001') || institutes[0];
+                    if (gw) setInstituteId(gw.id);
+                    setEmail('rahul@demo-school.local');
+                    setPassword('ChangeMe123!');
+                  }}
+                  title="Quick Teacher Demo Login"
+                >
+                  <ClipboardCheck size={16} style={{ color: '#d97706' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Teacher</span>
+                </button>
+              </div>
+            </div>
+
             {/* Security Multi-tenant Badge */}
-            <div className="as-trust-badge">
+            <div className="as-trust-badge" style={{ marginTop: 18 }}>
               <ShieldCheck size={18} className="as-trust-icon" />
               <div className="as-trust-text">
                 <h6>Secure • Multi-tenant • Trusted by 500+ Schools</h6>
@@ -402,18 +493,18 @@ function Login() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Canvas Footer */}
-        <div className="as-canvas-footer">
-          <div className="as-footer-links">
-            <a href="#privacy" onClick={e => e.preventDefault()}>Privacy Policy</a>
-            <span>|</span>
-            <a href="#terms" onClick={e => e.preventDefault()}>Terms of Service</a>
-            <span>|</span>
-            <a href="#support" onClick={e => e.preventDefault()}>Support</a>
+          {/* Canvas Footer */}
+          <div className="as-canvas-footer">
+            <div className="as-footer-links">
+              <a href="#privacy" onClick={e => e.preventDefault()}>Privacy Policy</a>
+              <span>|</span>
+              <a href="#terms" onClick={e => e.preventDefault()}>Terms of Service</a>
+              <span>|</span>
+              <a href="#support" onClick={e => e.preventDefault()}>Support</a>
+            </div>
+            <div>© 2025 AttendoSchool. All rights reserved.</div>
           </div>
-          <div>© 2025 AttendoSchool. All rights reserved.</div>
         </div>
       </div>
     </div>
@@ -657,7 +748,7 @@ function PageHead({title,sub,button,onClick}:{title:string;sub:string;button?:st
 function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="overlay"><div className="modal"><div className="modal-head"><h3>{title}</h3><button className="close" onClick={close}>×</button></div>{children}</div></div>}
 
 /* ────── Dashboard ────── */
-function Dashboard(){const {user}=useAuth();if(!user)return null;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
+function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role==='STUDENT')return <Navigate to="/student/dashboard" replace/>;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
 
 function AdminHome(){
   const {user}=useAuth();
@@ -2137,6 +2228,16 @@ function App(){return <Routes>
   <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><Invoices/></RoleGuard>}/>
   <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperMonitor/></RoleGuard>}/>
   <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+  {/* Student Portal Routes */}
+  <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/homework" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
   <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
 </Routes>}
 
