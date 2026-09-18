@@ -320,12 +320,55 @@ function Login() {
     }
   }
 
+  // Live robotic HUD date & clock (updating every animation frame for ultra-precise milliseconds)
+  const [hudClock, setHudClock] = useState({ dateStr: '', timeStr: '' });
+
+  useEffect(() => {
+    let animId: number;
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+    const updateClock = () => {
+      const now = new Date();
+      const dayName = days[now.getDay()];
+      const dayNum = String(now.getDate()).padStart(2, '0');
+      const monthName = months[now.getMonth()];
+      const year = now.getFullYear();
+
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+      setHudClock({
+        dateStr: `${dayNum} ${monthName} ${year} • ${dayName}`,
+        timeStr: `TIME : ${hh} : ${mm} : ${ss} : ${ms}`
+      });
+
+      animId = requestAnimationFrame(updateClock);
+    };
+
+    animId = requestAnimationFrame(updateClock);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
   return (
     <div className="as-simple-page">
       {/* 3D Educational Dynamic Animated Background */}
       <ThreeDBackground dark={dark} />
 
-      <div className="as-simple-overlay" aria-hidden="true" />
+      {/* Floating Top-Left Brand Logo */}
+      <div className="as-top-left-brand">
+        <img
+          src="/attendo-school-logo.png"
+          alt="AttendoSchool Logo"
+          className="as-simple-logo-img"
+        />
+        <div className="as-brand-text-block">
+          <h1 className="as-simple-brand-title">AttendoSchool</h1>
+          <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
+        </div>
+      </div>
 
       {/* Floating Top-Right Utility: Theme & Language */}
       <div className="as-simple-top-bar">
@@ -373,21 +416,8 @@ function Login() {
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
       <main className="as-simple-main">
         <div className="as-duo-login-container animate-fade-in">
-          {/* LEFT SIDE: Dynamic Handwriting Typewriter Quote & Brand Identity */}
+          {/* LEFT SIDE: Dynamic Handwriting Typewriter Quote */}
           <div className="as-duo-left-pane">
-            <div className="as-left-brand-header">
-              <img
-                src="/attendo-school-logo.png"
-                alt="AttendoSchool Logo"
-                className="as-simple-logo-img"
-              />
-              <div className="as-brand-text-block">
-                <h1 className="as-simple-brand-title">AttendoSchool</h1>
-                <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
-              </div>
-            </div>
-
-            {/* Dynamic Typewriter Handwriting Quote Component */}
             <HandwritingQuoteTyping />
           </div>
 
@@ -830,6 +860,18 @@ function Login() {
           </div>
         </Modal>
       )}
+
+      {/* Floating Bottom-Left Robotic Date & Day Display */}
+      <div className="as-robotic-bottom-left" title="System Live Date & Day">
+        <Calendar size={32} className="as-robotic-icon" />
+        <span className="as-robotic-text">{hudClock.dateStr}</span>
+      </div>
+
+      {/* Floating Bottom-Right Robotic Millisecond Chronometer */}
+      <div className="as-robotic-bottom-right" title="System Live Millisecond Chronometer">
+        <Clock size={32} className="as-robotic-icon" />
+        <span className="as-robotic-text">{hudClock.timeStr}</span>
+      </div>
     </div>
   );
 }
@@ -1548,6 +1590,7 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user?.role === 'SCHOOL_ADMIN') {
       api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+      loadAcademicYears();
     }
   }, [user?.role]);
 
@@ -1610,12 +1653,22 @@ function Layout({children}:{children:React.ReactNode}){
     return () => document.removeEventListener('mousedown', handleClick);
   }, [ayDropdownOpen]);
 
-  // Load academic years when dropdown opens
+  // Load academic years when dropdown opens or on mount
   async function loadAcademicYears() {
     setAyLoading(true);
     try {
       const res = await api.get('/academic-years');
-      setAcademicYears(res.data);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setAcademicYears(res.data);
+        const active = res.data.find((ay: any) => ay.is_active);
+        if (active) {
+          setSchoolInfo((prev: any) => ({
+            ...(prev || {}),
+            activeAcademicYear: active
+          }));
+          localStorage.setItem('attendo_active_academic_year', active.name);
+        }
+      }
     } catch {
       setAcademicYears([]);
     } finally {
@@ -1625,16 +1678,45 @@ function Layout({children}:{children:React.ReactNode}){
 
   async function switchAcademicYear(yearId: string) {
     setAySwitching(yearId);
+
+    // 1. Optimistically update local dropdown state immediately
+    setAcademicYears(prev => prev.map(ay => ({
+      ...ay,
+      is_active: ay.id === yearId,
+      is_archived: ay.id === yearId ? false : ay.is_archived
+    })));
+
+    // 2. Optimistically update schoolInfo header pill and persistence immediately
+    const target = academicYears.find(ay => ay.id === yearId);
+    if (target) {
+      const activeObj = { ...target, is_active: true };
+      setSchoolInfo((prev: any) => ({
+        ...(prev || {}),
+        activeAcademicYear: activeObj
+      }));
+      localStorage.setItem('attendo_active_academic_year', target.name);
+      localStorage.setItem('attendo_academic_session', target.name);
+    }
+
     try {
+      // 3. Post to backend activation endpoint
       await api.post(`/academic-years/${yearId}/activate`);
-      // Refresh school info to pick up new active year
+
+      // 4. Re-fetch school dashboard and academic years
       const res = await api.get('/dashboard/school');
-      setSchoolInfo(res.data);
-      await loadAcademicYears();
-    } catch {
-      // silently fail
+      if (res.data) {
+        setSchoolInfo(res.data);
+      }
+      const refreshedYears = await api.get('/academic-years');
+      if (Array.isArray(refreshedYears.data) && refreshedYears.data.length > 0) {
+        setAcademicYears(refreshedYears.data);
+      }
+    } catch (err) {
+      console.warn('Academic year activation sync warning:', err);
     } finally {
       setAySwitching(null);
+      // Auto-close dropdown smoothly after a brief pause so user sees checkmark
+      setTimeout(() => setAyDropdownOpen(false), 350);
     }
   }
 
@@ -1712,7 +1794,9 @@ function Layout({children}:{children:React.ReactNode}){
 
   const currentSchoolName = schoolInfo?.school?.name || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
   const currentSchoolCode = schoolInfo?.school?.code || 'GIS001';
-  const activeSessionName = schoolInfo?.activeAcademicYear?.name || '2025–26';
+  const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+  const rawSessionName = schoolInfo?.activeAcademicYear?.name || storedSession || '2025–26';
+  const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
 
   return <div className="app-shell">
     <aside className={sidebarCollapsed ? 'sidebar-collapsed' : ''}>
@@ -1860,31 +1944,34 @@ function Layout({children}:{children:React.ReactNode}){
                     <div className="ay-dropdown-empty">No academic years found. <button onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Create one</button></div>
                   ) : (
                     <div className="ay-dropdown-list">
-                      {academicYears.map((ay: any) => (
-                        <div
-                          key={ay.id}
-                          className={`ay-dropdown-item ${ay.is_active ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
-                          onClick={() => { if (!ay.is_active && !ay.is_archived) switchAcademicYear(ay.id); }}
-                        >
-                          <div className="ay-item-info">
-                            <span className="ay-item-name">{ay.name}</span>
-                            <span className="ay-item-dates">
-                              {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
-                            </span>
+                      {academicYears.map((ay: any) => {
+                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        return (
+                          <div
+                            key={ay.id}
+                            className={`ay-dropdown-item ${isActive ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
+                            onClick={() => { if (!isActive && !ay.is_archived) switchAcademicYear(ay.id); }}
+                          >
+                            <div className="ay-item-info">
+                              <span className="ay-item-name">{ay.name}</span>
+                              <span className="ay-item-dates">
+                                {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
+                              </span>
+                            </div>
+                            <div className="ay-item-status">
+                              {aySwitching === ay.id ? (
+                                <RefreshCw size={12} className="spin" />
+                              ) : isActive ? (
+                                <span className="ay-active-badge"><Check size={10} /> Active</span>
+                              ) : ay.is_archived ? (
+                                <span className="ay-archived-badge">Archived</span>
+                              ) : (
+                                <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
+                              )}
+                            </div>
                           </div>
-                          <div className="ay-item-status">
-                            {aySwitching === ay.id ? (
-                              <RefreshCw size={12} className="spin" />
-                            ) : ay.is_active ? (
-                              <span className="ay-active-badge"><Check size={10} /> Active</span>
-                            ) : ay.is_archived ? (
-                              <span className="ay-archived-badge">Archived</span>
-                            ) : (
-                              <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -3185,16 +3272,96 @@ function Teachers(){
   const [importing,setImporting]=useState(false);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  // Teaching allocations state
+  const [allAssignments,setAllAssignments]=useState<any[]>([]);
+  const [allocOpen,setAllocOpen]=useState(false);
+  const [allocTeacher,setAllocTeacher]=useState<any>(null);
+  const [allocRows,setAllocRows]=useState<any[]>([]);
+  const [allocSaving,setAllocSaving]=useState(false);
+  const [allocSubjects,setAllocSubjects]=useState<any[]>([]);
+  const [allocClasses,setAllocClasses]=useState<any[]>([]);
+  const [allocSections,setAllocSections]=useState<any[]>([]);
+  const [allocSessions,setAllocSessions]=useState<any[]>([]);
+
   async function load(){
     try {
-      const res = await api.get('/teachers');
-      setRows(res.data || []);
+      const [tRes, aRes, subRes, clsRes, secRes] = await Promise.all([
+        api.get('/teachers'),
+        api.get('/teacher-assignments').catch(()=>({data:[]})),
+        api.get('/subjects').catch(()=>({data:[]})),
+        api.get('/classes').catch(()=>({data:[]})),
+        api.get('/sections').catch(()=>({data:[]}))
+      ]);
+      setRows(tRes.data || []);
+      setAllAssignments(Array.isArray(aRes.data) ? aRes.data : []);
+      setAllocSubjects(Array.isArray(subRes.data) ? subRes.data : []);
+      setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
+      setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
     } catch(err) {
       console.error('Failed to load teachers:', err);
     }
   }
 
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    load();
+    api.get('/dashboard/school').then(r => {
+      if(r.data?.academicYears) setAllocSessions(r.data.academicYears);
+    }).catch(()=>{});
+  },[]);
+
+  // Open allocations modal for a specific teacher
+  function openAllocModal(t: any) {
+    setAllocTeacher(t);
+    const existing = allAssignments.filter(a => a.teacher_id === t.id);
+    setAllocRows(existing.length > 0 ? existing.map(a => ({...a})) : [{
+      subject_id: '', subject_name: '', class_id: '', class_number: '', section_id: '', section_name: '',
+      session_id: '', session_name: '', alt_teacher_id: '', alt_teacher_name: ''
+    }]);
+    setAllocOpen(true);
+  }
+
+  function addAllocRow() {
+    setAllocRows(prev => [...prev, { subject_id: '', class_id: '', section_id: '', session_id: '', alt_teacher_id: '' }]);
+  }
+  function removeAllocRow(idx: number) {
+    setAllocRows(prev => prev.filter((_,i) => i !== idx));
+  }
+  function updateAllocRow(idx: number, field: string, value: string) {
+    setAllocRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const updated = { ...r, [field]: value };
+      // Resolve names
+      if (field === 'subject_id') updated.subject_name = allocSubjects.find(s => s.id === value)?.name || '';
+      if (field === 'class_id') updated.class_number = allocClasses.find(c => c.id === value)?.class_number || '';
+      if (field === 'section_id') updated.section_name = allocSections.find(s => s.id === value)?.name || '';
+      if (field === 'session_id') updated.session_name = allocSessions.find(s => s.id === value)?.name || '';
+      if (field === 'alt_teacher_id') updated.alt_teacher_name = rows.find(t => t.id === value)?.name || '';
+      return updated;
+    }));
+  }
+
+  async function saveAllocations() {
+    if (!allocTeacher) return;
+    setAllocSaving(true);
+    try {
+      const validRows = allocRows.filter(r => r.subject_id && r.class_id);
+      await api.put(`/teachers/${allocTeacher.id}/assignments`, { assignments: validRows });
+      setToastNotice({ type: 'success', message: `Allocations updated for ${allocTeacher.name}.` });
+      setAllocOpen(false);
+      load();
+    } catch (err: any) {
+      setToastNotice({ type: 'error', message: err?.response?.data?.message || 'Failed to save allocations' });
+    } finally {
+      setAllocSaving(false);
+    }
+  }
+
+  // Get allocation summary for a teacher (for table display)
+  function getTeacherAllocSummary(tid: string): string {
+    const allocs = allAssignments.filter(a => a.teacher_id === tid);
+    if (allocs.length === 0) return '—';
+    return allocs.map(a => `${a.subject_name || '?'} (${a.class_number||'?'}-${a.section_name||'?'})`).join(', ');
+  }
 
   async function sendTeacherResetEmail(t: any) {
     try {
@@ -3442,6 +3609,7 @@ function Teachers(){
             </th>
             <th>Employee ID</th>
             <th>Teacher Name</th>
+            <th>Subjects & Classes</th>
             <th>Email</th>
             <th>Mobile</th>
             <th>Status</th>
@@ -3450,7 +3618,7 @@ function Teachers(){
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -3462,10 +3630,21 @@ function Teachers(){
               </td>
               <td><code>{x.employee_id}</code></td>
               <td><b>{x.name}</b></td>
+              <td style={{ fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span title={getTeacherAllocSummary(x.id)}>{getTeacherAllocSummary(x.id)}</span>
+              </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  className="table-action-btn"
+                  onClick={() => openAllocModal(x)}
+                  title="Manage teaching allocations"
+                  style={{ marginRight: 6, color: '#7c3aed' }}
+                >
+                  <BookOpen size={14} />
+                </button>
                 <button
                   className="table-action-btn"
                   onClick={() => sendTeacherResetEmail(x)}
@@ -3551,6 +3730,69 @@ function Teachers(){
 
         <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}</button>
       </form>
+    </Modal>}
+
+    {/* ═══ TEACHING ALLOCATIONS MODAL ═══ */}
+    {allocOpen && allocTeacher && <Modal title={`Manage Allocations — ${allocTeacher.name}`} close={()=>setAllocOpen(false)}>
+      <div style={{ padding: '10px 4px' }}>
+        <p className="muted" style={{ margin: '0 0 12px', fontSize: 12 }}>
+          Assign subject-class-section combinations for this teacher. Each row is one teaching allocation.
+        </p>
+        <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
+          {allocRows.map((ar, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 8, alignItems: 'end' }}>
+              {/* Subject */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Subject' : ''}
+                <select value={ar.subject_id||''} onChange={e=>updateAllocRow(idx,'subject_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Subject</option>
+                  {allocSubjects.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Class */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Class' : ''}
+                <select value={ar.class_id||''} onChange={e=>updateAllocRow(idx,'class_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Class</option>
+                  {allocClasses.map(c=><option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+                </select>
+              </label>
+              {/* Section */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Section' : ''}
+                <select value={ar.section_id||''} onChange={e=>updateAllocRow(idx,'section_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Section</option>
+                  {allocSections.filter(s => !ar.class_id || s.class_id === ar.class_id || String(s.class_number) === String(allocClasses.find(c=>c.id===ar.class_id)?.class_number)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Session */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Session' : ''}
+                <select value={ar.session_id||''} onChange={e=>updateAllocRow(idx,'session_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Session</option>
+                  {allocSessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Alt Faculty */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Alt. Faculty' : ''}
+                <select value={ar.alt_teacher_id||''} onChange={e=>updateAllocRow(idx,'alt_teacher_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">None</option>
+                  {rows.filter(t => t.id !== allocTeacher.id).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={()=>removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #fca5a5', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button type="button" onClick={addAllocRow} style={{ fontSize: 12, padding: '5px 12px', background: 'transparent', border: '1px dashed var(--border)', color: '#2563eb', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
+          <button type="button" onClick={saveAllocations} disabled={allocSaving}
+            style={{ background: '#2563eb', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13 }}>
+            {allocSaving ? 'Saving...' : 'Save Allocations'}
+          </button>
+        </div>
+      </div>
     </Modal>}
 
     {/* EXCEL / CSV BULK IMPORT MODAL */}

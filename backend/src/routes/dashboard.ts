@@ -3,6 +3,7 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { demoSchools } from './superAdmin';
 import { demoStudents, demoTeachers, demoClasses, demoSections } from './schoolData';
+import { getInMemoryActiveAcademicYear } from './academicYears';
 
 const r = Router();
 
@@ -166,12 +167,7 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
         { id: 'act-4', text: `Subscription active: ${subscriptionData.plan_name} Tier (${subscriptionData.days_remaining} days remaining)`, time: '09:15 AM', icon: 'billing' }
       ],
       pendingCorrectionsCount: Number(correctionsRes.rows[0]?.count) || 0,
-      activeAcademicYear: academicYearRes.rows[0] || {
-        id: 'ay-2026-27',
-        name: '2026-27',
-        start_date: '2026-04-01',
-        end_date: '2027-03-31'
-      },
+      activeAcademicYear: academicYearRes.rows[0] || getInMemoryActiveAcademicYear(sid),
       subscription: subscriptionData
     });
   } catch (err: any) {
@@ -204,12 +200,7 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
         classBreakdown: []
       },
       pendingCorrectionsCount: 0,
-      activeAcademicYear: {
-        id: 'ay-2025-26',
-        name: '2025–26',
-        start_date: '2025-04-01',
-        end_date: '2026-03-31'
-      },
+      activeAcademicYear: getInMemoryActiveAcademicYear(sid),
       subscription: {
         plan_name: matchedSchool.plan_name || 'Enterprise',
         max_students: 5000,

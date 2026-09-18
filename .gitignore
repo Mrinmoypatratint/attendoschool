@@ -15,3 +15,5 @@ attendoschool/
 serviceAccountKey.json
 *serviceAccount*.json
 *.serviceAccount.json
+*.tsbuildinfo
+.vercel/

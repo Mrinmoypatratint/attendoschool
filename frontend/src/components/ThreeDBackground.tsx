@@ -48,7 +48,7 @@ export const EDUCATIONAL_SCENES: EducationalScene[] = [
     id: 'campus',
     image: '/educational-hero-bg.jpg',
     title: 'Smart Educational Campus',
-    badge: '🎓 Academic Campus'
+    badge: '🎓 Modern Campus'
   }
 ];
 
@@ -65,7 +65,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
   useEffect(() => {
     const slideTimer = setInterval(() => {
       setActiveSlide(prev => (prev + 1) % EDUCATIONAL_SCENES.length);
-    }, 9000); // Crossfades every 9 seconds
+    }, 8500); // Transitions every 8.5 seconds
 
     return () => clearInterval(slideTimer);
   }, []);
@@ -99,45 +99,45 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Color palettes
+    // Highly vibrant, luminous color palettes
     const darkPalette = [
-      'rgba(59, 130, 246, 0.85)',   // Sapphire
-      'rgba(14, 165, 233, 0.85)',   // Sky Cyan
-      'rgba(16, 185, 129, 0.8)',    // Emerald
-      'rgba(168, 85, 247, 0.8)',    // Purple
-      'rgba(249, 115, 22, 0.85)',   // Radiant Coral
-      'rgba(245, 158, 11, 0.8)'     // Amber
+      'rgba(96, 165, 250, 0.95)',   // Radiant Sapphire
+      'rgba(56, 189, 248, 0.95)',   // Bright Sky Cyan
+      'rgba(52, 211, 153, 0.92)',   // Vivid Emerald
+      'rgba(192, 132, 252, 0.92)',  // Bright Purple
+      'rgba(251, 146, 60, 0.95)',   // Glowing Coral
+      'rgba(250, 204, 21, 0.95)'    // Golden Amber
     ];
 
     const lightPalette = [
-      'rgba(37, 99, 235, 0.7)',
-      'rgba(2, 132, 199, 0.7)',
-      'rgba(5, 150, 105, 0.7)',
-      'rgba(147, 51, 234, 0.7)',
-      'rgba(234, 88, 12, 0.7)'
+      'rgba(37, 99, 235, 0.85)',
+      'rgba(2, 132, 199, 0.85)',
+      'rgba(5, 150, 105, 0.85)',
+      'rgba(147, 51, 234, 0.85)',
+      'rgba(234, 88, 12, 0.85)'
     ];
 
     const currentPalette = dark ? darkPalette : lightPalette;
-    const count = Math.min(50, Math.floor((width * height) / 24000) + 18);
+    const count = Math.min(55, Math.floor((width * height) / 22000) + 20);
     const nodes: Node3D[] = [];
 
     const fieldDepth = 800;
     const fov = 380;
 
     for (let i = 0; i < count; i++) {
-      const isGlyph = i < 15;
+      const isGlyph = i < 18; // 18 floating educational glyphs
       nodes.push({
         x: (Math.random() - 0.5) * width * 1.5,
         y: (Math.random() - 0.5) * height * 1.5,
         z: Math.random() * fieldDepth - fieldDepth / 2,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
+        vx: (Math.random() - 0.5) * 0.38,
+        vy: (Math.random() - 0.5) * 0.38,
         vz: (Math.random() - 0.5) * 0.45,
-        radius: isGlyph ? 14 : Math.random() * 2.2 + 1.1,
+        radius: isGlyph ? 16 : Math.random() * 2.8 + 1.6,
         color: currentPalette[Math.floor(Math.random() * currentPalette.length)]!,
         glyph: isGlyph ? EDUCATIONAL_GLYPHS[i % EDUCATIONAL_GLYPHS.length] : undefined,
         pulsePhase: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.02 + Math.random() * 0.02
+        pulseSpeed: 0.022 + Math.random() * 0.02
       });
     }
 
@@ -151,7 +151,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
       ctx.clearRect(0, 0, width, height);
 
       // Continuous subtle ambient rotation + mouse tilt
-      angleY += 0.001;
+      angleY += 0.0012;
       const targetRotY = angleY + mouseSmoothRef.current.x * 0.35;
       const targetRotX = mouseSmoothRef.current.y * 0.25;
 
@@ -190,7 +190,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
         const distance = fov / (fov + z2 + fieldDepth / 2 + 100);
         const projX = cx + x1 * distance;
         const projY = cy + y1 * distance;
-        const scale = Math.max(0.1, distance);
+        const scale = Math.max(0.12, distance);
 
         n.pulsePhase += n.pulseSpeed;
 
@@ -207,7 +207,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
       projected.sort((a, b) => b.z - a.z);
 
       // Draw constellation connection vectors
-      const maxDist = 135;
+      const maxDist = 150;
       for (let i = 0; i < projected.length; i++) {
         const a = projected[i]!;
         for (let j = i + 1; j < projected.length; j++) {
@@ -217,45 +217,47 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < maxDist) {
-            const alpha = (1 - dist / maxDist) * 0.2 * Math.min(a.scale, b.scale);
+            const alpha = (1 - dist / maxDist) * 0.42 * Math.min(a.scale, b.scale);
             ctx.beginPath();
             ctx.moveTo(a.projX, a.projY);
             ctx.lineTo(b.projX, b.projY);
             ctx.strokeStyle = dark
-              ? `rgba(99, 102, 241, ${alpha})`
-              : `rgba(37, 99, 235, ${alpha * 0.85})`;
-            ctx.lineWidth = Math.max(0.4, 1.1 * a.scale);
+              ? `rgba(165, 180, 252, ${alpha})`
+              : `rgba(37, 99, 235, ${alpha * 0.9})`;
+            ctx.lineWidth = Math.max(0.7, 1.6 * a.scale);
             ctx.stroke();
           }
         }
       }
 
-      // Draw nodes & educational glyphs
+      // Draw nodes & educational glyphs with crisp luminescent rendering
       for (const item of projected) {
         if (item.projX < -60 || item.projX > width + 60 || item.projY < -60 || item.projY > height + 60) {
           continue;
         }
 
-        const alpha = Math.min(1, Math.max(0.2, (item.scale - 0.1) * 2.5));
+        const alpha = Math.min(1, Math.max(0.25, (item.scale - 0.1) * 2.6));
 
         if (item.node.glyph) {
-          // Draw floating educational emoji/symbol
-          const fontSize = Math.max(10, Math.floor(18 * item.scale));
+          // Draw floating educational emoji/symbol with clear glow
+          const fontSize = Math.max(15, Math.floor(25 * item.scale));
           ctx.save();
           ctx.font = `${fontSize}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.globalAlpha = dark ? alpha * 0.72 : alpha * 0.58;
+          ctx.globalAlpha = dark ? Math.min(1, alpha * 0.98) : 0.9;
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.85)';
+          ctx.shadowBlur = 12 * item.scale;
           ctx.fillText(item.node.glyph, item.projX, item.projY);
           ctx.restore();
         } else {
-          // Draw glowing node
-          const r = Math.max(1, item.node.radius * item.scale * (1 + Math.sin(item.node.pulsePhase) * 0.2));
+          // Draw bright glowing particle node
+          const r = Math.max(1.8, item.node.radius * item.scale * (1 + Math.sin(item.node.pulsePhase) * 0.25));
           ctx.save();
           ctx.beginPath();
           ctx.arc(item.projX, item.projY, r, 0, Math.PI * 2);
           ctx.fillStyle = item.node.color;
-          ctx.shadowBlur = dark ? 8 * item.scale : 4 * item.scale;
+          ctx.shadowBlur = dark ? 14 * item.scale : 7 * item.scale;
           ctx.shadowColor = item.node.color;
           ctx.fill();
           ctx.restore();
@@ -276,7 +278,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
 
   return (
     <div className="as-3d-backdrop-container" aria-hidden="true">
-      {/* Dynamic Background Image Crossfade Layers */}
+      {/* Dynamic Educational Background Photo Slides (Vivid, crisp, NO heavy blur) */}
       {EDUCATIONAL_SCENES.map((scene, idx) => (
         <div
           key={scene.id}
@@ -285,33 +287,19 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
         />
       ))}
 
+      {/* Subtle vignette gradient to preserve crisp photo details while maintaining card readability */}
+      <div className="as-3d-vignette-overlay" />
+
       {/* Luminous ambient floating light orbs */}
       <div className="as-ambient-orb orb-1" />
       <div className="as-ambient-orb orb-2" />
       <div className="as-ambient-orb orb-3" />
 
-      {/* 3D Education Canvas Layer */}
+      {/* 3D Education Canvas Layer - on top of photos for crisp clarity */}
       <canvas ref={canvasRef} className="as-3d-canvas-elem" />
 
       {/* Geometric grid overlay */}
       <div className="as-3d-grid-overlay" />
-
-      {/* Subtle Bottom Scene Navigation Pill */}
-      <div className="as-scene-indicator-bar">
-        {EDUCATIONAL_SCENES.map((scene, idx) => (
-          <button
-            key={scene.id}
-            type="button"
-            className={`as-scene-dot ${idx === activeSlide ? 'active' : ''}`}
-            onClick={() => setActiveSlide(idx)}
-            title={`Switch background to ${scene.title}`}
-            aria-label={`Background: ${scene.title}`}
-          >
-            <span className="as-scene-dot-inner" />
-            <span className="as-scene-tooltip">{scene.badge}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 };

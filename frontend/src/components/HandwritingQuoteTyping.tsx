@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, RefreshCw, Feather, Pause, Play, Quote, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Pause, Play, Quote } from 'lucide-react';
 
 export interface DynamicQuote {
   text: string;
@@ -121,13 +121,8 @@ export const HandwritingQuoteTyping: React.FC = () => {
 
   return (
     <div className="as-handwriting-container">
-      {/* Top Header Badge */}
-      <div className="as-hw-badge-row">
-        <div className="as-hw-badge">
-          <Feather size={13} className="as-hw-feather-icon" />
-          <span>Handwritten Educational Wisdom</span>
-        </div>
-
+      {/* Top Controls */}
+      <div className="as-hw-badge-row" style={{ justifyContent: 'flex-end', marginBottom: 6 }}>
         <div className="as-hw-controls">
           <button
             type="button"
@@ -174,22 +169,6 @@ export const HandwritingQuoteTyping: React.FC = () => {
             )}
           </div>
           <div className="as-hw-ink-flourish" />
-        </div>
-      </div>
-
-      {/* Educational Platform Key Pillars Showcase */}
-      <div className="as-hw-pillars-grid">
-        <div className="as-hw-pillar">
-          <CheckCircle2 size={13} className="as-hw-pillar-icon" />
-          <span>Biometric & RFID Cloud Attendance</span>
-        </div>
-        <div className="as-hw-pillar">
-          <CheckCircle2 size={13} className="as-hw-pillar-icon" />
-          <span>Real-time Academic & SIS Insights</span>
-        </div>
-        <div className="as-hw-pillar">
-          <CheckCircle2 size={13} className="as-hw-pillar-icon" />
-          <span>Automated Parent SMS & Email Alerts</span>
         </div>
       </div>
     </div>

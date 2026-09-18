@@ -5,6 +5,21 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser } from '../store/demoUsers';
 import { createAndSendPasswordReset } from './auth';
+import {
+  syncStudentToFirestore,
+  deleteStudentFromFirestore,
+  syncTeacherToFirestore,
+  deleteTeacherFromFirestore,
+  syncTeacherAssignmentsToFirestore,
+  syncClassToFirestore,
+  deleteClassFromFirestore,
+  syncSectionToFirestore,
+  deleteSectionFromFirestore,
+  syncSubjectToFirestore,
+  deleteSubjectFromFirestore,
+  syncSchoolToFirestore,
+  rehydrateAllFromFirestore
+} from '../services/firestoreSync';
 
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
@@ -40,6 +55,7 @@ r.post('/classes',...admin,async(req:AuthRequest,res)=>{
     const created = { id: q.rows[0].id, class_number: n, section_count: 0 };
     demoClasses.push(created);
     demoClasses.sort((a,b) => a.class_number - b.class_number);
+    syncClassToFirestore(created).catch(() => {});
     return res.status(201).json(created);
   }
  } catch {}
@@ -48,7 +64,18 @@ r.post('/classes',...admin,async(req:AuthRequest,res)=>{
  const newClass = { id: `cls-${n}`, class_number: n, section_count: 0, school_id: req.user!.schoolId };
  demoClasses.push(newClass);
  demoClasses.sort((a,b) => a.class_number - b.class_number);
+ syncClassToFirestore(newClass).catch(() => {});
  res.status(201).json(newClass);
+});
+
+r.delete('/classes/:id',...admin,async(req:AuthRequest,res)=>{
+ try {
+  await pool.query('DELETE FROM classes WHERE id=$1 AND school_id=$2 RETURNING id',[req.params.id,req.user!.schoolId]);
+ } catch {}
+ const idx = demoClasses.findIndex(c => c.id === req.params.id);
+ if (idx >= 0) demoClasses.splice(idx, 1);
+ deleteClassFromFirestore(String(req.params.id)).catch(() => {});
+ res.json({success:true});
 });
 
 r.get('/sections',...admin,async(req:AuthRequest,res)=>{
@@ -83,6 +110,7 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
     demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
     const targetCls = demoClasses.find(c => c.id === classId || c.class_number === classNumber);
     if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+    syncSectionToFirestore(created).catch(() => {});
     return res.status(201).json(created);
   }
  } catch {}
@@ -97,6 +125,7 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
  demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
  const targetCls = demoClasses.find(c => c.id === classId || c.class_number === classNumber);
  if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+ syncSectionToFirestore(newSection).catch(() => {});
  res.status(201).json(newSection);
 });
 
@@ -106,6 +135,7 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
  } catch {}
  const idx = demoSections.findIndex(s => s.id === req.params.id);
  if (idx >= 0) demoSections.splice(idx, 1);
+ deleteSectionFromFirestore(String(req.params.id)).catch(() => {});
  res.json({success:true});
 });
 
@@ -126,6 +156,66 @@ export const demoTeachers: any[] = [
   { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', is_active: true },
   { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', is_active: true }
 ];
+
+// In-memory teacher teaching allocations (subject × class × section × session × alt-faculty)
+export const demoTeacherAssignments: any[] = [
+  { id: 'ta-1', teacher_id: '00000000-0000-0000-0000-000000000022', teacher_name: 'Rahul Sharma', subject_id: 'sub-math', subject_name: 'Mathematics', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A', session_id: 'ay-2025-26', session_name: '2025–26 Academic Session', alt_teacher_id: '00000000-0000-0000-0000-000000000023', alt_teacher_name: 'Priya Patel' },
+  { id: 'ta-2', teacher_id: '00000000-0000-0000-0000-000000000022', teacher_name: 'Rahul Sharma', subject_id: 'sub-phy', subject_name: 'Physics', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A', session_id: 'ay-2025-26', session_name: '2025–26 Academic Session', alt_teacher_id: '00000000-0000-0000-0000-000000000023', alt_teacher_name: 'Priya Patel' },
+  { id: 'ta-3', teacher_id: '00000000-0000-0000-0000-000000000023', teacher_name: 'Priya Patel', subject_id: 'sub-sci', subject_name: 'Science', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B', session_id: 'ay-2025-26', session_name: '2025–26 Academic Session', alt_teacher_id: '00000000-0000-0000-0000-000000000022', alt_teacher_name: 'Rahul Sharma' },
+  { id: 'ta-4', teacher_id: '00000000-0000-0000-0000-000000000023', teacher_name: 'Priya Patel', subject_id: 'sub-eng', subject_name: 'English', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A', session_id: 'ay-2025-26', session_name: '2025–26 Academic Session', alt_teacher_id: null, alt_teacher_name: null }
+];
+
+// GET /api/teachers/:id/assignments
+r.get('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
+  const tid = req.params.id;
+  res.json(demoTeacherAssignments.filter(a => a.teacher_id === tid));
+});
+
+// GET /api/teacher-assignments (all assignments for current school)
+r.get('/teacher-assignments',...admin,async(req:AuthRequest,res)=>{
+  res.json(demoTeacherAssignments);
+});
+
+// PUT /api/teachers/:id/assignments — Replace all assignments for a teacher
+r.put('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
+  const tid = req.params.id;
+  const { assignments } = req.body || {};
+  if (!Array.isArray(assignments)) return res.status(400).json({ message: 'assignments array required' });
+
+  // Find teacher name
+  const teacher = demoTeachers.find(t => t.id === tid);
+  const tName = teacher?.name || 'Unknown';
+
+  // Remove old assignments for this teacher
+  for (let i = demoTeacherAssignments.length - 1; i >= 0; i--) {
+    if (demoTeacherAssignments[i].teacher_id === tid) demoTeacherAssignments.splice(i, 1);
+  }
+
+  // Add new ones
+  const created: any[] = [];
+  for (const a of assignments) {
+    const altTeacher = a.alt_teacher_id ? demoTeachers.find(t => t.id === a.alt_teacher_id) : null;
+    const entry = {
+      id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      teacher_id: tid,
+      teacher_name: tName,
+      subject_id: a.subject_id || null,
+      subject_name: a.subject_name || null,
+      class_id: a.class_id || null,
+      class_number: a.class_number || null,
+      section_id: a.section_id || null,
+      section_name: a.section_name || null,
+      session_id: a.session_id || null,
+      session_name: a.session_name || null,
+      alt_teacher_id: a.alt_teacher_id || null,
+      alt_teacher_name: altTeacher?.name || a.alt_teacher_name || null
+    };
+    demoTeacherAssignments.push(entry);
+    created.push(entry);
+  }
+  syncTeacherAssignmentsToFirestore(String(tid), created).catch(() => {});
+  res.json(created);
+});
 
 r.get('/students',...admin,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
@@ -231,6 +321,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       invite_sent: Boolean(resetInfo)
     };
     demoStudents.unshift(created);
+    syncStudentToFirestore(created).catch(() => {});
     return res.status(201).json(created);
   }
  } catch (err: any) {
@@ -277,6 +368,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    invite_sent: Boolean(resetInfo)
  };
  demoStudents.unshift(newStudent);
+ syncStudentToFirestore(newStudent).catch(() => {});
  res.status(201).json(newStudent);
 });
 
@@ -320,14 +412,17 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
        [req.user!.schoolId, classId, sectionId, rollNumber, name, parentName || null, parentSmsNumber, parentEmail || null]
      );
      if (q.rowCount) {
-       createdList.push({ ...q.rows[0], class_number: classNumber, section_name: sectionName });
-       demoStudents.unshift(createdList[createdList.length - 1]);
+       const created = { ...q.rows[0], class_number: classNumber, section_name: sectionName };
+       createdList.push(created);
+       demoStudents.unshift(created);
+       syncStudentToFirestore(created).catch(() => {});
        continue;
      }
    } catch {}
 
    createdList.push(studentObj);
    demoStudents.unshift(studentObj);
+   syncStudentToFirestore(studentObj).catch(() => {});
  }
  res.status(201).json({ success: true, count: createdList.length, items: createdList });
 });
@@ -344,6 +439,9 @@ r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
      demoStudents.splice(i, 1);
    }
  }
+ for (const id of ids) {
+   deleteStudentFromFirestore(id).catch(() => {});
+ }
  res.json({ success: true, count: ids.length });
 });
 
@@ -355,7 +453,9 @@ r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
   const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,parent_name=$3,parent_sms_number=$4,email=$5,parent_email=$6,class_id=$7,section_id=$8,updated_at=NOW()
   WHERE id=$9 AND school_id=$10 RETURNING *`,[name,rollNumber,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
   if(!q.rowCount)return res.status(404).json({message:'Student not found'});
-  res.json({ ...q.rows[0], student_email: cleanStudentEmail, parent_email: cleanParentEmail });
+  const result = { ...q.rows[0], student_email: cleanStudentEmail, parent_email: cleanParentEmail };
+  syncStudentToFirestore(result).catch(() => {});
+  return res.json(result);
  } catch {
   const updated = {
     id: req.params.id,
@@ -371,6 +471,8 @@ r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
   };
   const idx = demoStudents.findIndex(s => s.id === req.params.id);
   if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...updated };
+  else demoStudents.unshift(updated);
+  syncStudentToFirestore(updated).catch(() => {});
   res.json(updated);
  }
 });
@@ -435,6 +537,7 @@ r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
  } catch {}
  const idx = demoStudents.findIndex(s => s.id === req.params.id);
  if (idx >= 0) demoStudents.splice(idx, 1);
+ deleteStudentFromFirestore(String(req.params.id)).catch(() => {});
  res.json({success:true});
 });
 
@@ -490,6 +593,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
      invite_sent: Boolean(resetInfo)
    };
    demoTeachers.unshift(created);
+   syncTeacherToFirestore(created, hash).catch(() => {});
    return res.status(201).json(created);
   } catch(e){await client.query('ROLLBACK');throw e;}
   finally{client.release();}
@@ -528,6 +632,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
    role: 'TEACHER',
    password: rawPassword
  });
+ syncTeacherToFirestore(newTeacher, rawPassword).catch(() => {});
  res.status(201).json(newTeacher);
 });
 
@@ -625,6 +730,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
        role: 'TEACHER',
        password
      });
+     syncTeacherToFirestore(created, hash).catch(() => {});
      continue;
    } catch {
      if (client) { try { await client.query('ROLLBACK'); } catch {} }
@@ -642,6 +748,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
      role: 'TEACHER',
      password
    });
+   syncTeacherToFirestore(teacherObj).catch(() => {});
  }
  res.status(201).json({ success: true, count: createdList.length, items: createdList });
 });
@@ -658,7 +765,32 @@ r.post('/teachers/bulk-delete',...admin,async(req:AuthRequest,res)=>{
      demoTeachers.splice(i, 1);
    }
  }
+ for (const id of ids) {
+   deleteTeacherFromFirestore(id).catch(() => {});
+ }
  res.json({ success: true, count: ids.length });
+});
+
+r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
+  const {name,email,employeeId,mobile}=req.body||{};
+  const tid = req.params.id;
+  try {
+    await pool.query(`UPDATE users SET name=$1,email=$2,updated_at=NOW() WHERE id=$3 AND school_id=$4`,[name,email,tid,req.user!.schoolId]);
+    await pool.query(`UPDATE teacher_profiles SET employee_id=$1,mobile=$2 WHERE user_id=$3`,[employeeId,mobile,tid]);
+  } catch {}
+  const idx = demoTeachers.findIndex(t => t.id === tid);
+  const updated = {
+    id: tid,
+    name: name || demoTeachers[idx]?.name || '',
+    email: email || demoTeachers[idx]?.email || '',
+    employee_id: employeeId || demoTeachers[idx]?.employee_id || '',
+    mobile: mobile || demoTeachers[idx]?.mobile || '',
+    is_active: true
+  };
+  if (idx >= 0) demoTeachers[idx] = { ...demoTeachers[idx], ...updated };
+  else demoTeachers.push(updated);
+  syncTeacherToFirestore(updated).catch(() => {});
+  res.json(updated);
 });
 
 r.delete('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
@@ -667,10 +799,22 @@ r.delete('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
  } catch {}
  const idx = demoTeachers.findIndex(t => t.id === req.params.id);
  if (idx >= 0) demoTeachers.splice(idx, 1);
+ deleteTeacherFromFirestore(String(req.params.id)).catch(() => {});
  res.json({success:true});
 });
 
-export const demoSubjects: any[] = [];
+export const demoSubjects: any[] = [
+  { id: 'sub-math', name: 'Mathematics', school_id: 'default' },
+  { id: 'sub-sci', name: 'Science', school_id: 'default' },
+  { id: 'sub-eng', name: 'English', school_id: 'default' },
+  { id: 'sub-sst', name: 'Social Studies', school_id: 'default' },
+  { id: 'sub-cs', name: 'Computer Science', school_id: 'default' },
+  { id: 'sub-phy', name: 'Physics', school_id: 'default' },
+  { id: 'sub-chem', name: 'Chemistry', school_id: 'default' },
+  { id: 'sub-bio', name: 'Biology', school_id: 'default' },
+  { id: 'sub-hindi', name: 'Hindi', school_id: 'default' },
+  { id: 'sub-pe', name: 'Physical Education', school_id: 'default' }
+];
 
 r.get('/subjects',...admin,async(req:AuthRequest,res)=>{
  try {
@@ -688,11 +832,13 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
   const q=await pool.query('INSERT INTO subjects(school_id,name) VALUES($1,$2) RETURNING *',[req.user!.schoolId,cleanName]);
   if (q.rowCount) {
     demoSubjects.push(q.rows[0]);
+    syncSubjectToFirestore(q.rows[0]).catch(() => {});
     return res.status(201).json(q.rows[0]);
   }
  } catch {}
  const newSub = { id: `sub-${Date.now()}`, name: cleanName, school_id: req.user!.schoolId };
  demoSubjects.push(newSub);
+ syncSubjectToFirestore(newSub).catch(() => {});
  res.status(201).json(newSub);
 });
 
@@ -702,6 +848,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
  } catch {}
  const idx = demoSubjects.findIndex(s => s.id === req.params.id);
  if (idx >= 0) demoSubjects.splice(idx, 1);
+ deleteSubjectFromFirestore(String(req.params.id)).catch(() => {});
  res.json({success:true});
 });
 
@@ -729,9 +876,14 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
     'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address) WHERE id = $3 RETURNING id, name, code, status, enquiry_number, address',
     [enquiryNumber, address, sid]
   );
-  if (q.rowCount) return res.json(q.rows[0]);
+  if (q.rowCount) {
+    syncSchoolToFirestore(q.rows[0]).catch(() => {});
+    return res.json(q.rows[0]);
+  }
  } catch {}
- res.json({ id: sid, enquiry_number: enquiryNumber, address });
+ const updatedSchool = { id: sid, enquiry_number: enquiryNumber, address };
+ syncSchoolToFirestore(updatedSchool).catch(() => {});
+ res.json(updatedSchool);
 });
 
 /* ── Global Search ── */
