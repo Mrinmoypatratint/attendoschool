@@ -43,6 +43,16 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        setDark(e.newValue === 'dark');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const toggleTheme = () => setDark(prev => !prev);
 
   // Academic Sessions
