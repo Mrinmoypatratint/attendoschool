@@ -39,6 +39,8 @@ import { StudentExams } from './pages/student/StudentExams';
 import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
+import { ThreeDBackground } from './components/ThreeDBackground';
+import { LoginDynamicPreview } from './components/LoginDynamicPreview';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -318,6 +320,9 @@ function Login() {
 
   return (
     <div className="as-login-desk-wrap">
+      {/* 3D Dynamic Ambient Canvas Background */}
+      <ThreeDBackground dark={dark} />
+
       {/* Decorative environment background elements */}
       <div className="as-desk-decor-plane" aria-hidden="true">
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -343,99 +348,12 @@ function Login() {
 
       {/* Main Split-Screen Container with 1px Subtle Border */}
       <div className="as-login-frame">
-        {/* Left Column: Education Hero Showcase */}
+        {/* Left Column: Interactive Dynamic Multi-Portal Preview Showcase */}
         <div className="as-hero-col">
-          {/* Brand Header */}
-          <div className="as-hero-brand-row">
-            <div className="as-hero-logo-box">
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="as-hero-brand-img" />
-            </div>
-            <div className="as-hero-brand-text">
-              <span className="as-hero-brand-name">AttendoSchool</span>
-              <span className="as-hero-brand-tagline">Attendance Today — Brighter Tomorrow</span>
-            </div>
-          </div>
-
-          {/* Social Proof Pill Badge */}
-          <div className="as-hero-proof-badge">
-            <GraduationCap size={15} className="as-proof-icon" />
-            <span>Trusted by 500+ Schools Nationwide</span>
-          </div>
-
-          {/* Bold Core Headline */}
-          <h1 className="as-hero-core-title">
-            Empowering<br />
-            Schools for a<br />
-            <span className="as-hero-green-highlight">Brighter Tomorrow</span>
-          </h1>
-
-          <p className="as-hero-core-sub">
-            Smart Attendance. Better Learning. Stronger Communities.
-          </p>
-
-          {/* 4 Feature Cards Row */}
-          <div className="as-hero-cards-grid">
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-                <GraduationCap size={20} />
-              </div>
-              <span className="as-feature-tile-label">Simpler<br />Attendance</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
-                <BarChart3 size={20} />
-              </div>
-              <span className="as-feature-tile-label">Smarter<br />Academics</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
-                <Users size={20} />
-              </div>
-              <span className="as-feature-tile-label">Stronger<br />Communication</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
-                <ShieldCheck size={20} />
-              </div>
-              <span className="as-feature-tile-label">Safer<br />Schools</span>
-            </div>
-          </div>
-
-          {/* Campus Photo & Video Showcase Viewport with Quote Overlays */}
-          <div className="as-campus-viewport">
-            {!videoError && !prefersReducedMotion ? (
-              <video
-                className="as-campus-video-elem"
-                src="/media/login-school.mp4"
-                poster="/campus_hero_reference.jpg"
-                autoPlay
-                muted
-                loop
-                playsInline
-                onError={() => setVideoError(true)}
-              />
-            ) : (
-              <img
-                src="/campus_hero_reference.jpg"
-                alt="Modern School Campus"
-                className="as-campus-img-elem"
-              />
-            )}
-
-            {/* Floating Quote Overlays matching the reference design */}
-            <div className="as-quote-bubble-building">
-              <span>“Knowledge Builds Brighter Futures”</span>
-            </div>
-
-            <div className="as-quote-script-text">
-              Learn<br />Manage<br />Grow<br />Together
-            </div>
-
-            <div className="as-quote-bottom-pill">
-              <div className="as-quote-mark-circle">“</div>
-              <p>Every student present today is a brighter tomorrow for our world.</p>
-            </div>
-          </div>
+          <LoginDynamicPreview
+            activeRole={loginRole}
+            onSelectRole={handleSelectRole}
+          />
         </div>
 
         {/* Right Column: Interactive Authentication Canvas */}
@@ -533,6 +451,29 @@ function Login() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Quick Demo Auto-Fill Bar for Instant Testing */}
+          <div className="as-demo-fill-bar">
+            <span>💡 Need instant test credentials?</span>
+            <button
+              type="button"
+              className="as-demo-fill-btn"
+              onClick={() => {
+                const cfg = LOGIN_ROLES[loginRole];
+                setEmail(cfg.defaultEmail);
+                setPassword('ChangeMe123!');
+                if (cfg.needsSchool) {
+                  const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+                  if (def) setInstituteId(def.id);
+                } else {
+                  setInstituteId('');
+                }
+              }}
+            >
+              <Sparkles size={13} />
+              Auto-fill {currentConfig.roleName}
+            </button>
           </div>
 
           {/* Role Informative Callout Banner */}
