@@ -128,6 +128,7 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
               className="sa-btn-primary"
               onClick={() => {
                 if (onOpenCreateSchool) onOpenCreateSchool();
+                else if (onNavigate) onNavigate('/super-admin/schools?action=create');
                 else nav('/super-admin/schools?action=create');
               }}
             >
@@ -135,7 +136,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </button>
             <button
               className="sa-btn-secondary"
-              onClick={() => nav('/super-admin/schools')}
+              onClick={() => {
+                if (onNavigate) onNavigate('/super-admin/schools');
+                else nav('/super-admin/schools');
+              }}
             >
               <span>View All Campuses</span> <ChevronRight size={15} />
             </button>
@@ -285,7 +289,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
               </button>
               <button
                 className="sa-link-btn"
-                onClick={() => nav('/super-admin/schools')}
+                onClick={() => {
+                  if (onNavigate) onNavigate('/super-admin/schools');
+                  else nav('/super-admin/schools');
+                }}
               >
                 <span>View Full Directory</span> <ChevronRight size={14} />
               </button>
@@ -439,7 +446,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => nav('/super-admin/audit-logs')}
+              onClick={() => {
+                if (onNavigate) onNavigate('/super-admin/audit-logs');
+                else nav('/super-admin/audit-logs');
+              }}
             >
               <span>View Full Trail</span> <ChevronRight size={14} />
             </button>
@@ -478,7 +488,10 @@ export function SuperAdminOverview({ onOpenCreateSchool, onNavigate }: SuperAdmi
             </div>
             <button
               className="sa-link-btn"
-              onClick={() => nav('/super-admin/monitoring')}
+              onClick={() => {
+                if (onNavigate) onNavigate('/super-admin/monitoring');
+                else nav('/super-admin/monitoring');
+              }}
             >
               <span>Platform Health</span> <ChevronRight size={14} />
             </button>

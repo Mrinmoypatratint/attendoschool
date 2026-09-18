@@ -17,25 +17,31 @@ import './super-admin.css';
 export const SuperAdminModule: React.FC = () => {
   // Determine initial path from hash e.g. #/super-admin/schools -> /super-admin/schools
   const getPathFromHash = () => {
-    const hash = window.location.hash.replace(/^#/, '');
-    if (hash.startsWith('/super-admin/')) {
-      return hash;
+    const rawHash = window.location.hash.replace(/^#/, '');
+    const cleanHash = rawHash.split('?')[0].trim();
+
+    if (cleanHash.startsWith('/super-admin/')) {
+      const sub = cleanHash.replace('/super-admin/', '');
+      if (sub === 'monitor' || sub === 'monitoring') return '/super-admin/monitoring';
+      if (sub === 'users' || sub === 'people') return '/super-admin/people';
+      if (sub === 'roles' || sub === 'permissions') return '/super-admin/permissions';
+      return cleanHash;
     }
-    if (hash === '/super-admin') {
+    if (cleanHash === '/super-admin') {
       return '/super-admin';
     }
     // Also support aliases like #/schools, #/payments when inside super admin
-    if (hash === '/schools') return '/super-admin/schools';
-    if (hash === '/subscriptions') return '/super-admin/subscriptions';
-    if (hash === '/payments') return '/super-admin/payments';
-    if (hash === '/invoices') return '/super-admin/invoices';
-    if (hash === '/monitor') return '/super-admin/monitor';
-    if (hash === '/analytics') return '/super-admin/analytics';
-    if (hash === '/people' || hash === '/users') return '/super-admin/users';
-    if (hash === '/permissions' || hash === '/roles') return '/super-admin/roles';
-    if (hash === '/security') return '/super-admin/security';
-    if (hash === '/audit-logs') return '/super-admin/audit-logs';
-    if (hash === '/settings') return '/super-admin/settings';
+    if (cleanHash === '/schools') return '/super-admin/schools';
+    if (cleanHash === '/subscriptions') return '/super-admin/subscriptions';
+    if (cleanHash === '/payments') return '/super-admin/payments';
+    if (cleanHash === '/invoices') return '/super-admin/invoices';
+    if (cleanHash === '/monitor' || cleanHash === '/monitoring') return '/super-admin/monitoring';
+    if (cleanHash === '/analytics') return '/super-admin/analytics';
+    if (cleanHash === '/people' || cleanHash === '/users') return '/super-admin/people';
+    if (cleanHash === '/permissions' || cleanHash === '/roles') return '/super-admin/permissions';
+    if (cleanHash === '/security') return '/super-admin/security';
+    if (cleanHash === '/audit-logs') return '/super-admin/audit-logs';
+    if (cleanHash === '/settings') return '/super-admin/settings';
 
     return '/super-admin';
   };
@@ -52,12 +58,13 @@ export const SuperAdminModule: React.FC = () => {
 
   const handleNavigate = (path: string) => {
     window.location.hash = path;
-    setCurrentPath(path);
+    setCurrentPath(path.split('?')[0]);
   };
 
   // Render sub-view according to currentPath
   const renderContent = () => {
-    switch (currentPath) {
+    const base = currentPath.split('?')[0].trim();
+    switch (base) {
       case '/super-admin/schools':
         return <SchoolsManagement />;
       case '/super-admin/subscriptions':
@@ -66,12 +73,15 @@ export const SuperAdminModule: React.FC = () => {
         return <PaymentsLedger />;
       case '/super-admin/invoices':
         return <InvoicesManagement />;
+      case '/super-admin/monitoring':
       case '/super-admin/monitor':
         return <MonitoringHealth />;
       case '/super-admin/analytics':
         return <PlatformAnalytics />;
+      case '/super-admin/people':
       case '/super-admin/users':
         return <PeopleDirectory />;
+      case '/super-admin/permissions':
       case '/super-admin/roles':
         return <RolesPermissions />;
       case '/super-admin/security':
