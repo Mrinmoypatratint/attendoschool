@@ -12,6 +12,7 @@ import {
 } from './routes/schoolData';
 import { memPeriods, memEntries } from './routes/timetable';
 import { demoSchools } from './routes/superAdmin';
+import { startKeepAliveService } from './services/keepAliveService';
 
 const server = app.listen(env.port, () => {
   console.log(`School Attendance API running on http://localhost:${env.port}`);
@@ -32,6 +33,9 @@ const server = app.listen(env.port, () => {
   }).catch(err => {
     console.warn('[Server] Firestore rehydration encountered error:', err.message);
   });
+
+  // Keep-alive auto-pinger (prevents cloud container idle hibernation)
+  startKeepAliveService(env.keepAliveUrl, 10);
 });
 
 async function shutdown(signal: string) {

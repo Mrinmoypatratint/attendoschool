@@ -1,6 +1,7 @@
 services:
   # -------------------------------------------------------------
   # AttendoSchool Backend Web Service (Node.js / Express 5)
+  # Pure Google Cloud Firestore (Zero PostgreSQL dependency)
   # -------------------------------------------------------------
   - type: web
     name: attendoschool-backend
@@ -8,17 +9,17 @@ services:
     rootDir: backend
     plan: free
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm run db:migrate && npm run start
+    startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: DATABASE_URL
-        fromDatabase:
-          name: attendoschool-db
-          property: connectionString
+      - key: DB_DRIVER
+        value: firebase
+      - key: FIREBASE_PROJECT_ID
+        value: attendoschool
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
@@ -27,12 +28,3 @@ services:
         value: "AttendoSchool Platform"
       - key: COMPANY_GST_RATE
         value: "18"
-
-databases:
-  # -------------------------------------------------------------
-  # AttendoSchool PostgreSQL 16 Database
-  # -------------------------------------------------------------
-  - name: attendoschool-db
-    databaseName: attendoschool
-    user: attendoschool_admin
-    plan: free

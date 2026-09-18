@@ -23,6 +23,8 @@ export const env = {
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
   firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
+  firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '',
   firestoreEmulatorHost: process.env.FIRESTORE_EMULATOR_HOST || '',
   dbDriver: (process.env.DB_DRIVER || 'firebase').toLowerCase(), // 'firebase' | 'postgres'
+  keepAliveUrl: process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL || '',
 };
