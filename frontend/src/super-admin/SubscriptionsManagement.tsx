@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Layers, CheckCircle2, Sliders, Plus, RefreshCw,
+  TrendingUp, Users, Building2, ExternalLink, X,
+  ShieldCheck, Sparkles, Search
+} from 'lucide-react';
 import { SubscriptionPlan, SchoolRecord } from './types';
 import { apiRequest } from '../api';
 
@@ -11,6 +16,13 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Billing cycle view toggle
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Ledger filter & search
+  const [ledgerSearch, setLedgerSearch] = useState<string>('');
+  const [ledgerPlanFilter, setLedgerPlanFilter] = useState<string>('ALL');
 
   // Create / Edit modal state
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -32,9 +44,9 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     try {
       const [plansData, schoolsData] = await Promise.all([
         apiRequest<SubscriptionPlan[]>('/super-admin/plans').catch(() => [
-          { id: 'plan-basic', name: 'Basic Tier', description: 'Essential attendance and student profiles for small schools', max_students: 300, price_monthly: 499, price_yearly: 4999, is_active: true },
-          { id: 'plan-standard', name: 'Standard Growth', description: 'Complete SIS with timetable, exams, and parent communications', max_students: 1000, price_monthly: 999, price_yearly: 9999, is_active: true },
-          { id: 'plan-enterprise', name: 'Enterprise Elite', description: 'Unlimited scale with biometric integration, audit logs, and 24/7 SLA', max_students: 5000, price_monthly: 1999, price_yearly: 19999, is_active: true }
+          { id: 'plan-basic', name: 'Basic Tier', description: 'Essential attendance and student profiles for small educational institutions.', max_students: 300, price_monthly: 499, price_yearly: 4999, is_active: true },
+          { id: 'plan-standard', name: 'Standard Growth', description: 'Complete student information system with timetables, exams, and parent communications.', max_students: 1000, price_monthly: 999, price_yearly: 9999, is_active: true },
+          { id: 'plan-enterprise', name: 'Enterprise Elite', description: 'Institutional scale with automated biometric sync, audit logging, and 24/7 priority SLA.', max_students: 5000, price_monthly: 1999, price_yearly: 19999, is_active: true }
         ]),
         apiRequest<SchoolRecord[]>('/super-admin/schools').catch(() => [])
       ]);
@@ -50,6 +62,62 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
   useEffect(() => {
     loadData();
   }, []);
+
+  // Helper to compute subscribers for a plan
+  const getSubscribersCount = (planName: string) => {
+    const clean = planName.toLowerCase().replace(/tier|elite|growth|plan/g, '').trim();
+    return schools.filter(s => {
+      const p = (s.plan_name || '').toLowerCase();
+      return p.includes(clean) || clean.includes(p);
+    }).length;
+  };
+
+  // Telemetry metric calculations
+  const telemetry = useMemo(() => {
+    const activePlansCount = plans.filter(p => p.is_active).length;
+    const enrolledSchoolsCount = schools.length;
+
+    // Aggregate student capacity
+    const totalStudentCapacity = schools.reduce((acc, s) => {
+      const pName = (s.plan_name || '').toLowerCase();
+      if (pName.includes('enterprise')) return acc + 5000;
+      if (pName.includes('standard')) return acc + 1000;
+      return acc + 300;
+    }, 0);
+
+    // Estimated MRR
+    const estimatedMRR = schools.reduce((acc, s) => {
+      const pName = (s.plan_name || '').toLowerCase();
+      const matched = plans.find(p => {
+        const clean = p.name.toLowerCase().replace(/tier|elite|growth|plan/g, '').trim();
+        return pName.includes(clean) || clean.includes(pName);
+      });
+      return acc + (matched ? Number(matched.price_monthly || 0) : 999);
+    }, 0);
+
+    return {
+      activePlansCount,
+      enrolledSchoolsCount,
+      totalStudentCapacity,
+      estimatedMRR
+    };
+  }, [plans, schools]);
+
+  // Filtered schools for the ledger
+  const filteredSchools = useMemo(() => {
+    return schools.filter(s => {
+      const q = ledgerSearch.toLowerCase().trim();
+      const matchesSearch = !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.code.toLowerCase().includes(q) ||
+        (s.city && s.city.toLowerCase().includes(q));
+
+      const matchesPlan = ledgerPlanFilter === 'ALL' ||
+        (s.plan_name && s.plan_name.toUpperCase().includes(ledgerPlanFilter.toUpperCase()));
+
+      return matchesSearch && matchesPlan;
+    });
+  }, [schools, ledgerSearch, ledgerPlanFilter]);
 
   const openCreateModal = () => {
     setEditingPlan(null);
@@ -113,169 +181,223 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     }
   };
 
-  // Helper to compute subscribers for a plan
-  const getSubscribersCount = (planName: string) => {
-    const clean = planName.toLowerCase().replace(/tier|elite|growth|plan/g, '').trim();
-    return schools.filter(s => {
-      const p = (s.plan_name || '').toLowerCase();
-      return p.includes(clean) || clean.includes(p);
-    }).length;
-  };
-
   return (
-    <div className="super-admin-content-inner">
-      {/* Header */}
-      <div className="section-header-row">
+    <div className="sa-subs-view">
+      {/* Module Header */}
+      <div className="sa-module-head">
         <div>
-          <h2 className="section-title">Subscription Tiers & Packaging</h2>
-          <p className="section-subtitle">
+          <h1 className="sa-module-title">Subscription Tiers & Packaging</h1>
+          <p className="sa-module-sub">
             Configure institutional SaaS tiers, student capacity limits, pricing models, and active tenant distribution.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" onClick={loadData} disabled={loading}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Refresh
+          <button className="sa-btn-secondary" onClick={loadData} disabled={loading}>
+            <RefreshCw size={15} className={loading ? 'spinning' : ''} />
+            <span>Refresh</span>
           </button>
-          <button className="btn-primary" onClick={openCreateModal}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Tier Plan
+          <button className="sa-btn-primary" onClick={openCreateModal}>
+            <Plus size={16} />
+            <span>New Tier Plan</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div className="sa-error-banner">
           {error}
         </div>
       )}
 
+      {/* 4-KPI Telemetry Strip */}
+      <div className="sa-subs-kpi-grid">
+        <div className="sa-subs-kpi-card">
+          <div className="sa-subs-kpi-top">
+            <span className="sa-subs-kpi-label">Active Tiers</span>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>
+              <Layers size={18} />
+            </div>
+          </div>
+          <div className="sa-subs-kpi-val">{loading ? '…' : telemetry.activePlansCount}</div>
+          <span className="sa-subs-kpi-sub">Commercial SaaS plans</span>
+        </div>
+
+        <div className="sa-subs-kpi-card">
+          <div className="sa-subs-kpi-top">
+            <span className="sa-subs-kpi-label">Subscribed Campuses</span>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#ecfdf5', color: '#16a34a' }}>
+              <Building2 size={18} />
+            </div>
+          </div>
+          <div className="sa-subs-kpi-val">{loading ? '…' : telemetry.enrolledSchoolsCount}</div>
+          <span className="sa-subs-kpi-sub">Active institutional tenants</span>
+        </div>
+
+        <div className="sa-subs-kpi-card">
+          <div className="sa-subs-kpi-top">
+            <span className="sa-subs-kpi-label">Total Student Quota</span>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+              <Users size={18} />
+            </div>
+          </div>
+          <div className="sa-subs-kpi-val">{loading ? '…' : telemetry.totalStudentCapacity.toLocaleString()}</div>
+          <span className="sa-subs-kpi-sub">Aggregate enrolled capacity</span>
+        </div>
+
+        <div className="sa-subs-kpi-card">
+          <div className="sa-subs-kpi-top">
+            <span className="sa-subs-kpi-label">Estimated MRR</span>
+            <div className="sa-subs-kpi-icon-wrap" style={{ background: '#f0fdf4', color: '#15803d' }}>
+              <TrendingUp size={18} />
+            </div>
+          </div>
+          <div className="sa-subs-kpi-val">{loading ? '…' : `₹${telemetry.estimatedMRR.toLocaleString('en-IN')}`}</div>
+          <span className="sa-subs-kpi-sub">Monthly subscription run rate</span>
+        </div>
+      </div>
+
+      {/* Pricing Header & Billing Switcher */}
+      <div className="sa-billing-switch-container">
+        <div>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>
+            Commercial Tier Packages
+          </h2>
+          <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+            Multi-tenant license quotas and feature matrix
+          </span>
+        </div>
+
+        <div className="sa-billing-switch-wrap">
+          <button
+            type="button"
+            className={`sa-billing-switch-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('monthly')}
+          >
+            Monthly Billing
+          </button>
+          <button
+            type="button"
+            className={`sa-billing-switch-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('yearly')}
+          >
+            Annual Billing
+            <span className="sa-billing-save-pill">Save 17%</span>
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ padding: '60px 0', textAlign: 'center', color: '#64748b' }}>
-          <div className="spinner" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <div className="spinning" style={{ margin: '0 auto 16px', width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%' }} />
           Loading subscription tiers...
         </div>
       ) : (
         <>
           {/* Plan Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', margin: '24px 0' }}>
+          <div className="sa-plans-grid">
             {plans.map((p) => {
               const subCount = getSubscribersCount(p.name);
               const isEnterprise = p.name.toLowerCase().includes('enterprise');
-              const isStandard = p.name.toLowerCase().includes('standard');
+
+              const displayPrice = billingCycle === 'yearly'
+                ? Math.round((p.price_yearly || p.price_monthly * 10) / 12)
+                : p.price_monthly;
+
+              const totalAnnual = p.price_yearly || p.price_monthly * 10;
 
               return (
                 <div
                   key={p.id}
-                  className="card"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: isEnterprise ? '2px solid rgba(99, 102, 241, 0.4)' : undefined,
-                    boxShadow: isEnterprise ? '0 10px 25px -5px rgba(99, 102, 241, 0.1)' : undefined
-                  }}
+                  className={`sa-plan-card ${isEnterprise ? 'featured' : ''}`}
                 >
                   {isEnterprise && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '12px',
-                      right: '-32px',
-                      transform: 'rotate(45deg)',
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      color: '#fff',
-                      fontSize: '10px',
-                      fontWeight: '700',
-                      padding: '4px 35px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
-                      Popular
+                    <div className="sa-plan-featured-tag">
+                      <Sparkles size={13} />
+                      <span>Enterprise Recommended</span>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', margin: '0 0 4px 0' }}>
-                        {p.name}
-                      </h3>
-                      <span className={`badge ${p.is_active ? 'badge-active' : 'badge-suspended'}`}>
-                        {p.is_active ? 'Active Tier' : 'Archived'}
-                      </span>
+                  <div className="sa-plan-header">
+                    <div className="sa-plan-title-group">
+                      <h3 className="sa-plan-title">{p.name}</h3>
+                      <div>
+                        <span className={`sa-badge-pill ${p.is_active ? 'success' : 'warning'}`}>
+                          {p.is_active ? 'Active Tier' : 'Archived'}
+                        </span>
+                      </div>
                     </div>
+
                     <button
-                      className="btn-secondary"
+                      className="sa-btn-secondary"
                       style={{ padding: '6px 12px', fontSize: '12px' }}
                       onClick={() => openEditModal(p)}
+                      title="Configure Tier"
                     >
-                      Configure
+                      <Sliders size={13} />
+                      <span>Configure</span>
                     </button>
                   </div>
 
-                  <p style={{ fontSize: '13px', color: '#64748b', minHeight: '36px', margin: '0 0 16px 0', lineHeight: 1.4 }}>
+                  <p className="sa-plan-desc">
                     {p.description || 'Standard institutional service level packaging for verified educational tenants.'}
                   </p>
 
-                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                      <span style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>
-                        ₹{Number(p.price_monthly).toLocaleString('en-IN')}
+                  <div className="sa-plan-price-box">
+                    <div className="sa-plan-price-row">
+                      <span className="sa-plan-price-num">
+                        ₹{Number(displayPrice).toLocaleString('en-IN')}
                       </span>
-                      <span style={{ fontSize: '13px', color: '#64748b' }}>/ month</span>
+                      <span className="sa-plan-price-period">
+                        / month {billingCycle === 'yearly' && '(billed annually)'}
+                      </span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', marginTop: '4px' }}>
-                      ₹{Number(p.price_yearly || p.price_monthly * 10).toLocaleString('en-IN')} billed annually (Save 17%)
+
+                    <div className="sa-plan-price-billed">
+                      <CheckCircle2 size={14} />
+                      <span>
+                        ₹{Number(totalAnnual).toLocaleString('en-IN')} billed annually (Save 17%)
+                      </span>
                     </div>
                   </div>
 
                   {/* Quota & Feature Specs */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <strong>Up to {p.max_students.toLocaleString()} students</strong> quota limit
+                  <div className="sa-plan-specs-list">
+                    <div className="sa-plan-spec-item">
+                      <CheckCircle2 size={16} className="sa-spec-icon-check" />
+                      <span>
+                        <strong>Up to {p.max_students.toLocaleString()} students</strong> quota limit
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Realtime Biometric & Mobile QR sync
+                    <div className="sa-plan-spec-item">
+                      <CheckCircle2 size={16} className="sa-spec-icon-check" />
+                      <span>Realtime Biometric & Mobile QR sync</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Automated SMS & WhatsApp Parent Alerts
+                    <div className="sa-plan-spec-item">
+                      <CheckCircle2 size={16} className="sa-spec-icon-check" />
+                      <span>Automated SMS & WhatsApp Parent Alerts</span>
                     </div>
                     {isEnterprise && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        <strong>Dedicated Account Manager & 99.9% SLA</strong>
+                      <div className="sa-plan-spec-item">
+                        <ShieldCheck size={16} className="sa-spec-icon-star" />
+                        <span>
+                          <strong>Dedicated Account Manager & 99.9% SLA</strong>
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {/* Tenant Adoption Footprint */}
-                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      Active Institutions: <strong style={{ color: '#0f172a' }}>{subCount}</strong>
+                  <div className="sa-plan-footer">
+                    <div className="sa-plan-adoption">
+                      Active Institutions: <strong>{subCount}</strong>
                     </div>
                     {onNavigateSchools && (
                       <button
-                        className="btn-link"
-                        style={{ fontSize: '12px', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        className="sa-link-btn"
                         onClick={onNavigateSchools}
                       >
-                        View schools &rarr;
+                        <span>View schools</span>
+                        <ExternalLink size={13} />
                       </button>
                     )}
                   </div>
@@ -284,82 +406,111 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
             })}
           </div>
 
-          {/* Active Subscriptions Breakdown Table */}
-          <div className="card" style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
-                  Active Tenant Subscription Ledger
-                </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
-                  Live quota consumption and license validity per institution.
-                </p>
+          {/* Active Tenant Subscription Ledger Card */}
+          <div className="sa-card" style={{ marginTop: '10px' }}>
+            <div className="sa-card-head" style={{ flexWrap: 'wrap', gap: '14px' }}>
+              <div className="sa-card-title-group">
+                <Building2 size={18} className="sa-card-icon" />
+                <div>
+                  <h3>Active Tenant Subscription Ledger</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    Live quota consumption and license validity per institution.
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter and Search */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div className="sa-inline-search" style={{ minWidth: '200px' }}>
+                  <Search size={14} style={{ color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    placeholder="Search institution or code..."
+                    value={ledgerSearch}
+                    onChange={(e) => setLedgerSearch(e.target.value)}
+                  />
+                </div>
+
+                <select
+                  className="sa-select-input"
+                  value={ledgerPlanFilter}
+                  onChange={(e) => setLedgerPlanFilter(e.target.value)}
+                >
+                  <option value="ALL">All Tiers</option>
+                  <option value="BASIC">Basic Tier</option>
+                  <option value="STANDARD">Standard Tier</option>
+                  <option value="ENTERPRISE">Enterprise Tier</option>
+                </select>
               </div>
             </div>
 
-            <div className="table-responsive">
-              <table className="data-table">
+            <div className="sa-table-responsive">
+              <table className="sa-table">
                 <thead>
                   <tr>
-                    <th>Institution</th>
-                    <th>Subscribed Tier</th>
-                    <th>Student Limit</th>
-                    <th>Current Enrolled</th>
-                    <th>Quota Usage</th>
-                    <th>Valid Through</th>
-                    <th>Status</th>
+                    <th>INSTITUTION</th>
+                    <th>SUBSCRIBED TIER</th>
+                    <th>STUDENT LIMIT</th>
+                    <th>CURRENT ENROLLED</th>
+                    <th>QUOTA USAGE</th>
+                    <th>VALID THROUGH</th>
+                    <th>STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {schools.length === 0 ? (
+                  {filteredSchools.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                        No institutions currently registered on any subscription tier.
+                        {ledgerSearch || ledgerPlanFilter !== 'ALL'
+                          ? 'No institutions match the filter criteria.'
+                          : 'No institutions currently registered on any subscription tier.'}
                       </td>
                     </tr>
                   ) : (
-                    schools.map((s) => {
+                    filteredSchools.map((s) => {
                       const maxSt = s.plan_name?.toLowerCase().includes('enterprise') ? 5000 : s.plan_name?.toLowerCase().includes('standard') ? 1000 : 300;
                       const enrolled = s.student_count || 0;
                       const pct = Math.min(100, Math.round((enrolled / maxSt) * 100));
+                      const fillClass = pct > 90 ? 'red' : pct > 70 ? 'amber' : 'green';
 
                       return (
                         <tr key={s.id}>
                           <td>
-                            <div style={{ fontWeight: '600', color: '#0f172a' }}>{s.name}</div>
-                            <div style={{ fontSize: '11px', color: '#64748b' }}>{s.code}</div>
+                            <div className="sa-school-cell">
+                              <div className="sa-school-avatar">
+                                {s.code ? s.code.slice(0, 2) : s.name.slice(0, 2)}
+                              </div>
+                              <div className="sa-school-info">
+                                <strong className="sa-school-name">{s.name}</strong>
+                                <span style={{ fontSize: '11.5px', color: '#64748b' }}>{s.code} · {s.city || 'Campus'}</span>
+                              </div>
+                            </div>
                           </td>
                           <td>
-                            <span style={{ fontWeight: '600', color: '#4f46e5' }}>
+                            <span style={{ fontWeight: 600, color: '#2563eb' }}>
                               {s.plan_name || 'Standard Growth'}
                             </span>
                           </td>
                           <td>{maxSt.toLocaleString()} students</td>
                           <td>{enrolled.toLocaleString()} students</td>
-                          <td style={{ minWidth: '150px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div style={{ flex: 1, height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                          <td>
+                            <div className="sa-ledger-progress-wrap">
+                              <div className="sa-ledger-progress-bar">
                                 <div
-                                  style={{
-                                    width: `${pct}%`,
-                                    height: '100%',
-                                    background: pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981',
-                                    borderRadius: '3px'
-                                  }}
+                                  className={`sa-ledger-progress-fill ${fillClass}`}
+                                  style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', width: '32px' }}>
-                                {pct}%
-                              </span>
+                              <span className="sa-ledger-progress-pct">{pct}%</span>
                             </div>
                           </td>
                           <td>
-                            <div style={{ fontSize: '13px', color: '#334155' }}>
+                            <span style={{ fontSize: '13px' }}>
                               {s.end_date ? new Date(s.end_date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Ongoing'}
-                            </div>
+                            </span>
                           </td>
                           <td>
-                            <span className={`badge ${s.status === 'ACTIVE' ? 'badge-active' : 'badge-suspended'}`}>
+                            <span className={`sa-badge-pill ${s.status === 'ACTIVE' ? 'success' : 'warning'}`}>
                               {s.status}
                             </span>
                           </td>
@@ -377,122 +528,102 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       {/* Modal: Create or Edit Plan */}
       {modalOpen && (
         <div className="modal-backdrop" onClick={() => !submitting && setModalOpen(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
+          <div className="sa-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sa-modal-header">
+              <h3>
                 {editingPlan ? `Configure Tier: ${editingPlan.name}` : 'Create New Subscription Tier'}
               </h3>
               <button
-                className="close-btn"
+                className="sa-modal-close"
                 disabled={submitting}
                 onClick={() => setModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}
+                title="Close"
               >
-                &times;
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPlan}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px 0' }}>
-                {formError && (
-                  <div style={{ padding: '10px 14px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontSize: '13px' }}>
-                    {formError}
-                  </div>
-                )}
+            <form onSubmit={handleSubmitPlan} className="sa-modal-form">
+              {formError && (
+                <div className="sa-error-banner" style={{ margin: '0 0 12px 0' }}>
+                  {formError}
+                </div>
+              )}
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                    Tier Name *
-                  </label>
+              <div className="form-group">
+                <label>Tier Plan Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Enterprise Elite, Campus Pro"
+                  value={planForm.name}
+                  onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description & Value Proposition</label>
+                <textarea
+                  rows={2}
+                  placeholder="Describe included features, SLA, and capacity"
+                  value={planForm.description}
+                  onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Max Student Limit *</label>
                   <input
-                    type="text"
+                    type="number"
                     required
-                    className="form-control"
-                    placeholder="e.g. Enterprise Elite, Campus Pro"
-                    value={planForm.name}
-                    onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                    min={10}
+                    value={planForm.max_students}
+                    onChange={(e) => setPlanForm({ ...planForm, max_students: Number(e.target.value) })}
                   />
                 </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                    Description & Value Proposition
-                  </label>
-                  <textarea
-                    rows={2}
-                    className="form-control"
-                    placeholder="Describe included modules, SLA, and capacity"
-                    value={planForm.description}
-                    onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                <div className="form-group">
+                  <label>Monthly Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={planForm.price_monthly}
+                    onChange={(e) => setPlanForm({
+                      ...planForm,
+                      price_monthly: Number(e.target.value),
+                      price_yearly: Number(e.target.value) * 10
+                    })}
                   />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                      Max Student Limit *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={10}
-                      className="form-control"
-                      value={planForm.max_students}
-                      onChange={(e) => setPlanForm({ ...planForm, max_students: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                      Monthly Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      className="form-control"
-                      value={planForm.price_monthly}
-                      onChange={(e) => setPlanForm({
-                        ...planForm,
-                        price_monthly: Number(e.target.value),
-                        price_yearly: Number(e.target.value) * 10
-                      })}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                      Annual Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="form-control"
-                      value={planForm.price_yearly}
-                      onChange={(e) => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>
-                      Tier Status
-                    </label>
-                    <select
-                      className="form-control"
-                      value={planForm.is_active ? 'active' : 'inactive'}
-                      onChange={(e) => setPlanForm({ ...planForm, is_active: e.target.value === 'active' })}
-                    >
-                      <option value="active">Active (Available to new schools)</option>
-                      <option value="inactive">Archived / Hidden</option>
-                    </select>
-                  </div>
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Annual Price (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={planForm.price_yearly}
+                    onChange={(e) => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Tier Availability Status</label>
+                  <select
+                    value={planForm.is_active ? 'active' : 'inactive'}
+                    onChange={(e) => setPlanForm({ ...planForm, is_active: e.target.value === 'active' })}
+                  >
+                    <option value="active">Active (Available to new schools)</option>
+                    <option value="inactive">Archived / Hidden</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="sa-modal-actions">
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="sa-btn-secondary"
                   disabled={submitting}
                   onClick={() => setModalOpen(false)}
                 >
@@ -500,7 +631,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="sa-btn-primary"
                   disabled={submitting}
                 >
                   {submitting ? 'Saving Tier...' : editingPlan ? 'Update Tier' : 'Create Tier'}

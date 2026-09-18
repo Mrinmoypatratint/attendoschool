@@ -32,17 +32,26 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  // Dark mode
+  // Dark mode (default to crisp light enterprise theme)
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return saved === 'dark';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        setDark(e.newValue === 'dark');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const toggleTheme = () => setDark(prev => !prev);
 
@@ -188,7 +197,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
         { path: '/super-admin/subscriptions', label: 'Subscriptions', icon: Layers },
         { path: '/super-admin/payments', label: 'Payments', icon: CreditCard },
         { path: '/super-admin/invoices', label: 'Invoices', icon: FileText },
-        { path: '/super-admin/monitoring', label: 'Monitoring', icon: Eye }
+        { path: '/super-admin/monitor', label: 'Monitoring', icon: Eye }
       ]
     },
     {
