@@ -2824,10 +2824,15 @@ function Students(){
   }
 
   const filtered = rows.filter(r => {
+    const q = search.toLowerCase();
     const matchesSearch = 
-      r.name.toLowerCase().includes(search.toLowerCase()) || 
-      String(r.roll_number).includes(search) ||
-      String(r.class_number).includes(search);
+      r.name.toLowerCase().includes(q) || 
+      String(r.roll_number).toLowerCase().includes(q) ||
+      String(r.class_number).toLowerCase().includes(q) ||
+      (r.admission_number && r.admission_number.toLowerCase().includes(q)) ||
+      (r.admissionNumber && r.admissionNumber.toLowerCase().includes(q)) ||
+      (r.student_email && r.student_email.toLowerCase().includes(q)) ||
+      (r.parent_email && r.parent_email.toLowerCase().includes(q));
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
     const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
     return matchesSearch && matchesClass && matchesSection;
@@ -2843,10 +2848,10 @@ function Students(){
 
   function downloadTemplate() {
     const sample = [
-      { "Student Name": "Aarav Sharma", "Roll Number": "101", "Class Number": 8, "Section Name": "A", "Parent Name": "Rajesh Sharma", "Parent Mobile": "9876543210", "Parent Email": "rajesh.sharma@example.com" },
-      { "Student Name": "Diya Patel", "Roll Number": "102", "Class Number": 8, "Section Name": "A", "Parent Name": "Kirit Patel", "Parent Mobile": "9876543211", "Parent Email": "kirit.patel@example.com" },
-      { "Student Name": "Rohan Gupta", "Roll Number": "103", "Class Number": 9, "Section Name": "B", "Parent Name": "Manoj Gupta", "Parent Mobile": "9876543212", "Parent Email": "manoj.gupta@example.com" },
-      { "Student Name": "Ananya Sen", "Roll Number": "104", "Class Number": 10, "Section Name": "A", "Parent Name": "Subhash Sen", "Parent Mobile": "9876543213", "Parent Email": "subhash.sen@example.com" }
+      { "Student Name": "Aarav Sharma", "Roll Number": "101", "Admission Number": "ADM-2025-001", "Class Number": 8, "Section Name": "A", "Parent Name": "Rajesh Sharma", "Parent Mobile": "9876543210", "Parent Email": "rajesh.sharma@example.com" },
+      { "Student Name": "Diya Patel", "Roll Number": "102", "Admission Number": "ADM-2025-002", "Class Number": 8, "Section Name": "A", "Parent Name": "Kirit Patel", "Parent Mobile": "9876543211", "Parent Email": "kirit.patel@example.com" },
+      { "Student Name": "Rohan Gupta", "Roll Number": "103", "Admission Number": "ADM-2025-003", "Class Number": 9, "Section Name": "B", "Parent Name": "Manoj Gupta", "Parent Mobile": "9876543212", "Parent Email": "manoj.gupta@example.com" },
+      { "Student Name": "Ananya Sen", "Roll Number": "104", "Admission Number": "ADM-2025-004", "Class Number": 10, "Section Name": "A", "Parent Name": "Subhash Sen", "Parent Mobile": "9876543213", "Parent Email": "subhash.sen@example.com" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
     const wb = XLSX.utils.book_new();
@@ -2867,6 +2872,7 @@ function Students(){
         const mapped = json.map((r, idx) => ({
           name: r["Student Name"] || r["Name"] || r["name"] || `Student ${idx + 1}`,
           rollNumber: String(r["Roll Number"] || r["Roll"] || r["roll_number"] || r["Roll No"] || idx + 101),
+          admissionNumber: String(r["Admission Number"] || r["Admission No"] || r["admission_number"] || r["Adm No"] || '').trim(),
           classNumber: Number(r["Class Number"] || r["Class"] || r["class_number"] || 8),
           sectionName: String(r["Section Name"] || r["Section"] || r["section_name"] || 'A').toUpperCase(),
           parentName: r["Parent Name"] || r["Guardian Name"] || r["parent_name"] || '—',
@@ -2971,10 +2977,10 @@ function Students(){
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <input 
-          placeholder="🔍 Search student name, roll number, or email..."
+          placeholder="🔍 Search name, roll number, admission number, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: 280, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+          style={{ width: 340, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
         />
         <select 
           value={classFilter} 
@@ -3020,7 +3026,7 @@ function Students(){
                 title="Select all"
               />
             </th>
-            <th>Roll</th>
+            <th>Roll / Adm No</th>
             <th>Student Name</th>
             <th>Class</th>
             <th>Student Email</th>
@@ -3041,7 +3047,14 @@ function Students(){
                   onChange={() => toggleSelect(x.id)}
                 />
               </td>
-              <td><span className="roll">{x.roll_number}</span></td>
+              <td>
+                <span className="roll">{x.roll_number}</span>
+                {(x.admission_number || x.admissionNumber) && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
+                    {x.admission_number || x.admissionNumber}
+                  </div>
+                )}
+              </td>
               <td><b>{x.name}</b></td>
               <td>Class {x.class_number} — {x.section_name}</td>
               <td>
@@ -3081,6 +3094,7 @@ function Students(){
                     setF({
                       name: x.name,
                       rollNumber: x.roll_number,
+                      admissionNumber: x.admission_number || x.admissionNumber || '',
                       studentEmail: x.student_email || x.email || '',
                       parentName: x.parent_name || '',
                       parentSmsNumber: x.parent_sms_number || '',
@@ -3130,9 +3144,14 @@ function Students(){
         <label>Student Full Name
           <input required placeholder="Full Name (e.g. Aarav Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
         </label>
-        <label>Roll Number
-          <input required placeholder="Roll Number (e.g. 101)" value={f.rollNumber||''} onChange={e=>setF({...f,rollNumber:e.target.value})}/>
-        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>Roll Number
+            <input required placeholder="Roll Number (e.g. 101)" value={f.rollNumber||''} onChange={e=>setF({...f,rollNumber:e.target.value})}/>
+          </label>
+          <label>Admission Number
+            <input placeholder="Admission Number (e.g. ADM-2025-001)" value={f.admissionNumber||''} onChange={e=>setF({...f,admissionNumber:e.target.value})}/>
+          </label>
+        </div>
         <label>Class
           <select required value={f.classId||''} onChange={e=>setF({...f,classId:e.target.value,sectionId:''})}>
             <option value="">Select Class</option>
@@ -3283,6 +3302,7 @@ function Students(){
                 <thead>
                   <tr>
                     <th>Roll</th>
+                    <th>Adm No</th>
                     <th>Name</th>
                     <th>Class</th>
                     <th>Section</th>
@@ -3295,6 +3315,7 @@ function Students(){
                   {previewRows.map((r, i) => (
                     <tr key={i}>
                       <td><span className="roll">{r.rollNumber}</span></td>
+                      <td><code style={{ fontSize: 11 }}>{r.admissionNumber || '—'}</code></td>
                       <td><b>{r.name}</b></td>
                       <td>Class {r.classNumber}</td>
                       <td>{r.sectionName}</td>

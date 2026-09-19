@@ -94,7 +94,7 @@ export default function PeopleManagement() {
             <>
               <thead>
                 <tr>
-                  <th>Roll</th>
+                  <th>Roll / Adm No</th>
                   <th>Student Name</th>
                   <th>Class & Section</th>
                   <th>Parent / Guardian</th>
@@ -109,6 +109,11 @@ export default function PeopleManagement() {
                       <span className="roll" style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
                         {r.roll_number || r.roll || '—'}
                       </span>
+                      {(r.admission_number || r.admissionNumber) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
+                          {r.admission_number || r.admissionNumber}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <b>{r.name}</b>

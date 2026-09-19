@@ -36,7 +36,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest,res) => {
 r.get('/students/:classId/:sectionId', ...teacher, async (req: AuthRequest,res) => {
   try {
     const q=await pool.query(
-      `SELECT id,name,roll_number,parent_name
+      `SELECT id,name,roll_number,admission_number,parent_name
        FROM students
        WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active
        ORDER BY roll_number`,

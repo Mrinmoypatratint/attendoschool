@@ -143,16 +143,16 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
 });
 
 export const demoStudents: any[] = [
-  { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', parent_name: 'Ramesh Kumar', parent_sms_number: '9876543210', parent_email: 'ramesh.kumar@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-02', name: 'Priya Sharma', roll_number: '2', parent_name: 'Sunil Sharma', parent_sms_number: '9876543211', parent_email: 'sunil.sharma@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-03', name: 'Rahul Das', roll_number: '3', parent_name: 'Bikash Das', parent_sms_number: '9876543212', parent_email: 'bikash.das@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-04', name: 'Ananya Sen', roll_number: '4', parent_name: 'Subhash Sen', parent_sms_number: '9876543213', parent_email: 'subhash.sen@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
-  { id: 'st-05', name: 'Dev Mukherjee', roll_number: '5', parent_name: 'Amit Mukherjee', parent_sms_number: '9876543214', parent_email: 'amit.m@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
-  { id: 'st-06', name: 'Ishita Ghosh', roll_number: '6', parent_name: 'Pranab Ghosh', parent_sms_number: '9876543215', parent_email: 'pranab.g@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
-  { id: 'st-07', name: 'Karan Patel', roll_number: '7', parent_name: 'Vijay Patel', parent_sms_number: '9876543216', parent_email: 'vijay.p@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
-  { id: 'st-08', name: 'Sneha Roy', roll_number: '8', parent_name: 'Debashis Roy', parent_sms_number: '9876543217', parent_email: 'debashis.roy@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A' },
-  { id: 'st-09', name: 'Rohan Gupta', roll_number: '9', parent_name: 'Manoj Gupta', parent_sms_number: '9876543218', parent_email: 'manoj.gupta@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' },
-  { id: 'st-10', name: 'Tanvi Verma', roll_number: '10', parent_name: 'Sanjay Verma', parent_sms_number: '9876543219', parent_email: 'sanjay.verma@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' }
+  { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', admission_number: 'ADM-2025-001', admissionNumber: 'ADM-2025-001', parent_name: 'Ramesh Kumar', parent_sms_number: '9876543210', parent_email: 'ramesh.kumar@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-02', name: 'Priya Sharma', roll_number: '2', admission_number: 'ADM-2025-002', admissionNumber: 'ADM-2025-002', parent_name: 'Sunil Sharma', parent_sms_number: '9876543211', parent_email: 'sunil.sharma@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-03', name: 'Rahul Das', roll_number: '3', admission_number: 'ADM-2025-003', admissionNumber: 'ADM-2025-003', parent_name: 'Bikash Das', parent_sms_number: '9876543212', parent_email: 'bikash.das@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-04', name: 'Ananya Sen', roll_number: '4', admission_number: 'ADM-2025-004', admissionNumber: 'ADM-2025-004', parent_name: 'Subhash Sen', parent_sms_number: '9876543213', parent_email: 'subhash.sen@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
+  { id: 'st-05', name: 'Dev Mukherjee', roll_number: '5', admission_number: 'ADM-2025-005', admissionNumber: 'ADM-2025-005', parent_name: 'Amit Mukherjee', parent_sms_number: '9876543214', parent_email: 'amit.m@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
+  { id: 'st-06', name: 'Ishita Ghosh', roll_number: '6', admission_number: 'ADM-2025-006', admissionNumber: 'ADM-2025-006', parent_name: 'Pranab Ghosh', parent_sms_number: '9876543215', parent_email: 'pranab.g@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
+  { id: 'st-07', name: 'Karan Patel', roll_number: '7', admission_number: 'ADM-2025-007', admissionNumber: 'ADM-2025-007', parent_name: 'Vijay Patel', parent_sms_number: '9876543216', parent_email: 'vijay.p@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
+  { id: 'st-08', name: 'Sneha Roy', roll_number: '8', admission_number: 'ADM-2025-008', admissionNumber: 'ADM-2025-008', parent_name: 'Debashis Roy', parent_sms_number: '9876543217', parent_email: 'debashis.roy@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A' },
+  { id: 'st-09', name: 'Rohan Gupta', roll_number: '9', admission_number: 'ADM-2025-009', admissionNumber: 'ADM-2025-009', parent_name: 'Manoj Gupta', parent_sms_number: '9876543218', parent_email: 'manoj.gupta@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' },
+  { id: 'st-10', name: 'Tanvi Verma', roll_number: '10', admission_number: 'ADM-2025-010', admissionNumber: 'ADM-2025-010', parent_name: 'Sanjay Verma', parent_sms_number: '9876543219', parent_email: 'sanjay.verma@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' }
 ];
 
 export const demoTeachers: any[] = [
@@ -223,16 +223,16 @@ r.put('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
 r.get('/students',...admin,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
  try {
-  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
+  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st JOIN classes c ON c.id=st.class_id JOIN sections sec ON sec.id=st.section_id
   WHERE st.school_id=$1 AND st.is_active=true
-  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
+  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY c.class_number,sec.name,st.roll_number`,[req.user!.schoolId,search]);
   res.json(q.rows);
  } catch {
   const filtered = search
-    ? demoStudents.filter(s => s.name.toLowerCase().includes(search) || String(s.roll_number).includes(search) || (s.email && s.email.toLowerCase().includes(search)) || (s.parent_email && s.parent_email.toLowerCase().includes(search)))
+    ? demoStudents.filter(s => s.name.toLowerCase().includes(search) || String(s.roll_number).includes(search) || (s.admission_number && s.admission_number.toLowerCase().includes(search)) || (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) || (s.email && s.email.toLowerCase().includes(search)) || (s.parent_email && s.parent_email.toLowerCase().includes(search)))
     : demoStudents;
   res.json(filtered);
  }
@@ -240,13 +240,14 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
 
 r.post('/students',...admin,async(req:AuthRequest,res)=>{
  const {
-   name, rollNumber, parentName, parentSmsNumber, classId, sectionId,
+   name, rollNumber, admissionNumber, admission_number, parentName, parentSmsNumber, classId, sectionId,
    studentEmail, email, parentEmail, loginOption, sendInviteEmail = true
  } = req.body;
  if(!name||!rollNumber||!parentSmsNumber||!classId||!sectionId) return res.status(400).json({message:'Name, roll, parent SMS, class and section are required'});
  
  const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
  const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
+ const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
  const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
 
  let clsNum = 8;
@@ -309,13 +310,15 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       }
     }
 
-    const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,name,parent_name,parent_sms_number,email,parent_email,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.user!.schoolId,classId,sectionId,rollNumber,name,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,linkedUserId]);
+    const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,admission_number,name,parent_name,parent_sms_number,email,parent_email,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [req.user!.schoolId,classId,sectionId,rollNumber,cleanAdmissionNumber||null,name,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,linkedUserId]);
     
     const created = {
       ...q.rows[0],
       class_number: clsNum,
       section_name: secName,
+      admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
+      admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
       student_email: cleanStudentEmail,
       parent_email: cleanParentEmail,
       login_email: targetLoginEmail,
@@ -357,6 +360,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
    name,
    roll_number: rollNumber,
+   admission_number: cleanAdmissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
+   admissionNumber: cleanAdmissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
    parent_name: parentName || '—',
    parent_sms_number: parentSmsNumber,
    email: cleanStudentEmail,
@@ -372,62 +377,65 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  };
  demoStudents.unshift(newStudent);
  syncStudentToFirestore(newStudent).catch(() => {});
- res.status(201).json(newStudent);
+  res.status(201).json(newStudent);
 });
 
 r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  const {students=[]}=req.body||{};
  if(!Array.isArray(students)||students.length===0) return res.status(400).json({message:'Array of student records is required'});
  const createdList: any[] = [];
- for (const st of students) {
-   const name = String(st.name||'').trim();
-   const rollNumber = String(st.rollNumber||st.roll_number||'').trim();
-   const parentSmsNumber = String(st.parentSmsNumber||st.parent_sms_number||st.mobile||'9000000000').trim();
-   const parentName = String(st.parentName||st.parent_name||'').trim();
-   const parentEmail = String(st.parentEmail||st.parent_email||'').trim();
-   let classId = st.classId || st.class_id;
-   let sectionId = st.sectionId || st.section_id;
-   let classNumber = Number(st.classNumber || st.class_number) || 8;
-   let sectionName = String(st.sectionName || st.section_name || 'A').toUpperCase();
+  for (const st of students) {
+    const name = String(st.name||'').trim();
+    const rollNumber = String(st.rollNumber||st.roll_number||'').trim();
+    const admissionNumber = String(st.admissionNumber||st.admission_number||'').trim();
+    const parentSmsNumber = String(st.parentSmsNumber||st.parent_sms_number||st.mobile||'9000000000').trim();
+    const parentName = String(st.parentName||st.parent_name||'').trim();
+    const parentEmail = String(st.parentEmail||st.parent_email||'').trim();
+    let classId = st.classId || st.class_id;
+    let sectionId = st.sectionId || st.section_id;
+    let classNumber = Number(st.classNumber || st.class_number) || 8;
+    let sectionName = String(st.sectionName || st.section_name || 'A').toUpperCase();
 
-   if (!classId) classId = `cls-${classNumber}`;
-   if (!sectionId) sectionId = `sec-${classNumber}-${sectionName.toLowerCase()}`;
+    if (!classId) classId = `cls-${classNumber}`;
+    if (!sectionId) sectionId = `sec-${classNumber}-${sectionName.toLowerCase()}`;
 
-   if (!name || !rollNumber) continue;
+    if (!name || !rollNumber) continue;
 
-   const studentObj = {
-     id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-     name,
-     roll_number: rollNumber,
-     parent_name: parentName || '—',
-     parent_sms_number: parentSmsNumber,
-     parent_email: parentEmail,
-     class_id: classId,
-     class_number: classNumber,
-     section_id: sectionId,
-     section_name: sectionName
-   };
+    const studentObj = {
+      id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      roll_number: rollNumber,
+      admission_number: admissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
+      admissionNumber: admissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
+      parent_name: parentName || '—',
+      parent_sms_number: parentSmsNumber,
+      parent_email: parentEmail,
+      class_id: classId,
+      class_number: classNumber,
+      section_id: sectionId,
+      section_name: sectionName
+    };
 
-   try {
-     const q = await pool.query(
-       `INSERT INTO students(school_id,class_id,section_id,roll_number,name,parent_name,parent_sms_number,parent_email)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-       [req.user!.schoolId, classId, sectionId, rollNumber, name, parentName || null, parentSmsNumber, parentEmail || null]
-     );
-     if (q.rowCount) {
-       const created = { ...q.rows[0], class_number: classNumber, section_name: sectionName };
-       createdList.push(created);
-       demoStudents.unshift(created);
-       syncStudentToFirestore(created).catch(() => {});
-       continue;
-     }
-   } catch {}
+    try {
+      const q = await pool.query(
+        `INSERT INTO students(school_id,class_id,section_id,roll_number,admission_number,name,parent_name,parent_sms_number,parent_email)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [req.user!.schoolId, classId, sectionId, rollNumber, admissionNumber || null, name, parentName || null, parentSmsNumber, parentEmail || null]
+      );
+      if (q.rowCount) {
+        const created = { ...q.rows[0], class_number: classNumber, section_name: sectionName, admission_number: admissionNumber || q.rows[0].admission_number, admissionNumber: admissionNumber || q.rows[0].admission_number };
+        createdList.push(created);
+        demoStudents.unshift(created);
+        syncStudentToFirestore(created).catch(() => {});
+        continue;
+      }
+    } catch {}
 
-   createdList.push(studentObj);
-   demoStudents.unshift(studentObj);
-   syncStudentToFirestore(studentObj).catch(() => {});
- }
- res.status(201).json({ success: true, count: createdList.length, items: createdList });
+    createdList.push(studentObj);
+    demoStudents.unshift(studentObj);
+    syncStudentToFirestore(studentObj).catch(() => {});
+  }
+  res.status(201).json({ success: true, count: createdList.length, items: createdList });
 });
 
 r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
@@ -449,14 +457,21 @@ r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
- const {name,rollNumber,parentName,parentSmsNumber,studentEmail,email,parentEmail,classId,sectionId}=req.body;
+ const {name,rollNumber,admissionNumber,admission_number,parentName,parentSmsNumber,studentEmail,email,parentEmail,classId,sectionId}=req.body;
  const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
  const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
+ const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
  try {
-  const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,parent_name=$3,parent_sms_number=$4,email=$5,parent_email=$6,class_id=$7,section_id=$8,updated_at=NOW()
-  WHERE id=$9 AND school_id=$10 RETURNING *`,[name,rollNumber,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
+  const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,updated_at=NOW()
+  WHERE id=$10 AND school_id=$11 RETURNING *`,[name,rollNumber,cleanAdmissionNumber||null,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
   if(!q.rowCount)return res.status(404).json({message:'Student not found'});
-  const result = { ...q.rows[0], student_email: cleanStudentEmail, parent_email: cleanParentEmail };
+  const result = {
+    ...q.rows[0],
+    admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
+    admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
+    student_email: cleanStudentEmail,
+    parent_email: cleanParentEmail
+  };
   syncStudentToFirestore(result).catch(() => {});
   return res.json(result);
  } catch {
@@ -464,6 +479,8 @@ r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
     id: req.params.id,
     name,
     roll_number: rollNumber,
+    admission_number: cleanAdmissionNumber,
+    admissionNumber: cleanAdmissionNumber,
     parent_name: parentName,
     parent_sms_number: parentSmsNumber,
     email: cleanStudentEmail,

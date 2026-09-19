@@ -58,6 +58,7 @@ CREATE TABLE students (
     class_id UUID NOT NULL REFERENCES classes(id),
     section_id UUID NOT NULL REFERENCES sections(id),
     roll_number VARCHAR(30) NOT NULL,
+    admission_number VARCHAR(100),
     name VARCHAR(150) NOT NULL,
     parent_name VARCHAR(150),
     parent_sms_number VARCHAR(30) NOT NULL,
