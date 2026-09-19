@@ -2056,6 +2056,27 @@ p.sa-hero-sub {
   color: #60a5fa;
 }
 
+.sa-action-dropdown button.danger-text,
+.sa-action-dropdown button.danger-item {
+  color: #ef4444 !important;
+}
+
+.sa-action-dropdown button.danger-text:hover,
+.sa-action-dropdown button.danger-item:hover {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+[data-theme="dark"] .sa-action-dropdown button.danger-text {
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .sa-action-dropdown button.danger-text:hover,
+[data-theme="dark"] .sa-action-dropdown button.danger-item:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+}
+
 /* Badges */
 .sa-badge-pill {
   display: inline-flex;

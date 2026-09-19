@@ -4,7 +4,7 @@ import {
   School, Plus, Search, Filter, MoreHorizontal, RefreshCw,
   ShieldAlert, CheckCircle2, XCircle, AlertTriangle, Eye, Edit3,
   Calendar, Layers, ChevronLeft, ChevronRight, X, User, Mail,
-  Phone, MapPin, Building
+  Phone, MapPin, Building, Trash2
 } from 'lucide-react';
 import { SchoolRecord, SubscriptionPlan } from './types';
 
@@ -33,6 +33,8 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
   const [editSchool, setEditSchool] = useState<SchoolRecord | null>(null);
   const [renewSchool, setRenewSchool] = useState<SchoolRecord | null>(null);
   const [suspendSchool, setSuspendSchool] = useState<SchoolRecord | null>(null);
+  const [deleteSchool, setDeleteSchool] = useState<SchoolRecord | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   // Wizard state (5 Steps)
   const [wizardStep, setWizardStep] = useState(1);
@@ -56,7 +58,6 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
     days: 365
   });
 
-  // Edit form state
   const [editFormData, setEditFormData] = useState({
     name: '',
     code: '',
@@ -66,7 +67,8 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
     address: '',
     city: '',
     state: '',
-    pincode: ''
+    pincode: '',
+    status: 'ACTIVE'
   });
 
   // Renew state
@@ -224,6 +226,26 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
       await loadData();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Status change failed');
+    }
+  }
+
+  // Delete School Submission
+  async function handleDeleteSubmit() {
+    if (!deleteSchool) return;
+    setDeleteBusy(true);
+    try {
+      await api.delete(`/super-admin/schools/${deleteSchool.id}`);
+      const schoolName = deleteSchool.name;
+      // Immediately remove from UI state
+      setSchools(prev => prev.filter(s => s.id !== deleteSchool.id));
+      setDeleteSchool(null);
+      showToast(`School "${schoolName}" was permanently deleted from the database.`);
+      // Re-sync with backend
+      await loadData();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to delete school');
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -403,11 +425,12 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                                 code: s.code,
                                 enquiryNumber: s.enquiry_number || '',
                                 phone: s.phone || '',
-                                email: s.email || '',
+                                email: s.email || s.admin_email || '',
                                 address: s.address || '',
                                 city: s.city || '',
                                 state: s.state || '',
-                                pincode: s.pincode || ''
+                                pincode: s.pincode || '',
+                                status: s.status || 'ACTIVE'
                               });
                               setActiveMenuId(null);
                             }}
@@ -427,10 +450,19 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                               setSuspendSchool(s);
                               setActiveMenuId(null);
                             }}
-                            className="danger-text"
                           >
                             <ShieldAlert size={13} />
                             <span>{s.status === 'ACTIVE' ? 'Suspend School' : 'Activate School'}</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeleteSchool(s);
+                              setActiveMenuId(null);
+                            }}
+                            className="danger-text"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete School</span>
                           </button>
                         </div>
                       )}
@@ -848,8 +880,44 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                 </div>
               </div>
             </div>
-            <div className="sa-modal-actions">
-              <button className="sa-btn-secondary" onClick={() => setViewSchool(null)}>Close</button>
+            <div className="sa-modal-actions" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <button
+                type="button"
+                className="sa-btn-danger"
+                onClick={() => {
+                  const target = viewSchool;
+                  setViewSchool(null);
+                  setDeleteSchool(target);
+                }}
+              >
+                <Trash2 size={13} /> <span>Delete School</span>
+              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="sa-btn-secondary"
+                  onClick={() => {
+                    const target = viewSchool;
+                    setViewSchool(null);
+                    setEditSchool(target);
+                    setEditFormData({
+                      name: target.name,
+                      code: target.code,
+                      enquiryNumber: target.enquiry_number || '',
+                      phone: target.phone || target.enquiry_number || '',
+                      email: target.email || target.admin_email || '',
+                      address: target.address || '',
+                      city: target.city || '',
+                      state: target.state || '',
+                      pincode: target.pincode || '',
+                      status: target.status || 'ACTIVE'
+                    });
+                  }}
+                >
+                  <Edit3 size={13} /> <span>Edit Details</span>
+                </button>
+                <button type="button" className="sa-btn-secondary" onClick={() => setViewSchool(null)}>Close</button>
+              </div>
             </div>
           </div>
         </div>
@@ -892,6 +960,26 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                   />
                 </div>
               </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Official Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Account Status</label>
+                  <select
+                    value={editFormData.status}
+                    onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                  </select>
+                </div>
+              </div>
               <div className="form-group">
                 <label>Address</label>
                 <input
@@ -899,6 +987,32 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                   value={editFormData.address}
                   onChange={e => setEditFormData({ ...editFormData, address: e.target.value })}
                 />
+              </div>
+              <div className="form-row-three">
+                <div className="form-group">
+                  <label>City</label>
+                  <input
+                    type="text"
+                    value={editFormData.city}
+                    onChange={e => setEditFormData({ ...editFormData, city: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>State</label>
+                  <input
+                    type="text"
+                    value={editFormData.state}
+                    onChange={e => setEditFormData({ ...editFormData, state: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Pincode</label>
+                  <input
+                    type="text"
+                    value={editFormData.pincode}
+                    onChange={e => setEditFormData({ ...editFormData, pincode: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="sa-modal-actions">
                 <button type="button" className="sa-btn-secondary" onClick={() => setEditSchool(null)}>Cancel</button>
@@ -971,6 +1085,81 @@ export function SchoolsManagement({ initialCreateOpen = false }: SchoolsManageme
                 onClick={() => handleToggleStatus(suspendSchool)}
               >
                 {suspendSchool.status === 'ACTIVE' ? 'Suspend School Access' : 'Reactivate School'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── MODAL: Delete School Confirmation ─── */}
+      {deleteSchool && (
+        <div className="sa-modal-backdrop" onClick={() => !deleteBusy && setDeleteSchool(null)}>
+          <div className="sa-modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '490px' }}>
+            <div className="sa-modal-header" style={{ borderBottomColor: '#fecaca' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#fef2f2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#dc2626'
+                }}>
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, color: '#991b1b', fontSize: '16px' }}>Delete School Institution</h3>
+                  <span className="sa-modal-subtitle">Permanent & Irreversible Operation</span>
+                </div>
+              </div>
+              <button className="sa-modal-close" disabled={deleteBusy} onClick={() => setDeleteSchool(null)}>×</button>
+            </div>
+            <div style={{ padding: '16px 0' }}>
+              <div style={{
+                background: '#fff1f2',
+                border: '1px solid #fecdd3',
+                borderRadius: '8px',
+                padding: '12px 14px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <AlertTriangle size={16} color="#e11d48" />
+                  <strong style={{ color: '#9f1239', fontSize: '13px' }}>Warning: Destructive Database Action</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '12.5px', color: '#881337', lineHeight: 1.5 }}>
+                  You are about to permanently delete <strong>{deleteSchool.name}</strong> ({deleteSchool.code}).
+                  All associated records, including administrator logins, teachers, student rosters, classes, timetable routines, and attendance sessions will be completely purged from the database.
+                </p>
+              </div>
+              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                Are you sure you want to proceed with deleting this school?
+              </p>
+            </div>
+            <div className="sa-modal-actions">
+              <button
+                type="button"
+                className="sa-btn-secondary"
+                disabled={deleteBusy}
+                onClick={() => setDeleteSchool(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="sa-btn-danger"
+                disabled={deleteBusy}
+                onClick={handleDeleteSubmit}
+              >
+                {deleteBusy ? (
+                  <>
+                    <RefreshCw size={13} className="sa-spinner" /> <span>Deleting from Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} /> <span>Yes, Delete School</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -430,11 +430,53 @@ export async function syncSchoolToFirestore(school: any): Promise<boolean> {
   }
 }
 
-export async function deleteSchoolFromFirestore(id: string): Promise<boolean> {
+export async function deleteSchoolFromFirestore(id: string, code?: string): Promise<boolean> {
   if (!isFirebaseConfigured()) return false;
   try {
+    // 1. Delete main school doc
     await collections.schools().doc(id).delete();
-    console.log(`[FirestoreSync] Deleted school (${id}) from Firestore`);
+
+    // Also delete any doc matching the school code or id if there are alternate entries
+    if (code) {
+      try {
+        const codeSnaps = await collections.schools().where('code', '==', code).get();
+        for (const d of codeSnaps.docs) {
+          await d.ref.delete();
+        }
+      } catch {}
+    }
+
+    // Helper to batch delete a collection by schoolId
+    const cascadeDelete = async (colRef: any, field = 'schoolId') => {
+      try {
+        const snap = await colRef.where(field, '==', id).get();
+        if (!snap.empty) {
+          const batch = firestore.batch();
+          snap.docs.forEach((doc: any) => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      } catch {}
+    };
+
+    await Promise.allSettled([
+      cascadeDelete(collections.users(), 'schoolId'),
+      cascadeDelete(collections.users(), 'school_id'),
+      cascadeDelete(collections.students(), 'schoolId'),
+      cascadeDelete(collections.teachers(), 'schoolId'),
+      cascadeDelete(collections.classes(), 'schoolId'),
+      cascadeDelete(collections.sections(), 'schoolId'),
+      cascadeDelete(collections.subjects(), 'schoolId'),
+      cascadeDelete(collections.timetables(), 'schoolId'),
+      cascadeDelete(collections.timetableEntries(), 'schoolId'),
+      cascadeDelete(collections.timetablePeriods(), 'schoolId'),
+      cascadeDelete(collections.teacherAssignments(), 'schoolId'),
+      cascadeDelete(collections.attendanceSessions(), 'schoolId'),
+      cascadeDelete(collections.attendanceRecords(), 'schoolId'),
+      cascadeDelete(collections.payments(), 'schoolId'),
+      cascadeDelete(collections.schoolSubscriptions(), 'schoolId')
+    ]);
+
+    console.log(`[FirestoreSync] Deleted school (${id}) and cascaded child records from Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to delete school from Firestore:`, err.message);
