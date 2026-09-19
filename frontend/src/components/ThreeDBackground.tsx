@@ -77,10 +77,6 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
     };
   }, []);
 
-  const handleSelectSlide = (idx: number) => {
-    setActiveSlide(idx);
-    startSlideTimer();
-  };
 
   // 3D Canvas Perspective Projection Engine
   useEffect(() => {
@@ -289,53 +285,29 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true 
   }, [dark]);
 
   return (
-    <>
-      <div className="as-3d-backdrop-container" aria-hidden="true">
-        {/* Dynamic Educational Background Photo Slides (Vivid, crisp, NO heavy blur) */}
-        {EDUCATIONAL_SCENES.map((scene, idx) => (
-          <div
-            key={scene.id}
-            className={`as-3d-slide ${idx === activeSlide ? 'active' : ''}`}
-            style={{ backgroundImage: `url(${scene.image})` }}
-          />
-        ))}
+    <div className="as-3d-backdrop-container" aria-hidden="true">
+      {/* Dynamic Educational Background Photo Slides (Vivid, crisp, NO heavy blur) */}
+      {EDUCATIONAL_SCENES.map((scene, idx) => (
+        <div
+          key={scene.id}
+          className={`as-3d-slide ${idx === activeSlide ? 'active' : ''}`}
+          style={{ backgroundImage: `url(${scene.image})` }}
+        />
+      ))}
 
-        {/* Subtle vignette gradient to preserve crisp photo details while maintaining card readability */}
-        <div className="as-3d-vignette-overlay" />
+      {/* Subtle vignette gradient to preserve crisp photo details while maintaining card readability */}
+      <div className="as-3d-vignette-overlay" />
 
-        {/* Luminous ambient floating light orbs */}
-        <div className="as-ambient-orb orb-1" />
-        <div className="as-ambient-orb orb-2" />
-        <div className="as-ambient-orb orb-3" />
+      {/* Luminous ambient floating light orbs */}
+      <div className="as-ambient-orb orb-1" />
+      <div className="as-ambient-orb orb-2" />
+      <div className="as-ambient-orb orb-3" />
 
-        {/* 3D Education Canvas Layer - on top of photos for crisp clarity */}
-        <canvas ref={canvasRef} className="as-3d-canvas-elem" />
+      {/* 3D Education Canvas Layer - on top of photos for crisp clarity */}
+      <canvas ref={canvasRef} className="as-3d-canvas-elem" />
 
-        {/* Geometric grid overlay */}
-        <div className="as-3d-grid-overlay" />
-      </div>
-
-      {/* Interactive Background Scene Navigation Dots (3-4 dots with live preview) */}
-      <nav className="as-scene-indicator-bar" aria-label="Educational Scene Selector">
-        <span className="as-scene-label">SCENE</span>
-        {EDUCATIONAL_SCENES.map((scene, idx) => (
-          <button
-            key={scene.id}
-            type="button"
-            className={`as-scene-dot ${idx === activeSlide ? 'active' : ''}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSelectSlide(idx);
-            }}
-            title={`Switch to ${scene.title}`}
-            aria-label={`Background: ${scene.title}`}
-          >
-            <span className="as-scene-dot-inner" />
-            <span className="as-scene-tooltip">{scene.badge}</span>
-          </button>
-        ))}
-      </nav>
-    </>
+      {/* Geometric grid overlay */}
+      <div className="as-3d-grid-overlay" />
+    </div>
   );
 };

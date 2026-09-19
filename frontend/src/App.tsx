@@ -378,38 +378,6 @@ function Login() {
     }
   }
 
-  // Live robotic HUD date & clock (updating every animation frame for ultra-precise milliseconds)
-  const [hudClock, setHudClock] = useState({ dateStr: '', timeStr: '' });
-
-  useEffect(() => {
-    let animId: number;
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-    const updateClock = () => {
-      const now = new Date();
-      const dayName = days[now.getDay()];
-      const dayNum = String(now.getDate()).padStart(2, '0');
-      const monthName = months[now.getMonth()];
-      const year = now.getFullYear();
-
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      const ms = String(now.getMilliseconds()).padStart(3, '0');
-
-      setHudClock({
-        dateStr: `${dayNum} ${monthName} ${year} • ${dayName}`,
-        timeStr: `TIME : ${hh} : ${mm} : ${ss} : ${ms}`
-      });
-
-      animId = requestAnimationFrame(updateClock);
-    };
-
-    animId = requestAnimationFrame(updateClock);
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
   return (
     <div className="as-simple-page">
       {/* 3D Educational Dynamic Animated Background */}
@@ -426,49 +394,6 @@ function Login() {
           <h1 className="as-simple-brand-title">AttendoSchool</h1>
           <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
-      </div>
-
-      {/* Floating Top-Right Utility: Theme & Language */}
-      <div className="as-simple-top-bar">
-        {/* Language Selector */}
-        <div className="as-lang-menu-container">
-          <button
-            type="button"
-            className="as-simple-util-btn"
-            onClick={() => setShowLang(l => !l)}
-            title="Change Language"
-          >
-            <Globe size={14} />
-            <span>{selectedLang}</span>
-            <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
-          </button>
-          {showLang && (
-            <div className="as-lang-popover">
-              {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
-                <div
-                  key={l}
-                  className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedLang(l.split(' ')[0]);
-                    setShowLang(false);
-                  }}
-                >
-                  {l}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Theme Switcher */}
-        <button
-          type="button"
-          className="as-simple-util-btn"
-          onClick={toggle}
-          title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {dark ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#e2e8f0" />}
-        </button>
       </div>
 
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
@@ -818,12 +743,6 @@ function Login() {
               </div>
             </form>
           )}
-
-          {/* Bottom subtle trust indicator */}
-            <div className="as-simple-footer-pill">
-              <ShieldCheck size={14} style={{ color: '#34d399' }} />
-              <span>Secure Educational Cloud Platform</span>
-            </div>
           </div>
         </div>
       </main>
@@ -958,17 +877,6 @@ function Login() {
         </Modal>
       )}
 
-      {/* Floating Bottom-Left Robotic Date & Day Display */}
-      <div className="as-robotic-bottom-left" title="System Live Date & Day">
-        <Calendar size={32} className="as-robotic-icon" />
-        <span className="as-robotic-text">{hudClock.dateStr}</span>
-      </div>
-
-      {/* Floating Bottom-Right Robotic Millisecond Chronometer */}
-      <div className="as-robotic-bottom-right" title="System Live Millisecond Chronometer">
-        <Clock size={32} className="as-robotic-icon" />
-        <span className="as-robotic-text">{hudClock.timeStr}</span>
-      </div>
     </div>
   );
 }
