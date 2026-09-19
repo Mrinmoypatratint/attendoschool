@@ -33,6 +33,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     max_students: 1000,
     price_monthly: 999,
     price_yearly: 999 * 12,
+    discount_percentage: 0,
     is_active: true
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -127,6 +128,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       max_students: 1000,
       price_monthly: 999,
       price_yearly: 999 * 12,
+      discount_percentage: 0,
       is_active: true
     });
     setFormError(null);
@@ -141,6 +143,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       max_students: plan.max_students,
       price_monthly: plan.price_monthly,
       price_yearly: plan.price_yearly || plan.price_monthly * 12,
+      discount_percentage: plan.discount_percentage || 0,
       is_active: plan.is_active
     });
     setFormError(null);
@@ -320,10 +323,15 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                   <div className="sa-plan-header">
                     <div className="sa-plan-title-group">
                       <h3 className="sa-plan-title">{p.name}</h3>
-                      <div>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <span className={`sa-badge-pill ${p.is_active ? 'success' : 'warning'}`}>
                           {p.is_active ? 'Active Tier' : 'Archived'}
                         </span>
+                        {p.discount_percentage && p.discount_percentage > 0 ? (
+                          <span className="sa-badge-pill" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 'bold' }}>
+                            {p.discount_percentage}% OFF
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -615,15 +623,35 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                   </span>
                 </div>
                 <div className="form-group">
-                  <label>Tier Availability Status</label>
-                  <select
-                    value={planForm.is_active ? 'active' : 'inactive'}
-                    onChange={(e) => setPlanForm({ ...planForm, is_active: e.target.value === 'active' })}
-                  >
-                    <option value="active">Active (Available to new schools)</option>
-                    <option value="inactive">Archived / Hidden</option>
-                  </select>
+                  <label>Discount Option (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="e.g. 15 (0 = No discount)"
+                    value={planForm.discount_percentage === 0 ? '' : planForm.discount_percentage}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Math.min(100, Math.max(0, Number(e.target.value)));
+                      setPlanForm({ ...planForm, discount_percentage: val });
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: planForm.discount_percentage > 0 ? '#059669' : '#64748b', marginTop: '4px', display: 'block', fontWeight: planForm.discount_percentage > 0 ? '600' : 'normal' }}>
+                    {planForm.discount_percentage > 0
+                      ? `🏷️ ${planForm.discount_percentage}% OFF will be shown on School Admin page`
+                      : 'No discount (discount badge will be hidden on School Admin page)'}
+                  </span>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '10px' }}>
+                <label>Tier Availability Status</label>
+                <select
+                  value={planForm.is_active ? 'active' : 'inactive'}
+                  onChange={(e) => setPlanForm({ ...planForm, is_active: e.target.value === 'active' })}
+                >
+                  <option value="active">Active (Available to new schools)</option>
+                  <option value="inactive">Archived / Hidden</option>
+                </select>
               </div>
 
               <div className="sa-modal-actions">

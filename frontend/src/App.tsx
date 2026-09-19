@@ -2405,7 +2405,14 @@ function AdminHome(){
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
         <div className="kpi-body">
           <span className="kpi-label">Subscription Tier</span>
-          <strong className="kpi-value" style={{ fontSize: 20 }}>{sub?.plan_name || 'Enterprise'}</strong>
+          <strong className="kpi-value" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span>{sub?.plan_name || 'Enterprise'}</span>
+            {sub?.discount_percentage > 0 && (
+              <span style={{ fontSize: 11, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                {sub.discount_percentage}% OFF
+              </span>
+            )}
+          </strong>
           <span className="kpi-sub neutral">{sub?.days_remaining ?? 365} days validity remaining</span>
         </div>
       </div>
@@ -4931,9 +4938,27 @@ function Notifications(){const {user}=useAuth();const [settings,setSettings]=use
 
 /* ────── Subscription (School) ────── */
 function SubscriptionPage(){
- const {user}=useAuth();const [s,setS]=useState<any>(null);const [payments,setPayments]=useState<any[]>([]);const [busy,setBusy]=useState(false);const [subDays,setSubDays]=useState(30);const [msg,setMsg]=useState('');
- async function load(){const[a,b]=await Promise.all([api.get('/school-payment/subscription'),api.get('/school-payment/payments')]);setS(a.data);setPayments(b.data)}
+ const {user}=useAuth();
+ const [s,setS]=useState<any>(null);
+ const [availablePlans,setAvailablePlans]=useState<any[]>([]);
+ const [payments,setPayments]=useState<any[]>([]);
+ const [busy,setBusy]=useState(false);
+ const [subDays,setSubDays]=useState(30);
+ const [msg,setMsg]=useState('');
+
+ async function load(){
+   const[a,b,c]=await Promise.all([
+     api.get('/school-payment/subscription'),
+     api.get('/school-payment/payments'),
+     api.get('/school-payment/plans').catch(() => ({ data: [] }))
+   ]);
+   setS(a.data);
+   setPayments(b.data);
+   setAvailablePlans(c.data || []);
+ }
+
  useEffect(()=>{load()},[]);
+
  async function renew(){
    setBusy(true);setMsg('');
    try{
@@ -4944,12 +4969,106 @@ function SubscriptionPage(){
    }catch(e:any){setMsg(e?.response?.data?.message||'Payment failed')}
    finally{setBusy(false)}
  }
+
  return <Layout><PageHead title="Subscription & Billing" sub="View your plan, validity, payments and renew your school subscription."/>
- <div className="stats"><Stat label="Plan" value={s?.plan_name||'—'}/><Stat label="Students" value={s?.student_count??'—'}/><Stat label="Days remaining" value={s?.days_remaining??'—'}/><Stat label="Status" value={s?.computed_status||'—'}/></div>
- <div className="two-col"><div className="panel"><h3>Current subscription</h3>
-   <div className="list"><div className="list-row"><b>Start</b><span>{s?.start_date?.slice(0,10)||'—'}</span></div><div className="list-row"><b>End</b><span>{s?.end_date?.slice(0,10)||'—'}</span></div><div className="list-row"><b>Student limit</b><span>{s?.max_students??'—'}</span></div><div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly||0).toLocaleString('en-IN')}</span></div></div>
- </div><div className="panel"><h3>Renew online</h3><label>Renewal period<select value={subDays} onChange={e=>setSubDays(Number(e.target.value))}><option value={30}>30 days</option><option value={90}>90 days</option><option value={180}>180 days</option><option value={365}>365 days</option></select></label><p className="muted">Use mock mode for local testing. If Razorpay is configured on the server, the production checkout endpoint is available.</p><button disabled={busy} onClick={renew}>{busy?'Processing…':`Pay & renew ${subDays} days (Test)`}</button>{msg&&<div className="success">{msg}</div>}</div></div>
- <div className="panel"><h3>Payment history</h3><div className="table-wrap"><table><thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead><tbody>{payments.map(p=><tr key={p.id}><td>{p.created_at?.slice(0,19).replace('T',' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number||'—'}</td><td>{p.receipt_number||'—'} {p.invoice_id&&<button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${p.invoice_id}/receipt`,'_blank')}>Receipt</button>}</td></tr>)}</tbody></table></div></div>
+ <div className="stats">
+   <Stat label="Plan" value={s?.plan_name||'—'}/>
+   <Stat label="Students" value={s?.student_count??'—'}/>
+   <Stat label="Days remaining" value={s?.days_remaining??'—'}/>
+   <Stat label="Status" value={s?.computed_status||'—'}/>
+ </div>
+ <div className="two-col">
+   <div className="panel">
+     <h3>Current subscription</h3>
+     <div className="list">
+       <div className="list-row"><b>Start</b><span>{s?.start_date?.slice(0,10)||'—'}</span></div>
+       <div className="list-row"><b>End</b><span>{s?.end_date?.slice(0,10)||'—'}</span></div>
+       <div className="list-row"><b>Student limit</b><span>{s?.max_students??'—'}</span></div>
+       <div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly||0).toLocaleString('en-IN')}</span></div>
+       {s?.discount_percentage > 0 && (
+         <div className="list-row" style={{ background: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', margin: '4px 0' }}>
+           <b style={{ color: '#047857' }}>Active Discount</b>
+           <span style={{ fontWeight: '700', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
+             🏷️ {s.discount_percentage}% OFF Applied
+           </span>
+         </div>
+       )}
+     </div>
+   </div>
+   <div className="panel">
+     <h3>Renew online</h3>
+     <label>Renewal period
+       <select value={subDays} onChange={e=>setSubDays(Number(e.target.value))}>
+         <option value={30}>30 days</option>
+         <option value={90}>90 days</option>
+         <option value={180}>180 days</option>
+         <option value={365}>365 days</option>
+       </select>
+     </label>
+     <p className="muted">Use mock mode for local testing. If Razorpay is configured on the server, the production checkout endpoint is available.</p>
+     <button disabled={busy} onClick={renew}>{busy?'Processing…':`Pay & renew ${subDays} days (Test)`}</button>
+     {msg&&<div className="success">{msg}</div>}
+   </div>
+ </div>
+
+ {availablePlans.length > 0 && (
+   <div className="panel" style={{ marginTop: '20px' }}>
+     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+       <div>
+         <h3 style={{ margin: 0 }}>Available Subscription Tiers</h3>
+         <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>Explore packages and student capacities available for your institution.</p>
+       </div>
+     </div>
+     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+       {availablePlans.map((p: any) => {
+         const isCurrent = s?.plan_name && (s.plan_name.toLowerCase() === p.name.toLowerCase() || p.id === s?.plan_id);
+         const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
+         const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
+         return (
+           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', background: isCurrent ? '#f8faff' : '#ffffff', position: 'relative' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>{p.name}</h4>
+               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                 {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
+                 {hasDiscount && (
+                   <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700' }}>
+                     {p.discount_percentage}% OFF
+                   </span>
+                 )}
+               </div>
+             </div>
+             <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
+             <div style={{ margin: '8px 0 12px' }}>
+               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                 <span style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
+                 {hasDiscount && (
+                   <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
+                 )}
+                 <span style={{ fontSize: '12px', color: '#64748b' }}>/ month</span>
+               </div>
+               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                 ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
+               </div>
+             </div>
+             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '12px', color: '#334155' }}>
+               <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
+             </div>
+           </div>
+         );
+       })}
+     </div>
+   </div>
+ )}
+
+ <div className="panel" style={{ marginTop: '20px' }}>
+   <h3>Payment history</h3>
+   <div className="table-wrap">
+     <table>
+       <thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead>
+       <tbody>{payments.map(p=><tr key={p.id}><td>{p.created_at?.slice(0,19).replace('T',' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number||'—'}</td><td>{p.receipt_number||'—'} {p.invoice_id&&<button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${p.invoice_id}/receipt`,'_blank')}>Receipt</button>}</td></tr>)}</tbody>
+     </table>
+   </div>
+ </div>
  </Layout>
 }
 

@@ -329,6 +329,7 @@ r.get('/plans', async (_req, res) => {
           const d = doc.data();
           const monthly = Number(d.price_monthly ?? d.priceMonthly ?? 0);
           const yearly = Number(d.price_yearly ?? d.priceYearly ?? monthly * 12);
+          const discount = Number(d.discount_percentage ?? d.discountPercentage ?? 0);
           return {
             id: doc.id,
             name: d.name || 'Tier',
@@ -336,6 +337,7 @@ r.get('/plans', async (_req, res) => {
             max_students: Number(d.max_students ?? d.maxStudents ?? 1000),
             price_monthly: monthly,
             price_yearly: yearly,
+            discount_percentage: discount,
             is_active: d.status ? d.status === 'ACTIVE' : (d.is_active ?? true)
           };
         });
@@ -1040,12 +1042,13 @@ r.put('/settings', async (req: AuthRequest, res) => {
 
 /* ────── Subscription Plans Management ────── */
 r.post('/plans', async (req: AuthRequest, res) => {
-  const { name, description, max_students, price_monthly, price_yearly } = req.body || {};
+  const { name, description, max_students, price_monthly, price_yearly, discount_percentage } = req.body || {};
   if (!name || !price_monthly) return res.status(400).json({ message: 'Name and price are required' });
   const planId = `plan-${Date.now()}`;
   const monthly = Number(price_monthly);
   const yearly = Number(price_yearly || monthly * 12);
   const studentLimit = Number(max_students || 500);
+  const discount = Math.max(0, Math.min(100, Number(discount_percentage || 0)));
 
   if (isFirebaseConfigured()) {
     try {
@@ -1059,6 +1062,8 @@ r.post('/plans', async (req: AuthRequest, res) => {
         price_monthly: monthly,
         priceYearly: yearly,
         price_yearly: yearly,
+        discount_percentage: discount,
+        discountPercentage: discount,
         status: 'ACTIVE',
         is_active: true,
         createdAt: new Date().toISOString()
@@ -1072,15 +1077,16 @@ r.post('/plans', async (req: AuthRequest, res) => {
       [planId, name, studentLimit, monthly, yearly]
     );
   } catch {}
-  await logSystemAudit(req.user || { id: 'super-admin' }, 'CREATE_PLAN', 'PLAN', planId, { name, price_monthly: monthly, price_yearly: yearly });
-  res.status(201).json({ id: planId, name, price_monthly: monthly, price_yearly: yearly, max_students: studentLimit, message: 'Plan created' });
+  await logSystemAudit(req.user || { id: 'super-admin' }, 'CREATE_PLAN', 'PLAN', planId, { name, price_monthly: monthly, price_yearly: yearly, discount_percentage: discount });
+  res.status(201).json({ id: planId, name, price_monthly: monthly, price_yearly: yearly, max_students: studentLimit, discount_percentage: discount, message: 'Plan created' });
 });
 
 r.put('/plans/:id', async (req: AuthRequest, res) => {
-  const { name, description, max_students, price_monthly, price_yearly, is_active } = req.body || {};
+  const { name, description, max_students, price_monthly, price_yearly, discount_percentage, is_active } = req.body || {};
   const id = String(req.params.id);
   const monthly = price_monthly !== undefined ? Number(price_monthly) : undefined;
   const yearly = price_yearly !== undefined ? Number(price_yearly) : (monthly !== undefined ? monthly * 12 : undefined);
+  const discount = discount_percentage !== undefined ? Math.max(0, Math.min(100, Number(discount_percentage))) : undefined;
 
   if (isFirebaseConfigured()) {
     try {
@@ -1098,6 +1104,10 @@ r.put('/plans/:id', async (req: AuthRequest, res) => {
       if (yearly !== undefined) {
         updateData.priceYearly = yearly;
         updateData.price_yearly = yearly;
+      }
+      if (discount !== undefined) {
+        updateData.discount_percentage = discount;
+        updateData.discountPercentage = discount;
       }
       if (is_active !== undefined) {
         updateData.status = is_active ? 'ACTIVE' : 'INACTIVE';

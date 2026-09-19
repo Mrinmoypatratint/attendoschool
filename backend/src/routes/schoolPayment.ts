@@ -3,46 +3,143 @@ import { Router } from 'express';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { createGatewayOrder } from '../services/paymentInvoiceService';
+import { collections, isFirebaseConfigured } from '../firebase';
 
-const r=Router();
-r.use(requireAuth,requireRoles('SCHOOL_ADMIN'));
+const r = Router();
+r.use(requireAuth, requireRoles('SCHOOL_ADMIN'));
 
-r.get('/subscription',async(req:AuthRequest,res)=>{
- const sid=req.user!.schoolId!;
- try {
-  const q=await pool.query(`SELECT s.id,s.name,s.code,s.status,
-    ss.id subscription_id,ss.start_date,ss.end_date,ss.status subscription_status,
-    sp.name plan_name,sp.max_students,sp.price_monthly,sp.price_yearly,
-    (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND st.is_active=true) student_count
-    FROM schools s
-    LEFT JOIN LATERAL(SELECT * FROM school_subscriptions x WHERE x.school_id=s.id ORDER BY x.end_date DESC NULLS LAST,x.created_at DESC LIMIT 1) ss ON true
-    LEFT JOIN subscription_plans sp ON sp.id=ss.plan_id
-    WHERE s.id=$1`,[sid]);
-  if(!q.rowCount) return res.status(404).json({message:'School not found'});
-  const x=q.rows[0];
-  const now=new Date(),end=x.end_date?new Date(x.end_date):null;
-  const daysRemaining=end?Math.max(0,Math.ceil((end.getTime()-now.getTime())/86400000)):0;
-  const computedStatus=x.status==='SUSPENDED'?'SUSPENDED':daysRemaining<=0?'EXPIRED':'ACTIVE';
-  res.json({...x,days_remaining:daysRemaining,computed_status:computedStatus});
- } catch {
-  res.json({
-    id: sid,
-    name: 'Demo Higher Secondary School',
-    code: 'DEMO001',
-    status: 'ACTIVE',
-    subscription_id: 'sub-01',
-    start_date: new Date().toISOString(),
-    end_date: new Date(Date.now() + 30*86400000).toISOString(),
-    subscription_status: 'ACTIVE',
-    plan_name: 'Standard',
-    max_students: 1000,
-    price_monthly: 999,
-    price_yearly: 9999,
-    student_count: 10,
-    days_remaining: 30,
-    computed_status: 'ACTIVE'
-  });
- }
+r.get('/plans', async (_req, res) => {
+  if (isFirebaseConfigured()) {
+    try {
+      const snap = await collections.subscriptionPlans().get();
+      if (!snap.empty) {
+        const list = snap.docs
+          .map(doc => {
+            const d = doc.data();
+            const monthly = Number(d.price_monthly ?? d.priceMonthly ?? 0);
+            const yearly = Number(d.price_yearly ?? d.priceYearly ?? monthly * 12);
+            const discount = Number(d.discount_percentage ?? d.discountPercentage ?? 0);
+            return {
+              id: doc.id,
+              name: d.name || 'Tier',
+              description: d.description || '',
+              max_students: Number(d.max_students ?? d.maxStudents ?? 1000),
+              price_monthly: monthly,
+              price_yearly: yearly,
+              discount_percentage: discount,
+              is_active: d.status ? d.status === 'ACTIVE' : (d.is_active ?? true)
+            };
+          })
+          .filter(p => p.is_active);
+        return res.json(list);
+      }
+    } catch {}
+  }
+  try {
+    const q = await pool.query(`SELECT id,name,max_students,price_monthly,price_yearly,is_active FROM subscription_plans WHERE is_active=true ORDER BY price_monthly`);
+    res.json(q.rows.map(r => ({ ...r, discount_percentage: 0 })));
+  } catch {
+    res.json([
+      { id: 'plan-basic', name: 'Basic', max_students: 300, price_monthly: 499, price_yearly: 499 * 12, discount_percentage: 0, is_active: true },
+      { id: 'plan-standard', name: 'Standard', max_students: 1000, price_monthly: 999, price_yearly: 999 * 12, discount_percentage: 0, is_active: true },
+      { id: 'plan-enterprise', name: 'Enterprise', max_students: 5000, price_monthly: 1999, price_yearly: 1999 * 12, discount_percentage: 0, is_active: true }
+    ]);
+  }
+});
+
+r.get('/subscription', async (req: AuthRequest, res) => {
+  const sid = req.user!.schoolId!;
+
+  if (isFirebaseConfigured()) {
+    try {
+      const schoolDoc = await collections.schools().doc(sid).get();
+      if (schoolDoc.exists) {
+        const sData = schoolDoc.data() || {};
+        const pId = sData.planId || 'plan-standard';
+        let planData: any = null;
+        try {
+          const planDoc = await collections.subscriptionPlans().doc(pId).get();
+          if (planDoc.exists) planData = planDoc.data();
+          else {
+            const allPlans = await collections.subscriptionPlans().get();
+            const matched = allPlans.docs.find(p => p.id.toLowerCase() === pId.toLowerCase() || (p.data().name && p.data().name.toLowerCase() === String(sData.planName || '').toLowerCase()));
+            if (matched) planData = matched.data();
+          }
+        } catch {}
+
+        const now = new Date();
+        const end = sData.subscriptionEnd ? new Date(sData.subscriptionEnd) : null;
+        const daysRemaining = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)) : 0;
+        const computedStatus = sData.status === 'SUSPENDED' ? 'SUSPENDED' : daysRemaining <= 0 ? 'EXPIRED' : 'ACTIVE';
+        const monthly = Number(planData?.price_monthly ?? planData?.priceMonthly ?? 999);
+        const yearly = Number(planData?.price_yearly ?? planData?.priceYearly ?? monthly * 12);
+        const discount = Number(planData?.discount_percentage ?? planData?.discountPercentage ?? 0);
+
+        let studentCount = 0;
+        try {
+          const studentsSnap = await collections.students().where('schoolId', '==', sid).get();
+          studentCount = studentsSnap.size;
+        } catch {}
+
+        return res.json({
+          id: sid,
+          name: sData.name || 'School',
+          code: sData.code || 'GIS',
+          status: sData.status || 'ACTIVE',
+          subscription_id: `sub-${sid.slice(0, 8)}`,
+          start_date: sData.subscriptionStart || now.toISOString().slice(0, 10),
+          end_date: sData.subscriptionEnd || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+          subscription_status: sData.status || 'ACTIVE',
+          plan_name: planData?.name || sData.planName || 'Standard',
+          max_students: Number(planData?.max_students ?? planData?.maxStudents ?? sData.maxStudents ?? 1000),
+          price_monthly: monthly,
+          price_yearly: yearly,
+          discount_percentage: discount,
+          student_count: studentCount,
+          days_remaining: daysRemaining,
+          computed_status: computedStatus
+        });
+      }
+    } catch (fbErr) {
+      console.warn('[Firestore] schoolPayment subscription error:', fbErr);
+    }
+  }
+
+  try {
+    const q = await pool.query(`SELECT s.id,s.name,s.code,s.status,
+      ss.id subscription_id,ss.start_date,ss.end_date,ss.status subscription_status,
+      sp.name plan_name,sp.max_students,sp.price_monthly,sp.price_yearly,
+      (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND st.is_active=true) student_count
+      FROM schools s
+      LEFT JOIN LATERAL(SELECT * FROM school_subscriptions x WHERE x.school_id=s.id ORDER BY x.end_date DESC NULLS LAST,x.created_at DESC LIMIT 1) ss ON true
+      LEFT JOIN subscription_plans sp ON sp.id=ss.plan_id
+      WHERE s.id=$1`, [sid]);
+    if (!q.rowCount) return res.status(404).json({ message: 'School not found' });
+    const x = q.rows[0];
+    const now = new Date(), end = x.end_date ? new Date(x.end_date) : null;
+    const daysRemaining = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)) : 0;
+    const computedStatus = x.status === 'SUSPENDED' ? 'SUSPENDED' : daysRemaining <= 0 ? 'EXPIRED' : 'ACTIVE';
+    res.json({ ...x, discount_percentage: 0, days_remaining: daysRemaining, computed_status: computedStatus });
+  } catch {
+    res.json({
+      id: sid,
+      name: 'Demo Higher Secondary School',
+      code: 'DEMO001',
+      status: 'ACTIVE',
+      subscription_id: 'sub-01',
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 30 * 86400000).toISOString(),
+      subscription_status: 'ACTIVE',
+      plan_name: 'Standard',
+      max_students: 1000,
+      price_monthly: 999,
+      price_yearly: 999 * 12,
+      discount_percentage: 0,
+      student_count: 10,
+      days_remaining: 30,
+      computed_status: 'ACTIVE'
+    });
+  }
 });
 
 r.get('/payments',async(req:AuthRequest,res)=>{

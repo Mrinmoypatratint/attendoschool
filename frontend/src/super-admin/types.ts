@@ -43,6 +43,7 @@ export interface SubscriptionPlan {
   max_students: number;
   price_monthly: number;
   price_yearly: number;
+  discount_percentage?: number;
   is_active: boolean;
 }
 
