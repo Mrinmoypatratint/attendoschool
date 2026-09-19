@@ -81,16 +81,20 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand">
-          <div className="student-logo-wrap">
+          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer' }}>
             <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
+            <span style={{ marginLeft: 8, fontWeight: 700, fontSize: 15, color: 'var(--text, #0F172A)' }}>AttendoSchool</span>
           </div>
           <button 
             type="button" 
             className="student-mobile-close-btn"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMobileNavOpen(false);
+            }}
             aria-label="Close navigation"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -138,7 +142,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             <button
               type="button"
               className="student-hamburger-btn"
-              onClick={() => setMobileNavOpen(true)}
+              onClick={() => setMobileNavOpen(prev => !prev)}
               aria-label="Toggle navigation menu"
             >
               <Menu size={20} />

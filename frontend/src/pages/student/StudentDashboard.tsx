@@ -80,9 +80,11 @@ export function StudentDashboard() {
               Good Morning, <span className="student-greeting-name">{student?.name || 'Rohan Sharma'}</span> 👋
             </h1>
           </div>
-          <p className="student-greeting-meta">
-            {student?.className || 'Class 10'} - Section {student?.sectionName || 'A'} &nbsp;|&nbsp; Roll No. {student?.rollNumber || '25'} &nbsp;|&nbsp; {student?.schoolName || 'Greenwood International School'}
-          </p>
+          <div className="student-greeting-meta">
+            <span className="student-meta-pill">{student?.className || 'Class 10'} · Section {student?.sectionName || 'A'}</span>
+            <span className="student-meta-pill">Roll #{student?.rollNumber || '25'}</span>
+            <span className="student-meta-pill student-meta-school">{student?.schoolName || 'Greenwood International School'}</span>
+          </div>
         </div>
 
         <div className="student-hero-quote-card">
