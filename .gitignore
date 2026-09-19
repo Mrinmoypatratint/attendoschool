@@ -19,3 +19,4 @@ backend/serviceAccountKey.json
 *.serviceAccount.json
 *.tsbuildinfo
 .vercel/
+.vercel
