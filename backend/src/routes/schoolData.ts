@@ -4,7 +4,10 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser } from '../store/demoUsers';
-import { createAndSendPasswordReset } from './auth';
+import { createAndSendPasswordReset, isSameSchool } from './auth';
+import { demoSchools } from './superAdmin';
+import { getFirestoreSchoolById } from '../services/firestoreService';
+import { collections, isFirebaseConfigured } from '../firebase';
 import {
   syncStudentToFirestore,
   deleteStudentFromFirestore,
@@ -858,6 +861,39 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
   const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, created_at FROM schools WHERE id = $1', [sid]);
   if (q.rowCount) return res.json(q.rows[0]);
  } catch {}
+
+ // Check Firestore
+ try {
+  const fsSchool = await getFirestoreSchoolById(sid);
+  if (fsSchool) {
+   return res.json({
+    id: fsSchool.id,
+    name: fsSchool.name,
+    code: fsSchool.code || 'SCH001',
+    status: fsSchool.status || 'ACTIVE',
+    enquiry_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
+    contact_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
+    address: fsSchool.address || 'Main Campus',
+    website: fsSchool.website || '',
+    created_at: fsSchool.createdAt || new Date().toISOString()
+   });
+  }
+ } catch {}
+
+ const demo = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid));
+ if (demo) {
+  return res.json({
+   id: demo.id,
+   name: demo.name,
+   code: demo.code || 'SCH001',
+   status: demo.status || 'ACTIVE',
+   enquiry_number: demo.enquiry_number || '1800123456',
+   contact_number: demo.enquiry_number || '1800123456',
+   address: demo.address || 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka',
+   website: demo.website || ''
+  });
+ }
+
  res.json({
   id: sid,
   name: 'Greenwood International School',
@@ -870,18 +906,34 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
 
 r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
- const { enquiryNumber, address } = req.body || {};
+ const { enquiryNumber, contact_number, address, website } = req.body || {};
+ const phone = contact_number || enquiryNumber;
  try {
   const q = await pool.query(
     'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address) WHERE id = $3 RETURNING id, name, code, status, enquiry_number, address',
-    [enquiryNumber, address, sid]
+    [phone, address, sid]
   );
   if (q.rowCount) {
     syncSchoolToFirestore(q.rows[0]).catch(() => {});
     return res.json(q.rows[0]);
   }
  } catch {}
- const updatedSchool = { id: sid, enquiry_number: enquiryNumber, address };
+
+ try {
+  if (isFirebaseConfigured()) {
+    await collections.schools().doc(sid).set({
+      phone,
+      enquiryNumber: phone,
+      address,
+      website: website || '',
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    const updated = await getFirestoreSchoolById(sid);
+    if (updated) return res.json(updated);
+  }
+ } catch {}
+
+ const updatedSchool = { id: sid, enquiry_number: phone, address, website };
  syncSchoolToFirestore(updatedSchool).catch(() => {});
  res.json(updatedSchool);
 });

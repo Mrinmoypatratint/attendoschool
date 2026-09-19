@@ -6,6 +6,12 @@ export interface FirestoreSchool {
   code?: string;
   address?: string;
   phone?: string;
+  enquiryNumber?: string;
+  contact_number?: string;
+  website?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   email?: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
   planId?: string;
@@ -15,6 +21,7 @@ export interface FirestoreSchool {
   subscriptionEnd?: string;
   createdAt: string;
   updatedAt?: string;
+  [key: string]: any;
 }
 
 export interface FirestoreUser {

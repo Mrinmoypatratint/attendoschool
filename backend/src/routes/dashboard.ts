@@ -4,6 +4,8 @@ import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { demoSchools } from './superAdmin';
 import { demoStudents, demoTeachers, demoClasses, demoSections } from './schoolData';
 import { getInMemoryActiveAcademicYear } from './academicYears';
+import { getFirestoreSchoolById } from '../services/firestoreService';
+import { isSameSchool } from './auth';
 
 const r = Router();
 
@@ -84,14 +86,49 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
       `, [sid]).catch(() => ({ rows: [] }))
     ]);
 
-    const school = schoolRes.rows[0] || {
-      id: sid,
-      name: 'Greenwood International School',
-      code: 'GIS001',
-      status: 'ACTIVE',
-      enquiry_number: '1800123456',
-      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-    };
+    let school = schoolRes.rows[0];
+    let fsSchool: any = null;
+
+    if (!school) {
+      try {
+        fsSchool = await getFirestoreSchoolById(sid);
+        if (fsSchool) {
+          school = {
+            id: fsSchool.id,
+            name: fsSchool.name,
+            code: fsSchool.code || 'SCH001',
+            status: fsSchool.status || 'ACTIVE',
+            enquiry_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
+            address: fsSchool.address || 'Main Campus'
+          };
+        }
+      } catch {}
+    }
+
+    if (!school) {
+      const demo = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid));
+      if (demo) {
+        school = {
+          id: demo.id,
+          name: demo.name,
+          code: demo.code || 'SCH001',
+          status: demo.status || 'ACTIVE',
+          enquiry_number: demo.enquiry_number || '1800123456',
+          address: demo.address || 'Campus 4, Tech Park Boulevard, Bengaluru'
+        };
+      }
+    }
+
+    if (!school) {
+      school = {
+        id: sid,
+        name: 'Greenwood International School',
+        code: 'GIS001',
+        status: 'ACTIVE',
+        enquiry_number: '1800123456',
+        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+      };
+    }
 
     const att = attendanceRes.rows[0] || { total: 0, present: 0, absent: 0 };
     const totalMarked = Number(att.total) || 0;
@@ -124,6 +161,18 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
         status: sub.status || 'ACTIVE',
         start_date: sub.start_date,
         end_date: sub.end_date,
+        days_remaining: daysRemaining
+      };
+    } else if (fsSchool) {
+      const now = new Date();
+      const end = fsSchool.subscriptionEnd ? new Date(fsSchool.subscriptionEnd) : null;
+      const daysRemaining = end ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000)) : 365;
+      subscriptionData = {
+        plan_name: fsSchool.planName || fsSchool.plan_name || 'Standard',
+        max_students: fsSchool.maxStudents || fsSchool.max_students || 1000,
+        status: fsSchool.status || 'ACTIVE',
+        start_date: fsSchool.subscriptionStart || new Date().toISOString().slice(0, 10),
+        end_date: fsSchool.subscriptionEnd || '2027-12-31',
         days_remaining: daysRemaining
       };
     } else {
@@ -171,15 +220,33 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
       subscription: subscriptionData
     });
   } catch (err: any) {
-    // Fallback using real in-memory store filtered by tenant
-    const matchedSchool = demoSchools.find(s => s.id === sid) || {
-      id: sid,
-      name: 'Greenwood International School',
-      code: 'GIS001',
-      status: 'ACTIVE',
-      enquiry_number: '1800123456',
-      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-    };
+    // Fallback using real Firestore / in-memory store filtered by tenant
+    let matchedSchool: any = null;
+    try {
+      const fs = await getFirestoreSchoolById(sid);
+      if (fs) {
+        matchedSchool = {
+          id: fs.id,
+          name: fs.name,
+          code: fs.code || 'SCH001',
+          status: fs.status || 'ACTIVE',
+          enquiry_number: fs.phone || fs.enquiryNumber || '1800123456',
+          address: fs.address || 'Main Campus',
+          plan_name: fs.planName || fs.plan_name || 'Standard'
+        };
+      }
+    } catch {}
+
+    if (!matchedSchool) {
+      matchedSchool = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid)) || {
+        id: sid,
+        name: 'Greenwood International School',
+        code: 'GIS001',
+        status: 'ACTIVE',
+        enquiry_number: '1800123456',
+        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+      };
+    }
 
     const studentCount = demoStudents.length;
     const teacherCount = demoTeachers.length;

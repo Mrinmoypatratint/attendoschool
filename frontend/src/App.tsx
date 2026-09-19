@@ -1,4 +1,4 @@
-import {useEffect,useState,useRef} from 'react';
+import {useEffect,useState,useRef,useCallback} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
@@ -102,6 +102,8 @@ function GoogleGLogo() {
 }
 
 const FALLBACK_INSTITUTES: Institute[] = [
+  { id: 'sch-1789773642845', name: 'BSMV', code: 'BSMV01', address: 'Vill - Bagda , PO - Bagda , PS - Puncha , Dist - Purulia , WEST BENGAL 723151' },
+  { id: 'school-greenwood-001', name: 'Greenwood International School', code: 'GIS001', address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka' },
   { id: '00000000-0000-0000-0000-000000000001', name: 'Greenwood International School', code: 'GIS001', address: 'Main Campus' },
   { id: 'school-delhi-001', name: 'Delhi Public Academy', code: 'DPA001', address: 'South Campus' },
   { id: 'school-central-001', name: 'Central Cloud Administration', code: 'CCA001', address: 'Cloud HQ' }
@@ -184,10 +186,27 @@ function Login() {
   const { login } = useAuth();
   const { dark, toggle } = useTheme();
 
-  const [institutes, setInstitutes] = useState<Institute[]>(FALLBACK_INSTITUTES);
+  const [institutes, setInstitutes] = useState<Institute[]>(() => {
+    try {
+      const cached = localStorage.getItem('attendoschool_cached_institutes');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return FALLBACK_INSTITUTES;
+  });
+  const [institutesLoading, setInstitutesLoading] = useState(false);
+  const [institutesError, setInstitutesError] = useState(false);
   const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
-  const [instituteId, setInstituteId] = useState('00000000-0000-0000-0000-000000000001');
+  const [instituteId, setInstituteId] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem('attendoschool_last_institute_id');
+      if (cached) return cached;
+    } catch {}
+    return 'sch-1789773642845';
+  });
   const [instituteSearch, setInstituteSearch] = useState('');
   const [instituteOpen, setInstituteOpen] = useState(false);
   const [email, setEmail] = useState('admin@demo-school.local');
@@ -208,26 +227,62 @@ function Login() {
   const instituteDropdownRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  useEffect(() => {
-    // Load active institutes from backend
-    api.get('/auth/institutes')
-      .then(res => {
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          setInstitutes(res.data);
-          const def = res.data.find((i: any) => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || res.data[0];
-          if (def) setInstituteId(def.id);
-        }
-      })
-      .catch(() => {
-        studentApi.getInstitutes().then(list => {
-          if (list && list.length > 0) {
-            setInstitutes(list);
-            const def = list.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || list[0];
-            if (def) setInstituteId(def.id);
+  const fetchInstitutes = useCallback(async (isRetry = false) => {
+    setInstitutesLoading(true);
+    setInstitutesError(false);
+    try {
+      const res = await api.get('/auth/institutes');
+      const list = Array.isArray(res.data) ? res.data : (res.data?.institutes || res.data?.data || []);
+      if (Array.isArray(list) && list.length > 0) {
+        const map = new Map<string, Institute>();
+        // Add default fallbacks first
+        FALLBACK_INSTITUTES.forEach(i => map.set(i.id, i));
+        // Overwrite/add live fetched
+        list.forEach((i: any) => {
+          if (i && i.id && i.name) {
+            map.set(String(i.id), {
+              id: String(i.id),
+              name: String(i.name),
+              code: String(i.code || ''),
+              address: String(i.address || '')
+            });
           }
-        }).catch(() => {});
-      });
+        });
+        const merged = Array.from(map.values());
+        setInstitutes(merged);
+        try {
+          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(merged));
+        } catch {}
+
+        // Preserve current user selection if still valid!
+        setInstituteId(prev => {
+          if (prev && merged.some(i => i.id === prev)) return prev;
+          const def = merged.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || merged[0];
+          return def ? def.id : '';
+        });
+      }
+    } catch (err) {
+      console.warn('Institute fetch failed, keeping available cached institutes:', err);
+      setInstitutesError(true);
+      if (!isRetry) {
+        setTimeout(() => fetchInstitutes(true), 3000);
+      }
+    } finally {
+      setInstitutesLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchInstitutes();
+  }, [fetchInstitutes]);
+
+  function selectInstitute(id: string) {
+    setInstituteId(id);
+    setInstituteOpen(false);
+    try {
+      localStorage.setItem('attendoschool_last_institute_id', id);
+    } catch {}
+  }
 
   // Close institute dropdown when clicking outside
   useEffect(() => {
@@ -256,8 +311,11 @@ function Login() {
     setEmail(cfg.defaultEmail);
     setPassword('ChangeMe123!');
     if (cfg.needsSchool) {
-      const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
-      if (def) setInstituteId(def.id);
+      setInstituteId(prev => {
+        if (prev && institutes.some(i => i.id === prev)) return prev;
+        const def = institutes.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+        return def ? def.id : '';
+      });
     } else {
       setInstituteId('');
     }
@@ -320,38 +378,6 @@ function Login() {
     }
   }
 
-  // Live robotic HUD date & clock (updating every animation frame for ultra-precise milliseconds)
-  const [hudClock, setHudClock] = useState({ dateStr: '', timeStr: '' });
-
-  useEffect(() => {
-    let animId: number;
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-    const updateClock = () => {
-      const now = new Date();
-      const dayName = days[now.getDay()];
-      const dayNum = String(now.getDate()).padStart(2, '0');
-      const monthName = months[now.getMonth()];
-      const year = now.getFullYear();
-
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      const ms = String(now.getMilliseconds()).padStart(3, '0');
-
-      setHudClock({
-        dateStr: `${dayNum} ${monthName} ${year} • ${dayName}`,
-        timeStr: `TIME : ${hh} : ${mm} : ${ss} : ${ms}`
-      });
-
-      animId = requestAnimationFrame(updateClock);
-    };
-
-    animId = requestAnimationFrame(updateClock);
-    return () => cancelAnimationFrame(animId);
-  }, []);
-
   return (
     <div className="as-simple-page">
       {/* 3D Educational Dynamic Animated Background */}
@@ -368,49 +394,6 @@ function Login() {
           <h1 className="as-simple-brand-title">AttendoSchool</h1>
           <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
-      </div>
-
-      {/* Floating Top-Right Utility: Theme & Language */}
-      <div className="as-simple-top-bar">
-        {/* Language Selector */}
-        <div className="as-lang-menu-container">
-          <button
-            type="button"
-            className="as-simple-util-btn"
-            onClick={() => setShowLang(l => !l)}
-            title="Change Language"
-          >
-            <Globe size={14} />
-            <span>{selectedLang}</span>
-            <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
-          </button>
-          {showLang && (
-            <div className="as-lang-popover">
-              {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
-                <div
-                  key={l}
-                  className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedLang(l.split(' ')[0]);
-                    setShowLang(false);
-                  }}
-                >
-                  {l}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Theme Switcher */}
-        <button
-          type="button"
-          className="as-simple-util-btn"
-          onClick={toggle}
-          title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {dark ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#e2e8f0" />}
-        </button>
       </div>
 
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
@@ -551,8 +534,11 @@ function Login() {
                     setEmail(cfg.defaultEmail);
                     setPassword('ChangeMe123!');
                     if (cfg.needsSchool) {
-                      const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
-                      if (def) setInstituteId(def.id);
+                      setInstituteId(prev => {
+                        if (prev && institutes.some(i => i.id === prev)) return prev;
+                        const def = institutes.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+                        return def ? def.id : '';
+                      });
                     }
                   }}
                 >
@@ -564,9 +550,28 @@ function Login() {
               {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
               {currentConfig.needsSchool && (
                 <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
-                  <label className="as-simple-label">
-                    Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label className="as-simple-label" style={{ margin: 0 }}>
+                      Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {institutesLoading ? (
+                        <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <RefreshCw size={11} className="spin" /> Syncing...
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
+                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px' }}
+                          title="Refresh schools from server"
+                        >
+                          <RefreshCw size={10} />
+                          <span>Refresh list</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
@@ -592,7 +597,7 @@ function Login() {
                   {/* Searchable Dropdown Popover */}
                   {instituteOpen && (
                     <div className="as-inst-popover-menu" style={{ zIndex: 100, position: 'absolute', top: '100%', left: 0, right: 0 }}>
-                      <div className="as-popover-search-wrap">
+                      <div className="as-popover-search-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Search size={14} className="as-popover-search-icon" />
                         <input
                           type="text"
@@ -601,20 +606,37 @@ function Login() {
                           onChange={e => setInstituteSearch(e.target.value)}
                           autoFocus
                           className="as-popover-search-input"
+                          style={{ flex: 1 }}
                         />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
+                          title="Reload schools from server"
+                          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, padding: '4px 8px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}
+                        >
+                          <RefreshCw size={11} className={institutesLoading ? 'spin' : ''} />
+                          <span>Reload</span>
+                        </button>
                       </div>
                       <div className="as-inst-popover-list">
                         {filteredInstitutes.length === 0 ? (
-                          <div className="as-inst-empty">No institutes match your search</div>
+                          <div className="as-inst-empty">
+                            <span>No institutes match your search</span>
+                            <button
+                              type="button"
+                              onClick={() => { setInstituteSearch(''); fetchInstitutes(); }}
+                              style={{ marginTop: 6, display: 'block', background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                            >
+                              Reset search and reload
+                            </button>
+                          </div>
                         ) : (
                           filteredInstitutes.map(inst => (
                             <div
                               key={inst.id}
                               className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
-                              onClick={() => {
-                                setInstituteId(inst.id);
-                                setInstituteOpen(false);
-                              }}
+                              onPointerDown={(e) => { e.preventDefault(); selectInstitute(inst.id); }}
+                              onClick={() => selectInstitute(inst.id)}
                             >
                               <div>
                                 <div className="as-inst-option-title">{inst.name}</div>
@@ -721,12 +743,6 @@ function Login() {
               </div>
             </form>
           )}
-
-          {/* Bottom subtle trust indicator */}
-            <div className="as-simple-footer-pill">
-              <ShieldCheck size={14} style={{ color: '#34d399' }} />
-              <span>Secure Educational Cloud Platform</span>
-            </div>
           </div>
         </div>
       </main>
@@ -861,17 +877,6 @@ function Login() {
         </Modal>
       )}
 
-      {/* Floating Bottom-Left Robotic Date & Day Display */}
-      <div className="as-robotic-bottom-left" title="System Live Date & Day">
-        <Calendar size={32} className="as-robotic-icon" />
-        <span className="as-robotic-text">{hudClock.dateStr}</span>
-      </div>
-
-      {/* Floating Bottom-Right Robotic Millisecond Chronometer */}
-      <div className="as-robotic-bottom-right" title="System Live Millisecond Chronometer">
-        <Clock size={32} className="as-robotic-icon" />
-        <span className="as-robotic-text">{hudClock.timeStr}</span>
-      </div>
     </div>
   );
 }
@@ -1806,8 +1811,8 @@ function Layout({children}:{children:React.ReactNode}){
     user.role==='TEACHER'?teacherLinks:
     adminLinks;
 
-  const currentSchoolName = schoolInfo?.school?.name || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
-  const currentSchoolCode = schoolInfo?.school?.code || 'GIS001';
+  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
+  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'GIS001';
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || storedSession || '2025–26';
   const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
@@ -2320,12 +2325,12 @@ function AdminHome(){
           <span>Institutional Administration Portal</span>
           <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
         </div>
-        <h1 className="hero-school-name">{school?.name || 'Greenwood International School'}</h1>
+        <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Greenwood International School'}</h1>
         <p className="hero-school-desc">
           Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
         </p>
         <div className="hero-meta-row">
-          <span>🏛️ School Code: <b>{school?.code || 'GIS001'}</b></span>
+          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || 'GIS001'}</b></span>
           <span>📅 Session: <b>{data?.activeAcademicYear?.name || '2026-27'}</b></span>
           <span>📞 Enquiry: <b>{school?.enquiry_number || '1800-999-000'}</b></span>
           <span>🛡️ Plan: <b>{sub?.plan_name || 'Enterprise'}</b></span>
@@ -5303,7 +5308,7 @@ function SchoolProfile() {
       const res = await api.get('/school-profile');
       setProfile(res.data);
       setForm({
-        contact_number: res.data.contact_number || '',
+        contact_number: res.data.contact_number || res.data.enquiry_number || res.data.phone || '',
         address: res.data.address || '',
         website: res.data.website || ''
       });
