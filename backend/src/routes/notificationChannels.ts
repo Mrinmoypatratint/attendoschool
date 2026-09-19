@@ -107,10 +107,29 @@ r.get('/analytics',async(req:AuthRequest,res)=>{
 
 r.get('/smtp',async(req:AuthRequest,res)=>{
  try {
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
   const schoolId = req.user!.schoolId || '00000000-0000-0000-0000-000000000001';
   const { getSchoolSmtpConfig } = await import('../services/notificationService');
   const cfg = getSchoolSmtpConfig(schoolId);
-  res.json(cfg);
+
+  if (!isSuperAdmin) {
+    // Hide username and password credentials from schools; Superadmin access only
+    return res.json({
+      ...cfg,
+      username: '',
+      password: '',
+      isSuperAdmin: false,
+      isManagedBySuperAdmin: true,
+      hasConfiguredCredentials: Boolean(cfg.username && cfg.password)
+    });
+  }
+
+  res.json({
+    ...cfg,
+    isSuperAdmin: true,
+    isManagedBySuperAdmin: true,
+    hasConfiguredCredentials: Boolean(cfg.username && cfg.password)
+  });
  } catch (err: any) {
   res.status(500).json({ message: err.message || 'Failed to fetch SMTP settings' });
  }
@@ -118,10 +137,34 @@ r.get('/smtp',async(req:AuthRequest,res)=>{
 
 r.put('/smtp',async(req:AuthRequest,res)=>{
  try {
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
   const schoolId = req.user!.schoolId || '00000000-0000-0000-0000-000000000001';
   const { saveSchoolSmtpConfig } = await import('../services/notificationService');
-  const updated = saveSchoolSmtpConfig(schoolId, req.body || {});
-  res.json({ success: true, config: updated });
+  const updated = saveSchoolSmtpConfig(schoolId, req.body || {}, isSuperAdmin);
+
+  if (!isSuperAdmin) {
+    return res.json({
+      success: true,
+      config: {
+        ...updated,
+        username: '',
+        password: '',
+        isSuperAdmin: false,
+        isManagedBySuperAdmin: true
+      },
+      message: 'School SMTP options saved successfully (SMTP credentials managed by Superadmin).'
+    });
+  }
+
+  res.json({
+    success: true,
+    config: {
+      ...updated,
+      isSuperAdmin: true,
+      isManagedBySuperAdmin: true
+    },
+    message: 'Global SMTP configuration updated successfully by Superadmin.'
+  });
  } catch (err: any) {
   res.status(400).json({ message: err.message || 'Failed to save SMTP settings' });
  }
@@ -130,18 +173,24 @@ r.put('/smtp',async(req:AuthRequest,res)=>{
 r.post('/smtp/test',async(req:AuthRequest,res)=>{
  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName } = req.body || {};
  const to = String(recipientEmail || req.user!.email || 'admin@demo-school.local').trim();
+ const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
  try {
   const schoolId = req.user!.schoolId || '00000000-0000-0000-0000-000000000001';
-  const { testSmtpConnection } = await import('../services/notificationService');
-  const result = await testSmtpConnection(schoolId, to, {
-    host,
-    port: Number(port),
-    username,
-    password,
-    encryption,
-    senderEmail,
-    senderName
-  });
+  const { testSmtpConnection, getSchoolSmtpConfig } = await import('../services/notificationService');
+  const storedCfg = getSchoolSmtpConfig(schoolId);
+
+  // For school admins, strictly authenticate using the Superadmin-managed credentials
+  const testConfig: any = {
+    host: host || storedCfg.host,
+    port: Number(port) || storedCfg.port,
+    username: isSuperAdmin && username ? username : storedCfg.username,
+    password: isSuperAdmin && password ? password : storedCfg.password,
+    encryption: encryption || storedCfg.encryption,
+    senderEmail: senderEmail || storedCfg.senderEmail,
+    senderName: senderName || storedCfg.senderName
+  };
+
+  const result = await testSmtpConnection(schoolId, to, testConfig);
   res.json(result);
  } catch (err: any) {
   res.status(400).json({ success: false, message: err.message || 'SMTP test failed' });

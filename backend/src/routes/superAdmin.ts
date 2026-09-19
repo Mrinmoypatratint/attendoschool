@@ -5,6 +5,8 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, getAllDemoUsers } from '../store/demoUsers';
 import { collections, isFirebaseConfigured } from '../firebase';
+import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection } from '../services/notificationService';
+import { env } from '../config/env';
 
 const r=Router();
 r.use(requireAuth,requireRoles('SUPER_ADMIN'));
@@ -137,7 +139,15 @@ export let systemSettings = {
   sessionTimeoutMinutes: 60,
   enforceStrongPasswords: true,
   rateLimitPerMinute: 120,
-  maintenanceMode: false
+  maintenanceMode: false,
+  // SMTP settings (managed exclusively by Superadmin)
+  smtpHost: env.smtpHost || "smtp.gmail.com",
+  smtpPort: Number(env.smtpPort) || 587,
+  smtpUsername: env.smtpUser || "rajbsmv@gmail.com",
+  smtpPassword: env.smtpPass || "",
+  smtpEncryption: (env.smtpPort === 465 ? "SSL/TLS" : "STARTTLS") as "SSL/TLS" | "STARTTLS" | "NONE",
+  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : "attendance@school.local",
+  smtpSenderName: env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "School Attendance Office"
 };
 
 export const demoSchools: any[] = [
@@ -1022,14 +1032,39 @@ r.get('/audit-logs', async (req, res) => {
 
 /* ────── System Settings ────── */
 r.get('/settings', async (_req, res) => {
-  res.json(systemSettings);
+  const smtpCfg = getGlobalSmtpConfig();
+  res.json({
+    ...systemSettings,
+    smtpHost: smtpCfg.host || systemSettings.smtpHost,
+    smtpPort: smtpCfg.port || systemSettings.smtpPort,
+    smtpUsername: smtpCfg.username || systemSettings.smtpUsername,
+    smtpPassword: smtpCfg.password || systemSettings.smtpPassword,
+    smtpEncryption: smtpCfg.encryption || systemSettings.smtpEncryption,
+    smtpSenderEmail: smtpCfg.defaultSenderEmail || systemSettings.smtpSenderEmail,
+    smtpSenderName: smtpCfg.defaultSenderName || systemSettings.smtpSenderName
+  });
 });
 
 r.put('/settings', async (req: AuthRequest, res) => {
+  const b = req.body || {};
   systemSettings = {
     ...systemSettings,
-    ...(req.body || {})
+    ...b
   };
+
+  // If SMTP credentials or config are submitted, sync with global SMTP gateway
+  if (b.smtpUsername !== undefined || b.smtpPassword !== undefined || b.smtpHost !== undefined) {
+    updateGlobalSmtpConfig({
+      ...(b.smtpHost !== undefined ? { host: b.smtpHost } : {}),
+      ...(b.smtpPort !== undefined ? { port: Number(b.smtpPort) } : {}),
+      ...(b.smtpUsername !== undefined ? { username: b.smtpUsername } : {}),
+      ...(b.smtpPassword !== undefined ? { password: b.smtpPassword } : {}),
+      ...(b.smtpEncryption !== undefined ? { encryption: b.smtpEncryption } : {}),
+      ...(b.smtpSenderEmail !== undefined ? { defaultSenderEmail: b.smtpSenderEmail } : {}),
+      ...(b.smtpSenderName !== undefined ? { defaultSenderName: b.smtpSenderName } : {})
+    });
+  }
+
   await logSystemAudit(
     req.user || { id: 'super-admin' },
     'UPDATE_SYSTEM_SETTINGS',
@@ -1038,6 +1073,51 @@ r.put('/settings', async (req: AuthRequest, res) => {
     req.body || {}
   );
   res.json({ success: true, settings: systemSettings, message: 'Settings saved successfully' });
+});
+
+/* ────── Dedicated Superadmin SMTP Gateway Endpoints ────── */
+r.get('/smtp', async (_req, res) => {
+  res.json(getGlobalSmtpConfig());
+});
+
+r.put('/smtp', async (req: AuthRequest, res) => {
+  const updated = updateGlobalSmtpConfig(req.body || {});
+  systemSettings.smtpHost = updated.host;
+  systemSettings.smtpPort = updated.port;
+  systemSettings.smtpUsername = updated.username;
+  systemSettings.smtpPassword = updated.password;
+  systemSettings.smtpEncryption = updated.encryption;
+  systemSettings.smtpSenderEmail = updated.defaultSenderEmail;
+  systemSettings.smtpSenderName = updated.defaultSenderName;
+
+  await logSystemAudit(
+    req.user || { id: 'super-admin' },
+    'UPDATE_SMTP_CONFIG',
+    'SMTP',
+    'global-smtp',
+    { host: updated.host, port: updated.port, username: updated.username }
+  );
+
+  res.json({ success: true, config: updated, message: 'Global SMTP credentials updated successfully by Superadmin' });
+});
+
+r.post('/smtp/test', async (req: AuthRequest, res) => {
+  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName } = req.body || {};
+  const to = String(recipientEmail || req.user?.email || 'admin@demo-school.local').trim();
+  try {
+    const result = await testSmtpConnection('global', to, {
+      host,
+      port: Number(port),
+      username,
+      password,
+      encryption,
+      senderEmail,
+      senderName
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message || 'SMTP test failed' });
+  }
 });
 
 /* ────── Subscription Plans Management ────── */

@@ -17,30 +17,104 @@ export interface SchoolSmtpConfig {
   isEnabled: boolean;
 }
 
+export interface GlobalSmtpConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  encryption: 'SSL/TLS' | 'STARTTLS' | 'NONE';
+  defaultSenderEmail: string;
+  defaultSenderName: string;
+}
+
+let globalSmtpConfig: GlobalSmtpConfig = {
+  host: env.smtpHost || 'smtp.gmail.com',
+  port: Number(env.smtpPort) || 587,
+  username: env.smtpUser || 'rajbsmv@gmail.com',
+  password: env.smtpPass || '',
+  encryption: env.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS',
+  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : 'attendance@school.local',
+  defaultSenderName: env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'School Attendance Office'
+};
+
+export function getGlobalSmtpConfig(): GlobalSmtpConfig {
+  return { ...globalSmtpConfig };
+}
+
+export function updateGlobalSmtpConfig(updates: Partial<GlobalSmtpConfig>): GlobalSmtpConfig {
+  globalSmtpConfig = {
+    ...globalSmtpConfig,
+    ...updates
+  };
+  // Update all existing school configs with the new global credentials
+  for (const [sid, cfg] of smtpStore.entries()) {
+    smtpStore.set(sid, {
+      ...cfg,
+      username: globalSmtpConfig.username,
+      password: globalSmtpConfig.password,
+      ...(updates.host ? { host: updates.host } : {}),
+      ...(updates.port ? { port: updates.port } : {}),
+      ...(updates.encryption ? { encryption: updates.encryption } : {})
+    });
+  }
+  return { ...globalSmtpConfig };
+}
+
 const smtpStore = new Map<string, SchoolSmtpConfig>();
 
 export function getSchoolSmtpConfig(schoolId: string): SchoolSmtpConfig {
   const existing = smtpStore.get(schoolId);
-  if (existing) return existing;
+  if (existing) {
+    return {
+      ...existing,
+      username: globalSmtpConfig.username || existing.username,
+      password: globalSmtpConfig.password || existing.password
+    };
+  }
   return {
     schoolId,
-    host: env.smtpHost || 'smtp.gmail.com',
-    port: env.smtpPort || 587,
-    username: env.smtpUser || '',
-    password: env.smtpPass || '',
-    encryption: env.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS',
-    senderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : 'attendance@school.local',
-    senderName: env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'School Attendance Office',
+    host: globalSmtpConfig.host,
+    port: globalSmtpConfig.port,
+    username: globalSmtpConfig.username,
+    password: globalSmtpConfig.password,
+    encryption: globalSmtpConfig.encryption,
+    senderEmail: globalSmtpConfig.defaultSenderEmail,
+    senderName: globalSmtpConfig.defaultSenderName,
     isEnabled: true
   };
 }
 
-export function saveSchoolSmtpConfig(schoolId: string, config: Partial<SchoolSmtpConfig>): SchoolSmtpConfig {
+export function saveSchoolSmtpConfig(
+  schoolId: string,
+  config: Partial<SchoolSmtpConfig>,
+  isSuperAdmin: boolean = false
+): SchoolSmtpConfig {
   const current = getSchoolSmtpConfig(schoolId);
+  const safeConfig = { ...config };
+
+  if (!isSuperAdmin) {
+    // School admins CANNOT modify username or password!
+    delete safeConfig.username;
+    delete safeConfig.password;
+  } else {
+    // When Superadmin saves, update global credentials
+    if (safeConfig.username !== undefined || safeConfig.password !== undefined || safeConfig.host !== undefined) {
+      updateGlobalSmtpConfig({
+        ...(safeConfig.username !== undefined ? { username: safeConfig.username } : {}),
+        ...(safeConfig.password !== undefined ? { password: safeConfig.password } : {}),
+        ...(safeConfig.host !== undefined ? { host: safeConfig.host } : {}),
+        ...(safeConfig.port !== undefined ? { port: Number(safeConfig.port) } : {}),
+        ...(safeConfig.encryption !== undefined ? { encryption: safeConfig.encryption } : {})
+      });
+    }
+  }
+
   const updated: SchoolSmtpConfig = {
     ...current,
-    ...config,
-    schoolId
+    ...safeConfig,
+    schoolId,
+    username: isSuperAdmin && safeConfig.username !== undefined ? safeConfig.username : (globalSmtpConfig.username || current.username),
+    password: isSuperAdmin && safeConfig.password !== undefined ? safeConfig.password : (globalSmtpConfig.password || current.password)
   };
   smtpStore.set(schoolId, updated);
   return updated;
