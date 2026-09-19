@@ -29,15 +29,15 @@ Create a separate database role for the application with only required privilege
 
 ## 6. Verify
 `docker compose -f docker-compose.production.yml ps`
-`curl https://YOUR-DOMAIN/api/production-v26/health`
-`curl https://YOUR-DOMAIN/api/production-v26/ready`
+`curl https://YOUR-DOMAIN/api/production/health`
+`curl https://YOUR-DOMAIN/api/production/ready`
 
 ## 7. Workers
-Run `node dist/workers/productionWorkerV26.js` on a trusted scheduler.
+Run `node dist/workers/productionWorker.js` on a trusted scheduler (or `npm run worker:production`).
 Recommended: once daily for subscriptions/communications/cleanup and a separate frequent backup schedule.
 
 ## 8. Backups
-Use V21 backup functionality plus an off-server destination.
+Use the automated backup functionality plus an off-server destination.
 Keep multiple retention tiers and periodically restore into an isolated staging database.
 
 ## 9. Monitoring

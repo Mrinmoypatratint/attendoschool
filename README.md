@@ -2,7 +2,7 @@
 
 > A production-grade, multi-tenant SaaS platform for school attendance tracking, multi-channel guardian notifications (SMS, WhatsApp, Email), timetable management, automated student promotions, and subscription billing with Indian GST invoicing.
 
-[![Release](https://img.shields.io/badge/release-v28%20Production-blue.svg)](#)
+[![Release](https://img.shields.io/badge/release-Production%20Ready-blue.svg)](#)
 [![Backend](https://img.shields.io/badge/backend-Express%205%20%7C%20TypeScript-green.svg)](file:///d:/Project_Abir/attendoschool/backend)
 [![Frontend](https://img.shields.io/badge/frontend-React%2019%20%7C%20Vite%207-indigo.svg)](file:///d:/Project_Abir/attendoschool/frontend)
 [![Primary DB](https://img.shields.io/badge/database-Cloud%20Firestore%20%2F%20Emulator-amber.svg)](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts)
@@ -44,7 +44,7 @@
 **AttendoSchool** is built for educational institutions ranging from single independent academies to multi-branch school networks. It automates daily attendance taking, instantly notifies parents of absent students, schedules class routines across academic years, and manages commercial SaaS subscriptions with 18% GST tax invoices.
 
 ### Key Highlights
-- **Dual Database Persistence**: First-class support for **Firebase Cloud Firestore** (with offline local emulator) as the primary document store, alongside **PostgreSQL 16** (28 incremental migrations).
+- **Dual Database Persistence**: First-class support for **Firebase Cloud Firestore** (with offline local emulator) as the primary document store, alongside **PostgreSQL 16** (incremental migrations).
 - **Unified Student Portal**: Comprehensive student portal (`/student/dashboard`) providing daily routines, subject-wise attendance analytics, assignments & homework submissions, examination timetables & grade cards, leave applications, and campus notice announcements.
 - **Role-Based Email Onboarding**: When registering students, administrators can configure Student Portal login using the student's direct email or the parent/guardian's email. When registering faculty, official emails are linked for Faculty Portal access.
 - **Anti-Spam Welcome & Password Setup**: RFC-compliant multipart transactional emails with high-deliverability headers, spam filter avoidance, and single-use 24-hour setup links.
@@ -74,9 +74,9 @@
                 │                             │
     ┌───────────▼────────────┐    ┌───────────▼───────────┐
     │ Firebase Cloud Firestore│    │  PostgreSQL 16 Engine │
-    │ (Local Emulator / Cloud)│    │  (28 Migrations)      │
-    │ Collections: users,     │    │  Relational Storage   │
-    │ schools, students, etc. │    │  & Historical Audits  │
+    │ (Local Emulator / Cloud)│    │  (Relational Storage) │
+    │ Collections: users,     │    │  & Historical Audits  │
+    │ schools, students, etc. │    │                       │
     └─────────────────────────┘    └───────────────────────┘
                 │                             │
     ┌───────────▼────────────┐    ┌───────────▼───────────┐
@@ -90,7 +90,7 @@
 - **Backend**: Node.js, Express 5, TypeScript, Firebase Admin SDK (`firebase-admin` v14), PostgreSQL client (`pg`), `bcryptjs`, `jsonwebtoken`, `pdfkit`, `nodemailer`.
 - **Database**:
   - **Firebase Cloud Firestore**: Cloud NoSQL document store with Firebase Local Emulator (`127.0.0.1:8080`, UI `127.0.0.1:4000/firestore`).
-  - **PostgreSQL 16**: Relational storage engine with 28 migrations (`007_v07` to `028_v28`).
+  - **PostgreSQL 16**: Relational storage engine with 23 migrations (`007_payment_invoices.sql` to `029_student_role_and_portal.sql`).
 - **Security**: Strict HTTP security headers (`nosniff`, `X-Frame-Options: DENY`, referrer policy), memory-bucket rate limiting (120 req/min), PBKDF2/bcrypt hashing, and request ID context propagation.
 
 ---
@@ -225,7 +225,15 @@ cd backend
 npx tsx tests/automated-e2e-journey.ts
 ```
 
-### 3. TypeScript Typecheck & Build
+### 3. API & Integration Smoke Tests
+Smoke test production readiness and integration endpoints:
+```bash
+cd backend
+npm run test:api-smoke
+npm run test:integration-smoke
+```
+
+### 4. TypeScript Typecheck & Build
 ```bash
 cd backend && npm run build
 cd ../frontend && npm run build
@@ -243,7 +251,7 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 | `POST` | `/api/auth/login` | Public | Authenticate user (Firestore + PostgreSQL fallback) |
 | `GET` | `/api/auth/me` | Authenticated | Retrieve authenticated user profile |
 | `GET` | `/api/health` | Public | Health check with Firestore and PostgreSQL status |
-| `GET` | `/api/production-v26/health` | Public | Production memory and uptime status |
+| `GET` | `/api/production/health` | Public | Production memory and uptime status |
 
 ### School Administration
 | Method | Endpoint | Role | Description |
@@ -255,8 +263,8 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 | `POST` | `/api/teachers` | `SCHOOL_ADMIN` | Create a new teacher account |
 | `GET` | `/api/classes` | `SCHOOL_ADMIN` | List classes (5–12) with section counts |
 | `GET` | `/api/routines` | `SCHOOL_ADMIN` | Master schedule of all class routines |
-| `GET` | `/api/attendance-reports-v12/summary` | `SCHOOL_ADMIN` | Date-filtered attendance summary |
-| `GET` | `/api/academic-years-v15` | `SCHOOL_ADMIN` | List all academic sessions |
+| `GET` | `/api/attendance-reports/summary` | `SCHOOL_ADMIN` | Date-filtered attendance summary |
+| `GET` | `/api/academic-years` | `SCHOOL_ADMIN` | List all academic sessions |
 
 ### Teacher Operations
 | Method | Endpoint | Role | Description |
@@ -275,7 +283,7 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 | `PUT` | `/api/super-admin/schools/:id/status` | `SUPER_ADMIN` | Activate or suspend school access |
 | `GET` | `/api/super-admin/monitor` | `SUPER_ADMIN` | Operational dashboard and expiring schools |
 | `GET` | `/api/super-admin/invoices` | `SUPER_ADMIN` | Invoices and payment receipts |
-| `GET` | `/api/analytics-v24/platform` | `SUPER_ADMIN` | Platform analytics and rankings |
+| `GET` | `/api/analytics/platform` | `SUPER_ADMIN` | Platform analytics and rankings |
 
 ---
 
@@ -292,7 +300,7 @@ cp .env.production.example .env.production
 docker compose -f docker-compose.production.yml up -d --build
 
 # 3. Verify services are healthy
-curl http://localhost/api/production-v26/health
+curl http://localhost/api/production/health
 ```
 
 Refer to **[CLOUD-DEPLOYMENT-GUIDE.md](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** for detailed cloud deployment guides on Render, Railway, AWS, and Vercel.

@@ -332,7 +332,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
               <span className="sa-slider"></span>
             </label>
           </div>
-          {!sidebarCollapsed && <div className="sa-sidebar-version">AttendoSchool SaaS v2.5.0</div>}
+          {!sidebarCollapsed && <div className="sa-sidebar-version">AttendoSchool SaaS</div>}
         </div>
       </aside>
 

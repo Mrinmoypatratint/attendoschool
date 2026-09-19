@@ -22,7 +22,7 @@ This production release is pre-configured for immediate one-click cloud deployme
 2. Click **Create Project**, name it `attendoschool-db`.
 3. Copy the **Connection Details** string (`postgresql://...`).
    - Example: `postgresql://attendoschool_owner:pass@ep-cool-snowflake-12345.us-east-2.aws.neon.tech/attendoschool?sslmode=require`
-4. Run the automated migration script locally to populate the cloud database with the entire schema, 28 migrations, and initial seed data:
+4. Run the automated migration script locally to populate the cloud database with the entire schema, incremental migrations, and initial seed data:
    ```bash
    cd backend
    $env:DATABASE_URL="your-neon-connection-string"

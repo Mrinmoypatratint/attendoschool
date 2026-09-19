@@ -3,22 +3,23 @@ import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
-import AttendanceReports from './AttendanceReports';
-import AttendanceCorrections from './AttendanceCorrections';
-import PeopleManagement from './PeopleManagement';
-import AcademicYears from './AcademicYears';
-import StudentPromotion from './StudentPromotion';
-import Permissions from './Permissions';
-import SubscriptionEnforcement from './SubscriptionEnforcement';
-import Security from './Security';
-import Backup from './Backup';
-import Timetable from './Timetable';
-import OfflineAttendance from './OfflineAttendance';
-import Analytics from './Analytics';
-import Communication from './Communication';
-import ParentCommunication from './ParentCommunication';
+import AttendanceReports from './pages/admin/AttendanceReports';
+import AttendanceCorrections from './pages/admin/AttendanceCorrections';
+import PeopleManagement from './pages/admin/PeopleManagement';
+import AcademicYears from './pages/admin/AcademicYears';
+import StudentPromotion from './pages/admin/StudentPromotion';
+import Permissions from './pages/admin/Permissions';
+import SubscriptionEnforcement from './pages/admin/SubscriptionEnforcement';
+import Security from './pages/admin/Security';
+import Backup from './pages/admin/Backup';
+import Timetable from './pages/admin/Timetable';
+import OfflineAttendance from './pages/admin/OfflineAttendance';
+import Analytics from './pages/admin/Analytics';
+import Communication from './pages/admin/Communication';
+import ParentCommunication from './pages/admin/ParentCommunication';
+import ParentPortal from './pages/parent/ParentPortal';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
-import ResetPassword from './ResetPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, Layers, LogOut, Plus,
@@ -1877,7 +1878,7 @@ function Layout({children}:{children:React.ReactNode}){
                 <span className="sidebar-slider"></span>
               </label>
             </div>
-            <div className="sidebar-version-tag">v2.1.0</div>
+            <div className="sidebar-version-tag">AttendoSchool</div>
           </>
         ) : (
           <>
@@ -5454,6 +5455,7 @@ function App(){return <Routes>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
+  <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
   <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
   <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>

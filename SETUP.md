@@ -364,6 +364,11 @@ npm test
 cd backend
 npx tsx tests/automated-e2e-journey.ts
 
+# API & Integration Smoke Tests
+cd backend
+npm run test:api-smoke
+npm run test:integration-smoke
+
 # TypeScript Build Verification
 cd backend && npm run build
 cd ../frontend && npm run build

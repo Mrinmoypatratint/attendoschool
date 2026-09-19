@@ -83,7 +83,7 @@
 
 ## 1. Executive Summary
 
-**AttendoSchool** (internal package name `school-attendance-saas`, version `0.12.0`, marketed release `v29`) is an educational administration and student presence tracking software platform. The system operates as a **multi-tenant Software-as-a-Service (SaaS)** solution designed to serve educational institutions (K-12 schools, multi-branch networks, and colleges).
+**AttendoSchool** (internal package name `school-attendance-saas`) is an enterprise educational administration and student presence tracking software platform. The system operates as a **multi-tenant Software-as-a-Service (SaaS)** solution designed to serve educational institutions (K-12 schools, multi-branch networks, and colleges).
 
 The core value proposition centers on eliminating administrative overhead in attendance recording, guaranteeing instantaneous notification to guardians when a student is absent, preventing unauthorized attendance tampering through audit-trailed correction requests, managing routine and timetable conflict resolution, providing dedicated student and parent portals with multi-tenant login resolution, and providing commercial SaaS subscription billing with automated Indian GST tax invoicing.
 
@@ -498,9 +498,6 @@ attendoschool/
 │   │   ├── server.ts                # Server entry point & graceful shutdown handlers
 │   │   ├── db.ts                    # PostgreSQL connection pool with cloud SSL detection
 │   │   ├── firebase.ts              # Firebase Admin SDK & Cloud Firestore initialization
-│   │   ├── smsWorker.ts             # Dedicated background worker for SMS queue processing
-│   │   ├── notificationWorker.ts    # Background worker for multi-channel notifications
-│   │   ├── subscriptionWorker.ts    # Background worker for subscription status synchronization
 │   │   ├── config/
 │   │   │   └── env.ts               # Centralized environment variable accessor with defaults
 │   │   ├── middleware/
@@ -516,17 +513,20 @@ attendoschool/
 │   │   ├── scripts/
 │   │   │   ├── migrate.ts           # PostgreSQL migration runner
 │   │   │   └── seedFirestore.ts     # Cloud Firestore seeder script (`npm run seed:firestore`)
-│   │   └── workers/
+│   │   └── workers/                 # Consolidated background workers
+│   │       ├── notificationWorker.ts# Background worker for multi-channel notifications
+│   │       ├── smsWorker.ts         # Background worker for SMS queue processing
+│   │       ├── subscriptionWorker.ts# Background worker for subscription status synchronization
 │   │       └── productionWorker.ts  # Master maintenance worker (cleanups, retentions, subscriptions)
 │   └── tests/                       # Backend test suites
 │       ├── student-portal-e2e.ts    # 41-assertion automated student portal & RBAC test suite
-│       ├── comprehensive-test-suite.ts # 93-assertion automated validation suite
+│       ├── comprehensive-test-suite.ts # 50-assertion automated validation suite
 │       ├── automated-e2e-journey.ts    # End-to-end multi-tenant lifecycle journey
 │       ├── deep-feature-e2e-test.ts    # Deep API feature regression tests
 │       ├── manual-feature-audit.ts     # Manual verification helper
 │       ├── test-admin-endpoints.js     # Legacy admin endpoint verification
 │       ├── verify-live-stack.ts        # Live stack connection tester
-│       └── verify-new-features.ts      # Verifies v07-v28 feature additions
+│       └── verify-new-features.ts      # Verifies feature additions
 │
 ├── frontend/                        # Frontend Single Page Application Root
 │   ├── .env.example                 # Frontend environment template (API URL)
@@ -549,31 +549,40 @@ attendoschool/
 │       ├── App.tsx                  # Split-screen Login UI, master routing & core view components
 │       ├── api.ts                   # Axios HTTP client with JWT interceptor & auto-base URL
 │       ├── styles.css               # Comprehensive custom design system (Vanilla CSS)
-│       ├── AcademicYears.tsx        # Session creation & academic year activation view
-│       ├── Analytics.tsx            # Attendance snapshots & rank analytics
-│       ├── AttendanceCorrections.tsx# Formal attendance change request & audit view
-│       ├── AttendanceReports.tsx    # Summary, student-wise, daily breakdown & Excel export
-│       ├── Backup.tsx               # Database backup creation, restore testing & history
-│       ├── Communication.tsx        # Announcements creation, publishing & recipient counts
-│       ├── OfflineAttendance.tsx    # Offline attendance recording & batch sync UI
-│       ├── offlineAttendanceQueue.ts# LocalStorage queue & sync dispatcher
-│       ├── ParentCommunication.tsx  # Parent notice inbox & read acknowledgements
-│       ├── ParentPortal.tsx         # Guardian student attendance tracking
-│       ├── PeopleManagement.tsx     # Student & faculty directory, editing & bulk import
-│       ├── Permissions.tsx          # System RBAC role assignment & custom permissions
-│       ├── Security.tsx             # Password policy validator & security audit view
-│       ├── StudentPromotion.tsx     # Batch promotion & retention engine between years
-│       ├── SubscriptionEnforcement.tsx # Subscription plan status & feature quota view
-│       ├── Timetable.tsx            # Period timing, timetable matrix, conflict checker & substitutes
 │       ├── components/
 │       │   ├── Toast.tsx            # Global toast notifications
+│       │   ├── ThreeDBackground.tsx # Interactive background effects
+│       │   ├── HandwritingQuoteTyping.tsx # Dynamic quote animator
 │       │   └── student/
 │       │       └── StudentLayout.tsx# Dedicated Student Portal ERP sidebar & topbar layout
 │       ├── hooks/
 │       │   └── useAuth.tsx          # AuthContext with STUDENT role, AuthProvider, RoleGuard
 │       ├── services/
-│       │   └── studentApi.ts        # Dedicated API client for Student Portal endpoints
-│       └── pages/
+│       │   ├── studentApi.ts        # Dedicated API client for Student Portal endpoints
+│       │   └── offlineAttendanceQueue.ts # LocalStorage queue & sync dispatcher
+│       ├── super-admin/             # Super Admin Platform Management
+│       │   ├── SuperAdminModule.tsx # Super Admin routes and sub-modules
+│       │   └── SuperAdminLayout.tsx # Super Admin layout and navigation
+│       └── pages/                   # Modular Page Components
+│           ├── admin/               # School Administrator Management Pages
+│           │   ├── AcademicYears.tsx        # Session creation & academic year activation view
+│           │   ├── Analytics.tsx            # Attendance snapshots & rank analytics
+│           │   ├── AttendanceCorrections.tsx# Formal attendance change request & audit view
+│           │   ├── AttendanceReports.tsx    # Summary, student-wise, daily breakdown & Excel export
+│           │   ├── Backup.tsx               # Database backup creation, restore testing & history
+│           │   ├── Communication.tsx        # Announcements creation, publishing & recipient counts
+│           │   ├── OfflineAttendance.tsx    # Offline attendance recording & batch sync UI
+│           │   ├── ParentCommunication.tsx  # Parent notice inbox & read acknowledgements
+│           │   ├── PeopleManagement.tsx     # Student & faculty directory, editing & bulk import
+│           │   ├── Permissions.tsx          # System RBAC role assignment & custom permissions
+│           │   ├── Security.tsx             # Password policy validator & security audit view
+│           │   ├── StudentPromotion.tsx     # Batch promotion & retention engine between years
+│           │   ├── SubscriptionEnforcement.tsx # Subscription plan status & feature quota view
+│           │   └── Timetable.tsx            # Period timing, timetable matrix, conflict checker & substitutes
+│           ├── auth/                # Authentication Flow Pages
+│           │   └── ResetPassword.tsx        # Password setup & reset interface
+│           ├── parent/              # Parent Guardian Portal Pages
+│           │   └── ParentPortal.tsx         # Guardian student attendance tracking
 │           └── student/             # Student Portal View Pages
 │               ├── StudentDashboard.tsx    # High-fidelity dashboard with greeting, KPIs, routine, calendar
 │               ├── StudentAttendance.tsx   # Detailed monthly attendance log, status badges, analytics
@@ -587,7 +596,7 @@ attendoschool/
 ├── database/                        # Database Definition Root
 │   ├── schema.sql                   # Base DDL schema definition
 │   ├── seed.sql                     # Base initial seed data (Super Admin & Plans)
-│   └── migrations/                  # 23 incremental migration SQL scripts (v07 to v29)
+│   └── migrations/                  # 23 incremental migration SQL scripts (007 to 029)
 │
 ├── deploy/                          # Production Deployment Configurations
 │   └── nginx/
@@ -597,8 +606,8 @@ attendoschool/
 │   ├── backup.sh                    # Host database backup script
 │   ├── migrate.sh                   # Migration execution trigger
 │   ├── production-check.sh          # Pre-deployment host validation checklist
-│   ├── v27-integration-smoke.ts     # Integration test smoke script
-│   └── v28-api-smoke.ts             # API verification smoke script
+│   ├── integration-smoke.ts         # Integration test smoke script
+│   └── api-smoke.ts                 # API verification smoke script
 │
 └── tests/                           # E2E Tests
     └── e2e/
@@ -624,30 +633,32 @@ The frontend is an entirely client-rendered Single Page Application (SPA).
 | [frontend/src/App.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/App.tsx) | `Routine` | Authenticated | Class routine slot mapping (day of week, start/end time, room) |
 | [frontend/src/App.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/App.tsx) | `Attendance` | Authenticated | Daily classroom attendance recording interface for teachers |
 | [frontend/src/App.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/App.tsx) | `History` | Authenticated | Teacher classroom attendance historical session log |
-| [frontend/src/AttendanceReports.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/AttendanceReports.tsx) | `AttendanceReports` | `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER` | Date-range filters, attendance %, student absence tallies, Excel export |
-| [frontend/src/AttendanceCorrections.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/AttendanceCorrections.tsx) | `AttendanceCorrections`| `SCHOOL_ADMIN`, `TEACHER` | Requesting attendance edits & administrative review/approval |
-| [frontend/src/PeopleManagement.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/PeopleManagement.tsx) | `PeopleManagement` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Comprehensive student/faculty directory with status toggling |
-| [frontend/src/AcademicYears.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/AcademicYears.tsx) | `AcademicYears` | `SCHOOL_ADMIN` | Academic session creation, activation, archiving |
-| [frontend/src/StudentPromotion.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/StudentPromotion.tsx) | `StudentPromotion` | `SCHOOL_ADMIN` | Multi-student promotion workflow between sessions |
-| [frontend/src/ParentPortal.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/ParentPortal.tsx) | `ParentPortal` | `PARENT` | Guardian dashboard to inspect child attendance logs |
-| [frontend/src/Permissions.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Permissions.tsx) | `Permissions` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Custom administrative role assignment and permission inspection |
-| [frontend/src/SubscriptionEnforcement.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/SubscriptionEnforcement.tsx) | `SubscriptionEnforcement` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Subscription status, student quota tracking, grace period display |
-| [frontend/src/Security.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Security.tsx) | `Security` | `SUPER_ADMIN` | Password policy validation, audit events, session cleanup |
-| [frontend/src/Backup.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Backup.tsx) | `Backup` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Database backup triggering, checksum inspection, restore testing |
-| [frontend/src/Timetable.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Timetable.tsx) | `Timetable` | `SCHOOL_ADMIN`, `TEACHER` | Period definitions, timetable entries, substitute assignment |
-| [frontend/src/OfflineAttendance.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/OfflineAttendance.tsx) | `OfflineAttendance`| `TEACHER` | Offline roster attendance taker and queue sync status |
-| [frontend/src/Analytics.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/Analytics.tsx) | `Analytics` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Daily snapshots, presence trends, school-wide ranking |
-| [frontend/src/Communication.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/Communication.tsx) | `Communication` | `SCHOOL_ADMIN` | School announcement authoring, priority tags, publishing |
-| [frontend/src/ParentCommunication.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/ParentCommunication.tsx) | `ParentCommunication` | `PARENT` | Notice inbox with read receipts |
-| [frontend/src/components/student/StudentLayout.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/components/student/StudentLayout.tsx) | `StudentLayout` | `STUDENT` | ERP sidebar navigation, institute indicator, profile badge, theme toggle |
-| [frontend/src/pages/student/StudentDashboard.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentDashboard.tsx) | `StudentDashboard` | `STUDENT` | Greeting banner, attendance KPI, upcoming exams, today schedule, calendar |
-| [frontend/src/pages/student/StudentAttendance.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAttendance.tsx) | `StudentAttendance` | `STUDENT` | Read-only presence records, month/status filters, historical session list |
-| [frontend/src/pages/student/StudentTimetable.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentTimetable.tsx) | `StudentTimetable` | `STUDENT` | Weekly class timetable schedule organized by day of week |
-| [frontend/src/pages/student/StudentAssignments.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAssignments.tsx) | `StudentAssignments` | `STUDENT` | Homework tasks, due date countdowns, file/link submission modal |
-| [frontend/src/pages/student/StudentExams.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentExams.tsx) | `StudentExams` | `STUDENT` | Exam schedule with timings, published subject marksheets, grade cards |
-| [frontend/src/pages/student/StudentAnnouncements.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentAnnouncements.tsx) | `StudentAnnouncements` | `STUDENT` | School notices feed with priority badges and unread indicator |
-| [frontend/src/pages/student/StudentLeaveRequest.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentLeaveRequest.tsx) | `StudentLeaveRequest` | `STUDENT` | Leave application form (reason, dates) and administrative approval tracker |
-| [frontend/src/pages/student/StudentProfile.tsx](file:///d:/Abir%200.1/attendoschool/frontend/src/pages/student/StudentProfile.tsx) | `StudentProfile` | `STUDENT` | Student card, guardian contact details, BCrypt password change form |
+| [frontend/src/pages/admin/AttendanceReports.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/AttendanceReports.tsx) | `AttendanceReports` | `SUPER_ADMIN`, `SCHOOL_ADMIN`, `TEACHER` | Date-range filters, attendance %, student absence tallies, Excel export |
+| [frontend/src/pages/admin/AttendanceCorrections.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/AttendanceCorrections.tsx) | `AttendanceCorrections`| `SCHOOL_ADMIN`, `TEACHER` | Requesting attendance edits & administrative review/approval |
+| [frontend/src/pages/admin/PeopleManagement.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/PeopleManagement.tsx) | `PeopleManagement` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Comprehensive student/faculty directory with status toggling |
+| [frontend/src/pages/admin/AcademicYears.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/AcademicYears.tsx) | `AcademicYears` | `SCHOOL_ADMIN` | Academic session creation, activation, archiving |
+| [frontend/src/pages/admin/StudentPromotion.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/StudentPromotion.tsx) | `StudentPromotion` | `SCHOOL_ADMIN` | Multi-student promotion workflow between sessions |
+| [frontend/src/pages/parent/ParentPortal.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/parent/ParentPortal.tsx) | `ParentPortal` | `PARENT` | Guardian dashboard to inspect child attendance logs |
+| [frontend/src/pages/admin/Permissions.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Permissions.tsx) | `Permissions` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Custom administrative role assignment and permission inspection |
+| [frontend/src/pages/admin/SubscriptionEnforcement.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/SubscriptionEnforcement.tsx) | `SubscriptionEnforcement` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Subscription status, student quota tracking, grace period display |
+| [frontend/src/pages/admin/Security.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Security.tsx) | `Security` | `SUPER_ADMIN` | Password policy validation, audit events, session cleanup |
+| [frontend/src/pages/admin/Backup.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Backup.tsx) | `Backup` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Database backup triggering, checksum inspection, restore testing |
+| [frontend/src/pages/admin/Timetable.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Timetable.tsx) | `Timetable` | `SCHOOL_ADMIN`, `TEACHER` | Period definitions, timetable entries, substitute assignment |
+| [frontend/src/pages/admin/OfflineAttendance.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/OfflineAttendance.tsx) | `OfflineAttendance`| `TEACHER` | Offline roster attendance taker and queue sync status |
+| [frontend/src/pages/admin/Analytics.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Analytics.tsx) | `Analytics` | `SUPER_ADMIN`, `SCHOOL_ADMIN` | Daily snapshots, presence trends, school-wide ranking |
+| [frontend/src/pages/admin/Communication.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/Communication.tsx) | `Communication` | `SCHOOL_ADMIN` | School announcement authoring, priority tags, publishing |
+| [frontend/src/pages/admin/ParentCommunication.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/admin/ParentCommunication.tsx) | `ParentCommunication` | `PARENT` | Notice inbox with read receipts |
+| [frontend/src/pages/auth/ResetPassword.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/auth/ResetPassword.tsx) | `ResetPassword` | Public | Password setup & reset interface |
+| [frontend/src/super-admin/SuperAdminModule.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/super-admin/SuperAdminModule.tsx) | `SuperAdminModule` | `SUPER_ADMIN` | Super Admin operations suite and metrics |
+| [frontend/src/components/student/StudentLayout.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/components/student/StudentLayout.tsx) | `StudentLayout` | `STUDENT` | ERP sidebar navigation, institute indicator, profile badge, theme toggle |
+| [frontend/src/pages/student/StudentDashboard.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentDashboard.tsx) | `StudentDashboard` | `STUDENT` | Greeting banner, attendance KPI, upcoming exams, today schedule, calendar |
+| [frontend/src/pages/student/StudentAttendance.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentAttendance.tsx) | `StudentAttendance` | `STUDENT` | Read-only presence records, month/status filters, historical session list |
+| [frontend/src/pages/student/StudentTimetable.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentTimetable.tsx) | `StudentTimetable` | `STUDENT` | Weekly class timetable schedule organized by day of week |
+| [frontend/src/pages/student/StudentAssignments.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentAssignments.tsx) | `StudentAssignments` | `STUDENT` | Homework tasks, due date countdowns, file/link submission modal |
+| [frontend/src/pages/student/StudentExams.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentExams.tsx) | `StudentExams` | `STUDENT` | Exam schedule with timings, published subject marksheets, grade cards |
+| [frontend/src/pages/student/StudentAnnouncements.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentAnnouncements.tsx) | `StudentAnnouncements` | `STUDENT` | School notices feed with priority badges and unread indicator |
+| [frontend/src/pages/student/StudentLeaveRequest.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentLeaveRequest.tsx) | `StudentLeaveRequest` | `STUDENT` | Leave application form (reason, dates) and administrative approval tracker |
+| [frontend/src/pages/student/StudentProfile.tsx](file:///d:/Project_Abir/attendoschool/frontend/src/pages/student/StudentProfile.tsx) | `StudentProfile` | `STUDENT` | Student card, guardian contact details, BCrypt password change form |
 
 ---
 
@@ -707,29 +718,29 @@ AttendoSchool features a **dual database architecture** supporting both modern d
 
 ### Database Evolution History (29 Migrations)
 - `schema.sql`: Baseline tables (`schools`, `users`, `classes`, `sections`, `subjects`, `students`, `class_routines`, `attendance_sessions`, `attendance_records`, `subscription_plans`, `school_subscriptions`, `payments`, `audit_logs`).
-- `migrations/007_v07_payment_invoices.sql`: Adds `subscription_invoices` table.
-- `migrations/008_v08_school_billing.sql`: Adds school billing details and automated renewal helpers.
-- `migrations/009_v09_gst_reconciliation.sql`: Adds GSTIN, CGST, SGST tax breakdown fields.
-- `migrations/010_v10_invoice_email.sql`: Adds invoice delivery logs and email tracking.
-- `migrations/011_v11_notifications.sql`: Multi-channel notification logs and school notification channels.
-- `migrations/012_v12_attendance_reporting.sql`: Analytical functions and reporting views.
-- `migrations/013_v13_attendance_corrections.sql`: Adds `attendance_correction_requests` and audit table.
-- `migrations/014_v14_people_management.sql`: Status management and soft-activation for students/teachers.
-- `migrations/015_v15_academic_years.sql`: Academic year sessions and activation state.
-- `migrations/016_v16_student_promotion.sql`: Multi-student promotion audit history.
-- `migrations/017_v17_parent_portal.sql`: Adds `parent_profiles` and `parent_student_links`.
-- `migrations/018_v18_permissions.sql`: Custom administrative roles, permissions, and assignments.
-- `migrations/019_v19_subscription_enforcement.sql`: Access policies and feature restriction thresholds.
-- `migrations/020_v20_security_hardening.sql`: Account locking, refresh sessions, and security event logging.
-- `migrations/021_v21_backup_disaster_recovery.sql`: Backup jobs, restore test logs, and backup schedules.
-- `migrations/022_v22_advanced_timetable.sql`: Period configurations, timetable entries, conflicts, and substitute allocation.
-- `migrations/023_v23_offline_attendance.sql`: Offline sync batches and item reconciliation queues.
-- `migrations/024_v24_advanced_analytics.sql`: Daily attendance snapshots and attendance rank analytics.
-- `migrations/025_v25_communication.sql`: Announcements, audience targeting, and delivery tracking.
-- `migrations/026_v26_production.sql`: Job run monitoring and production readiness verification.
-- `migrations/027_v27_final_integration.sql`: Final integration tests and parent isolation validation.
-- `migrations/028_v28_final_integrated.sql`: Multi-channel delivery attempts and end-to-end telemetry.
-- `migrations/029_v29_student_role_and_portal.sql`: Adds `'STUDENT'` role to `user_role` ENUM/check, student login credential columns (`user_id`, `email`, `admission_number`, `date_of_birth`), `student_assignments`, `student_assignment_submissions`, `student_exams`, `student_exam_results`, and `student_leave_requests` tables.
+- `migrations/007_payment_invoices.sql`: Adds `subscription_invoices` table.
+- `migrations/008_school_billing.sql`: Adds school billing details and automated renewal helpers.
+- `migrations/009_gst_reconciliation.sql`: Adds GSTIN, CGST, SGST tax breakdown fields.
+- `migrations/010_invoice_email.sql`: Adds invoice delivery logs and email tracking.
+- `migrations/011_notifications.sql`: Multi-channel notification logs and school notification channels.
+- `migrations/012_attendance_reporting.sql`: Analytical functions and reporting views.
+- `migrations/013_attendance_corrections.sql`: Adds `attendance_correction_requests` and audit table.
+- `migrations/014_people_management.sql`: Status management and soft-activation for students/teachers.
+- `migrations/015_academic_years.sql`: Academic year sessions and activation state.
+- `migrations/016_student_promotion.sql`: Multi-student promotion audit history.
+- `migrations/017_parent_portal.sql`: Adds `parent_profiles` and `parent_student_links`.
+- `migrations/018_permissions.sql`: Custom administrative roles, permissions, and assignments.
+- `migrations/019_subscription_enforcement.sql`: Access policies and feature restriction thresholds.
+- `migrations/020_security_hardening.sql`: Account locking, refresh sessions, and security event logging.
+- `migrations/021_backup_disaster_recovery.sql`: Backup jobs, restore test logs, and backup schedules.
+- `migrations/022_advanced_timetable.sql`: Period configurations, timetable entries, conflicts, and substitute allocation.
+- `migrations/023_offline_attendance.sql`: Offline sync batches and item reconciliation queues.
+- `migrations/024_advanced_analytics.sql`: Daily attendance snapshots and attendance rank analytics.
+- `migrations/025_communication.sql`: Announcements, audience targeting, and delivery tracking.
+- `migrations/026_production.sql`: Job run monitoring and production readiness verification.
+- `migrations/027_final_integration.sql`: Final integration tests and parent isolation validation.
+- `migrations/028_final_integrated.sql`: Multi-channel delivery attempts and end-to-end telemetry.
+- `migrations/029_student_role_and_portal.sql`: Adds `'STUDENT'` role to `user_role` ENUM/check, student login credential columns (`user_id`, `email`, `admission_number`, `date_of_birth`), `student_assignments`, `student_assignment_submissions`, `student_exams`, `student_exam_results`, and `student_leave_requests` tables.
 
 ---
 
@@ -1670,8 +1681,8 @@ A thorough static and behavioral code review of the repository identified the fo
 |---|---|---|---|
 | `comprehensive-test-suite.ts` | Custom Runner (`tsx`) | [backend/tests/comprehensive-test-suite.ts](file:///d:/Project_Abir/attendoschool/backend/tests/comprehensive-test-suite.ts) | 93-assertion automated suite validating schema, migrations, security, and routes |
 | `automated-e2e-journey.ts` | Custom Runner (`tsx`) | [backend/tests/automated-e2e-journey.ts](file:///d:/Project_Abir/attendoschool/backend/tests/automated-e2e-journey.ts) | Simulates full lifecycle: Super Admin -> School -> Teacher -> Attendance -> Invoice |
-| `deep-feature-e2e-test.ts` | Custom Runner (`tsx`) | [backend/tests/deep-feature-e2e-test.ts](file:///d:/Project_Abir/attendoschool/backend/tests/deep-feature-e2e-test.ts) | Validates timetable conflict detection and student promotion integrity |
-| `v28-api-smoke.ts` | Custom Runner (`tsx`) | [scripts/v28-api-smoke.ts](file:///d:/Project_Abir/attendoschool/scripts/v28-api-smoke.ts) | HTTP smoke tests against live running server |
+| `api-smoke.ts` | Custom Runner (`tsx`) | [scripts/api-smoke.ts](file:///d:/Project_Abir/attendoschool/scripts/api-smoke.ts) | HTTP smoke tests against live running server |
+| `integration-smoke.ts` | Custom Runner (`tsx`) | [scripts/integration-smoke.ts](file:///d:/Project_Abir/attendoschool/scripts/integration-smoke.ts) | Production integration smoke tests |
 | `smoke.spec.ts` | Playwright | [tests/e2e/smoke.spec.ts](file:///d:/Project_Abir/attendoschool/tests/e2e/smoke.spec.ts) | Browser automation testing login page load and rendering |
 
 ### Untested Functionality
@@ -1842,9 +1853,10 @@ The repository includes ready-to-deploy configurations for:
 
 - **Current Implementation**: Continuous Integration workflows are **Not identified in the current codebase** (no `.github/workflows` directory exists).
 - **Automated Verification Scripts**: The repository includes local pre-deployment smoke scripts:
-  - `npm run release:check` (runs `npm run build && npm run v28:smoke`)
+  - `npm run release:check` (runs `npm run build && npm run test:api-smoke`)
   - `scripts/production-check.sh`
-  - `scripts/v28-api-smoke.ts`
+  - `scripts/api-smoke.ts`
+  - `scripts/integration-smoke.ts`
 
 ---
 
@@ -2106,7 +2118,7 @@ npx tsx src/scripts/migrate.ts
 cd backend
 npm test               # 50 comprehensive system assertions
 npm run test:student   # 41 student portal & RBAC security tests
-npm run v28:smoke      # API integration smoke script
+npm run test:api-smoke   # API integration smoke script
 ```
 
 ### Code Style & Architecture Guidelines
@@ -2120,7 +2132,7 @@ npm run v28:smoke      # API integration smoke script
 
 1. **Branching Strategy**: Create feature branches from `main` (`feature/feature-name` or `bugfix/issue-description`).
 2. **Commit Hygiene**: Write declarative commit messages detailing component impact.
-3. **Migration Numbering**: Increment database migration filenames sequentially (e.g. `029_v29_description.sql`) under `database/migrations/`.
+3. **Migration Numbering**: Increment database migration filenames sequentially (e.g. `030_description.sql`) under `database/migrations/`.
 4. **Validation**: Execute `npm run release:check` before submitting pull requests.
 
 ---
