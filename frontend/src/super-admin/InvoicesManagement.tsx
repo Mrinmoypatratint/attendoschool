@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { InvoiceRecord } from './types';
 import { apiRequest, API_BASE_URL } from '../api';
+import {
+  FileText, Download, Mail, Pencil, Printer, X,
+  CheckCircle2, RefreshCw, AlertCircle, Sparkles, Building2
+} from 'lucide-react';
 
 export const InvoicesManagement: React.FC = () => {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
@@ -16,6 +20,37 @@ export const InvoicesManagement: React.FC = () => {
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
   const [emailAddress, setEmailAddress] = useState<string>('');
   const [emailSending, setEmailSending] = useState<boolean>(false);
+  const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
+
+  // Edit Invoice states
+  const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
+  const [editSaving, setEditSaving] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<{
+    id: string;
+    invoice_number: string;
+    receipt_number: string;
+    school_name: string;
+    school_code: string;
+    amount: number;
+    gst_rate: number;
+    status: string;
+    issued_at: string;
+    paid_at: string;
+    billing_address: string;
+  }>({
+    id: '',
+    invoice_number: '',
+    receipt_number: '',
+    school_name: '',
+    school_code: '',
+    amount: 0,
+    gst_rate: 18,
+    status: 'PAID',
+    issued_at: '',
+    paid_at: '',
+    billing_address: ''
+  });
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadInvoices = async () => {
@@ -30,10 +65,14 @@ export const InvoicesManagement: React.FC = () => {
           school_name: 'Greenwood International School',
           school_code: 'GWIS-2025',
           amount: 1999,
+          taxable_amount: 1694.07,
+          gst_rate: 18,
+          gst_amount: 304.93,
           currency: 'INR',
           status: 'PAID',
           issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString()
+          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+          billing_address: 'Plot 42, Knowledge Park III, Greater Bengaluru, KA'
         },
         {
           id: 'inv-002',
@@ -42,10 +81,14 @@ export const InvoicesManagement: React.FC = () => {
           school_name: 'Delhi Public Academy',
           school_code: 'DPA-2025',
           amount: 999,
+          taxable_amount: 846.61,
+          gst_rate: 18,
+          gst_amount: 152.39,
           currency: 'INR',
           status: 'PAID',
           issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString()
+          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
+          billing_address: 'Sector 14, Institutional Area, New Delhi 110001'
         },
         {
           id: 'inv-003',
@@ -54,9 +97,13 @@ export const InvoicesManagement: React.FC = () => {
           school_name: 'St. Xavier High School',
           school_code: 'SXHS-2025',
           amount: 499,
+          taxable_amount: 422.88,
+          gst_rate: 18,
+          gst_amount: 76.12,
           currency: 'INR',
           status: 'PENDING',
-          issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString()
+          issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
+          billing_address: 'Park Street Campus, Central Boulevard, Kolkata 700016'
         }
       ]);
       setInvoices(data);
@@ -77,6 +124,7 @@ export const InvoicesManagement: React.FC = () => {
   };
 
   const handleDownloadPdf = async (invoice: InvoiceRecord) => {
+    setDownloadingPdf(true);
     try {
       const token = localStorage.getItem('attendance_token') || localStorage.getItem('token');
       const cleanBase = API_BASE_URL.replace(/\/+$/, '');
@@ -99,11 +147,14 @@ export const InvoicesManagement: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showToast(`Tax invoice ${invoice.invoice_number} downloaded successfully.`);
+      showToast(`Official Tax Invoice ${invoice.invoice_number}.pdf downloaded successfully.`);
     } catch {
       // Fallback: Trigger print preview of the receipt view
       setSelectedInvoice(invoice);
       showToast('Opening institutional tax receipt preview...');
+      setTimeout(() => window.print(), 500);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -127,6 +178,55 @@ export const InvoicesManagement: React.FC = () => {
       alert(err.message || 'Failed to transmit invoice via email.');
     } finally {
       setEmailSending(false);
+    }
+  };
+
+  const handleOpenEdit = (invoice: InvoiceRecord) => {
+    setEditForm({
+      id: invoice.id,
+      invoice_number: invoice.invoice_number || '',
+      receipt_number: invoice.receipt_number || '',
+      school_name: invoice.school_name || '',
+      school_code: invoice.school_code || '',
+      amount: Number(invoice.amount) || 0,
+      gst_rate: Number(invoice.gst_rate) || 18,
+      status: invoice.status || 'PAID',
+      issued_at: invoice.issued_at ? invoice.issued_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      paid_at: invoice.paid_at ? invoice.paid_at.slice(0, 10) : '',
+      billing_address: invoice.billing_address || ''
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.school_name.trim()) {
+      alert('Institution Name is required');
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res: any = await apiRequest(`/invoices/${editForm.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(editForm)
+      });
+      const updatedInvoice: InvoiceRecord = res?.invoice || {
+        ...selectedInvoice,
+        ...editForm,
+        taxable_amount: Math.round(Number(editForm.amount) * (100 / (100 + Number(editForm.gst_rate))) * 100) / 100,
+        gst_amount: Math.round(Number(editForm.amount) * (Number(editForm.gst_rate) / (100 + Number(editForm.gst_rate))) * 100) / 100
+      };
+
+      setInvoices(prev => prev.map(inv => inv.id === editForm.id ? { ...inv, ...updatedInvoice } : inv));
+      if (selectedInvoice && selectedInvoice.id === editForm.id) {
+        setSelectedInvoice({ ...selectedInvoice, ...updatedInvoice });
+      }
+      setEditModalOpen(false);
+      showToast(`Tax invoice ${editForm.invoice_number} updated successfully.`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update invoice.');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -155,30 +255,27 @@ export const InvoicesManagement: React.FC = () => {
         <div>
           <h2 className="section-title">Tax Invoices & GST Receipts</h2>
           <p className="section-subtitle">
-            Generate, audit, download, and email official GST-compliant tax invoices for institutional subscriptions.
+            Generate, audit, customize, download, and dispatch official GST-compliant institutional tax invoices.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn-secondary" onClick={loadInvoices} disabled={loading}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Refresh
+          <button className="sa-btn-secondary" onClick={loadInvoices} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
       {toastMessage && (
         <div style={{ margin: '14px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          {toastMessage}
+          <CheckCircle2 size={18} />
+          <span>{toastMessage}</span>
         </div>
       )}
 
       {error && (
         <div className="error-banner" style={{ margin: '16px 0', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <AlertCircle size={16} style={{ display: 'inline', marginRight: '6px' }} />
           {error}
         </div>
       )}
@@ -201,7 +298,7 @@ export const InvoicesManagement: React.FC = () => {
           <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             GST Liability (18%)
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#6366f1', marginTop: '6px' }}>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
             ₹{totalGst.toLocaleString('en-IN')}
           </div>
           <div style={{ fontSize: '12px', color: '#10b981', marginTop: '4px' }}>
@@ -211,7 +308,7 @@ export const InvoicesManagement: React.FC = () => {
 
         <div className="card" style={{ padding: '18px' }}>
           <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Paid Tax Invoices
+            Settled Tax Invoices
           </div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10b981', marginTop: '6px' }}>
             {paidCount} / {invoices.length}
@@ -225,7 +322,7 @@ export const InvoicesManagement: React.FC = () => {
           <div style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             GSTIN Registered
           </div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginTop: '8px', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: '17px', fontWeight: '700', color: '#0f172a', marginTop: '8px', fontFamily: 'monospace' }}>
             19AAACB1234P1Z5
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
@@ -276,7 +373,7 @@ export const InvoicesManagement: React.FC = () => {
 
           {(search || statusFilter !== 'ALL') && (
             <button
-              className="btn-secondary"
+              className="sa-btn-secondary"
               style={{ padding: '8px 14px' }}
               onClick={() => {
                 setSearch('');
@@ -309,7 +406,7 @@ export const InvoicesManagement: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <div className="spinner" style={{ margin: '0 auto 12px', width: '28px', height: '28px', border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     Loading tax invoices...
                   </td>
                 </tr>
@@ -326,7 +423,7 @@ export const InvoicesManagement: React.FC = () => {
                   return (
                     <tr key={inv.id}>
                       <td>
-                        <span style={{ fontWeight: '700', color: '#4f46e5', fontFamily: 'monospace' }}>
+                        <span style={{ fontWeight: '700', color: '#2563eb', fontFamily: 'monospace' }}>
                           {inv.invoice_number}
                         </span>
                       </td>
@@ -348,7 +445,7 @@ export const InvoicesManagement: React.FC = () => {
                       </td>
                       <td>
                         <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>
-                          18% GST
+                          {inv.gst_rate || 18}% GST
                         </span>
                       </td>
                       <td>
@@ -362,30 +459,15 @@ export const InvoicesManagement: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button
-                            className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
+                            className="sa-btn-secondary"
+                            style={{ padding: '6px 14px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             onClick={() => setSelectedInvoice(inv)}
-                            title="View Receipt Breakdown"
+                            title="View Official Receipt & Actions"
                           >
-                            Receipt
-                          </button>
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
-                            onClick={() => handleDownloadPdf(inv)}
-                            title="Download PDF"
-                          >
-                            PDF
-                          </button>
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
-                            onClick={() => handleOpenEmail(inv)}
-                            title="Email to School Admin"
-                          >
-                            Email
+                            <FileText size={14} />
+                            <span>Receipt</span>
                           </button>
                         </div>
                       </td>
@@ -398,15 +480,24 @@ export const InvoicesManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal: Receipt Breakdown Viewer */}
-      {selectedInvoice && !emailModalOpen && (
+      {/* Modal: Receipt Breakdown Viewer with Company Logo & Actions */}
+      {selectedInvoice && !emailModalOpen && !editModalOpen && (
         <div className="modal-backdrop" onClick={() => setSelectedInvoice(null)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px', background: '#fff' }}>
-            <div className="modal-header" style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #0f172a, #334155)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
-                  A
-                </div>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px', background: '#fff', borderRadius: '12px', overflow: 'hidden' }}>
+            {/* Top Brand Accent Bar */}
+            <div style={{ height: '4px', background: 'linear-gradient(90deg, #1e40af, #3b82f6)' }} />
+
+            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <img
+                  src="/attendo-school-logo.png"
+                  alt="AttendoSchool"
+                  style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }}
+                  onError={(e) => {
+                    // Fallback to text badge if image fails
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
                     AttendoSchool Technologies Inc.
@@ -416,44 +507,55 @@ export const InvoicesManagement: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button
-                className="close-btn"
-                onClick={() => setSelectedInvoice(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
-              >
-                &times;
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className={`badge ${selectedInvoice.status === 'PAID' ? 'badge-active' : 'badge-pending'}`}>
+                  {selectedInvoice.status}
+                </span>
+                <button
+                  className="close-btn"
+                  onClick={() => setSelectedInvoice(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#64748b' }}
+                >
+                  &times;
+                </button>
+              </div>
             </div>
 
-            <div className="modal-body" style={{ padding: '24px 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <div>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: '600', letterSpacing: '0.05em' }}>
-                    Billed To
+            <div className="modal-body" style={{ padding: '24px', maxHeight: '72vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', gap: '20px' }}>
+                <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e40af', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                    Billed To (Institution)
                   </div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', marginTop: '2px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
                     {selectedInvoice.school_name}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                     School Code: {selectedInvoice.school_code || 'GWIS-2025'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    GSTIN: Unregistered / Institutional
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    Address: {selectedInvoice.billing_address || 'Main Campus Boulevard, India'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    GSTIN: {selectedInvoice.gstin || 'Institutional / Unregistered'}
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#4f46e5' }}>
-                    TAX INVOICE
+                <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'right' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#1e40af', letterSpacing: '0.05em' }}>
+                    TAX INVOICE & RECEIPT
                   </div>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace', marginTop: '2px' }}>
                     {selectedInvoice.invoice_number}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    Receipt: {selectedInvoice.receipt_number || 'REC-AUTO'}
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    Receipt Ref: {selectedInvoice.receipt_number || 'REC-AUTO'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                     Date: {new Date(selectedInvoice.issued_at || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
+                    Payment Mode: {selectedInvoice.provider || 'Razorpay Gateway'}
                   </div>
                 </div>
               </div>
@@ -462,24 +564,28 @@ export const InvoicesManagement: React.FC = () => {
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: '600' }}>Item Description</th>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: '600', textAlign: 'right' }}>Taxable</th>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: '600', textAlign: 'right' }}>GST (18%)</th>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: '600', textAlign: 'right' }}>Total</th>
+                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700' }}>Item Description</th>
+                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'center' }}>SAC</th>
+                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>Taxable</th>
+                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>GST ({selectedInvoice.gst_rate || 18}%)</th>
+                      <th style={{ padding: '10px 14px', color: '#334155', fontWeight: '700', textAlign: 'right' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
                         <div style={{ fontWeight: '600', color: '#0f172a' }}>School Attendance SaaS Subscription</div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>Institutional license, multi-tenant portal & biometric sync</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Institutional license, multi-tenant portal, biometric sync & parent alerts</div>
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#64748b', borderBottom: '1px solid #f1f5f9' }}>
+                        998313
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid #f1f5f9' }}>
-                        ₹{(Number(selectedInvoice.amount) * 0.84745).toFixed(2)}
+                        ₹{(Number(selectedInvoice.amount) * (100 / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right', borderBottom: '1px solid #f1f5f9' }}>
-                        ₹{(Number(selectedInvoice.amount) * 0.15255).toFixed(2)}
+                        ₹{(Number(selectedInvoice.amount) * ((Number(selectedInvoice.gst_rate) || 18) / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '700', color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>
                         ₹{Number(selectedInvoice.amount).toFixed(2)}
@@ -491,59 +597,74 @@ export const InvoicesManagement: React.FC = () => {
 
               {/* Totals Summary */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                     <span>Taxable Subtotal:</span>
-                    <span>₹{(Number(selectedInvoice.amount) * 0.84745).toFixed(2)}</span>
+                    <span>₹{(Number(selectedInvoice.amount) * (100 / (100 + (Number(selectedInvoice.gst_rate) || 18)))).toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                     <span>CGST (9%):</span>
-                    <span>₹{(Number(selectedInvoice.amount) * 0.07627).toFixed(2)}</span>
+                    <span>₹{(Number(selectedInvoice.amount) * (0.09 / 1.18)).toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                     <span>SGST (9%):</span>
-                    <span>₹{(Number(selectedInvoice.amount) * 0.07627).toFixed(2)}</span>
+                    <span>₹{(Number(selectedInvoice.amount) * (0.09 / 1.18)).toFixed(2)}</span>
                   </div>
-                  <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+                  <div style={{ borderTop: '2px solid #cbd5e1', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
                     <span>Grand Total:</span>
                     <span style={{ color: '#10b981' }}>₹{Number(selectedInvoice.amount).toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
                     <span>Payment Status:</span>
-                    <span className="badge badge-active">{selectedInvoice.status}</span>
+                    <span className={`badge ${selectedInvoice.status === 'PAID' ? 'badge-active' : 'badge-pending'}`}>{selectedInvoice.status}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between' }}>
-              <button
-                className="btn-secondary"
-                onClick={() => handleOpenEmail(selectedInvoice)}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-                Email Invoice
-              </button>
-              <div style={{ display: 'flex', gap: '10px' }}>
+            {/* Modal Actions Footer with all functions */}
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  className="btn-secondary"
-                  onClick={() => setSelectedInvoice(null)}
+                  type="button"
+                  className="sa-btn-secondary"
+                  onClick={() => handleOpenEmail(selectedInvoice)}
+                  title="Dispatch invoice by Email"
                 >
-                  Close
+                  <Mail size={14} />
+                  <span>Email Invoice</span>
                 </button>
                 <button
-                  className="btn-primary"
-                  onClick={() => handleDownloadPdf(selectedInvoice)}
+                  type="button"
+                  className="sa-btn-secondary"
+                  onClick={() => handleOpenEdit(selectedInvoice)}
+                  title="Edit invoice details"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  Download PDF
+                  <Pencil size={14} />
+                  <span>Edit Invoice</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="sa-btn-secondary"
+                  onClick={() => window.print()}
+                  title="Print receipt preview"
+                >
+                  <Printer size={14} />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={downloadingPdf}
+                  onClick={() => handleDownloadPdf(selectedInvoice)}
+                  title="Download professional PDF with company logo"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Download size={14} />
+                  <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
                 </button>
               </div>
             </div>
@@ -551,25 +672,223 @@ export const InvoicesManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Email Invoice */}
-      {emailModalOpen && selectedInvoice && (
-        <div className="modal-backdrop" onClick={() => !emailSending && setEmailModalOpen(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0f172a' }}>
-                Email Tax Invoice {selectedInvoice.invoice_number}
-              </h3>
+      {/* Modal: Edit Invoice Option */}
+      {editModalOpen && (
+        <div className="modal-backdrop" onClick={() => !editSaving && setEditModalOpen(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px', background: '#fff', borderRadius: '12px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'grid', placeItems: 'center', color: '#2563eb' }}>
+                  <Pencil size={16} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                    Edit Tax Invoice & Receipt
+                  </h3>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    Update institutional invoice metadata, tax calculations, and status
+                  </div>
+                </div>
+              </div>
               <button
+                type="button"
                 className="close-btn"
-                disabled={emailSending}
-                onClick={() => setEmailModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}
+                disabled={editSaving}
+                onClick={() => setEditModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
               >
                 &times;
               </button>
             </div>
 
-            <div className="modal-body" style={{ padding: '16px 0' }}>
+            <form onSubmit={handleSaveEdit}>
+              <div className="modal-body" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Invoice Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      value={editForm.invoice_number}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, invoice_number: e.target.value }))}
+                      placeholder="INV-2025-001"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Receipt Reference
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editForm.receipt_number}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, receipt_number: e.target.value }))}
+                      placeholder="REC-2025-001"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Institution / School Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      value={editForm.school_name}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, school_name: e.target.value }))}
+                      placeholder="Greenwood International School"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      School Code
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editForm.school_code}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, school_code: e.target.value }))}
+                      placeholder="GWIS-2025"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Total Invoiced (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="1"
+                      className="form-control"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, amount: Number(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      GST Rate (%)
+                    </label>
+                    <select
+                      className="form-control"
+                      value={editForm.gst_rate}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, gst_rate: Number(e.target.value) || 18 }))}
+                    >
+                      <option value={18}>18% GST (Standard)</option>
+                      <option value={12}>12% GST</option>
+                      <option value={5}>5% GST</option>
+                      <option value={0}>0% (Tax Exempt)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Payment Status
+                    </label>
+                    <select
+                      className="form-control"
+                      value={editForm.status}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                    >
+                      <option value="PAID">PAID</option>
+                      <option value="PENDING">PENDING</option>
+                      <option value="OVERDUE">OVERDUE</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Issue Date
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={editForm.issued_at}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, issued_at: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                      Paid / Settlement Date
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={editForm.paid_at}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, paid_at: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                    Billing Campus Address
+                  </label>
+                  <textarea
+                    rows={2}
+                    className="form-control"
+                    value={editForm.billing_address}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, billing_address: e.target.value }))}
+                    placeholder="Enter campus physical or registered billing address..."
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#fafafa' }}>
+                <button
+                  type="button"
+                  className="sa-btn-secondary"
+                  disabled={editSaving}
+                  onClick={() => setEditModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={editSaving}
+                >
+                  {editSaving ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Email Invoice */}
+      {emailModalOpen && selectedInvoice && (
+        <div className="modal-backdrop" onClick={() => !emailSending && setEmailModalOpen(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', background: '#fff', borderRadius: '12px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Mail size={18} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                  Email Tax Invoice {selectedInvoice.invoice_number}
+                </h3>
+              </div>
+              <button
+                className="close-btn"
+                disabled={emailSending}
+                onClick={() => setEmailModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#64748b' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
               <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 14px 0' }}>
                 Dispatch the official PDF tax receipt to the institutional administrator or finance desk.
               </p>
@@ -586,10 +905,10 @@ export const InvoicesManagement: React.FC = () => {
               />
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '14px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#fafafa' }}>
               <button
                 type="button"
-                className="btn-secondary"
+                className="sa-btn-secondary"
                 disabled={emailSending}
                 onClick={() => setEmailModalOpen(false)}
               >

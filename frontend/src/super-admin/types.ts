@@ -70,10 +70,18 @@ export interface InvoiceRecord {
   school_name: string;
   school_code?: string;
   amount: number;
+  taxable_amount?: number;
+  gst_rate?: number;
+  gst_amount?: number;
   currency: string;
   status: string;
   issued_at?: string;
   paid_at?: string;
+  billing_address?: string;
+  gstin?: string;
+  provider?: string;
+  provider_order_id?: string;
+  provider_payment_id?: string;
 }
 
 export interface AuditLogRecord {
