@@ -13,3 +13,6 @@ deploy/nginx/certs/*.key
 deploy/nginx/certs/*.pem
 .vercel/
 attendoschool/
+serviceAccountKey.json
+*serviceAccount*.json
+backend/serviceAccountKey.json

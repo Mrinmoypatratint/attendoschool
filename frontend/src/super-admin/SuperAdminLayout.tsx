@@ -197,7 +197,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
         { path: '/super-admin/subscriptions', label: 'Subscriptions', icon: Layers },
         { path: '/super-admin/payments', label: 'Payments', icon: CreditCard },
         { path: '/super-admin/invoices', label: 'Invoices', icon: FileText },
-        { path: '/super-admin/monitor', label: 'Monitoring', icon: Eye }
+        { path: '/super-admin/monitoring', label: 'Monitoring & System Health', icon: Eye }
       ]
     },
     {
@@ -219,7 +219,6 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     {
       title: 'SYSTEM',
       items: [
-        { path: '/super-admin/monitoring', label: 'System Health', icon: Server },
         { path: '/super-admin/backups', label: 'Backups', icon: RefreshCw },
         { path: '/super-admin/settings', label: 'Settings', icon: Settings }
       ]

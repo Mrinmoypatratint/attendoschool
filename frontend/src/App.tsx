@@ -1742,7 +1742,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/super-admin/subscriptions','Subscriptions',CalendarDays],
     ['/super-admin/payments','Payments',CreditCard],
     ['/super-admin/invoices','Invoices',FileText],
-    ['/super-admin/monitoring','Monitoring',Eye],
+    ['/super-admin/monitoring','Monitoring & System Health',Eye],
     ['/super-admin/reports','Reports',BarChart3],
     ['—','ADMINISTRATION'],
     ['/super-admin/people','People',Users],

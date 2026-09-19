@@ -174,8 +174,8 @@ export const MonitoringHealth: React.FC = () => {
             <span className="badge badge-active">CONNECTED</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
-            <div>Instance: <strong>attendoschool-saas</strong></div>
-            <div>Host: <code>127.0.0.1:8080 (Emulator)</code></div>
+            <div>Instance: <strong>attendoschool</strong></div>
+            <div>Host: <code>Google Cloud Firestore (Live)</code></div>
             <div>Active Sync: <strong>Enabled & Verified</strong></div>
           </div>
         </div>

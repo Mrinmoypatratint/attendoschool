@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore, CollectionReference, DocumentData } from 'firebase-admin/firestore';
 import * as fs from 'fs';
+import * as path from 'path';
 import { env } from './config/env';
 
 let firebaseApp: App;
@@ -11,17 +12,35 @@ if (env.firestoreEmulatorHost) {
   process.env.FIRESTORE_EMULATOR_HOST = env.firestoreEmulatorHost;
 }
 
+export function findServiceAccountPath(): string | null {
+  const candidates = [
+    env.firebaseServiceAccountPath,
+    env.firebaseServiceAccountPath ? path.resolve(process.cwd(), env.firebaseServiceAccountPath) : '',
+    env.firebaseServiceAccountPath ? path.resolve(__dirname, '..', env.firebaseServiceAccountPath) : '',
+    path.resolve(__dirname, '../serviceAccountKey.json'),
+    path.resolve(process.cwd(), 'serviceAccountKey.json'),
+    path.resolve(process.cwd(), 'backend/serviceAccountKey.json'),
+    process.env.GOOGLE_APPLICATION_CREDENTIALS || ''
+  ].filter(Boolean);
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 try {
   const existingApps = getApps();
+  const saPath = findServiceAccountPath();
   if (existingApps.length > 0) {
     firebaseApp = existingApps[0]!;
-  } else if (env.firebaseServiceAccountPath && fs.existsSync(env.firebaseServiceAccountPath)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(env.firebaseServiceAccountPath, 'utf8'));
+  } else if (saPath) {
+    const serviceAccount = JSON.parse(fs.readFileSync(saPath, 'utf8'));
     firebaseApp = initializeApp({
       credential: cert(serviceAccount),
       projectId: serviceAccount.project_id || env.firebaseProjectId
     });
-    console.log('[Firebase] Initialized with service account file:', env.firebaseServiceAccountPath);
+    console.log('[Firebase] Initialized with service account file:', saPath);
   } else if (env.firebaseClientEmail && env.firebasePrivateKey) {
     firebaseApp = initializeApp({
       credential: cert({
@@ -35,14 +54,14 @@ try {
   } else {
     // Default development / emulator initialization
     firebaseApp = initializeApp({
-      projectId: env.firebaseProjectId || 'attendoschool-saas'
+      projectId: env.firebaseProjectId || 'attendoschool'
     });
-    console.log('[Firebase] Initialized in local/emulator mode (Project:', env.firebaseProjectId || 'attendoschool-saas', ')');
+    console.log('[Firebase] Initialized in local/emulator mode (Project:', env.firebaseProjectId || 'attendoschool', ')');
   }
 } catch (error: any) {
   console.warn('[Firebase] Warning during initialization:', error.message);
   const apps = getApps();
-  firebaseApp = apps.length > 0 ? apps[0]! : initializeApp({ projectId: 'attendoschool-saas' });
+  firebaseApp = apps.length > 0 ? apps[0]! : initializeApp({ projectId: env.firebaseProjectId || 'attendoschool' });
 }
 
 export const firestore: Firestore = getFirestore(firebaseApp);
@@ -74,7 +93,7 @@ export const collections = {
 export function isFirebaseConfigured(): boolean {
   return Boolean(
     env.firestoreEmulatorHost ||
-    (env.firebaseServiceAccountPath && fs.existsSync(env.firebaseServiceAccountPath)) ||
+    Boolean(findServiceAccountPath()) ||
     (env.firebaseClientEmail && env.firebasePrivateKey) ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS
   );

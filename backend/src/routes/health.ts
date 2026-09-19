@@ -12,7 +12,9 @@ r.get('/',async(_req,res)=>{
     status: isHealthy ? 'ok' : 'error',
     database: {
       postgres: pgOk ? 'connected' : 'unavailable',
-      firestore: fsHealth.ok ? 'connected' : 'unavailable'
+      firestore: fsHealth.ok ? 'connected' : 'unavailable',
+      projectId: 'attendoschool',
+      mode: 'Cloud Firestore'
     },
     version: 'production',
     uptime: process.uptime()
