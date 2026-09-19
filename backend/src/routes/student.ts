@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import * as svc from '../services/studentService';
+import { memEntries } from './timetable';
 
 const router = Router();
 
@@ -48,10 +49,18 @@ router.get('/attendance', async (req: AuthRequest, res: Response) => {
 router.get('/timetable', async (req: AuthRequest, res: Response) => {
   try {
     const data = await svc.getStudentTimetable(req.user!.schoolId!, req.user!.id);
-    res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ message: e.message || 'Unable to load timetable' });
-  }
+    if (data && data.length > 0) return res.json(data);
+  } catch (e: any) {}
+  // Fallback to in-memory timetable entries filtered by student's class/section
+  const classId = (req.user as any)?.classId;
+  const sectionId = (req.user as any)?.sectionId;
+  const filtered = memEntries.filter(e => {
+    if (classId && sectionId) return e.class_id === classId && e.section_id === sectionId;
+    if (classId) return e.class_id === classId;
+    return true; // show all if no class/section context
+  });
+  filtered.sort((a: any, b: any) => a.day_of_week - b.day_of_week || a.period_number - b.period_number);
+  res.json(filtered);
 });
 
 // GET /api/student/announcements - Published announcements

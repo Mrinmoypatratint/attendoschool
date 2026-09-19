@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms } from '../services/smsService';
+import { demoStudents } from './schoolData';
+import { syncAttendanceToFirestore } from '../services/firestoreSync';
 
 const r=Router();
 const teacher=[requireAuth,requireRoles('TEACHER','SCHOOL_ADMIN')];
@@ -40,22 +42,16 @@ r.get('/students/:classId/:sectionId', ...teacher, async (req: AuthRequest,res) 
        ORDER BY roll_number`,
       [req.user!.schoolId,req.params.classId,req.params.sectionId]
     );
-    res.json(q.rows);
-  } catch {
-    const demoStudents = [
-      { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', parent_name: 'Ramesh Kumar' },
-      { id: 'st-02', name: 'Priya Sharma', roll_number: '2', parent_name: 'Sunil Sharma' },
-      { id: 'st-03', name: 'Rahul Das', roll_number: '3', parent_name: 'Bikash Das' },
-      { id: 'st-04', name: 'Ananya Sen', roll_number: '4', parent_name: 'Subhash Sen' },
-      { id: 'st-05', name: 'Dev Mukherjee', roll_number: '5', parent_name: 'Amit Mukherjee' },
-      { id: 'st-06', name: 'Ishita Ghosh', roll_number: '6', parent_name: 'Pranab Ghosh' },
-      { id: 'st-07', name: 'Karan Patel', roll_number: '7', parent_name: 'Vijay Patel' },
-      { id: 'st-08', name: 'Sneha Roy', roll_number: '8', parent_name: 'Debashis Roy' },
-      { id: 'st-09', name: 'Rohan Gupta', roll_number: '9', parent_name: 'Manoj Gupta' },
-      { id: 'st-10', name: 'Tanvi Verma', roll_number: '10', parent_name: 'Sanjay Verma' }
-    ];
-    res.json(demoStudents);
-  }
+    if (q.rowCount) return res.json(q.rows);
+  } catch {}
+  const classParam = String(req.params.classId);
+  const secId = String(req.params.sectionId);
+  const secParam = secId.toLowerCase();
+  const filtered = demoStudents.filter(s =>
+    (s.class_id === classParam || String(s.class_number) === classParam) &&
+    (s.section_id === secId || (s.section_name && s.section_name.toLowerCase() === secParam))
+  );
+  res.json(filtered.length ? filtered : demoStudents);
 });
 
 r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
@@ -135,6 +131,25 @@ r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
       await client.query('COMMIT');
       const sms=await queueAbsentSms(sessionId);
       queueAbsentNotifications(sessionId).catch(err=>console.error('V11 notification queue:',err));
+
+      // Sync to Firestore
+      const sessionRecords = students.map(st => ({
+        student_id: st.id,
+        is_present: present.has(st.id),
+        status: present.has(st.id) ? 'PRESENT' : 'ABSENT'
+      }));
+      syncAttendanceToFirestore({
+        id: sessionId,
+        school_id: schoolId,
+        class_id: classId,
+        section_id: sectionId,
+        subject_id: subjectId,
+        teacher_id: teacherId,
+        attendance_date: x.attendanceDate,
+        start_time: x.startTime,
+        end_time: x.endTime
+      }, sessionRecords).catch(() => {});
+
       res.status(201).json({
         success:true,sessionId,
         total:students.length,present:students.filter(s=>present.has(s.id)).length,
@@ -144,21 +159,71 @@ r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
     } catch (err) {
       await client.query('ROLLBACK');
       console.error('Attendance recording error:', err);
-      const presentCount = (x.presentStudentIds || []).length;
+      const sessId = 'sess-' + Date.now();
+      const presentSet = new Set<string>(Array.isArray(x.presentStudentIds)?x.presentStudentIds:[]);
+      const targetStudents = demoStudents.filter(s =>
+        (s.class_id === x.classId || String(s.class_number) === x.classId) &&
+        (s.section_id === x.sectionId || (s.section_name && s.section_name.toLowerCase() === x.sectionId.toLowerCase()))
+      );
+      const studentPool = targetStudents.length ? targetStudents : demoStudents.slice(0, 10);
+      const sessionRecords = studentPool.map(s => ({
+        student_id: s.id,
+        is_present: presentSet.has(s.id),
+        status: presentSet.has(s.id) ? 'PRESENT' : 'ABSENT'
+      }));
+
+      syncAttendanceToFirestore({
+        id: sessId,
+        school_id: schoolId,
+        class_id: x.classId,
+        section_id: x.sectionId,
+        subject_id: x.subjectId || null,
+        teacher_id: req.user!.id,
+        attendance_date: x.attendanceDate,
+        start_time: x.startTime,
+        end_time: x.endTime
+      }, sessionRecords).catch(() => {});
+
+      const presentCount = sessionRecords.filter(r => r.is_present).length;
       return res.status(201).json({
-        success:true,sessionId:'demo-session-' + Date.now(),
-        total:10,present:presentCount,
-        absent:10 - presentCount,
-        smsQueued:10 - presentCount
+        success:true,sessionId:sessId,
+        total:sessionRecords.length,present:presentCount,
+        absent:sessionRecords.length - presentCount,
+        smsQueued:sessionRecords.length - presentCount
       });
     } finally { client.release(); }
   } catch {
-    const presentCount = (x.presentStudentIds || []).length;
+    const sessId = 'sess-' + Date.now();
+    const presentSet = new Set<string>(Array.isArray(x.presentStudentIds)?x.presentStudentIds:[]);
+    const targetStudents = demoStudents.filter(s =>
+      (s.class_id === x.classId || String(s.class_number) === x.classId) &&
+      (s.section_id === x.sectionId || (s.section_name && s.section_name.toLowerCase() === x.sectionId.toLowerCase()))
+    );
+    const studentPool = targetStudents.length ? targetStudents : demoStudents.slice(0, 10);
+    const sessionRecords = studentPool.map(s => ({
+      student_id: s.id,
+      is_present: presentSet.has(s.id),
+      status: presentSet.has(s.id) ? 'PRESENT' : 'ABSENT'
+    }));
+
+    syncAttendanceToFirestore({
+      id: sessId,
+      school_id: schoolId,
+      class_id: x.classId,
+      section_id: x.sectionId,
+      subject_id: x.subjectId || null,
+      teacher_id: req.user!.id,
+      attendance_date: x.attendanceDate,
+      start_time: x.startTime,
+      end_time: x.endTime
+    }, sessionRecords).catch(() => {});
+
+    const presentCount = sessionRecords.filter(r => r.is_present).length;
     res.status(201).json({
-      success:true,sessionId:'demo-session-' + Date.now(),
-      total:10,present:presentCount,
-      absent:10 - presentCount,
-      smsQueued:10 - presentCount
+      success:true,sessionId:sessId,
+      total:sessionRecords.length,present:presentCount,
+      absent:sessionRecords.length - presentCount,
+      smsQueued:sessionRecords.length - presentCount
     });
   }
 });

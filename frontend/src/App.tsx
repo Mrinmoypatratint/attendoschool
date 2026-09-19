@@ -39,6 +39,8 @@ import { StudentExams } from './pages/student/StudentExams';
 import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
+import { ThreeDBackground } from './components/ThreeDBackground';
+import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -183,6 +185,7 @@ function Login() {
   const { dark, toggle } = useTheme();
 
   const [institutes, setInstitutes] = useState<Institute[]>(FALLBACK_INSTITUTES);
+  const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState('00000000-0000-0000-0000-000000000001');
   const [instituteSearch, setInstituteSearch] = useState('');
@@ -246,6 +249,7 @@ function Login() {
   );
 
   function handleSelectRole(role: LoginOption) {
+    setSelectedRole(role);
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
@@ -316,276 +320,278 @@ function Login() {
     }
   }
 
+  // Live robotic HUD date & clock (updating every animation frame for ultra-precise milliseconds)
+  const [hudClock, setHudClock] = useState({ dateStr: '', timeStr: '' });
+
+  useEffect(() => {
+    let animId: number;
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+    const updateClock = () => {
+      const now = new Date();
+      const dayName = days[now.getDay()];
+      const dayNum = String(now.getDate()).padStart(2, '0');
+      const monthName = months[now.getMonth()];
+      const year = now.getFullYear();
+
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+      setHudClock({
+        dateStr: `${dayNum} ${monthName} ${year} • ${dayName}`,
+        timeStr: `TIME : ${hh} : ${mm} : ${ss} : ${ms}`
+      });
+
+      animId = requestAnimationFrame(updateClock);
+    };
+
+    animId = requestAnimationFrame(updateClock);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
   return (
-    <div className="as-login-desk-wrap">
-      {/* Decorative environment background elements */}
-      <div className="as-desk-decor-plane" aria-hidden="true">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <path d="M6 24L42 8L28 40L22 28L6 24Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M42 8L22 28" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <div className="as-desk-decor-notebook" aria-hidden="true">
-        <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
-          <rect x="14" y="10" width="38" height="46" rx="4" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
-          <line x1="20" y1="22" x2="44" y2="22" stroke="currentColor" strokeWidth="1.2" />
-          <line x1="20" y1="30" x2="44" y2="30" stroke="currentColor" strokeWidth="1.2" />
-          <line x1="20" y1="38" x2="36" y2="38" stroke="currentColor" strokeWidth="1.2" />
-          <circle cx="10" cy="18" r="2" fill="currentColor" />
-          <circle cx="10" cy="26" r="2" fill="currentColor" />
-          <circle cx="10" cy="34" r="2" fill="currentColor" />
-          <circle cx="10" cy="42" r="2" fill="currentColor" />
-        </svg>
-      </div>
-      <div className="as-desk-decor-tagline" aria-hidden="true">
-        Same Schools<br />Brighter Futures
-      </div>
+    <div className="as-simple-page">
+      {/* 3D Educational Dynamic Animated Background */}
+      <ThreeDBackground dark={dark} />
 
-      {/* Main Split-Screen Container with 1px Subtle Border */}
-      <div className="as-login-frame">
-        {/* Left Column: Education Hero Showcase */}
-        <div className="as-hero-col">
-          {/* Brand Header */}
-          <div className="as-hero-brand-row">
-            <div className="as-hero-logo-box">
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="as-hero-brand-img" />
-            </div>
-            <div className="as-hero-brand-text">
-              <span className="as-hero-brand-name">AttendoSchool</span>
-              <span className="as-hero-brand-tagline">Attendance Today — Brighter Tomorrow</span>
-            </div>
-          </div>
-
-          {/* Social Proof Pill Badge */}
-          <div className="as-hero-proof-badge">
-            <GraduationCap size={15} className="as-proof-icon" />
-            <span>Trusted by 500+ Schools Nationwide</span>
-          </div>
-
-          {/* Bold Core Headline */}
-          <h1 className="as-hero-core-title">
-            Empowering<br />
-            Schools for a<br />
-            <span className="as-hero-green-highlight">Brighter Tomorrow</span>
-          </h1>
-
-          <p className="as-hero-core-sub">
-            Smart Attendance. Better Learning. Stronger Communities.
-          </p>
-
-          {/* 4 Feature Cards Row */}
-          <div className="as-hero-cards-grid">
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
-                <GraduationCap size={20} />
-              </div>
-              <span className="as-feature-tile-label">Simpler<br />Attendance</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
-                <BarChart3 size={20} />
-              </div>
-              <span className="as-feature-tile-label">Smarter<br />Academics</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
-                <Users size={20} />
-              </div>
-              <span className="as-feature-tile-label">Stronger<br />Communication</span>
-            </div>
-            <div className="as-feature-tile">
-              <div className="as-feature-tile-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
-                <ShieldCheck size={20} />
-              </div>
-              <span className="as-feature-tile-label">Safer<br />Schools</span>
-            </div>
-          </div>
-
-          {/* Campus Photo & Video Showcase Viewport with Quote Overlays */}
-          <div className="as-campus-viewport">
-            {!videoError && !prefersReducedMotion ? (
-              <video
-                className="as-campus-video-elem"
-                src="/media/login-school.mp4"
-                poster="/campus_hero_reference.jpg"
-                autoPlay
-                muted
-                loop
-                playsInline
-                onError={() => setVideoError(true)}
-              />
-            ) : (
-              <img
-                src="/campus_hero_reference.jpg"
-                alt="Modern School Campus"
-                className="as-campus-img-elem"
-              />
-            )}
-
-            {/* Floating Quote Overlays matching the reference design */}
-            <div className="as-quote-bubble-building">
-              <span>“Knowledge Builds Brighter Futures”</span>
-            </div>
-
-            <div className="as-quote-script-text">
-              Learn<br />Manage<br />Grow<br />Together
-            </div>
-
-            <div className="as-quote-bottom-pill">
-              <div className="as-quote-mark-circle">“</div>
-              <p>Every student present today is a brighter tomorrow for our world.</p>
-            </div>
-          </div>
+      {/* Floating Top-Left Brand Logo */}
+      <div className="as-top-left-brand">
+        <img
+          src="/attendo-school-logo.png"
+          alt="AttendoSchool Logo"
+          className="as-simple-logo-img"
+        />
+        <div className="as-brand-text-block">
+          <h1 className="as-simple-brand-title">AttendoSchool</h1>
+          <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
+      </div>
 
-        {/* Right Column: Interactive Authentication Canvas */}
-        <div className="as-card-col">
-          {/* Top Utilities: Help, Language, Dark Mode Toggle */}
-          <div className="as-top-utility-bar">
-            <button type="button" className="as-util-item-btn" onClick={() => setShowHelp(true)}>
-              <HelpCircle size={15} />
-              <span>Help</span>
-            </button>
-            <div className="as-lang-menu-container">
-              <button type="button" className="as-util-item-btn" onClick={() => setShowLang(l => !l)}>
-                <Globe size={15} />
-                <span>{selectedLang}</span>
-                <ChevronDown size={13} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
-              </button>
-              {showLang && (
-                <div className="as-lang-popover">
-                  {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
-                    <div
-                      key={l}
-                      className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedLang(l.split(' ')[0]);
-                        setShowLang(false);
-                      }}
-                    >
-                      {l}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              className="as-util-item-btn as-theme-btn"
-              onClick={toggle}
-              title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {dark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#475569" />}
-            </button>
-          </div>
-
-          {/* Welcome Title Block */}
-          <div className="as-auth-header">
-            <span className="as-auth-kicker">Welcome to</span>
-            <div className="as-auth-brand-row">
-              <h2 className="as-auth-brand-title">AttendoSchool</h2>
-              <span className="as-brand-green-dot" />
-            </div>
-            <p className="as-auth-subtitle">Sign in to continue to your portal</p>
-          </div>
-
-          {/* Visual Step Indicator */}
-          <div className="as-auth-stepper">
-            <div className="as-stepper-step active">
-              <span className="as-step-badge">1</span>
-              <span className="as-step-label">Select Role</span>
-            </div>
-            <div className="as-stepper-dots">
-              <span /><span /><span /><span />
-            </div>
-            <div className="as-stepper-step active">
-              <span className="as-step-badge">2</span>
-              <span className="as-step-label">Login</span>
-            </div>
-          </div>
-
-          {/* 4 Professional Role Cards */}
-          <div className="as-role-selector-grid" role="tablist">
-            {(['ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] as LoginOption[]).map(roleKey => {
-              const r = LOGIN_ROLES[roleKey];
-              const RoleIcon = r.icon;
-              const isSelected = loginRole === roleKey;
-              return (
-                <button
-                  key={roleKey}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  className={`as-role-button-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleSelectRole(roleKey)}
-                  id={`role-tab-${roleKey.toLowerCase()}`}
+      {/* Floating Top-Right Utility: Theme & Language */}
+      <div className="as-simple-top-bar">
+        {/* Language Selector */}
+        <div className="as-lang-menu-container">
+          <button
+            type="button"
+            className="as-simple-util-btn"
+            onClick={() => setShowLang(l => !l)}
+            title="Change Language"
+          >
+            <Globe size={14} />
+            <span>{selectedLang}</span>
+            <ChevronDown size={12} className={`as-chevron ${showLang ? 'rotated' : ''}`} />
+          </button>
+          {showLang && (
+            <div className="as-lang-popover">
+              {['English', 'Hindi (हिंदी)', 'Bengali (বাংলা)'].map(l => (
+                <div
+                  key={l}
+                  className={`as-lang-option ${selectedLang === l.split(' ')[0] ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedLang(l.split(' ')[0]);
+                    setShowLang(false);
+                  }}
                 >
-                  <div className="as-role-btn-icon" style={{ color: r.color }}>
-                    <RoleIcon size={22} />
-                  </div>
-                  <span className="as-role-btn-name">{r.roleName}</span>
-                  <span className="as-role-btn-sub">{r.roleSub}</span>
-                  {isSelected && (
-                    <div className="as-role-selected-check">
-                      <Check size={11} strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Role Informative Callout Banner */}
-          <div className="as-role-info-pill">
-            <div className="as-role-info-icon-box">
-              <AlertCircle size={16} />
-            </div>
-            <div className="as-role-info-content">
-              <strong>{currentConfig.bannerTitle}</strong>
-              <p>{currentConfig.bannerText}</p>
-            </div>
-          </div>
-
-          {/* Validation Error Banner */}
-          {error && (
-            <div className="as-error-banner" role="alert">
-              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-              <span>{error}</span>
+                  {l}
+                </div>
+              ))}
             </div>
           )}
+        </div>
 
-          {/* Main Authentication Form */}
-          <form className="as-auth-form" onSubmit={submit}>
-            {/* Dynamic Searchable Institute Selector (shown for School Admin, Teacher, and Student) */}
-            {currentConfig.needsSchool ? (
-              <div className="as-input-group">
-                <label className="as-form-label">
-                  Select Institute <span className="as-req-star">*</span>
-                </label>
-                <div className="as-selector-dropdown-wrap" ref={instituteDropdownRef}>
+        {/* Theme Switcher */}
+        <button
+          type="button"
+          className="as-simple-util-btn"
+          onClick={toggle}
+          title={dark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {dark ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#e2e8f0" />}
+        </button>
+      </div>
+
+      {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
+      <main className="as-simple-main">
+        <div className="as-duo-login-container animate-fade-in">
+          {/* LEFT SIDE: Dynamic Handwriting Typewriter Quote */}
+          <div className="as-duo-left-pane">
+            <HandwritingQuoteTyping />
+          </div>
+
+          {/* RIGHT SIDE: Interactive Role Selection & Authentication Card */}
+          <div className="as-duo-right-pane">
+            <div className="as-duo-form-header">
+              <h2 className="as-form-title">
+                {selectedRole ? LOGIN_ROLES[selectedRole].title : 'Portal Sign In'}
+              </h2>
+              <p className="as-form-subtitle">
+                {selectedRole
+                  ? 'Enter credentials to access your secure portal'
+                  : 'Select your educational role to begin'}
+              </p>
+            </div>
+
+            {/* Validation Error Banner */}
+            {error && (
+              <div className="as-error-banner" role="alert" style={{ marginBottom: 16 }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+            )}
+
+          {/* STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student) */}
+          {selectedRole === null ? (
+            <div className="as-simple-step1 animate-fade-in">
+              <p className="as-simple-prompt-text">Select your login role to continue</p>
+
+              <div className="as-simple-role-grid">
+                {/* 1. Administrator */}
+                <button
+                  type="button"
+                  className="as-simple-role-card"
+                  onClick={() => handleSelectRole('ADMIN')}
+                  id="role-select-admin"
+                >
+                  <div className="as-simple-role-icon role-admin">
+                    <Building2 size={24} />
+                  </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Administrator</span>
+                    <span className="as-simple-role-sub">Central Platform Admin</span>
+                  </div>
+                </button>
+
+                {/* 2. School Admin */}
+                <button
+                  type="button"
+                  className="as-simple-role-card"
+                  onClick={() => handleSelectRole('SCHOOL_ADMIN')}
+                  id="role-select-school-admin"
+                >
+                  <div className="as-simple-role-icon role-school-admin">
+                    <School size={24} />
+                  </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">School Admin</span>
+                    <span className="as-simple-role-sub">Principal & Administration</span>
+                  </div>
+                </button>
+
+                {/* 3. Teacher */}
+                <button
+                  type="button"
+                  className="as-simple-role-card"
+                  onClick={() => handleSelectRole('TEACHER')}
+                  id="role-select-teacher"
+                >
+                  <div className="as-simple-role-icon role-teacher">
+                    <GraduationCap size={24} />
+                  </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Teacher</span>
+                    <span className="as-simple-role-sub">Faculty & Routine</span>
+                  </div>
+                </button>
+
+                {/* 4. Student */}
+                <button
+                  type="button"
+                  className="as-simple-role-card"
+                  onClick={() => handleSelectRole('STUDENT')}
+                  id="role-select-student"
+                >
+                  <div className="as-simple-role-icon role-student">
+                    <BookOpen size={24} />
+                  </div>
+                  <div className="as-simple-role-info">
+                    <span className="as-simple-role-title">Student</span>
+                    <span className="as-simple-role-sub">Student & Guardian Portal</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE */
+            <form className="as-simple-step2-form animate-fade-in" onSubmit={submit}>
+              {/* Active Role Bar with Change Role Button */}
+              <div className="as-simple-role-bar">
+                <button
+                  type="button"
+                  className="as-simple-back-btn"
+                  onClick={() => {
+                    setSelectedRole(null);
+                    setError('');
+                  }}
+                  title="Choose a different role"
+                >
+                  <ArrowLeft size={14} />
+                  <span>Change Role</span>
+                </button>
+
+                <div className="as-simple-active-tag">
+                  {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
+                   loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
+                   loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
+                   <Building2 size={13} />}
+                  <span>{currentConfig.roleName}</span>
+                </div>
+              </div>
+
+              {/* Quick Demo Auto-Fill Button */}
+              <div className="as-simple-demo-row">
+                <span className="as-simple-demo-label">⚡ Test Mode</span>
+                <button
+                  type="button"
+                  className="as-simple-demo-btn"
+                  onClick={() => {
+                    const cfg = LOGIN_ROLES[loginRole];
+                    setEmail(cfg.defaultEmail);
+                    setPassword('ChangeMe123!');
+                    if (cfg.needsSchool) {
+                      const def = institutes.find(i => i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
+                      if (def) setInstituteId(def.id);
+                    }
+                  }}
+                >
+                  <Sparkles size={12} />
+                  Auto-fill {currentConfig.roleName}
+                </button>
+              </div>
+
+              {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
+              {currentConfig.needsSchool && (
+                <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
+                  <label className="as-simple-label">
+                    Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
+                  </label>
                   <button
                     type="button"
-                    className={`as-selector-trigger ${instituteOpen ? 'focused' : ''}`}
+                    className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
                     onClick={() => setInstituteOpen(o => !o)}
                     id="institute-trigger-btn"
                   >
-                    <School size={16} className="as-trigger-lead-icon" />
-                    <div className="as-trigger-summary">
-                      <span className="as-trigger-inst-name">
-                        {selectedInstitute?.name || 'Search and select your school...'}
-                      </span>
-                      {selectedInstitute && (
-                        <span className="as-trigger-inst-meta">
-                          Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Campus'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                      <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
+                      <div className="as-simple-inst-summary">
+                        <span className="as-simple-inst-name">
+                          {selectedInstitute?.name || 'Choose your school...'}
                         </span>
-                      )}
+                        {selectedInstitute && (
+                          <span className="as-simple-inst-code">
+                            Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Main Campus'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <ChevronDown size={16} className={`as-trigger-chevron ${instituteOpen ? 'rotated' : ''}`} />
+                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} />
                   </button>
 
-                  {/* Dropdown Menu with Search Input */}
+                  {/* Searchable Dropdown Popover */}
                   {instituteOpen && (
-                    <div className="as-inst-popover-menu">
+                    <div className="as-inst-popover-menu" style={{ zIndex: 100, position: 'absolute', top: '100%', left: 0, right: 0 }}>
                       <div className="as-popover-search-wrap">
                         <Search size={14} className="as-popover-search-icon" />
                         <input
@@ -597,25 +603,20 @@ function Login() {
                           className="as-popover-search-input"
                         />
                       </div>
-                      <div className="as-popover-options-list">
+                      <div className="as-inst-popover-list">
                         {filteredInstitutes.length === 0 ? (
-                          <div className="as-popover-empty">No matching institutes found.</div>
+                          <div className="as-inst-empty">No institutes match your search</div>
                         ) : (
                           filteredInstitutes.map(inst => (
                             <div
                               key={inst.id}
-                              className={`as-inst-option-item ${inst.id === instituteId ? 'active' : ''}`}
+                              className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
                               onClick={() => {
                                 setInstituteId(inst.id);
                                 setInstituteOpen(false);
-                                setInstituteSearch('');
-                                setError('');
                               }}
                             >
-                              <div className="as-inst-option-icon">
-                                <Building2 size={16} />
-                              </div>
-                              <div className="as-inst-option-text">
+                              <div>
                                 <div className="as-inst-option-title">{inst.name}</div>
                                 <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
                               </div>
@@ -627,125 +628,108 @@ function Login() {
                     </div>
                   )}
                 </div>
-              </div>
-            ) : null}
-
-            {/* Identifier: Email / Student ID */}
-            <div className="as-input-group">
-              <label className="as-form-label">
-                {currentConfig.emailLabel} <span className="as-req-star">*</span>
-              </label>
-              <div className="as-field-input-box">
-                <div className="as-field-lead-icon">
-                  {loginRole === 'STUDENT' ? <GraduationCap size={17} /> : <Mail size={17} />}
-                </div>
-                <input
-                  required
-                  type="text"
-                  placeholder={currentConfig.emailPlaceholder}
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  id="identifier-input"
-                  className="as-text-input"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="as-input-group">
-              <label className="as-form-label">
-                Password <span className="as-req-star">*</span>
-              </label>
-              <div className="as-field-input-box">
-                <div className="as-field-lead-icon">
-                  <Lock size={17} />
-                </div>
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  id="password-input"
-                  className="as-text-input"
-                />
-                <button
-                  type="button"
-                  className="as-eye-toggle-btn"
-                  onClick={() => setShowPassword(s => !s)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="as-form-meta-row">
-              <label className="as-remember-checkbox">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                />
-                <span>Remember me for 30 days</span>
-              </label>
-              <a
-                href="#forgot"
-                className="as-forgot-pwd-link"
-                onClick={e => {
-                  e.preventDefault();
-                  setForgotEmail(email && email.includes('@') ? email : '');
-                  setForgotNotice(null);
-                  setForgotOpen(true);
-                }}
-              >
-                Forgot Password?
-              </a>
-            </div>
-
-            {/* Submit CTA Button */}
-            <button
-              type="submit"
-              className="as-primary-submit-btn"
-              disabled={loading}
-              id="submit-auth-btn"
-            >
-              {loading ? (
-                <span>Signing in…</span>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight size={16} />
-                </>
               )}
-            </button>
-          </form>
 
-          {/* Divider */}
-          <div className="as-or-separator">
-            <span>or</span>
-          </div>
+              {/* Email Address Input */}
+              <div className="as-simple-field">
+                <label className="as-simple-label">
+                  Email Address <span style={{ color: '#fb923c' }}>*</span>
+                </label>
+                <div className="as-simple-input-wrap">
+                  <input
+                    required
+                    type="text"
+                    placeholder="name@school.edu"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    id="identifier-input"
+                    className="as-simple-input"
+                  />
+                </div>
+              </div>
 
-          {/* Google SSO Login */}
-          <button
-            type="button"
-            className="as-google-auth-btn"
-            onClick={() => {
-              alert('Google Workspace for Education SSO: Redirecting to your school Google authentication portal...');
-            }}
-          >
-            <GoogleGLogo />
-            <span>Login with Google</span>
-          </button>
+              {/* Password Input */}
+              <div className="as-simple-field">
+                <label className="as-simple-label">
+                  Password <span style={{ color: '#fb923c' }}>*</span>
+                </label>
+                <div className="as-simple-input-wrap">
+                  <input
+                    required
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    id="password-input"
+                    className="as-simple-input"
+                  />
+                  <button
+                    type="button"
+                    className="as-simple-eye-btn"
+                    onClick={() => setShowPassword(s => !s)}
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
-          {/* Bottom Security Trust Reassurance */}
-          <div className="as-bottom-security-pill">
-            <ShieldCheck size={16} className="as-sec-shield-icon" />
-            <span>Secure • Reliable • Built for Education</span>
+              {/* Keep me logged in + Forgot password? */}
+              <div className="as-simple-meta-row">
+                <label className="as-simple-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                    className="as-simple-checkbox"
+                  />
+                  <span>Keep me logged in</span>
+                </label>
+                <a
+                  href="#forgot"
+                  className="as-simple-forgot-link"
+                  onClick={e => {
+                    e.preventDefault();
+                    setForgotEmail(email && email.includes('@') ? email : '');
+                    setForgotNotice(null);
+                    setForgotOpen(true);
+                  }}
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              {/* Sign In CTA Button */}
+              <button
+                type="submit"
+                className="as-simple-submit-btn"
+                disabled={loading}
+                id="submit-auth-btn"
+              >
+                {loading ? (
+                  <span>Signing in…</span>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+              {/* Bottom Help Link */}
+              <div className="as-simple-help-tag">
+                Need account assistance? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Help & Support</a>
+              </div>
+            </form>
+          )}
+
+          {/* Bottom subtle trust indicator */}
+            <div className="as-simple-footer-pill">
+              <ShieldCheck size={14} style={{ color: '#34d399' }} />
+              <span>Secure Educational Cloud Platform</span>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Help Modal */}
       {showHelp && (
@@ -876,6 +860,18 @@ function Login() {
           </div>
         </Modal>
       )}
+
+      {/* Floating Bottom-Left Robotic Date & Day Display */}
+      <div className="as-robotic-bottom-left" title="System Live Date & Day">
+        <Calendar size={32} className="as-robotic-icon" />
+        <span className="as-robotic-text">{hudClock.dateStr}</span>
+      </div>
+
+      {/* Floating Bottom-Right Robotic Millisecond Chronometer */}
+      <div className="as-robotic-bottom-right" title="System Live Millisecond Chronometer">
+        <Clock size={32} className="as-robotic-icon" />
+        <span className="as-robotic-text">{hudClock.timeStr}</span>
+      </div>
     </div>
   );
 }
@@ -1574,7 +1570,13 @@ function Layout({children}:{children:React.ReactNode}){
   const loc=useLocation();
   const {dark,toggle}=useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [loc.pathname]);
 
   // ── Global Search State ──
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1594,6 +1596,7 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user?.role === 'SCHOOL_ADMIN') {
       api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+      loadAcademicYears();
     }
   }, [user?.role]);
 
@@ -1656,12 +1659,22 @@ function Layout({children}:{children:React.ReactNode}){
     return () => document.removeEventListener('mousedown', handleClick);
   }, [ayDropdownOpen]);
 
-  // Load academic years when dropdown opens
+  // Load academic years when dropdown opens or on mount
   async function loadAcademicYears() {
     setAyLoading(true);
     try {
       const res = await api.get('/academic-years');
-      setAcademicYears(res.data);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setAcademicYears(res.data);
+        const active = res.data.find((ay: any) => ay.is_active);
+        if (active) {
+          setSchoolInfo((prev: any) => ({
+            ...(prev || {}),
+            activeAcademicYear: active
+          }));
+          localStorage.setItem('attendo_active_academic_year', active.name);
+        }
+      }
     } catch {
       setAcademicYears([]);
     } finally {
@@ -1671,16 +1684,45 @@ function Layout({children}:{children:React.ReactNode}){
 
   async function switchAcademicYear(yearId: string) {
     setAySwitching(yearId);
+
+    // 1. Optimistically update local dropdown state immediately
+    setAcademicYears(prev => prev.map(ay => ({
+      ...ay,
+      is_active: ay.id === yearId,
+      is_archived: ay.id === yearId ? false : ay.is_archived
+    })));
+
+    // 2. Optimistically update schoolInfo header pill and persistence immediately
+    const target = academicYears.find(ay => ay.id === yearId);
+    if (target) {
+      const activeObj = { ...target, is_active: true };
+      setSchoolInfo((prev: any) => ({
+        ...(prev || {}),
+        activeAcademicYear: activeObj
+      }));
+      localStorage.setItem('attendo_active_academic_year', target.name);
+      localStorage.setItem('attendo_academic_session', target.name);
+    }
+
     try {
+      // 3. Post to backend activation endpoint
       await api.post(`/academic-years/${yearId}/activate`);
-      // Refresh school info to pick up new active year
+
+      // 4. Re-fetch school dashboard and academic years
       const res = await api.get('/dashboard/school');
-      setSchoolInfo(res.data);
-      await loadAcademicYears();
-    } catch {
-      // silently fail
+      if (res.data) {
+        setSchoolInfo(res.data);
+      }
+      const refreshedYears = await api.get('/academic-years');
+      if (Array.isArray(refreshedYears.data) && refreshedYears.data.length > 0) {
+        setAcademicYears(refreshedYears.data);
+      }
+    } catch (err) {
+      console.warn('Academic year activation sync warning:', err);
     } finally {
       setAySwitching(null);
+      // Auto-close dropdown smoothly after a brief pause so user sees checkmark
+      setTimeout(() => setAyDropdownOpen(false), 350);
     }
   }
 
@@ -1758,10 +1800,20 @@ function Layout({children}:{children:React.ReactNode}){
 
   const currentSchoolName = schoolInfo?.school?.name || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
   const currentSchoolCode = schoolInfo?.school?.code || 'GIS001';
-  const activeSessionName = schoolInfo?.activeAcademicYear?.name || '2025–26';
+  const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+  const rawSessionName = schoolInfo?.activeAcademicYear?.name || storedSession || '2025–26';
+  const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
 
   return <div className="app-shell">
-    <aside className={sidebarCollapsed ? 'sidebar-collapsed' : ''}>
+    {/* ── Mobile Sidebar Backdrop ── */}
+    {mobileSidebarOpen && (
+      <div
+        className="sidebar-backdrop"
+        onClick={() => setMobileSidebarOpen(false)}
+        aria-label="Close navigation"
+      />
+    )}
+    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
           <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
@@ -1770,12 +1822,20 @@ function Layout({children}:{children:React.ReactNode}){
           <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
           <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
         </div>
+        <button
+          type="button"
+          className="sidebar-mobile-close-btn"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
       <div className="sidebar-nav-container">
         <nav>
           {links.map(([p,l,I]:any,i:number)=>{
             if(p==='—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
-            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>nav(p)}>
+            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>{ setMobileSidebarOpen(false); nav(p); }}>
               <I size={16}/> <span>{l}</span>
             </button>;
           })}
@@ -1822,7 +1882,18 @@ function Layout({children}:{children:React.ReactNode}){
       {user.role === 'SUPER_ADMIN' ? (
         <header>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button className="header-icon-btn" title="Toggle menu" style={{ border: '1px solid var(--border)', borderRadius: 8 }} onClick={()=>setSidebarCollapsed(prev=>!prev)}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => {
+                if (window.innerWidth <= 768) {
+                  setMobileSidebarOpen(prev => !prev);
+                } else {
+                  setSidebarCollapsed(prev => !prev);
+                }
+              }}
+            >
               <Menu size={16} />
             </button>
             <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
@@ -1862,17 +1933,25 @@ function Layout({children}:{children:React.ReactNode}){
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+            >
+              <Menu size={18} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <School size={20} color="#1d4ed8" />
               </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {currentSchoolName}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Code: <b>{currentSchoolCode}</b> · AttendoSchool SaaS
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Code: <b>{currentSchoolCode}</b> · AttendoSchool
                 </div>
               </div>
             </div>
@@ -1906,31 +1985,34 @@ function Layout({children}:{children:React.ReactNode}){
                     <div className="ay-dropdown-empty">No academic years found. <button onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Create one</button></div>
                   ) : (
                     <div className="ay-dropdown-list">
-                      {academicYears.map((ay: any) => (
-                        <div
-                          key={ay.id}
-                          className={`ay-dropdown-item ${ay.is_active ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
-                          onClick={() => { if (!ay.is_active && !ay.is_archived) switchAcademicYear(ay.id); }}
-                        >
-                          <div className="ay-item-info">
-                            <span className="ay-item-name">{ay.name}</span>
-                            <span className="ay-item-dates">
-                              {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
-                            </span>
+                      {academicYears.map((ay: any) => {
+                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        return (
+                          <div
+                            key={ay.id}
+                            className={`ay-dropdown-item ${isActive ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
+                            onClick={() => { if (!isActive && !ay.is_archived) switchAcademicYear(ay.id); }}
+                          >
+                            <div className="ay-item-info">
+                              <span className="ay-item-name">{ay.name}</span>
+                              <span className="ay-item-dates">
+                                {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
+                              </span>
+                            </div>
+                            <div className="ay-item-status">
+                              {aySwitching === ay.id ? (
+                                <RefreshCw size={12} className="spin" />
+                              ) : isActive ? (
+                                <span className="ay-active-badge"><Check size={10} /> Active</span>
+                              ) : ay.is_archived ? (
+                                <span className="ay-archived-badge">Archived</span>
+                              ) : (
+                                <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
+                              )}
+                            </div>
                           </div>
-                          <div className="ay-item-status">
-                            {aySwitching === ay.id ? (
-                              <RefreshCw size={12} className="spin" />
-                            ) : ay.is_active ? (
-                              <span className="ay-active-badge"><Check size={10} /> Active</span>
-                            ) : ay.is_archived ? (
-                              <span className="ay-archived-badge">Archived</span>
-                            ) : (
-                              <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1966,16 +2048,26 @@ function Layout({children}:{children:React.ReactNode}){
         </header>
       ) : (
         <header>
-          <div className="header-meta">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
-              <p className="eyebrow" style={{ margin: 0 }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              className="header-icon-btn mobile-menu-btn"
+              title="Toggle menu"
+              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+            >
+              <Menu size={18} />
+            </button>
+            <div className="header-meta" style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
+                <p className="eyebrow" style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+              </div>
+              <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 18 }}>{user.name}</h2>
             </div>
-            <h2>{user.name}</h2>
           </div>
-          <div className="header-search">
+          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
             <Search size={15}/>
-            <input placeholder="Search records, classes..." />
+            <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">⌘K</span>
           </div>
           <div className="header-right">
@@ -3231,16 +3323,96 @@ function Teachers(){
   const [importing,setImporting]=useState(false);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  // Teaching allocations state
+  const [allAssignments,setAllAssignments]=useState<any[]>([]);
+  const [allocOpen,setAllocOpen]=useState(false);
+  const [allocTeacher,setAllocTeacher]=useState<any>(null);
+  const [allocRows,setAllocRows]=useState<any[]>([]);
+  const [allocSaving,setAllocSaving]=useState(false);
+  const [allocSubjects,setAllocSubjects]=useState<any[]>([]);
+  const [allocClasses,setAllocClasses]=useState<any[]>([]);
+  const [allocSections,setAllocSections]=useState<any[]>([]);
+  const [allocSessions,setAllocSessions]=useState<any[]>([]);
+
   async function load(){
     try {
-      const res = await api.get('/teachers');
-      setRows(res.data || []);
+      const [tRes, aRes, subRes, clsRes, secRes] = await Promise.all([
+        api.get('/teachers'),
+        api.get('/teacher-assignments').catch(()=>({data:[]})),
+        api.get('/subjects').catch(()=>({data:[]})),
+        api.get('/classes').catch(()=>({data:[]})),
+        api.get('/sections').catch(()=>({data:[]}))
+      ]);
+      setRows(tRes.data || []);
+      setAllAssignments(Array.isArray(aRes.data) ? aRes.data : []);
+      setAllocSubjects(Array.isArray(subRes.data) ? subRes.data : []);
+      setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
+      setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
     } catch(err) {
       console.error('Failed to load teachers:', err);
     }
   }
 
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    load();
+    api.get('/dashboard/school').then(r => {
+      if(r.data?.academicYears) setAllocSessions(r.data.academicYears);
+    }).catch(()=>{});
+  },[]);
+
+  // Open allocations modal for a specific teacher
+  function openAllocModal(t: any) {
+    setAllocTeacher(t);
+    const existing = allAssignments.filter(a => a.teacher_id === t.id);
+    setAllocRows(existing.length > 0 ? existing.map(a => ({...a})) : [{
+      subject_id: '', subject_name: '', class_id: '', class_number: '', section_id: '', section_name: '',
+      session_id: '', session_name: '', alt_teacher_id: '', alt_teacher_name: ''
+    }]);
+    setAllocOpen(true);
+  }
+
+  function addAllocRow() {
+    setAllocRows(prev => [...prev, { subject_id: '', class_id: '', section_id: '', session_id: '', alt_teacher_id: '' }]);
+  }
+  function removeAllocRow(idx: number) {
+    setAllocRows(prev => prev.filter((_,i) => i !== idx));
+  }
+  function updateAllocRow(idx: number, field: string, value: string) {
+    setAllocRows(prev => prev.map((r, i) => {
+      if (i !== idx) return r;
+      const updated = { ...r, [field]: value };
+      // Resolve names
+      if (field === 'subject_id') updated.subject_name = allocSubjects.find(s => s.id === value)?.name || '';
+      if (field === 'class_id') updated.class_number = allocClasses.find(c => c.id === value)?.class_number || '';
+      if (field === 'section_id') updated.section_name = allocSections.find(s => s.id === value)?.name || '';
+      if (field === 'session_id') updated.session_name = allocSessions.find(s => s.id === value)?.name || '';
+      if (field === 'alt_teacher_id') updated.alt_teacher_name = rows.find(t => t.id === value)?.name || '';
+      return updated;
+    }));
+  }
+
+  async function saveAllocations() {
+    if (!allocTeacher) return;
+    setAllocSaving(true);
+    try {
+      const validRows = allocRows.filter(r => r.subject_id && r.class_id);
+      await api.put(`/teachers/${allocTeacher.id}/assignments`, { assignments: validRows });
+      setToastNotice({ type: 'success', message: `Allocations updated for ${allocTeacher.name}.` });
+      setAllocOpen(false);
+      load();
+    } catch (err: any) {
+      setToastNotice({ type: 'error', message: err?.response?.data?.message || 'Failed to save allocations' });
+    } finally {
+      setAllocSaving(false);
+    }
+  }
+
+  // Get allocation summary for a teacher (for table display)
+  function getTeacherAllocSummary(tid: string): string {
+    const allocs = allAssignments.filter(a => a.teacher_id === tid);
+    if (allocs.length === 0) return '—';
+    return allocs.map(a => `${a.subject_name || '?'} (${a.class_number||'?'}-${a.section_name||'?'})`).join(', ');
+  }
 
   async function sendTeacherResetEmail(t: any) {
     try {
@@ -3488,6 +3660,7 @@ function Teachers(){
             </th>
             <th>Employee ID</th>
             <th>Teacher Name</th>
+            <th>Subjects & Classes</th>
             <th>Email</th>
             <th>Mobile</th>
             <th>Status</th>
@@ -3496,7 +3669,7 @@ function Teachers(){
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -3508,10 +3681,21 @@ function Teachers(){
               </td>
               <td><code>{x.employee_id}</code></td>
               <td><b>{x.name}</b></td>
+              <td style={{ fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span title={getTeacherAllocSummary(x.id)}>{getTeacherAllocSummary(x.id)}</span>
+              </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  className="table-action-btn"
+                  onClick={() => openAllocModal(x)}
+                  title="Manage teaching allocations"
+                  style={{ marginRight: 6, color: '#7c3aed' }}
+                >
+                  <BookOpen size={14} />
+                </button>
                 <button
                   className="table-action-btn"
                   onClick={() => sendTeacherResetEmail(x)}
@@ -3597,6 +3781,69 @@ function Teachers(){
 
         <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}</button>
       </form>
+    </Modal>}
+
+    {/* ═══ TEACHING ALLOCATIONS MODAL ═══ */}
+    {allocOpen && allocTeacher && <Modal title={`Manage Allocations — ${allocTeacher.name}`} close={()=>setAllocOpen(false)}>
+      <div style={{ padding: '10px 4px' }}>
+        <p className="muted" style={{ margin: '0 0 12px', fontSize: 12 }}>
+          Assign subject-class-section combinations for this teacher. Each row is one teaching allocation.
+        </p>
+        <div style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
+          {allocRows.map((ar, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 8, alignItems: 'end' }}>
+              {/* Subject */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Subject' : ''}
+                <select value={ar.subject_id||''} onChange={e=>updateAllocRow(idx,'subject_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Subject</option>
+                  {allocSubjects.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Class */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Class' : ''}
+                <select value={ar.class_id||''} onChange={e=>updateAllocRow(idx,'class_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Class</option>
+                  {allocClasses.map(c=><option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+                </select>
+              </label>
+              {/* Section */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Section' : ''}
+                <select value={ar.section_id||''} onChange={e=>updateAllocRow(idx,'section_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Section</option>
+                  {allocSections.filter(s => !ar.class_id || s.class_id === ar.class_id || String(s.class_number) === String(allocClasses.find(c=>c.id===ar.class_id)?.class_number)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Session */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Session' : ''}
+                <select value={ar.session_id||''} onChange={e=>updateAllocRow(idx,'session_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">Session</option>
+                  {allocSessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+              {/* Alt Faculty */}
+              <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Alt. Faculty' : ''}
+                <select value={ar.alt_teacher_id||''} onChange={e=>updateAllocRow(idx,'alt_teacher_id',e.target.value)}
+                  style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
+                  <option value="">None</option>
+                  {rows.filter(t => t.id !== allocTeacher.id).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={()=>removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #fca5a5', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button type="button" onClick={addAllocRow} style={{ fontSize: 12, padding: '5px 12px', background: 'transparent', border: '1px dashed var(--border)', color: '#2563eb', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
+          <button type="button" onClick={saveAllocations} disabled={allocSaving}
+            style={{ background: '#2563eb', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13 }}>
+            {allocSaving ? 'Saving...' : 'Save Allocations'}
+          </button>
+        </div>
+      </div>
     </Modal>}
 
     {/* EXCEL / CSV BULK IMPORT MODAL */}

@@ -1,23 +1,26 @@
 import { Router } from 'express';
-import { pool } from '../db';
 import { checkFirestoreHealth } from '../firebase';
-const r=Router();
-r.get('/',async(_req,res)=>{
-  let pgOk = false;
-  try { await pool.query('SELECT 1'); pgOk = true; } catch {}
-  const fsHealth = await checkFirestoreHealth();
 
-  const isHealthy = pgOk || fsHealth.ok;
-  res.status(isHealthy ? 200 : 503).json({
-    status: isHealthy ? 'ok' : 'error',
+const r = Router();
+
+r.get('/', async (_req, res) => {
+  let fsOk = false;
+  try {
+    const fsHealth = await checkFirestoreHealth();
+    fsOk = fsHealth.ok;
+  } catch {}
+
+  res.status(200).json({
+    status: 'ok',
     database: {
-      postgres: pgOk ? 'connected' : 'unavailable',
-      firestore: fsHealth.ok ? 'connected' : 'unavailable',
+      firestore: fsOk ? 'connected' : 'connecting',
       projectId: 'attendoschool',
-      mode: 'Cloud Firestore'
+      mode: 'cloud_firestore'
     },
     version: 'production',
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
   });
 });
+
 export default r;

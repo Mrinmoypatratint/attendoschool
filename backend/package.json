@@ -16,6 +16,7 @@
     "test:student": "tsx tests/student-portal-e2e.ts",
     "db:migrate": "node dist/scripts/migrate.js",
     "seed:firestore": "tsx src/scripts/seedFirestore.ts",
+    "test:firebase": "tsx src/scripts/verifyFirebaseConnection.ts",
     "emulator:firestore": "npx --package=firebase-tools firebase emulators:start --only firestore",
     "v28:smoke": "tsx ../scripts/v28-api-smoke.ts",
     "release:check": "npm run build && npm run v28:smoke"

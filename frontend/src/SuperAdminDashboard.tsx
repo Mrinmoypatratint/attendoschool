@@ -146,6 +146,18 @@ export function SuperAdminDashboard({ onOpenCreateSchool }: SuperAdminDashboardP
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.closest('.sa-action-dropdown') || target.closest('.sa-more-btn'))) {
+        return;
+      }
+      setActiveMenuId(null);
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // Format merged schools: show real DB schools if available, merged with screenshot sample
   const displayedSchools = dbSchools.length > 0
     ? dbSchools.map((s, idx) => ({
@@ -675,7 +687,10 @@ export function SuperAdminDashboard({ onOpenCreateSchool }: SuperAdminDashboardP
                       <button
                         className="sa-more-btn"
                         title="Actions"
-                        onClick={() => setActiveMenuId(activeMenuId === s.id ? null : s.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === s.id ? null : s.id);
+                        }}
                       >
                         <MoreHorizontal size={16} />
                       </button>
