@@ -578,8 +578,11 @@ function Login() {
                     className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
                     onClick={() => setInstituteOpen(o => !o)}
                     id="institute-trigger-btn"
+                    aria-haspopup="listbox"
+                    aria-expanded={instituteOpen}
+                    title="Click to toggle institute selection"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', pointerEvents: 'none' }}>
                       <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
                       <div className="as-simple-inst-summary">
                         <span className="as-simple-inst-name">
@@ -592,59 +595,69 @@ function Login() {
                         )}
                       </div>
                     </div>
-                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} />
+                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} style={{ pointerEvents: 'none' }} />
                   </button>
 
                   {/* Searchable Dropdown Popover */}
                   {instituteOpen && (
-                    <div className="as-inst-popover-menu" style={{ zIndex: 100, position: 'absolute', top: '100%', left: 0, right: 0 }}>
-                      <div className="as-popover-search-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Search size={14} className="as-popover-search-icon" />
-                        <input
-                          type="text"
-                          placeholder="Search institute name or code..."
-                          value={instituteSearch}
-                          onChange={e => setInstituteSearch(e.target.value)}
-                          autoFocus
-                          className="as-popover-search-input"
-                          style={{ flex: 1 }}
-                        />
+                    <div className="as-inst-popover-menu">
+                      <div className="as-popover-search-wrap">
+                        <div className="as-popover-search-box">
+                          <Search size={14} className="as-popover-search-icon" />
+                          <input
+                            type="text"
+                            placeholder="Search institute name or code..."
+                            value={instituteSearch}
+                            onChange={e => setInstituteSearch(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Escape') setInstituteOpen(false);
+                            }}
+                            autoFocus
+                            className="as-popover-search-input"
+                          />
+                        </div>
                         <button
                           type="button"
+                          className="as-popover-reload-btn"
                           onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
                           title="Reload schools from server"
-                          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, padding: '4px 8px', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, flexShrink: 0 }}
                         >
                           <RefreshCw size={11} className={institutesLoading ? 'spin' : ''} />
                           <span>Reload</span>
                         </button>
                       </div>
-                      <div className="as-inst-popover-list">
+                      <div className="as-inst-popover-list" role="listbox">
                         {filteredInstitutes.length === 0 ? (
                           <div className="as-inst-empty">
-                            <span>No institutes match your search</span>
+                            <div>No institutes match your search</div>
                             <button
                               type="button"
                               onClick={() => { setInstituteSearch(''); fetchInstitutes(); }}
-                              style={{ marginTop: 6, display: 'block', background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                              style={{ marginTop: 8, display: 'inline-block', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', fontWeight: 600 }}
                             >
                               Reset search and reload
                             </button>
                           </div>
                         ) : (
                           filteredInstitutes.map(inst => (
-                            <div
+                            <button
                               key={inst.id}
+                              type="button"
+                              role="option"
+                              aria-selected={inst.id === instituteId}
                               className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
-                              onPointerDown={(e) => { e.preventDefault(); selectInstitute(inst.id); }}
                               onClick={() => selectInstitute(inst.id)}
                             >
-                              <div>
+                              <School size={15} className="as-inst-opt-icon" />
+                              <div className="as-inst-option-text">
                                 <div className="as-inst-option-title">{inst.name}</div>
                                 <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
                               </div>
-                              <span className="as-inst-option-code">{inst.code || 'SCH'}</span>
-                            </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                <span className="as-inst-option-code">{inst.code || 'SCH'}</span>
+                                {inst.id === instituteId && <Check size={14} style={{ color: '#2563eb' }} />}
+                              </div>
+                            </button>
                           ))
                         )}
                       </div>
