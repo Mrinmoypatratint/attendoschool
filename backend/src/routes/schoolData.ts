@@ -143,21 +143,21 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
 });
 
 export const demoStudents: any[] = [
-  { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', admission_number: 'ADM-2025-001', admissionNumber: 'ADM-2025-001', parent_name: 'Ramesh Kumar', parent_sms_number: '9876543210', parent_email: 'ramesh.kumar@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-02', name: 'Priya Sharma', roll_number: '2', admission_number: 'ADM-2025-002', admissionNumber: 'ADM-2025-002', parent_name: 'Sunil Sharma', parent_sms_number: '9876543211', parent_email: 'sunil.sharma@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-03', name: 'Rahul Das', roll_number: '3', admission_number: 'ADM-2025-003', admissionNumber: 'ADM-2025-003', parent_name: 'Bikash Das', parent_sms_number: '9876543212', parent_email: 'bikash.das@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
-  { id: 'st-04', name: 'Ananya Sen', roll_number: '4', admission_number: 'ADM-2025-004', admissionNumber: 'ADM-2025-004', parent_name: 'Subhash Sen', parent_sms_number: '9876543213', parent_email: 'subhash.sen@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
-  { id: 'st-05', name: 'Dev Mukherjee', roll_number: '5', admission_number: 'ADM-2025-005', admissionNumber: 'ADM-2025-005', parent_name: 'Amit Mukherjee', parent_sms_number: '9876543214', parent_email: 'amit.m@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
-  { id: 'st-06', name: 'Ishita Ghosh', roll_number: '6', admission_number: 'ADM-2025-006', admissionNumber: 'ADM-2025-006', parent_name: 'Pranab Ghosh', parent_sms_number: '9876543215', parent_email: 'pranab.g@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
-  { id: 'st-07', name: 'Karan Patel', roll_number: '7', admission_number: 'ADM-2025-007', admissionNumber: 'ADM-2025-007', parent_name: 'Vijay Patel', parent_sms_number: '9876543216', parent_email: 'vijay.p@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
-  { id: 'st-08', name: 'Sneha Roy', roll_number: '8', admission_number: 'ADM-2025-008', admissionNumber: 'ADM-2025-008', parent_name: 'Debashis Roy', parent_sms_number: '9876543217', parent_email: 'debashis.roy@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A' },
-  { id: 'st-09', name: 'Rohan Gupta', roll_number: '9', admission_number: 'ADM-2025-009', admissionNumber: 'ADM-2025-009', parent_name: 'Manoj Gupta', parent_sms_number: '9876543218', parent_email: 'manoj.gupta@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' },
-  { id: 'st-10', name: 'Tanvi Verma', roll_number: '10', admission_number: 'ADM-2025-010', admissionNumber: 'ADM-2025-010', parent_name: 'Sanjay Verma', parent_sms_number: '9876543219', parent_email: 'sanjay.verma@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' }
+  { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', admission_number: 'ADM-2025-001', admissionNumber: 'ADM-2025-001', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Ramesh Kumar', parent_sms_number: '9876543210', parent_email: 'ramesh.kumar@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-02', name: 'Priya Sharma', roll_number: '2', admission_number: 'ADM-2025-002', admissionNumber: 'ADM-2025-002', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Sunil Sharma', parent_sms_number: '9876543211', parent_email: 'sunil.sharma@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-03', name: 'Rahul Das', roll_number: '3', admission_number: 'ADM-2025-003', admissionNumber: 'ADM-2025-003', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Bikash Das', parent_sms_number: '9876543212', parent_email: 'bikash.das@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
+  { id: 'st-04', name: 'Ananya Sen', roll_number: '4', admission_number: 'ADM-2025-004', admissionNumber: 'ADM-2025-004', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Subhash Sen', parent_sms_number: '9876543213', parent_email: 'subhash.sen@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
+  { id: 'st-05', name: 'Dev Mukherjee', roll_number: '5', admission_number: 'ADM-2025-005', admissionNumber: 'ADM-2025-005', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Amit Mukherjee', parent_sms_number: '9876543214', parent_email: 'amit.m@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-b', section_name: 'B' },
+  { id: 'st-06', name: 'Ishita Ghosh', roll_number: '6', admission_number: 'ADM-2025-006', admissionNumber: 'ADM-2025-006', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Pranab Ghosh', parent_sms_number: '9876543215', parent_email: 'pranab.g@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
+  { id: 'st-07', name: 'Karan Patel', roll_number: '7', admission_number: 'ADM-2025-007', admissionNumber: 'ADM-2025-007', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Vijay Patel', parent_sms_number: '9876543216', parent_email: 'vijay.p@example.com', class_id: 'cls-9', class_number: 9, section_id: 'sec-9-a', section_name: 'A' },
+  { id: 'st-08', name: 'Sneha Roy', roll_number: '8', admission_number: 'ADM-2025-008', admissionNumber: 'ADM-2025-008', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Debashis Roy', parent_sms_number: '9876543217', parent_email: 'debashis.roy@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A' },
+  { id: 'st-09', name: 'Rohan Gupta', roll_number: '9', admission_number: 'ADM-2025-009', admissionNumber: 'ADM-2025-009', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Manoj Gupta', parent_sms_number: '9876543218', parent_email: 'manoj.gupta@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' },
+  { id: 'st-10', name: 'Tanvi Verma', roll_number: '10', admission_number: 'ADM-2025-010', admissionNumber: 'ADM-2025-010', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Sanjay Verma', parent_sms_number: '9876543219', parent_email: 'sanjay.verma@example.com', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-b', section_name: 'B' }
 ];
 
 export const demoTeachers: any[] = [
-  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', is_active: true },
-  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', is_active: true }
+  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
+  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', school_id: '00000000-0000-0000-0000-000000000001', is_active: true }
 ];
 
 // In-memory teacher teaching allocations (subject × class × section × session × alt-faculty)
@@ -222,20 +222,97 @@ r.put('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
 
 r.get('/students',...admin,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
+ const userSchoolId = req.user?.schoolId;
+
  try {
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st JOIN classes c ON c.id=st.class_id JOIN sections sec ON sec.id=st.section_id
   WHERE st.school_id=$1 AND st.is_active=true
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
-  ORDER BY c.class_number,sec.name,st.roll_number`,[req.user!.schoolId,search]);
-  res.json(q.rows);
- } catch {
-  const filtered = search
-    ? demoStudents.filter(s => s.name.toLowerCase().includes(search) || String(s.roll_number).includes(search) || (s.admission_number && s.admission_number.toLowerCase().includes(search)) || (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) || (s.email && s.email.toLowerCase().includes(search)) || (s.parent_email && s.parent_email.toLowerCase().includes(search)))
-    : demoStudents;
-  res.json(filtered);
+  ORDER BY c.class_number,sec.name,st.roll_number`,[userSchoolId,search]);
+  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+ } catch {}
+
+ // If Firestore is configured, load from Cloud Firestore
+ if (isFirebaseConfigured()) {
+  try {
+    const snap = await collections.students().get();
+    if (!snap.empty) {
+      let list = snap.docs.map(d => {
+        const dt = d.data();
+        return {
+          id: d.id,
+          name: dt.name || dt.fullName || '',
+          roll_number: dt.roll_number || dt.rollNumber || '',
+          admission_number: dt.admission_number || dt.admissionNumber || '',
+          admissionNumber: dt.admissionNumber || dt.admission_number || '',
+          parent_name: dt.parent_name || dt.parentName || '—',
+          parent_sms_number: dt.parent_sms_number || dt.parentPhone || '',
+          parent_email: dt.parent_email || dt.parentEmail || '',
+          student_email: dt.student_email || dt.studentEmail || dt.email || '',
+          email: dt.email || dt.student_email || '',
+          class_id: dt.class_id || dt.classId || `cls-${dt.class_number || dt.className || 8}`,
+          class_number: Number(dt.class_number || dt.className) || 8,
+          section_id: dt.section_id || dt.sectionId || `sec-${dt.class_number || 8}-${(dt.section_name || dt.section || 'A').toLowerCase()}`,
+          section_name: dt.section_name || dt.section || 'A',
+          school_id: dt.school_id || dt.schoolId || '00000000-0000-0000-0000-000000000001',
+          schoolId: dt.schoolId || dt.school_id || '00000000-0000-0000-0000-000000000001',
+          is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
+          ...dt
+        };
+      }).filter(s => {
+        if (s.is_active === false) return false;
+        if (!userSchoolId || !s.school_id) return true;
+        return isSameSchool(s.school_id, userSchoolId);
+      });
+
+      // Merge in-memory demoStudents newly created or updated in this process
+      for (const ds of demoStudents) {
+        if (!list.some(x => x.id === ds.id)) {
+          if (!userSchoolId || !ds.school_id || isSameSchool(ds.school_id, userSchoolId)) {
+            list.unshift(ds);
+          }
+        }
+      }
+
+      if (list.length > 0) {
+        const filtered = search
+          ? list.filter(s =>
+              s.name.toLowerCase().includes(search) ||
+              String(s.roll_number).includes(search) ||
+              (s.admission_number && s.admission_number.toLowerCase().includes(search)) ||
+              (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) ||
+              (s.email && s.email.toLowerCase().includes(search)) ||
+              (s.student_email && s.student_email.toLowerCase().includes(search)) ||
+              (s.parent_email && s.parent_email.toLowerCase().includes(search))
+            )
+          : list;
+        return res.json(filtered);
+      }
+    }
+  } catch (e: any) {
+    console.warn('[Firestore] Students lookup fallback error:', e.message);
+  }
  }
+
+ const schoolStudents = demoStudents.filter(s => {
+  if (!userSchoolId || !s.school_id) return true;
+  return isSameSchool(s.school_id, userSchoolId);
+ });
+
+ const filtered = search
+   ? schoolStudents.filter(s =>
+       s.name.toLowerCase().includes(search) ||
+       String(s.roll_number).includes(search) ||
+       (s.admission_number && s.admission_number.toLowerCase().includes(search)) ||
+       (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) ||
+       (s.email && s.email.toLowerCase().includes(search)) ||
+       (s.student_email && s.student_email.toLowerCase().includes(search)) ||
+       (s.parent_email && s.parent_email.toLowerCase().includes(search))
+     )
+   : schoolStudents;
+ res.json(filtered);
 });
 
 r.post('/students',...admin,async(req:AuthRequest,res)=>{
@@ -371,25 +448,27 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    section_name: secName,
    class_id: classId,
    section_id: sectionId,
+   school_id: req.user!.schoolId,
+   schoolId: req.user!.schoolId,
    login_option: loginOpt,
    reset_url: resetInfo?.resetUrl,
    invite_sent: Boolean(resetInfo)
  };
  demoStudents.unshift(newStudent);
  syncStudentToFirestore(newStudent).catch(() => {});
-  res.status(201).json(newStudent);
+ return res.status(201).json(newStudent);
 });
 
 r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  const {students=[]}=req.body||{};
  if(!Array.isArray(students)||students.length===0) return res.status(400).json({message:'Array of student records is required'});
  const createdList: any[] = [];
-  for (const st of students) {
+ for (const st of students) {
     const name = String(st.name||'').trim();
     const rollNumber = String(st.rollNumber||st.roll_number||'').trim();
     const admissionNumber = String(st.admissionNumber||st.admission_number||'').trim();
-    const parentSmsNumber = String(st.parentSmsNumber||st.parent_sms_number||st.mobile||'9000000000').trim();
     const parentName = String(st.parentName||st.parent_name||'').trim();
+    const parentSmsNumber = String(st.parentSmsNumber||st.parent_sms_number||st.phone||'9876543210').trim();
     const parentEmail = String(st.parentEmail||st.parent_email||'').trim();
     let classId = st.classId || st.class_id;
     let sectionId = st.sectionId || st.section_id;
@@ -413,7 +492,9 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       class_id: classId,
       class_number: classNumber,
       section_id: sectionId,
-      section_name: sectionName
+      section_name: sectionName,
+      school_id: req.user!.schoolId,
+      schoolId: req.user!.schoolId
     };
 
     try {
@@ -423,7 +504,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, classId, sectionId, rollNumber, admissionNumber || null, name, parentName || null, parentSmsNumber, parentEmail || null]
       );
       if (q.rowCount) {
-        const created = { ...q.rows[0], class_number: classNumber, section_name: sectionName, admission_number: admissionNumber || q.rows[0].admission_number, admissionNumber: admissionNumber || q.rows[0].admission_number };
+        const created = { ...q.rows[0], school_id: req.user!.schoolId, schoolId: req.user!.schoolId, class_number: classNumber, section_name: sectionName, admission_number: admissionNumber || q.rows[0].admission_number, admissionNumber: admissionNumber || q.rows[0].admission_number };
         createdList.push(created);
         demoStudents.unshift(created);
         syncStudentToFirestore(created).catch(() => {});
@@ -562,14 +643,53 @@ r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.get('/teachers',...admin,async(req:AuthRequest,res)=>{
+ const userSchoolId = req.user?.schoolId;
  try {
   const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,u.is_active
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
-  WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[req.user!.schoolId]);
-  res.json(q.rows);
- } catch {
-  res.json(demoTeachers);
+  WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
+  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+ } catch {}
+
+ if (isFirebaseConfigured()) {
+  try {
+    const snap = await collections.teachers().get();
+    if (!snap.empty) {
+      let list = snap.docs.map(d => {
+        const dt = d.data();
+        return {
+          id: d.id,
+          name: dt.name || dt.fullName || '',
+          email: dt.email || '',
+          employee_id: dt.employee_id || dt.employeeId || '',
+          mobile: dt.mobile || dt.phone || '',
+          school_id: dt.school_id || dt.schoolId || '00000000-0000-0000-0000-000000000001',
+          is_active: dt.is_active !== false,
+          ...dt
+        };
+      }).filter(t => {
+        if (t.is_active === false) return false;
+        if (!userSchoolId || !t.school_id) return true;
+        return isSameSchool(t.school_id, userSchoolId);
+      });
+
+      for (const dt of demoTeachers) {
+        if (!list.some(x => x.id === dt.id)) {
+          if (!userSchoolId || !dt.school_id || isSameSchool(dt.school_id, userSchoolId)) {
+            list.unshift(dt);
+          }
+        }
+      }
+      if (list.length > 0) return res.json(list);
+    }
+  } catch {}
  }
+
+ const schoolTeachers = demoTeachers.filter(t => {
+  if (!userSchoolId || !t.school_id) return true;
+  return isSameSchool(t.school_id, userSchoolId);
+ });
+ res.json(schoolTeachers.length ? schoolTeachers : demoTeachers);
 });
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{

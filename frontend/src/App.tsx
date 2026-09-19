@@ -2714,9 +2714,11 @@ function Students(){
   async function load(){
     try {
       const [a,b,c]=await Promise.all([api.get('/students'),api.get('/classes'),api.get('/sections')]);
-      setRows(a.data || []);
-      setClasses(b.data || []);
-      setSections(c.data || []);
+      if (Array.isArray(a.data)) {
+        setRows(prev => (a.data.length > 0 || prev.length === 0 ? a.data : prev));
+      }
+      if (Array.isArray(b.data)) setClasses(b.data);
+      if (Array.isArray(c.data)) setSections(c.data);
     } catch(err) {
       console.error('Failed to load students:', err);
     }
