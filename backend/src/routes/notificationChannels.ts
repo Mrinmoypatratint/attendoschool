@@ -78,15 +78,20 @@ r.put('/templates/:channel',async(req:AuthRequest,res)=>{
  }
 });
 
+import { isTestSchool } from '../utils/tenant';
+
 r.get('/logs',async(req:AuthRequest,res)=>{
  try {
   const q=await pool.query(`SELECT n.*,st.name student_name FROM notification_logs n
   LEFT JOIN students st ON st.id=n.student_id WHERE n.school_id=$1 ORDER BY n.created_at DESC LIMIT 300`,[req.user!.schoolId]);
   res.json(q.rows);
  } catch {
-  res.json([
-   { id: 'log-1', student_name: 'Amit Patel', channel: 'SMS', recipient: '+919876543210', status: 'SENT', attempts: 1, created_at: new Date().toISOString() }
-  ]);
+  if (isTestSchool(req.user!.schoolId)) {
+    return res.json([
+      { id: 'log-1', student_name: 'Amit Patel', channel: 'SMS', recipient: '+919876543210', status: 'SENT', attempts: 1, created_at: new Date().toISOString() }
+    ]);
+  }
+  res.json([]);
  }
 });
 
@@ -98,9 +103,15 @@ r.get('/analytics',async(req:AuthRequest,res)=>{
   FROM notification_logs WHERE school_id=$1`,[req.user!.schoolId]);
   res.json({byChannel:q.rows,totals:totals.rows[0]});
  } catch {
+  if (isTestSchool(req.user!.schoolId)) {
+    return res.json({
+      byChannel: [{ channel: 'SMS', status: 'SENT', count: 12 }, { channel: 'WHATSAPP', status: 'SENT', count: 8 }],
+      totals: { total: 20, sent: 20, failed: 0, queued: 0 }
+    });
+  }
   res.json({
-   byChannel: [{ channel: 'SMS', status: 'SENT', count: 12 }, { channel: 'WHATSAPP', status: 'SENT', count: 8 }],
-   totals: { total: 20, sent: 20, failed: 0, queued: 0 }
+    byChannel: [],
+    totals: { total: 0, sent: 0, failed: 0, queued: 0 }
   });
  }
 });

@@ -7,6 +7,8 @@ import {
 
 const router = Router();
 
+import { isSameSchool } from '../utils/tenant';
+
 function user(req: Request) { return (req as any).user; }
 function schoolId(req: Request) { return user(req)?.schoolId; }
 
@@ -14,29 +16,31 @@ const demoCorrections: any[] = [];
 
 router.get('/', async (req: Request, res: Response) => {
   const queryStatus = req.query.status ? String(req.query.status).toUpperCase() : undefined;
+  const sid = schoolId(req);
+  if (!sid) return res.status(403).json({ message: 'School access required' });
   try {
-    const sid = schoolId(req);
-    if (!sid) return res.status(403).json({ message: 'School access required' });
     const list = await listCorrections(sid, queryStatus);
     if (list && list.length) return res.json(list);
   } catch (_e: any) {}
 
+  const schoolCorrections = demoCorrections.filter(c => c.school_id && isSameSchool(c.school_id, sid));
   if (queryStatus && queryStatus !== 'ALL') {
-    return res.json(demoCorrections.filter(c => c.status === queryStatus));
+    return res.json(schoolCorrections.filter(c => c.status === queryStatus));
   }
-  res.json(demoCorrections);
+  res.json(schoolCorrections);
 });
 
 router.get('/history', async (req: Request, res: Response) => {
+  const sid = schoolId(req);
+  if (!sid) return res.status(403).json({ message: 'School access required' });
   try {
-    const sid = schoolId(req);
-    if (!sid) return res.status(403).json({ message: 'School access required' });
     const list = await listCorrections(sid);
     if (list && list.length) {
       return res.json(list.filter((c: any) => c.status !== 'PENDING'));
     }
   } catch (_e: any) {}
-  res.json(demoCorrections.filter(c => c.status !== 'PENDING'));
+  const schoolCorrections = demoCorrections.filter(c => c.school_id && isSameSchool(c.school_id, sid));
+  res.json(schoolCorrections.filter(c => c.status !== 'PENDING'));
 });
 
 router.post('/', async (req: Request, res: Response) => {
@@ -49,8 +53,10 @@ router.post('/', async (req: Request, res: Response) => {
     );
     res.status(201).json(item);
   } catch (e: any) {
+    const u = user(req);
     const newCorr = {
       id: `corr-${Date.now()}`,
+      school_id: u?.schoolId,
       student_name: 'Sample Student',
       roll: '1',
       class_name: '8',

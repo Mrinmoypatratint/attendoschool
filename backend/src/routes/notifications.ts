@@ -40,6 +40,8 @@ r.put('/settings',...admin,async(req:AuthRequest,res)=>{
   }
 });
 
+import { isTestSchool } from '../utils/tenant';
+
 r.get('/logs',...admin,async(req:AuthRequest,res)=>{
   try {
     const q=await pool.query(
@@ -51,10 +53,13 @@ r.get('/logs',...admin,async(req:AuthRequest,res)=>{
        WHERE l.school_id=$1 ORDER BY l.created_at DESC LIMIT 200`,[req.user!.schoolId]);
     res.json(q.rows);
   } catch {
-    res.json([
-      { id: 'sms-01', student_name: 'Rahul Das', parent_number: '9000000003', status: 'SENT', attempts: 1, message: 'Dear Parent, Rahul Das was absent from Class 8-A at 09:00. Teacher: Rahul Sharma.', created_at: new Date().toISOString() },
-      { id: 'sms-02', student_name: 'Sneha Roy', parent_number: '9000000008', status: 'SENT', attempts: 1, message: 'Dear Parent, Sneha Roy was absent from Class 8-A at 09:00. Teacher: Rahul Sharma.', created_at: new Date().toISOString() }
-    ]);
+    if (isTestSchool(req.user!.schoolId)) {
+      return res.json([
+        { id: 'sms-01', student_name: 'Rahul Das', parent_number: '9000000003', status: 'SENT', attempts: 1, message: 'Dear Parent, Rahul Das was absent from Class 8-A at 09:00. Teacher: Rahul Sharma.', created_at: new Date().toISOString() },
+        { id: 'sms-02', student_name: 'Sneha Roy', parent_number: '9000000008', status: 'SENT', attempts: 1, message: 'Dear Parent, Sneha Roy was absent from Class 8-A at 09:00. Teacher: Rahul Sharma.', created_at: new Date().toISOString() }
+      ]);
+    }
+    res.json([]);
   }
 });
 

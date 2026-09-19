@@ -3,6 +3,7 @@ import {
   listAcademicYears, createAcademicYear,
   setActiveAcademicYear, archiveAcademicYear, getActiveAcademicYear
 } from '../services/academicYearService';
+import { isTestSchool } from './auth';
 
 export interface AcademicYearItem {
   id: string;
@@ -31,15 +32,19 @@ function createDefaultSessions(schoolId: string): AcademicYearItem[] {
 export function getInMemoryAcademicYears(schoolId?: string | null): AcademicYearItem[] {
   const sid = schoolId || 'default';
   if (!inMemoryAcademicYears[sid] || inMemoryAcademicYears[sid].length === 0) {
-    inMemoryAcademicYears[sid] = createDefaultSessions(sid);
+    if (isTestSchool(sid)) {
+      inMemoryAcademicYears[sid] = createDefaultSessions(sid);
+    } else {
+      inMemoryAcademicYears[sid] = [];
+    }
   }
   return inMemoryAcademicYears[sid];
 }
 
-export function getInMemoryActiveAcademicYear(schoolId?: string | null): AcademicYearItem {
+export function getInMemoryActiveAcademicYear(schoolId?: string | null): AcademicYearItem | null {
   const years = getInMemoryAcademicYears(schoolId);
   const active = years.find(y => y.is_active && !y.is_archived);
-  return active || years[1] || years[0];
+  return active || (isTestSchool(schoolId) ? (years[1] || years[0] || null) : null);
 }
 
 export function setInMemoryActiveAcademicYear(schoolId: string | null | undefined, yearId: string): AcademicYearItem | null {

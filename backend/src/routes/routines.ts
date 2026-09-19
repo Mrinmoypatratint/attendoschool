@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
+import { isTestSchool } from './auth';
 
 const r = Router();
 const admin = [requireAuth, requireRoles('SCHOOL_ADMIN')];
@@ -20,11 +21,14 @@ r.get('/', ...admin, async (req: AuthRequest, res) => {
     );
     res.json(q.rows);
   } catch {
-    res.json([
-      { id: 'rout-1', day_of_week: 1, class_number: 8, section_name: 'A', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', start_time: '09:00:00', end_time: '09:45:00', room: 'Room 101' },
-      { id: 'rout-2', day_of_week: 1, class_number: 8, section_name: 'A', subject_name: 'Science', teacher_name: 'Priya Roy', start_time: '10:00:00', end_time: '10:45:00', room: 'Room 102' },
-      { id: 'rout-3', day_of_week: 2, class_number: 9, section_name: 'A', subject_name: 'English', teacher_name: 'Amit Das', start_time: '11:00:00', end_time: '11:45:00', room: 'Room 103' }
-    ]);
+    if (isTestSchool(req.user!.schoolId)) {
+      return res.json([
+        { id: 'rout-1', day_of_week: 1, class_number: 8, section_name: 'A', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', start_time: '09:00:00', end_time: '09:45:00', room: 'Room 101' },
+        { id: 'rout-2', day_of_week: 1, class_number: 8, section_name: 'A', subject_name: 'Science', teacher_name: 'Priya Roy', start_time: '10:00:00', end_time: '10:45:00', room: 'Room 102' },
+        { id: 'rout-3', day_of_week: 2, class_number: 9, section_name: 'A', subject_name: 'English', teacher_name: 'Amit Das', start_time: '11:00:00', end_time: '11:45:00', room: 'Room 103' }
+      ]);
+    }
+    res.json([]);
   }
 });
 

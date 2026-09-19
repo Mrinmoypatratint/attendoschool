@@ -1,5 +1,6 @@
 import {Router,Request,Response} from 'express';
 import {listPromotionCandidates,promoteStudents} from '../services/studentPromotionService';
+import { isTestSchool } from './auth';
 
 const router=Router();
 const sid=(req:Request)=>(req as any).user?.schoolId;
@@ -12,11 +13,14 @@ router.get('/candidates',async(req,res)=>{
     if(!year) return res.status(400).json({message:'fromYearId is required'});
     res.json(await listPromotionCandidates(sid(req),year));
   } catch(_e:any){
-    res.json([
-      { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
-      { id: 'st-02', name: 'Ananya Verma', roll: 2, from_class_name: '8', from_section_name: 'A', already_processed: false },
-      { id: 'st-03', name: 'Rohan Gupta', roll: 3, from_class_name: '8', from_section_name: 'A', already_processed: false }
-    ]);
+    if (isTestSchool(sid(req))) {
+      return res.json([
+        { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
+        { id: 'st-02', name: 'Ananya Verma', roll: 2, from_class_name: '8', from_section_name: 'A', already_processed: false },
+        { id: 'st-03', name: 'Rohan Gupta', roll: 3, from_class_name: '8', from_section_name: 'A', already_processed: false }
+      ]);
+    }
+    res.json([]);
   }
 });
 
@@ -26,10 +30,13 @@ router.get('/eligible',async(req,res)=>{
     const year=String(req.query.fromYearId||'');
     res.json(await listPromotionCandidates(sid(req),year));
   } catch(_e:any){
-    res.json([
-      { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
-      { id: 'st-02', name: 'Ananya Verma', roll: 2, from_class_name: '8', from_section_name: 'A', already_processed: false }
-    ]);
+    if (isTestSchool(sid(req))) {
+      return res.json([
+        { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
+        { id: 'st-02', name: 'Ananya Verma', roll: 2, from_class_name: '8', from_section_name: 'A', already_processed: false }
+      ]);
+    }
+    res.json([]);
   }
 });
 
