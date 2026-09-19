@@ -51,11 +51,11 @@ export async function getFirestoreSchoolById(id: string): Promise<FirestoreSchoo
 
 export async function createFirestoreSchool(school: Omit<FirestoreSchool, 'id'>, customId?: string): Promise<FirestoreSchool> {
   const docRef = customId ? collections.schools().doc(customId) : collections.schools().doc();
-  const data: FirestoreSchool = {
+  const data = {
     id: docRef.id,
     ...school,
     createdAt: school.createdAt || new Date().toISOString()
-  };
+  } as FirestoreSchool;
   await docRef.set(data);
   return data;
 }

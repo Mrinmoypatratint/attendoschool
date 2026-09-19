@@ -7,7 +7,7 @@ import { env } from '../config/env';
 import { requireAuth, AuthRequest, Role } from '../middleware/auth';
 import { findDemoUser } from '../store/demoUsers';
 import { demoSchools } from './superAdmin';
-import { findFirestoreUserByEmail, getFirestoreSchools } from '../services/firestoreService';
+import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 import { sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
@@ -82,20 +82,28 @@ router.get('/institutes', async (_req, res) => {
   } catch (_e) {}
 
   // 3. Fallback active demo schools
-  if (combinedMap.size === 0) {
-    for (const s of demoSchools) {
-      if (s.status === 'ACTIVE') {
-        const key = (s.code || s.name).toUpperCase();
-        if (!combinedMap.has(key)) {
-          combinedMap.set(key, {
-            id: s.id,
-            name: s.name,
-            code: s.code || 'SCH001',
-            address: 'Main Campus'
-          });
-        }
+  for (const s of demoSchools) {
+    if (s.status === 'ACTIVE') {
+      const key = (s.code || s.name).toUpperCase();
+      if (!combinedMap.has(key)) {
+        combinedMap.set(key, {
+          id: s.id,
+          name: s.name,
+          code: s.code || 'SCH001',
+          address: 'Main Campus'
+        });
       }
     }
+  }
+
+  // Ensure Greenwood is present with standard ID
+  if (!combinedMap.has('GIS001') && !combinedMap.has('GREENWOOD INTERNATIONAL SCHOOL')) {
+    combinedMap.set('GIS001', {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Greenwood International School',
+      code: 'GIS001',
+      address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka'
+    });
   }
 
   const result = Array.from(combinedMap.values());
@@ -135,9 +143,23 @@ router.post('/login', async (req, res) => {
       }
 
       const role = fUser.role as Role;
+      let schoolName = fUser.schoolName;
+      let schoolCode = fUser.schoolCode;
+      if (fUser.schoolId) {
+        try {
+          const fsSch = await getFirestoreSchoolById(fUser.schoolId);
+          if (fsSch) {
+            schoolName = fsSch.name;
+            schoolCode = fsSch.code;
+          }
+        } catch {}
+      }
+
       const userPayload: any = {
         id: fUser.id,
         schoolId: canonicalSchoolId(fUser.schoolId),
+        schoolName: schoolName || 'Greenwood International School',
+        schoolCode: schoolCode || 'GIS001',
         name: fUser.name,
         email: fUser.email,
         role
@@ -150,7 +172,7 @@ router.post('/login', async (req, res) => {
         userPayload.className = 'Class 10';
         userPayload.sectionName = 'Section A';
         userPayload.rollNumber = '25';
-        userPayload.schoolName = 'Greenwood International School';
+        userPayload.schoolName = schoolName || 'Greenwood International School';
       }
 
       const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '8h' });
@@ -221,6 +243,8 @@ router.post('/login', async (req, res) => {
       const userPayload: any = {
         id: u.id,
         schoolId: u.school_id,
+        schoolName: u.school_name || selectedSchoolName,
+        schoolCode: u.school_code || 'GIS001',
         name: u.name,
         email: u.email,
         role
@@ -258,6 +282,8 @@ router.post('/login', async (req, res) => {
     const userPayload: any = {
       id: demo.id,
       schoolId: demo.schoolId,
+      schoolName: 'Greenwood International School',
+      schoolCode: 'GIS001',
       name: demo.name,
       email: demo.email,
       role: demo.role as Role
