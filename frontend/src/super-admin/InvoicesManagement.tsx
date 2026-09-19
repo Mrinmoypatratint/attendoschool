@@ -365,7 +365,7 @@ export const InvoicesManagement: React.FC = () => {
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                           <button
                             className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px' }}
+                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
                             onClick={() => setSelectedInvoice(inv)}
                             title="View Receipt Breakdown"
                           >
@@ -373,7 +373,7 @@ export const InvoicesManagement: React.FC = () => {
                           </button>
                           <button
                             className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px', color: '#4f46e5' }}
+                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
                             onClick={() => handleDownloadPdf(inv)}
                             title="Download PDF"
                           >
@@ -381,7 +381,7 @@ export const InvoicesManagement: React.FC = () => {
                           </button>
                           <button
                             className="btn-secondary"
-                            style={{ padding: '5px 10px', fontSize: '11px' }}
+                            style={{ padding: '5px 10px', fontSize: '11px', color: '#ffffff' }}
                             onClick={() => handleOpenEmail(inv)}
                             title="Email to School Admin"
                           >

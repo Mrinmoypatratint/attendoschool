@@ -365,7 +365,7 @@ export const PaymentsLedger: React.FC = () => {
                         {!isReconciled ? (
                           <button
                             className="btn-secondary"
-                            style={{ padding: '4px 10px', fontSize: '11px', color: '#4f46e5' }}
+                            style={{ padding: '4px 10px', fontSize: '11px', color: '#ffffff' }}
                             disabled={reconcilingId === p.id}
                             onClick={() => handleReconcile(p.id)}
                           >
