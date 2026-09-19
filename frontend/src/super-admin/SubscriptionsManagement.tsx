@@ -32,7 +32,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     description: '',
     max_students: 1000,
     price_monthly: 999,
-    price_yearly: 9999,
+    price_yearly: 999 * 12,
     is_active: true
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -44,9 +44,9 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     try {
       const [plansData, schoolsData] = await Promise.all([
         apiRequest<SubscriptionPlan[]>('/super-admin/plans').catch(() => [
-          { id: 'plan-basic', name: 'Basic Tier', description: 'Essential attendance and student profiles for small educational institutions.', max_students: 300, price_monthly: 499, price_yearly: 4999, is_active: true },
-          { id: 'plan-standard', name: 'Standard Growth', description: 'Complete student information system with timetables, exams, and parent communications.', max_students: 1000, price_monthly: 999, price_yearly: 9999, is_active: true },
-          { id: 'plan-enterprise', name: 'Enterprise Elite', description: 'Institutional scale with automated biometric sync, audit logging, and 24/7 priority SLA.', max_students: 5000, price_monthly: 1999, price_yearly: 19999, is_active: true }
+          { id: 'plan-basic', name: 'Basic Tier', description: 'Essential attendance and student profiles for small educational institutions.', max_students: 300, price_monthly: 499, price_yearly: 499 * 12, is_active: true },
+          { id: 'plan-standard', name: 'Standard Growth', description: 'Complete student information system with timetables, exams, and parent communications.', max_students: 1000, price_monthly: 999, price_yearly: 999 * 12, is_active: true },
+          { id: 'plan-enterprise', name: 'Enterprise Elite', description: 'Institutional scale with automated biometric sync, audit logging, and 24/7 priority SLA.', max_students: 5000, price_monthly: 1999, price_yearly: 1999 * 12, is_active: true }
         ]),
         apiRequest<SchoolRecord[]>('/super-admin/schools').catch(() => [])
       ]);
@@ -126,7 +126,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       description: '',
       max_students: 1000,
       price_monthly: 999,
-      price_yearly: 9999,
+      price_yearly: 999 * 12,
       is_active: true
     });
     setFormError(null);
@@ -140,7 +140,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
       description: plan.description || '',
       max_students: plan.max_students,
       price_monthly: plan.price_monthly,
-      price_yearly: plan.price_yearly || plan.price_monthly * 10,
+      price_yearly: plan.price_yearly || plan.price_monthly * 12,
       is_active: plan.is_active
     });
     setFormError(null);
@@ -300,10 +300,10 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
               const isEnterprise = p.name.toLowerCase().includes('enterprise');
 
               const displayPrice = billingCycle === 'yearly'
-                ? Math.round((p.price_yearly || p.price_monthly * 10) / 12)
+                ? Math.round((p.price_yearly || p.price_monthly * 12) / 12)
                 : p.price_monthly;
 
-              const totalAnnual = p.price_yearly || p.price_monthly * 10;
+              const totalAnnual = p.price_yearly || p.price_monthly * 12;
 
               return (
                 <div
@@ -355,7 +355,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                     <div className="sa-plan-price-billed">
                       <CheckCircle2 size={14} />
                       <span>
-                        ₹{Number(totalAnnual).toLocaleString('en-IN')} billed annually (Save 17%)
+                        ₹{Number(totalAnnual).toLocaleString('en-IN')} billed annually (12 months)
                       </span>
                     </div>
                   </div>
@@ -589,11 +589,14 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                     required
                     min={0}
                     value={planForm.price_monthly}
-                    onChange={(e) => setPlanForm({
-                      ...planForm,
-                      price_monthly: Number(e.target.value),
-                      price_yearly: Number(e.target.value) * 10
-                    })}
+                    onChange={(e) => {
+                      const monthly = Number(e.target.value);
+                      setPlanForm({
+                        ...planForm,
+                        price_monthly: monthly,
+                        price_yearly: monthly * 12
+                      });
+                    }}
                   />
                 </div>
               </div>
@@ -607,6 +610,9 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                     value={planForm.price_yearly}
                     onChange={(e) => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })}
                   />
+                  <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                    Calculated as Monthly Price × 12 (₹{(Number(planForm.price_monthly || 0) * 12).toLocaleString('en-IN')})
+                  </span>
                 </div>
                 <div className="form-group">
                   <label>Tier Availability Status</label>

@@ -320,17 +320,39 @@ r.get('/overview',async(_req,res)=>{
  }
 });
 
-r.get('/plans',async(_req,res)=>{
- try {
-  const q=await pool.query(`SELECT id,name,max_students,price_monthly,price_yearly,is_active FROM subscription_plans WHERE is_active=true ORDER BY price_monthly`);
-  res.json(q.rows);
- } catch {
-  res.json([
-    { id: 'plan-basic', name: 'Basic', max_students: 300, price_monthly: 499, price_yearly: 4999, is_active: true },
-    { id: 'plan-standard', name: 'Standard', max_students: 1000, price_monthly: 999, price_yearly: 9999, is_active: true },
-    { id: 'plan-enterprise', name: 'Enterprise', max_students: 5000, price_monthly: 1999, price_yearly: 19999, is_active: true }
-  ]);
- }
+r.get('/plans', async (_req, res) => {
+  if (isFirebaseConfigured()) {
+    try {
+      const snap = await collections.subscriptionPlans().get();
+      if (!snap.empty) {
+        const list = snap.docs.map(doc => {
+          const d = doc.data();
+          const monthly = Number(d.price_monthly ?? d.priceMonthly ?? 0);
+          const yearly = Number(d.price_yearly ?? d.priceYearly ?? monthly * 12);
+          return {
+            id: doc.id,
+            name: d.name || 'Tier',
+            description: d.description || '',
+            max_students: Number(d.max_students ?? d.maxStudents ?? 1000),
+            price_monthly: monthly,
+            price_yearly: yearly,
+            is_active: d.status ? d.status === 'ACTIVE' : (d.is_active ?? true)
+          };
+        });
+        return res.json(list);
+      }
+    } catch {}
+  }
+  try {
+    const q = await pool.query(`SELECT id,name,max_students,price_monthly,price_yearly,is_active FROM subscription_plans WHERE is_active=true ORDER BY price_monthly`);
+    res.json(q.rows);
+  } catch {
+    res.json([
+      { id: 'plan-basic', name: 'Basic', max_students: 300, price_monthly: 499, price_yearly: 499 * 12, is_active: true },
+      { id: 'plan-standard', name: 'Standard', max_students: 1000, price_monthly: 999, price_yearly: 999 * 12, is_active: true },
+      { id: 'plan-enterprise', name: 'Enterprise', max_students: 5000, price_monthly: 1999, price_yearly: 1999 * 12, is_active: true }
+    ]);
+  }
 });
 
 r.get('/schools',async(_req,res)=>{
@@ -1018,23 +1040,73 @@ r.put('/settings', async (req: AuthRequest, res) => {
 
 /* ────── Subscription Plans Management ────── */
 r.post('/plans', async (req: AuthRequest, res) => {
-  const { name, max_students, price_monthly, price_yearly } = req.body || {};
+  const { name, description, max_students, price_monthly, price_yearly } = req.body || {};
   if (!name || !price_monthly) return res.status(400).json({ message: 'Name and price are required' });
   const planId = `plan-${Date.now()}`;
+  const monthly = Number(price_monthly);
+  const yearly = Number(price_yearly || monthly * 12);
+  const studentLimit = Number(max_students || 500);
+
+  if (isFirebaseConfigured()) {
+    try {
+      await collections.subscriptionPlans().doc(planId).set({
+        id: planId,
+        name,
+        description: description || '',
+        maxStudents: studentLimit,
+        max_students: studentLimit,
+        priceMonthly: monthly,
+        price_monthly: monthly,
+        priceYearly: yearly,
+        price_yearly: yearly,
+        status: 'ACTIVE',
+        is_active: true,
+        createdAt: new Date().toISOString()
+      });
+    } catch {}
+  }
   try {
     await pool.query(
       `INSERT INTO subscription_plans(id, name, max_students, price_monthly, price_yearly, is_active)
        VALUES($1, $2, $3, $4, $5, true)`,
-      [planId, name, max_students || 500, price_monthly, price_yearly || price_monthly * 10]
+      [planId, name, studentLimit, monthly, yearly]
     );
   } catch {}
-  await logSystemAudit(req.user || { id: 'super-admin' }, 'CREATE_PLAN', 'PLAN', planId, { name, price_monthly });
-  res.status(201).json({ id: planId, name, price_monthly, max_students, message: 'Plan created' });
+  await logSystemAudit(req.user || { id: 'super-admin' }, 'CREATE_PLAN', 'PLAN', planId, { name, price_monthly: monthly, price_yearly: yearly });
+  res.status(201).json({ id: planId, name, price_monthly: monthly, price_yearly: yearly, max_students: studentLimit, message: 'Plan created' });
 });
 
 r.put('/plans/:id', async (req: AuthRequest, res) => {
-  const { name, max_students, price_monthly, price_yearly, is_active } = req.body || {};
+  const { name, description, max_students, price_monthly, price_yearly, is_active } = req.body || {};
   const id = String(req.params.id);
+  const monthly = price_monthly !== undefined ? Number(price_monthly) : undefined;
+  const yearly = price_yearly !== undefined ? Number(price_yearly) : (monthly !== undefined ? monthly * 12 : undefined);
+
+  if (isFirebaseConfigured()) {
+    try {
+      const updateData: any = { updatedAt: new Date().toISOString() };
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (max_students !== undefined) {
+        updateData.maxStudents = Number(max_students);
+        updateData.max_students = Number(max_students);
+      }
+      if (monthly !== undefined) {
+        updateData.priceMonthly = monthly;
+        updateData.price_monthly = monthly;
+      }
+      if (yearly !== undefined) {
+        updateData.priceYearly = yearly;
+        updateData.price_yearly = yearly;
+      }
+      if (is_active !== undefined) {
+        updateData.status = is_active ? 'ACTIVE' : 'INACTIVE';
+        updateData.is_active = Boolean(is_active);
+      }
+      await collections.subscriptionPlans().doc(id).set(updateData, { merge: true });
+    } catch {}
+  }
+
   try {
     await pool.query(
       `UPDATE subscription_plans SET 
@@ -1044,7 +1116,7 @@ r.put('/plans/:id', async (req: AuthRequest, res) => {
         price_yearly=COALESCE($4, price_yearly),
         is_active=COALESCE($5, is_active)
        WHERE id=$6`,
-      [name, max_students, price_monthly, price_yearly, is_active, id]
+      [name, max_students, monthly, yearly, is_active, id]
     );
   } catch {}
   await logSystemAudit(req.user || { id: 'super-admin' }, 'UPDATE_PLAN', 'PLAN', id, req.body || {});
