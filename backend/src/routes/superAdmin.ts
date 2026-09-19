@@ -1133,6 +1133,26 @@ r.put('/plans/:id', async (req: AuthRequest, res) => {
   res.json({ id, message: 'Plan updated' });
 });
 
+r.delete('/plans/:id', async (req: AuthRequest, res) => {
+  const id = String(req.params.id);
+
+  if (isFirebaseConfigured()) {
+    try {
+      await collections.subscriptionPlans().doc(id).delete();
+      console.log(`[Firestore] Deleted subscription plan document: ${id}`);
+    } catch (fbErr) {
+      console.warn('[Firestore] Error deleting plan:', fbErr);
+    }
+  }
+
+  try {
+    await pool.query('DELETE FROM subscription_plans WHERE id = $1', [id]);
+  } catch {}
+
+  await logSystemAudit(req.user || { id: 'super-admin' }, 'DELETE_PLAN', 'PLAN', id, { planId: id });
+  res.json({ success: true, id, message: 'Subscription tier deleted successfully' });
+});
+
 /* ────── Notifications Endpoints (Super Admin) ────── */
 r.get('/notifications', async (_req, res) => {
   const unreadCount = superAdminNotifications.filter(n => !n.read).length;

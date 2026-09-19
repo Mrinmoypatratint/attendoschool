@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Layers, CheckCircle2, Sliders, Plus, RefreshCw,
   TrendingUp, Users, Building2, ExternalLink, X,
-  ShieldCheck, Sparkles, Search
+  ShieldCheck, Sparkles, Search, Trash2
 } from 'lucide-react';
 import { SubscriptionPlan, SchoolRecord } from './types';
 import { apiRequest } from '../api';
@@ -37,6 +37,7 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     is_active: true
   });
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = async () => {
@@ -148,6 +149,31 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
     });
     setFormError(null);
     setModalOpen(true);
+  };
+
+  const handleDeletePlan = async (plan: SubscriptionPlan) => {
+    const subCount = getSubscribersCount(plan.name);
+    const confirmMsg = subCount > 0
+      ? `Are you sure you want to delete the subscription tier "${plan.name}"?\n\nWarning: ${subCount} school(s) are currently subscribed to this tier. Deleting this tier will remove it from available packages.`
+      : `Are you sure you want to delete the subscription tier "${plan.name}"? This action cannot be undone.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingId(plan.id);
+    try {
+      await apiRequest(`/super-admin/plans/${plan.id}`, {
+        method: 'DELETE'
+      });
+      setPlans(prev => prev.filter(p => p.id !== plan.id));
+      if (modalOpen && editingPlan?.id === plan.id) {
+        setModalOpen(false);
+      }
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete subscription tier.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSubmitPlan = async (e: React.FormEvent) => {
@@ -335,15 +361,26 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                       </div>
                     </div>
 
-                    <button
-                      className="sa-btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                      onClick={() => openEditModal(p)}
-                      title="Configure Tier"
-                    >
-                      <Sliders size={13} />
-                      <span>Configure</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        className="sa-btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        onClick={() => openEditModal(p)}
+                        title="Configure Tier"
+                      >
+                        <Sliders size={13} />
+                        <span>Configure</span>
+                      </button>
+                      <button
+                        className="sa-btn-danger"
+                        disabled={deletingId === p.id}
+                        onClick={() => handleDeletePlan(p)}
+                        title="Delete Tier"
+                      >
+                        <Trash2 size={13} />
+                        <span>{deletingId === p.id ? 'Deleting…' : 'Delete'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <p className="sa-plan-desc">
@@ -654,22 +691,35 @@ export const SubscriptionsManagement: React.FC<SubscriptionsManagementProps> = (
                 </select>
               </div>
 
-              <div className="sa-modal-actions">
-                <button
-                  type="button"
-                  className="sa-btn-secondary"
-                  disabled={submitting}
-                  onClick={() => setModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="sa-btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Saving Tier...' : editingPlan ? 'Update Tier' : 'Create Tier'}
-                </button>
+              <div className="sa-modal-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {editingPlan ? (
+                  <button
+                    type="button"
+                    className="sa-btn-danger"
+                    disabled={submitting || deletingId !== null}
+                    onClick={() => handleDeletePlan(editingPlan)}
+                  >
+                    <Trash2 size={14} />
+                    <span>{deletingId === editingPlan.id ? 'Deleting Tier…' : 'Delete Tier'}</span>
+                  </button>
+                ) : <div />}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="sa-btn-secondary"
+                    disabled={submitting || deletingId !== null}
+                    onClick={() => setModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="sa-btn-primary"
+                    disabled={submitting || deletingId !== null}
+                  >
+                    {submitting ? 'Saving Tier...' : editingPlan ? 'Update Tier' : 'Create Tier'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
