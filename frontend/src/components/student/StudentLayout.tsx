@@ -101,6 +101,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                   `student-nav-item ${isActive ? 'active' : ''}`
                 }

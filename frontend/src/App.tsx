@@ -881,12 +881,14 @@ function SuperAdminHeader({
   user,
   logout,
   sidebarCollapsed,
-  setSidebarCollapsed
+  setSidebarCollapsed,
+  setMobileSidebarOpen
 }: {
   user: any;
   logout: () => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  setMobileSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const nav = useNavigate();
 
@@ -1051,9 +1053,15 @@ function SuperAdminHeader({
       <header>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
-            className="header-icon-btn"
+            className="header-icon-btn mobile-menu-btn"
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setSidebarCollapsed(s => !s)}
+            onClick={() => {
+              if (window.innerWidth <= 1024 && setMobileSidebarOpen) {
+                setMobileSidebarOpen(s => !s);
+              } else {
+                setSidebarCollapsed(s => !s);
+              }
+            }}
             style={{ border: '1px solid var(--border)', borderRadius: 8 }}
           >
             <Menu size={16} />
@@ -1887,7 +1895,7 @@ function Layout({children}:{children:React.ReactNode}){
               title="Toggle menu"
               style={{ border: '1px solid var(--border)', borderRadius: 8 }}
               onClick={() => {
-                if (window.innerWidth <= 768) {
+                if (window.innerWidth <= 1024) {
                   setMobileSidebarOpen(prev => !prev);
                 } else {
                   setSidebarCollapsed(prev => !prev);
