@@ -266,7 +266,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   return (
     <div className="sa-app-shell">
       {/* ─── SIDEBAR ─── */}
-      <aside className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open' : ''}`}>
+      <aside className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
         {/* Brand Header */}
         <div className="sa-sidebar-brand" onClick={() => nav('/super-admin')}>
           <div className="sa-brand-logo-wrap">
@@ -278,6 +278,17 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
               <span className="sa-brand-badge">Super Admin</span>
             </div>
           )}
+          <button
+            type="button"
+            className="sa-sidebar-mobile-close-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMobileDrawerOpen(false);
+            }}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Navigation Sections */}
@@ -339,7 +350,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
             <button
               className="sa-icon-btn sa-menu-btn"
               onClick={() => {
-                if (window.innerWidth <= 768) {
+                if (window.innerWidth <= 1024) {
                   setMobileDrawerOpen(prev => !prev);
                 } else {
                   setSidebarCollapsed(prev => !prev);
