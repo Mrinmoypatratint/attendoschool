@@ -108,14 +108,14 @@ export function StudentDashboard() {
       <section className="student-kpi-grid">
         {/* Attendance KPI */}
         <Link to="/student/attendance" className="student-kpi-card attendance-kpi">
-          <div className="student-kpi-icon-wrap green-icon">
-            <CalendarCheck size={24} />
+          <div className="student-kpi-card-top">
+            <div className="student-kpi-icon-wrap green-icon">
+              <CalendarCheck size={20} />
+            </div>
+            <span className="student-kpi-label">Attendance</span>
+            <ChevronRight size={15} className="student-kpi-chevron" />
           </div>
           <div className="student-kpi-body">
-            <div className="student-kpi-header">
-              <span className="student-kpi-label">Attendance</span>
-              <ChevronRight size={16} className="student-kpi-chevron" />
-            </div>
             <div className="student-kpi-value">{kpis?.attendancePercentage ?? 92}%</div>
             <div className="student-kpi-sub">{kpis?.attendanceText || 'Present: 138 / 150 days'}</div>
           </div>
@@ -123,14 +123,14 @@ export function StudentDashboard() {
 
         {/* Assignments KPI */}
         <Link to="/student/assignments" className="student-kpi-card assignments-kpi">
-          <div className="student-kpi-icon-wrap blue-icon">
-            <FileCheck size={24} />
+          <div className="student-kpi-card-top">
+            <div className="student-kpi-icon-wrap blue-icon">
+              <FileCheck size={20} />
+            </div>
+            <span className="student-kpi-label">Assignments</span>
+            <ChevronRight size={15} className="student-kpi-chevron" />
           </div>
           <div className="student-kpi-body">
-            <div className="student-kpi-header">
-              <span className="student-kpi-label">Assignments</span>
-              <ChevronRight size={16} className="student-kpi-chevron" />
-            </div>
             <div className="student-kpi-value">{kpis?.pendingAssignmentsCount ?? 5}</div>
             <div className="student-kpi-sub">Pending submissions</div>
           </div>
@@ -138,29 +138,29 @@ export function StudentDashboard() {
 
         {/* Exams KPI */}
         <Link to="/student/exams" className="student-kpi-card exams-kpi">
-          <div className="student-kpi-icon-wrap coral-icon">
-            <GraduationCap size={24} />
+          <div className="student-kpi-card-top">
+            <div className="student-kpi-icon-wrap coral-icon">
+              <GraduationCap size={20} />
+            </div>
+            <span className="student-kpi-label">Exams</span>
+            <ChevronRight size={15} className="student-kpi-chevron" />
           </div>
           <div className="student-kpi-body">
-            <div className="student-kpi-header">
-              <span className="student-kpi-label">Exams</span>
-              <ChevronRight size={16} className="student-kpi-chevron" />
-            </div>
-            <div className="student-kpi-value student-kpi-value-sm">Next Exam</div>
-            <div className="student-kpi-sub">{kpis?.upcomingExamTitle || 'Maths - 22 Sep 2025'}</div>
+            <div className="student-kpi-value student-kpi-value-sm">Next: {kpis?.upcomingExamTitle?.split('-')[0]?.trim() || 'Maths'}</div>
+            <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || '22 Sep 2025')}</div>
           </div>
         </Link>
 
         {/* Announcements KPI */}
         <Link to="/student/announcements" className="student-kpi-card announcements-kpi">
-          <div className="student-kpi-icon-wrap purple-icon">
-            <Megaphone size={24} />
+          <div className="student-kpi-card-top">
+            <div className="student-kpi-icon-wrap purple-icon">
+              <Megaphone size={20} />
+            </div>
+            <span className="student-kpi-label">Announcements</span>
+            <ChevronRight size={15} className="student-kpi-chevron" />
           </div>
           <div className="student-kpi-body">
-            <div className="student-kpi-header">
-              <span className="student-kpi-label">Announcements</span>
-              <ChevronRight size={16} className="student-kpi-chevron" />
-            </div>
             <div className="student-kpi-value">{kpis?.announcementsCount ?? 3}</div>
             <div className="student-kpi-sub">New updates</div>
           </div>
@@ -179,11 +179,12 @@ export function StudentDashboard() {
                 <h3 className="student-card-title">Today's Timetable</h3>
               </div>
               <Link to="/student/timetable" className="student-card-action-link">
-                View Full Timetable <ArrowRight size={14} />
+                Full Timetable <ArrowRight size={14} />
               </Link>
             </div>
 
-            <div className="student-table-wrap">
+            {/* Desktop Table View */}
+            <div className="student-table-wrap student-desktop-timetable">
               <table className="student-table">
                 <thead>
                   <tr>
@@ -196,22 +197,58 @@ export function StudentDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {timetable.map((t) => (
-                    <tr key={t.periodNumber}>
-                      <td className="period-cell">{t.periodNumber}</td>
-                      <td className="time-cell">{t.time}</td>
-                      <td className="subject-cell font-semibold">{t.subject}</td>
-                      <td className="teacher-cell">{t.teacher}</td>
-                      <td className="room-cell">{t.room}</td>
-                      <td>
-                        <span className={`student-status-badge status-${t.status.toLowerCase()}`}>
-                          {t.status}
-                        </span>
+                  {timetable.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-secondary)' }}>
+                        No classes scheduled for today
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    timetable.map((t) => (
+                      <tr key={t.periodNumber}>
+                        <td className="period-cell">{t.periodNumber}</td>
+                        <td className="time-cell">{t.time}</td>
+                        <td className="subject-cell font-semibold">{t.subject}</td>
+                        <td className="teacher-cell">{t.teacher}</td>
+                        <td className="room-cell">{t.room}</td>
+                        <td>
+                          <span className={`student-status-badge status-${t.status.toLowerCase()}`}>
+                            {t.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Schedule Timeline View */}
+            <div className="student-mobile-timetable">
+              {timetable.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-secondary)', fontSize: 13 }}>
+                  No classes scheduled for today 🎉
+                </div>
+              ) : (
+                timetable.map((t) => (
+                  <div key={t.periodNumber} className="student-period-card">
+                    <div className="student-period-top">
+                      <span className="student-period-num">Period {t.periodNumber}</span>
+                      <span className={`student-status-badge status-${t.status.toLowerCase()}`}>
+                        {t.status}
+                      </span>
+                    </div>
+                    <div className="student-period-subject">{t.subject}</div>
+                    <div className="student-period-meta">
+                      <span>{t.time}</span>
+                      <span>•</span>
+                      <span>{t.teacher}</span>
+                      <span>•</span>
+                      <span>Room {t.room}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -230,21 +267,27 @@ export function StudentDashboard() {
               </div>
 
               <div className="student-list">
-                {announcements.map((a, i) => (
-                  <Link to="/student/announcements" key={a.id || i} className="student-announcement-item">
-                    <div className={`student-item-icon-bubble ${i === 0 ? 'blue-bubble' : i === 1 ? 'green-bubble' : 'coral-bubble'}`}>
-                      {i === 0 ? <BookOpen size={16} /> : i === 1 ? <FlaskConical size={16} /> : <CalendarCheck size={16} />}
-                    </div>
-                    <div className="student-item-info">
-                      <div className="student-item-headline">
-                        <span className="student-item-title">{a.title}</span>
-                        <span className="student-item-date">{a.date}</span>
+                {announcements.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    No new announcements at this time
+                  </div>
+                ) : (
+                  announcements.map((a, i) => (
+                    <Link to="/student/announcements" key={a.id || i} className="student-announcement-item">
+                      <div className={`student-item-icon-bubble ${i === 0 ? 'blue-bubble' : i === 1 ? 'green-bubble' : 'coral-bubble'}`}>
+                        {i === 0 ? <BookOpen size={16} /> : i === 1 ? <FlaskConical size={16} /> : <CalendarCheck size={16} />}
                       </div>
-                      <p className="student-item-desc">{a.description}</p>
-                    </div>
-                    <ChevronRight size={16} className="student-item-chevron" />
-                  </Link>
-                ))}
+                      <div className="student-item-info">
+                        <div className="student-item-headline">
+                          <span className="student-item-title">{a.title}</span>
+                          <span className="student-item-date">{a.date}</span>
+                        </div>
+                        <p className="student-item-desc">{a.description}</p>
+                      </div>
+                      <ChevronRight size={16} className="student-item-chevron" />
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
 
@@ -261,19 +304,25 @@ export function StudentDashboard() {
               </div>
 
               <div className="student-list">
-                {assignments.map((t, i) => (
-                  <Link to="/student/assignments" key={t.id || i} className="student-task-item">
-                    <div className={`student-item-icon-bubble ${i === 0 ? 'purple-bubble' : i === 1 ? 'amber-bubble' : 'blue-bubble'}`}>
-                      {i === 0 ? <FileCheck size={16} /> : i === 1 ? <BookMarked size={16} /> : <FlaskConical size={16} />}
-                    </div>
-                    <div className="student-item-info">
-                      <span className="student-item-title">{t.title}</span>
-                      <span className="student-item-sub">Due: {t.dueDate}</span>
-                    </div>
-                    <span className="student-countdown-pill">{t.daysLeft}</span>
-                    <ChevronRight size={16} className="student-item-chevron" />
-                  </Link>
-                ))}
+                {assignments.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    No pending assignments. All caught up! 🎉
+                  </div>
+                ) : (
+                  assignments.map((t, i) => (
+                    <Link to="/student/assignments" key={t.id || i} className="student-task-item">
+                      <div className={`student-item-icon-bubble ${i === 0 ? 'purple-bubble' : i === 1 ? 'amber-bubble' : 'blue-bubble'}`}>
+                        {i === 0 ? <FileCheck size={16} /> : i === 1 ? <BookMarked size={16} /> : <FlaskConical size={16} />}
+                      </div>
+                      <div className="student-item-info">
+                        <span className="student-item-title">{t.title}</span>
+                        <span className="student-item-sub">Due: {t.dueDate}</span>
+                      </div>
+                      <span className="student-countdown-pill">{t.daysLeft}</span>
+                      <ChevronRight size={16} className="student-item-chevron" />
+                    </Link>
+                  ))
+                )}
               </div>
             </div>
           </div>
