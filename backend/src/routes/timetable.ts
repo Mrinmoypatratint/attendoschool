@@ -1,6 +1,7 @@
 import {Router,Request} from 'express';
 import * as svc from '../services/timetableService';
 import { demoTeachers, demoTeacherAssignments, demoSubjects } from './schoolData';
+import { isSameSchool, isTestSchool } from './auth';
 import {
   syncTimetablePeriodToFirestore,
   deleteTimetablePeriodFromFirestore,
@@ -46,12 +47,27 @@ function getTeacherAvailability(teacherId: string, dayOfWeek: number) {
 }
 
 // ── PERIODS ──
-router.get('/periods',async(req,res)=>{try{const rows = await svc.periods(u(req).schoolId); if(rows?.length) return res.json(rows);}catch(_e){}
-  res.json(memPeriods);
+router.get('/periods',async(req,res)=>{
+  const sid = u(req).schoolId;
+  try{
+    const rows = await svc.periods(sid);
+    if(rows?.length) return res.json(rows);
+  }catch(_e){}
+
+  const schoolPeriods = memPeriods.filter(p => p.school_id && isSameSchool(p.school_id, sid));
+  if (schoolPeriods.length > 0) return res.json(schoolPeriods);
+
+  if (isTestSchool(sid)) {
+    return res.json(memPeriods);
+  }
+  res.json([]);
 });
-router.post('/periods',async(req,res)=>{try{return res.status(201).json(await svc.createPeriod(u(req).schoolId,req.body))}catch(_e){}
+
+router.post('/periods',async(req,res)=>{
+  const sid = u(req).schoolId;
+  try{return res.status(201).json(await svc.createPeriod(sid,req.body))}catch(_e){}
   const d = req.body;
-  const newP = { id: `prd-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, school_id: u(req).schoolId||'default', period_number: d.periodNumber||memPeriods.length+1, name: d.name, start_time: d.startTime, end_time: d.endTime, is_break: !!d.isBreak };
+  const newP = { id: `prd-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, school_id: sid, period_number: d.periodNumber||memPeriods.length+1, name: d.name, start_time: d.startTime, end_time: d.endTime, is_break: !!d.isBreak };
   memPeriods.push(newP);
   memPeriods.sort((a,b) => a.period_number - b.period_number);
   syncTimetablePeriodToFirestore(newP).catch(() => {});
@@ -59,24 +75,31 @@ router.post('/periods',async(req,res)=>{try{return res.status(201).json(await sv
 });
 // Optional: Template periods loader (if requested by user manually)
 router.post('/periods/template',async(req,res)=>{
-  if (memPeriods.length > 0) return res.json(memPeriods);
+  const sid = u(req).schoolId;
+  const existing = memPeriods.filter(p => p.school_id && isSameSchool(p.school_id, sid));
+  if (existing.length > 0) return res.json(existing);
   const template = [
-    { id: `prd-t1`, school_id: u(req).schoolId||'default', period_number: 1, name: 'Period 1', start_time: '09:00', end_time: '09:45', is_break: false },
-    { id: `prd-t2`, school_id: u(req).schoolId||'default', period_number: 2, name: 'Period 2', start_time: '09:45', end_time: '10:30', is_break: false },
-    { id: `prd-t3`, school_id: u(req).schoolId||'default', period_number: 3, name: 'Short Break', start_time: '10:30', end_time: '10:45', is_break: true },
-    { id: `prd-t4`, school_id: u(req).schoolId||'default', period_number: 4, name: 'Period 3', start_time: '10:45', end_time: '11:30', is_break: false },
-    { id: `prd-t5`, school_id: u(req).schoolId||'default', period_number: 5, name: 'Period 4', start_time: '11:30', end_time: '12:15', is_break: false },
-    { id: `prd-t6`, school_id: u(req).schoolId||'default', period_number: 6, name: 'Lunch Break', start_time: '12:15', end_time: '13:00', is_break: true },
-    { id: `prd-t7`, school_id: u(req).schoolId||'default', period_number: 7, name: 'Period 5', start_time: '13:00', end_time: '13:45', is_break: false },
-    { id: `prd-t8`, school_id: u(req).schoolId||'default', period_number: 8, name: 'Period 6', start_time: '13:45', end_time: '14:30', is_break: false }
+    { id: `prd-${sid}-t1`, school_id: sid, period_number: 1, name: 'Period 1', start_time: '09:00', end_time: '09:45', is_break: false },
+    { id: `prd-${sid}-t2`, school_id: sid, period_number: 2, name: 'Period 2', start_time: '09:45', end_time: '10:30', is_break: false },
+    { id: `prd-${sid}-t3`, school_id: sid, period_number: 3, name: 'Short Break', start_time: '10:30', end_time: '10:45', is_break: true },
+    { id: `prd-${sid}-t4`, school_id: sid, period_number: 4, name: 'Period 3', start_time: '10:45', end_time: '11:30', is_break: false },
+    { id: `prd-${sid}-t5`, school_id: sid, period_number: 5, name: 'Period 4', start_time: '11:30', end_time: '12:15', is_break: false },
+    { id: `prd-${sid}-t6`, school_id: sid, period_number: 6, name: 'Lunch Break', start_time: '12:15', end_time: '13:00', is_break: true },
+    { id: `prd-${sid}-t7`, school_id: sid, period_number: 7, name: 'Period 5', start_time: '13:00', end_time: '13:45', is_break: false },
+    { id: `prd-${sid}-t8`, school_id: sid, period_number: 8, name: 'Period 6', start_time: '13:45', end_time: '14:30', is_break: false }
   ];
   memPeriods.push(...template);
   for (const p of template) syncTimetablePeriodToFirestore(p).catch(() => {});
-  res.status(201).json(memPeriods);
+  res.status(201).json(template);
 });
 router.delete('/periods/clear',async(req,res)=>{
-  memPeriods.length = 0;
-  clearTimetablePeriodsFromFirestore(u(req)?.schoolId).catch(() => {});
+  const sid = u(req)?.schoolId;
+  for (let i = memPeriods.length - 1; i >= 0; i--) {
+    if (memPeriods[i].school_id && isSameSchool(memPeriods[i].school_id, sid)) {
+      memPeriods.splice(i, 1);
+    }
+  }
+  clearTimetablePeriodsFromFirestore(sid).catch(() => {});
   res.json({ success: true, count: 0 });
 });
 router.delete('/periods/:id',async(req,res)=>{
@@ -87,8 +110,14 @@ router.delete('/periods/:id',async(req,res)=>{
 });
 
 // ── ENTRIES ──
-router.get('/entries',async(req,res)=>{try{const rows=await svc.listEntries(u(req).schoolId,req.query);if(rows?.length) return res.json(rows);}catch(_e){}
-  let filtered = [...memEntries];
+router.get('/entries',async(req,res)=>{
+  const sid = u(req).schoolId;
+  try{
+    const rows=await svc.listEntries(sid,req.query);
+    if(rows?.length) return res.json(rows);
+  }catch(_e){}
+
+  let filtered = memEntries.filter(e => (!e.school_id && isTestSchool(sid)) || (e.school_id && isSameSchool(e.school_id, sid)));
   const q = req.query as any;
   if (q.day) filtered = filtered.filter(e => e.day_of_week === Number(q.day));
   if (q.classId) filtered = filtered.filter(e => e.class_id === q.classId);
@@ -120,7 +149,7 @@ router.post('/entries',async(req,res)=>{
 
   const entry = {
     id: `ent-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
-    school_id: u(req).schoolId || 'default',
+    school_id: u(req).schoolId || null,
     day_of_week: Number(d.dayOfWeek),
     period_id: d.periodId,
     period_name: period?.name || 'Period',

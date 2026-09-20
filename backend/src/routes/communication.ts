@@ -1,5 +1,6 @@
 import {Router,Request} from 'express';
 import * as svc from '../services/communicationService';
+import { isTestSchool } from './auth';
 const router=Router();const u=(r:Request)=>(r as any).user;
 router.use((req,res,next)=>{
  if(!u(req)?.schoolId)return res.status(401).json({message:'School context required'});next();
@@ -18,16 +19,22 @@ router.post('/announcements/:id/publish',async(req,res)=>{
 });
 router.get('/',async(req,res)=>{
  try{res.json(await svc.listSchoolAnnouncements(u(req).schoolId))}catch(_e:any){
-  res.json([
-   { id: 'ann-1', title: 'Welcome to Term 1', message: 'Classes resume on Monday. Please ensure full attendance.', audience_type: 'SCHOOL', priority: 'NORMAL', status: 'PUBLISHED', recipient_count: 10, read_count: 8 }
-  ]);
+  if (isTestSchool(u(req).schoolId)) {
+   return res.json([
+    { id: 'ann-1', title: 'Welcome to Term 1', message: 'Classes resume on Monday. Please ensure full attendance.', audience_type: 'SCHOOL', priority: 'NORMAL', status: 'PUBLISHED', recipient_count: 10, read_count: 8 }
+   ]);
+  }
+  res.json([]);
  }
 });
 router.get('/announcements',async(req,res)=>{
  try{res.json(await svc.listSchoolAnnouncements(u(req).schoolId))}catch(_e:any){
-  res.json([
-   { id: 'ann-1', title: 'Welcome to Term 1', message: 'Classes resume on Monday. Please ensure full attendance.', audience_type: 'SCHOOL', priority: 'NORMAL', status: 'PUBLISHED', recipient_count: 10, read_count: 8 }
-  ]);
+  if (isTestSchool(u(req).schoolId)) {
+   return res.json([
+    { id: 'ann-1', title: 'Welcome to Term 1', message: 'Classes resume on Monday. Please ensure full attendance.', audience_type: 'SCHOOL', priority: 'NORMAL', status: 'PUBLISHED', recipient_count: 10, read_count: 8 }
+   ]);
+  }
+  res.json([]);
  }
 });
 router.get('/parent/inbox',async(req,res)=>{

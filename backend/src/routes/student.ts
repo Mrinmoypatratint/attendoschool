@@ -45,19 +45,24 @@ router.get('/attendance', async (req: AuthRequest, res: Response) => {
   }
 });
 
+import { isSameSchool, isTestSchool } from '../utils/tenant';
+
 // GET /api/student/timetable - Routine & timetable
 router.get('/timetable', async (req: AuthRequest, res: Response) => {
+  const sid = req.user!.schoolId!;
   try {
-    const data = await svc.getStudentTimetable(req.user!.schoolId!, req.user!.id);
+    const data = await svc.getStudentTimetable(sid, req.user!.id);
     if (data && data.length > 0) return res.json(data);
   } catch (e: any) {}
-  // Fallback to in-memory timetable entries filtered by student's class/section
+  // Fallback to in-memory timetable entries filtered by student's class/section and tenant
   const classId = (req.user as any)?.classId;
   const sectionId = (req.user as any)?.sectionId;
   const filtered = memEntries.filter(e => {
+    if (e.school_id && !isSameSchool(e.school_id, sid)) return false;
+    if (!e.school_id && !isTestSchool(sid)) return false;
     if (classId && sectionId) return e.class_id === classId && e.section_id === sectionId;
     if (classId) return e.class_id === classId;
-    return true; // show all if no class/section context
+    return true;
   });
   filtered.sort((a: any, b: any) => a.day_of_week - b.day_of_week || a.period_number - b.period_number);
   res.json(filtered);

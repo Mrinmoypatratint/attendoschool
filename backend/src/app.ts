@@ -138,6 +138,7 @@ app.use('/api/super-admin', superAdminOperations);
 app.use('/api/super-admin', payment);
 app.use('/api/invoices', invoices);
 app.use('/api/notifications-channels', notificationChannels);
+app.use('/api/notification-channels', notificationChannels);
 app.use('/api/notifications-v11', notificationChannels);
 app.use('/api/school-payment', schoolPayment);
 app.use('/api/webhooks', razorpayWebhook);

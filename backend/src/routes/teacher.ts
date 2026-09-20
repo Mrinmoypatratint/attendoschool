@@ -5,6 +5,8 @@ import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms } from '../services/smsService';
 import { demoStudents } from './schoolData';
 import { syncAttendanceToFirestore } from '../services/firestoreSync';
+import { isSameSchool, isTestSchool } from './auth';
+import { collections, isFirebaseConfigured } from '../firebase';
 
 const r=Router();
 const teacher=[requireAuth,requireRoles('TEACHER','SCHOOL_ADMIN')];
@@ -13,45 +15,81 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest,res) => {
   try {
     const day=new Date().getDay();
     const isTeacher = req.user!.role === 'TEACHER';
-    const q=await pool.query(
-      `SELECT r.id,r.class_id,r.section_id,r.subject_id,r.day_of_week,r.start_time,r.end_time,r.room,
-              c.class_number,s.name section_name,sub.name subject_name
-       FROM class_routines r
-       JOIN classes c ON c.id=r.class_id
-       JOIN sections s ON s.id=r.section_id
-       JOIN subjects sub ON sub.id=r.subject_id
-       WHERE r.school_id=$1 ${isTeacher ? 'AND r.teacher_id=$2' : ''} AND r.day_of_week=$${isTeacher ? '3' : '2'}
-       ORDER BY r.start_time`,
-      isTeacher ? [req.user!.schoolId,req.user!.id,day] : [req.user!.schoolId,day]
-    );
+    let q;
+    if (isTeacher) {
+      q=await pool.query(
+        `SELECT r.*, c.class_number, s.name section_name, sub.name subject_name
+         FROM class_routines r
+         JOIN classes c ON c.id=r.class_id
+         JOIN sections s ON s.id=r.section_id
+         JOIN subjects sub ON sub.id=r.subject_id
+         WHERE r.school_id=$1 AND r.day_of_week=$2 AND r.teacher_id=$3
+         ORDER BY r.start_time`,
+        [req.user!.schoolId,day,req.user!.id]
+      );
+    } else {
+      q=await pool.query(
+        `SELECT r.*, c.class_number, s.name section_name, sub.name subject_name
+         FROM class_routines r
+         JOIN classes c ON c.id=r.class_id
+         JOIN sections s ON s.id=r.section_id
+         JOIN subjects sub ON sub.id=r.subject_id
+         WHERE r.school_id=$1 AND r.day_of_week=$2
+         ORDER BY r.start_time`,
+        [req.user!.schoolId,day]
+      );
+    }
     res.json(q.rows);
   } catch {
-    res.json([
-      { id: 'rout-001', class_id: 'cls-8', section_id: 'sec-a', subject_id: 'sub-1', day_of_week: new Date().getDay(), start_time: '09:00:00', end_time: '09:45:00', room: 'Room 101', class_number: 8, section_name: 'A', subject_name: 'Mathematics' },
-      { id: 'rout-002', class_id: 'cls-9', section_id: 'sec-a', subject_id: 'sub-2', day_of_week: new Date().getDay(), start_time: '10:00:00', end_time: '10:45:00', room: 'Room 102', class_number: 9, section_name: 'A', subject_name: 'Science' }
-    ]);
+    res.json([]);
   }
 });
 
-r.get('/students/:classId/:sectionId', ...teacher, async (req: AuthRequest,res) => {
-  try {
-    const q=await pool.query(
-      `SELECT id,name,roll_number,admission_number,parent_name
-       FROM students
-       WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active
-       ORDER BY roll_number`,
-      [req.user!.schoolId,req.params.classId,req.params.sectionId]
-    );
-    if (q.rowCount) return res.json(q.rows);
-  } catch {}
+r.get('/classes/:classId/:sectionId/students', ...teacher, async (req: AuthRequest,res) => {
+  const sid = req.user!.schoolId;
   const classParam = String(req.params.classId);
   const secId = String(req.params.sectionId);
   const secParam = secId.toLowerCase();
-  const filtered = demoStudents.filter(s =>
-    (s.class_id === classParam || String(s.class_number) === classParam) &&
-    (s.section_id === secId || (s.section_name && s.section_name.toLowerCase() === secParam))
-  );
-  res.json(filtered.length ? filtered : demoStudents);
+
+  try {
+    const q=await pool.query(
+      `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
+       FROM students
+       WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active
+       ORDER BY roll_number`,
+      [sid,classParam,secId]
+    );
+    if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  } catch {}
+
+  // Check Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const snap = await collections.students().get();
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => {
+          if (s.is_active === false) return false;
+          const matchSchool = (s.school_id && isSameSchool(s.school_id, sid)) || (s.schoolId && isSameSchool(s.schoolId, sid));
+          if (!matchSchool) return false;
+          const matchClass = s.class_id === classParam || String(s.class_number) === classParam;
+          const matchSec = s.section_id === secId || (s.section_name && s.section_name.toLowerCase() === secParam);
+          return matchClass && matchSec;
+        });
+        if (list.length > 0) return res.json(list);
+      }
+    } catch {}
+  }
+
+  // In-memory demo fallback ONLY for test school
+  if (isTestSchool(sid)) {
+    const filtered = demoStudents.filter(s =>
+      (s.class_id === classParam || String(s.class_number) === classParam) &&
+      (s.section_id === secId || (s.section_name && s.section_name.toLowerCase() === secParam))
+    );
+    return res.json(filtered.length ? filtered : demoStudents);
+  }
+
+  res.json([]);
 });
 
 r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
@@ -161,11 +199,12 @@ r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
       console.error('Attendance recording error:', err);
       const sessId = 'sess-' + Date.now();
       const presentSet = new Set<string>(Array.isArray(x.presentStudentIds)?x.presentStudentIds:[]);
-      const targetStudents = demoStudents.filter(s =>
+      const schoolMatched = demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, schoolId));
+      const targetStudents = (isTestSchool(schoolId) ? demoStudents : schoolMatched).filter(s =>
         (s.class_id === x.classId || String(s.class_number) === x.classId) &&
         (s.section_id === x.sectionId || (s.section_name && s.section_name.toLowerCase() === x.sectionId.toLowerCase()))
       );
-      const studentPool = targetStudents.length ? targetStudents : demoStudents.slice(0, 10);
+      const studentPool = targetStudents.length ? targetStudents : (isTestSchool(schoolId) ? demoStudents.slice(0, 10) : []);
       const sessionRecords = studentPool.map(s => ({
         student_id: s.id,
         is_present: presentSet.has(s.id),
@@ -195,11 +234,12 @@ r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
   } catch {
     const sessId = 'sess-' + Date.now();
     const presentSet = new Set<string>(Array.isArray(x.presentStudentIds)?x.presentStudentIds:[]);
-    const targetStudents = demoStudents.filter(s =>
+    const schoolMatched = demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, schoolId));
+    const targetStudents = (isTestSchool(schoolId) ? demoStudents : schoolMatched).filter(s =>
       (s.class_id === x.classId || String(s.class_number) === x.classId) &&
       (s.section_id === x.sectionId || (s.section_name && s.section_name.toLowerCase() === x.sectionId.toLowerCase()))
     );
-    const studentPool = targetStudents.length ? targetStudents : demoStudents.slice(0, 10);
+    const studentPool = targetStudents.length ? targetStudents : (isTestSchool(schoolId) ? demoStudents.slice(0, 10) : []);
     const sessionRecords = studentPool.map(s => ({
       student_id: s.id,
       is_present: presentSet.has(s.id),
@@ -229,6 +269,7 @@ r.post('/attendance', ...teacher, async (req: AuthRequest,res) => {
 });
 
 r.get('/attendance/history', ...teacher, async (req: AuthRequest,res) => {
+  const sid = req.user!.schoolId;
   try {
     const q=await pool.query(
       `SELECT a.id,a.attendance_date,a.start_time,a.end_time,
@@ -243,14 +284,17 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest,res) => {
        WHERE a.school_id=$1 AND a.teacher_id=$2
        GROUP BY a.id,c.class_number,s.name,sub.name
        ORDER BY a.attendance_date DESC,a.start_time DESC`,
-      [req.user!.schoolId,req.user!.id]
+      [sid,req.user!.id]
     );
     res.json(q.rows);
   } catch {
-    res.json([
-      { id: 'sess-01', attendance_date: new Date().toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 8, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 9 },
-      { id: 'sess-02', attendance_date: new Date(Date.now() - 86400000).toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 8, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 8 }
-    ]);
+    if (isTestSchool(sid)) {
+      return res.json([
+        { id: 'sess-01', attendance_date: new Date().toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 8, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 9 },
+        { id: 'sess-02', attendance_date: new Date(Date.now() - 86400000).toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 8, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 8 }
+      ]);
+    }
+    res.json([]);
   }
 });
 export default r;

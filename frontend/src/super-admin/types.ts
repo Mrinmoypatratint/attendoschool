@@ -114,6 +114,13 @@ export interface SystemSettings {
   enforceStrongPasswords: boolean;
   rateLimitPerMinute: number;
   maintenanceMode: boolean;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUsername?: string;
+  smtpPassword?: string;
+  smtpEncryption?: 'SSL/TLS' | 'STARTTLS' | 'NONE';
+  smtpSenderEmail?: string;
+  smtpSenderName?: string;
 }
 
 export interface OverviewMetrics {

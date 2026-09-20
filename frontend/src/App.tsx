@@ -2727,9 +2727,11 @@ function Students(){
   async function load(){
     try {
       const [a,b,c]=await Promise.all([api.get('/students'),api.get('/classes'),api.get('/sections')]);
-      setRows(a.data || []);
-      setClasses(b.data || []);
-      setSections(c.data || []);
+      if (Array.isArray(a.data)) {
+        setRows(prev => (a.data.length > 0 || prev.length === 0 ? a.data : prev));
+      }
+      if (Array.isArray(b.data)) setClasses(b.data);
+      if (Array.isArray(c.data)) setSections(c.data);
     } catch(err) {
       console.error('Failed to load students:', err);
     }
@@ -4594,6 +4596,7 @@ function History(){const {user}=useAuth();const [rows,setRows]=useState<any[]>([
 /* ────── Notifications V11 & SMTP ────── */
 function NotificationCenter(){
   const {user}=useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [channels,setChannels]=useState<any>(null);
   const [smtp,setSmtp]=useState<any>({
     host: 'smtp.gmail.com',
@@ -4786,37 +4789,74 @@ function NotificationCenter(){
                 </select>
               </label>
             </div>
-            <div>
-              <label>SMTP Username / Login Email
-                <input 
-                  placeholder="e.g. your-email@gmail.com"
-                  value={smtp.username || ''} 
-                  onChange={e => setSmtp({ ...smtp, username: e.target.value })}
-                />
-              </label>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <label>SMTP Password / App Password
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input 
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    value={smtp.password || ''} 
-                    onChange={e => setSmtp({ ...smtp, password: e.target.value })}
-                    style={{ flex: 1 }}
-                  />
-                  <button 
-                    type="button" 
-                    className="btn-secondary"
-                    style={{ padding: '7px 10px' }}
-                    onClick={() => setShowPass(!showPass)}
-                    title={showPass ? 'Hide Password' : 'Show Password'}
-                  >
-                    <Eye size={15} />
-                  </button>
+            {!isSuperAdmin ? (
+              <div className="full-width" style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '14px 18px',
+                margin: '4px 0 8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontWeight: 700, fontSize: 13.5 }}>
+                    <Lock size={15} style={{ color: '#4f46e5' }} />
+                    <span>SMTP Authentication Credentials (Username & Password)</span>
+                  </div>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 9px',
+                    borderRadius: 12,
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe'
+                  }}>
+                    <ShieldCheck size={13} /> Only Accessible & Changeable by Superadmin
+                  </span>
                 </div>
-              </label>
-            </div>
+                <p style={{ margin: 0, fontSize: 12.5, color: '#64748b', lineHeight: 1.55 }}>
+                  SMTP server authentication credentials (username & password) are centrally secured and managed exclusively by the <b>Platform Superadmin</b>.
+                  Your school can customize the <b>Sender Email Address</b>, <b>Sender Display Name</b>, server parameters, and toggle automated absent notification alerts below.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Superadmin Access)</span>
+                    <input 
+                      placeholder="e.g. your-email@gmail.com"
+                      value={smtp.username || ''} 
+                      onChange={e => setSmtp({ ...smtp, username: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Superadmin Access)</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input 
+                        type={showPass ? 'text' : 'password'}
+                        placeholder="••••••••••••"
+                        value={smtp.password || ''} 
+                        onChange={e => setSmtp({ ...smtp, password: e.target.value })}
+                        style={{ flex: 1 }}
+                      />
+                      <button 
+                        type="button" 
+                        className="btn-secondary"
+                        style={{ padding: '7px 10px' }}
+                        onClick={() => setShowPass(!showPass)}
+                        title={showPass ? 'Hide Password' : 'Show Password'}
+                      >
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </label>
+                </div>
+              </>
+            )}
             <div>
               <label>Sender Email Address
                 <input 

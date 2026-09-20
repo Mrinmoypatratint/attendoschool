@@ -5,6 +5,9 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, getAllDemoUsers } from '../store/demoUsers';
 import { collections, isFirebaseConfigured } from '../firebase';
+import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection } from '../services/notificationService';
+import { deleteSchoolFromFirestore } from '../services/firestoreSync';
+import { env } from '../config/env';
 
 const r=Router();
 r.use(requireAuth,requireRoles('SUPER_ADMIN'));
@@ -137,7 +140,15 @@ export let systemSettings = {
   sessionTimeoutMinutes: 60,
   enforceStrongPasswords: true,
   rateLimitPerMinute: 120,
-  maintenanceMode: false
+  maintenanceMode: false,
+  // SMTP settings (managed exclusively by Superadmin)
+  smtpHost: env.smtpHost || "smtp.gmail.com",
+  smtpPort: Number(env.smtpPort) || 587,
+  smtpUsername: env.smtpUser || "rajbsmv@gmail.com",
+  smtpPassword: env.smtpPass || "",
+  smtpEncryption: (env.smtpPort === 465 ? "SSL/TLS" : "STARTTLS") as "SSL/TLS" | "STARTTLS" | "NONE",
+  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : "attendance@school.local",
+  smtpSenderName: env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "School Attendance Office"
 };
 
 export const demoSchools: any[] = [
@@ -364,21 +375,30 @@ r.get('/schools',async(_req,res)=>{
         collections.schools().get(),
         collections.students().get()
       ]);
-      const stCount = studentsSnap.size;
       const list = schoolsSnap.docs.map(doc => {
         const d = doc.data();
+        const schoolStCount = studentsSnap.docs.filter(st => {
+          const sd = st.data();
+          return sd.schoolId === doc.id || sd.school_id === doc.id;
+        }).length;
         return {
           id: doc.id,
           name: d.name,
           code: d.code || 'GWIS',
           status: d.status || 'ACTIVE',
-          enquiry_number: d.phone || '9876543210',
+          enquiry_number: d.phone || d.enquiry_number || '9876543210',
+          phone: d.phone || d.enquiry_number || '',
+          email: d.email || '',
+          address: d.address || '',
+          city: d.city || '',
+          state: d.state || '',
+          pincode: d.pincode || '',
           admin_email: d.email || 'admin@demo-school.local',
-          student_count: stCount,
+          student_count: schoolStCount,
           start_date: d.subscriptionStart?.slice(0, 10) || '2025-01-01',
           end_date: d.subscriptionEnd?.slice(0, 10) || '2026-12-31',
-          subscription_status: 'ACTIVE',
-          plan_name: d.planName || 'Enterprise',
+          subscription_status: d.status || 'ACTIVE',
+          plan_name: d.planName || d.plan_name || 'Enterprise',
           plan_price_monthly: 1999,
           computed_status: d.status || 'ACTIVE'
         };
@@ -868,6 +888,94 @@ r.post('/schools/:id/renew', async (req: AuthRequest, res) => {
   }
 });
 
+/* ────── Delete School & Cascading Institutional Records ────── */
+r.delete('/schools/:id', async (req: AuthRequest, res) => {
+  const id = String(req.params.id);
+  let schoolName = 'School';
+  let schoolCode = '';
+
+  // 1. Resolve school metadata for logs and lookup
+  if (isFirebaseConfigured()) {
+    try {
+      const doc = await collections.schools().doc(id).get();
+      if (doc.exists) {
+        const d = doc.data();
+        if (d?.name) schoolName = d.name;
+        if (d?.code) schoolCode = d.code;
+      }
+    } catch {}
+  }
+
+  const memMatch = demoSchools.find(s => s.id === id || s.code === id);
+  if (memMatch) {
+    schoolName = memMatch.name || schoolName;
+    schoolCode = memMatch.code || schoolCode;
+  }
+
+  try {
+    const q = await pool.query('SELECT name, code FROM schools WHERE id = $1 OR code = $2', [id.length === 36 ? id : null, id]);
+    if (q.rowCount) {
+      schoolName = q.rows[0].name || schoolName;
+      schoolCode = q.rows[0].code || schoolCode;
+    }
+  } catch {}
+
+  // 2. Cascade delete from Firebase Cloud Firestore
+  try {
+    await deleteSchoolFromFirestore(id, schoolCode);
+  } catch (err: any) {
+    console.warn('[superAdmin] Error deleting from Firestore:', err.message);
+  }
+
+  // 3. Cascade delete from PostgreSQL
+  try {
+    if (id.length === 36 && id.includes('-')) {
+      await pool.query(`DELETE FROM attendance_records WHERE attendance_session_id IN (SELECT id FROM attendance_sessions WHERE school_id = $1)`, [id]);
+      await pool.query(`DELETE FROM attendance_sessions WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM class_routines WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM teacher_profiles WHERE user_id IN (SELECT id FROM users WHERE school_id = $1)`, [id]);
+      await pool.query(`DELETE FROM sms_logs WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM payments WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM school_subscriptions WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM students WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM sections WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM classes WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM subjects WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM users WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM audit_logs WHERE school_id = $1`, [id]);
+      await pool.query(`DELETE FROM schools WHERE id = $1`, [id]);
+    } else if (schoolCode) {
+      await pool.query(`DELETE FROM schools WHERE code = $1`, [schoolCode]);
+    }
+  } catch (err: any) {
+    console.warn('[superAdmin] Postgres deletion non-fatal warning:', err.message);
+  }
+
+  // 4. Remove from in-memory cache
+  for (let i = demoSchools.length - 1; i >= 0; i--) {
+    if (demoSchools[i].id === id || (schoolCode && demoSchools[i].code === schoolCode)) {
+      demoSchools.splice(i, 1);
+    }
+  }
+
+  // 5. System Audit Log
+  await logSystemAudit(
+    req.user || { id: 'super-admin' },
+    'DELETE_SCHOOL',
+    'SCHOOL',
+    id,
+    { id, name: schoolName, code: schoolCode },
+    id,
+    schoolName
+  );
+
+  return res.json({
+    success: true,
+    message: `School "${schoolName}" and all associated institutional records were permanently deleted.`,
+    id
+  });
+});
+
 /* ────── Platform Users Management ────── */
 r.get('/users', async (req, res) => {
   const roleFilter = String(req.query.role || '').toUpperCase();
@@ -1022,14 +1130,39 @@ r.get('/audit-logs', async (req, res) => {
 
 /* ────── System Settings ────── */
 r.get('/settings', async (_req, res) => {
-  res.json(systemSettings);
+  const smtpCfg = getGlobalSmtpConfig();
+  res.json({
+    ...systemSettings,
+    smtpHost: smtpCfg.host || systemSettings.smtpHost,
+    smtpPort: smtpCfg.port || systemSettings.smtpPort,
+    smtpUsername: smtpCfg.username || systemSettings.smtpUsername,
+    smtpPassword: smtpCfg.password || systemSettings.smtpPassword,
+    smtpEncryption: smtpCfg.encryption || systemSettings.smtpEncryption,
+    smtpSenderEmail: smtpCfg.defaultSenderEmail || systemSettings.smtpSenderEmail,
+    smtpSenderName: smtpCfg.defaultSenderName || systemSettings.smtpSenderName
+  });
 });
 
 r.put('/settings', async (req: AuthRequest, res) => {
+  const b = req.body || {};
   systemSettings = {
     ...systemSettings,
-    ...(req.body || {})
+    ...b
   };
+
+  // If SMTP credentials or config are submitted, sync with global SMTP gateway
+  if (b.smtpUsername !== undefined || b.smtpPassword !== undefined || b.smtpHost !== undefined) {
+    updateGlobalSmtpConfig({
+      ...(b.smtpHost !== undefined ? { host: b.smtpHost } : {}),
+      ...(b.smtpPort !== undefined ? { port: Number(b.smtpPort) } : {}),
+      ...(b.smtpUsername !== undefined ? { username: b.smtpUsername } : {}),
+      ...(b.smtpPassword !== undefined ? { password: b.smtpPassword } : {}),
+      ...(b.smtpEncryption !== undefined ? { encryption: b.smtpEncryption } : {}),
+      ...(b.smtpSenderEmail !== undefined ? { defaultSenderEmail: b.smtpSenderEmail } : {}),
+      ...(b.smtpSenderName !== undefined ? { defaultSenderName: b.smtpSenderName } : {})
+    });
+  }
+
   await logSystemAudit(
     req.user || { id: 'super-admin' },
     'UPDATE_SYSTEM_SETTINGS',
@@ -1038,6 +1171,51 @@ r.put('/settings', async (req: AuthRequest, res) => {
     req.body || {}
   );
   res.json({ success: true, settings: systemSettings, message: 'Settings saved successfully' });
+});
+
+/* ────── Dedicated Superadmin SMTP Gateway Endpoints ────── */
+r.get('/smtp', async (_req, res) => {
+  res.json(getGlobalSmtpConfig());
+});
+
+r.put('/smtp', async (req: AuthRequest, res) => {
+  const updated = updateGlobalSmtpConfig(req.body || {});
+  systemSettings.smtpHost = updated.host;
+  systemSettings.smtpPort = updated.port;
+  systemSettings.smtpUsername = updated.username;
+  systemSettings.smtpPassword = updated.password;
+  systemSettings.smtpEncryption = updated.encryption;
+  systemSettings.smtpSenderEmail = updated.defaultSenderEmail;
+  systemSettings.smtpSenderName = updated.defaultSenderName;
+
+  await logSystemAudit(
+    req.user || { id: 'super-admin' },
+    'UPDATE_SMTP_CONFIG',
+    'SMTP',
+    'global-smtp',
+    { host: updated.host, port: updated.port, username: updated.username }
+  );
+
+  res.json({ success: true, config: updated, message: 'Global SMTP credentials updated successfully by Superadmin' });
+});
+
+r.post('/smtp/test', async (req: AuthRequest, res) => {
+  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName } = req.body || {};
+  const to = String(recipientEmail || req.user?.email || 'admin@demo-school.local').trim();
+  try {
+    const result = await testSmtpConnection('global', to, {
+      host,
+      port: Number(port),
+      username,
+      password,
+      encryption,
+      senderEmail,
+      senderName
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message || 'SMTP test failed' });
+  }
 });
 
 /* ────── Subscription Plans Management ────── */

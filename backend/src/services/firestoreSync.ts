@@ -40,8 +40,8 @@ export async function syncStudentToFirestore(student: any): Promise<boolean> {
       studentEmail: cleanStudentEmail,
       student_email: cleanStudentEmail,
       email: cleanStudentEmail,
-      schoolId: student.school_id || student.schoolId || '00000000-0000-0000-0000-000000000001',
-      school_id: student.school_id || student.schoolId || '00000000-0000-0000-0000-000000000001',
+      schoolId: student.school_id || student.schoolId || null,
+      school_id: student.school_id || student.schoolId || null,
       status: student.status || (student.is_active === false ? 'ARCHIVED' : 'ACTIVE'),
       is_active: student.is_active !== false,
       updatedAt: new Date().toISOString()
@@ -86,8 +86,8 @@ export async function syncTeacherToFirestore(teacher: any, passwordHash?: string
       mobile: teacher.mobile || teacher.phone || '',
       phone: teacher.mobile || teacher.phone || '',
       role: 'TEACHER',
-      schoolId: teacher.school_id || teacher.schoolId || '00000000-0000-0000-0000-000000000001',
-      school_id: teacher.school_id || teacher.schoolId || '00000000-0000-0000-0000-000000000001',
+      schoolId: teacher.school_id || teacher.schoolId || null,
+      school_id: teacher.school_id || teacher.schoolId || null,
       status: teacher.status || (teacher.is_active === false ? 'INACTIVE' : 'ACTIVE'),
       is_active: teacher.is_active !== false,
       updatedAt: new Date().toISOString()
@@ -146,7 +146,7 @@ export async function syncClassToFirestore(cls: any): Promise<boolean> {
       class_number: Number(cls.class_number),
       classNumber: Number(cls.class_number),
       section_count: cls.section_count || 0,
-      school_id: cls.school_id || 'default',
+      school_id: cls.school_id || null,
       updatedAt: new Date().toISOString()
     };
     await collections.classes().doc(id).set(data, { merge: true });
@@ -180,7 +180,7 @@ export async function syncSectionToFirestore(sec: any): Promise<boolean> {
       class_id: sec.class_id,
       class_number: Number(sec.class_number),
       name: sec.name,
-      school_id: sec.school_id || 'default',
+      school_id: sec.school_id || null,
       updatedAt: new Date().toISOString()
     };
     await collections.sections().doc(id).set(data, { merge: true });
@@ -212,7 +212,7 @@ export async function syncSubjectToFirestore(sub: any): Promise<boolean> {
     const data = {
       id,
       name: sub.name,
-      school_id: sub.school_id || 'default',
+      school_id: sub.school_id || null,
       updatedAt: new Date().toISOString()
     };
     await collections.subjects().doc(id).set(data, { merge: true });
@@ -252,7 +252,7 @@ export async function syncTimetablePeriodToFirestore(period: any): Promise<boole
       endTime: period.end_time || period.endTime,
       is_break: Boolean(period.is_break || period.isBreak),
       isBreak: Boolean(period.is_break || period.isBreak),
-      school_id: period.school_id || 'default',
+      school_id: period.school_id || null,
       updatedAt: new Date().toISOString()
     };
     await collections.timetablePeriods().doc(id).set(data, { merge: true });
@@ -318,7 +318,7 @@ export async function syncTimetableEntryToFirestore(entry: any): Promise<boolean
       substitute_teacher_name: entry.substitute_teacher_name || entry.altTeacherName || null,
       room_name: entry.room_name || entry.roomName || null,
       status: entry.status || 'PUBLISHED',
-      school_id: entry.school_id || 'default',
+      school_id: entry.school_id || null,
       updatedAt: new Date().toISOString()
     };
     await collections.timetableEntries().doc(id).set(data, { merge: true });
@@ -366,7 +366,7 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
 
     batch.set(collections.attendanceSessions().doc(sessionId), {
       id: sessionId,
-      schoolId: session.schoolId || session.school_id || 'default',
+      schoolId: session.schoolId || session.school_id || null,
       classId: session.classId || session.class_id || null,
       sectionId: session.sectionId || session.section_id || null,
       subjectId: session.subjectId || session.subject_id || null,
@@ -385,7 +385,7 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
           id: recId,
           sessionId,
           studentId,
-          schoolId: session.schoolId || session.school_id || 'default',
+          schoolId: session.schoolId || session.school_id || null,
           status: r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT'),
           remarks: r.remarks || '',
           createdAt: new Date().toISOString()
@@ -430,11 +430,53 @@ export async function syncSchoolToFirestore(school: any): Promise<boolean> {
   }
 }
 
-export async function deleteSchoolFromFirestore(id: string): Promise<boolean> {
+export async function deleteSchoolFromFirestore(id: string, code?: string): Promise<boolean> {
   if (!isFirebaseConfigured()) return false;
   try {
+    // 1. Delete main school doc
     await collections.schools().doc(id).delete();
-    console.log(`[FirestoreSync] Deleted school (${id}) from Firestore`);
+
+    // Also delete any doc matching the school code or id if there are alternate entries
+    if (code) {
+      try {
+        const codeSnaps = await collections.schools().where('code', '==', code).get();
+        for (const d of codeSnaps.docs) {
+          await d.ref.delete();
+        }
+      } catch {}
+    }
+
+    // Helper to batch delete a collection by schoolId
+    const cascadeDelete = async (colRef: any, field = 'schoolId') => {
+      try {
+        const snap = await colRef.where(field, '==', id).get();
+        if (!snap.empty) {
+          const batch = firestore.batch();
+          snap.docs.forEach((doc: any) => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      } catch {}
+    };
+
+    await Promise.allSettled([
+      cascadeDelete(collections.users(), 'schoolId'),
+      cascadeDelete(collections.users(), 'school_id'),
+      cascadeDelete(collections.students(), 'schoolId'),
+      cascadeDelete(collections.teachers(), 'schoolId'),
+      cascadeDelete(collections.classes(), 'schoolId'),
+      cascadeDelete(collections.sections(), 'schoolId'),
+      cascadeDelete(collections.subjects(), 'schoolId'),
+      cascadeDelete(collections.timetables(), 'schoolId'),
+      cascadeDelete(collections.timetableEntries(), 'schoolId'),
+      cascadeDelete(collections.timetablePeriods(), 'schoolId'),
+      cascadeDelete(collections.teacherAssignments(), 'schoolId'),
+      cascadeDelete(collections.attendanceSessions(), 'schoolId'),
+      cascadeDelete(collections.attendanceRecords(), 'schoolId'),
+      cascadeDelete(collections.payments(), 'schoolId'),
+      cascadeDelete(collections.schoolSubscriptions(), 'schoolId')
+    ]);
+
+    console.log(`[FirestoreSync] Deleted school (${id}) and cascaded child records from Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to delete school from Firestore:`, err.message);
@@ -490,8 +532,11 @@ export async function rehydrateAllFromFirestore(stores: {
           };
         }).filter(s => s.is_active !== false);
 
-        stores.demoStudents.length = 0;
-        stores.demoStudents.push(...list);
+        for (const st of list) {
+          const idx = stores.demoStudents.findIndex(x => x.id === st.id);
+          if (idx >= 0) stores.demoStudents[idx] = { ...stores.demoStudents[idx], ...st };
+          else stores.demoStudents.push(st);
+        }
         result.students = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} students from Firestore`);
       }
@@ -562,8 +607,11 @@ export async function rehydrateAllFromFirestore(stores: {
       const snap = await collections.classes().get();
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        stores.demoClasses.length = 0;
-        stores.demoClasses.push(...list);
+        for (const c of list) {
+          const idx = stores.demoClasses.findIndex(x => x.id === c.id);
+          if (idx >= 0) stores.demoClasses[idx] = { ...stores.demoClasses[idx], ...c };
+          else stores.demoClasses.push(c);
+        }
         result.classes = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} classes from Firestore`);
       }
@@ -578,8 +626,11 @@ export async function rehydrateAllFromFirestore(stores: {
       const snap = await collections.sections().get();
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        stores.demoSections.length = 0;
-        stores.demoSections.push(...list);
+        for (const s of list) {
+          const idx = stores.demoSections.findIndex(x => x.id === s.id);
+          if (idx >= 0) stores.demoSections[idx] = { ...stores.demoSections[idx], ...s };
+          else stores.demoSections.push(s);
+        }
         result.sections = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} sections from Firestore`);
       }
@@ -594,8 +645,11 @@ export async function rehydrateAllFromFirestore(stores: {
       const snap = await collections.subjects().get();
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        stores.demoSubjects.length = 0;
-        stores.demoSubjects.push(...list);
+        for (const sub of list) {
+          const idx = stores.demoSubjects.findIndex(x => x.id === sub.id);
+          if (idx >= 0) stores.demoSubjects[idx] = { ...stores.demoSubjects[idx], ...sub };
+          else stores.demoSubjects.push(sub);
+        }
         result.subjects = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} subjects from Firestore`);
       }
@@ -611,8 +665,11 @@ export async function rehydrateAllFromFirestore(stores: {
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a: any, b: any) => (a.period_number || 0) - (b.period_number || 0));
-        stores.memPeriods.length = 0;
-        stores.memPeriods.push(...list);
+        for (const p of list) {
+          const idx = stores.memPeriods.findIndex(x => x.id === p.id);
+          if (idx >= 0) stores.memPeriods[idx] = { ...stores.memPeriods[idx], ...p };
+          else stores.memPeriods.push(p);
+        }
         result.timetablePeriods = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} timetable periods from Firestore`);
       }
@@ -627,8 +684,11 @@ export async function rehydrateAllFromFirestore(stores: {
       const snap = await collections.timetableEntries().get();
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        stores.memEntries.length = 0;
-        stores.memEntries.push(...list);
+        for (const ent of list) {
+          const idx = stores.memEntries.findIndex(x => x.id === ent.id);
+          if (idx >= 0) stores.memEntries[idx] = { ...stores.memEntries[idx], ...ent };
+          else stores.memEntries.push(ent);
+        }
         result.timetableEntries = list.length;
         console.log(`[FirestoreSync] Loaded ${list.length} timetable entries from Firestore`);
       }

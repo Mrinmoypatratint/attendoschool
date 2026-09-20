@@ -5,7 +5,8 @@ import { demoSchools } from './superAdmin';
 import { demoStudents, demoTeachers, demoClasses, demoSections } from './schoolData';
 import { getInMemoryActiveAcademicYear } from './academicYears';
 import { getFirestoreSchoolById } from '../services/firestoreService';
-import { isSameSchool } from './auth';
+import { isSameSchool, isTestSchool } from './auth';
+import { collections, isFirebaseConfigured } from '../firebase';
 
 const r = Router();
 
@@ -122,12 +123,60 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
     if (!school) {
       school = {
         id: sid,
-        name: 'Greenwood International School',
-        code: 'GIS001',
+        name: isTestSchool(sid) ? 'Greenwood International School' : (req.user?.schoolName || 'Institutional Campus'),
+        code: isTestSchool(sid) ? 'GIS001' : ((req.user as any)?.schoolCode || 'SCH001'),
         status: 'ACTIVE',
         enquiry_number: '1800123456',
-        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+        address: isTestSchool(sid) ? 'Campus 4, Tech Park Boulevard, Bengaluru' : 'Campus Main'
       };
+    }
+
+    let studentCount = Number(studentsRes.rows[0]?.count) || 0;
+    let teacherCount = Number(teachersRes.rows[0]?.count) || 0;
+    let classCount = Number(classesRes.rows[0]?.count) || 0;
+    let sectionCount = Number(sectionsRes.rows[0]?.count) || 0;
+
+    if (studentCount === 0 && teacherCount === 0 && classCount === 0 && sectionCount === 0) {
+      if (isFirebaseConfigured()) {
+        try {
+          const [stSnap, tcSnap, clSnap, secSnap] = await Promise.all([
+            collections.students().get(),
+            collections.teachers().get(),
+            collections.classes().get(),
+            collections.sections().get()
+          ]);
+          studentCount = stSnap.docs.filter((d: any) => {
+            const dt = d.data();
+            return (dt.school_id && isSameSchool(dt.school_id, sid)) || (dt.schoolId && isSameSchool(dt.schoolId, sid));
+          }).length;
+          teacherCount = tcSnap.docs.filter((d: any) => {
+            const dt = d.data();
+            return (dt.school_id && isSameSchool(dt.school_id, sid)) || (dt.schoolId && isSameSchool(dt.schoolId, sid));
+          }).length;
+          classCount = clSnap.docs.filter((d: any) => {
+            const dt = d.data();
+            return dt.school_id && isSameSchool(dt.school_id, sid);
+          }).length;
+          sectionCount = secSnap.docs.filter((d: any) => {
+            const dt = d.data();
+            return dt.school_id && isSameSchool(dt.school_id, sid);
+          }).length;
+        } catch {}
+      }
+
+      // Merge in-memory registered entities for this school
+      studentCount += demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, sid)).length;
+      teacherCount += demoTeachers.filter(t => t.school_id && isSameSchool(t.school_id, sid)).length;
+      classCount += demoClasses.filter(c => c.school_id && isSameSchool(c.school_id, sid)).length;
+      sectionCount += demoSections.filter(s => s.school_id && isSameSchool(s.school_id, sid)).length;
+
+      // Only Greenwood test school falls back to full demo counts if empty
+      if (isTestSchool(sid)) {
+        if (studentCount === 0) studentCount = demoStudents.length;
+        if (teacherCount === 0) teacherCount = demoTeachers.length;
+        if (classCount === 0) classCount = demoClasses.length;
+        if (sectionCount === 0) sectionCount = demoSections.length;
+      }
     }
 
     const att = attendanceRes.rows[0] || { total: 0, present: 0, absent: 0 };
@@ -185,20 +234,27 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
     }
 
     const todayNum = new Date().getDay();
-    const weeklyTrend = [
+    const isTest = isTestSchool(sid);
+    const weeklyTrend = isTest ? [
       { day: 'Mon', percentage: 94.2, present: 14, absent: 1, total: 15, isToday: todayNum === 1 },
       { day: 'Tue', percentage: 93.3, present: 14, absent: 1, total: 15, isToday: todayNum === 2 },
       { day: 'Wed', percentage: 96.0, present: 15, absent: 0, total: 15, isToday: todayNum === 3 },
       { day: 'Thu', percentage: 91.8, present: 13, absent: 2, total: 15, isToday: todayNum === 4 },
       { day: 'Fri', percentage: percentage > 0 ? percentage : 93.5, present: presentMarked > 0 ? presentMarked : 14, absent: absentMarked > 0 ? absentMarked : 1, total: totalMarked > 0 ? totalMarked : 15, isToday: todayNum === 5 }
+    ] : [
+      { day: 'Mon', percentage: 0, present: 0, absent: 0, total: 0, isToday: todayNum === 1 },
+      { day: 'Tue', percentage: 0, present: 0, absent: 0, total: 0, isToday: todayNum === 2 },
+      { day: 'Wed', percentage: 0, present: 0, absent: 0, total: 0, isToday: todayNum === 3 },
+      { day: 'Thu', percentage: 0, present: 0, absent: 0, total: 0, isToday: todayNum === 4 },
+      { day: 'Fri', percentage, present: presentMarked, absent: absentMarked, total: totalMarked, isToday: todayNum === 5 }
     ];
 
     return res.json({
       school,
-      totalStudents: Number(studentsRes.rows[0]?.count) || 0,
-      totalTeachers: Number(teachersRes.rows[0]?.count) || 0,
-      totalClasses: Number(classesRes.rows[0]?.count) || 0,
-      totalSections: Number(sectionsRes.rows[0]?.count) || 0,
+      totalStudents: studentCount,
+      totalTeachers: teacherCount,
+      totalClasses: classCount,
+      totalSections: sectionCount,
       todayAttendance: {
         total: totalMarked,
         present: presentMarked,
@@ -209,12 +265,12 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
       weeklyTrend,
       todaySchedule: todayScheduleRes.rows || [],
       announcements: announcementsRes.rows || [],
-      recentActivity: [
+      recentActivity: isTest ? [
         { id: 'act-1', text: `Academic session ${academicYearRes.rows[0]?.name || '2026-27'} active & operational`, time: '08:30 AM', icon: 'session' },
-        { id: 'act-2', text: `${Number(teachersRes.rows[0]?.count) || 2} faculty members verified on attendance roster`, time: '08:45 AM', icon: 'faculty' },
+        { id: 'act-2', text: `${teacherCount || 2} faculty members verified on attendance roster`, time: '08:45 AM', icon: 'faculty' },
         { id: 'act-3', text: 'Automated attendance notifications & SMS queue synchronized', time: '09:00 AM', icon: 'notification' },
         { id: 'act-4', text: `Subscription active: ${subscriptionData.plan_name} Tier (${subscriptionData.days_remaining} days remaining)`, time: '09:15 AM', icon: 'billing' }
-      ],
+      ] : [],
       pendingCorrectionsCount: Number(correctionsRes.rows[0]?.count) || 0,
       activeAcademicYear: academicYearRes.rows[0] || getInMemoryActiveAcademicYear(sid),
       subscription: subscriptionData
@@ -240,18 +296,59 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
     if (!matchedSchool) {
       matchedSchool = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid)) || {
         id: sid,
-        name: 'Greenwood International School',
-        code: 'GIS001',
+        name: isTestSchool(sid) ? 'Greenwood International School' : (req.user?.schoolName || 'Institutional Campus'),
+        code: isTestSchool(sid) ? 'GIS001' : ((req.user as any)?.schoolCode || 'SCH001'),
         status: 'ACTIVE',
         enquiry_number: '1800123456',
-        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+        address: isTestSchool(sid) ? 'Campus 4, Tech Park Boulevard, Bengaluru' : 'Campus Main'
       };
     }
 
-    const studentCount = demoStudents.length;
-    const teacherCount = demoTeachers.length;
-    const classCount = demoClasses.length;
-    const sectionCount = demoSections.length;
+    let studentCount = 0;
+    let teacherCount = 0;
+    let classCount = 0;
+    let sectionCount = 0;
+
+    if (isFirebaseConfigured()) {
+      try {
+        const [stSnap, tcSnap, clSnap, secSnap] = await Promise.all([
+          collections.students().get(),
+          collections.teachers().get(),
+          collections.classes().get(),
+          collections.sections().get()
+        ]);
+        studentCount = stSnap.docs.filter((d: any) => {
+          const data = d.data();
+          return (data.school_id && isSameSchool(data.school_id, sid)) || (data.schoolId && isSameSchool(data.schoolId, sid));
+        }).length;
+        teacherCount = tcSnap.docs.filter((d: any) => {
+          const data = d.data();
+          return (data.school_id && isSameSchool(data.school_id, sid)) || (data.schoolId && isSameSchool(data.schoolId, sid));
+        }).length;
+        classCount = clSnap.docs.filter((d: any) => {
+          const data = d.data();
+          return data.school_id && isSameSchool(data.school_id, sid);
+        }).length;
+        sectionCount = secSnap.docs.filter((d: any) => {
+          const data = d.data();
+          return data.school_id && isSameSchool(data.school_id, sid);
+        }).length;
+      } catch {}
+    }
+
+    // Merge in-memory registered entities for this school
+    studentCount += demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, sid)).length;
+    teacherCount += demoTeachers.filter(t => t.school_id && isSameSchool(t.school_id, sid)).length;
+    classCount += demoClasses.filter(c => c.school_id && isSameSchool(c.school_id, sid)).length;
+    sectionCount += demoSections.filter(s => s.school_id && isSameSchool(s.school_id, sid)).length;
+
+    // Only Greenwood test school falls back to full demo counts if empty
+    if (isTestSchool(sid)) {
+      if (studentCount === 0) studentCount = demoStudents.length;
+      if (teacherCount === 0) teacherCount = demoTeachers.length;
+      if (classCount === 0) classCount = demoClasses.length;
+      if (sectionCount === 0) sectionCount = demoSections.length;
+    }
 
     return res.json({
       school: matchedSchool,

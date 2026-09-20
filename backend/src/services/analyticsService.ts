@@ -1,4 +1,6 @@
 import {pool} from '../db';
+import { isTestSchool, isSameSchool } from '../utils/tenant';
+import { collections, isFirebaseConfigured } from '../firebase';
 
 export async function platformOverview(){
  const [schools,students,activeSubs,revenue,expired]=await Promise.all([
@@ -18,6 +20,8 @@ export async function platformOverview(){
 export async function schoolOverview(schoolId:string,from?:string,to?:string){
  const start=from||new Date(Date.now()-29*86400000).toISOString().slice(0,10);
  const end=to||new Date().toISOString().slice(0,10);
+ const isTest = isTestSchool(schoolId);
+
  try {
   const [daily,students,teachers,sessions,records]=await Promise.all([
    pool.query(`SELECT snapshot_date,total_students,total_teachers,attendance_percentage,present_records,absent_records
@@ -29,8 +33,29 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
     FROM attendance_records ar JOIN attendance_sessions s ON s.id=ar.attendance_session_id
     WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3`,[schoolId,start,end])
   ]);
-  const p=records.rows[0]; const total=(p.present||0)+(p.absent||0);
-  const pct = total ? Number(((p.present/total)*100).toFixed(1)) : 89.5;
+  const p=records.rows[0]; const total=(p?.present||0)+(p?.absent||0);
+  const pct = total ? Number(((p.present/total)*100).toFixed(1)) : 0;
+
+  if ((daily?.rowCount || 0) > 0 || total > 0 || (((students.rows[0]?.count as number) || 0) > 0 && !isTest)) {
+    return {
+      from: start,
+      to: end,
+      totalStudents: students.rows[0]?.count || 0,
+      totalTeachers: teachers.rows[0]?.count || 0,
+      attendanceSessions: sessions.rows[0]?.count || 0,
+      presentRecords: p?.present || 0,
+      absentRecords: p?.absent || 0,
+      attendancePercentage: pct,
+      daily: daily.rows || [],
+      classBreakdown: [],
+      lowAttendanceCount: 0,
+      lowAttendanceStudents: []
+    };
+  }
+
+  if (!isTest) {
+    throw new Error('Fallback to clean multi-tenant response');
+  }
 
   const mockDaily = [];
   for (let i = 13; i >= 0; i--) {
@@ -70,8 +95,8 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
     totalStudents: students.rows[0]?.count || 10,
     totalTeachers: teachers.rows[0]?.count || 2,
     attendanceSessions: sessions.rows[0]?.count || 12,
-    presentRecords: p.present || 88,
-    absentRecords: p.absent || 10,
+    presentRecords: p?.present || 88,
+    absentRecords: p?.absent || 10,
     attendancePercentage: total ? pct : 89.8,
     daily: daily.rowCount ? daily.rows : mockDaily,
     classBreakdown,
@@ -79,6 +104,59 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
     lowAttendanceStudents
   };
  } catch {
+  // Try Firestore for real school data
+  let studentCount = 0;
+  let teacherCount = 0;
+  let sessionCount = 0;
+
+  if (isFirebaseConfigured() && schoolId) {
+    try {
+      const [stSnap, tchSnap, sessSnap] = await Promise.all([
+        collections.students().get(),
+        collections.teachers().get(),
+        collections.attendanceSessions().get()
+      ]);
+      if (!stSnap.empty) {
+        studentCount = stSnap.docs.filter(d => {
+          const dt = d.data();
+          const sid = dt.school_id || dt.schoolId;
+          return sid && isSameSchool(sid, schoolId) && dt.is_active !== false;
+        }).length;
+      }
+      if (!tchSnap.empty) {
+        teacherCount = tchSnap.docs.filter(d => {
+          const dt = d.data();
+          const sid = dt.school_id || dt.schoolId;
+          return sid && isSameSchool(sid, schoolId) && dt.is_active !== false;
+        }).length;
+      }
+      if (!sessSnap.empty) {
+        sessionCount = sessSnap.docs.filter(d => {
+          const dt = d.data();
+          const sid = dt.school_id || dt.schoolId;
+          return sid && isSameSchool(sid, schoolId);
+        }).length;
+      }
+    } catch {}
+  }
+
+  if (!isTest) {
+    return {
+      from: start,
+      to: end,
+      totalStudents: studentCount,
+      totalTeachers: teacherCount,
+      attendanceSessions: sessionCount,
+      presentRecords: 0,
+      absentRecords: 0,
+      attendancePercentage: 0,
+      daily: [],
+      classBreakdown: [],
+      lowAttendanceCount: 0,
+      lowAttendanceStudents: []
+    };
+  }
+
   const mockDaily = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
@@ -114,9 +192,9 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
   return {
     from: start,
     to: end,
-    totalStudents: 10,
-    totalTeachers: 2,
-    attendanceSessions: 14,
+    totalStudents: studentCount || 10,
+    totalTeachers: teacherCount || 2,
+    attendanceSessions: sessionCount || 14,
     presentRecords: 92,
     absentRecords: 8,
     attendancePercentage: 92.0,

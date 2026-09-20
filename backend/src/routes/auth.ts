@@ -12,29 +12,8 @@ import { sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
 
-/**
- * Tenant matching helper supporting ID & code aliases across Firestore, SQL, and Demo stores.
- */
-export function isSameSchool(a?: string | null, b?: string | null): boolean {
-  if (!a || !b) return true;
-  if (a === b) return true;
-  const greenwoodAliases = [
-    'school-greenwood-001',
-    '00000000-0000-0000-0000-000000000001',
-    'greenwood',
-    'GIS001',
-    'GWIS-2025'
-  ];
-  return greenwoodAliases.includes(a) && greenwoodAliases.includes(b);
-}
-
-export function canonicalSchoolId(id?: string | null): string | null {
-  if (!id) return null;
-  if (isSameSchool(id, '00000000-0000-0000-0000-000000000001')) {
-    return '00000000-0000-0000-0000-000000000001';
-  }
-  return id;
-}
+export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId, isTestSchool } from '../utils/tenant';
 
 // GET /api/auth/institutes - Public active institutes for multi-tenant selector
 router.get('/institutes', async (_req, res) => {
@@ -158,8 +137,8 @@ router.post('/login', async (req, res) => {
       const userPayload: any = {
         id: fUser.id,
         schoolId: canonicalSchoolId(fUser.schoolId),
-        schoolName: schoolName || 'Greenwood International School',
-        schoolCode: schoolCode || 'GIS001',
+        schoolName: schoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
+        schoolCode: schoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
         name: fUser.name,
         email: fUser.email,
         role
@@ -167,12 +146,12 @@ router.post('/login', async (req, res) => {
 
       if (role === 'STUDENT') {
         userPayload.studentId = fUser.id;
-        userPayload.classId = 'cls-10';
-        userPayload.sectionId = 'sec-10-a';
-        userPayload.className = 'Class 10';
-        userPayload.sectionName = 'Section A';
-        userPayload.rollNumber = '25';
-        userPayload.schoolName = schoolName || 'Greenwood International School';
+        userPayload.classId = (fUser as any).classId || (isTestSchool(fUser.schoolId) ? 'cls-10' : '');
+        userPayload.sectionId = (fUser as any).sectionId || (isTestSchool(fUser.schoolId) ? 'sec-10-a' : '');
+        userPayload.className = (fUser as any).className || (isTestSchool(fUser.schoolId) ? 'Class 10' : '');
+        userPayload.sectionName = (fUser as any).sectionName || (isTestSchool(fUser.schoolId) ? 'Section A' : '');
+        userPayload.rollNumber = (fUser as any).rollNumber || (isTestSchool(fUser.schoolId) ? '25' : '');
+        userPayload.schoolName = userPayload.schoolName;
       }
 
       const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '8h' });

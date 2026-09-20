@@ -80,18 +80,16 @@ const memoryInvoices: Map<string, InvoicePdfData> = new Map([
   ]
 ]);
 
-/* Seed initial invoices into Firestore if empty */
+import { isSameSchool, isTestSchool } from './auth';
+
+/* Load invoices from Firestore (never seed demo data to Firestore) */
 async function syncInvoicesWithFirestore(): Promise<InvoicePdfData[]> {
-  if (!isFirebaseConfigured()) return Array.from(memoryInvoices.values());
+  if (!isFirebaseConfigured()) return [];
 
   try {
     const snap = await collections.invoices().get();
     if (snap.empty) {
-      console.log('[Firestore] Seeding initial invoices collection...');
-      for (const [id, data] of memoryInvoices.entries()) {
-        await collections.invoices().doc(id).set(data);
-      }
-      return Array.from(memoryInvoices.values());
+      return [];
     }
 
     const items: InvoicePdfData[] = [];
@@ -102,8 +100,8 @@ async function syncInvoicesWithFirestore(): Promise<InvoicePdfData[]> {
     });
     return items;
   } catch (err) {
-    console.warn('[Firestore] Invoices query failed, using memory fallback:', err);
-    return Array.from(memoryInvoices.values());
+    console.warn('[Firestore] Invoices query failed:', err);
+    return [];
   }
 }
 
@@ -124,12 +122,29 @@ r.get('/', async (req: AuthRequest, res) => {
     if (q.rows.length > 0) return res.json(q.rows);
   } catch {}
 
-  // 2. Try Firestore / Memory
+  // 2. Try Firestore
   const firestoreInvoices = await syncInvoicesWithFirestore();
-  if (role === 'SCHOOL_ADMIN' && sid) {
-    return res.json(firestoreInvoices.filter(i => i.school_code === sid || i.id === sid));
+  if (firestoreInvoices.length > 0) {
+    if (role === 'SCHOOL_ADMIN' && sid) {
+      const schoolInvs = firestoreInvoices.filter(i => 
+        (i.school_code && isSameSchool(i.school_code, sid)) || 
+        ((i as any).school_id && isSameSchool((i as any).school_id, sid)) ||
+        ((i as any).schoolId && isSameSchool((i as any).schoolId, sid))
+      );
+      return res.json(schoolInvs);
+    }
+    return res.json(firestoreInvoices);
   }
-  return res.json(firestoreInvoices);
+
+  // 3. Demo memory fallback: ONLY for Greenwood test school or Super Admin demo view
+  if (role === 'SCHOOL_ADMIN') {
+    if (isTestSchool(sid)) {
+      return res.json(Array.from(memoryInvoices.values()).filter(i => isSameSchool(i.school_code, 'GWIS-2025') || isSameSchool(i.school_code, sid)));
+    }
+    return res.json([]);
+  }
+
+  return res.json(Array.from(memoryInvoices.values()));
 });
 
 r.get('/:id', async (req: AuthRequest, res) => {
