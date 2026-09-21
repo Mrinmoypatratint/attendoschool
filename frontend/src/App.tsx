@@ -1747,9 +1747,11 @@ function Layout({children}:{children:React.ReactNode}){
 
   function handleSearchResultClick(result: any) {
     setSearchOpen(false);
-    if (result.type === 'student') nav('/students');
-    else if (result.type === 'teacher') nav('/teachers');
-    else if (result.type === 'class') nav('/classes');
+    if (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') {
+      if (result.type === 'student') nav('/students');
+      else if (result.type === 'teacher') nav('/teachers');
+      else if (result.type === 'class') nav('/classes');
+    }
   }
 
   const hasAnyResults = searchResults.students.length > 0 || searchResults.teachers.length > 0 || searchResults.classes.length > 0;
@@ -2136,16 +2138,22 @@ function Layout({children}:{children:React.ReactNode}){
                   <div className="search-hint-section">
                     <span className="search-hint-title">Quick Navigation</span>
                     <div className="search-hint-items">
-                      <button onClick={() => { setSearchOpen(false); nav('/students'); }}>
-                        <Users size={14} /> <span>Students</span>
-                      </button>
-                      <button onClick={() => { setSearchOpen(false); nav('/teachers'); }}>
-                        <GraduationCap size={14} /> <span>Teachers</span>
-                      </button>
-                      <button onClick={() => { setSearchOpen(false); nav('/classes'); }}>
-                        <Layers size={14} /> <span>Classes</span>
-                      </button>
-                      <button onClick={() => { setSearchOpen(false); nav('/attendance-reports'); }}>
+                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
+                        <button onClick={() => { setSearchOpen(false); nav('/students'); }}>
+                          <Users size={14} /> <span>Students</span>
+                        </button>
+                      )}
+                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
+                        <button onClick={() => { setSearchOpen(false); nav('/teachers'); }}>
+                          <GraduationCap size={14} /> <span>Teachers</span>
+                        </button>
+                      )}
+                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
+                        <button onClick={() => { setSearchOpen(false); nav('/classes'); }}>
+                          <Layers size={14} /> <span>Classes</span>
+                        </button>
+                      )}
+                      <button onClick={() => { setSearchOpen(false); nav(user.role === 'TEACHER' ? '/take-attendance' : '/attendance-reports'); }}>
                         <ClipboardCheck size={14} /> <span>Attendance</span>
                       </button>
                       <button onClick={() => { setSearchOpen(false); nav('/timetable'); }}>
@@ -2731,7 +2739,7 @@ function Students(){
 
   useEffect(()=>{
     load();
-    if (new URLSearchParams(window.location.search).get('enroll') === 'true') {
+    if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
       setEditingStudent(null);
       setF({ loginOption: 'STUDENT', sendInviteEmail: true });
       setOpen(true);
@@ -2917,20 +2925,22 @@ function Students(){
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Manage enrolled students, section assignments, parent contacts, and batch Excel imports.</p>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button 
-          onClick={() => setImportOpen(true)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
-        >
-          <FileSpreadsheet size={16} /> Import Excel / CSV
-        </button>
-        <button 
-          onClick={() => { setEditingStudent(null); setF({}); setOpen(true); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <Plus size={16} /> Add Student
-        </button>
-      </div>
+      {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setImportOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+          >
+            <FileSpreadsheet size={16} /> Import Excel / CSV
+          </button>
+          <button 
+            onClick={() => { setEditingStudent(null); setF({}); setOpen(true); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Plus size={16} /> Add Student
+          </button>
+        </div>
+      )}
     </div>
 
     {/* Toast / Feedback Notice */}
@@ -4509,10 +4519,16 @@ function Attendance(){
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
           <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
           <h3>No students found in this section</h3>
-          <p className="muted">Add students to Class {currentClass?.class_number || ''}-{currentSection?.name || ''} in the Student Directory.</p>
-          <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
-            + Enroll Student Now
-          </button>
+          <p className="muted">
+            {user?.role === 'TEACHER'
+              ? 'No students are currently enrolled in this section. Please contact your School Administrator to enroll students.'
+              : `Add students to Class ${currentClass?.class_number || ''}-${currentSection?.name || ''} in the Student Directory.`}
+          </p>
+          {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+            <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
+              + Enroll Student Now
+            </button>
+          )}
         </div>
       ) : (
         <div className="attendance-list">
@@ -5499,11 +5515,11 @@ function App(){return <Routes>
   <Route path="/login" element={<Login/>}/>
   <Route path="/reset-password" element={<ResetPassword/>}/>
   <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
-  <Route path="/students" element={<Guard><Students/></Guard>}/>
-  <Route path="/teachers" element={<Guard><Teachers/></Guard>}/>
-  <Route path="/classes" element={<Guard><Classes/></Guard>}/>
-  <Route path="/subjects" element={<Guard><Subjects/></Guard>}/>
-  <Route path="/routine" element={<Guard><Routine/></Guard>}/>
+  <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
+  <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
+  <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
+  <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
+  <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
   <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
