@@ -42,8 +42,8 @@ export default function Timetable() {
   const [periodForm, setPeriodForm] = useState({ name: 'Period', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false });
 
   // ── Load all data ──
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll(initial = false) {
+    if (initial) setLoading(true);
     try {
       const [pRes, eRes, cRes, sRes, subRes, tRes] = await Promise.all([
         api.get('/timetable/periods'),
@@ -53,19 +53,19 @@ export default function Timetable() {
         api.get('/subjects'),
         api.get('/teachers')
       ]);
-      setPeriods(Array.isArray(pRes.data) ? pRes.data : []);
-      setEntries(Array.isArray(eRes.data) ? eRes.data : []);
-      setClasses(Array.isArray(cRes.data) ? cRes.data : []);
-      setSections(Array.isArray(sRes.data) ? sRes.data : []);
-      setSubjects(Array.isArray(subRes.data) ? subRes.data : []);
-      setTeachers(Array.isArray(tRes.data) ? tRes.data : []);
+      if (Array.isArray(pRes.data)) setPeriods(pRes.data);
+      if (Array.isArray(eRes.data)) setEntries(eRes.data);
+      if (Array.isArray(cRes.data)) setClasses(cRes.data);
+      if (Array.isArray(sRes.data)) setSections(sRes.data);
+      if (Array.isArray(subRes.data)) setSubjects(subRes.data);
+      if (Array.isArray(tRes.data)) setTeachers(tRes.data);
     } catch (err) {
       console.error('Timetable load error:', err);
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   }
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(true); }, []);
 
   // Set default class/section when data loads
   useEffect(() => {
@@ -80,26 +80,29 @@ export default function Timetable() {
   const selClassName = classes.find(c => c.id === selClassId)?.class_number || '';
   const selSectionName = sections.find(s => s.id === selSectionId)?.name || '';
   const filteredSections = sections.filter(s => s.class_id === selClassId || String(s.class_number) === String(selClassName));
-  const teachingPeriods = useMemo(() => periods.filter(p => !p.is_break), [periods]);
+  const teachingPeriods = useMemo(() => periods.filter(p => !(p.is_break ?? p.isBreak)), [periods]);
 
   const dayEntries = useMemo(() => {
     return entries
-      .filter(e => e.day_of_week === selDay && e.class_id === selClassId && e.section_id === selSectionId)
-      .sort((a: any, b: any) => (a.period_number || 0) - (b.period_number || 0));
+      .filter(e => (Number(e.day_of_week ?? e.dayOfWeek) === selDay) && (e.class_id || e.classId) === selClassId && (e.section_id || e.sectionId) === selSectionId)
+      .sort((a: any, b: any) => (a.period_number ?? a.periodNumber ?? 0) - (b.period_number ?? b.periodNumber ?? 0));
   }, [entries, selDay, selClassId, selSectionId]);
 
   // Map period_id to entry for grid display
   const periodEntryMap = useMemo(() => {
     const m: Record<string, any> = {};
-    dayEntries.forEach(e => { m[e.period_id] = e; });
+    dayEntries.forEach(e => {
+      const pid = e.period_id || e.periodId;
+      if (pid) m[pid] = e;
+    });
     return m;
   }, [dayEntries]);
 
   // ── Check teacher busy status for a period ──
   function isTeacherBusy(teacherId: string, periodId: string, day: number, excludeEntryId?: string) {
     return entries.some(e =>
-      e.day_of_week === day &&
-      e.period_id === periodId &&
+      Number(e.day_of_week ?? e.dayOfWeek) === day &&
+      (e.period_id || e.periodId) === periodId &&
       (e.teacher_id === teacherId || e.substitute_teacher_id === teacherId) &&
       e.status !== 'CANCELLED' &&
       e.id !== excludeEntryId
@@ -111,7 +114,7 @@ export default function Timetable() {
     return teachers.map(t => ({
       ...t,
       busy: isTeacherBusy(t.id, periodId, day),
-      busyWith: entries.find(e => e.day_of_week === day && e.period_id === periodId && e.teacher_id === t.id)
+      busyWith: entries.find(e => Number(e.day_of_week ?? e.dayOfWeek) === day && (e.period_id || e.periodId) === periodId && e.teacher_id === t.id)
     }));
   }
 
@@ -119,7 +122,10 @@ export default function Timetable() {
   async function addPeriod() {
     if (!isSchoolAdmin) return;
     try {
-      await api.post('/timetable/periods', periodForm);
+      const res = await api.post('/timetable/periods', periodForm);
+      if (res.data && res.data.id) {
+        setPeriods(prev => [...prev.filter(p => p.id !== res.data.id), res.data].sort((a,b) => (a.period_number ?? a.periodNumber ?? 0) - (b.period_number ?? b.periodNumber ?? 0)));
+      }
       setMsg({ type: 'success', text: `Period slot "${periodForm.name}" created!` });
       const nextNum = (periodForm.periodNumber || periods.length) + 1;
       setPeriodForm({
@@ -129,7 +135,7 @@ export default function Timetable() {
         endTime: '',
         isBreak: false
       });
-      loadAll();
+      loadAll(false);
     } catch (e: any) {
       setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to create period' });
     }
@@ -139,9 +145,12 @@ export default function Timetable() {
   async function loadTemplatePeriods() {
     if (!isSchoolAdmin) return;
     try {
-      await api.post('/timetable/periods/template');
+      const res = await api.post('/timetable/periods/template');
+      if (Array.isArray(res.data)) {
+        setPeriods(res.data);
+      }
       setMsg({ type: 'success', text: 'Loaded 6 standard periods and breaks. You can now manually assign entries.' });
-      loadAll();
+      loadAll(false);
     } catch (e: any) {
       setMsg({ type: 'error', text: e?.response?.data?.message || 'Failed to load period template' });
     }
@@ -154,8 +163,10 @@ export default function Timetable() {
     try {
       await api.delete('/timetable/periods/clear');
       await api.delete('/timetable/entries/clear');
+      setPeriods([]);
+      setEntries([]);
       setMsg({ type: 'success', text: 'All period slots and timetable entries cleared.' });
-      loadAll();
+      loadAll(false);
     } catch {}
   }
 
@@ -165,8 +176,9 @@ export default function Timetable() {
     if (!confirm('Clear all timetable routine entries? Period time slots will be preserved.')) return;
     try {
       await api.delete('/timetable/entries/clear');
+      setEntries([]);
       setMsg({ type: 'success', text: 'All timetable entries cleared.' });
-      loadAll();
+      loadAll(false);
     } catch {}
   }
 
@@ -176,7 +188,8 @@ export default function Timetable() {
     if (!confirm('Delete this period slot? Existing entries for this period will be orphaned.')) return;
     try {
       await api.delete(`/timetable/periods/${id}`);
-      loadAll();
+      setPeriods(prev => prev.filter(p => p.id !== id));
+      loadAll(false);
     } catch {}
   }
 
@@ -211,10 +224,12 @@ export default function Timetable() {
     setSaving(true);
     try {
       const resp = await api.post('/timetable/entries', entryForm);
-      setEntries(prev => [...prev, resp.data]);
+      if (resp.data) {
+        setEntries(prev => [...prev.filter(e => e.id !== resp.data.id), resp.data]);
+      }
       setAddOpen(false);
       setMsg({ type: 'success', text: 'Timetable entry created!' });
-      loadAll();
+      loadAll(false);
     } catch (e: any) {
       if (e?.response?.status === 409) {
         setConflicts(e.response.data.conflicts || []);
@@ -235,6 +250,7 @@ export default function Timetable() {
       await api.delete(`/timetable/entries/${id}`);
       setEntries(prev => prev.filter(e => e.id !== id));
       setMsg({ type: 'success', text: 'Entry removed.' });
+      loadAll(false);
     } catch {}
   }
 
@@ -371,18 +387,24 @@ export default function Timetable() {
             <tbody>
               {periods.map(p => {
                 const entry = periodEntryMap[p.id];
-                if (p.is_break) {
+                const pNum = p.period_number ?? p.periodNumber ?? '';
+                const pName = p.name || `Period ${pNum}`;
+                const pStart = p.start_time ?? p.startTime ?? '';
+                const pEnd = p.end_time ?? p.endTime ?? '';
+                const pBreak = Boolean(p.is_break ?? p.isBreak);
+
+                if (pBreak) {
                   return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{p.period_number}</td>
-                    <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {p.name} ({p.start_time} – {p.end_time})</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                    <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {pName} ({pStart} – {pEnd})</td>
                     {isSchoolAdmin && <td></td>}
                   </tr>;
                 }
                 if (entry) {
                   return <tr key={p.id}>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{p.period_number}</td>
-                    <td><b>{p.name}</b></td>
-                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.start_time} – {p.end_time}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                    <td><b>{pName}</b></td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
                     <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
                     <td><span style={{ fontWeight: 600 }}>{entry.teacher_name || '—'}</span></td>
                     <td>{entry.substitute_teacher_name ? <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Alt: {entry.substitute_teacher_name}</span> : <span className="muted">—</span>}</td>
@@ -395,9 +417,9 @@ export default function Timetable() {
                   </tr>;
                 }
                 return <tr key={p.id} style={{ opacity: 0.7 }}>
-                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{p.period_number}</td>
-                  <td><b>{p.name}</b></td>
-                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.start_time} – {p.end_time}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                  <td><b>{pName}</b></td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
                   <td colSpan={4} style={{ textAlign: 'center' }}>
                     {isSchoolAdmin ? (
                       <button onClick={() => openAddEntry(p.id)}
@@ -494,8 +516,13 @@ export default function Timetable() {
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
                   <option value="">— Select Period —</option>
                   {teachingPeriods.map(p => {
-                    const taken = entries.some(ent => ent.day_of_week === entryForm.dayOfWeek && ent.period_id === p.id && ent.class_id === entryForm.classId && ent.section_id === entryForm.sectionId);
-                    return <option key={p.id} value={p.id} disabled={taken}>{p.name} ({p.start_time}–{p.end_time}){taken ? ' ✘ Taken' : ''}</option>;
+                    const pid = p.id;
+                    const pNum = p.period_number ?? p.periodNumber ?? '';
+                    const pName = p.name || `Period ${pNum}`;
+                    const pStart = p.start_time ?? p.startTime ?? '';
+                    const pEnd = p.end_time ?? p.endTime ?? '';
+                    const taken = entries.some(ent => (Number(ent.day_of_week ?? ent.dayOfWeek) === entryForm.dayOfWeek) && ((ent.period_id || ent.periodId) === pid) && ((ent.class_id || ent.classId) === entryForm.classId) && ((ent.section_id || ent.sectionId) === entryForm.sectionId));
+                    return <option key={pid} value={pid} disabled={taken}>{pName} ({pStart}–{pEnd}){taken ? ' ✘ Taken' : ''}</option>;
                   })}
                 </select>
               </label>
@@ -602,11 +629,11 @@ export default function Timetable() {
               <tbody>
                 {periods.map(p => (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 700 }}>{p.period_number}</td>
+                    <td style={{ fontWeight: 700 }}>{p.period_number ?? p.periodNumber ?? '—'}</td>
                     <td>{p.name}</td>
-                    <td>{p.start_time}</td>
-                    <td>{p.end_time}</td>
-                    <td>{p.is_break ? '☕ Yes' : 'No'}</td>
+                    <td>{p.start_time ?? p.startTime ?? '—'}</td>
+                    <td>{p.end_time ?? p.endTime ?? '—'}</td>
+                    <td>{(p.is_break ?? p.isBreak) ? '☕ Yes' : 'No'}</td>
                     <td><button className="table-action-btn danger" onClick={() => deletePeriod(p.id)} title="Delete"><Trash2 size={13} /></button></td>
                   </tr>
                 ))}

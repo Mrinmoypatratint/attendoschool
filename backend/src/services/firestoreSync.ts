@@ -1,4 +1,5 @@
 import { collections, firestore, isFirebaseConfigured } from '../firebase';
+import { isSameSchool } from '../utils/tenant';
 
 /**
  * Firestore Real-Time Persistence & Synchronization Service
@@ -252,7 +253,8 @@ export async function syncTimetablePeriodToFirestore(period: any): Promise<boole
       endTime: period.end_time || period.endTime,
       is_break: Boolean(period.is_break || period.isBreak),
       isBreak: Boolean(period.is_break || period.isBreak),
-      school_id: period.school_id || null,
+      school_id: period.school_id || period.schoolId || null,
+      schoolId: period.school_id || period.schoolId || null,
       updatedAt: new Date().toISOString()
     };
     await collections.timetablePeriods().doc(id).set(data, { merge: true });
@@ -276,14 +278,21 @@ export async function deleteTimetablePeriodFromFirestore(id: string): Promise<bo
   }
 }
 
-export async function clearTimetablePeriodsFromFirestore(_schoolId?: string): Promise<boolean> {
+export async function clearTimetablePeriodsFromFirestore(schoolId?: string): Promise<boolean> {
   if (!isFirebaseConfigured()) return false;
   try {
     const snap = await collections.timetablePeriods().get();
     const batch = firestore.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    console.log(`[FirestoreSync] Cleared ${snap.docs.length} timetable periods from Firestore`);
+    let count = 0;
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!schoolId || (data.school_id && isSameSchool(data.school_id, schoolId)) || (data.schoolId && isSameSchool(data.schoolId, schoolId))) {
+        batch.delete(d.ref);
+        count++;
+      }
+    });
+    if (count > 0) await batch.commit();
+    console.log(`[FirestoreSync] Cleared ${count} timetable periods from Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to clear timetable periods from Firestore:`, err.message);
@@ -318,7 +327,8 @@ export async function syncTimetableEntryToFirestore(entry: any): Promise<boolean
       substitute_teacher_name: entry.substitute_teacher_name || entry.altTeacherName || null,
       room_name: entry.room_name || entry.roomName || null,
       status: entry.status || 'PUBLISHED',
-      school_id: entry.school_id || null,
+      school_id: entry.school_id || entry.schoolId || null,
+      schoolId: entry.school_id || entry.schoolId || null,
       updatedAt: new Date().toISOString()
     };
     await collections.timetableEntries().doc(id).set(data, { merge: true });
@@ -342,14 +352,21 @@ export async function deleteTimetableEntryFromFirestore(id: string): Promise<boo
   }
 }
 
-export async function clearTimetableEntriesFromFirestore(_schoolId?: string): Promise<boolean> {
+export async function clearTimetableEntriesFromFirestore(schoolId?: string): Promise<boolean> {
   if (!isFirebaseConfigured()) return false;
   try {
     const snap = await collections.timetableEntries().get();
     const batch = firestore.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    console.log(`[FirestoreSync] Cleared ${snap.docs.length} timetable entries from Firestore`);
+    let count = 0;
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!schoolId || (data.school_id && isSameSchool(data.school_id, schoolId)) || (data.schoolId && isSameSchool(data.schoolId, schoolId))) {
+        batch.delete(d.ref);
+        count++;
+      }
+    });
+    if (count > 0) await batch.commit();
+    console.log(`[FirestoreSync] Cleared ${count} timetable entries from Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to clear timetable entries from Firestore:`, err.message);
