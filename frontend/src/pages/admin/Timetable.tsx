@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
 import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap } from 'lucide-react';
 
 const DAYS = [
@@ -12,6 +13,9 @@ const DAYS = [
 ];
 
 export default function Timetable() {
+  const { user } = useAuth();
+  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+
   // ── State ──
   const [periods, setPeriods] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
@@ -113,6 +117,7 @@ export default function Timetable() {
 
   // ── Add Period ──
   async function addPeriod() {
+    if (!isSchoolAdmin) return;
     try {
       await api.post('/timetable/periods', periodForm);
       setMsg({ type: 'success', text: `Period slot "${periodForm.name}" created!` });
@@ -132,6 +137,7 @@ export default function Timetable() {
 
   // ── Template Periods ──
   async function loadTemplatePeriods() {
+    if (!isSchoolAdmin) return;
     try {
       await api.post('/timetable/periods/template');
       setMsg({ type: 'success', text: 'Loaded 6 standard periods and breaks. You can now manually assign entries.' });
@@ -143,6 +149,7 @@ export default function Timetable() {
 
   // ── Clear All Periods ──
   async function clearAllPeriods() {
+    if (!isSchoolAdmin) return;
     if (!confirm('Clear all period slots? All timetable entries will also be removed.')) return;
     try {
       await api.delete('/timetable/periods/clear');
@@ -154,6 +161,7 @@ export default function Timetable() {
 
   // ── Clear All Entries ──
   async function clearAllEntries() {
+    if (!isSchoolAdmin) return;
     if (!confirm('Clear all timetable routine entries? Period time slots will be preserved.')) return;
     try {
       await api.delete('/timetable/entries/clear');
@@ -164,6 +172,7 @@ export default function Timetable() {
 
   // ── Delete Period ──
   async function deletePeriod(id: string) {
+    if (!isSchoolAdmin) return;
     if (!confirm('Delete this period slot? Existing entries for this period will be orphaned.')) return;
     try {
       await api.delete(`/timetable/periods/${id}`);
@@ -173,6 +182,7 @@ export default function Timetable() {
 
   // ── Open Add Entry Modal ──
   function openAddEntry(periodId?: string) {
+    if (!isSchoolAdmin) return;
     const chosenPeriod = periodId || (teachingPeriods[0]?.id || '');
     setEntryForm({
       dayOfWeek: selDay,
@@ -193,6 +203,7 @@ export default function Timetable() {
 
   // ── Save Entry ──
   async function saveEntry() {
+    if (!isSchoolAdmin) return;
     if (!entryForm.periodId || !entryForm.subjectId || !entryForm.teacherId) {
       setMsg({ type: 'error', text: 'Period, Subject, and Teacher are required.' });
       return;
@@ -218,6 +229,7 @@ export default function Timetable() {
 
   // ── Delete Entry ──
   async function deleteEntry(id: string) {
+    if (!isSchoolAdmin) return;
     if (!confirm('Remove this timetable entry?')) return;
     try {
       await api.delete(`/timetable/entries/${id}`);
@@ -239,22 +251,28 @@ export default function Timetable() {
     {/* ── Header ── */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
       <div>
-        <p className="eyebrow">TIMETABLE MANAGEMENT</p>
+        <p className="eyebrow">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'CLASS TIMETABLE'}</p>
         <h1 style={{ margin: 0, fontSize: 24 }}>Weekly Class Timetable</h1>
-        <p className="muted" style={{ margin: '4px 0 0' }}>Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.</p>
+        <p className="muted" style={{ margin: '4px 0 0' }}>
+          {isSchoolAdmin
+            ? 'Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.'
+            : 'View class-wise, period-wise schedule with assigned subjects and faculty.'}
+        </p>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => { setPeriodForm({ name: `Period ${periods.length + 1}`, periodNumber: periods.length + 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <Clock size={16} /> Manage Periods
-        </button>
-        <button onClick={() => openAddEntry()}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb', color: '#fff' }}
-        >
-          <Plus size={16} /> Add Entry
-        </button>
-      </div>
+      {isSchoolAdmin && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { setPeriodForm({ name: `Period ${periods.length + 1}`, periodNumber: periods.length + 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Clock size={16} /> Manage Periods
+          </button>
+          <button onClick={() => openAddEntry()}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb', color: '#fff' }}
+          >
+            <Plus size={16} /> Add Entry
+          </button>
+        </div>
+      )}
     </div>
 
     {/* ── Toast ── */}
@@ -318,18 +336,22 @@ export default function Timetable() {
           <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
           <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
           <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
-            This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.
+            {isSchoolAdmin
+              ? 'This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.'
+              : 'No timetable period slots have been configured by the school administration yet.'}
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-              style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-              <Plus size={16} /> Add First Period Slot
-            </button>
-            <button onClick={loadTemplatePeriods}
-              style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-              ⚡ Load Standard 6-Period Template (Optional)
-            </button>
-          </div>
+          {isSchoolAdmin && (
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
+                style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                <Plus size={16} /> Add First Period Slot
+              </button>
+              <button onClick={loadTemplatePeriods}
+                style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                ⚡ Load Standard 6-Period Template (Optional)
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="table-wrap">
@@ -343,7 +365,7 @@ export default function Timetable() {
                 <th>Faculty</th>
                 <th>Alt. Faculty</th>
                 <th>Room</th>
-                <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
+                {isSchoolAdmin && <th style={{ width: 80, textAlign: 'right' }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -353,7 +375,7 @@ export default function Timetable() {
                   return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
                     <td style={{ textAlign: 'center', fontWeight: 700 }}>{p.period_number}</td>
                     <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {p.name} ({p.start_time} – {p.end_time})</td>
-                    <td></td>
+                    {isSchoolAdmin && <td></td>}
                   </tr>;
                 }
                 if (entry) {
@@ -365,9 +387,11 @@ export default function Timetable() {
                     <td><span style={{ fontWeight: 600 }}>{entry.teacher_name || '—'}</span></td>
                     <td>{entry.substitute_teacher_name ? <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Alt: {entry.substitute_teacher_name}</span> : <span className="muted">—</span>}</td>
                     <td>{entry.room_name || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
-                    </td>
+                    {isSchoolAdmin && (
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
+                      </td>
+                    )}
                   </tr>;
                 }
                 return <tr key={p.id} style={{ opacity: 0.7 }}>
@@ -375,13 +399,17 @@ export default function Timetable() {
                   <td><b>{p.name}</b></td>
                   <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.start_time} – {p.end_time}</td>
                   <td colSpan={4} style={{ textAlign: 'center' }}>
-                    <button onClick={() => openAddEntry(p.id)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
-                    >
-                      <Plus size={13} /> Assign Faculty & Subject
-                    </button>
+                    {isSchoolAdmin ? (
+                      <button onClick={() => openAddEntry(p.id)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                      >
+                        <Plus size={13} /> Assign Faculty & Subject
+                      </button>
+                    ) : (
+                      <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
+                    )}
                   </td>
-                  <td></td>
+                  {isSchoolAdmin && <td></td>}
                 </tr>;
               })}
             </tbody>
@@ -394,7 +422,7 @@ export default function Timetable() {
     <div className="panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries (Class {selClassName}-{selSectionName})</h3>
-        {entries.length > 0 && (
+        {isSchoolAdmin && entries.length > 0 && (
           <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Trash2 size={12} /> Clear All Entries
           </button>
@@ -420,7 +448,13 @@ export default function Timetable() {
                 </tr>
               ))}
             {entries.filter(e => e.class_id === selClassId && e.section_id === selSectionId).length === 0 && (
-              <tr><td colSpan={8} className="muted" style={{ padding: 20, textAlign: 'center' }}>No routine entries for Class {selClassName}-{selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.</td></tr>
+              <tr>
+                <td colSpan={8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
+                  {isSchoolAdmin
+                    ? `No routine entries for Class ${selClassName}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
+                    : `No routine entries for Class ${selClassName}-${selSectionName} scheduled yet.`}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -428,7 +462,7 @@ export default function Timetable() {
     </div>
 
     {/* ══════════ ADD ENTRY MODAL ══════════ */}
-    {addOpen && <div className="modal-backdrop" onClick={() => setAddOpen(false)}>
+    {isSchoolAdmin && addOpen && <div className="modal-backdrop" onClick={() => setAddOpen(false)}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
         <div className="modal-header">
           <h3 style={{ margin: 0, fontSize: 18 }}>Add Timetable Entry</h3>
@@ -554,7 +588,7 @@ export default function Timetable() {
     </div>}
 
     {/* ══════════ PERIOD MANAGEMENT MODAL ══════════ */}
-    {periodOpen && <div className="modal-backdrop" onClick={() => setPeriodOpen(false)}>
+    {isSchoolAdmin && periodOpen && <div className="modal-backdrop" onClick={() => setPeriodOpen(false)}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <div className="modal-header">
           <h3 style={{ margin: 0, fontSize: 18 }}>Period Slots</h3>

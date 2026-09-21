@@ -14,6 +14,14 @@ const router=Router(); const u=(r:Request)=>(r as any).user;
 
 router.use((req,res,next)=>{if(!u(req)?.schoolId&&!['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER'].includes(u(req)?.role))return res.status(403).json({message:'Timetable access required'});next()});
 
+const requireAdmin = (req: Request, res: any, next: any) => {
+  const role = u(req)?.role;
+  if (role !== 'SCHOOL_ADMIN' && role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ message: 'Only school administrators can create, edit, or delete timetable records' });
+  }
+  next();
+};
+
 // ── In-Memory Timetable Store (Empty - No seed data; 100% manual entry) ──
 export const memPeriods: any[] = [];
 export const memEntries: any[] = [];
@@ -63,7 +71,7 @@ router.get('/periods',async(req,res)=>{
   res.json([]);
 });
 
-router.post('/periods',async(req,res)=>{
+router.post('/periods',requireAdmin,async(req,res)=>{
   const sid = u(req).schoolId;
   try{return res.status(201).json(await svc.createPeriod(sid,req.body))}catch(_e){}
   const d = req.body;
@@ -74,7 +82,7 @@ router.post('/periods',async(req,res)=>{
   res.status(201).json(newP);
 });
 // Optional: Template periods loader (if requested by user manually)
-router.post('/periods/template',async(req,res)=>{
+router.post('/periods/template',requireAdmin,async(req,res)=>{
   const sid = u(req).schoolId;
   const existing = memPeriods.filter(p => p.school_id && isSameSchool(p.school_id, sid));
   if (existing.length > 0) return res.json(existing);
@@ -92,7 +100,7 @@ router.post('/periods/template',async(req,res)=>{
   for (const p of template) syncTimetablePeriodToFirestore(p).catch(() => {});
   res.status(201).json(template);
 });
-router.delete('/periods/clear',async(req,res)=>{
+router.delete('/periods/clear',requireAdmin,async(req,res)=>{
   const sid = u(req)?.schoolId;
   for (let i = memPeriods.length - 1; i >= 0; i--) {
     if (memPeriods[i].school_id && isSameSchool(memPeriods[i].school_id, sid)) {
@@ -102,10 +110,11 @@ router.delete('/periods/clear',async(req,res)=>{
   clearTimetablePeriodsFromFirestore(sid).catch(() => {});
   res.json({ success: true, count: 0 });
 });
-router.delete('/periods/:id',async(req,res)=>{
-  const idx = memPeriods.findIndex(p => p.id === req.params.id);
+router.delete('/periods/:id',requireAdmin,async(req,res)=>{
+  const id = String(req.params.id);
+  const idx = memPeriods.findIndex(p => p.id === id);
   if (idx >= 0) memPeriods.splice(idx, 1);
-  deleteTimetablePeriodFromFirestore(req.params.id).catch(() => {});
+  deleteTimetablePeriodFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -127,7 +136,7 @@ router.get('/entries',async(req,res)=>{
   res.json(filtered);
 });
 
-router.post('/entries',async(req,res)=>{
+router.post('/entries',requireAdmin,async(req,res)=>{
   const d = req.body;
 
   // Try DB first
@@ -175,16 +184,17 @@ router.post('/entries',async(req,res)=>{
   res.status(201).json(entry);
 });
 
-router.delete('/entries/clear',async(req,res)=>{
+router.delete('/entries/clear',requireAdmin,async(req,res)=>{
   memEntries.length = 0;
   clearTimetableEntriesFromFirestore(u(req)?.schoolId).catch(() => {});
   res.json({ success: true, count: 0 });
 });
 
-router.delete('/entries/:id',async(req,res)=>{
-  const idx = memEntries.findIndex(e => e.id === req.params.id);
+router.delete('/entries/:id',requireAdmin,async(req,res)=>{
+  const id = String(req.params.id);
+  const idx = memEntries.findIndex(e => e.id === id);
   if (idx >= 0) memEntries.splice(idx, 1);
-  deleteTimetableEntryFromFirestore(req.params.id).catch(() => {});
+  deleteTimetableEntryFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -212,22 +222,24 @@ router.get('/',async(req,res)=>{try{const rows=await svc.listEntries(u(req).scho
   filtered.sort((a,b) => a.day_of_week - b.day_of_week || a.period_number - b.period_number);
   res.json(filtered);
 });
-router.post('/',async(req,res)=>{try{return res.status(201).json(await svc.createEntry(u(req).schoolId,u(req).id,req.body))}catch(_e){}
+router.post('/',requireAdmin,async(req,res)=>{try{return res.status(201).json(await svc.createEntry(u(req).schoolId,u(req).id,req.body))}catch(_e){}
   res.status(201).json({ id: `ent-${Date.now()}`, school_id: u(req).schoolId, status: 'PUBLISHED', ...req.body });
 });
 
 // ── PUBLISH ──
-router.post('/entries/:id/publish',async(req,res)=>{try{return res.json(await svc.publish(u(req).schoolId,req.params.id))}catch(_e){}
-  const entry = memEntries.find(e => e.id === req.params.id);
+router.post('/entries/:id/publish',requireAdmin,async(req,res)=>{
+  const id = String(req.params.id);
+  try{return res.json(await svc.publish(u(req).schoolId,id))}catch(_e){}
+  const entry = memEntries.find(e => e.id === id);
   if (entry) {
     entry.status = 'PUBLISHED';
     syncTimetableEntryToFirestore(entry).catch(() => {});
   }
-  res.json(entry || { id: req.params.id, status: 'PUBLISHED' });
+  res.json(entry || { id, status: 'PUBLISHED' });
 });
 
 // ── SUBSTITUTES ──
-router.post('/substitutes',async(req,res)=>{try{return res.json(await svc.assignSubstitute(u(req).schoolId,u(req).id,req.body))}catch(_e){}
+router.post('/substitutes',requireAdmin,async(req,res)=>{try{return res.json(await svc.assignSubstitute(u(req).schoolId,u(req).id,req.body))}catch(_e){}
   const d = req.body;
   const entry = memEntries.find(e => e.id === d.entryId);
   if (entry) {
