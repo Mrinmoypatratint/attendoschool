@@ -378,11 +378,13 @@ router.post('/entries', requireAdmin, async (req, res) => {
   const d = req.body;
   const sid = u(req).schoolId;
 
-  // Try DB first
+  // Try DB first if Postgres has configured tables
   try {
     const created = await svc.createEntry(sid, u(req).id, d);
-    await syncTimetableEntryToFirestore(created);
-    return res.status(201).json(created);
+    if (created && created.id) {
+      await syncTimetableEntryToFirestore(created);
+      return res.status(201).json(created);
+    }
   } catch (_e) {}
 
   // Conflict check
@@ -496,8 +498,10 @@ router.post('/', requireAdmin, async (req, res) => {
   const d = req.body;
   try {
     const created = await svc.createEntry(sid, u(req).id, d);
-    await syncTimetableEntryToFirestore(created);
-    return res.status(201).json(created);
+    if (created && created.id) {
+      await syncTimetableEntryToFirestore(created);
+      return res.status(201).json(created);
+    }
   } catch (_e) {}
 
   const entry = {
@@ -517,7 +521,8 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const sid = u(req).schoolId;
   try {
-    return res.json(await svc.publish(sid, id));
+    const pub = await svc.publish(sid, id);
+    if (pub && pub.id) return res.json(pub);
   } catch (_e) {}
   const entry = memEntries.find(e => e.id === id);
   if (entry) {
@@ -538,7 +543,8 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
 router.post('/substitutes', requireAdmin, async (req, res) => {
   const sid = u(req).schoolId;
   try {
-    return res.json(await svc.assignSubstitute(sid, u(req).id, req.body));
+    const subRes = await svc.assignSubstitute(sid, u(req).id, req.body);
+    if (subRes && subRes.id) return res.json(subRes);
   } catch (_e) {}
   const d = req.body;
   const entry = memEntries.find(e => e.id === d.entryId);
