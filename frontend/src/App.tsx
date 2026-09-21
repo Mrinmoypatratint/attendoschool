@@ -102,14 +102,6 @@ function GoogleGLogo() {
   );
 }
 
-const FALLBACK_INSTITUTES: Institute[] = [
-  { id: 'sch-1789773642845', name: 'BSMV', code: 'BSMV01', address: 'Vill - Bagda , PO - Bagda , PS - Puncha , Dist - Purulia , WEST BENGAL 723151' },
-  { id: 'school-greenwood-001', name: 'Greenwood International School', code: 'GIS001', address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka' },
-  { id: '00000000-0000-0000-0000-000000000001', name: 'Greenwood International School', code: 'GIS001', address: 'Main Campus' },
-  { id: 'school-delhi-001', name: 'Delhi Public Academy', code: 'DPA001', address: 'South Campus' },
-  { id: 'school-central-001', name: 'Central Cloud Administration', code: 'CCA001', address: 'Cloud HQ' }
-];
-
 type LoginOption = 'ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT';
 
 interface LoginRoleConfig {
@@ -174,7 +166,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     bannerText: 'Select your institute and enter your student ID or email to access timetable, assignments, and attendance.',
     needsSchool: true,
     emailLabel: 'Student ID / Email',
-    emailPlaceholder: 'student@greenwood.local or Roll No. 25',
+    emailPlaceholder: 'student@attendance.local or Roll No. 25',
     defaultEmail: 'student@greenwood.local',
     icon: BookOpen,
     color: '#7c3aed'
@@ -192,10 +184,14 @@ function Login() {
       const cached = localStorage.getItem('attendoschool_cached_institutes');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Discard legacy mock entries if any
+          const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== 'sch-1789773642845' && x.id !== 'school-delhi-001' && x.id !== 'school-central-001');
+          if (clean.length > 0) return clean;
+        }
       }
     } catch {}
-    return FALLBACK_INSTITUTES;
+    return [];
   });
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
@@ -204,9 +200,9 @@ function Login() {
   const [instituteId, setInstituteId] = useState<string>(() => {
     try {
       const cached = localStorage.getItem('attendoschool_last_institute_id');
-      if (cached) return cached;
+      if (cached && cached !== 'sch-1789773642845') return cached;
     } catch {}
-    return 'sch-1789773642845';
+    return '';
   });
   const [instituteSearch, setInstituteSearch] = useState('');
   const [instituteOpen, setInstituteOpen] = useState(false);
@@ -234,36 +230,29 @@ function Login() {
     try {
       const res = await api.get('/auth/institutes');
       const list = Array.isArray(res.data) ? res.data : (res.data?.institutes || res.data?.data || []);
-      if (Array.isArray(list) && list.length > 0) {
-        const map = new Map<string, Institute>();
-        // Add default fallbacks first
-        FALLBACK_INSTITUTES.forEach(i => map.set(i.id, i));
-        // Overwrite/add live fetched
-        list.forEach((i: any) => {
-          if (i && i.id && i.name) {
-            map.set(String(i.id), {
-              id: String(i.id),
-              name: String(i.name),
-              code: String(i.code || ''),
-              address: String(i.address || '')
-            });
-          }
-        });
-        const merged = Array.from(map.values());
-        setInstitutes(merged);
+      if (Array.isArray(list)) {
+        const cleanList: Institute[] = list
+          .filter((i: any) => i && (i.id || i._id) && i.name)
+          .map((i: any) => ({
+            id: String(i.id || i._id),
+            name: String(i.name),
+            code: String(i.code || 'SCH001'),
+            address: String(i.address || '')
+          }));
+
+        setInstitutes(cleanList);
         try {
-          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(merged));
+          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Preserve current user selection if still valid!
+        // Preserve user selection if valid, otherwise select the first live school from Firestore
         setInstituteId(prev => {
-          if (prev && merged.some(i => i.id === prev)) return prev;
-          const def = merged.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || merged[0];
-          return def ? def.id : '';
+          if (prev && cleanList.some(i => i.id === prev)) return prev;
+          return cleanList.length > 0 ? cleanList[0].id : '';
         });
       }
     } catch (err) {
-      console.warn('Institute fetch failed, keeping available cached institutes:', err);
+      console.warn('Institute fetch failed:', err);
       setInstitutesError(true);
       if (!isRetry) {
         setTimeout(() => fetchInstitutes(true), 3000);
@@ -314,8 +303,7 @@ function Login() {
     if (cfg.needsSchool) {
       setInstituteId(prev => {
         if (prev && institutes.some(i => i.id === prev)) return prev;
-        const def = institutes.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
-        return def ? def.id : '';
+        return institutes.length > 0 ? institutes[0].id : '';
       });
     } else {
       setInstituteId('');
@@ -537,8 +525,7 @@ function Login() {
                     if (cfg.needsSchool) {
                       setInstituteId(prev => {
                         if (prev && institutes.some(i => i.id === prev)) return prev;
-                        const def = institutes.find(i => i.id === 'sch-1789773642845' || i.name.includes('BSMV') || i.id === 'school-greenwood-001' || i.id === '00000000-0000-0000-0000-000000000001' || i.name.includes('Greenwood')) || institutes[0];
-                        return def ? def.id : '';
+                        return institutes.length > 0 ? institutes[0].id : '';
                       });
                     }
                   }}
@@ -586,11 +573,11 @@ function Login() {
                       <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
                       <div className="as-simple-inst-summary">
                         <span className="as-simple-inst-name">
-                          {selectedInstitute?.name || 'Choose your school...'}
+                          {selectedInstitute?.name || (institutesLoading ? 'Connecting to Cloud Firestore...' : 'Choose your school...')}
                         </span>
                         {selectedInstitute && (
                           <span className="as-simple-inst-code">
-                            Code: {selectedInstitute.code || 'GIS001'} · {selectedInstitute.address || 'Main Campus'}
+                            Code: {selectedInstitute.code || 'SCH'} · {selectedInstitute.address || 'Main Campus'}
                           </span>
                         )}
                       </div>
@@ -627,15 +614,20 @@ function Login() {
                         </button>
                       </div>
                       <div className="as-inst-popover-list" role="listbox">
-                        {filteredInstitutes.length === 0 ? (
+                        {institutesLoading && institutes.length === 0 ? (
                           <div className="as-inst-empty">
-                            <div>No institutes match your search</div>
+                            <RefreshCw size={14} className="spin" style={{ margin: '0 auto 6px', display: 'block', color: '#60a5fa' }} />
+                            <div>Connecting to Cloud Firestore...</div>
+                          </div>
+                        ) : filteredInstitutes.length === 0 ? (
+                          <div className="as-inst-empty">
+                            <div>{institutes.length === 0 ? 'No active schools found in database' : 'No institutes match your search'}</div>
                             <button
                               type="button"
                               onClick={() => { setInstituteSearch(''); fetchInstitutes(); }}
                               style={{ marginTop: 8, display: 'inline-block', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', fontWeight: 600 }}
                             >
-                              Reset search and reload
+                              {institutes.length === 0 ? 'Reload from Firestore' : 'Reset search'}
                             </button>
                           </div>
                         ) : (
@@ -1480,7 +1472,7 @@ function SuperAdminHeader({
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Enrolled School</span>
                     <span className="super-detail-value" style={{ color: '#2563eb' }}>
-                      {detailItem.meta?.schoolName || detailItem.meta?.school?.name || 'Greenwood International School'}
+                      {detailItem.meta?.schoolName || detailItem.meta?.school?.name || 'Institutional Campus'}
                     </span>
                   </div>
                   <div className="super-detail-cell">
@@ -1539,7 +1531,7 @@ function SuperAdminHeader({
                   </div>
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Client School</span>
-                    <span className="super-detail-value">{detailItem.meta?.school || 'Greenwood'}</span>
+                    <span className="super-detail-value">{detailItem.meta?.school || 'Institution'}</span>
                   </div>
                   <div className="super-detail-cell">
                     <span className="super-detail-label">Tier / Service</span>
@@ -1825,8 +1817,8 @@ function Layout({children}:{children:React.ReactNode}){
     user.role==='TEACHER'?teacherLinks:
     adminLinks;
 
-  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'Greenwood International School');
-  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'GIS001';
+  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
+  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || storedSession || '2025–26';
   const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
@@ -2339,12 +2331,12 @@ function AdminHome(){
           <span>Institutional Administration Portal</span>
           <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
         </div>
-        <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Greenwood International School'}</h1>
+        <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Institutional Campus'}</h1>
         <p className="hero-school-desc">
           Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
         </p>
         <div className="hero-meta-row">
-          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || 'GIS001'}</b></span>
+          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || 'SCH'}</b></span>
           <span>📅 Session: <b>{data?.activeAcademicYear?.name || '2026-27'}</b></span>
           <span>📞 Enquiry: <b>{school?.enquiry_number || '1800-999-000'}</b></span>
           <span>🛡️ Plan: <b>{sub?.plan_name || 'Enterprise'}</b></span>

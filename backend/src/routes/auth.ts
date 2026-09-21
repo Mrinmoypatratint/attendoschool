@@ -9,17 +9,35 @@ import { findDemoUser } from '../store/demoUsers';
 import { demoSchools } from './superAdmin';
 import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 import { sendPasswordResetEmail } from '../services/emailService';
+import { isFirebaseConfigured, collections } from '../firebase';
 
 const router = Router();
 
 export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
 import { isSameSchool, canonicalSchoolId, isTestSchool } from '../utils/tenant';
 
-// GET /api/auth/institutes - Public active institutes for multi-tenant selector
+// GET /api/auth/institutes - Public active institutes for multi-tenant selector (Direct Cloud Firestore)
 router.get('/institutes', async (_req, res) => {
-  const combinedMap = new Map<string, { id: string; name: string; code: string; address: string }>();
+  // 1. Direct Firebase Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const fsSchools = await getFirestoreSchools();
+      const list = fsSchools
+        .filter((s: any) => s && s.name && s.status !== 'SUSPENDED' && s.status !== 'DELETED')
+        .map((s: any) => ({
+          id: String(s.id),
+          name: String(s.name),
+          code: String(s.code || 'SCH001'),
+          address: String(s.address || s.city || 'Main Campus')
+        }));
 
-  // 1. PostgreSQL (Ground truth for multi-tenant relational data)
+      return res.json(list);
+    } catch (err: any) {
+      console.error('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
+    }
+  }
+
+  // 2. PostgreSQL fallback only if Firebase is completely unconfigured
   try {
     const q = await pool.query(
       `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
@@ -27,66 +45,17 @@ router.get('/institutes', async (_req, res) => {
        WHERE status = 'ACTIVE'
        ORDER BY name ASC`
     );
-    if (q.rows) {
-      for (const s of q.rows) {
-        const key = (s.code || s.name).toUpperCase();
-        combinedMap.set(key, {
-          id: s.id,
-          name: s.name,
-          code: s.code || 'SCH001',
-          address: s.address || 'Main Campus'
-        });
-      }
+    if (q.rows && q.rows.length > 0) {
+      return res.json(q.rows.map(s => ({
+        id: s.id,
+        name: s.name,
+        code: s.code || 'SCH001',
+        address: s.address || 'Main Campus'
+      })));
     }
   } catch (_e) {}
 
-  // 2. Firebase Cloud Firestore
-  try {
-    const fsSchools = await getFirestoreSchools();
-    if (fsSchools && fsSchools.length > 0) {
-      for (const s of fsSchools) {
-        if (s.status === 'ACTIVE') {
-          const key = (s.code || s.name).toUpperCase();
-          if (!combinedMap.has(key)) {
-            combinedMap.set(key, {
-              id: s.id,
-              name: s.name,
-              code: s.code || 'SCH001',
-              address: s.address || 'Main Campus'
-            });
-          }
-        }
-      }
-    }
-  } catch (_e) {}
-
-  // 3. Fallback active demo schools
-  for (const s of demoSchools) {
-    if (s.status === 'ACTIVE') {
-      const key = (s.code || s.name).toUpperCase();
-      if (!combinedMap.has(key)) {
-        combinedMap.set(key, {
-          id: s.id,
-          name: s.name,
-          code: s.code || 'SCH001',
-          address: 'Main Campus'
-        });
-      }
-    }
-  }
-
-  // Ensure Greenwood is present with standard ID
-  if (!combinedMap.has('GIS001') && !combinedMap.has('GREENWOOD INTERNATIONAL SCHOOL')) {
-    combinedMap.set('GIS001', {
-      id: '00000000-0000-0000-0000-000000000001',
-      name: 'Greenwood International School',
-      code: 'GIS001',
-      address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka'
-    });
-  }
-
-  const result = Array.from(combinedMap.values());
-  return res.json(result);
+  return res.json([]);
 });
 
 function roleMatches(userRole: string, expectedRole?: string): boolean {

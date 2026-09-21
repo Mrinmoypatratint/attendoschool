@@ -107,27 +107,13 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
     }
 
     if (!school) {
-      const demo = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid));
-      if (demo) {
-        school = {
-          id: demo.id,
-          name: demo.name,
-          code: demo.code || 'SCH001',
-          status: demo.status || 'ACTIVE',
-          enquiry_number: demo.enquiry_number || '1800123456',
-          address: demo.address || 'Campus 4, Tech Park Boulevard, Bengaluru'
-        };
-      }
-    }
-
-    if (!school) {
       school = {
         id: sid,
-        name: isTestSchool(sid) ? 'Greenwood International School' : (req.user?.schoolName || 'Institutional Campus'),
-        code: isTestSchool(sid) ? 'GIS001' : ((req.user as any)?.schoolCode || 'SCH001'),
+        name: req.user?.schoolName || 'Institutional Campus',
+        code: (req.user as any)?.schoolCode || 'SCH001',
         status: 'ACTIVE',
         enquiry_number: '1800123456',
-        address: isTestSchool(sid) ? 'Campus 4, Tech Park Boulevard, Bengaluru' : 'Campus Main'
+        address: 'Main Campus'
       };
     }
 
@@ -294,13 +280,13 @@ r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN'), async (req: AuthRequ
     } catch {}
 
     if (!matchedSchool) {
-      matchedSchool = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid)) || {
+      matchedSchool = {
         id: sid,
-        name: isTestSchool(sid) ? 'Greenwood International School' : (req.user?.schoolName || 'Institutional Campus'),
-        code: isTestSchool(sid) ? 'GIS001' : ((req.user as any)?.schoolCode || 'SCH001'),
+        name: req.user?.schoolName || 'Institutional Campus',
+        code: (req.user as any)?.schoolCode || 'SCH001',
         status: 'ACTIVE',
         enquiry_number: '1800123456',
-        address: isTestSchool(sid) ? 'Campus 4, Tech Park Boulevard, Bengaluru' : 'Campus Main'
+        address: 'Main Campus'
       };
     }
 

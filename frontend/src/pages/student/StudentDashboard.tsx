@@ -83,7 +83,7 @@ export function StudentDashboard() {
           <div className="student-greeting-meta">
             <span className="student-meta-pill">{student?.className || 'Class 10'} · Section {student?.sectionName || 'A'}</span>
             <span className="student-meta-pill">Roll #{student?.rollNumber || '25'}</span>
-            <span className="student-meta-pill student-meta-school">{student?.schoolName || 'Greenwood International School'}</span>
+            <span className="student-meta-pill student-meta-school">{student?.schoolName || 'AttendoSchool'}</span>
           </div>
         </div>
 

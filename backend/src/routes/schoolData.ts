@@ -1146,27 +1146,13 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
   }
  } catch {}
 
- const demo = demoSchools.find(s => s.id === sid || isSameSchool(s.id, sid));
- if (demo) {
-  return res.json({
-   id: demo.id,
-   name: demo.name,
-   code: demo.code || 'SCH001',
-   status: demo.status || 'ACTIVE',
-   enquiry_number: demo.enquiry_number || '1800123456',
-   contact_number: demo.enquiry_number || '1800123456',
-   address: demo.address || 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka',
-   website: demo.website || ''
-  });
- }
-
  res.json({
   id: sid,
-  name: 'Greenwood International School',
-  code: 'GIS001',
+  name: req.user?.schoolName || 'Institutional Campus',
+  code: (req.user as any)?.schoolCode || 'SCH001',
   status: 'ACTIVE',
   enquiry_number: '1800123456',
-  address: 'Campus 4, Tech Park Boulevard, Bengaluru, Karnataka'
+  address: 'Main Campus'
  });
 });
 

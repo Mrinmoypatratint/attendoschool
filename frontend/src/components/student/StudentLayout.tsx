@@ -66,7 +66,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const studentClass = user?.className && user?.sectionName 
     ? `${user.className} - Section ${user.sectionName}` 
     : 'Class 10 - Section A';
-  const schoolName = user?.schoolName || 'Greenwood International School';
+  const schoolName = user?.schoolName || 'AttendoSchool';
 
   return (
     <div className="student-portal-root">

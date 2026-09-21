@@ -57,56 +57,8 @@ export const InvoicesManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiRequest<InvoiceRecord[]>('/invoices').catch(() => [
-        {
-          id: 'inv-001',
-          invoice_number: 'INV-2025-001',
-          receipt_number: 'REC-2025-001',
-          school_name: 'Greenwood International School',
-          school_code: 'GWIS-2025',
-          amount: 1999,
-          taxable_amount: 1694.07,
-          gst_rate: 18,
-          gst_amount: 304.93,
-          currency: 'INR',
-          status: 'PAID',
-          issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-          billing_address: 'Plot 42, Knowledge Park III, Greater Bengaluru, KA'
-        },
-        {
-          id: 'inv-002',
-          invoice_number: 'INV-2025-002',
-          receipt_number: 'REC-2025-002',
-          school_name: 'Delhi Public Academy',
-          school_code: 'DPA-2025',
-          amount: 999,
-          taxable_amount: 846.61,
-          gst_rate: 18,
-          gst_amount: 152.39,
-          currency: 'INR',
-          status: 'PAID',
-          issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-          paid_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-          billing_address: 'Sector 14, Institutional Area, New Delhi 110001'
-        },
-        {
-          id: 'inv-003',
-          invoice_number: 'INV-2025-003',
-          receipt_number: 'REC-2025-003',
-          school_name: 'St. Xavier High School',
-          school_code: 'SXHS-2025',
-          amount: 499,
-          taxable_amount: 422.88,
-          gst_rate: 18,
-          gst_amount: 76.12,
-          currency: 'INR',
-          status: 'PENDING',
-          issued_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-          billing_address: 'Park Street Campus, Central Boulevard, Kolkata 700016'
-        }
-      ]);
-      setInvoices(data);
+      const data = await apiRequest<InvoiceRecord[]>('/invoices').catch(() => []);
+      setInvoices(data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load institutional tax invoices');
     } finally {

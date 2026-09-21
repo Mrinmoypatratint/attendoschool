@@ -39,14 +39,37 @@ export async function createFirestoreUser(user: Omit<FirestoreUser, 'id'>, custo
  * School lookups
  */
 export async function getFirestoreSchools(): Promise<FirestoreSchool[]> {
-  const snapshot = await collections.schools().orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, ...(d.data() as any) }));
+  const snapshot = await collections.schools().get();
+  const list = snapshot.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, ...(d.data() as any) }));
+  return list.sort((a: any, b: any) => {
+    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (tb !== ta) return tb - ta;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
 }
 
 export async function getFirestoreSchoolById(id: string): Promise<FirestoreSchool | null> {
+  if (!id) return null;
+  // 1. Direct document by ID
   const doc = await collections.schools().doc(id).get();
-  if (!doc.exists) return null;
-  return { id: doc.id, ...(doc.data() as any) };
+  if (doc.exists) return { id: doc.id, ...(doc.data() as any) };
+
+  // 2. Query where 'id' field matches
+  const byId = await collections.schools().where('id', '==', id).limit(1).get();
+  if (!byId.empty) {
+    const d = byId.docs[0];
+    return { id: d.id, ...(d.data() as any) };
+  }
+
+  // 3. Query where 'code' matches
+  const byCode = await collections.schools().where('code', '==', id.toUpperCase()).limit(1).get();
+  if (!byCode.empty) {
+    const d = byCode.docs[0];
+    return { id: d.id, ...(d.data() as any) };
+  }
+
+  return null;
 }
 
 export async function createFirestoreSchool(school: Omit<FirestoreSchool, 'id'>, customId?: string): Promise<FirestoreSchool> {

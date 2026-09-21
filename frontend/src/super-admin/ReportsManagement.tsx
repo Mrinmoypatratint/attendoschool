@@ -68,8 +68,7 @@ export const ReportsManagement: React.FC = () => {
           setSchools(res.data.map((s: any) => ({ id: s.id, name: s.name, code: s.code })));
         }
       } catch {
-        // Fallback default demo school
-        setSchools([{ id: '00000000-0000-0000-0000-000000000001', name: 'Greenwood International School', code: 'GWIS-2025' }]);
+        setSchools([]);
       }
     }
     fetchSchools();

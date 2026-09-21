@@ -38,16 +38,7 @@ export const PlatformAnalytics: React.FC = () => {
           expiredSubscriptions: 0,
           totalRevenue: 1999
         })),
-        apiRequest<SchoolRanking[]>('/analytics/rankings').catch(() => [
-          {
-            id: 'demo-1',
-            name: 'Greenwood International School',
-            code: 'GWIS-2025',
-            students: 6,
-            teachers: 2,
-            attendance_percentage: 92.4
-          }
-        ]),
+        apiRequest<SchoolRanking[]>('/analytics/rankings').catch(() => []),
         apiRequest<SchoolRecord[]>('/super-admin/schools').catch(() => [])
       ]);
       setStats(platformData);

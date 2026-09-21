@@ -403,8 +403,10 @@ r.get('/schools',async(_req,res)=>{
           computed_status: d.status || 'ACTIVE'
         };
       });
-      if (list.length > 0) return res.json(list);
-    } catch {}
+      return res.json(list);
+    } catch (err: any) {
+      console.error('[SuperAdmin] Error fetching schools from Firestore:', err.message);
+    }
   }
  try {
   const q=await pool.query(`SELECT s.id,s.name,s.code,s.status,s.enquiry_number,

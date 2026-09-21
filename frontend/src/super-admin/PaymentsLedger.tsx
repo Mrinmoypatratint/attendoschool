@@ -321,7 +321,7 @@ export const PaymentsLedger: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ fontWeight: '600', color: '#0f172a' }}>
-                          {p.school_name || 'Greenwood International School'}
+                          {p.school_name || '—'}
                         </div>
                       </td>
                       <td>
