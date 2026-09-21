@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { studentApi, TimetableEntry } from '../../services/studentApi';
+import { studentApi, TimetableEntry, StudentProfile } from '../../services/studentApi';
 
 export function StudentTimetable() {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number>(() => {
     const d = new Date().getDay();
@@ -21,6 +22,7 @@ export function StudentTimetable() {
   ];
 
   useEffect(() => {
+    studentApi.getProfile().then((p) => setProfile(p)).catch(() => {});
     studentApi
       .getTimetable()
       .then((res) => {
@@ -43,7 +45,7 @@ export function StudentTimetable() {
           </Link>
           <h1 className="student-subpage-title">Weekly Class Timetable</h1>
           <p className="student-subpage-desc">
-            Official class schedule and room allocations for Class 10 - Section A.
+            Official class schedule and room allocations {profile ? `for ${profile.className} · Section ${profile.sectionName}` : 'for your enrolled class and section'}.
           </p>
         </div>
       </div>
@@ -97,7 +99,7 @@ export function StudentTimetable() {
                     <td className="time-cell">{e.start_time?.slice(0, 5)} - {e.end_time?.slice(0, 5)}</td>
                     <td className="subject-cell font-semibold">{e.subject_name}</td>
                     <td>{e.teacher_name}</td>
-                    <td className="room-cell">{e.room || `A-10${idx + 1}`}</td>
+                    <td className="room-cell">{e.room || `Room ${profile?.classNumber || 10}`}</td>
                   </tr>
                 ))}
               </tbody>

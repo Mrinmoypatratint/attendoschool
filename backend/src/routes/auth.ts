@@ -114,12 +114,36 @@ router.post('/login', async (req, res) => {
       };
 
       if (role === 'STUDENT') {
-        userPayload.studentId = fUser.id;
-        userPayload.classId = (fUser as any).classId || (isTestSchool(fUser.schoolId) ? 'cls-10' : '');
-        userPayload.sectionId = (fUser as any).sectionId || (isTestSchool(fUser.schoolId) ? 'sec-10-a' : '');
-        userPayload.className = (fUser as any).className || (isTestSchool(fUser.schoolId) ? 'Class 10' : '');
-        userPayload.sectionName = (fUser as any).sectionName || (isTestSchool(fUser.schoolId) ? 'Section A' : '');
-        userPayload.rollNumber = (fUser as any).rollNumber || (isTestSchool(fUser.schoolId) ? '25' : '');
+        let matchedStudent: any = null;
+        try {
+          const sSnap = await collections.students().get();
+          for (const sDoc of sSnap.docs) {
+            const sd = sDoc.data();
+            const docSid = sd.school_id || sd.schoolId;
+            if (docSid && !isSameSchool(docSid, fUser.schoolId)) continue;
+            const matches =
+              sDoc.id === fUser.id ||
+              sd.id === fUser.id ||
+              String(sd.user_id || sd.userId) === fUser.id ||
+              (sd.email && sd.email.toLowerCase() === fUser.email.toLowerCase()) ||
+              (sd.student_email && sd.student_email.toLowerCase() === fUser.email.toLowerCase());
+            if (matches) {
+              matchedStudent = { id: sDoc.id, ...sd };
+              break;
+            }
+          }
+        } catch {}
+
+        const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? matchedStudent?.className ?? (fUser as any).classNumber ?? 10;
+        const sName = matchedStudent?.section_name || matchedStudent?.sectionName || matchedStudent?.section || (fUser as any).sectionName || 'A';
+        const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+
+        userPayload.studentId = matchedStudent?.id || fUser.id;
+        userPayload.classId = matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`;
+        userPayload.sectionId = matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`;
+        userPayload.className = `Class ${cNum}`;
+        userPayload.sectionName = `Section ${cleanSName}`;
+        userPayload.rollNumber = String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1');
         userPayload.schoolName = userPayload.schoolName;
       }
 

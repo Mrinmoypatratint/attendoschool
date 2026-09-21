@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
-import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap } from 'lucide-react';
+import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles } from 'lucide-react';
 
 const DAYS = [
   { num: 1, name: 'Monday', short: 'Mon' },
@@ -15,6 +15,7 @@ const DAYS = [
 export default function Timetable() {
   const { user } = useAuth();
   const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
 
   // ── State ──
   const [periods, setPeriods] = useState<any[]>([]);
@@ -24,6 +25,8 @@ export default function Timetable() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+  const [viewMode, setViewMode] = useState<'class' | 'mySchedule'>('class');
 
   // Filters
   const [selDay, setSelDay] = useState(() => { const d = new Date().getDay(); return d === 0 || d > 6 ? 1 : d; });
@@ -70,11 +73,56 @@ export default function Timetable() {
   // Set default class/section when data loads
   useEffect(() => {
     if (classes.length > 0 && !selClassId) setSelClassId(classes[0].id);
-  }, [classes]);
+  }, [classes, selClassId]);
   useEffect(() => {
     const avail = sections.filter(s => s.class_id === selClassId || String(s.class_number) === String(classes.find(c=>c.id===selClassId)?.class_number));
     if (avail.length > 0 && !avail.find(s => s.id === selSectionId)) setSelSectionId(avail[0].id);
-  }, [selClassId, sections]);
+  }, [selClassId, sections, selSectionId, classes]);
+
+  // Teacher identity helper
+  const isMyEntry = (entry: any) => {
+    if (!isTeacher || !entry) return false;
+    const tId = String(entry.teacher_id || entry.teacherId || '');
+    const subId = String(entry.substitute_teacher_id || entry.altTeacherId || entry.substituteTeacherId || '');
+    const tName = (entry.teacher_name || entry.teacherName || '').toLowerCase().trim();
+    const subName = (entry.substitute_teacher_name || entry.altTeacherName || '').toLowerCase().trim();
+    const uName = (user?.name || '').toLowerCase().trim();
+    const uId = String(user?.id || '');
+    const uTeacherId = String((user as any)?.teacher_id || '');
+
+    if (tId && (tId === uId || (uTeacherId && tId === uTeacherId))) return true;
+    if (subId && (subId === uId || (uTeacherId && subId === uTeacherId))) return true;
+    if (tName && uName && (tName === uName || tName.includes(uName) || uName.includes(tName))) return true;
+    if (subName && uName && (subName === uName || subName.includes(uName) || uName.includes(subName))) return true;
+    return false;
+  };
+
+  // Auto-select the teacher's assigned class on initial load
+  useEffect(() => {
+    if (isTeacher && !hasAutoSelected && entries.length > 0 && classes.length > 0) {
+      const myEntry = entries.find(e => isMyEntry(e));
+      if (myEntry) {
+        const cId = myEntry.class_id || myEntry.classId;
+        const sId = myEntry.section_id || myEntry.sectionId;
+        if (cId && classes.some(c => c.id === cId)) {
+          setSelClassId(cId);
+          if (sId) setSelSectionId(sId);
+          if (myEntry.day_of_week) setSelDay(Number(myEntry.day_of_week));
+        }
+      }
+      setHasAutoSelected(true);
+    }
+  }, [entries, isTeacher, classes, hasAutoSelected]);
+
+  // All weekly entries assigned to the teacher
+  const myWeeklyEntries = useMemo(() => {
+    if (!isTeacher) return [];
+    return entries
+      .filter(e => isMyEntry(e))
+      .sort((a, b) => (Number(a.day_of_week ?? a.dayOfWeek ?? 0) - Number(b.day_of_week ?? b.dayOfWeek ?? 0)) ||
+                      (Number(a.period_number ?? a.periodNumber ?? 0) - Number(b.period_number ?? b.periodNumber ?? 0)) ||
+                      (a.start_time || '').localeCompare(b.start_time || ''));
+  }, [entries, isTeacher]);
 
   // ── Derived ──
   const selClassName = classes.find(c => c.id === selClassId)?.class_number || '';
@@ -305,183 +353,363 @@ export default function Timetable() {
       </div>
     )}
 
-    {/* ── Filters: Class, Section, Day ── */}
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-        <Layers size={14} /> Class:
-        <select value={selClassId} onChange={e => setSelClassId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
-          {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
-        </select>
-      </label>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-        Section:
-        <select value={selSectionId} onChange={e => setSelSectionId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
-          {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </label>
-    </div>
-
-    {/* ── Day Tabs ── */}
-    <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-      {DAYS.map(d => (
-        <button key={d.num}
-          onClick={() => setSelDay(d.num)}
-          style={{
-            padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-            background: selDay === d.num ? '#2563eb' : 'var(--card)',
-            color: selDay === d.num ? '#fff' : 'var(--text)',
-            boxShadow: selDay === d.num ? '0 2px 8px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
-            transition: 'all 0.15s ease'
-          }}
-        >{d.name}</button>
-      ))}
-    </div>
-
-    {/* ── Period Grid for Selected Day ── */}
-    <div className="panel" style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 16 }}>
-          <Calendar size={16} style={{ marginRight: 6 }} />
-          {DAYS.find(d => d.num === selDay)?.name} — Class {selClassName} Section {selSectionName}
-        </h3>
-        <span className="muted" style={{ fontSize: 12 }}>{dayEntries.length} of {teachingPeriods.length} periods assigned</span>
+    {/* ── Teacher View Switcher (Class View vs My Schedule) ── */}
+    {isTeacher && (
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+          <button
+            onClick={() => setViewMode('class')}
+            style={{
+              padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              background: viewMode === 'class' ? '#2563eb' : 'transparent',
+              color: viewMode === 'class' ? '#fff' : 'var(--text)'
+            }}
+          >
+            Class Timetable View
+          </button>
+          <button
+            onClick={() => setViewMode('mySchedule')}
+            style={{
+              padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              background: viewMode === 'mySchedule' ? '#2563eb' : 'transparent',
+              color: viewMode === 'mySchedule' ? '#fff' : 'var(--text)',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <Sparkles size={14} /> My Teaching Schedule ({myWeeklyEntries.length})
+          </button>
+        </div>
       </div>
+    )}
 
-      {periods.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--card)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
-          <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
-          <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
-          <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
-            {isSchoolAdmin
-              ? 'This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.'
-              : 'No timetable period slots have been configured by the school administration yet.'}
-          </p>
-          {isSchoolAdmin && (
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-                style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-                <Plus size={16} /> Add First Period Slot
-              </button>
-              <button onClick={loadTemplatePeriods}
-                style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-                ⚡ Load Standard 6-Period Template (Optional)
-              </button>
+    {/* ── Dedicated View: My Teaching Schedule ── */}
+    {isTeacher && viewMode === 'mySchedule' ? (
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16 }}>My Assigned Teaching Routine ({myWeeklyEntries.length} Periods)</h3>
+            <p className="muted" style={{ margin: '3px 0 0', fontSize: 13 }}>
+              All periods assigned to you by school administration across Monday to Saturday. Click "Take Attendance" to mark roll-call.
+            </p>
+          </div>
+          <a
+            href="#/take-attendance"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 6,
+              background: '#2563eb', color: '#fff', textDecoration: 'none', fontSize: 12, fontWeight: 600
+            }}
+          >
+            <ClipboardCheck size={14} /> Open Attendance Station
+          </a>
+        </div>
+
+        {myWeeklyEntries.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+            <Calendar size={36} style={{ color: '#2563eb', marginBottom: 10, opacity: 0.8 }} />
+            <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No routine periods assigned yet</p>
+            <p className="muted" style={{ margin: '0 auto', maxWidth: 450, fontSize: 13 }}>
+              Your school administrator has not scheduled any routine periods for your faculty account yet. You can still view the school timetable under "Class Timetable View".
+            </p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Period</th>
+                  <th>Time</th>
+                  <th>Class & Section</th>
+                  <th>Subject</th>
+                  <th>Room</th>
+                  <th>Role</th>
+                  <th style={{ textAlign: 'right', width: 140 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myWeeklyEntries.map(e => {
+                  const dayName = DAYS.find(d => d.num === Number(e.day_of_week ?? e.dayOfWeek))?.name || `Day ${e.day_of_week}`;
+                  const isSub = Boolean(e.substitute_teacher_id && String(e.substitute_teacher_id) === String(user?.id));
+                  return (
+                    <tr key={e.id} style={{ background: 'rgba(16, 185, 129, 0.03)' }}>
+                      <td><b>{dayName}</b></td>
+                      <td>{e.period_name || `Period ${e.period_number || 1}`}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.start_time} – {e.end_time}</td>
+                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 700 }}>Class {e.class_number}-{e.section_name}</span></td>
+                      <td><b>{e.subject_name || '—'}</b></td>
+                      <td>{e.room_name || '—'}</td>
+                      <td>
+                        {isSub ? (
+                          <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Substitute</span>
+                        ) : (
+                          <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 11 }}>Faculty</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <a
+                          href={`#/take-attendance?routine=${e.id}&classId=${e.class_id || e.classId}&sectionId=${e.section_id || e.sectionId}&subjectId=${e.subject_id || e.subjectId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            background: '#10b981',
+                            color: '#fff',
+                            textDecoration: 'none',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                        >
+                          <ClipboardCheck size={13} /> Take Attendance
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    ) : (
+      <>
+        {/* ── Filters: Class, Section, Day ── */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
+            <Layers size={14} /> Class:
+            <select value={selClassId} onChange={e => setSelClassId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
+              {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
+            Section:
+            <select value={selSectionId} onChange={e => setSelSectionId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
+              {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {/* ── Day Tabs ── */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
+          {DAYS.map(d => (
+            <button key={d.num}
+              onClick={() => setSelDay(d.num)}
+              style={{
+                padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                background: selDay === d.num ? '#2563eb' : 'var(--card)',
+                color: selDay === d.num ? '#fff' : 'var(--text)',
+                boxShadow: selDay === d.num ? '0 2px 8px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
+                transition: 'all 0.15s ease'
+              }}
+            >{d.name}</button>
+          ))}
+        </div>
+
+        {/* ── Period Grid for Selected Day ── */}
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>
+              <Calendar size={16} style={{ marginRight: 6 }} />
+              {DAYS.find(d => d.num === selDay)?.name} — Class {selClassName} Section {selSectionName}
+            </h3>
+            <span className="muted" style={{ fontSize: 12 }}>{dayEntries.length} of {teachingPeriods.length} periods assigned</span>
+          </div>
+
+          {periods.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--card)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
+              <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
+              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
+              <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
+                {isSchoolAdmin
+                  ? 'This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.'
+                  : 'No timetable period slots have been configured by the school administration yet.'}
+              </p>
+              {isSchoolAdmin && (
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
+                    style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                    <Plus size={16} /> Add First Period Slot
+                  </button>
+                  <button onClick={loadTemplatePeriods}
+                    style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                    ⚡ Load Standard 6-Period Template (Optional)
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>#</th>
+                    <th>Period</th>
+                    <th>Time</th>
+                    <th>Subject</th>
+                    <th>Faculty</th>
+                    <th>Alt. Faculty</th>
+                    <th>Room</th>
+                    {(isSchoolAdmin || isTeacher) && <th style={{ width: 140, textAlign: 'right' }}>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {periods.map(p => {
+                    const entry = periodEntryMap[p.id];
+                    const pNum = p.period_number ?? p.periodNumber ?? '';
+                    const pName = p.name || `Period ${pNum}`;
+                    const pStart = p.start_time ?? p.startTime ?? '';
+                    const pEnd = p.end_time ?? p.endTime ?? '';
+                    const pBreak = Boolean(p.is_break ?? p.isBreak);
+
+                    if (pBreak) {
+                      return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                        <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {pName} ({pStart} – {pEnd})</td>
+                        {(isSchoolAdmin || isTeacher) && <td></td>}
+                      </tr>;
+                    }
+                    if (entry) {
+                      const isMy = isMyEntry(entry);
+                      return <tr key={p.id} style={{
+                        background: isMy ? 'rgba(16, 185, 129, 0.05)' : undefined,
+                        borderLeft: isMy ? '3px solid #10b981' : undefined
+                      }}>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                        <td><b>{pName}</b></td>
+                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                        <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
+                        <td>
+                          <span style={{ fontWeight: isMy ? 700 : 500 }}>{entry.teacher_name || '—'}</span>
+                          {isMy && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
+                        </td>
+                        <td>{entry.substitute_teacher_name ? <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Alt: {entry.substitute_teacher_name}</span> : <span className="muted">—</span>}</td>
+                        <td>{entry.room_name || '—'}</td>
+                        {(isSchoolAdmin || isTeacher) && (
+                          <td style={{ textAlign: 'right' }}>
+                            {isSchoolAdmin && (
+                              <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
+                            )}
+                            {isTeacher && isMy && (
+                              <a
+                                href={`#/take-attendance?routine=${entry.id}&classId=${entry.class_id || entry.classId}&sectionId=${entry.section_id || entry.sectionId}&subjectId=${entry.subject_id || entry.subjectId}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  background: '#10b981',
+                                  color: '#fff',
+                                  textDecoration: 'none',
+                                  fontSize: 12,
+                                  fontWeight: 600
+                                }}
+                              >
+                                <ClipboardCheck size={13} /> Take Attendance
+                              </a>
+                            )}
+                            {isTeacher && !isMy && (
+                              <span className="muted" style={{ fontSize: 12 }}>—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>;
+                    }
+                    return <tr key={p.id} style={{ opacity: 0.7 }}>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                      <td><b>{pName}</b></td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                      <td colSpan={4} style={{ textAlign: 'center' }}>
+                        {isSchoolAdmin ? (
+                          <button onClick={() => openAddEntry(p.id)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                          >
+                            <Plus size={13} /> Assign Faculty & Subject
+                          </button>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
+                        )}
+                      </td>
+                      {(isSchoolAdmin || isTeacher) && <td></td>}
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 60 }}>#</th>
-                <th>Period</th>
-                <th>Time</th>
-                <th>Subject</th>
-                <th>Faculty</th>
-                <th>Alt. Faculty</th>
-                <th>Room</th>
-                {isSchoolAdmin && <th style={{ width: 80, textAlign: 'right' }}>Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {periods.map(p => {
-                const entry = periodEntryMap[p.id];
-                const pNum = p.period_number ?? p.periodNumber ?? '';
-                const pName = p.name || `Period ${pNum}`;
-                const pStart = p.start_time ?? p.startTime ?? '';
-                const pEnd = p.end_time ?? p.endTime ?? '';
-                const pBreak = Boolean(p.is_break ?? p.isBreak);
 
-                if (pBreak) {
-                  return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                    <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {pName} ({pStart} – {pEnd})</td>
-                    {isSchoolAdmin && <td></td>}
-                  </tr>;
-                }
-                if (entry) {
-                  return <tr key={p.id}>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                    <td><b>{pName}</b></td>
-                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
-                    <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
-                    <td><span style={{ fontWeight: 600 }}>{entry.teacher_name || '—'}</span></td>
-                    <td>{entry.substitute_teacher_name ? <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Alt: {entry.substitute_teacher_name}</span> : <span className="muted">—</span>}</td>
-                    <td>{entry.room_name || '—'}</td>
-                    {isSchoolAdmin && (
-                      <td style={{ textAlign: 'right' }}>
-                        <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
-                      </td>
-                    )}
-                  </tr>;
-                }
-                return <tr key={p.id} style={{ opacity: 0.7 }}>
-                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                  <td><b>{pName}</b></td>
-                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
-                  <td colSpan={4} style={{ textAlign: 'center' }}>
-                    {isSchoolAdmin ? (
-                      <button onClick={() => openAddEntry(p.id)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
-                      >
-                        <Plus size={13} /> Assign Faculty & Subject
-                      </button>
-                    ) : (
-                      <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
-                    )}
-                  </td>
-                  {isSchoolAdmin && <td></td>}
-                </tr>;
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-
-    {/* ── All Entries Overview ── */}
-    <div className="panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries (Class {selClassName}-{selSectionName})</h3>
-        {isSchoolAdmin && entries.length > 0 && (
-          <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Trash2 size={12} /> Clear All Entries
-          </button>
-        )}
-      </div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th></tr></thead>
-          <tbody>
-            {entries
-              .filter(e => e.class_id === selClassId && e.section_id === selSectionId)
-              .sort((a, b) => a.day_of_week - b.day_of_week || (a.period_number || 0) - (b.period_number || 0))
-              .map(e => (
-                <tr key={e.id}>
-                  <td>{DAYS.find(d => d.num === e.day_of_week)?.short || e.day_of_week}</td>
-                  <td>{e.period_name || '—'}</td>
-                  <td style={{ fontSize: 12 }}>{e.start_time} – {e.end_time}</td>
-                  <td><b>{e.subject_name || '—'}</b></td>
-                  <td>{e.teacher_name || '—'}</td>
-                  <td>{e.substitute_teacher_name || '—'}</td>
-                  <td>{e.room_name || '—'}</td>
-                  <td><span className={`badge ${e.status === 'PUBLISHED' ? 'sent' : 'queued'}`}>{e.status}</span></td>
-                </tr>
-              ))}
-            {entries.filter(e => e.class_id === selClassId && e.section_id === selSectionId).length === 0 && (
-              <tr>
-                <td colSpan={8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
-                  {isSchoolAdmin
-                    ? `No routine entries for Class ${selClassName}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
-                    : `No routine entries for Class ${selClassName}-${selSectionName} scheduled yet.`}
-                </td>
-              </tr>
+        {/* ── All Entries Overview ── */}
+        <div className="panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries (Class {selClassName}-{selSectionName})</h3>
+            {isSchoolAdmin && entries.length > 0 && (
+              <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Trash2 size={12} /> Clear All Entries
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th>{(isSchoolAdmin || isTeacher) && <th style={{ textAlign: 'right', width: 140 }}>Actions</th>}</tr></thead>
+              <tbody>
+                {entries
+                  .filter(e => e.class_id === selClassId && e.section_id === selSectionId)
+                  .sort((a, b) => a.day_of_week - b.day_of_week || (a.period_number || 0) - (b.period_number || 0))
+                  .map(e => (
+                    <tr key={e.id}>
+                      <td>{DAYS.find(d => d.num === e.day_of_week)?.short || e.day_of_week}</td>
+                      <td>{e.period_name || '—'}</td>
+                      <td style={{ fontSize: 12 }}>{e.start_time} – {e.end_time}</td>
+                      <td><b>{e.subject_name || '—'}</b></td>
+                      <td>{e.teacher_name || '—'}</td>
+                      <td>{e.substitute_teacher_name || '—'}</td>
+                      <td>{e.room_name || '—'}</td>
+                      <td><span className={`badge ${e.status === 'PUBLISHED' ? 'sent' : 'queued'}`}>{e.status}</span></td>
+                      {(isSchoolAdmin || isTeacher) && (
+                        <td style={{ textAlign: 'right' }}>
+                          {isTeacher && isMyEntry(e) && (
+                            <a
+                              href={`#/take-attendance?routine=${e.id}&classId=${e.class_id || e.classId}&sectionId=${e.section_id || e.sectionId}&subjectId=${e.subject_id || e.subjectId}`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                background: '#10b981',
+                                color: '#fff',
+                                textDecoration: 'none',
+                                fontSize: 11,
+                                fontWeight: 600
+                              }}
+                            >
+                              <ClipboardCheck size={12} /> Take Attendance
+                            </a>
+                          )}
+                          {isSchoolAdmin && (
+                            <button className="table-action-btn danger" onClick={() => deleteEntry(e.id)} title="Remove entry"><Trash2 size={12} /></button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                {entries.filter(e => e.class_id === selClassId && e.section_id === selSectionId).length === 0 && (
+                  <tr>
+                    <td colSpan={isSchoolAdmin || isTeacher ? 9 : 8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
+                      {isSchoolAdmin
+                        ? `No routine entries for Class ${selClassName}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
+                        : `No routine entries for Class ${selClassName}-${selSectionName} scheduled yet.`}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </>
+    )}
 
     {/* ══════════ ADD ENTRY MODAL ══════════ */}
     {isSchoolAdmin && addOpen && <div className="modal-backdrop" onClick={() => setAddOpen(false)}>

@@ -385,12 +385,20 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
       id: sessionId,
       schoolId: session.schoolId || session.school_id || null,
       classId: session.classId || session.class_id || null,
+      classNumber: session.classNumber ?? session.class_number ?? null,
+      class_number: session.class_number ?? session.classNumber ?? null,
       sectionId: session.sectionId || session.section_id || null,
+      sectionName: session.sectionName || session.section_name || '',
+      section_name: session.section_name || session.sectionName || '',
       subjectId: session.subjectId || session.subject_id || null,
+      subjectName: session.subjectName || session.subject_name || '',
+      subject_name: session.subject_name || session.subjectName || '',
       attendanceDate: session.attendanceDate || session.attendance_date || new Date().toISOString().slice(0, 10),
       startTime: session.startTime || session.start_time || '09:00:00',
       endTime: session.endTime || session.end_time || '09:45:00',
-      takenBy: session.takenBy || session.teacher_id || null,
+      takenBy: session.takenBy || session.teacher_id || session.teacherId || null,
+      teacherId: session.teacherId || session.teacher_id || session.takenBy || null,
+      teacher_id: session.teacher_id || session.teacherId || session.takenBy || null,
       createdAt: new Date().toISOString()
     }, { merge: true });
 

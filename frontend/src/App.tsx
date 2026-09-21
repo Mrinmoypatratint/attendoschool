@@ -2702,8 +2702,74 @@ function AdminHome(){
   </Layout>
 }
 
-function TeacherHome(){const {user}=useAuth();const [r,setR]=useState<any[]>([]);useEffect(()=>{api.get('/teacher/routine/today').then(x=>setR(x.data)).catch(()=>{})},[]);
-  return <Layout><div className="hero"><p className="eyebrow">TODAY'S ROUTINE</p><h1>Ready to take attendance.</h1><p>Checked students are marked present. Unchecked students are automatically marked absent when submitted.</p></div><div className="panel"><h3>Today's classes</h3>{r.length===0?<p className="muted">No routine assigned for today.</p>:r.map(x=><div className="routine-card" key={x.id}><div><b>Class {x.class_number}-{x.section_name}</b><span>{x.subject_name} · {fmt(x.start_time)}–{fmt(x.end_time)} {x.room?'· '+x.room:''}</span></div><button onClick={()=>location.href=`/take-attendance?routine=${x.id}`}>Take attendance →</button></div>)}</div></Layout>}
+function TeacherHome(){
+  const {user}=useAuth();
+  const nav=useNavigate();
+  const [r,setR]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    api.get('/teacher/routine/today')
+      .then(x=>setR(Array.isArray(x.data)?x.data:[]))
+      .catch(()=>setR([]))
+      .finally(()=>setLoading(false));
+  },[]);
+
+  return <Layout>
+    <div className="hero">
+      <p className="eyebrow">TODAY'S ROUTINE & ATTENDANCE</p>
+      <h1>Ready to take attendance.</h1>
+      <p>Your daily teaching schedule is synchronized directly from the school timetable. Click "Take attendance" to record classroom attendance.</p>
+    </div>
+    <div className="panel">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
+        <a href="#/timetable" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
+          View Full Weekly Timetable →
+        </a>
+      </div>
+      {loading ? (
+        <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's routine schedule...</p>
+      ) : r.length === 0 ? (
+        <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
+          <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
+            You do not have any timetable entries scheduled for today. You can view the full weekly timetable or take on-demand class attendance below.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+              View Weekly Timetable
+            </a>
+            <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
+              Open Attendance Station
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {r.map(x => (
+            <div className="routine-card" key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: 10, background: 'var(--card)', border: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <b style={{ fontSize: 15 }}>Class {x.class_number}-{x.section_name}</b>
+                  {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
+                </div>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  <b>{x.subject_name}</b> · {fmt(x.start_time)}–{fmt(x.end_time)} {x.room ? '· Room ' + x.room : ''}
+                </span>
+              </div>
+              <button
+                onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
+                style={{ padding: '8px 16px', borderRadius: 8, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+              >
+                Take attendance →
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </Layout>
+}
 
 /* ────── Students ────── */
 function Students(){
@@ -4178,7 +4244,22 @@ function Attendance(){
   const {user}=useAuth();
   const nav=useNavigate();
   const loc=useLocation();
-  const params=new URLSearchParams(loc.search);
+
+  const getQueryParam = (name: string) => {
+    const p = new URLSearchParams(loc.search).get(name);
+    if (p) return p;
+    try {
+      const hash = window.location.hash;
+      const qIdx = hash.indexOf('?');
+      if (qIdx !== -1) {
+        const hp = new URLSearchParams(hash.slice(qIdx)).get(name);
+        if (hp) return hp;
+      }
+      return new URLSearchParams(window.location.search).get(name);
+    } catch {
+      return null;
+    }
+  };
 
   const [classes,setClasses]=useState<any[]>([]);
   const [sections,setSections]=useState<any[]>([]);
@@ -4214,19 +4295,28 @@ function Attendance(){
         const rList = rRes.data || [];
         setRoutines(rList);
 
-        const routineId = params.get('routine');
-        const matched = routineId ? rList.find((r:any)=>r.id===routineId) : rList[0];
+        const routineId = getQueryParam('routine');
+        const classIdParam = getQueryParam('classId');
+        const sectionIdParam = getQueryParam('sectionId');
+        const subjectIdParam = getQueryParam('subjectId');
+
+        const matched = routineId
+          ? rList.find((r:any)=>r.id===routineId)
+          : (classIdParam ? rList.find((r:any)=>r.class_id===classIdParam && (!sectionIdParam || r.section_id===sectionIdParam)) : rList[0]);
+
         if (matched) {
           setActiveRoutine(matched);
           setSelectedClassId(matched.class_id);
           setSelectedSectionId(matched.section_id);
           setSelectedSubjectId(matched.subject_id);
-        } else if (cRes.data?.length > 0) {
-          const firstCls = cRes.data[0];
-          setSelectedClassId(firstCls.id);
-          const firstSec = (sRes.data || []).find((s:any)=>s.class_id === firstCls.id);
-          if (firstSec) setSelectedSectionId(firstSec.id);
-          if (subRes.data?.length > 0) setSelectedSubjectId(subRes.data[0].id);
+        } else {
+          const targetClassId = classIdParam || (cRes.data?.length > 0 ? cRes.data[0].id : '');
+          setSelectedClassId(targetClassId);
+          const availableSecs = (sRes.data || []).filter((s:any)=>s.class_id === targetClassId);
+          const targetSecId = sectionIdParam || (availableSecs.length > 0 ? availableSecs[0].id : '');
+          setSelectedSectionId(targetSecId);
+          const targetSubId = subjectIdParam || (subRes.data?.length > 0 ? subRes.data[0].id : '');
+          setSelectedSubjectId(targetSubId);
         }
       } catch (err) {
         console.error('Failed to load attendance station dependencies:', err);
@@ -4293,15 +4383,23 @@ function Attendance(){
       alert('Please select both Class and Section.');
       return;
     }
+    const cObj = classes.find(c => c.id === selectedClassId);
+    const sObj = sections.find(s => s.id === selectedSectionId);
+    const subObj = subjects.find(s => s.id === selectedSubjectId);
+
     setBusy(true);
     try {
       const res = await api.post('/teacher/attendance', {
         classId: selectedClassId,
+        classNumber: cObj?.class_number ?? null,
         sectionId: selectedSectionId,
+        sectionName: sObj?.name || '',
         subjectId: selectedSubjectId || null,
+        subjectName: subObj?.name || '',
         startTime: activeRoutine?.start_time ? fmt(activeRoutine.start_time) : '09:00:00',
         endTime: activeRoutine?.end_time ? fmt(activeRoutine.end_time) : '09:45:00',
         attendanceDate,
+        studentIds: students.map(s => s.id),
         presentStudentIds: students.filter(s => checked[s.id]).map(s => s.id)
       });
       setSummary(res.data);
@@ -4598,8 +4696,116 @@ function Attendance(){
 }
 
 /* ────── History ────── */
-function History(){const {user}=useAuth();const [rows,setRows]=useState<any[]>([]);useEffect(()=>{api.get('/teacher/attendance/history').then(x=>setRows(x.data)).catch(()=>{})},[]);
-  return <Layout><PageHead title="Attendance History" sub="Previously submitted attendance sessions."/><div className="table-wrap"><table><thead><tr><th>Date</th><th>Class</th><th>Subject</th><th>Time</th><th>Present</th><th>Absent</th></tr></thead><tbody>{rows.map(x=><tr key={x.id}><td>{new Date(x.attendance_date).toLocaleDateString()}</td><td>{x.class_number}-{x.section_name}</td><td>{x.subject_name||'—'}</td><td>{fmt(x.start_time)}–{fmt(x.end_time)}</td><td>{x.present}</td><td>{x.total-x.present}</td></tr>)}</tbody></table></div></Layout>}
+function History(){
+  const {user}=useAuth();
+  const [rows,setRows]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    api.get('/teacher/attendance/history')
+      .then(x=>setRows(Array.isArray(x.data)?x.data:[]))
+      .catch(()=>setRows([]))
+      .finally(()=>setLoading(false));
+  },[]);
+
+  const totalSessions = rows.length;
+  const totalStudents = rows.reduce((acc, r) => acc + (Number(r.total) || 0), 0);
+  const totalPresent = rows.reduce((acc, r) => acc + (Number(r.present) || 0), 0);
+  const totalAbsent = totalStudents - totalPresent;
+  const overallRate = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0;
+
+  return (
+    <Layout>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
+        <div>
+          <p className="eyebrow">ATTENDANCE AUDIT & HISTORY</p>
+          <h1 style={{ margin: 0, fontSize: 24 }}>Session Attendance History</h1>
+          <p className="muted" style={{ margin: '4px 0 0' }}>
+            Permanent record of all roll-call sessions submitted for your assigned classes.
+          </p>
+        </div>
+        <a href="#/take-attendance" className="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+          Take New Attendance →
+        </a>
+      </div>
+
+      {/* KPI Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
+        <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+          <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>TOTAL SESSIONS</span>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{totalSessions}</div>
+        </div>
+        <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+          <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>STUDENTS MARKED</span>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{totalStudents}</div>
+        </div>
+        <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+          <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>PRESENT COUNT</span>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: '#10b981' }}>{totalPresent}</div>
+        </div>
+        <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+          <span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ATTENDANCE RATE</span>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: overallRate >= 75 ? '#2563eb' : '#ea580c' }}>
+            {overallRate}%
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Class</th>
+                <th>Subject</th>
+                <th>Time Slot</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Turnout Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="muted" style={{ padding: 24, textAlign: 'center' }}>Loading attendance history...</td></tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="muted" style={{ padding: 32, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: 600, color: 'var(--text)' }}>No attendance sessions recorded yet</p>
+                    <p style={{ margin: 0, fontSize: 13 }}>Sessions will appear here in real-time as you submit daily class attendance.</p>
+                  </td>
+                </tr>
+              ) : (
+                rows.map(x => {
+                  const rate = x.total > 0 ? Math.round((x.present / x.total) * 100) : 0;
+                  const dateStr = x.attendance_date ? new Date(x.attendance_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+                  return (
+                    <tr key={x.id}>
+                      <td><b>{dateStr}</b></td>
+                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>Class {x.class_number}-{x.section_name}</span></td>
+                      <td><b>{x.subject_name || 'General'}</b></td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmt(x.start_time)} – {fmt(x.end_time)}</td>
+                      <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
+                      <td><span style={{ color: x.total - x.present > 0 ? '#dc2626' : 'var(--text-muted)', fontWeight: 600 }}>{x.total - x.present}</span></td>
+                      <td>
+                        <span className="badge" style={{
+                          background: rate >= 85 ? 'rgba(16,185,129,0.12)' : rate >= 70 ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
+                          color: rate >= 85 ? '#059669' : rate >= 70 ? '#2563eb' : '#dc2626',
+                          fontWeight: 700
+                        }}>
+                          {rate}% Present
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Layout>
+  );
+}
 
 /* ────── Notifications V11 & SMTP ────── */
 function NotificationCenter(){

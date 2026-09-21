@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
+import { collections, isFirebaseConfigured } from '../firebase';
+import { isSameSchool, isTestSchool } from '../utils/tenant';
+import { demoStudents } from '../routes/schoolData';
 
 /**
  * Resolves student record by authenticated user ID and school ID
  */
 async function resolveStudentRecord(schoolId: string, userId: string) {
+  // 1. Try PostgreSQL
   try {
     const q = await pool.query(
       `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name
@@ -12,7 +16,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id
-       WHERE st.school_id = $1 AND st.user_id = $2
+       WHERE st.school_id = $1 AND (st.user_id = $2 OR st.id = $2)
        LIMIT 1`,
       [schoolId, userId]
     );
@@ -21,7 +25,99 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
     }
   } catch (_e) {}
 
-  // Fallback demo student context
+  // 2. Query Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      let userEmail = '';
+      try {
+        const uDoc = await collections.users().doc(userId).get();
+        if (uDoc.exists) userEmail = uDoc.data()?.email || '';
+      } catch {}
+
+      const snap = await collections.students().get();
+      for (const doc of snap.docs) {
+        const d = doc.data();
+        const docSid = d.school_id || d.schoolId;
+        if (docSid && !isSameSchool(docSid, schoolId)) continue;
+
+        const matches =
+          doc.id === userId ||
+          d.id === userId ||
+          String(d.user_id || d.userId) === userId ||
+          (userEmail && d.email && d.email.toLowerCase() === userEmail.toLowerCase()) ||
+          (userEmail && d.student_email && d.student_email.toLowerCase() === userEmail.toLowerCase()) ||
+          (d.email && d.email.toLowerCase() === userId.toLowerCase()) ||
+          (d.student_email && d.student_email.toLowerCase() === userId.toLowerCase());
+
+        if (matches) {
+          const cNum = Number(d.class_number ?? d.classNumber ?? d.className ?? 10);
+          const sName = d.section_name || d.sectionName || d.section || 'A';
+          const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+
+          return {
+            id: doc.id,
+            school_id: docSid || schoolId,
+            user_id: d.user_id || d.userId || userId,
+            name: d.fullName || d.name || 'Student',
+            roll_number: String(d.roll_number || d.rollNumber || '1'),
+            admission_number: d.admission_number || d.admissionNumber || `ADM-${doc.id}`,
+            class_id: d.class_id || d.classId || `cls-${cNum}`,
+            class_number: cNum,
+            section_id: d.section_id || d.sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
+            section_name: cleanSName,
+            school_name: d.school_name || d.schoolName || 'Greenwood International School',
+            parent_name: d.parent_name || d.parentName || '',
+            parent_sms_number: d.parent_sms_number || d.parentPhone || '',
+            parent_email: d.parent_email || d.parentEmail || '',
+            date_of_birth: d.date_of_birth || d.dateOfBirth || '',
+            photo_url: d.photo_url || d.photoUrl || '/student-avatar.png'
+          };
+        }
+      }
+
+      // If no exact match and test school, use the first enrolled student doc in school
+      if (isTestSchool(schoolId)) {
+        for (const doc of snap.docs) {
+          const d = doc.data();
+          const docSid = d.school_id || d.schoolId;
+          if (!docSid || isSameSchool(docSid, schoolId)) {
+            const cNum = Number(d.class_number ?? d.classNumber ?? d.className ?? 10);
+            const sName = d.section_name || d.sectionName || d.section || 'A';
+            const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+            return {
+              id: doc.id,
+              school_id: docSid || schoolId,
+              user_id: d.user_id || d.userId || userId,
+              name: d.fullName || d.name || 'Student',
+              roll_number: String(d.roll_number || d.rollNumber || '1'),
+              admission_number: d.admission_number || d.admissionNumber || `ADM-${doc.id}`,
+              class_id: d.class_id || d.classId || `cls-${cNum}`,
+              class_number: cNum,
+              section_id: d.section_id || d.sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
+              section_name: cleanSName,
+              school_name: d.school_name || d.schoolName || 'Greenwood International School',
+              parent_name: d.parent_name || d.parentName || '',
+              parent_sms_number: d.parent_sms_number || d.parentPhone || '',
+              parent_email: d.parent_email || d.parentEmail || '',
+              date_of_birth: d.date_of_birth || d.dateOfBirth || '',
+              photo_url: d.photo_url || d.photoUrl || '/student-avatar.png'
+            };
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[StudentService] Error resolving student from Firestore:', err.message);
+    }
+  }
+
+  // 3. Match demoStudents
+  const matchDemo = demoStudents.find(s =>
+    (s.id === userId || (s as any).user_id === userId || s.student_email === userId) &&
+    (!s.school_id || isSameSchool(s.school_id, schoolId))
+  );
+  if (matchDemo) return matchDemo;
+
+  // 4. Fallback demo student context
   return {
     id: '00000000-0000-0000-0000-000000000099',
     school_id: schoolId || '00000000-0000-0000-0000-000000000001',
@@ -69,6 +165,52 @@ export async function getStudentProfile(schoolId: string, userId: string) {
 }
 
 /**
+ * Check if a timetable entry matches a student's class
+ */
+function matchesStudentClass(entry: any, st: any): boolean {
+  const eClassId = String(entry.class_id || entry.classId || '');
+  const eClassNum = Number(entry.class_number ?? entry.classNumber ?? 0);
+  const stClassId = String(st.class_id || '');
+  const stClassNum = Number(st.class_number ?? 0);
+
+  if (eClassId && (eClassId === stClassId || eClassId === `cls-${stClassNum}` || (stClassId && eClassId.includes(stClassId)))) {
+    return true;
+  }
+  if (eClassNum > 0 && stClassNum > 0 && eClassNum === stClassNum) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a timetable entry matches a student's section
+ */
+function matchesStudentSection(entry: any, st: any): boolean {
+  const eSecId = String(entry.section_id || entry.sectionId || '').toLowerCase();
+  const eSecName = String(entry.section_name || entry.sectionName || '').trim().toLowerCase().replace(/section\s*/i, '');
+  const stSecId = String(st.section_id || '').toLowerCase();
+  const stSecName = String(st.section_name || '').trim().toLowerCase().replace(/section\s*/i, '');
+
+  if (!eSecId && !eSecName) return true; // Applicable for whole class
+  if (eSecId && (eSecId === stSecId || (stSecName && eSecId.endsWith(stSecName)))) return true;
+  if (eSecName && stSecName && (eSecName === stSecName || eSecName.endsWith(stSecName) || stSecName.endsWith(eSecName))) return true;
+  return false;
+}
+
+/**
+ * Check if an attendance record belongs to the student
+ */
+function isRecordForStudent(record: any, st: any): boolean {
+  const sid = record.studentId || record.student_id;
+  if (!sid) return false;
+  if (sid === st.id) return true;
+  if (st.user_id && sid === st.user_id) return true;
+  if (st.admission_number && sid === st.admission_number) return true;
+  if (st.roll_number && sid === st.roll_number) return true;
+  return false;
+}
+
+/**
  * Calculates current status for a timetable period based on current time
  */
 function computePeriodStatus(startTimeStr: string, endTimeStr: string): 'Completed' | 'Ongoing' | 'Upcoming' {
@@ -99,10 +241,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
 
   // 1. Attendance Summary
   let attendanceSummary = {
-    attendancePercentage: 92,
-    presentDays: 138,
-    totalWorkingDays: 150,
-    absentDays: 12
+    attendancePercentage: 0,
+    presentDays: 0,
+    totalWorkingDays: 0,
+    absentDays: 0
   };
 
   try {
@@ -129,32 +271,91 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     }
   } catch (_e) {}
 
-  // 2. Today's Timetable
+  if (attendanceSummary.totalWorkingDays === 0 && isFirebaseConfigured()) {
+    try {
+      const recSnap = await collections.attendanceRecords().get();
+      const myRecs = recSnap.docs
+        .map(d => d.data())
+        .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+      if (myRecs.length > 0) {
+        const p = myRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
+        const a = myRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
+        const t = myRecs.length;
+        attendanceSummary = {
+          attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
+          presentDays: p,
+          totalWorkingDays: t,
+          absentDays: a
+        };
+      }
+    } catch {}
+  }
+
+  // If still 0 and is test school with no records, provide baseline
+  if (attendanceSummary.totalWorkingDays === 0 && isTestSchool(schoolId)) {
+    attendanceSummary = { attendancePercentage: 92, presentDays: 23, totalWorkingDays: 25, absentDays: 2 };
+  }
+
+  // 2. Today's Timetable (Filtered by Student's Class & Section)
   let todayTimetable: any[] = [];
+  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
+
   try {
     const timeQ = await pool.query(
-      `SELECT r.id, r.start_time, r.end_time, r.room,
-              sub.name AS subject_name, u.name AS teacher_name
-       FROM class_routines r
-       JOIN subjects sub ON sub.id = r.subject_id
-       JOIN users u ON u.id = r.teacher_id
-       WHERE r.school_id = $1 AND r.class_id = $2 AND r.section_id = $3 AND r.day_of_week = $4
-       ORDER BY r.start_time ASC`,
-      [schoolId, st.class_id, st.section_id, todayDay]
+      `SELECT e.id, e.start_time, e.end_time, e.room_name AS room,
+              e.subject_name, e.teacher_name, e.period_number, p.name AS period_name
+       FROM timetable_entries e
+       LEFT JOIN timetable_periods p ON p.id = e.period_id
+       WHERE e.school_id = $1 AND (e.class_id = $2 OR e.class_number = $3)
+         AND (e.section_id = $4 OR e.section_name = $5) AND e.day_of_week = $6
+         AND e.status = 'PUBLISHED'
+       ORDER BY e.start_time ASC`,
+      [schoolId, st.class_id, st.class_number, st.section_id, st.section_name, targetDay]
     );
     if (timeQ.rowCount && timeQ.rowCount > 0) {
       todayTimetable = timeQ.rows.map((row, idx) => ({
-        periodNumber: idx + 1,
+        periodNumber: row.period_number || idx + 1,
         time: `${row.start_time.slice(0, 5)} - ${row.end_time.slice(0, 5)}`,
         subject: row.subject_name,
         teacher: row.teacher_name,
-        room: row.room || `A-10${idx + 1}`,
+        room: row.room || `Room ${st.class_number || 10}`,
         status: computePeriodStatus(row.start_time, row.end_time)
       }));
     }
   } catch (_e) {}
 
-  if (todayTimetable.length === 0) {
+  if (todayTimetable.length === 0 && isFirebaseConfigured()) {
+    try {
+      const snap = await collections.timetableEntries().get();
+      if (!snap.empty) {
+        const matches: any[] = [];
+        snap.docs.forEach(doc => {
+          const e = doc.data();
+          const docSid = e.school_id || e.schoolId;
+          if (docSid && !isSameSchool(docSid, schoolId)) return;
+          if (Number(e.day_of_week ?? e.dayOfWeek) !== targetDay) return;
+          if (e.status === 'CANCELLED') return;
+
+          if (matchesStudentClass(e, st) && matchesStudentSection(e, st)) {
+            matches.push({
+              periodNumber: Number(e.period_number ?? e.periodNumber ?? 1),
+              time: `${(e.start_time || e.startTime || '09:00').slice(0, 5)} - ${(e.end_time || e.endTime || '09:45').slice(0, 5)}`,
+              subject: e.subject_name || e.subjectName || 'Subject',
+              teacher: e.teacher_name || e.teacherName || 'Faculty',
+              room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
+              status: computePeriodStatus(e.start_time || '09:00', e.end_time || '09:45')
+            });
+          }
+        });
+        if (matches.length > 0) {
+          matches.sort((a, b) => a.periodNumber - b.periodNumber || a.time.localeCompare(b.time));
+          todayTimetable = matches;
+        }
+      }
+    } catch {}
+  }
+
+  if (todayTimetable.length === 0 && isTestSchool(schoolId)) {
     todayTimetable = [
       { periodNumber: 1, time: '08:00 - 08:45', subject: 'Mathematics', teacher: 'Mr. S. Verma', room: 'A-101', status: 'Completed' },
       { periodNumber: 2, time: '08:45 - 09:30', subject: 'Science', teacher: 'Mrs. P. Das', room: 'A-102', status: 'Completed' },
@@ -165,16 +366,15 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     ];
   }
 
-  // 3. Recent Attendance (Last 5 Days)
+  // 3. Recent Attendance (Last 5 Sessions)
   let recentAttendance: any[] = [];
   try {
     const recQ = await pool.query(
-      `SELECT s.attendance_date, ar.status, sub.name AS subject_name
+      `SELECT s.attendance_date, ar.status, s.subject_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
-       LEFT JOIN subjects sub ON sub.id = s.subject_id
        WHERE s.school_id = $1 AND ar.student_id = $2
-       ORDER BY s.attendance_date DESC
+       ORDER BY s.attendance_date DESC, s.start_time DESC
        LIMIT 5`,
       [schoolId, st.id]
     );
@@ -191,7 +391,36 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     }
   } catch (_e) {}
 
-  if (recentAttendance.length === 0) {
+  if (recentAttendance.length === 0 && isFirebaseConfigured()) {
+    try {
+      const recSnap = await collections.attendanceRecords().get();
+      const myRecs = recSnap.docs
+        .map(d => d.data())
+        .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+
+      if (myRecs.length > 0) {
+        const sessionMap: Record<string, any> = {};
+        const sessSnap = await collections.attendanceSessions().get();
+        sessSnap.docs.forEach(d => { sessionMap[d.id] = d.data(); });
+
+        const formatted = myRecs.map(r => {
+          const sess = sessionMap[r.sessionId] || {};
+          const rawDate = sess.attendanceDate || sess.attendance_date || new Date().toISOString().slice(0, 10);
+          const d = new Date(rawDate);
+          return {
+            date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+            subject: sess.subjectName || sess.subject_name || 'General Session',
+            status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
+            rawDate
+          };
+        });
+        formatted.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+        recentAttendance = formatted.slice(0, 5);
+      }
+    } catch {}
+  }
+
+  if (recentAttendance.length === 0 && isTestSchool(schoolId)) {
     recentAttendance = [
       { date: 'Wed, 17 Sep 2025', subject: 'Class Session', status: 'Present' },
       { date: 'Tue, 16 Sep 2025', subject: 'Class Session', status: 'Present' },
@@ -312,13 +541,13 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
   const fromDate = from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const toDate = to || new Date().toISOString().slice(0, 10);
 
+  // 1. Try PostgreSQL
   try {
     const q = await pool.query(
       `SELECT s.attendance_date, ar.status, s.start_time, s.end_time,
-              sub.name AS subject_name, u.name AS teacher_name
+              s.subject_name, u.name AS teacher_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
-       LEFT JOIN subjects sub ON sub.id = s.subject_id
        LEFT JOIN users u ON u.id = s.teacher_id
        WHERE s.school_id = $1 AND ar.student_id = $2
          AND s.attendance_date BETWEEN $3 AND $4
@@ -326,37 +555,88 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
       [schoolId, st.id, fromDate, toDate]
     );
 
-    const rows = q.rows;
-    const present = rows.filter((r) => r.status === 'PRESENT').length;
-    const absent = rows.filter((r) => r.status === 'ABSENT').length;
-    const total = rows.length;
+    if (q.rowCount && q.rows.length > 0) {
+      const rows = q.rows;
+      const present = rows.filter((r) => r.status === 'PRESENT').length;
+      const absent = rows.filter((r) => r.status === 'ABSENT').length;
+      const total = rows.length;
 
-    return {
-      records: rows,
-      summary: {
-        present,
-        absent,
-        total,
-        percentage: total > 0 ? Math.round((present / total) * 100) : 0
+      return {
+        records: rows,
+        summary: {
+          present,
+          absent,
+          total,
+          percentage: total > 0 ? Math.round((present / total) * 100) : 0
+        }
+      };
+    }
+  } catch (_e) {}
+
+  // 2. Query Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const recSnap = await collections.attendanceRecords().get();
+      const myRecs = recSnap.docs
+        .map(d => d.data())
+        .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+
+      if (myRecs.length > 0) {
+        const sessionMap: Record<string, any> = {};
+        const sessSnap = await collections.attendanceSessions().get();
+        sessSnap.docs.forEach(d => { sessionMap[d.id] = d.data(); });
+
+        const rows = myRecs.map(r => {
+          const sess = sessionMap[r.sessionId] || {};
+          const attDate = sess.attendanceDate || sess.attendance_date || new Date().toISOString().slice(0, 10);
+          return {
+            attendance_date: attDate,
+            status: (r.status === 'PRESENT' || r.is_present === true) ? 'PRESENT' : 'ABSENT',
+            start_time: sess.startTime || sess.start_time || '09:00',
+            end_time: sess.endTime || sess.end_time || '09:45',
+            subject_name: sess.subjectName || sess.subject_name || 'General Session',
+            teacher_name: sess.teacherName || sess.teacher_name || sess.takenBy || 'Class Faculty'
+          };
+        }).filter(r => {
+          if (fromDate && r.attendance_date < fromDate) return false;
+          if (toDate && r.attendance_date > toDate) return false;
+          return true;
+        });
+
+        rows.sort((a, b) => new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime());
+        const present = rows.filter(r => r.status === 'PRESENT').length;
+        const absent = rows.filter(r => r.status === 'ABSENT').length;
+        const total = rows.length;
+
+        if (total > 0) {
+          return {
+            records: rows,
+            summary: {
+              present,
+              absent,
+              total,
+              percentage: Math.round((present / total) * 100)
+            }
+          };
+        }
       }
-    };
-  } catch (_e) {
+    } catch (err: any) {
+      console.warn('[StudentService] Error fetching attendance from Firestore:', err.message);
+    }
+  }
+
+  // 3. Fallback for test school
+  if (isTestSchool(schoolId)) {
     return {
       records: [
-        { attendance_date: '2025-09-17', status: 'PRESENT', start_time: '08:00', end_time: '08:45', subject_name: 'Mathematics', teacher_name: 'Mr. S. Verma' },
-        { attendance_date: '2025-09-16', status: 'PRESENT', start_time: '08:45', end_time: '09:30', subject_name: 'Science', teacher_name: 'Mrs. P. Das' },
-        { attendance_date: '2025-09-15', status: 'PRESENT', start_time: '09:45', end_time: '10:30', subject_name: 'English', teacher_name: 'Ms. R. Khan' },
-        { attendance_date: '2025-09-12', status: 'ABSENT', start_time: '08:00', end_time: '08:45', subject_name: 'Mathematics', teacher_name: 'Mr. S. Verma' },
-        { attendance_date: '2025-09-11', status: 'PRESENT', start_time: '10:30', end_time: '11:15', subject_name: 'Social Science', teacher_name: 'Mr. A. Singh' }
+        { attendance_date: new Date().toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' },
+        { attendance_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' }
       ],
-      summary: {
-        present: 138,
-        absent: 12,
-        total: 150,
-        percentage: 92
-      }
+      summary: { present: 2, absent: 0, total: 2, percentage: 100 }
     };
   }
+
+  return { records: [], summary: { present: 0, absent: 0, total: 0, percentage: 0 } };
 }
 
 /**
@@ -364,34 +644,71 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
  */
 export async function getStudentTimetable(schoolId: string, userId: string) {
   const st = await resolveStudentRecord(schoolId, userId);
+
+  // 1. Try PostgreSQL timetable_entries
   try {
     const q = await pool.query(
-      `SELECT r.id, r.day_of_week, r.start_time, r.end_time, r.room,
-              sub.name AS subject_name, u.name AS teacher_name
-       FROM class_routines r
-       JOIN subjects sub ON sub.id = r.subject_id
-       JOIN users u ON u.id = r.teacher_id
-       WHERE r.school_id = $1 AND r.class_id = $2 AND r.section_id = $3
-       ORDER BY r.day_of_week, r.start_time`,
-      [schoolId, st.class_id, st.section_id]
+      `SELECT e.id, e.day_of_week, e.start_time, e.end_time, e.room_name AS room,
+              e.subject_name, e.teacher_name, e.period_name, e.period_number
+       FROM timetable_entries e
+       WHERE e.school_id = $1 AND (e.class_id = $2 OR e.class_number = $3)
+         AND (e.section_id = $4 OR e.section_name = $5)
+         AND e.status = 'PUBLISHED'
+       ORDER BY e.day_of_week, e.start_time`,
+      [schoolId, st.class_id, st.class_number, st.section_id, st.section_name]
     );
     if (q.rowCount && q.rowCount > 0) {
       return q.rows;
     }
   } catch (_e) {}
 
-  // Standard 6-day curriculum fallback
-  return [
-    { id: 'tt-1', day_of_week: 1, start_time: '08:00', end_time: '08:45', subject_name: 'Mathematics', teacher_name: 'Mr. S. Verma', room: 'A-101' },
-    { id: 'tt-2', day_of_week: 1, start_time: '08:45', end_time: '09:30', subject_name: 'Science', teacher_name: 'Mrs. P. Das', room: 'A-102' },
-    { id: 'tt-3', day_of_week: 1, start_time: '09:45', end_time: '10:30', subject_name: 'English', teacher_name: 'Ms. R. Khan', room: 'A-103' },
-    { id: 'tt-4', day_of_week: 1, start_time: '10:30', end_time: '11:15', subject_name: 'Social Science', teacher_name: 'Mr. A. Singh', room: 'A-104' },
-    { id: 'tt-5', day_of_week: 2, start_time: '08:00', end_time: '08:45', subject_name: 'Science', teacher_name: 'Mrs. P. Das', room: 'A-102' },
-    { id: 'tt-6', day_of_week: 2, start_time: '08:45', end_time: '09:30', subject_name: 'Mathematics', teacher_name: 'Mr. S. Verma', room: 'A-101' },
-    { id: 'tt-7', day_of_week: 3, start_time: '08:00', end_time: '08:45', subject_name: 'English', teacher_name: 'Ms. R. Khan', room: 'A-103' },
-    { id: 'tt-8', day_of_week: 4, start_time: '08:00', end_time: '08:45', subject_name: 'Computer Science', teacher_name: 'Mrs. N. Roy', room: 'Lab-1' },
-    { id: 'tt-9', day_of_week: 5, start_time: '08:00', end_time: '08:45', subject_name: 'Physical Education', teacher_name: 'Mr. K. Yadav', room: 'Ground' }
-  ];
+  // 2. Query Cloud Firestore timetable_entries
+  if (isFirebaseConfigured()) {
+    try {
+      const snap = await collections.timetableEntries().get();
+      if (!snap.empty) {
+        const list: any[] = [];
+        snap.docs.forEach(doc => {
+          const e = doc.data();
+          const docSid = e.school_id || e.schoolId;
+          if (docSid && !isSameSchool(docSid, schoolId)) return;
+          if (e.status === 'CANCELLED') return;
+
+          if (!matchesStudentClass(e, st) || !matchesStudentSection(e, st)) return;
+
+          list.push({
+            id: e.id || doc.id,
+            day_of_week: Number(e.day_of_week ?? e.dayOfWeek ?? 1),
+            start_time: e.start_time || e.startTime || '09:00',
+            end_time: e.end_time || e.endTime || '09:45',
+            room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
+            subject_name: e.subject_name || e.subjectName || 'Subject',
+            teacher_name: e.teacher_name || e.teacherName || 'Faculty',
+            period_name: e.period_name || e.periodName || 'Period',
+            period_number: Number(e.period_number ?? e.periodNumber ?? 1)
+          });
+        });
+
+        if (list.length > 0) {
+          list.sort((a, b) => a.day_of_week - b.day_of_week || a.period_number - b.period_number || a.start_time.localeCompare(b.start_time));
+          return list;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[StudentService] Error fetching timetable from Firestore:', err.message);
+    }
+  }
+
+  // 3. Fallback for test school
+  if (isTestSchool(schoolId)) {
+    return [
+      { id: 'tt-1', day_of_week: 1, start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', room: 'Room 101' },
+      { id: 'tt-2', day_of_week: 1, start_time: '10:00', end_time: '10:45', subject_name: 'Science', teacher_name: 'Rahul Sharma', room: 'Lab 2' },
+      { id: 'tt-3', day_of_week: 2, start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', room: 'Room 101' }
+    ];
+  }
+
+  return [];
 }
 
 /**

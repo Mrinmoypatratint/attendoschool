@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import * as svc from '../services/studentService';
 import { memEntries } from './timetable';
+import { isSameSchool, isTestSchool } from './auth';
+import { collections, isFirebaseConfigured } from '../firebase';
 
 const router = Router();
 
@@ -45,7 +47,6 @@ router.get('/attendance', async (req: AuthRequest, res: Response) => {
   }
 });
 
-import { isSameSchool, isTestSchool } from '../utils/tenant';
 
 // GET /api/student/timetable - Routine & timetable
 router.get('/timetable', async (req: AuthRequest, res: Response) => {
@@ -54,14 +55,17 @@ router.get('/timetable', async (req: AuthRequest, res: Response) => {
     const data = await svc.getStudentTimetable(sid, req.user!.id);
     if (data && data.length > 0) return res.json(data);
   } catch (e: any) {}
+
   // Fallback to in-memory timetable entries filtered by student's class/section and tenant
   const classId = (req.user as any)?.classId;
   const sectionId = (req.user as any)?.sectionId;
   const filtered = memEntries.filter(e => {
     if (e.school_id && !isSameSchool(e.school_id, sid)) return false;
     if (!e.school_id && !isTestSchool(sid)) return false;
-    if (classId && sectionId) return e.class_id === classId && e.section_id === sectionId;
-    if (classId) return e.class_id === classId;
+    if (classId && sectionId) {
+      return (e.class_id === classId || String(e.class_number) === String(classId)) &&
+             (e.section_id === sectionId || String(e.section_name).toLowerCase() === String(sectionId).toLowerCase());
+    }
     return true;
   });
   filtered.sort((a: any, b: any) => a.day_of_week - b.day_of_week || a.period_number - b.period_number);
