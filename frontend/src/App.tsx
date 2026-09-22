@@ -4312,8 +4312,10 @@ function Attendance(){
         } else {
           const targetClassId = classIdParam || (cRes.data?.length > 0 ? cRes.data[0].id : '');
           setSelectedClassId(targetClassId);
-          const availableSecs = (sRes.data || []).filter((s:any)=>s.class_id === targetClassId);
-          const targetSecId = sectionIdParam || (availableSecs.length > 0 ? availableSecs[0].id : '');
+          const availableSecs = (sRes.data || []).filter((s:any)=>
+            !targetClassId || s.class_id === targetClassId || s.classId === targetClassId || String(s.class_number) === String(targetClassId)
+          );
+          const targetSecId = sectionIdParam || (availableSecs.length > 0 ? availableSecs[0].id : (sRes.data?.[0]?.id || ''));
           setSelectedSectionId(targetSecId);
           const targetSubId = subjectIdParam || (subRes.data?.length > 0 ? subRes.data[0].id : '');
           setSelectedSubjectId(targetSubId);
@@ -4342,8 +4344,8 @@ function Attendance(){
         // Fallback to /students
         api.get('/students').then(res => {
           const matched = (res.data || []).filter((s:any)=>
-            (String(s.class_id) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
-            (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || s.section_name === 'A')
+            (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
+            (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
           );
           setStudents(matched);
           const initChecked: Record<string, boolean> = {};
@@ -4391,9 +4393,9 @@ function Attendance(){
     try {
       const res = await api.post('/teacher/attendance', {
         classId: selectedClassId,
-        classNumber: cObj?.class_number ?? null,
+        classNumber: cObj?.class_number ?? cObj?.classNumber ?? null,
         sectionId: selectedSectionId,
-        sectionName: sObj?.name || '',
+        sectionName: sObj?.name || sObj?.sectionName || '',
         subjectId: selectedSubjectId || null,
         subjectName: subObj?.name || '',
         startTime: activeRoutine?.start_time ? fmt(activeRoutine.start_time) : '09:00:00',
@@ -4486,13 +4488,17 @@ function Attendance(){
                 const cid = e.target.value;
                 setSelectedClassId(cid);
                 setActiveRoutine(null);
-                const matchingSec = sections.find(s => s.class_id === cid);
+                const matchingSec = sections.find(s => s.class_id === cid || s.classId === cid || String(s.class_number) === String(cid));
                 if (matchingSec) setSelectedSectionId(matchingSec.id);
+                else {
+                  const anySec = sections.filter(s => s.class_id === cid || s.classId === cid)[0];
+                  if (anySec) setSelectedSectionId(anySec.id);
+                }
               }}
               style={{ marginLeft: 6 }}
             >
               {classes.map(c => (
-                <option key={c.id} value={c.id}>Class {c.class_number}</option>
+                <option key={c.id} value={c.id}>Class {c.class_number ?? c.classNumber ?? c.name}</option>
               ))}
             </select>
           </label>
@@ -4508,9 +4514,9 @@ function Attendance(){
               style={{ marginLeft: 6 }}
             >
               {sections
-                .filter(s => !selectedClassId || s.class_id === selectedClassId)
+                .filter(s => !selectedClassId || s.class_id === selectedClassId || s.classId === selectedClassId || String(s.class_number) === String(selectedClassId))
                 .map(s => (
-                  <option key={s.id} value={s.id}>Section {s.name}</option>
+                  <option key={s.id} value={s.id}>Section {s.name || s.sectionName || s.section}</option>
                 ))}
             </select>
           </label>

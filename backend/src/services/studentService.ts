@@ -3,6 +3,7 @@ import { pool } from '../db';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool, isTestSchool } from '../utils/tenant';
 import { demoStudents } from '../routes/schoolData';
+import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 
 /**
  * Resolves student record by authenticated user ID and school ID
@@ -119,12 +120,12 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
 
   // 4. Fallback demo student context
   return {
-    id: '00000000-0000-0000-0000-000000000099',
+    id: 'stud-001',
     school_id: schoolId || '00000000-0000-0000-0000-000000000001',
     user_id: userId,
     name: 'Rohan Sharma',
-    roll_number: '25',
-    admission_number: 'ADM-2025-089',
+    roll_number: '1',
+    admission_number: 'GW-2025-001',
     class_id: 'cls-10',
     class_number: 10,
     section_id: 'sec-10-a',
@@ -201,12 +202,14 @@ function matchesStudentSection(entry: any, st: any): boolean {
  * Check if an attendance record belongs to the student
  */
 function isRecordForStudent(record: any, st: any): boolean {
-  const sid = record.studentId || record.student_id;
+  const sid = String(record.studentId || record.student_id || '');
   if (!sid) return false;
-  if (sid === st.id) return true;
-  if (st.user_id && sid === st.user_id) return true;
-  if (st.admission_number && sid === st.admission_number) return true;
-  if (st.roll_number && sid === st.roll_number) return true;
+  if (sid === String(st.id)) return true;
+  if (st.user_id && sid === String(st.user_id)) return true;
+  if (st.admission_number && (sid === String(st.admission_number) || sid.toLowerCase() === String(st.admission_number).toLowerCase())) return true;
+  if (st.roll_number && (sid === String(st.roll_number) || parseInt(sid) === parseInt(String(st.roll_number)))) return true;
+  if (st.name && record.studentName && record.studentName.toLowerCase().trim() === st.name.toLowerCase().trim()) return true;
+  if (st.name && record.student_name && record.student_name.toLowerCase().trim() === st.name.toLowerCase().trim()) return true;
   return false;
 }
 
@@ -250,8 +253,8 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
   try {
     const attQ = await pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE ar.status = 'PRESENT')::int AS present_count,
-         COUNT(*) FILTER (WHERE ar.status = 'ABSENT')::int AS absent_count,
+         COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present_count,
+         COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent_count,
          COUNT(*)::int AS total_count
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
@@ -270,6 +273,21 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       };
     }
   } catch (_e) {}
+
+  if (attendanceSummary.totalWorkingDays === 0) {
+    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+    if (memRecs.length > 0) {
+      const p = memRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
+      const a = memRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
+      const t = memRecs.length;
+      attendanceSummary = {
+        attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
+        presentDays: p,
+        totalWorkingDays: t,
+        absentDays: a
+      };
+    }
+  }
 
   if (attendanceSummary.totalWorkingDays === 0 && isFirebaseConfigured()) {
     try {
@@ -370,7 +388,7 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
   let recentAttendance: any[] = [];
   try {
     const recQ = await pool.query(
-      `SELECT s.attendance_date, ar.status, s.subject_name
+      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.subject_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
        WHERE s.school_id = $1 AND ar.student_id = $2
@@ -390,6 +408,25 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       });
     }
   } catch (_e) {}
+
+  if (recentAttendance.length === 0) {
+    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+    if (memRecs.length > 0) {
+      const sessMap = new Map<string, any>();
+      memAttendanceSessions.forEach(s => sessMap.set(s.id, s));
+      recentAttendance = memRecs.map(r => {
+        const sess = sessMap.get(r.sessionId) || {};
+        const rawDate = sess.attendanceDate || sess.attendance_date || r.attendanceDate || new Date().toISOString().slice(0, 10);
+        const d = new Date(rawDate);
+        return {
+          date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+          subject: sess.subjectName || sess.subject_name || 'General Session',
+          status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
+          rawDate
+        };
+      }).sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()).slice(0, 5);
+    }
+  }
 
   if (recentAttendance.length === 0 && isFirebaseConfigured()) {
     try {
@@ -520,16 +557,28 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     },
     kpis: {
       attendancePercentage: attendanceSummary.attendancePercentage,
+      attendance_rate: attendanceSummary.attendancePercentage,
+      presentDays: attendanceSummary.presentDays,
+      present_count: attendanceSummary.presentDays,
+      absentDays: attendanceSummary.absentDays,
+      absent_count: attendanceSummary.absentDays,
+      totalWorkingDays: attendanceSummary.totalWorkingDays,
+      total_classes: attendanceSummary.totalWorkingDays,
       attendanceText: `Present: ${attendanceSummary.presentDays} / ${attendanceSummary.totalWorkingDays} days`,
       pendingAssignmentsCount: pendingAssignments.length,
       upcomingExamTitle: `${upcomingExam.subject} - ${upcomingExam.date}`,
-      announcementsCount: announcements.length
+      announcementsCount: announcements.length,
+      summary: attendanceSummary
     },
     todayTimetable,
+    today_timetable: todayTimetable,
     recentAttendance,
+    recent_attendance: recentAttendance,
     announcements,
     pendingAssignments,
-    upcomingExam
+    pending_assignments: pendingAssignments,
+    upcomingExam,
+    upcoming_exam: upcomingExam
   };
 }
 
@@ -544,7 +593,7 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT s.attendance_date, ar.status, s.start_time, s.end_time,
+      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.start_time, s.end_time,
               s.subject_name, u.name AS teacher_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
@@ -572,6 +621,46 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
       };
     }
   } catch (_e) {}
+
+  // 2. Check In-Memory Store
+  const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+  if (memRecs.length > 0) {
+    const sessMap = new Map<string, any>();
+    memAttendanceSessions.forEach(s => sessMap.set(s.id, s));
+    const rows = memRecs.map(r => {
+      const sess = sessMap.get(r.sessionId) || {};
+      const attDate = sess.attendanceDate || sess.attendance_date || r.attendanceDate || new Date().toISOString().slice(0, 10);
+      return {
+        attendance_date: attDate,
+        status: (r.status === 'PRESENT' || r.is_present === true) ? 'PRESENT' : 'ABSENT',
+        start_time: sess.startTime || sess.start_time || '09:00',
+        end_time: sess.endTime || sess.end_time || '09:45',
+        subject_name: sess.subjectName || sess.subject_name || 'General Session',
+        teacher_name: sess.teacherName || sess.teacher_name || sess.takenBy || 'Class Faculty'
+      };
+    }).filter(r => {
+      if (fromDate && r.attendance_date < fromDate) return false;
+      if (toDate && r.attendance_date > toDate) return false;
+      return true;
+    });
+
+    rows.sort((a, b) => new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime());
+    const present = rows.filter(r => r.status === 'PRESENT').length;
+    const absent = rows.filter(r => r.status === 'ABSENT').length;
+    const total = rows.length;
+
+    if (total > 0) {
+      return {
+        records: rows,
+        summary: {
+          present,
+          absent,
+          total,
+          percentage: Math.round((present / total) * 100)
+        }
+      };
+    }
+  }
 
   // 2. Query Cloud Firestore
   if (isFirebaseConfigured()) {

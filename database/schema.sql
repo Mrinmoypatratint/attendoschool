@@ -100,6 +100,12 @@ CREATE TABLE attendance_sessions (
     attendance_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
+    class_number SMALLINT,
+    section_name VARCHAR(50),
+    subject_name VARCHAR(150),
+    present_count INTEGER DEFAULT 0,
+    absent_count INTEGER DEFAULT 0,
+    total_count INTEGER DEFAULT 0,
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -107,7 +113,9 @@ CREATE TABLE attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attendance_session_id UUID NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
     student_id UUID NOT NULL REFERENCES students(id),
-    is_present BOOLEAN NOT NULL,
+    is_present BOOLEAN NOT NULL DEFAULT TRUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'PRESENT',
+    remarks TEXT DEFAULT '',
     marked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(attendance_session_id, student_id)
 );

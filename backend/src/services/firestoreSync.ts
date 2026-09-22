@@ -379,47 +379,95 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
   if (!isFirebaseConfigured()) return false;
   try {
     const sessionId = session.id || `att-sess-${Date.now()}`;
+    const schoolId = session.schoolId || session.school_id || null;
+    const classId = session.classId || session.class_id || null;
+    const classNum = session.classNumber ?? session.class_number ?? null;
+    const sectionId = session.sectionId || session.section_id || null;
+    const sectionName = session.sectionName || session.section_name || '';
+    const subjectId = session.subjectId || session.subject_id || null;
+    const subjectName = session.subjectName || session.subject_name || '';
+    const attDate = session.attendanceDate || session.attendance_date || new Date().toISOString().slice(0, 10);
+    const startTime = session.startTime || session.start_time || '09:00:00';
+    const endTime = session.endTime || session.end_time || '09:45:00';
+    const teacherId = session.teacherId || session.teacher_id || session.takenBy || null;
+    const teacherName = session.teacherName || session.teacher_name || session.takenByName || 'Class Faculty';
+
+    const safeRecords = Array.isArray(records) ? records : [];
+    const presentCount = safeRecords.filter((r: any) => r.status === 'PRESENT' || r.is_present === true || r.isPresent === true).length;
+    const absentCount = safeRecords.length - presentCount;
+
     const batch = firestore.batch();
 
     batch.set(collections.attendanceSessions().doc(sessionId), {
       id: sessionId,
-      schoolId: session.schoolId || session.school_id || null,
-      classId: session.classId || session.class_id || null,
-      classNumber: session.classNumber ?? session.class_number ?? null,
-      class_number: session.class_number ?? session.classNumber ?? null,
-      sectionId: session.sectionId || session.section_id || null,
-      sectionName: session.sectionName || session.section_name || '',
-      section_name: session.section_name || session.sectionName || '',
-      subjectId: session.subjectId || session.subject_id || null,
-      subjectName: session.subjectName || session.subject_name || '',
-      subject_name: session.subject_name || session.subjectName || '',
-      attendanceDate: session.attendanceDate || session.attendance_date || new Date().toISOString().slice(0, 10),
-      startTime: session.startTime || session.start_time || '09:00:00',
-      endTime: session.endTime || session.end_time || '09:45:00',
-      takenBy: session.takenBy || session.teacher_id || session.teacherId || null,
-      teacherId: session.teacherId || session.teacher_id || session.takenBy || null,
-      teacher_id: session.teacher_id || session.teacherId || session.takenBy || null,
-      createdAt: new Date().toISOString()
+      schoolId,
+      school_id: schoolId,
+      classId,
+      class_id: classId,
+      classNumber: classNum,
+      class_number: classNum,
+      className: classNum ? String(classNum) : '10',
+      sectionId,
+      section_id: sectionId,
+      sectionName,
+      section_name: sectionName,
+      subjectId,
+      subject_id: subjectId,
+      subjectName,
+      subject_name: subjectName,
+      attendanceDate: attDate,
+      attendance_date: attDate,
+      startTime,
+      start_time: startTime,
+      endTime,
+      end_time: endTime,
+      takenBy: teacherId,
+      teacherId,
+      teacher_id: teacherId,
+      teacherName,
+      teacher_name: teacherName,
+      totalCount: safeRecords.length,
+      presentCount,
+      absentCount,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }, { merge: true });
 
-    if (Array.isArray(records)) {
-      for (const r of records) {
-        const studentId = r.studentId || r.student_id;
-        const recId = `att-rec-${sessionId}-${studentId}`;
-        batch.set(collections.attendanceRecords().doc(recId), {
-          id: recId,
-          sessionId,
-          studentId,
-          schoolId: session.schoolId || session.school_id || null,
-          status: r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT'),
-          remarks: r.remarks || '',
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-      }
+    for (const r of safeRecords) {
+      const studentId = String(r.studentId || r.student_id || '');
+      if (!studentId) continue;
+      const recId = `att-rec-${sessionId}-${studentId}`;
+      const isPresent = Boolean(r.is_present ?? r.isPresent ?? (r.status === 'PRESENT'));
+      const status = isPresent ? 'PRESENT' : 'ABSENT';
+
+      batch.set(collections.attendanceRecords().doc(recId), {
+        id: recId,
+        sessionId,
+        attendance_session_id: sessionId,
+        attendanceSessionId: sessionId,
+        studentId,
+        student_id: studentId,
+        studentName: r.studentName || r.student_name || r.name || '',
+        rollNumber: r.rollNumber || r.roll_number || '',
+        schoolId,
+        school_id: schoolId,
+        classId,
+        class_id: classId,
+        sectionId,
+        section_id: sectionId,
+        attendanceDate: attDate,
+        attendance_date: attDate,
+        status,
+        is_present: isPresent,
+        isPresent,
+        remarks: r.remarks || '',
+        markedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      }, { merge: true });
     }
 
     await batch.commit();
-    console.log(`[FirestoreSync] Synced attendance session (${sessionId}) with ${records?.length || 0} records to Firestore`);
+    console.log(`[FirestoreSync] Synced attendance session (${sessionId}) with ${safeRecords.length} records (present: ${presentCount}, absent: ${absentCount}) to Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to sync attendance to Firestore:`, err.message);

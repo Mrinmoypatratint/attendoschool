@@ -9,6 +9,72 @@ import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { memEntries } from './timetable';
 
+export interface MemAttendanceSession {
+  id: string;
+  school_id: string;
+  schoolId: string;
+  class_id: string;
+  classId: string;
+  class_number: number;
+  classNumber: number;
+  section_id: string;
+  sectionId: string;
+  section_name: string;
+  sectionName: string;
+  subject_id: string | null;
+  subjectId: string | null;
+  subject_name: string;
+  subjectName: string;
+  attendance_date: string;
+  attendanceDate: string;
+  start_time: string;
+  startTime: string;
+  end_time: string;
+  endTime: string;
+  teacher_id: string;
+  teacherId: string;
+  takenBy: string;
+  teacher_name?: string;
+  teacherName?: string;
+  total_count?: number;
+  totalCount?: number;
+  present_count?: number;
+  presentCount?: number;
+  absent_count?: number;
+  absentCount?: number;
+  created_at?: string;
+  createdAt?: string;
+}
+
+export interface MemAttendanceRecord {
+  id: string;
+  sessionId: string;
+  attendance_session_id: string;
+  attendanceSessionId: string;
+  studentId: string;
+  student_id: string;
+  studentName?: string;
+  student_name?: string;
+  rollNumber?: string;
+  roll_number?: string;
+  schoolId: string;
+  school_id: string;
+  classId: string;
+  class_id: string;
+  sectionId: string;
+  section_id: string;
+  attendanceDate: string;
+  attendance_date: string;
+  status: 'PRESENT' | 'ABSENT';
+  is_present: boolean;
+  isPresent: boolean;
+  remarks?: string;
+  createdAt?: string;
+}
+
+export const memAttendanceSessions: MemAttendanceSession[] = [];
+export const memAttendanceRecords: MemAttendanceRecord[] = [];
+
 const r = Router();
 const teacher = [requireAuth, requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN')];
 
@@ -292,26 +358,34 @@ function matchesStudentClassAndSection(s: any, classTarget: string, secTarget: s
   return Boolean(matchSec);
 }
 
-// ── GET /api/teacher/classes/:classId/:sectionId/students & /api/teacher/students/:classId/:sectionId ──
+// ── GET /api/teacher/classes/:classId/:sectionId/students & /api/teacher/students/:classId/:sectionId & /api/teacher/students ──
 const getStudentsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId;
-  const classParam = String(req.params.classId);
-  const secId = String(req.params.sectionId);
+  const classParam = String(req.params.classId || req.query.classId || req.query.class_id || req.query.class_number || '');
+  const secId = String(req.params.sectionId || req.query.sectionId || req.query.section_id || req.query.section_name || '');
   const secParam = secId.toLowerCase();
 
-  // 1. Check PostgreSQL
-  try {
-    const q = await pool.query(
-      `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
-       FROM students
-       WHERE school_id=$1 AND (class_id=$2 OR class_id IN (SELECT id FROM classes WHERE school_id=$1 AND class_number=$2::text))
-         AND (section_id=$3 OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND LOWER(name)=$4))
-         AND is_active
-       ORDER BY roll_number`,
-      [sid, classParam, secId, secParam]
-    );
-    if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
-  } catch {}
+  // 1. Check PostgreSQL if enabled
+  if (process.env.USE_POSTGRES === 'true') {
+    try {
+      const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
+      const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
+      const classNum = parseInt(classParam.replace(/\D/g, ''), 10) || 10;
+      const cleanSec = secParam.replace(/section\s*/i, '').trim();
+
+      const q = await pool.query(
+        `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
+         FROM students
+         WHERE school_id=$1
+           AND (${isClassUuid ? 'class_id=$2' : 'FALSE'} OR class_id IN (SELECT id FROM classes WHERE school_id=$1 AND class_number=$3))
+           AND (${isSecUuid ? 'section_id=$4' : 'FALSE'} OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND LOWER(name)=$5))
+           AND is_active
+         ORDER BY roll_number`,
+        [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec]
+      );
+      if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+    } catch {}
+  }
 
   // 2. Check Cloud Firestore
   if (isFirebaseConfigured()) {
@@ -356,238 +430,308 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
 
 r.get('/classes/:classId/:sectionId/students', ...teacher, getStudentsHandler);
 r.get('/students/:classId/:sectionId', ...teacher, getStudentsHandler);
+r.get('/students', ...teacher, getStudentsHandler);
 
 // ── POST /api/teacher/attendance ──
 r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
   const x = req.body;
   const schoolId = req.user!.schoolId!;
-  if (!x.classId || !x.sectionId || !x.startTime || !x.endTime || !x.attendanceDate) {
-    return res.status(400).json({ message: 'Attendance session data is incomplete' });
+
+  const classId = x.classId || x.class_id;
+  const sectionId = x.sectionId || x.section_id;
+  const attendanceDate = x.attendanceDate || x.attendance_date || x.date || new Date().toISOString().slice(0, 10);
+  const startTime = x.startTime || x.start_time || '09:00:00';
+  const endTime = x.endTime || x.end_time || '09:45:00';
+
+  if (!classId || !sectionId) {
+    return res.status(400).json({ message: 'Attendance session data is incomplete: classId and sectionId are required' });
   }
 
-  const presentSet = new Set<string>(Array.isArray(x.presentStudentIds) ? x.presentStudentIds : []);
+  x.classId = classId;
+  x.sectionId = sectionId;
+  x.attendanceDate = attendanceDate;
+  x.startTime = startTime;
+  x.endTime = endTime;
 
-  // 1. Try DB first
-  try {
-    const client = await pool.connect();
+  const presentSet = new Set<string>(Array.isArray(x.presentStudentIds) ? x.presentStudentIds.map(String) : []);
+  const usePostgres = process.env.USE_POSTGRES === 'true';
+
+  let sessionId = 'sess-' + Date.now();
+  let sessionSavedInDb = false;
+  let finalRecords: any[] = [];
+  let finalClassNum = Number(x.classNumber ?? x.class_number ?? (String(x.classId).match(/\d+/)?.[0] || 10));
+  let finalSecName = String(x.sectionName || x.section_name || 'A').replace(/section\s*/i, '').trim() || 'A';
+  let finalSubName = String(x.subjectName || x.subject_name || 'General');
+
+  // 1. Try PostgreSQL if explicitly enabled
+  if (usePostgres) {
     try {
-      await client.query('BEGIN');
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
 
-      let teacherId = req.user!.id;
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
-      if (!isUuid) {
-        const uRes = await client.query('SELECT id FROM users WHERE school_id = $1 AND (email = $2 OR role = $3) LIMIT 1', [schoolId, req.user!.email, req.user!.role]);
-        teacherId = uRes.rows[0]?.id || '00000000-0000-0000-0000-000000000021';
-      }
+        let teacherId = req.user!.id;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
+        if (!isUuid) {
+          const uRes = await client.query('SELECT id FROM users WHERE school_id = $1 AND (email = $2 OR role = $3) LIMIT 1', [schoolId, req.user!.email, req.user!.role]);
+          teacherId = uRes.rows[0]?.id || '00000000-0000-0000-0000-000000000021';
+        }
 
-      let classId = x.classId;
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)) {
-        const classNum = parseInt(String(classId).replace(/\D/g, ''), 10) || 8;
-        const cRes = await client.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, classNum]);
-        classId = cRes.rows[0]?.id || classId;
-      }
+        let classId = x.classId;
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)) {
+          const classNum = parseInt(String(classId).replace(/\D/g, ''), 10) || finalClassNum || 10;
+          let cRes = await client.query('SELECT id, class_number FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, classNum]);
+          if (!cRes.rowCount) {
+            cRes = await client.query('INSERT INTO classes(school_id, class_number) VALUES($1, $2) RETURNING id, class_number', [schoolId, classNum]).catch(() => ({ rowCount: 0, rows: [] } as any));
+          }
+          if (cRes.rows[0]?.id) {
+            classId = cRes.rows[0].id;
+            finalClassNum = cRes.rows[0].class_number;
+          }
+        }
 
-      let sectionId = x.sectionId;
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId)) {
-        const sRes = await client.query('SELECT id FROM sections WHERE school_id = $1 AND class_id = $2 LIMIT 1', [schoolId, classId]);
-        sectionId = sRes.rows[0]?.id || sectionId;
-      }
+        let sectionId = x.sectionId;
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId)) {
+          let sRes = await client.query('SELECT id, name FROM sections WHERE school_id = $1 AND class_id = $2 AND LOWER(name) = LOWER($3) LIMIT 1', [schoolId, classId, finalSecName]);
+          if (!sRes.rowCount) {
+            sRes = await client.query('INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3) RETURNING id, name', [schoolId, classId, finalSecName]).catch(() => ({ rowCount: 0, rows: [] } as any));
+          }
+          if (sRes.rows[0]?.id) {
+            sectionId = sRes.rows[0].id;
+            finalSecName = sRes.rows[0].name;
+          }
+        }
 
-      let subjectId = x.subjectId || null;
-      if (subjectId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectId)) {
-        const subRes = await client.query('SELECT id FROM subjects WHERE school_id = $1 LIMIT 1', [schoolId]);
-        subjectId = subRes.rows[0]?.id || null;
-      }
+        let subjectId = x.subjectId || null;
+        if (subjectId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subjectId)) {
+          const subRes = await client.query('SELECT id, name FROM subjects WHERE school_id = $1 LIMIT 1', [schoolId]);
+          subjectId = subRes.rows[0]?.id || null;
+          if (subRes.rows[0]?.name) finalSubName = subRes.rows[0].name;
+        }
 
-      const duplicate = await client.query(
-        `SELECT id FROM attendance_sessions
-         WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND attendance_date=$4`,
-        [schoolId, classId, sectionId, x.attendanceDate]
-      );
-
-      let sessionId: string;
-      if (duplicate.rowCount) {
-        sessionId = duplicate.rows[0].id;
-        await client.query('DELETE FROM attendance_records WHERE attendance_session_id = $1', [sessionId]);
-      } else {
-        const session = (await client.query(
-          `INSERT INTO attendance_sessions
-           (school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time)
-           VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-          [schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime]
-        )).rows[0];
-        sessionId = session.id;
-      }
-
-      const students = (await client.query(
-        `SELECT id FROM students WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active`,
-        [schoolId, classId, sectionId]
-      )).rows;
-
-      for (const st of students) {
-        await client.query(
-          `INSERT INTO attendance_records(attendance_session_id,student_id,is_present)
-           VALUES($1,$2,$3)`, [sessionId, st.id, presentSet.has(st.id)]
+        const duplicate = await client.query(
+          `SELECT id FROM attendance_sessions
+           WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND attendance_date=$4`,
+          [schoolId, classId, sectionId, x.attendanceDate]
         );
+
+        if (duplicate.rowCount) {
+          sessionId = duplicate.rows[0].id;
+          await client.query('DELETE FROM attendance_records WHERE attendance_session_id = $1', [sessionId]);
+        } else {
+          const session = (await client.query(
+            `INSERT INTO attendance_sessions
+             (school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time,class_number,section_name,subject_name)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+            [schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime, finalClassNum, finalSecName, finalSubName]
+          )).rows[0];
+          sessionId = session.id;
+        }
+
+        // Fetch students enrolled in this section in Postgres
+        const students = (await client.query(
+          `SELECT id, name, roll_number FROM students WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active`,
+          [schoolId, classId, sectionId]
+        )).rows;
+
+        if (students.length > 0) {
+          for (const st of students) {
+            const isPres = presentSet.has(String(st.id)) || presentSet.has(String(st.roll_number));
+            const status = isPres ? 'PRESENT' : 'ABSENT';
+            await client.query(
+              `INSERT INTO attendance_records(attendance_session_id,student_id,is_present,status)
+               VALUES($1,$2,$3,$4)`, [sessionId, st.id, isPres, status]
+            );
+            finalRecords.push({
+              student_id: st.id,
+              studentId: st.id,
+              studentName: st.name,
+              rollNumber: st.roll_number,
+              is_present: isPres,
+              status
+            });
+          }
+
+          const presCount = finalRecords.filter(r => r.is_present).length;
+          const absCount = finalRecords.length - presCount;
+          await client.query(
+            `UPDATE attendance_sessions SET present_count=$1, absent_count=$2, total_count=$3 WHERE id=$4`,
+            [presCount, absCount, finalRecords.length, sessionId]
+          ).catch(() => {});
+
+          await client.query('COMMIT');
+          sessionSavedInDb = true;
+
+          queueAbsentSms(sessionId).catch(() => {});
+          queueAbsentNotifications(sessionId).catch(() => {});
+        } else {
+          await client.query('ROLLBACK');
+        }
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
       }
-      await client.query('COMMIT');
+    } catch (_dbErr) {
+      // Proceed to Firestore fallback
+    }
+  }
 
-      queueAbsentSms(sessionId).catch(() => {});
-      queueAbsentNotifications(sessionId).catch(() => {});
-
-      const sessionRecords = students.map(st => ({
-        student_id: st.id,
-        is_present: presentSet.has(st.id),
-        status: presentSet.has(st.id) ? 'PRESENT' : 'ABSENT'
-      }));
-
-      let classNum = x.classNumber ?? x.class_number ?? null;
-      let secName = x.sectionName || x.section_name || '';
-      let subName = x.subjectName || x.subject_name || '';
-      try {
-        const cRow = await client.query('SELECT class_number FROM classes WHERE id = $1', [classId]);
-        if (cRow.rows[0]?.class_number) classNum = cRow.rows[0].class_number;
-        const sRow = await client.query('SELECT name FROM sections WHERE id = $1', [sectionId]);
-        if (sRow.rows[0]?.name) secName = sRow.rows[0].name;
-        if (subjectId) {
-          const subRow = await client.query('SELECT name FROM subjects WHERE id = $1', [subjectId]);
-          if (subRow.rows[0]?.name) subName = subRow.rows[0].name;
-        }
-      } catch {}
-
-      await syncAttendanceToFirestore({
-        id: sessionId,
-        school_id: schoolId,
-        schoolId,
-        class_id: classId,
-        classId: classId,
-        classNumber: classNum,
-        class_number: classNum,
-        section_id: sectionId,
-        sectionId: sectionId,
-        sectionName: secName,
-        section_name: secName,
-        subject_id: subjectId,
-        subjectId: subjectId,
-        subjectName: subName,
-        subject_name: subName,
-        teacher_id: teacherId,
-        teacherId: teacherId,
-        takenBy: teacherId,
-        attendance_date: x.attendanceDate,
-        attendanceDate: x.attendanceDate,
-        start_time: x.startTime,
-        startTime: x.startTime,
-        end_time: x.endTime,
-        endTime: x.endTime
-      }, sessionRecords);
-
-      return res.status(201).json({
-        success: true,
-        sessionId,
-        total: students.length,
-        present: students.filter(s => presentSet.has(s.id)).length,
-        absent: students.filter(s => !presentSet.has(s.id)).length
+  // 2. Direct Cloud Firestore & in-memory fallback
+  if (!sessionSavedInDb) {
+    if (Array.isArray(x.records) && x.records.length > 0) {
+      finalRecords = x.records.map((r: any) => {
+        const isPres = r.status === 'PRESENT' || r.isPresent === true || r.is_present === true || presentSet.has(String(r.studentId || r.id));
+        return {
+          student_id: String(r.studentId || r.student_id || r.id),
+          studentId: String(r.studentId || r.student_id || r.id),
+          studentName: r.studentName || r.name || 'Student',
+          rollNumber: String(r.rollNumber || r.roll_number || ''),
+          is_present: isPres,
+          status: isPres ? 'PRESENT' : 'ABSENT',
+          remarks: r.remarks || ''
+        };
       });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-  } catch (_dbErr) {
-    // 2. Direct Cloud Firestore fallback
-    const sessId = 'sess-' + Date.now();
-    let studentPool: any[] = [];
-    if (Array.isArray(x.studentIds) && x.studentIds.length > 0) {
-      studentPool = x.studentIds.map((id: string) => ({ id }));
-    } else if (isFirebaseConfigured()) {
-      try {
-        const snap = await collections.students().get();
-        if (!snap.empty) {
-          studentPool = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => {
-            if (s.is_active === false || s.status === 'DELETED') return false;
-            const matchSchool = (s.school_id && isSameSchool(s.school_id, schoolId)) || (s.schoolId && isSameSchool(s.schoolId, schoolId));
-            if (!matchSchool) return false;
-            return matchesStudentClassAndSection(s, String(x.classId), String(x.sectionId));
-          });
-        }
-      } catch {}
-    }
+    } else {
+      let studentPool: any[] = [];
+      if (Array.isArray(x.studentIds) && x.studentIds.length > 0) {
+        studentPool = x.studentIds.map((id: string) => ({ id }));
+      } else if (isFirebaseConfigured()) {
+        try {
+          const snap = await collections.students().get();
+          if (!snap.empty) {
+            studentPool = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => {
+              if (s.is_active === false || s.status === 'DELETED') return false;
+              const matchSchool = (s.school_id && isSameSchool(s.school_id, schoolId)) || (s.schoolId && isSameSchool(s.schoolId, schoolId));
+              if (!matchSchool) return false;
+              return matchesStudentClassAndSection(s, String(x.classId), String(x.sectionId));
+            });
+          }
+        } catch {}
+      }
 
-    if (studentPool.length === 0) {
-      const schoolMatched = demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, schoolId));
-      const targetStudents = (isTestSchool(schoolId) ? demoStudents : schoolMatched).filter(s =>
-        matchesStudentClassAndSection(s, String(x.classId), String(x.sectionId))
-      );
-      studentPool = targetStudents.length ? targetStudents : (isTestSchool(schoolId) ? demoStudents.slice(0, 10) : []);
-    }
+      if (studentPool.length === 0) {
+        const schoolMatched = demoStudents.filter(s => s.school_id && isSameSchool(s.school_id, schoolId));
+        const targetStudents = (isTestSchool(schoolId) ? demoStudents : schoolMatched).filter(s =>
+          matchesStudentClassAndSection(s, String(x.classId), String(x.sectionId))
+        );
+        studentPool = targetStudents.length ? targetStudents : (isTestSchool(schoolId) ? demoStudents.slice(0, 10) : []);
+      }
 
-    const sessionRecords: any[] = studentPool.map((s: any) => ({
-      student_id: s.id,
-      is_present: presentSet.has(s.id),
-      status: presentSet.has(s.id) ? 'PRESENT' : 'ABSENT'
-    }));
-
-    let cNum = x.classNumber ?? x.class_number ?? null;
-    let sName = x.sectionName || x.section_name || '';
-    let subName = x.subjectName || x.subject_name || '';
-
-    if (!cNum && isFirebaseConfigured()) {
-      try {
-        const cDoc = await collections.classes().doc(String(x.classId)).get();
-        if (cDoc.exists) cNum = cDoc.data()?.class_number ?? cDoc.data()?.classNumber;
-      } catch {}
+      finalRecords = studentPool.map((s: any) => {
+        const isPres = presentSet.has(String(s.id)) || (s.roll_number && presentSet.has(String(s.roll_number))) || (s.rollNumber && presentSet.has(String(s.rollNumber)));
+        return {
+          student_id: s.id,
+          studentId: s.id,
+          studentName: s.fullName || s.name || 'Student',
+          rollNumber: s.rollNumber || s.roll_number || '',
+          is_present: isPres,
+          status: isPres ? 'PRESENT' : 'ABSENT',
+          remarks: ''
+        };
+      });
     }
-    if (!sName && isFirebaseConfigured()) {
-      try {
-        const sDoc = await collections.sections().doc(String(x.sectionId)).get();
-        if (sDoc.exists) sName = sDoc.data()?.name;
-      } catch {}
-    }
-    if (!subName && x.subjectId && isFirebaseConfigured()) {
-      try {
-        const subDoc = await collections.subjects().doc(String(x.subjectId)).get();
-        if (subDoc.exists) subName = subDoc.data()?.name;
-      } catch {}
-    }
+  }
 
-    await syncAttendanceToFirestore({
-      id: sessId,
-      school_id: schoolId,
+  const presentCount = finalRecords.filter((r: any) => r.is_present).length;
+  const absentCount = finalRecords.length - presentCount;
+
+  // Build unified session metadata
+  const sessionMeta: MemAttendanceSession = {
+    id: sessionId,
+    school_id: schoolId,
+    schoolId,
+    class_id: String(x.classId),
+    classId: String(x.classId),
+    class_number: finalClassNum,
+    classNumber: finalClassNum,
+    section_id: String(x.sectionId),
+    sectionId: String(x.sectionId),
+    section_name: finalSecName,
+    sectionName: finalSecName,
+    subject_id: x.subjectId || null,
+    subjectId: x.subjectId || null,
+    subject_name: finalSubName,
+    subjectName: finalSubName,
+    teacher_id: req.user!.id,
+    teacherId: req.user!.id,
+    takenBy: req.user!.id,
+    teacher_name: req.user?.name || 'Class Faculty',
+    teacherName: req.user?.name || 'Class Faculty',
+    attendance_date: x.attendanceDate,
+    attendanceDate: x.attendanceDate,
+    start_time: x.startTime,
+    startTime: x.startTime,
+    end_time: x.endTime,
+    endTime: x.endTime,
+    total_count: finalRecords.length,
+    totalCount: finalRecords.length,
+    present_count: presentCount,
+    presentCount,
+    absent_count: absentCount,
+    absentCount,
+    created_at: new Date().toISOString(),
+    createdAt: new Date().toISOString()
+  };
+
+  // 3. Cache in shared in-memory store for instant reflection
+  const existingMemIdx = memAttendanceSessions.findIndex(s => s.id === sessionId || (isSameSchool(s.schoolId, schoolId) && String(s.classId) === String(x.classId) && String(s.sectionId) === String(x.sectionId) && s.attendanceDate === x.attendanceDate));
+  if (existingMemIdx >= 0) {
+    memAttendanceSessions[existingMemIdx] = sessionMeta;
+  } else {
+    memAttendanceSessions.unshift(sessionMeta);
+  }
+  if (memAttendanceSessions.length > 200) memAttendanceSessions.length = 200;
+
+  // Prune prior records for this session in memory
+  for (let i = memAttendanceRecords.length - 1; i >= 0; i--) {
+    if (memAttendanceRecords[i].sessionId === sessionId) {
+      memAttendanceRecords.splice(i, 1);
+    }
+  }
+
+  for (const r of finalRecords) {
+    memAttendanceRecords.unshift({
+      id: `att-rec-${sessionId}-${r.studentId}`,
+      sessionId,
+      attendance_session_id: sessionId,
+      attendanceSessionId: sessionId,
+      studentId: r.studentId,
+      student_id: r.studentId,
+      studentName: r.studentName,
+      student_name: r.studentName,
+      rollNumber: r.rollNumber,
+      roll_number: r.rollNumber,
       schoolId,
-      class_id: x.classId,
-      classId: x.classId,
-      class_number: cNum || 10,
-      classNumber: cNum || 10,
-      section_id: x.sectionId,
-      sectionId: x.sectionId,
-      section_name: sName || 'A',
-      sectionName: sName || 'A',
-      subject_id: x.subjectId || null,
-      subjectId: x.subjectId || null,
-      subject_name: subName || 'General',
-      subjectName: subName || 'General',
-      teacher_id: req.user!.id,
-      teacherId: req.user!.id,
-      takenBy: req.user!.id,
-      attendance_date: x.attendanceDate,
+      school_id: schoolId,
+      classId: String(x.classId),
+      class_id: String(x.classId),
+      sectionId: String(x.sectionId),
+      section_id: String(x.sectionId),
       attendanceDate: x.attendanceDate,
-      start_time: x.startTime,
-      startTime: x.startTime,
-      end_time: x.endTime,
-      endTime: x.endTime
-    }, sessionRecords);
-
-    const presentCount = sessionRecords.filter((r: any) => r.is_present).length;
-    return res.status(201).json({
-      success: true,
-      sessionId: sessId,
-      total: sessionRecords.length,
-      present: presentCount,
-      absent: sessionRecords.length - presentCount
+      attendance_date: x.attendanceDate,
+      status: r.status,
+      is_present: r.is_present,
+      isPresent: r.is_present,
+      remarks: '',
+      createdAt: new Date().toISOString()
     });
   }
+  if (memAttendanceRecords.length > 2000) memAttendanceRecords.length = 2000;
+
+  // 4. Sync to Cloud Firestore in background
+  syncAttendanceToFirestore(sessionMeta, finalRecords).catch(err => {
+    console.warn('[Teacher] Background Firestore attendance sync warning:', err.message);
+  });
+
+  return res.status(201).json({
+    success: true,
+    sessionId,
+    total: finalRecords.length,
+    present: presentCount,
+    absent: absentCount
+  });
 });
 
 // ── GET /api/teacher/attendance/history ──
@@ -597,33 +741,60 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
   const isTeacher = req.user!.role === 'TEACHER';
   const identities = isTeacher ? await resolveTeacherIdentities(req.user) : { ids: [], names: [], emails: [] };
 
-  // 1. Try PostgreSQL
-  try {
-    const q = await pool.query(
-      `SELECT a.id, a.attendance_date, a.start_time, a.end_time,
-              c.class_number, s.name AS section_name, sub.name AS subject_name,
-              COUNT(ar.id)::int AS total,
-              COUNT(ar.id) FILTER(WHERE ar.is_present)::int AS present
-       FROM attendance_sessions a
-       LEFT JOIN classes c ON c.id = a.class_id
-       LEFT JOIN sections s ON s.id = a.section_id
-       LEFT JOIN subjects sub ON sub.id = a.subject_id
-       JOIN attendance_records ar ON ar.attendance_session_id = a.id
-       WHERE a.school_id = $1 ${isTeacher ? 'AND a.teacher_id = $2' : ''}
-       GROUP BY a.id, c.class_number, s.name, sub.name
-       ORDER BY a.attendance_date DESC, a.start_time DESC`,
-      isTeacher ? [sid, teacherId] : [sid]
-    );
-    if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
-  } catch {}
+  // 1. Try PostgreSQL if enabled
+  if (process.env.USE_POSTGRES === 'true') {
+    try {
+      const q = await pool.query(
+        `SELECT a.id, a.attendance_date, a.start_time, a.end_time,
+                COALESCE(a.class_number, c.class_number, 10) AS class_number,
+                COALESCE(a.section_name, s.name, 'A') AS section_name,
+                COALESCE(a.subject_name, sub.name, 'General') AS subject_name,
+                COALESCE(a.total_count, COUNT(ar.id)::int) AS total,
+                COALESCE(a.present_count, COUNT(ar.id) FILTER(WHERE ar.is_present OR ar.status = 'PRESENT')::int) AS present
+         FROM attendance_sessions a
+         LEFT JOIN classes c ON c.id = a.class_id
+         LEFT JOIN sections s ON s.id = a.section_id
+         LEFT JOIN subjects sub ON sub.id = a.subject_id
+         LEFT JOIN attendance_records ar ON ar.attendance_session_id = a.id
+         WHERE a.school_id = $1 ${isTeacher ? 'AND a.teacher_id = $2' : ''}
+         GROUP BY a.id, a.attendance_date, a.start_time, a.end_time, a.class_number, c.class_number, a.section_name, s.name, a.subject_name, sub.name, a.total_count, a.present_count
+         ORDER BY a.attendance_date DESC, a.start_time DESC`,
+        isTeacher ? [sid, teacherId] : [sid]
+      );
+      if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+    } catch {}
+  }
 
-  // 2. Query Cloud Firestore
+  // 2. Query Cloud Firestore + In-Memory Store
+  const historyMap = new Map<string, any>();
+
+  // Add from in-memory sessions first
+  memAttendanceSessions.forEach(s => {
+    if (!isSameSchool(s.schoolId, sid)) return;
+    if (isTeacher && s.teacherId && !identities.ids.includes(s.teacherId) && s.teacherId !== teacherId) return;
+    historyMap.set(s.id, {
+      id: s.id,
+      attendance_date: s.attendanceDate,
+      start_time: s.startTime,
+      end_time: s.endTime,
+      class_number: s.classNumber,
+      section_name: s.sectionName,
+      subject_name: s.subjectName,
+      total: s.totalCount || 0,
+      total_count: s.totalCount || 0,
+      present: s.presentCount || 0,
+      present_count: s.presentCount || 0,
+      absent: (s.totalCount || 0) - (s.presentCount || 0),
+      absent_count: (s.totalCount || 0) - (s.presentCount || 0)
+    });
+  });
+
   if (isFirebaseConfigured()) {
     try {
       const snap = await collections.attendanceSessions().get();
       if (!snap.empty) {
-        const historyList: any[] = [];
         for (const doc of snap.docs) {
+          if (historyMap.has(doc.id)) continue;
           const d = doc.data();
           const docSid = d.school_id || d.schoolId;
           if (docSid && !isSameSchool(docSid, sid)) continue;
@@ -631,15 +802,17 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
           const takenBy = String(d.takenBy || d.teacher_id || d.teacherId || '');
           if (isTeacher && takenBy && !identities.ids.includes(takenBy) && takenBy !== teacherId) continue;
 
-          let total = 0;
-          let present = 0;
-          try {
-            const recSnap = await collections.attendanceRecords().where('sessionId', '==', doc.id).get();
-            total = recSnap.size;
-            present = recSnap.docs.filter(rd => rd.data().status === 'PRESENT').length;
-          } catch {}
+          let total = d.totalCount ?? d.total_count ?? 0;
+          let present = d.presentCount ?? d.present_count ?? 0;
+          if (!total) {
+            try {
+              const recSnap = await collections.attendanceRecords().where('sessionId', '==', doc.id).get();
+              total = recSnap.size;
+              present = recSnap.docs.filter(rd => rd.data().status === 'PRESENT' || rd.data().is_present === true).length;
+            } catch {}
+          }
 
-          historyList.push({
+          historyMap.set(doc.id, {
             id: doc.id,
             attendance_date: d.attendanceDate || d.attendance_date || new Date().toISOString().slice(0, 10),
             start_time: d.startTime || d.start_time || '09:00',
@@ -648,12 +821,12 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
             section_name: d.section_name || d.sectionName || 'A',
             subject_name: d.subject_name || d.subjectName || 'General',
             total,
-            present
+            total_count: total,
+            present,
+            present_count: present,
+            absent: Math.max(0, total - present),
+            absent_count: Math.max(0, total - present)
           });
-        }
-        if (historyList.length > 0) {
-          historyList.sort((a, b) => new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime() || b.start_time.localeCompare(a.start_time));
-          return res.json(historyList);
         }
       }
     } catch (err: any) {
@@ -661,11 +834,17 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
     }
   }
 
+  if (historyMap.size > 0) {
+    const list = Array.from(historyMap.values());
+    list.sort((a, b) => new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime() || b.start_time.localeCompare(a.start_time));
+    return res.json(list);
+  }
+
   // 3. Fallback for test school
   if (isTestSchool(sid)) {
     return res.json([
-      { id: 'sess-01', attendance_date: new Date().toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 10, section_name: 'A', subject_name: 'Mathematics', total: 25, present: 23 },
-      { id: 'sess-02', attendance_date: new Date(Date.now() - 86400000).toISOString(), start_time: '09:00:00', end_time: '09:45:00', class_number: 10, section_name: 'A', subject_name: 'Mathematics', total: 25, present: 24 }
+      { id: 'sess-01', attendance_date: new Date().toISOString().slice(0, 10), start_time: '09:00:00', end_time: '09:45:00', class_number: 10, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 9 },
+      { id: 'sess-02', attendance_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), start_time: '09:00:00', end_time: '09:45:00', class_number: 10, section_name: 'A', subject_name: 'Mathematics', total: 10, present: 9 }
     ]);
   }
 

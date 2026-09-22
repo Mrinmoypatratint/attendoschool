@@ -52,18 +52,31 @@ r.get('/classes',...admin,async(req:AuthRequest,res)=>{
  // Query Cloud Firestore for classes belonging to this school
  if (isFirebaseConfigured()) {
    try {
-     const snap = await collections.classes().get();
-     if (!snap.empty) {
-       const list = snap.docs
-         .map(d => ({ id: d.id, ...d.data() }))
-         .filter((c: any) => c.school_id && isSameSchool(c.school_id, sid));
-       if (list.length > 0) {
-         list.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
-         return res.json(list);
-       }
-     }
-   } catch {}
- }
+      const snap = await collections.classes().get();
+      if (!snap.empty) {
+        const list = snap.docs
+          .map(d => {
+            const data = d.data();
+            const cNum = Number(data.class_number ?? data.classNumber ?? 10);
+            return {
+              id: d.id,
+              class_number: cNum,
+              classNumber: cNum,
+              name: data.name || `Class ${cNum}`,
+              section_count: data.section_count ?? data.sectionCount ?? 2,
+              school_id: data.school_id || data.schoolId,
+              schoolId: data.schoolId || data.school_id,
+              ...data
+            };
+          })
+          .filter((c: any) => (c.school_id && isSameSchool(c.school_id, sid)) || (c.schoolId && isSameSchool(c.schoolId, sid)));
+        if (list.length > 0) {
+          list.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
+          return res.json(list);
+        }
+      }
+    } catch {}
+  }
 
  const memSchoolClasses = demoClasses.filter(c => c.school_id && isSameSchool(c.school_id, sid));
  if (memSchoolClasses.length > 0) return res.json(memSchoolClasses);
@@ -118,18 +131,36 @@ r.get('/sections',...admin,async(req:AuthRequest,res)=>{
  // Query Cloud Firestore for sections belonging to this school
  if (isFirebaseConfigured()) {
    try {
-     const snap = await collections.sections().get();
-     if (!snap.empty) {
-       const list = snap.docs
-         .map(d => ({ id: d.id, ...d.data() }))
-         .filter((s: any) => s.school_id && isSameSchool(s.school_id, sid));
-       if (list.length > 0) {
-         list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
-         return res.json(list);
-       }
-     }
-   } catch {}
- }
+      const snap = await collections.sections().get();
+      if (!snap.empty) {
+        const list = snap.docs
+          .map(d => {
+            const data = d.data();
+            const cNum = Number(data.class_number ?? data.classNumber ?? data.className ?? 10);
+            const sName = data.name || data.sectionName || data.section || 'A';
+            const cId = data.class_id || data.classId || `cls-${cNum}`;
+            return {
+              id: d.id,
+              class_id: cId,
+              classId: cId,
+              class_number: cNum,
+              classNumber: cNum,
+              name: sName,
+              section_name: sName,
+              sectionName: sName,
+              school_id: data.school_id || data.schoolId,
+              schoolId: data.schoolId || data.school_id,
+              ...data
+            };
+          })
+          .filter((s: any) => (s.school_id && isSameSchool(s.school_id, sid)) || (s.schoolId && isSameSchool(s.schoolId, sid)));
+        if (list.length > 0) {
+          list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
+          return res.json(list);
+        }
+      }
+    } catch {}
+  }
 
  const memSchoolSections = demoSections.filter(s => s.school_id && isSameSchool(s.school_id, sid));
  if (memSchoolSections.length > 0) return res.json(memSchoolSections);
@@ -197,6 +228,7 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
 });
 
 export const demoStudents: any[] = [
+  { id: 'stud-001', name: 'Rohan Sharma', fullName: 'Rohan Sharma', roll_number: '1', rollNumber: '1', admission_number: 'GW-2025-001', admissionNumber: 'GW-2025-001', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Mohan Sharma', parent_sms_number: '9800011001', parent_email: 'mohan.sharma@gmail.com', student_email: 'student@greenwood.local', email: 'student@greenwood.local', class_id: 'cls-10', class_number: 10, section_id: 'sec-10-a', section_name: 'A' },
   { id: 'st-01', name: 'Arjun Kumar', roll_number: '1', admission_number: 'ADM-2025-001', admissionNumber: 'ADM-2025-001', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Ramesh Kumar', parent_sms_number: '9876543210', parent_email: 'ramesh.kumar@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
   { id: 'st-02', name: 'Priya Sharma', roll_number: '2', admission_number: 'ADM-2025-002', admissionNumber: 'ADM-2025-002', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Sunil Sharma', parent_sms_number: '9876543211', parent_email: 'sunil.sharma@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
   { id: 'st-03', name: 'Rahul Das', roll_number: '3', admission_number: 'ADM-2025-003', admissionNumber: 'ADM-2025-003', school_id: '00000000-0000-0000-0000-000000000001', schoolId: '00000000-0000-0000-0000-000000000001', parent_name: 'Bikash Das', parent_sms_number: '9876543212', parent_email: 'bikash.das@example.com', class_id: 'cls-8', class_number: 8, section_id: 'sec-8-a', section_name: 'A' },
