@@ -63,7 +63,44 @@ r.get('/logs',...admin,async(req:AuthRequest,res)=>{
   }
 });
 
-r.post('/process',...admin,async(_req,res)=>{
+import { dispatchAttendanceEmails, memNotificationLogs } from '../services/notificationService';
+
+r.post('/attendance-email', requireAuth, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER'), async (req: AuthRequest, res) => {
+  try {
+    const { sessionId, targetType = 'ABSENT_ONLY', recipientTypes = ['PARENT'], classId, sectionId } = req.body || {};
+    if (!sessionId) {
+      return res.status(400).json({ message: 'sessionId is required to dispatch attendance notifications' });
+    }
+
+    const schoolId = req.user!.schoolId || '00000000-0000-0000-0000-000000000001';
+
+    const result = await dispatchAttendanceEmails({
+      sessionId,
+      schoolId,
+      actorUserId: req.user!.id,
+      actorRole: req.user!.role,
+      actorName: req.user!.name || 'Faculty Member',
+      targetType,
+      recipientTypes,
+      classId,
+      sectionId,
+      req
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    const status = err.status || (err.message.includes('Forbidden') ? 403 : 400);
+    res.status(status).json({ success: false, message: err.message || 'Failed to dispatch attendance emails' });
+  }
+});
+
+r.get('/email-logs', ...admin, async (req: AuthRequest, res) => {
+  const schoolId = req.user!.schoolId;
+  const matched = memNotificationLogs.filter(l => !schoolId || l.school_id === schoolId || l.schoolId === schoolId);
+  res.json(matched);
+});
+
+r.post('/process', ...admin, async (_req, res) => {
   try {
     res.json(await processSmsQueue(100));
   } catch {
@@ -71,3 +108,4 @@ r.post('/process',...admin,async(_req,res)=>{
   }
 });
 export default r;
+

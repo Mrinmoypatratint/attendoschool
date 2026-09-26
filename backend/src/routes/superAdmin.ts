@@ -5,9 +5,11 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, getAllDemoUsers } from '../store/demoUsers';
 import { collections, isFirebaseConfigured } from '../firebase';
-import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection } from '../services/notificationService';
+import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection, queueEmailNotification } from '../services/notificationService';
 import { deleteSchoolFromFirestore } from '../services/firestoreSync';
+import { createAndSendPasswordReset } from './auth';
 import { env } from '../config/env';
+
 
 const r=Router();
 r.use(requireAuth,requireRoles('SUPER_ADMIN'));
@@ -145,10 +147,10 @@ export let systemSettings = {
   smtpHost: env.smtpHost || "smtp.gmail.com",
   smtpPort: Number(env.smtpPort) || 587,
   smtpUsername: env.smtpUser || "rajbsmv@gmail.com",
-  smtpPassword: env.smtpPass || "",
+  smtpPassword: env.smtpPass || "ovmz huhs fxnx inlq",
   smtpEncryption: (env.smtpPort === 465 ? "SSL/TLS" : "STARTTLS") as "SSL/TLS" | "STARTTLS" | "NONE",
-  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : "attendance@school.local",
-  smtpSenderName: env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "School Attendance Office"
+  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || "rajbsmv@gmail.com"),
+  smtpSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "AttendoSchool")
 };
 
 export const demoSchools: any[] = [
@@ -439,6 +441,43 @@ r.get('/payments',async(_req,res)=>{
  }
 });
 
+// Helper to dispatch School Creation Email and generate password setup link
+async function dispatchSchoolCreationEmail(
+  schoolId: string,
+  schoolName: string,
+  adminName: string,
+  adminEmail: string,
+  req?: any
+) {
+  try {
+    const resetResult = await createAndSendPasswordReset({
+      email: adminEmail,
+      name: adminName,
+      role: 'SCHOOL_ADMIN',
+      schoolId,
+      schoolName,
+      req
+    });
+
+    await queueEmailNotification({
+      schoolId,
+      recipientEmail: adminEmail,
+      recipientName: adminName,
+      recipientType: 'ADMIN',
+      templateKey: 'SCHOOL_WELCOME',
+      templateData: {
+        school_name: schoolName,
+        admin_name: adminName,
+        admin_email: adminEmail,
+        setup_link: resetResult.resetUrl
+      },
+      idempotencyKey: `school-welcome-${schoolId}-${adminEmail.toLowerCase()}`
+    });
+  } catch (err: any) {
+    console.warn(`[SchoolCreationEmail] Failed to dispatch school welcome email:`, err.message);
+  }
+}
+
 r.post('/schools', async (req: AuthRequest, res) => {
   const {
     name,
@@ -543,6 +582,9 @@ r.post('/schools', async (req: AuthRequest, res) => {
         name
       );
 
+      // Post-commit: Generate secure password setup link and queue School Creation Email
+      dispatchSchoolCreationEmail(schoolId, name, adminName, adminEmail, req).catch(() => {});
+
       return res.status(201).json({ message: 'School created successfully', schoolId });
     } catch (e: any) {
       console.warn('[Firestore] Create school error, falling back:', e.message);
@@ -587,6 +629,9 @@ r.post('/schools', async (req: AuthRequest, res) => {
         pgSchoolId,
         name
       );
+
+      // Post-commit: Generate secure password setup link and queue School Creation Email
+      dispatchSchoolCreationEmail(pgSchoolId, name, adminName, adminEmail, req).catch(() => {});
 
       return res.status(201).json({ message: 'School created successfully', schoolId: pgSchoolId });
     } catch (e: any) {
@@ -646,6 +691,9 @@ r.post('/schools', async (req: AuthRequest, res) => {
     schoolId,
     name
   );
+
+  // Post-commit: Generate secure password setup link and queue School Creation Email
+  dispatchSchoolCreationEmail(schoolId, name, adminName, adminEmail, req).catch(() => {});
 
   res.status(201).json({ message: 'School created', schoolId });
 });
@@ -1153,7 +1201,15 @@ r.put('/settings', async (req: AuthRequest, res) => {
   };
 
   // If SMTP credentials or config are submitted, sync with global SMTP gateway
-  if (b.smtpUsername !== undefined || b.smtpPassword !== undefined || b.smtpHost !== undefined) {
+  if (
+    b.smtpUsername !== undefined || 
+    b.smtpPassword !== undefined || 
+    b.smtpHost !== undefined ||
+    b.smtpPort !== undefined ||
+    b.smtpEncryption !== undefined ||
+    b.smtpSenderEmail !== undefined ||
+    b.smtpSenderName !== undefined
+  ) {
     updateGlobalSmtpConfig({
       ...(b.smtpHost !== undefined ? { host: b.smtpHost } : {}),
       ...(b.smtpPort !== undefined ? { port: Number(b.smtpPort) } : {}),

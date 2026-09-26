@@ -12,7 +12,8 @@ async function verify() {
   console.log('   - Connection Mode:   ', status.mode === 'live_cloud' ? '🌐 LIVE GOOGLE CLOUD FIRESTORE' : status.mode === 'emulator' ? '💻 LOCAL FIRESTORE EMULATOR' : '⚠️ UNCONFIGURED DEV');
   console.log('   - Project ID:        ', status.projectId);
   console.log('   - Credential Source: ', status.credentialSource);
-  console.log('   - Service Key File:  ', status.serviceAccountDetected ? '✅ Found' : '⚪ Not present (check backend/serviceAccountKey.json)');
+  console.log('   - .env Credentials:  ', (status as any).envCredentialsDetected ? '✅ Loaded directly from .env (No external file needed)' : '⚪ Not in .env');
+  console.log('   - External Key File: ', (status as any).fileKeyDetected ? '📁 Present on disk' : '⚪ Not present (pure .env mode)');
   console.log('\n2. Live Read/Write Connectivity Test:');
 
   const startTime = Date.now();

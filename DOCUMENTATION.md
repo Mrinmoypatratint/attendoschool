@@ -77,6 +77,7 @@
 - [41. Developer Guide](#41-developer-guide)
 - [42. Contribution Guidelines](#42-contribution-guidelines)
 - [43. Glossary](#43-glossary)
+- [45. Production Email Notification Infrastructure](#45-production-email-notification-infrastructure)
 - [44. Conclusion](#44-conclusion)
 
 ---
@@ -2147,6 +2148,167 @@ npm run test:api-smoke   # API integration smoke script
 
 ---
 
-## 44. Conclusion
+## 45. Production Email Notification Infrastructure
 
-AttendoSchool is an architecturally sound, feature-complete SaaS platform designed specifically for institutional school management. Its multi-tenant relational architecture, comprehensive 67-table schema, 242 API endpoints, and Indian GST billing engine provide an enterprise foundation for scaling educational operations. This documentation serves as the authoritative source of truth for the codebase as implemented.
+AttendoSchool incorporates an institutional-grade, multi-tenant email notification architecture designed to handle high-volume attendance alerts, user onboarding, password security, and deliverability tracking without degrading student attendance save latency.
+
+### 45.1 System Architecture
+
+```mermaid
+flowchart TD
+    subgraph ClientLayer ["Client Layer"]
+        A1["Teacher Attendance UI"] -->|Record Session| B1["POST /teacher/attendance"]
+        A2["Attendance Email Action Card"] -->|Dispatch Alert| B2["POST /notifications-v11/attendance-email"]
+        A3["User Management"] -->|Invite Faculty / Student| B3["POST /teachers | POST /students"]
+        A4["Forgot Password"] -->|Request Link| B4["POST /auth/request-password-reset"]
+    end
+
+    subgraph ServiceLayer ["Transactional Dispatch Pipeline"]
+        B1 -->|Committed Session ID| DB1[("PostgreSQL / Firestore")]
+        B2 -->|Enforce Multi-Tenant RBAC| S1["dispatchAttendanceEmails()"]
+        B3 -->|Post-Commit Setup Link| S2["queueEmailNotification()"]
+        B4 -->|Anti-Enumeration Lookup| S2
+        S1 -->|Validate RFC 5322 & Idempotency| S2
+    end
+
+    subgraph QueueWorker ["Queue & Worker Subsystem"]
+        S2 -->|State: QUEUED| Q1[("notification_logs Table & Memory Queue")]
+        W1["Queue Worker / processNotificationQueue()"] -->|Concurrency Lease & Rate Limit| Q1
+        W1 -->|SMTP TLS Connection / Sandbox| SMTP["Nodemailer SMTP Transporter"]
+        SMTP -->|Success 250 OK| S3["status = 'SENT'"]
+        SMTP -->|Transient Network Error| R1["status = 'RETRYING' (Exponential Backoff: 1m, 5m, 15m, 30m)"]
+        SMTP -->|Permanent 5xx Error| F1["status = 'FAILED'"]
+    end
+```
+
+### 45.2 Key Capabilities & Lifecycle Templates
+
+| Template Key | Lifecycle Event | Subject Line Format | Target Recipient | Key Variables Included |
+| :--- | :--- | :--- | :--- | :--- |
+| `SCHOOL_WELCOME` | School Tenant Creation | `Welcome to AttendoSchool — {school_name} Account Ready` | School Admin | School Name, Admin Name, Admin Email, 24h Setup URL |
+| `TEACHER_CREATED` | Faculty Staff Onboarding | `Welcome to {school_name} — Faculty Portal Access` | Teacher | Teacher Name, School Name, Employee ID, Login URL |
+| `STUDENT_CREATED` | Student Registration | `Welcome to {school_name} — Student Portal Access for {student_name}` | Student / Parent | Student Name, Class, Section, School, Portal URL |
+| `PARENT_CREATED` | Guardian Portal Setup | `Welcome to {school_name} — Parent Portal Access for {student_name}` | Parent / Guardian | Student Name, Class, Section, School, Setup URL |
+| `PASSWORD_RESET` | Security Recovery | `Reset Your Password for {school_name}` | User | User Name, School Name, Single-Use 24h Link |
+| `ATTENDANCE_ABSENT` | Daily Absence Alert | `Attendance Alert — {student_name} was marked ABSENT today ({date})` | Parent / Student | Student, Class, Section, Period, Date, Teacher, Helpline |
+| `ATTENDANCE_PRESENT` | Daily Attendance Confirmation | `Attendance Confirmation — {student_name} was marked PRESENT today ({date})` | Parent / Student | Student, Class, Section, Period, Date, Teacher |
+| `TEST_EMAIL` | SMTP Health Verification | `SMTP Configuration Test — AttendoSchool Email Verification` | School Admin | Timestamp, Host, Port, Encryption, Tenant School ID |
+
+### 45.3 Architectural & Security Invariants
+
+1. **Decoupled Post-Commit Execution**: Attendance database records commit first. Email queueing operates strictly post-commit; attendance submission will NEVER fail or roll back due to network issues or mail server downtime.
+2. **Strict Multi-Tenant Isolation**: School administrators can only dispatch notifications for their authenticated tenant (`req.user.schoolId`). Cross-tenant access attempts return HTTP `403 Forbidden`.
+3. **Class Teacher Authority Verification**: Class teachers can only dispatch emails for sections they are explicitly assigned to (validated against session timetable and allocations in backend database; frontend state is never trusted).
+4. **Anti-User Enumeration**: Password reset endpoint (`POST /auth/request-password-reset`) returns the exact same generic message (`If an account exists with this email address, a password setup link has been sent.`) regardless of whether the email exists.
+5. **Contact Privacy (Zero Cross-Exposure)**: Every recipient receives an individual, separate MIME message with their email alone in the `To:` header. Batch emails never use `CC` or `BCC` across different student families.
+6. **Missing Contact Graceful Skip**: Students without email addresses on file are safely marked as `SKIPPED` without stopping or failing the remaining batch.
+7. **Idempotency & Duplicate Protection**: Every notification log calculates a deterministic `idempotency_key` (e.g. `att-{sessionId}-{studentId}-{recipientType}-{status}`). Re-submitting identical requests skips duplicate dispatches.
+8. **Multi-Step Exponential Backoff**: Transient errors retry at `1m`, `5m`, `15m`, and `30m` intervals. Permanent errors (e.g. 5xx rejected recipient) are marked `FAILED` immediately without blocking the worker queue.
+
+### 45.4 Deliverability & DNS Authentication (SPF, DKIM, DMARC)
+
+To achieve maximum inbox placement across Google Workspace, Microsoft 365, and institutional spam filters, institutional domains should configure standard DNS records:
+
+- **SPF (Sender Policy Framework)**: Publish TXT record at domain root:
+  `v=spf1 include:_spf.google.com ~all` (or your mail server provider include).
+- **DKIM (DomainKeys Identified Mail)**: Configure 2048-bit RSA selector matching your outgoing SMTP server.
+- **DMARC (Domain-based Message Authentication)**: Publish TXT record at `_dmarc.yourdomain.edu`:
+  `v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc-reports@yourdomain.edu`
+- **Transparent Deliverability Disclaimer**: AttendoSchool implements full RFC 5322 MIME headers, clear plain-text fallbacks, TLS transmission, and transactional identification headers. Final inbox placement is subject to receiving mail server reputation heuristics; no provider can honestly guarantee 100% spam-proof delivery.
+
+---
+
+---
+
+## 46. Cross-Teacher Daily Attendance Visibility & Dynamic Re-Attendance Engine
+
+### 46.1 Problem Definition & Real-World School Scenarios
+
+In standard K-12 schooling operations, attendance is officially conducted once per day during the initial morning roll-call (typically Period 1 / Homeroom). However, standard static attendance software fails in routine operational scenarios:
+
+1. **Cross-Teacher Visibility Gap**: Subject teachers taking later periods (e.g., Mathematics in Period 2, Science in Period 3) cannot see whether attendance was already taken by the 1st period faculty member or who was present, leading to redundant work or confusion.
+2. **Early Student Departure (The 1st Period Departure Scenario)**: A student arrives at school and is marked `PRESENT` in Period 1. After Period 1, the student falls ill (referred to the Sick Bay) or their guardian arrives in person to pick them up for a family emergency. In static systems, the student remains falsely marked "Present for the full day", or is switched to "Absent" which wrongly erases the fact that they attended Period 1.
+3. **Late Arrival After Initial Roll-Call**: A student marked `ABSENT` in Period 1 arrives at school during Period 2 or 3 due to transit delays or medical appointments. The system must transition the student to `LATE` with arrival period/time while alerting guardians.
+4. **Whole-Class Period Verification (Re-Roll Call)**: An afternoon substitute teacher or class coordinator needs to verify attendance across all students for post-lunch periods without overwriting original records.
+
+AttendoSchool solves this with an institutional-grade **Cross-Teacher Visibility & Dynamic Re-Attendance Engine** backed by dual database persistence (PostgreSQL + Google Cloud Firestore), immutable audit logging, and automated parent alerts.
+
+### 46.2 Database Schema Enhancements (Migration 033)
+
+Migration `033_reattendance_and_cross_teacher_visibility.sql` extends the attendance schema:
+
+```sql
+-- Extended session metrics
+ALTER TABLE attendance_sessions
+  ADD COLUMN IF NOT EXISTS left_early_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS late_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS is_reattendance BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS reattendance_count INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_modified_by UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS last_modified_name VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS last_modified_at TIMESTAMPTZ;
+
+-- Extended record-level period tracking
+ALTER TABLE attendance_records
+  ADD COLUMN IF NOT EXISTS departure_period VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS departure_time VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS arrival_period VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS arrival_time VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS updated_by UUID REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS updated_by_name VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+
+-- Immutable re-attendance audit trail
+CREATE TABLE IF NOT EXISTS attendance_audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  attendance_session_id UUID NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  student_name VARCHAR(150),
+  roll_number VARCHAR(50),
+  action VARCHAR(50) NOT NULL, -- 'LEFT_EARLY' | 'LATE_ARRIVAL' | 'STATUS_UPDATE' | 'REATTENDANCE_BATCH'
+  previous_status VARCHAR(50),
+  new_status VARCHAR(50) NOT NULL,
+  departure_period VARCHAR(100),
+  departure_time VARCHAR(50),
+  arrival_period VARCHAR(100),
+  arrival_time VARCHAR(50),
+  reason TEXT,
+  modified_by UUID REFERENCES users(id),
+  modified_by_name VARCHAR(150),
+  notification_sent BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 46.3 RESTful API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/teacher/attendance/today-status` | Returns whether attendance was already taken for this class/section today across all faculty, with original author, current counts, student marks, and audit logs. |
+| `GET` | `/api/teacher/attendance/:sessionId/records` | Returns complete student roster and chronological audit trail for any given attendance session. |
+| `PUT` | `/api/teacher/attendance/:sessionId/student/:studentId` | Modifies an individual student's status (e.g. `LEFT_EARLY` after 1st Period, `LATE` arrival), logs the audit event, recalculates session counters, and queues guardian alert. |
+| `POST` | `/api/teacher/attendance/:sessionId/reattendance` | Batch re-attendance endpoint for whole-class spot checks or period verifications. |
+| `GET` | `/api/teacher/attendance/history` | Multi-teacher session history allowing all teachers assigned to classes/sections to audit past sessions with teacher names and re-attendance badges. |
+
+### 46.4 Interactive Frontend Features (Attendance & History Stations)
+
+1. **Synchronized Cross-Teacher Banner**: Prominently informs teachers when attendance was already recorded today by a colleague, showing the authoring teacher name, period time slot, and live counters for `Present`, `Left Early`, `Late`, and `Absent`.
+2. **Student Early Departure Modal**:
+   - Departure Period selector (Defaults to `"After 1st Period"` for students leaving after morning roll-call).
+   - Departure time input (Defaults to current local time).
+   - Reason dropdown (Sick Bay illness, parent pickup, official school representation, etc.).
+   - Gate pass / parent note remarks.
+   - Guardian SMS & portal alert toggle (Checked by default).
+3. **Student Late Arrival Modal**:
+   - Arrival Period selector (`Period 2`, `Period 3`, `After Recess`).
+   - Arrival time and reason fields.
+   - Converts `ABSENT` records to `LATE` with guardian notifications.
+4. **Institutional Audit Trail Modal**: Displays an immutable chronological timeline of who changed what, when, previous status vs. new status, departure/arrival details, and dispatch status.
+5. **Session History Inspector**: Direct inspection modal in History with "Student Roster" and "Re-attendance Audit Trail" tabs, plus one-click navigation to the Live Station.
+
+---
+
+## 47. Conclusion
+
+AttendoSchool is an architecturally sound, feature-complete SaaS platform designed specifically for institutional school management. Its multi-tenant relational architecture, comprehensive 68-table schema, 246+ API endpoints, Indian GST billing engine, multi-channel parent alert subsystem, and dynamic cross-teacher re-attendance engine provide an enterprise foundation for scaling educational operations. This documentation serves as the authoritative source of truth for the codebase as implemented.

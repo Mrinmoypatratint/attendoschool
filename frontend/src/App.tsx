@@ -28,7 +28,8 @@ import {
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
-  Menu, ChevronDown, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2
+  Menu, ChevronDown, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
+  History as HistoryIcon, DoorOpen, UserCheck, UserX, Info
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { StudentLayout } from './components/student/StudentLayout';
@@ -2706,19 +2707,45 @@ function TeacherHome(){
   const {user}=useAuth();
   const nav=useNavigate();
   const [r,setR]=useState<any[]>([]);
+  const [todaySessions,setTodaySessions]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
+
   useEffect(()=>{
-    api.get('/teacher/routine/today')
-      .then(x=>setR(Array.isArray(x.data)?x.data:[]))
-      .catch(()=>setR([]))
-      .finally(()=>setLoading(false));
+    async function loadSchedule() {
+      try {
+        const [routineRes, historyRes] = await Promise.all([
+          api.get('/teacher/routine/today').catch(()=>({data:[]})),
+          api.get('/teacher/attendance/history').catch(()=>({data:[]}))
+        ]);
+        setR(Array.isArray(routineRes.data) ? routineRes.data : []);
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
+        setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSchedule();
   },[]);
+
+  // Helper to find if routine class has already had attendance taken today
+  const getRoutineAttendance = (item: any) => {
+    return todaySessions.find((s: any) => {
+      const matchClass =
+        (s.class_id && s.class_id === item.class_id) ||
+        (Number(s.class_number) === Number(item.class_number));
+      const matchSec =
+        (s.section_id && s.section_id === item.section_id) ||
+        (String(s.section_name || '').toLowerCase() === String(item.section_name || '').toLowerCase());
+      return matchClass && matchSec;
+    });
+  };
 
   return <Layout>
     <div className="hero">
       <p className="eyebrow">TODAY'S ROUTINE & ATTENDANCE</p>
       <h1>Ready to take attendance.</h1>
-      <p>Your daily teaching schedule is synchronized directly from the school timetable. Click "Take attendance" to record classroom attendance.</p>
+      <p>Your daily teaching schedule is synchronized directly from the school timetable. Click "Take attendance" to record classroom attendance, or view and update existing class roll calls.</p>
     </div>
     <div className="panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -2733,7 +2760,7 @@ function TeacherHome(){
         <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
           <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
           <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
-            You do not have any timetable entries scheduled for today. You can view the full weekly timetable or take on-demand class attendance below.
+            You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review or take attendance.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
             <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
@@ -2746,25 +2773,68 @@ function TeacherHome(){
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {r.map(x => (
-            <div className="routine-card" key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: 10, background: 'var(--card)', border: '1px solid var(--border)' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <b style={{ fontSize: 15 }}>Class {x.class_number}-{x.section_name}</b>
-                  {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
-                </div>
-                <span className="muted" style={{ fontSize: 13 }}>
-                  <b>{x.subject_name}</b> · {fmt(x.start_time)}–{fmt(x.end_time)} {x.room ? '· Room ' + x.room : ''}
-                </span>
-              </div>
-              <button
-                onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
-                style={{ padding: '8px 16px', borderRadius: 8, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+          {r.map(x => {
+            const recordedSession = getRoutineAttendance(x);
+            return (
+              <div
+                className="routine-card"
+                key={x.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 12,
+                  background: recordedSession ? 'rgba(16, 185, 129, 0.03)' : 'var(--card)',
+                  border: recordedSession ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)'
+                }}
               >
-                Take attendance →
-              </button>
-            </div>
-          ))}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <b style={{ fontSize: 15.5 }}>Class {x.class_number}-{x.section_name}</b>
+                    {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
+                    {recordedSession && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#d1fae5', color: '#065f46', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        ✓ Recorded ({recordedSession.present || 0} Present{recordedSession.left_early_count ? ` · ${recordedSession.left_early_count} Left Early` : ''})
+                      </span>
+                    )}
+                  </div>
+                  <div className="muted" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span><b>{x.subject_name}</b> · {fmt(x.start_time)}–{fmt(x.end_time)} {x.room ? '· Room ' + x.room : ''}</span>
+                    {recordedSession && (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 4 }}>
+                        Taken by: <b>{recordedSession.teacher_name || 'Faculty Member'}</b>
+                        {recordedSession.is_reattendance ? ' · (Re-attended)' : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: 8,
+                      background: recordedSession ? '#059669' : '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    {recordedSession ? 'View / Re-attendance →' : 'Take attendance →'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -4269,7 +4339,7 @@ function Attendance(){
   const [selectedClassId,setSelectedClassId]=useState<string>('');
   const [selectedSectionId,setSelectedSectionId]=useState<string>('');
   const [selectedSubjectId,setSelectedSubjectId]=useState<string>('');
-  const [attendanceDate,setAttendanceDate]=useState<string>(new Date().toISOString().slice(0,10));
+  const [attendanceDate,setAttendanceDate]=useState<string>(getQueryParam('date') || getQueryParam('attendance_date') || new Date().toISOString().slice(0,10));
   const [activeRoutine,setActiveRoutine]=useState<any>(null);
 
   const [students,setStudents]=useState<any[]>([]);
@@ -4278,6 +4348,55 @@ function Attendance(){
   const [busy,setBusy]=useState(false);
   const [done,setDone]=useState(false);
   const [summary,setSummary]=useState<any>(null);
+
+  // Existing session & Re-attendance state
+  const [existingSession, setExistingSession] = useState<any>(null);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [studentStatusMap, setStudentStatusMap] = useState<Record<string, {
+    status: 'PRESENT' | 'ABSENT' | 'LEFT_EARLY' | 'LATE';
+    departurePeriod?: string;
+    departureTime?: string;
+    arrivalPeriod?: string;
+    arrivalTime?: string;
+    remarks?: string;
+    updatedByName?: string;
+  }>>({});
+  const [loadingStatus, setLoadingStatus] = useState<boolean>(false);
+  const [reattendanceSuccessMsg, setReattendanceSuccessMsg] = useState<string>('');
+
+  // Modals state
+  const [activeModal, setActiveModal] = useState<'EARLY_DEPARTURE' | 'LATE_ARRIVAL' | 'AUDIT_LOGS' | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  
+  // Early departure form state
+  const [depPeriod, setDepPeriod] = useState<string>('After 1st Period');
+  const [depTime, setDepTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const [depReason, setDepReason] = useState<string>('Parent / Guardian Picked Up Early');
+  const [depRemarks, setDepRemarks] = useState<string>('');
+  const [depNotify, setDepNotify] = useState<boolean>(true);
+
+  // Late arrival form state
+  const [arrPeriod, setArrPeriod] = useState<string>('Period 2');
+  const [arrTime, setArrTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const [arrReason, setArrReason] = useState<string>('Traffic / Commute Delay');
+  const [arrRemarks, setArrRemarks] = useState<string>('');
+  const [arrNotify, setArrNotify] = useState<boolean>(true);
+
+  const [savingAction, setSavingAction] = useState<boolean>(false);
+
+  // Email notifications state
+  const [emailTarget, setEmailTarget] = useState<'ABSENT_ONLY' | 'PRESENT_ONLY' | 'ALL'>('ABSENT_ONLY');
+  const [emailToParents, setEmailToParents] = useState(true);
+  const [emailToStudents, setEmailToStudents] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{
+    success: boolean;
+    queued?: number;
+    skipped?: number;
+    alreadySent?: number;
+    failed?: number;
+    message?: string;
+  } | null>(null);
 
   // Load initial reference data
   useEffect(()=>{
@@ -4299,6 +4418,8 @@ function Attendance(){
         const classIdParam = getQueryParam('classId');
         const sectionIdParam = getQueryParam('sectionId');
         const subjectIdParam = getQueryParam('subjectId');
+        const dateParam = getQueryParam('date') || getQueryParam('attendance_date');
+        if (dateParam) setAttendanceDate(dateParam);
 
         const matched = routineId
           ? rList.find((r:any)=>r.id===routineId)
@@ -4327,6 +4448,78 @@ function Attendance(){
     init();
   }, []);
 
+  // Fetch today status helper
+  const checkTodayStatus = useCallback(async (classId: string, sectionId: string, date: string, studentList: any[]) => {
+    if (!classId) return;
+    setLoadingStatus(true);
+    try {
+      const res = await api.get(`/teacher/attendance/today-status?classId=${classId}&sectionId=${sectionId}&date=${date}`);
+      if (res.data?.hasAttendance && res.data.session) {
+        const sess = res.data.session;
+        setExistingSession(sess);
+        setAuditLogs(res.data.auditLogs || []);
+
+        const stMap: Record<string, any> = {};
+        const chkMap: Record<string, boolean> = {};
+
+        (res.data.records || []).forEach((r: any) => {
+          const sId = String(r.studentId || r.student_id);
+          const st = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
+          stMap[sId] = {
+            status: st,
+            departurePeriod: r.departurePeriod || r.departure_period,
+            departureTime: r.departureTime || r.departure_time,
+            arrivalPeriod: r.arrivalPeriod || r.arrival_period,
+            arrivalTime: r.arrivalTime || r.arrival_time,
+            remarks: r.remarks,
+            updatedByName: r.updatedByName || r.updated_by_name
+          };
+          chkMap[sId] = (st === 'PRESENT' || st === 'LATE' || (st !== 'ABSENT' && (r.is_present || r.isPresent)));
+        });
+
+        // Ensure every student in roster has a status if not in records
+        (studentList || []).forEach(s => {
+          if (!stMap[s.id]) {
+            stMap[s.id] = { status: 'PRESENT' };
+            chkMap[s.id] = true;
+          }
+        });
+
+        setStudentStatusMap(stMap);
+        setChecked(chkMap);
+        setDone(true);
+        setSummary({
+          sessionId: sess.id,
+          total: sess.total_count ?? sess.totalCount,
+          present: sess.present_count ?? sess.presentCount,
+          absent: sess.absent_count ?? sess.absentCount,
+          leftEarly: sess.left_early_count ?? sess.leftEarlyCount ?? 0,
+          late: sess.late_count ?? sess.lateCount ?? 0,
+          isReattendance: sess.is_reattendance ?? sess.isReattendance,
+          teacherName: sess.teacher_name ?? sess.teacherName,
+          lastModifiedName: sess.last_modified_name ?? sess.lastModifiedName
+        });
+      } else {
+        setExistingSession(null);
+        setAuditLogs([]);
+        const initChecked: Record<string, boolean> = {};
+        const initMap: Record<string, any> = {};
+        (studentList || []).forEach(s => {
+          initChecked[s.id] = true;
+          initMap[s.id] = { status: 'PRESENT' };
+        });
+        setChecked(initChecked);
+        setStudentStatusMap(initMap);
+        setDone(false);
+        setSummary(null);
+      }
+    } catch (err) {
+      console.error('Failed to query today attendance status:', err);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, []);
+
   // Fetch students when class or section changes
   useEffect(()=>{
     if (!selectedClassId || !selectedSectionId) return;
@@ -4334,11 +4527,7 @@ function Attendance(){
       .then(res => {
         const list = res.data || [];
         setStudents(list);
-        // Default: mark all present
-        const initChecked: Record<string, boolean> = {};
-        list.forEach((s: any) => { initChecked[s.id] = true; });
-        setChecked(initChecked);
-        setDone(false);
+        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
       })
       .catch(() => {
         // Fallback to /students
@@ -4348,13 +4537,10 @@ function Attendance(){
             (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
           );
           setStudents(matched);
-          const initChecked: Record<string, boolean> = {};
-          matched.forEach((s: any) => { initChecked[s.id] = true; });
-          setChecked(initChecked);
-          setDone(false);
+          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
         }).catch(()=>{});
       });
-  }, [selectedClassId, selectedSectionId]);
+  }, [selectedClassId, selectedSectionId, attendanceDate, checkTodayStatus]);
 
   function switchRoutine(r: any) {
     setActiveRoutine(r);
@@ -4365,13 +4551,29 @@ function Attendance(){
   }
 
   const selectAll = (val: boolean) => {
-    const updated: Record<string, boolean> = {};
-    students.forEach(s => { updated[s.id] = val; });
-    setChecked(updated);
+    const updatedChk: Record<string, boolean> = {};
+    const updatedMap = { ...studentStatusMap };
+    students.forEach(s => {
+      updatedChk[s.id] = val;
+      updatedMap[s.id] = {
+        ...updatedMap[s.id],
+        status: val ? 'PRESENT' : 'ABSENT'
+      };
+    });
+    setChecked(updatedChk);
+    setStudentStatusMap(updatedMap);
   };
 
-  const presentCount = students.filter(s => checked[s.id]).length;
-  const absentCount = students.length - presentCount;
+  const leftEarlyCount = students.filter(s => studentStatusMap[s.id]?.status === 'LEFT_EARLY').length;
+  const lateCount = students.filter(s => studentStatusMap[s.id]?.status === 'LATE').length;
+  const presentCount = students.filter(s => {
+    const st = studentStatusMap[s.id]?.status;
+    if (st === 'PRESENT') return true;
+    if (st === 'LATE') return true;
+    if (st === 'LEFT_EARLY' || st === 'ABSENT') return false;
+    return !!checked[s.id];
+  }).length;
+  const absentCount = Math.max(0, students.length - presentCount - leftEarlyCount);
   const ratePct = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
 
   const filteredStudents = students.filter(s => {
@@ -4379,6 +4581,173 @@ function Attendance(){
     const q = search.toLowerCase();
     return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
   });
+
+  // Early Departure Handler
+  function openEarlyDeparture(student: any) {
+    setSelectedStudent(student);
+    const existing = studentStatusMap[student.id];
+    setDepPeriod(existing?.departurePeriod || 'After 1st Period');
+    setDepTime(existing?.departureTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    setDepReason('Parent / Guardian Picked Up Early');
+    setDepRemarks(existing?.remarks || '');
+    setDepNotify(true);
+    setActiveModal('EARLY_DEPARTURE');
+  }
+
+  // Late Arrival Handler
+  function openLateArrival(student: any) {
+    setSelectedStudent(student);
+    const existing = studentStatusMap[student.id];
+    setArrPeriod(existing?.arrivalPeriod || 'Period 2');
+    setArrTime(existing?.arrivalTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    setArrReason('Traffic / Commute Delay');
+    setArrRemarks(existing?.remarks || '');
+    setArrNotify(true);
+    setActiveModal('LATE_ARRIVAL');
+  }
+
+  async function submitEarlyDeparture() {
+    if (!selectedStudent) return;
+    setSavingAction(true);
+    const fullReason = depReason + (depRemarks ? ` (${depRemarks})` : '');
+    try {
+      if (existingSession?.id) {
+        const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
+          status: 'LEFT_EARLY',
+          departurePeriod: depPeriod,
+          departureTime: depTime,
+          reason: fullReason,
+          notifyParent: depNotify
+        });
+        setExistingSession(res.data.session);
+        setReattendanceSuccessMsg(`✓ ${selectedStudent.name} marked as Left Early (${depPeriod}). Parent alert queued.`);
+        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+      } else {
+        setStudentStatusMap(prev => ({
+          ...prev,
+          [selectedStudent.id]: {
+            status: 'LEFT_EARLY',
+            departurePeriod: depPeriod,
+            departureTime: depTime,
+            remarks: fullReason
+          }
+        }));
+        setChecked(prev => ({ ...prev, [selectedStudent.id]: false }));
+        setReattendanceSuccessMsg(`✓ Marked ${selectedStudent.name} as Left Early (${depPeriod}) for upcoming submission.`);
+      }
+      setActiveModal(null);
+      setTimeout(() => setReattendanceSuccessMsg(''), 6000);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to update student status');
+    } finally {
+      setSavingAction(false);
+    }
+  }
+
+  async function submitLateArrival() {
+    if (!selectedStudent) return;
+    setSavingAction(true);
+    const fullReason = arrReason + (arrRemarks ? ` (${arrRemarks})` : '');
+    try {
+      if (existingSession?.id) {
+        const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
+          status: 'LATE',
+          arrivalPeriod: arrPeriod,
+          arrivalTime: arrTime,
+          reason: fullReason,
+          notifyParent: arrNotify
+        });
+        setExistingSession(res.data.session);
+        setReattendanceSuccessMsg(`✓ ${selectedStudent.name} marked as Late Arrival (${arrPeriod}). Parent alert queued.`);
+        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+      } else {
+        setStudentStatusMap(prev => ({
+          ...prev,
+          [selectedStudent.id]: {
+            status: 'LATE',
+            arrivalPeriod: arrPeriod,
+            arrivalTime: arrTime,
+            remarks: fullReason
+          }
+        }));
+        setChecked(prev => ({ ...prev, [selectedStudent.id]: true }));
+        setReattendanceSuccessMsg(`✓ Marked ${selectedStudent.name} as Late Arrival (${arrPeriod}) for upcoming submission.`);
+      }
+      setActiveModal(null);
+      setTimeout(() => setReattendanceSuccessMsg(''), 6000);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to update student status');
+    } finally {
+      setSavingAction(false);
+    }
+  }
+
+  async function quickToggleStudent(s: any, newStatus: 'PRESENT' | 'ABSENT') {
+    if (existingSession?.id) {
+      setBusy(true);
+      try {
+        await api.put(`/teacher/attendance/${existingSession.id}/student/${s.id}`, {
+          status: newStatus,
+          reason: `Quick toggle to ${newStatus} by ${user?.name || 'Faculty'}`
+        });
+        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+      } catch (err: any) {
+        alert(err?.response?.data?.message || 'Failed to toggle status');
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      setChecked(prev => ({ ...prev, [s.id]: newStatus === 'PRESENT' }));
+      setStudentStatusMap(prev => ({
+        ...prev,
+        [s.id]: { status: newStatus }
+      }));
+    }
+  }
+
+  async function submitWholeClassReattendance() {
+    if (!existingSession?.id) return submit();
+    setBusy(true);
+    try {
+      const recordsPayload = students.map(s => {
+        const st = studentStatusMap[s.id] || {};
+        const isPres = checked[s.id];
+        let status = st.status;
+        if (!status) {
+          status = isPres ? 'PRESENT' : 'ABSENT';
+        } else if (status === 'PRESENT' && !isPres) {
+          status = 'ABSENT';
+        } else if (status === 'ABSENT' && isPres) {
+          status = 'PRESENT';
+        }
+        return {
+          studentId: s.id,
+          studentName: s.name,
+          rollNumber: s.roll_number,
+          status,
+          departurePeriod: st.departurePeriod,
+          departureTime: st.departureTime,
+          arrivalPeriod: st.arrivalPeriod,
+          arrivalTime: st.arrivalTime,
+          remarks: st.remarks
+        };
+      });
+
+      const res = await api.post(`/teacher/attendance/${existingSession.id}/reattendance`, {
+        records: recordsPayload,
+        reason: `Whole-class period verification / re-attendance by ${user?.name || 'Faculty'}`,
+        notifyParents: false
+      });
+      setExistingSession(res.data.session);
+      setReattendanceSuccessMsg('✓ Whole-class re-attendance verified and saved to audit trail.');
+      checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+      setTimeout(() => setReattendanceSuccessMsg(''), 6000);
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to save whole-class re-attendance');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit() {
     if (!selectedClassId || !selectedSectionId) {
@@ -4391,6 +4760,30 @@ function Attendance(){
 
     setBusy(true);
     try {
+      const recordsPayload = students.map(s => {
+        const st = studentStatusMap[s.id] || {};
+        const isPres = checked[s.id];
+        let status = st.status;
+        if (!status) {
+          status = isPres ? 'PRESENT' : 'ABSENT';
+        } else if (status === 'PRESENT' && !isPres) {
+          status = 'ABSENT';
+        } else if (status === 'ABSENT' && isPres) {
+          status = 'PRESENT';
+        }
+        return {
+          studentId: s.id,
+          studentName: s.name,
+          rollNumber: s.roll_number,
+          status,
+          departurePeriod: st.departurePeriod,
+          departureTime: st.departureTime,
+          arrivalPeriod: st.arrivalPeriod,
+          arrivalTime: st.arrivalTime,
+          remarks: st.remarks
+        };
+      });
+
       const res = await api.post('/teacher/attendance', {
         classId: selectedClassId,
         classNumber: cObj?.class_number ?? cObj?.classNumber ?? null,
@@ -4401,11 +4794,13 @@ function Attendance(){
         startTime: activeRoutine?.start_time ? fmt(activeRoutine.start_time) : '09:00:00',
         endTime: activeRoutine?.end_time ? fmt(activeRoutine.end_time) : '09:45:00',
         attendanceDate,
+        records: recordsPayload,
         studentIds: students.map(s => s.id),
         presentStudentIds: students.filter(s => checked[s.id]).map(s => s.id)
       });
       setSummary(res.data);
       setDone(true);
+      checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Attendance submission failed');
     } finally {
@@ -4413,34 +4808,83 @@ function Attendance(){
     }
   }
 
+  async function sendAttendanceEmails() {
+    if (!summary?.sessionId) {
+      alert('Attendance session ID not found. Please confirm attendance first.');
+      return;
+    }
+    const recipientTypes: ('PARENT' | 'STUDENT')[] = [];
+    if (emailToParents) recipientTypes.push('PARENT');
+    if (emailToStudents) recipientTypes.push('STUDENT');
+    if (recipientTypes.length === 0) {
+      alert('Please select at least one recipient type (Parents or Students).');
+      return;
+    }
+
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const res = await api.post('/notifications-v11/attendance-email', {
+        sessionId: summary.sessionId,
+        targetType: emailTarget,
+        recipientTypes,
+        classId: selectedClassId,
+        sectionId: selectedSectionId
+      });
+      setEmailResult({
+        success: true,
+        queued: res.data.queued,
+        skipped: res.data.skipped,
+        alreadySent: res.data.alreadySent,
+        failed: res.data.failed,
+        message: `Dispatched: ${res.data.queued} email(s) queued for delivery, ${res.data.skipped} skipped (no email on record), ${res.data.alreadySent} already sent.`
+      });
+    } catch (e: any) {
+      setEmailResult({
+        success: false,
+        message: e?.response?.data?.message || 'Failed to dispatch attendance emails'
+      });
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
+  const targetStudentCount =
+    emailTarget === 'ABSENT_ONLY' ? (summary?.absent ?? absentCount) :
+    emailTarget === 'PRESENT_ONLY' ? (summary?.present ?? presentCount) :
+    (summary?.total ?? students.length);
+  const recipientMultiplier = (emailToParents ? 1 : 0) + (emailToStudents ? 1 : 0);
+  const estimatedEmails = targetStudentCount * recipientMultiplier;
+
   const currentClass = classes.find(c => c.id === selectedClassId);
   const currentSection = sections.find(s => s.id === selectedSectionId);
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
 
   return (
     <Layout>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }}></span>
-            <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL STATION</p>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: existingSession ? '#10b981' : '#f59e0b' }}></span>
+            <p className="eyebrow" style={{ margin: 0 }}>ATTENDANCE CONTROL & RE-ATTENDANCE STATION</p>
           </div>
           <h1 style={{ margin: 0, fontSize: 24 }}>Daily Class Attendance</h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            Record real-time student attendance with automated SMS dispatch to parents.
+            Multi-teacher synchronized roll-call with period-by-period re-attendance, early departure tracking, and automated parent alerts.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="secondary" onClick={() => nav('/dashboard')}>
             ← Back to Dashboard
           </button>
-          <button className="secondary" onClick={() => nav('/attendance-reports')}>
-            View Reports →
+          <button className="secondary" onClick={() => nav('/attendance-history')}>
+            Session History →
           </button>
         </div>
       </div>
 
-      {/* Routine Quick Switchers (if routines exist) */}
+      {/* Routine Quick Switchers */}
       {routines.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }}>
@@ -4474,6 +4918,73 @@ function Attendance(){
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Cross-Teacher Live Session Banner (When attendance has already been taken) */}
+      {existingSession && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(37, 99, 235, 0.06) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: 12,
+          padding: '16px 20px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 14
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="badge" style={{ background: '#10b981', color: '#ffffff', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+                ✓ ATTENDANCE RECORDED FOR TODAY
+              </span>
+              {existingSession.is_reattendance && (
+                <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', fontWeight: 700, padding: '3px 8px', fontSize: 11 }}>
+                  🔄 RE-ATTENDANCE LOGGED ({existingSession.reattendance_count || 1}x)
+                </span>
+              )}
+              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+                Taken by: <strong style={{ color: '#2563eb' }}>{existingSession.teacher_name || 'Faculty Member'}</strong>
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                ({fmt(existingSession.start_time)} – {fmt(existingSession.end_time)})
+              </span>
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
+              {existingSession.is_reattendance
+                ? `Last modified by ${existingSession.last_modified_name || 'Faculty'}. Any assigned subject teacher can adjust early departures (e.g. left after 1st period) or late arrivals.`
+                : 'All teachers assigned to this class can view submitted records and make official re-attendance adjustments (e.g. early departure or late arrival).'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              className="secondary"
+              onClick={() => setActiveModal('AUDIT_LOGS')}
+              style={{ fontSize: 12.5, padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <HistoryIcon size={14} /> Audit Trail ({auditLogs.length})
+            </button>
+            <button
+              onClick={submitWholeClassReattendance}
+              disabled={busy}
+              style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+            >
+              <RefreshCw size={14} className={busy ? 'spin' : ''} /> {busy ? 'Saving...' : 'Save Re-attendance'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Temporary Success Alert */}
+      {reattendanceSuccessMsg && (
+        <div className="admin-alert-banner success" style={{ marginBottom: 16 }}>
+          <div className="alert-left">
+            <CheckCircle2 size={20} color="#059669" />
+            <strong style={{ fontSize: 13.5 }}>{reattendanceSuccessMsg}</strong>
+          </div>
+          <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setReattendanceSuccessMsg('')}>✕</button>
         </div>
       )}
 
@@ -4545,10 +5056,20 @@ function Attendance(){
           </label>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <div className="roster-stat-pill present">
             <CheckCircle2 size={15} /> {presentCount} Present
           </div>
+          {leftEarlyCount > 0 && (
+            <div className="roster-stat-pill left-early">
+              <DoorOpen size={15} /> {leftEarlyCount} Left Early
+            </div>
+          )}
+          {lateCount > 0 && (
+            <div className="roster-stat-pill late">
+              <Clock size={15} /> {lateCount} Late
+            </div>
+          )}
           <div className="roster-stat-pill absent">
             <AlertCircle size={15} /> {absentCount} Absent
           </div>
@@ -4564,10 +5085,10 @@ function Attendance(){
           <div className="alert-left">
             <CheckCircle2 size={24} color="#059669" />
             <div>
-              <strong>Attendance Recorded Successfully!</strong>
+              <strong>Daily Attendance Confirmed for Class {currentClass?.class_number || ''}-{currentSection?.name || ''}</strong>
               <p>
-                Class {currentClass?.class_number || '8'}-{currentSection?.name || 'A'} attendance session for {attendanceDate} has been confirmed. 
-                {summary?.absent > 0 ? ` Absent notification messages queued for ${summary.absent} student(s).` : ' All students present.'}
+                Session date: {attendanceDate}. {summary?.present ?? presentCount} present, {leftEarlyCount} left early, {lateCount} late, {summary?.absent ?? absentCount} absent.
+                {summary?.absent > 0 ? ` Absent notification messages queued for ${summary.absent} student(s).` : ' All students attended.'}
               </p>
             </div>
           </div>
@@ -4575,10 +5096,162 @@ function Attendance(){
             <button className="alert-action-btn" style={{ background: '#059669' }} onClick={() => nav('/dashboard')}>
               Go to Dashboard →
             </button>
-            <button className="secondary" onClick={() => setDone(false)}>
-              Edit Attendance
+            <button className="secondary" onClick={() => setActiveModal('AUDIT_LOGS')}>
+              View Audit Trail
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Attendance Email Action Card */}
+      {done && (
+        <div style={{
+          background: 'var(--bg-card, #ffffff)',
+          border: '1px solid #cbd5e1',
+          borderRadius: 12,
+          padding: '20px 24px',
+          marginBottom: 24,
+          boxShadow: '0 4px 12px rgba(15, 23, 42, 0.05)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  Dispatch Institutional Email Alerts
+                </h3>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
+                Send professional, branded notification emails to parents and students for this confirmed attendance session.
+              </p>
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              color: '#1d4ed8',
+              borderRadius: 20,
+              padding: '4px 12px',
+              fontSize: 12.5,
+              fontWeight: 600
+            }}>
+              <span>Estimated Delivery: {estimatedEmails} recipient{estimatedEmails !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 18 }}>
+            {/* Filter Target */}
+            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+                Target Attendance Group
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailTarget === 'ABSENT_ONLY' ? 600 : 400 }}>
+                  <input
+                    type="radio"
+                    name="emailTarget"
+                    value="ABSENT_ONLY"
+                    checked={emailTarget === 'ABSENT_ONLY'}
+                    onChange={() => setEmailTarget('ABSENT_ONLY')}
+                  />
+                  <span>Absent Students Only ({summary?.absent ?? absentCount})</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailTarget === 'PRESENT_ONLY' ? 600 : 400 }}>
+                  <input
+                    type="radio"
+                    name="emailTarget"
+                    value="PRESENT_ONLY"
+                    checked={emailTarget === 'PRESENT_ONLY'}
+                    onChange={() => setEmailTarget('PRESENT_ONLY')}
+                  />
+                  <span>Present Students Only ({summary?.present ?? presentCount})</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailTarget === 'ALL' ? 600 : 400 }}>
+                  <input
+                    type="radio"
+                    name="emailTarget"
+                    value="ALL"
+                    checked={emailTarget === 'ALL'}
+                    onChange={() => setEmailTarget('ALL')}
+                  />
+                  <span>Entire Class ({summary?.total ?? students.length} students)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Recipient Contacts */}
+            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+                Recipient Contact Addresses
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailToParents ? 600 : 400 }}>
+                  <input
+                    type="checkbox"
+                    checked={emailToParents}
+                    onChange={e => setEmailToParents(e.target.checked)}
+                  />
+                  <span>Send to Parent / Guardian Email (Primary)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailToStudents ? 600 : 400 }}>
+                  <input
+                    type="checkbox"
+                    checked={emailToStudents}
+                    onChange={e => setEmailToStudents(e.target.checked)}
+                  />
+                  <span>Send to Student Email (Institutional ID)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ fontSize: 12.5, color: '#64748b' }}>
+              ℹ️ Individual MIME emails are delivered separately. Contact privacy is strictly preserved.
+            </div>
+            <button
+              onClick={sendAttendanceEmails}
+              disabled={emailSending || estimatedEmails === 0}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: '#2563eb',
+                color: '#ffffff',
+                fontWeight: 600,
+                padding: '9px 18px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: emailSending || estimatedEmails === 0 ? 'not-allowed' : 'pointer',
+                opacity: emailSending || estimatedEmails === 0 ? 0.6 : 1
+              }}
+            >
+              <Send size={15} />
+              {emailSending ? 'Queueing Emails...' : `Send Attendance Emails (${estimatedEmails})`}
+            </button>
+          </div>
+
+          {/* Results Feedback */}
+          {emailResult && (
+            <div style={{
+              marginTop: 14,
+              padding: '12px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: emailResult.success ? '#f0fdf4' : '#fef2f2',
+              border: `1px solid ${emailResult.success ? '#bbf7d0' : '#fecaca'}`,
+              color: emailResult.success ? '#166534' : '#991b1b'
+            }}>
+              {emailResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              <span>{emailResult.message}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -4615,7 +5288,11 @@ function Attendance(){
       {/* Instruction Note */}
       <div className="instruction" style={{ marginBottom: 14 }}>
         <CheckCircle2 size={16} />
-        <span>Check only students who are physically present. Unchecked students are marked absent and their guardians will be notified.</span>
+        <span>
+          {existingSession
+            ? 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.'
+            : 'Check only students who are physically present. Unchecked students are marked absent and their guardians will be notified.'}
+        </span>
       </div>
 
       {/* Student List */}
@@ -4637,19 +5314,54 @@ function Attendance(){
       ) : (
         <div className="attendance-list">
           {filteredStudents.map((s: any) => {
-            const isPresent = !!checked[s.id];
+            const stObj = studentStatusMap[s.id] || {};
+            const rawStatus = stObj.status || (checked[s.id] ? 'PRESENT' : 'ABSENT');
+            const isLeftEarly = rawStatus === 'LEFT_EARLY';
+            const isLate = rawStatus === 'LATE';
+            const isPresent = rawStatus === 'PRESENT' || isLate;
+            const isAbsent = rawStatus === 'ABSENT';
+
             return (
-              <label
+              <div
                 className="student-row"
                 key={s.id}
                 style={{
-                  background: isPresent ? 'var(--bg-card)' : 'rgba(239, 68, 68, 0.04)',
-                  borderColor: isPresent ? 'var(--border)' : 'rgba(239, 68, 68, 0.3)',
-                  cursor: 'pointer'
+                  background: isLeftEarly
+                    ? 'rgba(245, 158, 11, 0.05)'
+                    : isLate
+                    ? 'rgba(37, 99, 235, 0.05)'
+                    : isPresent
+                    ? 'var(--bg-card)'
+                    : 'rgba(239, 68, 68, 0.04)',
+                  borderColor: isLeftEarly
+                    ? 'rgba(245, 158, 11, 0.4)'
+                    : isLate
+                    ? 'rgba(37, 99, 235, 0.3)'
+                    : isPresent
+                    ? 'var(--border)'
+                    : 'rgba(239, 68, 68, 0.3)',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderRadius: 10,
+                  marginBottom: 8,
+                  gap: 12,
+                  flexWrap: 'wrap'
                 }}
               >
+                {/* Left: Roll and Student Info */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span className="roll" style={{ background: isPresent ? '#eff6ff' : '#fee2e2', color: isPresent ? '#2563eb' : '#dc2626' }}>
+                  <span
+                    className="roll"
+                    style={{
+                      background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : '#fee2e2',
+                      color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : '#dc2626',
+                      fontWeight: 700,
+                      minWidth: 32,
+                      textAlign: 'center'
+                    }}
+                  >
                     {s.roll_number || '•'}
                   </span>
                   <div>
@@ -4657,44 +5369,543 @@ function Attendance(){
                     <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
                       {s.parent_name ? `Parent: ${s.parent_name}` : 'Guardian registered'} · {s.parent_sms_number || 'Mobile on file'}
                     </div>
+                    {/* Status Annotations for Re-attendance */}
+                    {isLeftEarly && (
+                      <div style={{ fontSize: 11.5, color: '#b45309', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <DoorOpen size={13} />
+                        <span>Left early {stObj.departurePeriod ? `(${stObj.departurePeriod})` : ''} at {stObj.departureTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
+                      </div>
+                    )}
+                    {isLate && (
+                      <div style={{ fontSize: 11.5, color: '#1d4ed8', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Clock size={13} />
+                        <span>Late arrival {stObj.arrivalPeriod ? `(${stObj.arrivalPeriod})` : ''} at {stObj.arrivalTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Right: Status Pill & Re-attendance Action Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Status Indicator Chip */}
                   <span
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      padding: '3px 10px',
+                      padding: '4px 10px',
                       borderRadius: 100,
-                      background: isPresent ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      color: isPresent ? '#059669' : '#dc2626'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: isLeftEarly
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : isLate
+                        ? 'rgba(37, 99, 235, 0.12)'
+                        : isPresent
+                        ? 'rgba(16, 185, 129, 0.12)'
+                        : 'rgba(239, 68, 68, 0.12)',
+                      color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : '#dc2626'
                     }}
                   >
-                    {isPresent ? 'PRESENT' : 'ABSENT'}
+                    {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : '✕ ABSENT'}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={isPresent}
-                    onChange={(e) => setChecked({ ...checked, [s.id]: e.target.checked })}
-                    style={{ width: 18, height: 18, cursor: 'pointer' }}
-                  />
+
+                  {/* Re-attendance Specific Quick Actions */}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {/* Early Departure Button (Scenario: Student came 1st period and went after 1st period) */}
+                    {(isPresent || isLeftEarly) && (
+                      <button
+                        type="button"
+                        onClick={() => openEarlyDeparture(s)}
+                        title="Mark student early departure (e.g. left after 1st period)"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
+                          background: isLeftEarly ? '#fef3c7' : 'var(--bg-subtle)',
+                          color: isLeftEarly ? '#b45309' : 'var(--text)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontWeight: 600
+                        }}
+                      >
+                        <DoorOpen size={13} />
+                        {isLeftEarly ? 'Edit Departure' : 'Left Early'}
+                      </button>
+                    )}
+
+                    {/* Late Arrival Button */}
+                    {(isAbsent || isLate) && (
+                      <button
+                        type="button"
+                        onClick={() => openLateArrival(s)}
+                        title="Mark student late arrival"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          border: isLate ? '1px solid #3b82f6' : '1px solid var(--border)',
+                          background: isLate ? '#dbeafe' : 'var(--bg-subtle)',
+                          color: isLate ? '#1d4ed8' : 'var(--text)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontWeight: 600
+                        }}
+                      >
+                        <Clock size={13} />
+                        {isLate ? 'Edit Late' : 'Late Arrival'}
+                      </button>
+                    )}
+
+                    {/* Toggle Present / Absent Quick Button */}
+                    {isPresent && (
+                      <button
+                        type="button"
+                        onClick={() => quickToggleStudent(s, 'ABSENT')}
+                        title="Mark Absent"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        Mark Absent
+                      </button>
+                    )}
+
+                    {(isAbsent || isLeftEarly) && (
+                      <button
+                        type="button"
+                        onClick={() => quickToggleStudent(s, 'PRESENT')}
+                        title="Mark Present"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          color: '#059669',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        Mark Present
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </label>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Bottom Submit Action Bar */}
+      {/* Bottom Submit / Re-attendance Action Bar */}
       {students.length > 0 && (
         <div className="submit-bar" style={{ marginTop: 20 }}>
           <div>
-            <strong>Summary: {presentCount} Present</strong>, {absentCount} Absent ({ratePct}% Attendance Rate)
+            <strong>Summary: {presentCount} Present</strong>, {leftEarlyCount > 0 ? `${leftEarlyCount} Left Early, ` : ''}{lateCount > 0 ? `${lateCount} Late, ` : ''}{absentCount} Absent ({ratePct}% Rate)
           </div>
-          <button disabled={busy} onClick={submit} style={{ minWidth: 160 }}>
-            {busy ? 'Submitting…' : done ? '✓ Update Attendance' : 'Submit Attendance'}
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {existingSession && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setActiveModal('AUDIT_LOGS')}
+                style={{ fontSize: 13 }}
+              >
+                📜 Audit Trail ({auditLogs.length})
+              </button>
+            )}
+            <button
+              disabled={busy}
+              onClick={existingSession ? submitWholeClassReattendance : submit}
+              style={{ minWidth: 160 }}
+            >
+              {busy ? 'Saving…' : existingSession ? '🔄 Save Re-attendance' : 'Submit Attendance'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ────── MODAL: Early Departure (Scenario: Came 1st period and left after 1st period) ────── */}
+      {activeModal === 'EARLY_DEPARTURE' && selectedStudent && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 520,
+            padding: 24,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#fef3c7', color: '#b45309', padding: 8, borderRadius: 10, display: 'inline-flex' }}>
+                  <DoorOpen size={20} />
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Student Early Departure</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Official re-attendance departure adjustment</p>
+                </div>
+              </div>
+              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+            </div>
+
+            {/* Student Card Summary */}
+            <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Guardian'} ({selectedStudent.parent_sms_number || 'Mobile on record'})
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Departure Period */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Departure Period / Timing:
+                </label>
+                <select
+                  value={depPeriod}
+                  onChange={(e) => setDepPeriod(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                >
+                  <option value="After 1st Period">After 1st Period (Attended 1st Period Only)</option>
+                  <option value="During 1st Period">During 1st Period (Emergency dismissal)</option>
+                  <option value="After 2nd Period">After 2nd Period</option>
+                  <option value="After 3rd Period / Recess">After 3rd Period / Recess</option>
+                  <option value="After 4th Period">After 4th Period</option>
+                  <option value="After 5th Period">After 5th Period</option>
+                  <option value="Custom Departure">Custom Departure</option>
+                </select>
+              </div>
+
+              {/* Departure Time */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Exact Departure Time:
+                </label>
+                <input
+                  type="text"
+                  value={depTime}
+                  onChange={(e) => setDepTime(e.target.value)}
+                  placeholder="e.g. 10:15 AM"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+
+              {/* Departure Reason */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Reason for Early Departure:
+                </label>
+                <select
+                  value={depReason}
+                  onChange={(e) => setDepReason(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                >
+                  <option value="Parent / Guardian Picked Up Early">Parent / Guardian Picked Up Early</option>
+                  <option value="Medical Emergency / Illness (Sick Bay)">Medical Emergency / Illness (Sick Bay)</option>
+                  <option value="Doctor / Hospital Appointment">Doctor / Hospital Appointment</option>
+                  <option value="Official School Representation (Sports / Olympiad)">Official School Representation (Sports / Olympiad)</option>
+                  <option value="Approved Family Leave / Urgent Matter">Approved Family Leave / Urgent Matter</option>
+                  <option value="Unexcused Campus Departure">Unexcused Campus Departure</option>
+                  <option value="Other Discretionary Reason">Other Discretionary Reason</option>
+                </select>
+              </div>
+
+              {/* Remarks & Gate Pass */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Gate Pass # / Teacher Notes:
+                </label>
+                <input
+                  type="text"
+                  value={depRemarks}
+                  onChange={(e) => setDepRemarks(e.target.value)}
+                  placeholder="e.g. Gate pass GP-104 issued. Parent Mrs. Sen collected student."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+
+              {/* Notification Checkbox */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={depNotify}
+                  onChange={(e) => setDepNotify(e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Dispatch early departure alert to Parent / Guardian (SMS & Portal)</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+              <button className="secondary" onClick={() => setActiveModal(null)} disabled={savingAction}>
+                Cancel
+              </button>
+              <button
+                onClick={submitEarlyDeparture}
+                disabled={savingAction}
+                style={{ background: '#d97706', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {savingAction ? 'Recording Departure…' : '✓ Confirm Early Departure'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ────── MODAL: Late Arrival ────── */}
+      {activeModal === 'LATE_ARRIVAL' && selectedStudent && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 520,
+            padding: 24,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: 8, borderRadius: 10, display: 'inline-flex' }}>
+                  <Clock size={20} />
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Student Late Arrival</h3>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Convert absent record to late arrival</p>
+                </div>
+              </div>
+              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+            </div>
+
+            <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Guardian'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Arrival Period:
+                </label>
+                <select
+                  value={arrPeriod}
+                  onChange={(e) => setArrPeriod(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                >
+                  <option value="Period 2">Period 2 (Arrived during 2nd period)</option>
+                  <option value="Period 3">Period 3</option>
+                  <option value="After Recess">After Recess / Mid-Day</option>
+                  <option value="Period 4">Period 4</option>
+                  <option value="Other Period">Other Period</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Arrival Time:
+                </label>
+                <input
+                  type="text"
+                  value={arrTime}
+                  onChange={(e) => setArrTime(e.target.value)}
+                  placeholder="e.g. 10:05 AM"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Reason for Late Arrival:
+                </label>
+                <select
+                  value={arrReason}
+                  onChange={(e) => setArrReason(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                >
+                  <option value="Traffic / Commute Delay">Traffic / Commute Delay</option>
+                  <option value="Doctor / Dental Appointment">Doctor / Dental Appointment</option>
+                  <option value="Parent Note Provided">Parent Note Provided</option>
+                  <option value="Weather / Transport Issue">Weather / Transport Issue</option>
+                  <option value="Unexcused Late Arrival">Unexcused Late Arrival</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
+                  Remarks:
+                </label>
+                <input
+                  type="text"
+                  value={arrRemarks}
+                  onChange={(e) => setArrRemarks(e.target.value)}
+                  placeholder="Optional explanatory notes..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={arrNotify}
+                  onChange={(e) => setArrNotify(e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Notify Parent / Guardian of Late Arrival</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+              <button className="secondary" onClick={() => setActiveModal(null)} disabled={savingAction}>
+                Cancel
+              </button>
+              <button
+                onClick={submitLateArrival}
+                disabled={savingAction}
+                style={{ background: '#2563eb', color: '#ffffff', border: 'none', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {savingAction ? 'Saving Late Arrival…' : '✓ Confirm Late Arrival'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ────── MODAL: Re-attendance Audit Trail ────── */}
+      {activeModal === 'AUDIT_LOGS' && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 700,
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <HistoryIcon size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                  Session Re-attendance Audit Trail
+                </h3>
+              </div>
+              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+            </div>
+
+            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                Immutable historical record of all attendance submissions, re-roll calls, early departure adjustments, and late arrivals for this session.
+              </p>
+
+              {auditLogs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+                  <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontWeight: 600 }}>No re-attendance events recorded yet</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>Initial roll-call was submitted with no subsequent adjustments.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {auditLogs.map((log: any, idx: number) => {
+                    const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+                    const prevSt = log.previous_status || log.previousStatus || '—';
+                    const newSt = log.new_status || log.newStatus || '—';
+                    return (
+                      <div
+                        key={log.id || idx}
+                        style={{
+                          background: 'var(--bg-subtle, #f8fafc)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          padding: '12px 14px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                            {log.student_name || log.studentName || 'Student Record'}
+                          </span>
+                          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                            {timeStr}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 4 }}>
+                          <span className="badge" style={{ background: 'rgba(100,116,139,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
+                          <span>➔</span>
+                          <span className="badge" style={{
+                            background: newSt === 'LEFT_EARLY' ? '#fef3c7' : newSt === 'LATE' ? '#dbeafe' : newSt === 'PRESENT' ? '#dcfce7' : '#fee2e2',
+                            color: newSt === 'LEFT_EARLY' ? '#b45309' : newSt === 'LATE' ? '#1d4ed8' : newSt === 'PRESENT' ? '#15803d' : '#b91c1c',
+                            fontWeight: 700
+                          }}>
+                            {newSt}
+                          </span>
+                          <span style={{ marginLeft: 8, color: 'var(--text-muted)', fontSize: 12 }}>
+                            Modified by: <strong>{log.modified_by_name || log.modifiedByName || 'Faculty'}</strong>
+                          </span>
+                        </div>
+                        {log.reason && (
+                          <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--bg-card)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 6 }}>
+                            Reason: {log.reason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="secondary" onClick={() => setActiveModal(null)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </Layout>
@@ -4706,12 +5917,35 @@ function History(){
   const {user}=useAuth();
   const [rows,setRows]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
+
+  // Inspector modal state
+  const [inspectedSession, setInspectedSession] = useState<any>(null);
+  const [inspectedRecords, setInspectedRecords] = useState<any[]>([]);
+  const [inspectedAuditLogs, setInspectedAuditLogs] = useState<any[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ROSTER' | 'AUDIT'>('ROSTER');
+
   useEffect(()=>{
     api.get('/teacher/attendance/history')
       .then(x=>setRows(Array.isArray(x.data)?x.data:[]))
       .catch(()=>setRows([]))
       .finally(()=>setLoading(false));
   },[]);
+
+  async function openInspector(session: any) {
+    setInspectedSession(session);
+    setLoadingRecords(true);
+    setActiveTab('ROSTER');
+    try {
+      const res = await api.get(`/teacher/attendance/${session.id}/records`);
+      setInspectedRecords(res.data?.records || []);
+      setInspectedAuditLogs(res.data?.auditLogs || []);
+    } catch (err) {
+      console.error('Failed to load session records:', err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  }
 
   const totalSessions = rows.length;
   const totalStudents = rows.reduce((acc, r) => acc + (Number(r.total) || 0), 0);
@@ -4726,7 +5960,7 @@ function History(){
           <p className="eyebrow">ATTENDANCE AUDIT & HISTORY</p>
           <h1 style={{ margin: 0, fontSize: 24 }}>Session Attendance History</h1>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            Permanent record of all roll-call sessions submitted for your assigned classes.
+            Permanent institutional record of all roll-call sessions and cross-teacher re-attendance logs.
           </p>
         </div>
         <a href="#/take-attendance" className="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
@@ -4762,36 +5996,70 @@ function History(){
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Class</th>
+                <th>Class & Section</th>
                 <th>Subject</th>
-                <th>Time Slot</th>
+                <th>Recorded By</th>
                 <th>Present</th>
+                <th>Left Early</th>
+                <th>Late</th>
                 <th>Absent</th>
                 <th>Turnout Rate</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="muted" style={{ padding: 24, textAlign: 'center' }}>Loading attendance history...</td></tr>
+                <tr><td colSpan={10} className="muted" style={{ padding: 24, textAlign: 'center' }}>Loading attendance history...</td></tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="muted" style={{ padding: 32, textAlign: 'center' }}>
+                  <td colSpan={10} className="muted" style={{ padding: 32, textAlign: 'center' }}>
                     <p style={{ margin: '0 0 6px', fontWeight: 600, color: 'var(--text)' }}>No attendance sessions recorded yet</p>
-                    <p style={{ margin: 0, fontSize: 13 }}>Sessions will appear here in real-time as you submit daily class attendance.</p>
+                    <p style={{ margin: 0, fontSize: 13 }}>Sessions will appear here in real-time as daily class attendance is submitted.</p>
                   </td>
                 </tr>
               ) : (
                 rows.map(x => {
                   const rate = x.total > 0 ? Math.round((x.present / x.total) * 100) : 0;
                   const dateStr = x.attendance_date ? new Date(x.attendance_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+                  const leftEarlyCount = Number(x.left_early_count || 0);
+                  const lateCount = Number(x.late_count || 0);
+                  const absentCount = Number(x.absent ?? (x.total - x.present));
+
                   return (
                     <tr key={x.id}>
                       <td><b>{dateStr}</b></td>
                       <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>Class {x.class_number}-{x.section_name}</span></td>
                       <td><b>{x.subject_name || 'General'}</b></td>
-                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmt(x.start_time)} – {fmt(x.end_time)}</td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text)' }}>{x.teacher_name || 'Faculty Member'}</span>
+                          {x.is_reattendance && (
+                            <span style={{ fontSize: 11, color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                              <RefreshCw size={10} /> Re-attended ({x.reattendance_count || 1}x)
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
-                      <td><span style={{ color: x.total - x.present > 0 ? '#dc2626' : 'var(--text-muted)', fontWeight: 600 }}>{x.total - x.present}</span></td>
+                      <td>
+                        {leftEarlyCount > 0 ? (
+                          <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
+                            {leftEarlyCount}
+                          </span>
+                        ) : (
+                          <span className="muted">0</span>
+                        )}
+                      </td>
+                      <td>
+                        {lateCount > 0 ? (
+                          <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
+                            {lateCount}
+                          </span>
+                        ) : (
+                          <span className="muted">0</span>
+                        )}
+                      </td>
+                      <td><span style={{ color: absentCount > 0 ? '#dc2626' : 'var(--text-muted)', fontWeight: 600 }}>{absentCount}</span></td>
                       <td>
                         <span className="badge" style={{
                           background: rate >= 85 ? 'rgba(16,185,129,0.12)' : rate >= 70 ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
@@ -4801,6 +6069,24 @@ function History(){
                           {rate}% Present
                         </span>
                       </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => openInspector(x)}
+                            className="secondary"
+                            style={{ fontSize: 11.5, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                          >
+                            Inspect & Audit
+                          </button>
+                          <a
+                            href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${x.attendance_date}`}
+                            className="primary"
+                            style={{ fontSize: 11.5, padding: '4px 8px', textDecoration: 'none', borderRadius: 6, fontWeight: 600, whiteSpace: 'nowrap' }}
+                          >
+                            Re-attend →
+                          </a>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -4809,6 +6095,187 @@ function History(){
           </table>
         </div>
       </div>
+
+      {/* ────── MODAL: Session Inspector & Audit Trail in History ────── */}
+      {inspectedSession && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 750,
+            maxHeight: '88vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="badge" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700 }}>
+                    Class {inspectedSession.class_number}-{inspectedSession.section_name}
+                  </span>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                    Session Inspection ({inspectedSession.attendance_date})
+                  </h3>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Taken by: <strong>{inspectedSession.teacher_name || 'Faculty Member'}</strong>
+                  {inspectedSession.is_reattendance && ` · Re-attendance modified by ${inspectedSession.last_modified_name || 'Faculty'}`}
+                </div>
+              </div>
+              <button className="secondary" onClick={() => setInspectedSession(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+            </div>
+
+            {/* Tab switch */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle, #f8fafc)' }}>
+              <button
+                onClick={() => setActiveTab('ROSTER')}
+                style={{
+                  padding: '10px 20px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'ROSTER' ? '2px solid #2563eb' : 'none',
+                  color: activeTab === 'ROSTER' ? '#2563eb' : 'var(--text-muted)',
+                  fontWeight: activeTab === 'ROSTER' ? 700 : 500,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                Student Roster ({inspectedRecords.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('AUDIT')}
+                style={{
+                  padding: '10px 20px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'AUDIT' ? '2px solid #2563eb' : 'none',
+                  color: activeTab === 'AUDIT' ? '#2563eb' : 'var(--text-muted)',
+                  fontWeight: activeTab === 'AUDIT' ? 700 : 500,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                Re-attendance Audit Trail ({inspectedAuditLogs.length})
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+              {loadingRecords ? (
+                <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Loading session records...</div>
+              ) : activeTab === 'ROSTER' ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Roll</th>
+                        <th>Student Name</th>
+                        <th>Status</th>
+                        <th>Period Timing</th>
+                        <th>Remarks / Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inspectedRecords.length === 0 ? (
+                        <tr><td colSpan={5} className="muted" style={{ textAlign: 'center', padding: 20 }}>No records found for this session</td></tr>
+                      ) : (
+                        inspectedRecords.map(r => {
+                          const st = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
+                          const isLeftEarly = st === 'LEFT_EARLY';
+                          const isLate = st === 'LATE';
+                          const isPres = st === 'PRESENT';
+                          return (
+                            <tr key={r.id || r.studentId}>
+                              <td><b>{r.rollNumber || r.roll_number || '—'}</b></td>
+                              <td><b>{r.studentName || r.student_name}</b></td>
+                              <td>
+                                <span className="badge" style={{
+                                  background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPres ? '#dcfce7' : '#fee2e2',
+                                  color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPres ? '#15803d' : '#b91c1c',
+                                  fontWeight: 700
+                                }}>
+                                  {isLeftEarly ? 'LEFT EARLY' : isLate ? 'LATE' : isPres ? 'PRESENT' : 'ABSENT'}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: 12 }}>
+                                {isLeftEarly ? `Departed: ${r.departurePeriod || 'After 1st Period'} (${r.departureTime || '—'})` : isLate ? `Arrived: ${r.arrivalPeriod || 'Period 2'} (${r.arrivalTime || '—'})` : 'Full Day'}
+                              </td>
+                              <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                {r.remarks || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div>
+                  {inspectedAuditLogs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 16px', color: 'var(--text-muted)' }}>
+                      <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                      <p style={{ margin: 0, fontWeight: 600 }}>No re-attendance events recorded for this session</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {inspectedAuditLogs.map((log: any, idx: number) => {
+                        const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+                        return (
+                          <div key={log.id || idx} style={{ background: 'var(--bg-subtle, #f8fafc)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <strong style={{ fontSize: 13 }}>{log.student_name || log.studentName}</strong>
+                              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{timeStr}</span>
+                            </div>
+                            <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="badge">{log.previous_status || log.previousStatus}</span>
+                              <span>➔</span>
+                              <span className="badge" style={{ fontWeight: 700 }}>{log.new_status || log.newStatus}</span>
+                              <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>Modified by: {log.modified_by_name || log.modifiedByName || 'Faculty'}</span>
+                            </div>
+                            {log.reason && (
+                              <div style={{ fontSize: 12, marginTop: 4, color: 'var(--text-muted)' }}>
+                                Reason: {log.reason}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <a
+                href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${inspectedSession.attendance_date}`}
+                className="primary"
+                style={{ padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}
+              >
+                Open in Attendance Station for Live Re-attendance →
+              </a>
+              <button className="secondary" onClick={() => setInspectedSession(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
@@ -4838,6 +6305,29 @@ function NotificationCenter(){
   const [testEmail,setTestEmail]=useState(user?.email || 'admin@demo-school.local');
   const [testing,setTesting]=useState(false);
   const [testResult,setTestResult]=useState<any>(null);
+  const [selectedPreviewTpl, setSelectedPreviewTpl] = useState<string>('ATTENDANCE_ABSENT');
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewData, setPreviewData] = useState<{ subject: string; text: string; html: string } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [viewFormat, setViewFormat] = useState<'html' | 'text'>('html');
+
+  async function loadPreview(templateKey: string) {
+    setPreviewLoading(true);
+    try {
+      const res = await api.get(`/notifications-v11/preview/${templateKey}`);
+      setPreviewData(res.data);
+    } catch (err: any) {
+      console.warn('Failed to load template preview:', err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab === 'templates') {
+      loadPreview(selectedPreviewTpl);
+    }
+  }, [tab, selectedPreviewTpl]);
 
   async function load(){
     try {
@@ -4910,7 +6400,7 @@ function NotificationCenter(){
     <div className="tabs">
       <button className={tab==='settings'?'tab-active':''} onClick={()=>setTab('settings')}>Channels</button>
       <button className={tab==='smtp'?'tab-active':''} onClick={()=>setTab('smtp')}>📧 SMTP Email Settings</button>
-      <button className={tab==='templates'?'tab-active':''} onClick={()=>setTab('templates')}>Templates</button>
+      <button className={tab==='templates'?'tab-active':''} onClick={()=>setTab('templates')}>📑 Templates & Live Preview</button>
       <button className={tab==='analytics'?'tab-active':''} onClick={()=>setTab('analytics')}>Analytics</button>
       <button className={tab==='logs'?'tab-active':''} onClick={()=>setTab('logs')}>Delivery logs</button>
     </div>
@@ -5009,74 +6499,37 @@ function NotificationCenter(){
                 </select>
               </label>
             </div>
-            {!isSuperAdmin ? (
-              <div className="full-width" style={{
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '14px 18px',
-                margin: '4px 0 8px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontWeight: 700, fontSize: 13.5 }}>
-                    <Lock size={15} style={{ color: '#4f46e5' }} />
-                    <span>SMTP Authentication Credentials (Username & Password)</span>
-                  </div>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '3px 9px',
-                    borderRadius: 12,
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    border: '1px solid #bfdbfe'
-                  }}>
-                    <ShieldCheck size={13} /> Only Accessible & Changeable by Superadmin
-                  </span>
+            <div>
+              <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(e.g. rajbsmv@gmail.com)</span>
+                <input 
+                  placeholder="e.g. rajbsmv@gmail.com"
+                  value={smtp.username || ''} 
+                  onChange={e => setSmtp({ ...smtp, username: e.target.value })}
+                />
+              </label>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Google App Password)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input 
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="e.g. ovmz huhs fxnx inlq"
+                    value={smtp.password || ''} 
+                    onChange={e => setSmtp({ ...smtp, password: e.target.value })}
+                    style={{ flex: 1 }}
+                  />
+                  <button 
+                    type="button" 
+                    className="btn-secondary"
+                    style={{ padding: '7px 10px' }}
+                    onClick={() => setShowPass(!showPass)}
+                    title={showPass ? 'Hide Password' : 'Show Password'}
+                  >
+                    <Eye size={15} />
+                  </button>
                 </div>
-                <p style={{ margin: 0, fontSize: 12.5, color: '#64748b', lineHeight: 1.55 }}>
-                  SMTP server authentication credentials (username & password) are centrally secured and managed exclusively by the <b>Platform Superadmin</b>.
-                  Your school can customize the <b>Sender Email Address</b>, <b>Sender Display Name</b>, server parameters, and toggle automated absent notification alerts below.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Superadmin Access)</span>
-                    <input 
-                      placeholder="e.g. your-email@gmail.com"
-                      value={smtp.username || ''} 
-                      onChange={e => setSmtp({ ...smtp, username: e.target.value })}
-                    />
-                  </label>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Superadmin Access)</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <input 
-                        type={showPass ? 'text' : 'password'}
-                        placeholder="••••••••••••"
-                        value={smtp.password || ''} 
-                        onChange={e => setSmtp({ ...smtp, password: e.target.value })}
-                        style={{ flex: 1 }}
-                      />
-                      <button 
-                        type="button" 
-                        className="btn-secondary"
-                        style={{ padding: '7px 10px' }}
-                        onClick={() => setShowPass(!showPass)}
-                        title={showPass ? 'Hide Password' : 'Show Password'}
-                      >
-                        <Eye size={15} />
-                      </button>
-                    </div>
-                  </label>
-                </div>
-              </>
-            )}
+              </label>
+            </div>
             <div>
               <label>Sender Email Address
                 <input 
@@ -5126,26 +6579,253 @@ function NotificationCenter(){
       </div>
     )}
 
-    {/* TAB 3: TEMPLATES */}
+    {/* TAB 3: TEMPLATES & LIVE EMAIL PREVIEW */}
     {tab==='templates'&&(
-      <div className="panel">
-        <h3>Absent Alert Templates</h3>
-        {['SMS','WHATSAPP','EMAIL'].map(ch=>{
-          const t=templates.find(x=>x.channel===ch);
-          return (
-            <div className="template-box" key={ch}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <b>{ch} Template</b>
-                <span className="badge active">ACTIVE</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Email Template Previewer Card */}
+        <div className="panel" style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid #cbd5e1', borderRadius: 12, padding: '20px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={22} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Institutional Responsive Email Templates</h3>
               </div>
-              <textarea 
-                defaultValue={t?.body||`Attendance Alert: {student_name} was absent from Class {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.`} 
-                onBlur={async e=>{await api.put('/notifications-v11/templates/'+ch,{body:e.target.value}); load();}}
-              />
-              <small className="muted">Variables: {'{student_name}'} {'{class_name}'} {'{section}'} {'{time}'} {'{teacher_name}'} {'{enquiry_number}'}</small>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 13.5 }}>
+                Multi-client compliant, responsive HTML &amp; plain-text transactional emails for all institutional lifecycle events.
+              </p>
             </div>
-          );
-        })}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Template Selector */}
+              <select
+                value={selectedPreviewTpl}
+                onChange={e => setSelectedPreviewTpl(e.target.value)}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: 'var(--bg, #f8fafc)'
+                }}
+              >
+                <option value="ATTENDANCE_ABSENT">Absent Notification (Alert)</option>
+                <option value="ATTENDANCE_PRESENT">Present Confirmation (Alert)</option>
+                <option value="SCHOOL_WELCOME">School Welcome (Onboarding)</option>
+                <option value="TEACHER_CREATED">Faculty Welcome (Portal Invite)</option>
+                <option value="STUDENT_CREATED">Student/Parent Welcome (Portal Access)</option>
+                <option value="PASSWORD_RESET">Password Reset (Security)</option>
+                <option value="TEST_EMAIL">SMTP Deliverability Verification (Test)</option>
+              </select>
+
+              {/* Viewport Device Toggle */}
+              <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice('desktop')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12.5,
+                    border: 'none',
+                    borderRadius: 0,
+                    background: previewDevice === 'desktop' ? '#2563eb' : 'var(--bg, #f8fafc)',
+                    color: previewDevice === 'desktop' ? '#ffffff' : 'var(--text, #334155)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Desktop (Wide)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice('mobile')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12.5,
+                    border: 'none',
+                    borderRadius: 0,
+                    background: previewDevice === 'mobile' ? '#2563eb' : 'var(--bg, #f8fafc)',
+                    color: previewDevice === 'mobile' ? '#ffffff' : 'var(--text, #334155)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Mobile (375px)
+                </button>
+              </div>
+
+              {/* Format Toggle */}
+              <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewFormat('html')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12.5,
+                    border: 'none',
+                    borderRadius: 0,
+                    background: viewFormat === 'html' ? '#0f172a' : 'var(--bg, #f8fafc)',
+                    color: viewFormat === 'html' ? '#ffffff' : 'var(--text, #334155)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  HTML View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewFormat('text')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12.5,
+                    border: 'none',
+                    borderRadius: 0,
+                    background: viewFormat === 'text' ? '#0f172a' : 'var(--bg, #f8fafc)',
+                    color: viewFormat === 'text' ? '#ffffff' : 'var(--text, #334155)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Plain-Text MIME
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => { setTestEmail(user?.email || 'admin@school.local'); setTestResult(null); setTestModal(true); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 14px' }}
+              >
+                <Send size={14} /> Send Test Email
+              </button>
+            </div>
+          </div>
+
+          {/* Subject Bar */}
+          <div style={{
+            background: '#f1f5f9',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginBottom: 16,
+            fontSize: 13.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10
+          }}>
+            <span style={{ fontWeight: 700, color: '#475569' }}>Subject:</span>
+            <span style={{ fontWeight: 600, color: '#0f172a' }}>{previewData?.subject || 'Loading preview...'}</span>
+          </div>
+
+          {/* Preview Viewport Container */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            background: '#e2e8f0',
+            padding: '24px 16px',
+            borderRadius: 10,
+            overflowX: 'auto',
+            minHeight: 460
+          }}>
+            {previewLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#64748b' }}>
+                <Loader2 size={24} className="spin" style={{ marginRight: 8 }} /> Loading rendered preview...
+              </div>
+            ) : viewFormat === 'html' ? (
+              <iframe
+                title="Email Preview"
+                srcDoc={previewData?.html || ''}
+                sandbox="allow-same-origin"
+                style={{
+                  width: previewDevice === 'desktop' ? '650px' : '375px',
+                  height: '580px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: previewDevice === 'mobile' ? 24 : 8,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                  transition: 'width 0.25s ease'
+                }}
+              />
+            ) : (
+              <div style={{
+                width: previewDevice === 'desktop' ? '650px' : '375px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                padding: 20,
+                fontFamily: 'monospace',
+                fontSize: 13,
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                color: '#1e293b',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                transition: 'width 0.25s ease'
+              }}>
+                {previewData?.text || 'No plain-text version available.'}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Deliverability & Email Authentication Guide */}
+        <div className="panel" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '18px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <ShieldCheck size={20} color="#059669" />
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+              Institutional Email Deliverability &amp; DNS Authentication Guide
+            </h4>
+          </div>
+          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+            To protect your institution's domain reputation and achieve optimal inbox placement with Gmail, Microsoft 365, and institutional spam filters, configure your school domain DNS records:
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>1. SPF Record (Sender Policy)</div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>TXT record at domain root:</div>
+              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+                v=spf1 include:_spf.google.com ~all
+              </code>
+            </div>
+            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>2. DKIM Signature (DomainKeys)</div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>2048-bit cryptographic key published at:</div>
+              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block' }}>
+                google._domainkey.yourschool.edu
+              </code>
+            </div>
+            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>3. DMARC Policy (Domain Message Auth)</div>
+              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>TXT record at _dmarc:</div>
+              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+                v=DMARC1; p=quarantine; pct=100;
+              </code>
+            </div>
+          </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: '#64748b', fontStyle: 'italic', borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
+            Note: All AttendoSchool transactional emails include compliant multipart MIME, institutional identification headers, and TLS transmission. Recipient mail servers evaluate sender domain reputation, authentication (SPF/DKIM/DMARC), and user interaction history to determine final mailbox placement.
+          </div>
+        </div>
+
+        {/* Quick SMS & WhatsApp Templates */}
+        <div className="panel">
+          <h3>SMS &amp; WhatsApp Alert Templates</h3>
+          {['SMS','WHATSAPP'].map(ch=>{
+            const t=templates.find(x=>x.channel===ch);
+            return (
+              <div className="template-box" key={ch}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <b>{ch} Template</b>
+                  <span className="badge active">ACTIVE</span>
+                </div>
+                <textarea 
+                  defaultValue={t?.body||`Attendance Alert: {student_name} was absent from Class {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.`} 
+                  onBlur={async e=>{await api.put('/notifications-v11/templates/'+ch,{body:e.target.value}); load();}}
+                />
+                <small className="muted">Variables: {'{student_name}'} {'{class_name}'} {'{section}'} {'{time}'} {'{teacher_name}'} {'{enquiry_number}'}</small>
+              </div>
+            );
+          })}
+        </div>
       </div>
     )}
 

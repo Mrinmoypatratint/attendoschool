@@ -43,24 +43,30 @@ try {
     firebaseApp = existingApps[0]!;
     connectionMode = 'live_cloud';
     credentialSource = 'Existing App Instance';
-  } else if (serviceAccountFilePath) {
-    // 1. Live Google Cloud credentials via Service Account JSON File
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountFilePath, 'utf8'));
-    resolvedProjectId = serviceAccount.project_id || env.firebaseProjectId || 'attendoschool';
+  } else if (env.firebaseClientEmail && env.firebasePrivateKey) {
+    // 1. Live Google Cloud credentials via Direct Environment Variables in .env
+    resolvedProjectId = env.firebaseProjectId || 'attendoschool';
     firebaseApp = initializeApp({
-      credential: cert(serviceAccount),
+      credential: cert({
+        projectId: resolvedProjectId,
+        clientEmail: env.firebaseClientEmail,
+        privateKey: env.firebasePrivateKey.replace(/\\n/g, '\n'),
+      }),
       projectId: resolvedProjectId
     });
     connectionMode = 'live_cloud';
-    credentialSource = `Service Account File: ${path.basename(serviceAccountFilePath)}`;
-    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId}) via ${serviceAccountFilePath}`);
+    credentialSource = 'Environment Variables (.env: FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)';
+    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId}) via .env credentials`);
   } else if (env.firebaseServiceAccount) {
-    // 2. Live Google Cloud credentials via Direct JSON String or Base64 in Environment Variable
+    // 2. Live Google Cloud credentials via Direct JSON String or Base64 in Environment Variable (.env)
     let serviceAccount: any;
     try {
       const raw = env.firebaseServiceAccount.trim();
       const text = raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
       serviceAccount = JSON.parse(text);
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
     } catch (parseErr: any) {
       throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT: ${parseErr.message}`);
     }
@@ -70,22 +76,19 @@ try {
       projectId: resolvedProjectId
     });
     connectionMode = 'live_cloud';
-    credentialSource = 'Environment Variable (FIREBASE_SERVICE_ACCOUNT)';
-    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId})`);
-  } else if (env.firebaseClientEmail && env.firebasePrivateKey) {
-    // 3. Live Google Cloud credentials via Direct Environment Variables
-    resolvedProjectId = env.firebaseProjectId || 'attendoschool';
+    credentialSource = 'Environment Variable (.env: FIREBASE_SERVICE_ACCOUNT)';
+    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId}) via .env credential`);
+  } else if (serviceAccountFilePath) {
+    // 3. Fallback: Local Service Account JSON File if present
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountFilePath, 'utf8'));
+    resolvedProjectId = serviceAccount.project_id || env.firebaseProjectId || 'attendoschool';
     firebaseApp = initializeApp({
-      credential: cert({
-        projectId: resolvedProjectId,
-        clientEmail: env.firebaseClientEmail,
-        privateKey: env.firebasePrivateKey,
-      }),
+      credential: cert(serviceAccount),
       projectId: resolvedProjectId
     });
     connectionMode = 'live_cloud';
-    credentialSource = 'Environment Variables (FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)';
-    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId})`);
+    credentialSource = `Service Account File: ${path.basename(serviceAccountFilePath)}`;
+    console.log(`[Firebase] Connected to Live Google Cloud Firestore (Project: ${resolvedProjectId}) via ${serviceAccountFilePath}`);
   } else if (env.firestoreEmulatorHost) {
     // 4. Local Firestore Emulator
     process.env.FIRESTORE_EMULATOR_HOST = env.firestoreEmulatorHost;
@@ -142,16 +145,25 @@ export const collections = {
 };
 
 export function isFirebaseConfigured(): boolean {
-  return connectionMode === 'live_cloud' || connectionMode === 'emulator' || Boolean(resolveServiceAccountPath());
+  return (
+    connectionMode === 'live_cloud' ||
+    connectionMode === 'emulator' ||
+    Boolean(env.firebaseServiceAccount) ||
+    Boolean(env.firebaseClientEmail && env.firebasePrivateKey) ||
+    Boolean(resolveServiceAccountPath())
+  );
 }
 
 export function getFirebaseStatus() {
+  const envConfigured = Boolean(env.firebaseServiceAccount) || Boolean(env.firebaseClientEmail && env.firebasePrivateKey);
   return {
     configured: isFirebaseConfigured(),
     mode: connectionMode,
     projectId: resolvedProjectId,
     credentialSource,
-    serviceAccountDetected: Boolean(serviceAccountFilePath)
+    serviceAccountDetected: envConfigured || Boolean(serviceAccountFilePath),
+    envCredentialsDetected: envConfigured,
+    fileKeyDetected: Boolean(serviceAccountFilePath)
   };
 }
 
@@ -169,7 +181,7 @@ export async function checkFirestoreHealth(): Promise<{
   if (!isFirebaseConfigured()) {
     return {
       ok: false,
-      message: 'Firebase credentials pending. Place serviceAccountKey.json in backend/ or set FIREBASE_CLIENT_EMAIL in .env',
+      message: 'Firebase credentials pending. Please configure FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in .env',
       mode: connectionMode,
       projectId: resolvedProjectId,
       credentialSource

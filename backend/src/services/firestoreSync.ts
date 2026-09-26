@@ -393,8 +393,10 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
     const teacherName = session.teacherName || session.teacher_name || session.takenByName || 'Class Faculty';
 
     const safeRecords = Array.isArray(records) ? records : [];
-    const presentCount = safeRecords.filter((r: any) => r.status === 'PRESENT' || r.is_present === true || r.isPresent === true).length;
-    const absentCount = safeRecords.length - presentCount;
+    const presentCount = safeRecords.filter((r: any) => r.status === 'PRESENT' || (r.status !== 'ABSENT' && r.status !== 'LEFT_EARLY' && (r.is_present === true || r.isPresent === true))).length;
+    const leftEarlyCount = safeRecords.filter((r: any) => r.status === 'LEFT_EARLY').length;
+    const lateCount = safeRecords.filter((r: any) => r.status === 'LATE').length;
+    const absentCount = safeRecords.filter((r: any) => r.status === 'ABSENT' || (!r.is_present && !r.isPresent && r.status !== 'LEFT_EARLY' && r.status !== 'LATE')).length;
 
     const batch = firestore.batch();
 
@@ -429,7 +431,14 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
       totalCount: safeRecords.length,
       presentCount,
       absentCount,
-      createdAt: new Date().toISOString(),
+      leftEarlyCount: session.leftEarlyCount ?? session.left_early_count ?? leftEarlyCount,
+      lateCount: session.lateCount ?? session.late_count ?? lateCount,
+      isReattendance: Boolean(session.isReattendance ?? session.is_reattendance ?? false),
+      reattendanceCount: session.reattendanceCount ?? session.reattendance_count ?? 0,
+      lastModifiedBy: session.lastModifiedBy ?? session.last_modified_by ?? null,
+      lastModifiedName: session.lastModifiedName ?? session.last_modified_name ?? null,
+      lastModifiedAt: session.lastModifiedAt ?? session.last_modified_at ?? null,
+      createdAt: session.createdAt || session.created_at || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }, { merge: true });
 
@@ -437,8 +446,8 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
       const studentId = String(r.studentId || r.student_id || '');
       if (!studentId) continue;
       const recId = `att-rec-${sessionId}-${studentId}`;
-      const isPresent = Boolean(r.is_present ?? r.isPresent ?? (r.status === 'PRESENT'));
-      const status = isPresent ? 'PRESENT' : 'ABSENT';
+      const status = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
+      const isPresent = status === 'PRESENT' || status === 'LATE';
 
       batch.set(collections.attendanceRecords().doc(recId), {
         id: recId,
@@ -460,17 +469,55 @@ export async function syncAttendanceToFirestore(session: any, records: any[]): P
         status,
         is_present: isPresent,
         isPresent,
+        departurePeriod: r.departurePeriod || r.departure_period || null,
+        departureTime: r.departureTime || r.departure_time || null,
+        arrivalPeriod: r.arrivalPeriod || r.arrival_period || null,
+        arrivalTime: r.arrivalTime || r.arrival_time || null,
+        updatedByName: r.updatedByName || r.updated_by_name || null,
+        updatedAt: r.updatedAt || r.updated_at || null,
         remarks: r.remarks || '',
-        markedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
+        markedAt: r.markedAt || r.marked_at || new Date().toISOString(),
+        createdAt: r.createdAt || r.created_at || new Date().toISOString()
       }, { merge: true });
     }
 
     await batch.commit();
-    console.log(`[FirestoreSync] Synced attendance session (${sessionId}) with ${safeRecords.length} records (present: ${presentCount}, absent: ${absentCount}) to Firestore`);
+    console.log(`[FirestoreSync] Synced attendance session (${sessionId}) with ${safeRecords.length} records (present: ${presentCount}, absent: ${absentCount}, leftEarly: ${leftEarlyCount}) to Firestore`);
     return true;
   } catch (err: any) {
     console.warn(`[FirestoreSync] Failed to sync attendance to Firestore:`, err.message);
+    return false;
+  }
+}
+
+export async function syncAttendanceAuditLogToFirestore(log: any): Promise<boolean> {
+  if (!isFirebaseConfigured()) return false;
+  try {
+    const id = log.id || `audit-${Date.now()}`;
+    await collections.auditLogs().doc(id).set({
+      id,
+      entity_type: 'ATTENDANCE',
+      action: log.action || 'REATTENDANCE',
+      school_id: log.schoolId || log.school_id,
+      schoolId: log.schoolId || log.school_id,
+      entity_id: log.sessionId,
+      sessionId: log.sessionId,
+      studentId: log.studentId || null,
+      studentName: log.studentName || null,
+      rollNumber: log.rollNumber || null,
+      previousStatus: log.previousStatus || null,
+      newStatus: log.newStatus || null,
+      departurePeriod: log.departurePeriod || null,
+      departureTime: log.departureTime || null,
+      reason: log.reason || null,
+      changedBy: log.changedBy || null,
+      changedByName: log.changedByName || null,
+      metadata: log,
+      createdAt: log.createdAt || new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (err: any) {
+    console.warn('[FirestoreSync] Failed to sync attendance audit log to Firestore:', err.message);
     return false;
   }
 }

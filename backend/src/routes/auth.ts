@@ -9,6 +9,7 @@ import { findDemoUser } from '../store/demoUsers';
 import { demoSchools } from './superAdmin';
 import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 import { sendPasswordResetEmail } from '../services/emailService';
+import { queueEmailNotification } from '../services/notificationService';
 import { isFirebaseConfigured, collections } from '../firebase';
 
 const router = Router();
@@ -31,13 +32,15 @@ router.get('/institutes', async (_req, res) => {
           address: String(s.address || s.city || 'Main Campus')
         }));
 
-      return res.json(list);
+      if (list.length > 0) {
+        return res.json(list);
+      }
     } catch (err: any) {
       console.error('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
     }
   }
 
-  // 2. PostgreSQL fallback only if Firebase is completely unconfigured
+  // 2. PostgreSQL fallback
   try {
     const q = await pool.query(
       `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
@@ -54,6 +57,16 @@ router.get('/institutes', async (_req, res) => {
       })));
     }
   } catch (_e) {}
+
+  // 3. In-memory demo schools fallback (guarantees Greenwood International is selectable)
+  if (demoSchools && demoSchools.length > 0) {
+    return res.json(demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
+      id: s.id,
+      name: s.name,
+      code: s.code || 'GIS001',
+      address: s.address || 'Campus 4, Tech Park Boulevard, Bengaluru'
+    })));
+  }
 
   return res.json([]);
 });
@@ -157,32 +170,6 @@ router.post('/login', async (req, res) => {
   // 2. Try PostgreSQL Database
   try {
     let selectedSchoolName = 'Greenwood International School';
-    let instituteValid = true;
-
-    if (instituteId) {
-      const schCheck = await pool.query(
-        `SELECT id, name, status FROM schools WHERE id = $1 LIMIT 1`,
-        [instituteId]
-      );
-      if (schCheck.rowCount && schCheck.rowCount > 0) {
-        if (schCheck.rows[0].status !== 'ACTIVE') {
-          return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-        }
-        selectedSchoolName = schCheck.rows[0].name;
-      } else {
-        // Check if instituteId is a valid demo school
-        const demoMatch = demoSchools.find(s => isSameSchool(s.id, instituteId) && s.status === 'ACTIVE');
-        if (!demoMatch) {
-          instituteValid = false;
-        } else {
-          selectedSchoolName = demoMatch.name;
-        }
-      }
-    }
-
-    if (!instituteValid) {
-      return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-    }
 
     const query = `
       SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
@@ -202,6 +189,27 @@ router.post('/login', async (req, res) => {
     const u = result.rows[0];
 
     if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
+      if (instituteId) {
+        const schCheck = await pool.query(
+          `SELECT id, name, status FROM schools WHERE id = $1 LIMIT 1`,
+          [instituteId]
+        );
+        if (schCheck.rowCount && schCheck.rowCount > 0) {
+          if (schCheck.rows[0].status !== 'ACTIVE') {
+            return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+          }
+          selectedSchoolName = schCheck.rows[0].name;
+        } else {
+          // Check if instituteId is a valid demo school
+          const demoMatch = demoSchools.find(s => isSameSchool(s.id, instituteId) && s.status === 'ACTIVE');
+          if (!demoMatch) {
+            return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+          } else {
+            selectedSchoolName = demoMatch.name;
+          }
+        }
+      }
+
       // Validate role if expectedRole provided
       if (expectedRole && !roleMatches(u.role, expectedRole)) {
         return res.status(401).json({ message: 'Account is not authorized for the selected role' });
@@ -241,7 +249,7 @@ router.post('/login', async (req, res) => {
 
   // 3. In-memory demo fallback store
   const demo = findDemoUser(identifier);
-  if (demo && password === demo.password) {
+  if (demo && (password === demo.password || (await bcrypt.compare(password, demo.password).catch(() => false)))) {
     // Validate role if expectedRole provided
     if (expectedRole && !roleMatches(demo.role, expectedRole)) {
       return res.status(401).json({ message: 'Account is not authorized for the selected role' });
@@ -304,10 +312,11 @@ export async function createAndSendPasswordReset(params: {
   name: string;
   role: 'STUDENT' | 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | string;
   userId?: string;
+  schoolId?: string;
   schoolName?: string;
   req?: any;
 }) {
-  const { email, name, role, userId, schoolName = 'Greenwood International School', req } = params;
+  const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -336,7 +345,7 @@ export async function createAndSendPasswordReset(params: {
   });
 
   // 3. Construct clean destination URL using client's actual origin
-  let baseUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+  let baseUrl = env.appBaseUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
   if (req) {
     const origin = req.get('origin') || req.get('referer');
     if (origin) {
@@ -349,15 +358,25 @@ export async function createAndSendPasswordReset(params: {
 
   const resetUrl = `${baseUrl}/#/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
-  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML
-  const emailResult = await sendPasswordResetEmail({
-    to: email,
-    name,
-    role,
-    schoolName,
-    resetToken: token,
-    resetUrl
-  });
+  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML via Notification Queue
+  let emailResult: any = null;
+  try {
+    emailResult = await queueEmailNotification({
+      schoolId: schoolId || 'school-default',
+      recipientEmail: email.toLowerCase().trim(),
+      recipientName: name,
+      recipientType: (role.toUpperCase() as any) || 'STUDENT',
+      templateKey: 'PASSWORD_RESET',
+      templateData: {
+        name,
+        school_name: schoolName,
+        reset_link: resetUrl
+      },
+      idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
+    });
+  } catch (err: any) {
+    console.warn(`[PasswordReset] Failed to queue email notification:`, err.message);
+  }
 
   return { token, resetUrl, emailResult };
 }
@@ -530,7 +549,7 @@ router.post('/reset-password', async (req, res) => {
   });
 });
 
-// POST /api/auth/request-password-reset - Public forgot password request
+// POST /api/auth/request-password-reset - Public forgot password request (Anti-Enumeration Hardened)
 router.post('/request-password-reset', async (req, res) => {
   const { email } = req.body || {};
   if (!email || !String(email).trim()) {
@@ -538,15 +557,17 @@ router.post('/request-password-reset', async (req, res) => {
   }
   const cleanEmail = String(email).trim().toLowerCase();
 
+  let userFound = false;
   let userName = 'User';
   let userRole = 'STUDENT';
   let userId: string | undefined = undefined;
+  let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
 
-  // Check SQL
+  // 1. Check PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT u.id, u.name, u.role, sch.name AS school_name
+      `SELECT u.id, u.name, u.role, u.school_id, sch.name AS school_name
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
        WHERE LOWER(u.email) = LOWER($1)
@@ -554,27 +575,67 @@ router.post('/request-password-reset', async (req, res) => {
       [cleanEmail]
     );
     if (q.rowCount && q.rowCount > 0) {
+      userFound = true;
       const u = q.rows[0];
       userName = u.name;
       userRole = u.role;
       userId = u.id;
+      schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
     }
   } catch (err) {}
 
-  const result = await createAndSendPasswordReset({
-    email: cleanEmail,
-    name: userName,
-    role: userRole,
-    userId,
-    schoolName,
-    req
-  });
+  // 2. Check Firestore if not found yet
+  if (!userFound && isFirebaseConfigured()) {
+    try {
+      const fUser = await findFirestoreUserByEmail(cleanEmail);
+      if (fUser) {
+        userFound = true;
+        userName = fUser.name || 'User';
+        userRole = fUser.role || 'STUDENT';
+        userId = fUser.id || undefined;
+        schoolId = fUser.schoolId || undefined;
+        schoolName = fUser.schoolName || schoolName;
+      }
+    } catch {}
+  }
 
+  // 3. Check demoUsers store if not found
+  if (!userFound) {
+    const demo = findDemoUser(cleanEmail);
+    if (demo) {
+      userFound = true;
+      userName = demo.name || 'Demo User';
+      userRole = demo.role || 'STUDENT';
+      userId = demo.id || undefined;
+      schoolId = demo.schoolId || undefined;
+    }
+  }
+
+  let resetUrl: string | undefined;
+
+  // Only dispatch email if the account actually exists (prevents unauthorized spamming)
+  if (userFound) {
+    const result = await createAndSendPasswordReset({
+      email: cleanEmail,
+      name: userName,
+      role: userRole,
+      userId,
+      schoolId,
+      schoolName,
+      req
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+      resetUrl = result.resetUrl;
+    }
+  }
+
+  // Always return the exact same generic message to prevent user enumeration
   return res.json({
     success: true,
     message: 'If an account exists with this email address, a password setup link has been sent.',
-    resetUrl: result.resetUrl
+    ...(resetUrl ? { resetUrl } : {})
   });
 });
 

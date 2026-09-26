@@ -11,21 +11,31 @@
 
 export const GREENWOOD_TEST_ALIASES = [
   'school-greenwood-001',
+  'sch-greenwood-001',
   '00000000-0000-0000-0000-000000000001',
   'greenwood',
+  'greenwood-international',
+  'greenwood-international-school',
+  'greenwood-high',
   'gis001',
+  'gis-001',
   'gwis-2025'
 ];
 
 /**
  * Checks if a given school ID or code belongs to the Greenwood test school.
- * Returns true ONLY for Greenwood test aliases.
+ * Returns true for all Greenwood test aliases and identifiers.
  */
 export function isTestSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
   if (!schoolId && !schoolCode) return false;
   const sid = (schoolId || '').toLowerCase().trim();
   const scode = (schoolCode || '').toLowerCase().trim();
-  return GREENWOOD_TEST_ALIASES.includes(sid) || GREENWOOD_TEST_ALIASES.includes(scode);
+  return (
+    GREENWOOD_TEST_ALIASES.includes(sid) ||
+    GREENWOOD_TEST_ALIASES.includes(scode) ||
+    sid.includes('greenwood') ||
+    scode.includes('gis001')
+  );
 }
 
 /**
@@ -40,7 +50,9 @@ export function isSameSchool(a?: string | null, b?: string | null): boolean {
 
   const lowA = cleanA.toLowerCase();
   const lowB = cleanB.toLowerCase();
-  return GREENWOOD_TEST_ALIASES.includes(lowA) && GREENWOOD_TEST_ALIASES.includes(lowB);
+  if (lowA === lowB) return true;
+
+  return isTestSchool(lowA) && isTestSchool(lowB);
 }
 
 /**

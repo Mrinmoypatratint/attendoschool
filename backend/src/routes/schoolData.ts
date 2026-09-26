@@ -5,6 +5,7 @@ import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser } from '../store/demoUsers';
 import { createAndSendPasswordReset, isSameSchool, isTestSchool } from './auth';
+import { queueEmailNotification } from '../services/notificationService';
 import { demoSchools } from './superAdmin';
 import { getFirestoreSchoolById } from '../services/firestoreService';
 import { collections, isFirebaseConfigured } from '../firebase';
@@ -26,6 +27,7 @@ import {
 
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
+const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
 
 export const demoClasses: any[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
   id: `cls-${n}`,
@@ -40,7 +42,7 @@ export const demoSections: any[] = [];
   demoSections.push({ id: `sec-${n}-b`, class_id: `cls-${n}`, class_number: n, name: 'B', school_id: '00000000-0000-0000-0000-000000000001' });
 });
 
-r.get('/classes',...admin,async(req:AuthRequest,res)=>{
+r.get('/classes',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
  try {
   const q=await pool.query(`SELECT c.id,c.class_number,COUNT(s.id)::int section_count
@@ -121,7 +123,7 @@ r.delete('/classes/:id',...admin,async(req:AuthRequest,res)=>{
  res.json({success:true});
 });
 
-r.get('/sections',...admin,async(req:AuthRequest,res)=>{
+r.get('/sections',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
  try {
   const q=await pool.query(`SELECT s.id,s.name,c.id class_id,c.class_number FROM sections s JOIN classes c ON c.id=s.class_id WHERE s.school_id=$1 ORDER BY c.class_number,s.name`,[sid]);
@@ -495,15 +497,36 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           resetInfo = await createAndSendPasswordReset({
             email: targetLoginEmail,
             name,
-            role: 'STUDENT',
+            role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
             userId: linkedUserId || undefined,
-            schoolName: req.user?.schoolName,
+            schoolId: req.user?.schoolId || undefined,
+            schoolName: req.user?.schoolName || 'School',
             req
           });
+          if (resetInfo?.resetUrl) {
+            const isParent = loginOpt === 'PARENT';
+            queueEmailNotification({
+              schoolId: req.user?.schoolId || 'school-default',
+              recipientEmail: targetLoginEmail,
+              recipientName: isParent ? (parentName || 'Parent/Guardian') : name,
+              recipientType: isParent ? 'PARENT' : 'STUDENT',
+              templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+              templateData: {
+                student_name: name,
+                school_name: req.user?.schoolName || 'School',
+                class_name: String(clsNum),
+                section_name: secName,
+                reset_link: resetInfo.resetUrl
+              },
+              idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+            }).catch(() => {});
+          }
         } catch (e: any) {
           console.warn('[StudentEnrollment] Failed to send student reset email:', e.message);
         }
       }
+    } else {
+      console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
     }
 
     const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,admission_number,name,parent_name,parent_sms_number,email,parent_email,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
@@ -537,8 +560,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
      resetInfo = await createAndSendPasswordReset({
        email: targetLoginEmail,
        name,
-       role: 'STUDENT',
-       schoolName: req.user?.schoolName,
+       role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
+       schoolId: req.user?.schoolId || undefined,
+       schoolName: req.user?.schoolName || 'School',
        req
      });
      registerDemoUser({
@@ -549,7 +573,27 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
        role: 'STUDENT',
        password: 'ChangeMe123!'
      });
+     if (resetInfo?.resetUrl) {
+       const isParent = loginOpt === 'PARENT';
+       queueEmailNotification({
+         schoolId: req.user?.schoolId || 'school-default',
+         recipientEmail: targetLoginEmail,
+         recipientName: isParent ? (parentName || 'Parent/Guardian') : name,
+         recipientType: isParent ? 'PARENT' : 'STUDENT',
+         templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+         templateData: {
+           student_name: name,
+           school_name: req.user?.schoolName || 'School',
+           class_name: String(clsNum),
+           section_name: secName,
+           reset_link: resetInfo.resetUrl
+         },
+         idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+       }).catch(() => {});
+     }
    } catch {}
+ } else if (!targetLoginEmail) {
+   console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
  }
 
  const newStudent = {
@@ -846,9 +890,26 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
          name,
          role: 'TEACHER',
          userId: u.rows[0].id,
-         schoolName: req.user?.schoolName,
+         schoolId: req.user?.schoolId || undefined,
+         schoolName: req.user?.schoolName || 'School',
          req
        });
+       if (resetInfo?.resetUrl) {
+         queueEmailNotification({
+           schoolId: req.user?.schoolId || 'school-default',
+           recipientEmail: cleanEmail,
+           recipientName: name,
+           recipientType: 'TEACHER',
+           templateKey: 'TEACHER_CREATED',
+           templateData: {
+             teacher_name: name,
+             school_name: req.user?.schoolName || 'School',
+             employee_id: employeeId,
+             login_url: resetInfo.resetUrl
+           },
+           idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
+         }).catch(() => {});
+       }
      } catch (err: any) {
        console.warn('[TeacherOnboarding] Email invite failed:', err.message);
      }
@@ -877,9 +938,26 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
        email: cleanEmail,
        name,
        role: 'TEACHER',
-       schoolName: req.user?.schoolName,
+       schoolId: req.user?.schoolId || undefined,
+       schoolName: req.user?.schoolName || 'School',
        req
      });
+     if (resetInfo?.resetUrl) {
+       queueEmailNotification({
+         schoolId: req.user?.schoolId || 'school-default',
+         recipientEmail: cleanEmail,
+         recipientName: name,
+         recipientType: 'TEACHER',
+         templateKey: 'TEACHER_CREATED',
+         templateData: {
+           teacher_name: name,
+           school_name: req.user?.schoolName || 'School',
+           employee_id: employeeId,
+           login_url: resetInfo.resetUrl
+         },
+         idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
+       }).catch(() => {});
+     }
    } catch {}
  }
 
@@ -1090,7 +1168,7 @@ export const demoSubjects: any[] = [
   { id: 'sub-pe', name: 'Physical Education', school_id: '00000000-0000-0000-0000-000000000001' }
 ];
 
-r.get('/subjects',...admin,async(req:AuthRequest,res)=>{
+r.get('/subjects',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
  try {
   const q=await pool.query('SELECT * FROM subjects WHERE school_id=$1 ORDER BY name',[sid]);
