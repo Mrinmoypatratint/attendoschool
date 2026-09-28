@@ -53,63 +53,52 @@ jobs:
       - name: Frontend Typecheck & Production Build
         working-directory: ./frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || '/api' }}
         run: |
           npx tsc --noEmit
           npm run build
 
-  deploy-frontend-hostinger:
-    name: Deploy Frontend to Hostinger (public_html)
+  deploy-hostinger-vps:
+    name: Deploy Full-Stack to Hostinger VPS (SSH & PM2)
     needs: [backend-ci, frontend-ci]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - name: Deploy to Hostinger VPS over SSH
+        if: ${{ secrets.HOSTINGER_VPS_HOST != '' && (secrets.HOSTINGER_VPS_SSH_KEY != '' || secrets.HOSTINGER_VPS_PASSWORD != '') }}
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          host: ${{ secrets.HOSTINGER_VPS_HOST }}
+          username: ${{ secrets.HOSTINGER_VPS_USER || 'root' }}
+          key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
+          password: ${{ secrets.HOSTINGER_VPS_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
+          script: |
+            set -e
+            echo "🔄 Updating AttendoSchool on Hostinger VPS..."
+            cd /var/www/attendoschool
+            git pull origin main
+            npm --prefix backend ci
+            npm --prefix frontend ci
+            npm run build
+            pm2 reload ecosystem.config.cjs --env production || pm2 start ecosystem.config.cjs --env production
+            sudo nginx -t && sudo systemctl reload nginx
+            echo "✅ Deployment completed on https://attendoschool.optinetinnovations.in"
 
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Build Frontend for Hostinger Production
-        working-directory: ./frontend
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
-        run: npm run build
-
-      - name: Deploy to Hostinger via FTPS
-        if: ${{ secrets.HOSTINGER_FTP_SERVER != '' && secrets.HOSTINGER_FTP_USERNAME != '' && secrets.HOSTINGER_FTP_PASSWORD != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          server-dir: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/attendoschool/' }}
-          local-dir: ./frontend/dist/
-          protocol: ftps
-          dangerous-clean-slate: false
-
-      - name: Hostinger Credentials Setup Notice
-        if: ${{ secrets.HOSTINGER_FTP_SERVER == '' || secrets.HOSTINGER_FTP_USERNAME == '' || secrets.HOSTINGER_FTP_PASSWORD == '' }}
+      - name: Hostinger VPS Setup Instructions Notice
+        if: ${{ secrets.HOSTINGER_VPS_HOST == '' || (secrets.HOSTINGER_VPS_SSH_KEY == '' && secrets.HOSTINGER_VPS_PASSWORD == '') }}
         run: |
           echo "=========================================================================="
-          echo "⚠️ HOSTINGER DEPLOYMENT NOTICE: Missing GitHub Secrets"
+          echo "🚀 HOSTINGER VPS CI/CD PIPELINE READY"
           echo "Target Domain: https://attendoschool.optinetinnovations.in"
           echo "=========================================================================="
-          echo "The frontend was successfully built and tested."
-          echo "To enable automatic deployment to Hostinger, add these Secrets in GitHub:"
+          echo "Both Frontend and Backend passed all build and typecheck tests!"
+          echo ""
+          echo "To enable 100% automated fullstack deployment on every git push, add:"
           echo "GitHub -> Settings -> Secrets and variables -> Actions -> New repository secret"
           echo ""
-          echo "1. HOSTINGER_FTP_SERVER   : Hostinger FTP Server Host/IP (e.g. ftp.optinetinnovations.in)"
-          echo "2. HOSTINGER_FTP_USERNAME : Your Hostinger FTP Username"
-          echo "3. HOSTINGER_FTP_PASSWORD : Your Hostinger FTP Password"
-          echo "4. HOSTINGER_SERVER_DIR   : (Optional) 'public_html/attendoschool/'"
-          echo "5. VITE_API_URL           : (Optional) Backend API URL (default: https://attendoschool-backend.onrender.com/api)"
+          echo "1. HOSTINGER_VPS_HOST     : Your Hostinger VPS IP Address"
+          echo "2. HOSTINGER_VPS_USER     : 'root' or your sudo username"
+          echo "3. HOSTINGER_VPS_SSH_KEY  : Your SSH Private Key (or HOSTINGER_VPS_PASSWORD)"
+          echo "4. HOSTINGER_VPS_PORT     : 22 (Default)"
           echo "=========================================================================="
