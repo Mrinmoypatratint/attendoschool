@@ -9,7 +9,7 @@ async function deploy() {
   const host = process.env.HOSTINGER_FTP_SERVER || process.argv[2];
   const user = process.env.HOSTINGER_FTP_USERNAME || process.argv[3];
   const password = process.env.HOSTINGER_FTP_PASSWORD || process.argv[4];
-  const remoteDir = process.env.HOSTINGER_SERVER_DIR || process.argv[5] || 'public_html';
+  const remoteDir = process.env.HOSTINGER_SERVER_DIR || process.argv[5] || 'domains/optinetinnovations.in/public_html/attendoschool';
 
   if (!host || !user || !password) {
     console.error('❌ Missing credentials!');
@@ -29,7 +29,11 @@ async function deploy() {
       host: cleanHost,
       user: user,
       password: password,
-      secure: 'implicit' // or true for explicit FTPS
+      secure: true,
+      port: 21,
+      secureOptions: {
+        rejectUnauthorized: false
+      }
     });
 
     console.log(`📂 Ensuring remote directory ${remoteDir} exists...`);
@@ -43,25 +47,8 @@ async function deploy() {
     console.log('✅ Deployment to Hostinger completed successfully!');
     console.log('🌐 Visit: https://attendoschool.optinetinnovations.in');
   } catch (err) {
-    // If implicit fails, try explicit (TLS)
-    console.warn('⚠️ Implicit FTPS failed, trying explicit FTPS / TLS on port 21...');
-    try {
-      await client.access({
-        host: host,
-        user: user,
-        password: password,
-        secure: true,
-        port: 21
-      });
-      await client.ensureDir(remoteDir);
-      const localDir = path.resolve(__dirname, '../frontend/dist');
-      await client.uploadFromDir(localDir);
-      console.log('✅ Deployment to Hostinger completed successfully via explicit FTPS!');
-      console.log('🌐 Visit: https://attendoschool.optinetinnovations.in');
-    } catch (fallbackErr) {
-      console.error('❌ Deployment failed:', fallbackErr);
-      process.exit(1);
-    }
+    console.error('❌ Deployment error:', err);
+    process.exit(1);
   } finally {
     client.close();
   }
