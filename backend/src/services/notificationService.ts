@@ -1186,6 +1186,17 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
 
   // 4. Resolve Student Details & Email Addresses
   const { demoStudents } = await import('../routes/schoolData');
+  const firestoreStudentMap = new Map<string, any>();
+  if (isFirebaseConfigured()) {
+    try {
+      const sSnap = await collections.students().get();
+      for (const d of sSnap.docs) {
+        const dt = d.data();
+        firestoreStudentMap.set(d.id, { id: d.id, ...dt });
+        if (dt.id) firestoreStudentMap.set(String(dt.id), { id: d.id, ...dt });
+      }
+    } catch {}
+  }
 
   let queuedCount = 0;
   let skippedCount = 0;
@@ -1212,9 +1223,9 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
     const tmplKey = isPresent ? 'ATTENDANCE_PRESENT' : 'ATTENDANCE_ABSENT';
 
     // Lookup full student profile for emails
-    const stProfile = demoStudents.find(s => String(s.id) === stId) || r;
+    const stProfile = demoStudents.find(s => String(s.id) === stId) || firestoreStudentMap.get(stId) || r;
     const stName = stProfile.name || stProfile.fullName || r.studentName || 'Student';
-    const studentEmail = (stProfile.student_email || stProfile.email || '').trim().toLowerCase();
+    const studentEmail = (stProfile.student_email || stProfile.studentEmail || stProfile.email || '').trim().toLowerCase();
     const parentEmail = (stProfile.parent_email || stProfile.parentEmail || '').trim().toLowerCase();
     const parentName = stProfile.parent_name || stProfile.parentName || 'Parent / Guardian';
 
