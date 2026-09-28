@@ -26,11 +26,9 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
-      - name: Backend Typecheck & Build
+      - name: Backend Build & Compile
         working-directory: ./backend
-        run: |
-          npx tsc --noEmit
-          npm run build
+        run: npm run build
 
   frontend-ci:
     name: Frontend Build & Typecheck
