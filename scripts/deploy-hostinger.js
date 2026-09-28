@@ -18,13 +18,15 @@ async function deploy() {
     process.exit(1);
   }
 
+  const cleanHost = host.replace(/^(https?|ftps?):\/\//i, '').replace(/\/$/, '');
+
   const client = new ftp.Client();
   client.ftp.verbose = true;
 
   try {
-    console.log(`🔌 Connecting to ${host} via FTPS...`);
+    console.log(`🔌 Connecting to ${cleanHost} via FTPS...`);
     await client.access({
-      host: host,
+      host: cleanHost,
       user: user,
       password: password,
       secure: 'implicit' // or true for explicit FTPS

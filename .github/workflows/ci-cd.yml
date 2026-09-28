@@ -82,10 +82,17 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
         run: npm run build
 
+      - name: Sanitize Hostinger FTP Server
+        id: ftp-config
+        run: |
+          RAW_SERVER="${{ secrets.HOSTINGER_FTP_SERVER }}"
+          CLEAN_SERVER=$(echo "$RAW_SERVER" | sed -E 's#^https?://##; s#^ftps?://##; s#/$##')
+          echo "host=$CLEAN_SERVER" >> $GITHUB_OUTPUT
+
       - name: Deploy to Hostinger via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          server: ${{ steps.ftp-config.outputs.host }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./frontend/dist/
