@@ -610,7 +610,7 @@ r.get('/attendance/today-status', ...teacher, async (req: AuthRequest, res) => {
     try {
       const snap = await collections.attendanceSessions().get();
       for (const doc of snap.docs) {
-        const d = { id: doc.id, ...doc.data() };
+        const d: any = { id: doc.id, ...doc.data() };
         if (matchSession(d)) {
           session = {
             id: doc.id,
@@ -804,7 +804,7 @@ r.get('/attendance/today-status', ...teacher, async (req: AuthRequest, res) => {
 // Returns records and full re-attendance audit trail for a specific attendance session
 r.get('/attendance/:sessionId/records', ...teacher, async (req: AuthRequest, res) => {
   const sid = req.user!.schoolId!;
-  const { sessionId } = req.params;
+  const sessionId = String(req.params.sessionId);
 
   let session = memAttendanceSessions.find(s => s.id === sessionId && isSameSchool(s.schoolId, sid));
   if (!session && isFirebaseConfigured()) {
@@ -816,22 +816,22 @@ r.get('/attendance/:sessionId/records', ...teacher, async (req: AuthRequest, res
     } catch {}
   }
 
-  let records = memAttendanceRecords.filter(r => r.sessionId === sessionId);
+  let records: any[] = memAttendanceRecords.filter(r => r.sessionId === sessionId);
   if (records.length === 0 && isFirebaseConfigured()) {
     try {
       const snap = await collections.attendanceRecords().where('sessionId', '==', sessionId).get();
       if (!snap.empty) {
-        records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        records = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       }
     } catch {}
   }
 
-  let auditLogs = memAttendanceAuditLogs.filter(a => a.sessionId === sessionId);
+  let auditLogs: any[] = memAttendanceAuditLogs.filter(a => a.sessionId === sessionId);
   if (auditLogs.length === 0 && isFirebaseConfigured()) {
     try {
       const aSnap = await collections.auditLogs().where('entity_id', '==', sessionId).get();
       if (!aSnap.empty) {
-        auditLogs = aSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        auditLogs = aSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       }
     } catch {}
   }
@@ -844,7 +844,8 @@ r.get('/attendance/:sessionId/records', ...teacher, async (req: AuthRequest, res
 // Allows any teacher or class teacher to re-attend and update the student's status with reasons and parent notification!
 r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthRequest, res) => {
   const sid = req.user!.schoolId!;
-  const { sessionId, studentId } = req.params;
+  const sessionId = String(req.params.sessionId);
+  const studentId = String(req.params.studentId);
   const { status, reason, departurePeriod, departureTime, arrivalPeriod, arrivalTime, notifyParent } = req.body || {};
 
   if (!status || !['PRESENT', 'ABSENT', 'LEFT_EARLY', 'LATE', 'EXCUSED'].includes(status)) {
@@ -870,7 +871,7 @@ r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthR
   }
 
   // 2. Locate or create record
-  let record = memAttendanceRecords.find(r => r.sessionId === sessionId && String(r.studentId) === String(studentId));
+  let record: MemAttendanceRecord | undefined = memAttendanceRecords.find(r => r.sessionId === sessionId && String(r.studentId) === String(studentId));
   const prevStatus = record ? record.status : 'UNKNOWN';
   const nowStr = new Date().toISOString();
   const userName = req.user?.name || 'Class Faculty';
@@ -894,7 +895,7 @@ r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthR
     record.updatedByName = userName;
     record.updatedAt = nowStr;
   } else {
-    record = {
+    const newRec: MemAttendanceRecord = {
       id: `att-rec-${sessionId}-${studentId}`,
       sessionId,
       attendance_session_id: sessionId,
@@ -922,7 +923,8 @@ r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthR
       remarks: reason || '',
       createdAt: nowStr
     };
-    memAttendanceRecords.unshift(record);
+    memAttendanceRecords.unshift(newRec);
+    record = newRec;
   }
 
   // 3. Recalculate session totals
@@ -1056,7 +1058,7 @@ r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthR
 // Batch re-attendance (e.g. Period 2 / Period 3 re-roll call or bulk adjustments)
 r.post('/attendance/:sessionId/reattendance', ...teacher, async (req: AuthRequest, res) => {
   const sid = req.user!.schoolId!;
-  const { sessionId } = req.params;
+  const sessionId = String(req.params.sessionId);
   const { records, reason, notifyParents } = req.body || {};
 
   if (!Array.isArray(records) || records.length === 0) {
@@ -1102,7 +1104,7 @@ r.post('/attendance/:sessionId/reattendance', ...teacher, async (req: AuthReques
       memRec.updatedByName = userName;
       memRec.updatedAt = nowStr;
     } else {
-      memRec = {
+      const newRec: MemAttendanceRecord = {
         id: `att-rec-${sessionId}-${studentId}`,
         sessionId,
         attendance_session_id: sessionId,
@@ -1132,7 +1134,7 @@ r.post('/attendance/:sessionId/reattendance', ...teacher, async (req: AuthReques
         remarks: r.remarks || '',
         createdAt: nowStr
       };
-      memAttendanceRecords.unshift(memRec);
+      memAttendanceRecords.unshift(newRec);
     }
   }
 

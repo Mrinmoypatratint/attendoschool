@@ -12,6 +12,7 @@ import {
   isValidEmail
 } from '../services/notificationService';
 import { isTestSchool, isSameSchool } from '../utils/tenant';
+import { env } from '../config/env';
 
 const r = Router();
 r.use(requireAuth);

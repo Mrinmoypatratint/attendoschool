@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { env } from './config/env';
 import { requireAuth } from './middleware/auth';
 import { securityHeaders, apiRateLimit, requestContext } from './middleware/security';
@@ -55,6 +57,21 @@ app.use(express.json());
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+
+// Static brand assets (AttendoSchool logo for live email previews & direct assets)
+const backendAssetsDir = path.resolve(__dirname, '../assets');
+const frontendPublicDir = path.resolve(__dirname, '../../frontend/public');
+app.use('/assets', express.static(backendAssetsDir));
+app.get('/attendo-school-logo.png', (_req, res) => {
+  const localLogo = path.join(backendAssetsDir, 'attendo-school-logo.png');
+  const frontendLogo = path.join(frontendPublicDir, 'attendo-school-logo.png');
+  if (fs.existsSync(localLogo)) {
+    return res.sendFile(localLogo);
+  } else if (fs.existsSync(frontendLogo)) {
+    return res.sendFile(frontendLogo);
+  }
+  res.status(404).send('Logo not found');
+});
 
 // Public integration endpoints
 app.use('/api/parent-onboarding', parentOnboarding);
