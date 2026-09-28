@@ -115,10 +115,11 @@ jobs:
   deploy-hostinger-vps:
     name: Deploy Full-Stack to Hostinger VPS (SSH & PM2)
     needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.HOSTINGER_VPS_HOST != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Hostinger VPS over SSH
+        if: ${{ secrets.HOSTINGER_VPS_HOST != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOSTINGER_VPS_HOST }}
