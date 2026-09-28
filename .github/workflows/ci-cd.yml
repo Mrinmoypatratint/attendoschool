@@ -91,7 +91,7 @@ jobs:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          server-dir: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/' }}
+          server-dir: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/attendoschool/' }}
           local-dir: ./frontend/dist/
           protocol: ftps
           dangerous-clean-slate: false
@@ -101,14 +101,15 @@ jobs:
         run: |
           echo "=========================================================================="
           echo "⚠️ HOSTINGER DEPLOYMENT NOTICE: Missing GitHub Secrets"
+          echo "Target Domain: https://attendoschool.optinetinnovations.in"
           echo "=========================================================================="
           echo "The frontend was successfully built and tested."
           echo "To enable automatic deployment to Hostinger, add these Secrets in GitHub:"
           echo "GitHub -> Settings -> Secrets and variables -> Actions -> New repository secret"
           echo ""
-          echo "1. HOSTINGER_FTP_SERVER   : Hostinger FTP Server Host/IP (e.g. ftp.yourdomain.com)"
+          echo "1. HOSTINGER_FTP_SERVER   : Hostinger FTP Server Host/IP (e.g. ftp.optinetinnovations.in)"
           echo "2. HOSTINGER_FTP_USERNAME : Your Hostinger FTP Username"
           echo "3. HOSTINGER_FTP_PASSWORD : Your Hostinger FTP Password"
-          echo "4. HOSTINGER_SERVER_DIR   : (Optional) 'public_html/' or 'domains/yourdomain.com/public_html/'"
+          echo "4. HOSTINGER_SERVER_DIR   : (Optional) 'public_html/attendoschool/'"
           echo "5. VITE_API_URL           : (Optional) Backend API URL (default: https://attendoschool-backend.onrender.com/api)"
           echo "=========================================================================="

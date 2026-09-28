@@ -1,63 +1,70 @@
-# Hostinger CI/CD Deployment Guide for AttendoSchool
+# Hostinger CI/CD Deployment Guide for attendoschool.optinetinnovations.in
 
-This guide walks you through automatically deploying the **AttendoSchool** frontend to **Hostinger Web / Cloud Hosting** (`public_html`) on every `git push` via **GitHub Actions CI/CD**.
-
----
-
-## 1. Retrieve Your Hostinger FTP Credentials
-
-1. Log in to your [Hostinger Account (hPanel)](https://hpanel.hostinger.com/).
-2. Select your hosting account or website and click **Manage**.
-3. In the sidebar, navigate to **Files** &rarr; **FTP Accounts**.
-4. Note down the following details:
-   - **FTP IP / Host**: (e.g. `185.xxx.xxx.xxx` or `ftp.yourdomain.com`)
-   - **FTP Username**: (e.g. `u123456789`)
-   - **FTP Password**: (If you don't remember it, click **Change password**)
-   - **FTP Port**: `21` (default)
+This guide walks you through automatically deploying the **AttendoSchool** frontend to your Hostinger subdomain **`attendoschool.optinetinnovations.in`** on every `git push` via **GitHub Actions CI/CD**.
 
 ---
 
-## 2. Add Hostinger Secrets to Your GitHub Repository
+## 1. Create the Subdomain in Hostinger hPanel
+
+1. Log in to your [Hostinger hPanel](https://hpanel.hostinger.com/).
+2. Select your domain **`optinetinnovations.in`** and click **Manage**.
+3. In the left sidebar, navigate to **Domains** &rarr; **Subdomains**.
+4. Enter the details:
+   - **Subdomain Name**: `attendoschool`
+   - **Domain**: `optinetinnovations.in`
+   - **Custom folder for subdomain**: check or confirm it points to:
+     `public_html/attendoschool`
+5. Click **Create**.
+6. *(Important)* In hPanel, go to **Security** &rarr; **SSL** and click **Install SSL** for `attendoschool.optinetinnovations.in` (free lifetime Let's Encrypt SSL provided by Hostinger).
+
+---
+
+## 2. Retrieve Your Hostinger FTP Credentials
+
+1. In Hostinger hPanel, go to **Files** &rarr; **FTP Accounts**.
+2. Note down your credentials:
+   - **FTP IP / Host**: (e.g., `ftp.optinetinnovations.in` or the Hostinger FTP IP like `185.xxx.xxx.xxx`)
+   - **FTP Username**: (e.g., `u123456789`)
+   - **FTP Password**: (click **Change password** if needed)
+   - **FTP Port**: `21`
+
+---
+
+## 3. Add Secrets to Your GitHub Repository
 
 1. Open your GitHub repository in your browser:
-   `https://github.com/Mrinmoypatratint/attendoschool`
-2. Click **Settings** (top tabs).
-3. In the left sidebar, click **Secrets and variables** &rarr; **Actions**.
-4. Click the green **New repository secret** button and add each of the following:
+   **[https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions](https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions)**
+2. Click the green **New repository secret** button and add these secrets:
 
 | Secret Name | Value | Description |
 | :--- | :--- | :--- |
-| `HOSTINGER_FTP_SERVER` | `ftp.yourdomain.com` *(or your Hostinger FTP IP)* | Hostinger FTP hostname |
+| `HOSTINGER_FTP_SERVER` | `ftp.optinetinnovations.in` *(or Hostinger FTP IP)* | Hostinger FTP hostname |
 | `HOSTINGER_FTP_USERNAME` | `u123456789` | Your Hostinger FTP username |
 | `HOSTINGER_FTP_PASSWORD` | `your_ftp_password` | Your Hostinger FTP password |
-| `HOSTINGER_SERVER_DIR` *(Optional)* | `public_html/` | Target directory (`public_html/` or `domains/yourdomain.com/public_html/` if you host multiple domains) |
-| `VITE_API_URL` *(Optional)* | `https://attendoschool-backend.onrender.com/api` | Your production backend API endpoint |
+| `HOSTINGER_SERVER_DIR` | `public_html/attendoschool/` | Subdomain folder on Hostinger *(defaults to `public_html/attendoschool/`)* |
+| `VITE_API_URL` | `https://attendoschool-backend.onrender.com/api` | Production backend API endpoint |
+
+> **Note on Multi-Domain Accounts**: If `optinetinnovations.in` is an addon domain in Hostinger, your directory might be `domains/optinetinnovations.in/public_html/attendoschool/`. You can verify the exact path in Hostinger **File Manager**.
 
 ---
 
-## 3. How the Automated CI/CD Pipeline Works
+## 4. How the Automated CI/CD Pipeline Works
 
-Whenever you push code to the `main` branch:
+Whenever you push to `main` (`git push origin main`):
 1. **GitHub Actions Workflow** (`.github/workflows/ci-cd.yml`) automatically triggers.
-2. It typechecks and compiles the **backend** and **frontend**.
-3. It builds the production bundle into `frontend/dist/` (including `.htaccess` for Apache/LiteSpeed SPA routing and security).
-4. It connects securely over **FTPS** to Hostinger and uploads the built assets to `public_html/`.
+2. It typechecks and compiles both backend and frontend.
+3. It bundles the production frontend with:
+   - Dynamic API routing configured for `attendoschool.optinetinnovations.in`.
+   - Hostinger Apache/LiteSpeed `.htaccess` with client-side SPA routing, HTTPS redirect, asset caching, and security headers.
+4. It connects securely over **FTPS** to Hostinger and deploys directly to `public_html/attendoschool/`.
 
 ---
 
-## 4. SPA Routing on Hostinger (.htaccess)
+## 5. Verify Your Live Subdomain
 
-Hostinger web servers use LiteSpeed/Apache. The build process automatically deploys `frontend/public/.htaccess` to `public_html/.htaccess` with:
-- **Client-Side SPA Routing**: Routes like `/login`, `/dashboard`, and hash routes load cleanly without `404 Not Found` errors.
-- **HTTPS Enforcement**: Automatically redirects HTTP visitors to secure HTTPS.
-- **Asset Caching**: Enables 1-year browser caching for scripts, fonts, and images.
-- **Security Headers**: Injects `X-Content-Type-Options`, `X-XSS-Protection`, and `Referrer-Policy`.
-
----
-
-## 5. Verify Your Live Site
-
-Once the GitHub Action completes:
-1. Open your domain in your browser: `https://yourdomain.com`
-2. Test navigating between tabs and refreshing the page to verify `.htaccess` routing works smoothly.
-3. Check the browser developer console (`F12`) to verify the backend API connects to `https://attendoschool-backend.onrender.com/api`.
+Once GitHub Actions finishes uploading:
+1. Open your subdomain in your browser:
+   **[https://attendoschool.optinetinnovations.in](https://attendoschool.optinetinnovations.in)**
+2. Navigate between pages (e.g. Dashboard, Attendance, Timetable, Notifications).
+3. Refresh any page directly to confirm `.htaccess` SPA routing redirects cleanly to `index.html`.
+4. Open Developer Tools (`F12`) &rarr; **Network** tab to verify API calls connect to `https://attendoschool-backend.onrender.com/api`.
