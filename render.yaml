@@ -10,7 +10,7 @@ services:
     plan: free
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,12 +18,40 @@ services:
         value: 10000
       - key: DB_DRIVER
         value: firebase
-      - key: FIREBASE_PROJECT_ID
-        value: attendoschool
-      - key: JWT_SECRET
-        generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+      - key: JWT_SECRET
+        generateValue: true
+      # ── Firebase Credentials ──
+      - key: FIREBASE_PROJECT_ID
+        value: attendoschool
+      - key: FIREBASE_CLIENT_EMAIL
+        value: firebase-adminsdk-fbsvc@attendoschool.iam.gserviceaccount.com
+      # IMPORTANT: Set FIREBASE_PRIVATE_KEY and FIREBASE_SERVICE_ACCOUNT
+      # manually in the Render Dashboard > Environment tab.
+      # They contain multi-line secrets that cannot be safely stored in YAML.
+      # ── SMTP Email Configuration (Gmail) ──
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: rajbsmv@gmail.com
+      - key: SMTP_PASS
+        sync: false  # Set manually in Render Dashboard for security
+      - key: SMTP_FROM
+        value: "AttendoSchool Superadmin <rajbsmv@gmail.com>"
+      - key: SMTP_FROM_NAME
+        value: "AttendoSchool Notifications"
+      - key: SMTP_REPLY_TO
+        value: rajbsmv@gmail.com
+      - key: EMAIL_ENABLED
+        value: "true"
+      # ── Application URLs ──
+      - key: APP_BASE_URL
+        value: https://attendoschool.optinetinnovations.in
+      - key: FRONTEND_URL
+        value: https://attendoschool.optinetinnovations.in
       - key: COMPANY_NAME
         value: "AttendoSchool Platform"
       - key: COMPANY_GST_RATE

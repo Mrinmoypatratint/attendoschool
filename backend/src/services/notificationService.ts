@@ -1583,7 +1583,13 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
       message: 'Test verification email delivered successfully via SMTP server!'
     };
   } catch (err: any) {
-    if (process.env.NODE_ENV !== 'production' || user.includes('demo') || user.includes('test') || pass.includes('demo') || pass.includes('test')) {
+    // Only sandbox in true local development with demo/test credentials
+    const isLocalDev = process.env.NODE_ENV !== 'production' && (
+      user.includes('demo') || user.includes('test') || 
+      pass.includes('demo') || pass.includes('test') ||
+      host === 'localhost' || host === '127.0.0.1'
+    );
+    if (isLocalDev) {
       return {
         success: true,
         mode: 'SANDBOX',
