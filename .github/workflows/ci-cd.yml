@@ -58,10 +58,10 @@ jobs:
           npx tsc --noEmit
           npm run build
 
-  deploy-hostinger-web:
+  deploy-hostinger:
     name: Deploy to Hostinger Web Hosting (FTP/FTPS)
     needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -85,7 +85,6 @@ jobs:
         run: npm run build
 
       - name: Deploy to Hostinger via FTPS
-        if: ${{ secrets.HOSTINGER_FTP_SERVER != '' && secrets.HOSTINGER_FTP_USERNAME != '' && secrets.HOSTINGER_FTP_PASSWORD != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
@@ -95,46 +94,3 @@ jobs:
           server-dir: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/' }}
           protocol: ftps
           dangerous-clean-slate: false
-
-      - name: Hostinger FTP Credentials Notice
-        if: ${{ secrets.HOSTINGER_FTP_SERVER == '' || secrets.HOSTINGER_FTP_USERNAME == '' || secrets.HOSTINGER_FTP_PASSWORD == '' }}
-        run: |
-          echo "=========================================================================="
-          echo "🚀 HOSTINGER WEB HOSTING CI/CD READY"
-          echo "Target Domain: https://attendoschool.optinetinnovations.in"
-          echo "=========================================================================="
-          echo "To enable automatic upload on every git push, add these 3 GitHub Secrets:"
-          echo "GitHub -> Settings -> Secrets and variables -> Actions -> New repository secret"
-          echo ""
-          echo "1. HOSTINGER_FTP_SERVER   : Hostinger FTP Host/IP (e.g. ftp.optinetinnovations.in or IP)"
-          echo "2. HOSTINGER_FTP_USERNAME : Your Hostinger FTP Username"
-          echo "3. HOSTINGER_FTP_PASSWORD : Your Hostinger FTP Password"
-          echo "4. HOSTINGER_SERVER_DIR   : 'public_html/' (Optional, defaults to public_html/)"
-          echo "=========================================================================="
-
-  deploy-hostinger-vps:
-    name: Deploy Full-Stack to Hostinger VPS (SSH & PM2)
-    needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to Hostinger VPS over SSH
-        if: ${{ secrets.HOSTINGER_VPS_HOST != '' }}
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HOSTINGER_VPS_HOST }}
-          username: ${{ secrets.HOSTINGER_VPS_USER || 'root' }}
-          key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_VPS_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
-          script: |
-            set -e
-            echo "🔄 Updating AttendoSchool on Hostinger VPS..."
-            cd /var/www/attendoschool
-            git pull origin main
-            npm --prefix backend ci
-            npm --prefix frontend ci
-            npm run build
-            pm2 reload ecosystem.config.cjs --env production || pm2 start ecosystem.config.cjs --env production
-            sudo nginx -t && sudo systemctl reload nginx
-            echo "✅ Deployment completed on https://attendoschool.optinetinnovations.in"
