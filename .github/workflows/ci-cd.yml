@@ -89,7 +89,7 @@ jobs:
           CLEAN_SERVER=$(echo "$RAW_SERVER" | sed -E 's#^https?://##; s#^ftps?://##; s#/$##')
           echo "host=$CLEAN_SERVER" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Hostinger via FTPS
+      - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ steps.ftp-config.outputs.host }}
@@ -97,5 +97,4 @@ jobs:
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./frontend/dist/
           server-dir: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/' }}
-          protocol: ftps
           dangerous-clean-slate: false
