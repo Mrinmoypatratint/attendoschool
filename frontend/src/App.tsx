@@ -3237,9 +3237,8 @@ function Students(){
     let finalSectionId = f.sectionId;
     if (finalSectionId && f.classId) {
       const curName = sections.find(s => s.id === finalSectionId)?.name || (finalSectionId.endsWith('-b') || finalSectionId === 'B' ? 'B' : 'A');
-      const targetSec = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === curName.toUpperCase());
+      const targetSec = sections.find(s => (s.class_id === f.classId || s.classId === f.classId) && s.name.toUpperCase() === curName.toUpperCase());
       if (targetSec) finalSectionId = targetSec.id;
-      else if (!finalSectionId.includes(f.classId)) finalSectionId = `sec-${f.classId}-${curName.toLowerCase()}`;
     }
     const payload = {
       ...f,
@@ -3977,10 +3976,11 @@ function Students(){
             onChange={e => {
               const newClassId = e.target.value;
               let newSecId = f.sectionId;
-              if (f.sectionId) {
-                const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
-                const targetSec = sections.find(s => s.class_id === newClassId && s.name.toUpperCase() === curName.toUpperCase());
-                newSecId = targetSec ? targetSec.id : (newClassId ? `sec-${newClassId}-${curName.toLowerCase()}` : `sec-${curName.toLowerCase()}`);
+              if (newClassId) {
+                const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
+                const targetSec = sections.find(s => (s.class_id === newClassId || s.classId === newClassId) && s.name.toUpperCase() === curName.toUpperCase())
+                  || sections.find(s => s.class_id === newClassId || s.classId === newClassId);
+                newSecId = targetSec ? targetSec.id : f.sectionId;
               }
               setF({ ...f, classId: newClassId, sectionId: newSecId });
             }}

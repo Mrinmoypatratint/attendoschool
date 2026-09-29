@@ -61,8 +61,58 @@ CLASS_GRADES.forEach(g => {
   demoSections.push({ id: `sec-${g.id}-b`, class_id: g.id, class_number: g.class_number, label: g.label, name: 'B', section_name: 'B', school_id: '00000000-0000-0000-0000-000000000001' });
 });
 
+const ensuredSchools = new Set<string>();
+
+/**
+ * Ensures standard classes (-1 to 12) and standard sections (A, B) exist in PostgreSQL for the school.
+ */
+export async function ensureSchoolClassesAndSections(schoolId?: string | null): Promise<void> {
+  if (!schoolId) return;
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(schoolId));
+  if (!isSchoolUuid) return;
+  if (ensuredSchools.has(schoolId)) return;
+
+  try {
+    // Ensure classes check constraint allows -1 to 12
+    await pool.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE classes DROP CONSTRAINT IF EXISTS classes_class_number_check;
+        ALTER TABLE classes ADD CONSTRAINT classes_class_number_check CHECK (class_number >= -1 AND class_number <= 12);
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END $$;
+    `).catch(() => {});
+
+    for (const g of CLASS_GRADES) {
+      const clsRes = await pool.query(
+        `INSERT INTO classes(school_id, class_number)
+         VALUES($1, $2)
+         ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number
+         RETURNING id, class_number`,
+        [schoolId, g.class_number]
+      );
+      if (clsRes.rowCount && clsRes.rows.length > 0) {
+        const classId = clsRes.rows[0].id;
+        for (const secName of ['A', 'B']) {
+          await pool.query(
+            `INSERT INTO sections(school_id, class_id, name)
+             VALUES($1, $2, $3)
+             ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name`,
+            [schoolId, classId, secName]
+          );
+        }
+      }
+    }
+    ensuredSchools.add(schoolId);
+  } catch (err: any) {
+    console.warn('[ensureSchoolClassesAndSections] Error:', err.message);
+  }
+}
+
 r.get('/classes',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ await ensureSchoolClassesAndSections(sid);
+
  // Build standard class list from CLASS_GRADES — always the full L-KG → Class 12 set
  const standardClasses = CLASS_GRADES.map(g => ({
    id: `${sid}-${g.id}`,
@@ -164,6 +214,8 @@ r.delete('/classes/:id',...admin,async(req:AuthRequest,res)=>{
 
 r.get('/sections',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ await ensureSchoolClassesAndSections(sid);
+
  // Standard sections: Section A and Section B for each class in CLASS_GRADES
  const standardSections: any[] = [];
  CLASS_GRADES.forEach(g => {
@@ -283,7 +335,7 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
    if(valid.rowCount) {
      const realClassId = valid.rows[0].id;
      classNumber = valid.rows[0].class_number;
-     const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) ON CONFLICT (school_id, class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING *',[sid,realClassId,cleanName]);
+     const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING *',[sid,realClassId,cleanName]);
      const created = { id: q.rows[0].id, class_id: realClassId, class_number: classNumber, name: cleanName, school_id: sid };
      demoSections.push(created);
      demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
@@ -411,7 +463,26 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY c.class_number,sec.name,st.roll_number`,[userSchoolId,search]);
   if (q.rowCount && q.rows.length > 0) {
-    let rows = q.rows;
+    let rows = q.rows.map((st: any) => {
+      const parts = String(st.name || '').trim().split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+      return {
+        ...st,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: st.name,
+        rollNumber: st.roll_number,
+        admissionNumber: st.admission_number,
+        student_email: st.student_email || st.email,
+        email: st.student_email || st.email,
+        parent_email: st.parent_email,
+        parent_phone: st.parent_sms_number,
+        parentPhone: st.parent_sms_number,
+        session: st.session_name || st.academic_year_id,
+        session_id: st.academic_year_id
+      };
+    });
     if (sessionFilter) {
       rows = rows.filter((st: any) => isSameSession(st.session_name || st.academic_year_id, sessionFilter));
     }
@@ -493,7 +564,26 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   }
  }
 
- // Return empty array if school has no registered students (zero fake demo data)
+ // Check in-memory demoStudents as secondary fallback
+ const memSchoolStudents = demoStudents.filter(s => 
+   s.school_id && isSameSchool(s.school_id, userSchoolId) && s.is_active !== false
+ );
+ if (memSchoolStudents.length > 0) {
+   let list = memSchoolStudents;
+   if (search) {
+     list = list.filter(s => 
+       (s.name && s.name.toLowerCase().includes(search.toLowerCase())) ||
+       (s.roll_number && String(s.roll_number).includes(search)) ||
+       (s.admission_number && s.admission_number.toLowerCase().includes(search.toLowerCase()))
+     );
+   }
+   if (sessionFilter) {
+     list = list.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id, sessionFilter));
+   }
+   return res.json(list);
+ }
+
+ // Return empty array if school has no registered students
  res.json([]);
 });
 
@@ -543,14 +633,16 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  // Mandatory session binding — resolve academic_year_id
  const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } = await import('./academicYears');
  const schoolId = req.user!.schoolId;
+ await ensureSchoolClassesAndSections(schoolId);
+
  const rawSession = String(sessionId || '').trim();
  let resolvedSessionId: string | null = null;
  let resolvedSessionName: string | null = null;
  try {
-   const ayQ = await pool.query(`SELECT id, name, code, is_active FROM academic_years WHERE school_id=$1 AND is_archived=false`, [schoolId]);
+   const ayQ = await pool.query(`SELECT id, name, is_active FROM academic_years WHERE school_id=$1 AND is_archived=false`, [schoolId]);
    if (ayQ.rowCount && ayQ.rows.length > 0) {
      if (rawSession) {
-       const found = ayQ.rows.find((r: any) => r.id === rawSession || r.code === rawSession || isSameSession(r.name, rawSession));
+       const found = ayQ.rows.find((r: any) => r.id === rawSession || isSameSession(r.name, rawSession));
        if (found) {
          resolvedSessionId = found.id;
          resolvedSessionName = found.name;
@@ -566,7 +658,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  if (!resolvedSessionId) {
    const memYears = getInMemoryAcademicYears(schoolId);
    const target = rawSession
-     ? memYears.find(y => (y.id === rawSession || y.code === rawSession || isSameSession(y.name, rawSession)) && !y.is_archived)
+     ? memYears.find(y => (y.id === rawSession || isSameSession(y.name, rawSession)) && !y.is_archived)
      : (memYears.find(y => y.is_active && !y.is_archived) || memYears[1] || memYears[0]);
    resolvedSessionId = target?.id || (rawSession ? `ay-${rawSession}` : 'ay-2025-26');
    resolvedSessionName = target?.name || rawSession || '2025–26 Academic Session';
@@ -651,21 +743,46 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(sectionId));
 
   try {
-    const valid = await pool.query(
-      `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
-       FROM sections s 
-       JOIN classes c ON c.id = s.class_id 
-       WHERE s.school_id = $1 
-         AND (${isSecUuid ? 's.id = $2' : 'FALSE'} OR LOWER(s.name) = LOWER($3))
-         AND (${isClassUuid ? 'c.id = $4' : 'FALSE'} OR c.class_number = $5)
-       LIMIT 1`,
-      [req.user!.schoolId, isSecUuid ? sectionId : '00000000-0000-0000-0000-000000000000', secName, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum]
-    );
-    if(valid.rowCount) {
+    let valid: any = { rowCount: 0, rows: [] };
+    if (isSecUuid) {
+      valid = await pool.query(
+        `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
+         FROM sections s 
+         JOIN classes c ON c.id = s.class_id 
+         WHERE s.school_id = $1 AND s.id = $2 LIMIT 1`,
+        [schoolId, sectionId]
+      ).catch(() => ({ rowCount: 0, rows: [] }));
+    }
+    if (!valid.rowCount) {
+      valid = await pool.query(
+        `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
+         FROM sections s 
+         JOIN classes c ON c.id = s.class_id 
+         WHERE s.school_id = $1 
+           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+           AND UPPER(s.name) = UPPER($4)
+         LIMIT 1`,
+        [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum, secName]
+      ).catch(() => ({ rowCount: 0, rows: [] }));
+    }
+    if (!valid.rowCount) {
+      valid = await pool.query(
+        `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
+         FROM sections s 
+         JOIN classes c ON c.id = s.class_id 
+         WHERE s.school_id = $1 
+           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+         LIMIT 1`,
+        [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum]
+      ).catch(() => ({ rowCount: 0, rows: [] }));
+    }
+
+    if (valid.rowCount && valid.rows.length > 0) {
       realSectionId = valid.rows[0].section_id;
       realClassId = valid.rows[0].class_id;
       clsNum = valid.rows[0].class_number;
       secName = valid.rows[0].section_name;
+    }
 
     let linkedUserId: string | null = null;
     let targetLoginEmail = '';
@@ -681,18 +798,23 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
 
     // Handle Student Portal Login Account Creation
     if (targetLoginEmail && loginOpt !== 'NONE') {
-      const userCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [targetLoginEmail]);
-      if (userCheck.rowCount && userCheck.rowCount > 0) {
-        linkedUserId = userCheck.rows[0].id;
-      } else {
-        const tempPass = crypto.randomBytes(8).toString('hex') + 'Aa1!';
-        const tempHash = await bcrypt.hash(tempPass, 10);
-        const uq = await pool.query(
-          `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'STUDENT') RETURNING id`,
-          [req.user!.schoolId, name, targetLoginEmail, tempHash]
-        );
-        linkedUserId = uq.rows[0].id;
+      try {
+        const userCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [targetLoginEmail]);
+        if (userCheck.rowCount && userCheck.rowCount > 0) {
+          linkedUserId = userCheck.rows[0].id;
+        } else {
+          const tempPass = crypto.randomBytes(8).toString('hex') + 'Aa1!';
+          const tempHash = await bcrypt.hash(tempPass, 10);
+          const uq = await pool.query(
+            `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'STUDENT') RETURNING id`,
+            [schoolId, name, targetLoginEmail, tempHash]
+          );
+          linkedUserId = uq.rows[0].id;
+        }
+      } catch (uErr: any) {
+        console.warn('[StudentEnrollment] User creation warning:', uErr.message);
       }
+
       if (sendInviteEmail) {
         try {
           resetInfo = await createAndSendPasswordReset({
@@ -717,7 +839,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
                 school_name: req.user?.schoolName || 'School',
                 class_name: String(clsNum),
                 section_name: secName,
-                roll_number: rollNumber,
+                roll_number: String(rollNumber),
                 reset_link: resetInfo.resetUrl
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
@@ -731,71 +853,76 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
     }
 
-    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedSessionId));
-    let pgAyId: string | null = isAyUuid ? resolvedSessionId : null;
-    if (!pgAyId) {
-      try {
-        const ayRow = await pool.query('SELECT id FROM academic_years WHERE school_id=$1 AND is_active=true LIMIT 1', [req.user!.schoolId]);
-        if (ayRow.rowCount) pgAyId = ayRow.rows[0].id;
-      } catch {}
+    const isRealClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(realClassId));
+    const isRealSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(realSectionId));
+
+    if (isRealClassUuid && isRealSecUuid) {
+      const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedSessionId));
+      let pgAyId: string | null = isAyUuid ? resolvedSessionId : null;
+      if (!pgAyId) {
+        try {
+          const ayRow = await pool.query('SELECT id, name FROM academic_years WHERE school_id=$1 AND is_active=true LIMIT 1', [schoolId]);
+          if (ayRow.rowCount && ayRow.rows.length > 0) {
+            pgAyId = ayRow.rows[0].id;
+            if (!resolvedSessionName) resolvedSessionName = ayRow.rows[0].name;
+          }
+        } catch {}
+      }
+
+      const isUserUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(linkedUserId));
+      const pgUserId = isUserUuid ? linkedUserId : null;
+
+      const q = await pool.query(
+        `INSERT INTO students(
+          school_id, academic_year_id, class_id, section_id, roll_number, 
+          admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        [
+          schoolId,
+          pgAyId,
+          realClassId,
+          realSectionId,
+          String(rollNumber),
+          cleanAdmissionNumber || null,
+          name,
+          parentName || null,
+          parentSmsNumber,
+          cleanStudentEmail || null,
+          cleanParentEmail || null,
+          pgUserId
+        ]
+      );
+      
+      const created = {
+        ...q.rows[0],
+        academic_year_id: resolvedSessionId || pgAyId,
+        session_id: resolvedSessionId || pgAyId,
+        session_name: resolvedSessionName,
+        session: resolvedSessionName || resolvedSessionId,
+        full_name: name,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        class_id: realClassId,
+        section_id: realSectionId,
+        class_number: clsNum,
+        section_name: secName,
+        admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
+        admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
+        student_email: cleanStudentEmail,
+        parent_email: cleanParentEmail,
+        login_email: targetLoginEmail,
+        login_option: loginOpt,
+        reset_url: resetInfo?.resetUrl,
+        invite_sent: Boolean(resetInfo),
+        is_active: true
+      };
+      demoStudents.unshift(created);
+      syncStudentToFirestore(created).catch(() => {});
+      return res.status(201).json(created);
     }
-
-    const isUserUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(linkedUserId));
-    const pgUserId = isUserUuid ? linkedUserId : null;
-
-    const q=await pool.query(
-      `INSERT INTO students(
-        school_id, academic_year_id, class_id, section_id, roll_number, 
-        admission_number, first_name, last_name, full_name, name, 
-        parent_name, parent_sms_number, email, parent_email, user_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
-      [
-        req.user!.schoolId,
-        pgAyId,
-        realClassId,
-        realSectionId,
-        rollNumber,
-        cleanAdmissionNumber || null,
-        firstName || null,
-        lastName || null,
-        name,
-        name,
-        parentName || null,
-        parentSmsNumber,
-        cleanStudentEmail || null,
-        cleanParentEmail || null,
-        pgUserId
-      ]
-    );
-    
-    const created = {
-      ...q.rows[0],
-      academic_year_id: resolvedSessionId,
-      session_id: resolvedSessionId,
-      session_name: resolvedSessionName,
-      session: resolvedSessionName || resolvedSessionId,
-      full_name: name,
-      first_name: firstName || null,
-      last_name: lastName || null,
-      class_number: clsNum,
-      section_name: secName,
-      admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
-      admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
-      student_email: cleanStudentEmail,
-      parent_email: cleanParentEmail,
-      login_email: targetLoginEmail,
-      login_option: loginOpt,
-      reset_url: resetInfo?.resetUrl,
-      invite_sent: Boolean(resetInfo),
-      is_active: true
-    };
-    demoStudents.unshift(created);
-    syncStudentToFirestore(created).catch(() => {});
-    return res.status(201).json(created);
+  } catch (err: any) {
+    console.warn('[StudentEnrollment] Database insert fallback:', err.message);
   }
- } catch (err: any) {
-   console.warn('[StudentEnrollment] Database insert fallback:', err.message);
- }
 
  // Demo In-Memory Fallback
  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
@@ -987,18 +1114,26 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    try {
      await client.query('BEGIN');
      for (const st of validRows) {
-       try {
-         const q = await client.query(
-           `INSERT INTO students(
-              school_id, academic_year_id, class_id, section_id, roll_number, 
-              admission_number, first_name, last_name, full_name, name, 
-              parent_name, parent_sms_number, email, parent_email, user_id
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            ON CONFLICT (school_id,admission_number) WHERE is_active=true DO NOTHING
-            RETURNING *`,
-           [schoolId,bulkSessionId,st.classId,st.sectionId,st.rollNumber,st.admissionNumber||null,st.firstName||null,st.lastName||null,st.name,st.name,st.parentName||null,st.parentPhone,st.studentEmail||null,st.parentEmail||null,null]
-         );
+        try {
+          const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
+          const q = await client.query(
+            `INSERT INTO students(
+               school_id, academic_year_id, class_id, section_id, roll_number, 
+               admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id
+             )
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+               name = EXCLUDED.name,
+               admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
+               parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
+               parent_sms_number = EXCLUDED.parent_sms_number,
+               email = COALESCE(EXCLUDED.email, students.email),
+               parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
+               is_active = true,
+               updated_at = NOW()
+             RETURNING *`,
+            [schoolId, isAyUuid ? bulkSessionId : null, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, null]
+          );
          if (q.rowCount && q.rows.length>0) {
            const created = {
               ...q.rows[0],
@@ -1202,45 +1337,79 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
 
   // Try PostgreSQL if available
   try {
-    const q = await pool.query(
-      `UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,academic_year_id=COALESCE($10, academic_year_id),updated_at=NOW()
-       WHERE id=$11 AND school_id=$12 RETURNING *`,
-      [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, resolvedClassId, resolvedSectionId, resolvedSession || null, studentId, schoolId]
-    );
-    if (q.rowCount && q.rows.length > 0) {
-      const result = {
-        ...q.rows[0],
-        name: fullName || q.rows[0].name,
-        roll_number: cleanRollNumber || q.rows[0].roll_number,
-        rollNumber: cleanRollNumber || q.rows[0].roll_number,
-        admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
-        admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
-        student_email: cleanStudentEmail || q.rows[0].email,
-        email: cleanStudentEmail || q.rows[0].email,
-        parent_email: cleanParentEmail || q.rows[0].parent_email,
-        parent_name: cleanParentName || q.rows[0].parent_name,
-        parentName: cleanParentName || q.rows[0].parent_name,
-        parent_sms_number: cleanParentPhone || q.rows[0].parent_sms_number,
-        parentPhone: cleanParentPhone || q.rows[0].parent_sms_number,
-        class_id: resolvedClassId || q.rows[0].class_id,
-        classId: resolvedClassId || q.rows[0].class_id,
-        class_number: putClsNum,
-        class_label: putClassLabel,
-        section_id: resolvedSectionId || q.rows[0].section_id,
-        sectionId: resolvedSectionId || q.rows[0].section_id,
-        section_name: putSecName,
-        session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
-        session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
-        academic_year_id: resolvedSession || q.rows[0].academic_year_id,
-        is_active: true
-      };
-      const idx = demoStudents.findIndex(s => s.id === studentId);
-      if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...result };
-      else demoStudents.unshift(result);
-      syncStudentToFirestore(result).catch(() => {});
-      return res.json(result);
+    let realPutClassId = resolvedClassId;
+    let realPutSectionId = resolvedSectionId;
+    const isPutClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedClassId);
+    const isPutSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSectionId);
+
+    if (!isPutClassUuid || !isPutSecUuid) {
+      try {
+        const v = await pool.query(
+          `SELECT s.id AS section_id, c.id AS class_id 
+           FROM sections s 
+           JOIN classes c ON c.id = s.class_id 
+           WHERE s.school_id = $1 
+             AND (${isPutClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+             AND UPPER(s.name) = UPPER($4)
+           LIMIT 1`,
+          [schoolId, isPutClassUuid ? resolvedClassId : '00000000-0000-0000-0000-000000000000', putClsNum, putSecName]
+        );
+        if (v.rowCount && v.rows.length > 0) {
+          realPutClassId = v.rows[0].class_id;
+          realPutSectionId = v.rows[0].section_id;
+        }
+      } catch {}
     }
-  } catch {}
+
+    const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
+    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
+
+    if (isStudentUuid) {
+      const q = await pool.query(
+        `UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,academic_year_id=COALESCE($10, academic_year_id),updated_at=NOW()
+         WHERE id=$11 AND school_id=$12 RETURNING *`,
+        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId]
+      );
+      if (q.rowCount && q.rows.length > 0) {
+        const result = {
+          ...q.rows[0],
+          name: fullName || q.rows[0].name,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          full_name: fullName || q.rows[0].name,
+          roll_number: cleanRollNumber || q.rows[0].roll_number,
+          rollNumber: cleanRollNumber || q.rows[0].roll_number,
+          admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
+          admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
+          student_email: cleanStudentEmail || q.rows[0].email,
+          email: cleanStudentEmail || q.rows[0].email,
+          parent_email: cleanParentEmail || q.rows[0].parent_email,
+          parent_name: cleanParentName || q.rows[0].parent_name,
+          parentName: cleanParentName || q.rows[0].parent_name,
+          parent_sms_number: cleanParentPhone || q.rows[0].parent_sms_number,
+          parentPhone: cleanParentPhone || q.rows[0].parent_sms_number,
+          class_id: realPutClassId || q.rows[0].class_id,
+          classId: realPutClassId || q.rows[0].class_id,
+          class_number: putClsNum,
+          class_label: putClassLabel,
+          section_id: realPutSectionId || q.rows[0].section_id,
+          sectionId: realPutSectionId || q.rows[0].section_id,
+          section_name: putSecName,
+          session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
+          session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
+          academic_year_id: resolvedSession || q.rows[0].academic_year_id,
+          is_active: true
+        };
+        const idx = demoStudents.findIndex(s => s.id === studentId);
+        if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...result };
+        else demoStudents.unshift(result);
+        syncStudentToFirestore(result).catch(() => {});
+        return res.json(result);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[UpdateStudent] Database update warning:', err.message);
+  }
 
   // Pure Cloud Firestore & in-memory update
   let existingFirestoreData: any = {};
