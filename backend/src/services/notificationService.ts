@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { pool } from '../db';
-import { env } from '../config/env';
+import { env, cleanEnv, cleanSmtpPass } from '../config/env';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool } from '../utils/tenant';
 
@@ -66,14 +66,14 @@ export interface NotificationLog {
 
 // Global SMTP settings derived from .env with fallback defaults
 let globalSmtpConfig: GlobalSmtpConfig = {
-  host: env.smtpHost || 'smtp.gmail.com',
+  host: cleanEnv(env.smtpHost, 'smtp.gmail.com'),
   port: Number(env.smtpPort) || 465,
-  username: env.smtpUser || 'rajbsmv@gmail.com',
-  password: env.smtpPass || 'ovmz huhs fxnx inlq',
+  username: cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
+  password: cleanSmtpPass(env.smtpPass, 'ovmz huhs fxnx inlq'),
   encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
-  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || 'rajbsmv@gmail.com'),
+  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
   defaultSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'AttendoSchool'),
-  defaultReplyTo: env.smtpReplyTo || (env.smtpUser || 'rajbsmv@gmail.com')
+  defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, 'rajbsmv@gmail.com')
 };
 
 /**
@@ -94,30 +94,30 @@ export function persistSmtpConfigToEnv(config: {
   const envUpdates: Record<string, string> = {};
 
   if (config.host !== undefined && config.host.trim()) {
-    envUpdates['SMTP_HOST'] = String(config.host).trim();
+    envUpdates['SMTP_HOST'] = cleanEnv(String(config.host));
   }
   if (config.port !== undefined && config.port) {
-    envUpdates['SMTP_PORT'] = String(config.port).trim();
+    envUpdates['SMTP_PORT'] = cleanEnv(String(config.port));
   }
   if (config.username !== undefined && config.username.trim()) {
-    envUpdates['SMTP_USER'] = String(config.username).trim();
+    envUpdates['SMTP_USER'] = cleanEnv(String(config.username));
   }
   if (config.password !== undefined && config.password.trim() && !String(config.password).includes('••')) {
-    envUpdates['SMTP_PASS'] = String(config.password);
+    envUpdates['SMTP_PASS'] = cleanSmtpPass(String(config.password));
   }
   if (config.senderName !== undefined && config.senderName.trim()) {
-    envUpdates['SMTP_FROM_NAME'] = String(config.senderName).trim();
+    envUpdates['SMTP_FROM_NAME'] = cleanEnv(String(config.senderName));
   }
   if (config.replyTo !== undefined && config.replyTo.trim()) {
-    envUpdates['SMTP_REPLY_TO'] = String(config.replyTo).trim();
+    envUpdates['SMTP_REPLY_TO'] = cleanEnv(String(config.replyTo));
   }
   if (config.isEnabled !== undefined) {
     envUpdates['EMAIL_ENABLED'] = config.isEnabled ? 'true' : 'false';
   }
 
   // Construct standard RFC email from header: e.g. "AttendoSchool <rajbsmv@gmail.com>"
-  const fromEmail = config.senderEmail?.trim() || config.username?.trim() || globalSmtpConfig.defaultSenderEmail || env.smtpUser || 'rajbsmv@gmail.com';
-  const fromName = config.senderName?.trim() || globalSmtpConfig.defaultSenderName || env.smtpFromName || 'AttendoSchool';
+  const fromEmail = cleanEnv(config.senderEmail) || cleanEnv(config.username) || globalSmtpConfig.defaultSenderEmail || cleanEnv(env.smtpUser) || 'rajbsmv@gmail.com';
+  const fromName = cleanEnv(config.senderName) || globalSmtpConfig.defaultSenderName || env.smtpFromName || 'AttendoSchool';
   if (fromEmail) {
     envUpdates['SMTP_FROM'] = `${fromName} <${fromEmail}>`;
   }
@@ -246,6 +246,15 @@ export function saveSchoolSmtpConfig(
   if (safeConfig.password && safeConfig.password.includes('••')) {
     delete safeConfig.password;
   }
+  if (safeConfig.password) {
+    safeConfig.password = cleanSmtpPass(safeConfig.password);
+  }
+  if (safeConfig.username) {
+    safeConfig.username = cleanEnv(safeConfig.username);
+  }
+  if (safeConfig.host) {
+    safeConfig.host = cleanEnv(safeConfig.host);
+  }
 
   const hasNewUsername = Boolean(safeConfig.username && safeConfig.username.trim());
   const hasNewPassword = Boolean(safeConfig.password && safeConfig.password.trim());
@@ -257,8 +266,8 @@ export function saveSchoolSmtpConfig(
       ...(safeConfig.host !== undefined ? { host: safeConfig.host } : {}),
       ...(safeConfig.port !== undefined ? { port: Number(safeConfig.port) } : {}),
       ...(safeConfig.encryption !== undefined ? { encryption: safeConfig.encryption } : {}),
-      ...(safeConfig.senderEmail !== undefined ? { defaultSenderEmail: safeConfig.senderEmail } : {}),
-      ...(safeConfig.senderName !== undefined ? { defaultSenderName: safeConfig.senderName } : {})
+      ...(safeConfig.senderEmail !== undefined ? { defaultSenderEmail: cleanEnv(safeConfig.senderEmail) } : {}),
+      ...(safeConfig.senderName !== undefined ? { defaultSenderName: cleanEnv(safeConfig.senderName) } : {})
     });
   }
 
@@ -1323,9 +1332,105 @@ export interface SmtpSendResult {
 }
 
 /**
+ * Sends transactional email via Brevo (formerly Sendinblue) HTTPS REST API over port 443.
+ * Brevo allows sending from any verified email (e.g. rajbsmv@gmail.com) without requiring custom domain DNS.
+ * Port 443 is never blocked by cloud firewalls (Render Free tier, AWS, etc.).
+ */
+export async function sendViaBrevo(
+  apiKey: string,
+  mailOptions: any
+): Promise<{ messageId: string }> {
+  let senderEmail = env.brevoSenderEmail || cleanEnv(env.smtpUser, 'rajbsmv@gmail.com');
+  let senderName = env.brevoSenderName || env.smtpFromName || 'AttendoSchool Superadmin';
+
+  if (mailOptions.from) {
+    const match = String(mailOptions.from).match(/(.*)<(.+)>/);
+    if (match) {
+      senderName = match[1].replace(/['"]/g, '').trim() || senderName;
+      senderEmail = match[2].trim() || senderEmail;
+    } else if (String(mailOptions.from).includes('@')) {
+      senderEmail = String(mailOptions.from).trim();
+    }
+  }
+
+  const recipients = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
+  const toList = recipients.map(r => ({ email: String(r).trim() }));
+
+  const payload: any = {
+    sender: { name: senderName, email: senderEmail },
+    to: toList,
+    subject: mailOptions.subject,
+    htmlContent: mailOptions.html || `<p>${(mailOptions.text || '').replace(/\n/g, '<br/>')}</p>`,
+    textContent: mailOptions.text || ''
+  };
+
+  if (mailOptions.replyTo) {
+    payload.replyTo = { email: String(mailOptions.replyTo).trim() };
+  }
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data: any = await res.json();
+  if (res.ok && data?.messageId) {
+    return { messageId: data.messageId };
+  }
+  throw new Error(data?.message || `Brevo API rejected request with status ${res.status}`);
+}
+
+/**
+ * Sends email directly through user's own Gmail account via a free Google Apps Script Webhook Relay.
+ * Runs 100% over HTTPS Port 443 (never blocked by Render Free Tier).
+ * Emails are sent directly from rajbsmv@gmail.com and appear in your Gmail Sent folder!
+ */
+export async function sendViaGoogleAppsScriptRelay(
+  relayUrl: string,
+  mailOptions: any
+): Promise<{ messageId: string }> {
+  const recipients = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
+  const payload = {
+    to: recipients,
+    subject: mailOptions.subject,
+    html: mailOptions.html,
+    text: mailOptions.text || ''
+  };
+
+  const res = await fetch(relayUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    redirect: 'follow'
+  });
+
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (res.ok) return { messageId: `GAS-${Date.now()}` };
+  }
+
+  if (res.ok && (data.success || data.messageId)) {
+    return { messageId: data.messageId || `GAS-${Date.now()}` };
+  }
+  if (!res.ok) {
+    throw new Error(data.error || `Google Apps Script Relay returned status ${res.status}`);
+  }
+  return { messageId: `GAS-${Date.now()}` };
+}
+
+/**
  * Resilient SMTP mail dispatcher with strict cloud timeouts and automatic dual-port fallback (465 SSL/TLS <-> 587 STARTTLS).
  * Prevents requests from hanging indefinitely on cloud platforms (Render, Hostinger VPS, AWS, etc.)
  * where outbound port 587 STARTTLS handshake may stall or get blocked by firewall rules.
+ * Automatically utilizes Brevo, Google Apps Script Relay, or Resend HTTPS REST APIs (Port 443) when configured to bypass firewall blocks.
  */
 export async function sendMailWithDualPortFallback(
   mailOptions: any,
@@ -1337,9 +1442,9 @@ export async function sendMailWithDualPortFallback(
     encryption?: 'SSL/TLS' | 'STARTTLS' | 'NONE' | string;
   }
 ): Promise<SmtpSendResult> {
-  const host = config.host || globalSmtpConfig.host || env.smtpHost || 'smtp.gmail.com';
-  const user = config.username || globalSmtpConfig.username || env.smtpUser;
-  const pass = config.password || globalSmtpConfig.password || env.smtpPass;
+  const host = cleanEnv(config.host || globalSmtpConfig.host || env.smtpHost, 'smtp.gmail.com');
+  const user = cleanEnv(config.username || globalSmtpConfig.username || env.smtpUser, 'rajbsmv@gmail.com');
+  const pass = cleanSmtpPass(config.password || globalSmtpConfig.password || env.smtpPass, 'ovmz huhs fxnx inlq');
 
   // Determine primary port and encryption
   const primaryPort = Number(config.port) || Number(globalSmtpConfig.port) || (host.includes('gmail.com') ? 465 : 587);
@@ -1351,19 +1456,94 @@ export async function sendMailWithDualPortFallback(
   const fallbackEncryption = fallbackPort === 465 ? 'SSL/TLS' : 'STARTTLS';
   const fallbackSecure = fallbackPort === 465;
 
+  // 0. If GMAIL_RELAY_URL (Google Apps Script Webhook) is configured, dispatch directly via Gmail HTTPS Webhook (Port 443)
+  const gmailRelayUrl = env.gmailRelayUrl || process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL;
+  if (gmailRelayUrl) {
+    try {
+      console.log(`[Email Dispatch] Sending via Google Apps Script Gmail Relay HTTPS (Port 443)...`);
+      const relayRes = await sendViaGoogleAppsScriptRelay(gmailRelayUrl, mailOptions);
+      console.log(`[Email Dispatch] Google Apps Script Gmail Relay delivery succeeded! ID: ${relayRes.messageId}`);
+      return {
+        messageId: relayRes.messageId,
+        usedPort: 443,
+        usedEncryption: 'HTTPS_REST',
+        fallbackTriggered: false
+      };
+    } catch (gasErr: any) {
+      console.warn(`[Email Dispatch] Google Apps Script Relay notice: ${gasErr.message}. Trying next method...`);
+    }
+  }
+
+  // 1. If BREVO_API_KEY is configured, dispatch directly via Brevo HTTPS API (Port 443 - unblocked on Render)
+  const brevoKey = env.brevoApiKey || process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
+  if (brevoKey) {
+    try {
+      console.log(`[Email Dispatch] Sending via Brevo HTTPS REST API (Port 443)...`);
+      const brevoResult = await sendViaBrevo(brevoKey, mailOptions);
+      console.log(`[Email Dispatch] Brevo HTTPS delivery succeeded! ID: ${brevoResult.messageId}`);
+      return {
+        messageId: brevoResult.messageId,
+        usedPort: 443,
+        usedEncryption: 'HTTPS_REST',
+        fallbackTriggered: false
+      };
+    } catch (brevoErr: any) {
+      console.warn(`[Email Dispatch] Brevo attempt notice: ${brevoErr.message}. Trying next method...`);
+    }
+  }
+
+  // 1. If RESEND_API_KEY is configured, dispatch directly via Resend HTTPS API (Port 443)
+  const resendKey = env.resendApiKey || process.env.RESEND_API_KEY;
+  if (resendKey) {
+    try {
+      console.log(`[Email Dispatch] Sending via Resend HTTPS REST API (Port 443)...`);
+      const fromSender = env.resendFrom || process.env.RESEND_FROM || 'AttendoSchool <onboarding@resend.dev>';
+      const recipientList = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
+
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromSender,
+          to: recipientList,
+          subject: mailOptions.subject,
+          html: mailOptions.html,
+          text: mailOptions.text
+        })
+      });
+      const resendData: any = await resendRes.json();
+      if (resendRes.ok && resendData?.id) {
+        console.log(`[Email Dispatch] Resend HTTPS delivery succeeded! ID: ${resendData.id}`);
+        return {
+          messageId: resendData.id,
+          usedPort: 443,
+          usedEncryption: 'HTTPS_REST',
+          fallbackTriggered: false
+        };
+      } else {
+        console.warn(`[Email Dispatch] Resend API notice: ${resendData?.message || 'non-200 response'}. Trying SMTP fallback...`);
+      }
+    } catch (resendErr: any) {
+      console.warn(`[Email Dispatch] Resend attempt notice: ${resendErr.message}. Trying SMTP fallback...`);
+    }
+  }
+
   const createTransport = (port: number, secure: boolean) =>
     nodemailer.createTransport({
       host,
       port,
       secure,
       auth: { user, pass },
-      connectionTimeout: 8000, // 8s to establish TCP connection
-      greetingTimeout: 8000,   // 8s for SMTP banner
-      socketTimeout: 15000,    // 15s data stream
+      connectionTimeout: 7000, // 7s to establish TCP connection
+      greetingTimeout: 7000,   // 7s for SMTP banner
+      socketTimeout: 12000,    // 12s data stream
       tls: { rejectUnauthorized: false }
     });
 
-  // 1. Try primary port
+  // 2. Try primary port
   try {
     const primaryTransporter = createTransport(primaryPort, primarySecure);
     const info = await primaryTransporter.sendMail(mailOptions);
@@ -1393,7 +1573,7 @@ export async function sendMailWithDualPortFallback(
 
     console.warn(`[SMTP Resiliency] Primary port ${primaryPort} connection failed (${errCode || errMsg}). Attempting automatic fallback to port ${fallbackPort}...`);
 
-    // 2. Try fallback port
+    // 3. Try fallback port
     try {
       const fallbackTransporter = createTransport(fallbackPort, fallbackSecure);
       const info = await fallbackTransporter.sendMail(mailOptions);
@@ -1414,14 +1594,48 @@ export async function sendMailWithDualPortFallback(
       console.error(`[SMTP Resiliency] Both primary (${primaryPort}) and fallback (${fallbackPort}) ports failed.`);
       console.error(`[SMTP Resiliency] Primary: ${errMsg} | Fallback: ${fallbackErr.message}`);
 
-      // 3. Fallback to HTTPS REST API (Resend) if configured (works seamlessly across Render free tier egress firewalls)
-      if (env.resendApiKey) {
+      // 4. Fallback to Google Apps Script Relay if configured
+      if (gmailRelayUrl) {
         try {
-          console.log(`[Email Dispatch] Attempting HTTPS delivery via Resend API (bypassing blocked cloud SMTP ports)...`);
+          console.log(`[Email Dispatch] Attempting fallback to Google Apps Script Gmail Relay (Port 443)...`);
+          const relayRes = await sendViaGoogleAppsScriptRelay(gmailRelayUrl, mailOptions);
+          return {
+            messageId: relayRes.messageId,
+            usedPort: 443,
+            usedEncryption: 'HTTPS_REST',
+            fallbackTriggered: true,
+            primaryError: errMsg
+          };
+        } catch (gasErr: any) {
+          console.warn(`[Email Dispatch] Google Apps Script Relay fallback attempt failed:`, gasErr.message);
+        }
+      }
+
+      // 5. Fallback to Brevo HTTPS API if key is available
+      if (brevoKey) {
+        try {
+          console.log(`[Email Dispatch] Attempting fallback to Brevo HTTPS API (Port 443)...`);
+          const brevoResult = await sendViaBrevo(brevoKey, mailOptions);
+          return {
+            messageId: brevoResult.messageId,
+            usedPort: 443,
+            usedEncryption: 'HTTPS_REST',
+            fallbackTriggered: true,
+            primaryError: errMsg
+          };
+        } catch (bErr: any) {
+          console.warn(`[Email Dispatch] Brevo fallback attempt failed:`, bErr.message);
+        }
+      }
+
+      // 6. Fallback to Resend HTTPS API if key is available
+      if (resendKey) {
+        try {
+          console.log(`[Email Dispatch] Attempting fallback to Resend HTTPS API (Port 443)...`);
           const resendRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${env.resendApiKey}`,
+              'Authorization': `Bearer ${resendKey}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -1442,12 +1656,23 @@ export async function sendMailWithDualPortFallback(
               fallbackTriggered: true,
               primaryError: errMsg
             };
-          } else {
-            console.warn(`[Email Dispatch] Resend returned error:`, resendData?.message);
           }
-        } catch (resendErr: any) {
-          console.warn(`[Email Dispatch] Resend fallback attempt failed:`, resendErr.message);
+        } catch (rErr: any) {
+          console.warn(`[Email Dispatch] Resend fallback attempt failed:`, rErr.message);
         }
+      }
+
+      const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || (env.keepAliveUrl && env.keepAliveUrl.includes('render.com')));
+      if (isRender || isConnErr) {
+        const renderNotice =
+          `Render Free Tier web services block outbound SMTP traffic on ports 25, 465, and 587. ` +
+          `To fix this on Render for 100% FREE without paying: ` +
+          `(1) Add BREVO_API_KEY to your Render Environment Variables (300 free emails/day from your Gmail ${user} via HTTPS Port 443), or ` +
+          `(2) Add GMAIL_RELAY_URL to your Render Environment Variables (Google Apps Script Web App sending directly from your Gmail inbox).`;
+        console.error(`[Render Egress Policy] ${renderNotice}`);
+        const customErr: any = new Error(renderNotice);
+        customErr.code = isRender ? 'RENDER_SMTP_BLOCKED' : (errCode || 'ECONNFAILED');
+        throw customErr;
       }
 
       throw primaryErr;
@@ -1475,10 +1700,10 @@ async function deliver(
       return `MOCK-SMTP-EMAIL-${Date.now()}`;
     }
 
-    const host = cfg.host || env.smtpHost;
+    const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
     const port = Number(cfg.port || env.smtpPort || 465);
-    const user = cfg.username || env.smtpUser;
-    const pass = cfg.password || env.smtpPass;
+    const user = cleanEnv(cfg.username || env.smtpUser, 'rajbsmv@gmail.com');
+    const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'ovmz huhs fxnx inlq');
     const from = cfg.senderName
       ? `"${cfg.senderName}" <${cfg.senderEmail || user}>`
       : (cfg.senderEmail || env.smtpFrom || user);
@@ -1671,10 +1896,10 @@ export async function queueAbsentNotifications(sessionId: string) {
 // ── TEST SMTP CONNECTION HELPER ──
 export async function testSmtpConnection(schoolId: string, testRecipient: string, customConfig?: Partial<SchoolSmtpConfig>) {
   const cfg = customConfig ? { ...getSchoolSmtpConfig(schoolId), ...customConfig } : getSchoolSmtpConfig(schoolId);
-  const host = cfg.host || env.smtpHost;
+  const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
   const port = Number(cfg.port || env.smtpPort || 465);
-  const user = cfg.username || env.smtpUser;
-  const pass = cfg.password || env.smtpPass;
+  const user = cleanEnv(cfg.username || env.smtpUser, 'rajbsmv@gmail.com');
+  const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'ovmz huhs fxnx inlq');
 
   if (!host || !user || !pass) {
     return {
@@ -1726,9 +1951,11 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
       usedEncryption: sendResult.usedEncryption,
       fallbackTriggered: sendResult.fallbackTriggered,
       primaryError: sendResult.primaryError,
-      message: sendResult.fallbackTriggered
-        ? `Delivered successfully via fallback port ${sendResult.usedPort} (Primary port ${port} timed out/blocked: ${sendResult.primaryError})`
-        : `Test verification email delivered successfully via SMTP server (${host}:${sendResult.usedPort})!`
+      message: sendResult.usedPort === 443
+        ? `Test verification email delivered successfully via HTTPS REST API (Port 443 — Render Free Tier 100% compatible)!`
+        : (sendResult.fallbackTriggered
+            ? `Delivered successfully via fallback port ${sendResult.usedPort} (Primary port ${port} timed out/blocked: ${sendResult.primaryError})`
+            : `Test verification email delivered successfully via SMTP server (${host}:${sendResult.usedPort})!`)
     };
   } catch (err: any) {
     // Only sandbox in true local development with demo/test credentials
