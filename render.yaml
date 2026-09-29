@@ -42,24 +42,24 @@ services:
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        sync: false  # Set in Render Dashboard
+        value: rajbsmv@gmail.com
       - key: SMTP_PASS
-        sync: false  # Set manually in Render Dashboard for security
+        sync: false  # Enter in Render Dashboard > Environment
       - key: SMTP_FROM
-        value: "AttendoSchool Notifications <no-reply@attendoschool.com>"
+        value: "AttendoSchool Superadmin <rajbsmv@gmail.com>"
       - key: SMTP_FROM_NAME
-        value: "AttendoSchool Notifications"
+        value: "AttendoSchool Superadmin"
       - key: SMTP_REPLY_TO
-        sync: false
+        value: rajbsmv@gmail.com
       - key: EMAIL_ENABLED
         value: "true"
       # ── Brevo HTTPS Email Gateway (Port 443 - 100% Free on Render) ──
       - key: BREVO_API_KEY
-        sync: false
+        sync: false  # Enter Brevo API Key in Render Dashboard (Port 443 HTTPS Gateway)
       - key: BREVO_SENDER_EMAIL
-        sync: false
+        value: "rajbsmv@gmail.com"
       - key: BREVO_SENDER_NAME
-        value: "AttendoSchool Notifications"
+        value: "AttendoSchool Superadmin"
       # ── Application URLs ──
       - key: APP_BASE_URL
         value: https://attendoschool.optinetinnovations.in

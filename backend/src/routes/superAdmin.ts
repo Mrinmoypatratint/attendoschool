@@ -1219,7 +1219,10 @@ r.get('/settings', async (_req, res) => {
     smtpPassword: smtpCfg.password || systemSettings.smtpPassword,
     smtpEncryption: smtpCfg.encryption || systemSettings.smtpEncryption,
     smtpSenderEmail: smtpCfg.defaultSenderEmail || systemSettings.smtpSenderEmail,
-    smtpSenderName: smtpCfg.defaultSenderName || systemSettings.smtpSenderName
+    smtpSenderName: smtpCfg.defaultSenderName || systemSettings.smtpSenderName,
+    brevoApiKey: smtpCfg.brevoApiKey || env.brevoApiKey || '',
+    brevoSenderEmail: smtpCfg.brevoSenderEmail || env.brevoSenderEmail || '',
+    brevoSenderName: smtpCfg.brevoSenderName || env.brevoSenderName || ''
   });
 });
 
@@ -1238,7 +1241,10 @@ r.put('/settings', async (req: AuthRequest, res) => {
     b.smtpPort !== undefined ||
     b.smtpEncryption !== undefined ||
     b.smtpSenderEmail !== undefined ||
-    b.smtpSenderName !== undefined
+    b.smtpSenderName !== undefined ||
+    b.brevoApiKey !== undefined ||
+    b.brevoSenderEmail !== undefined ||
+    b.brevoSenderName !== undefined
   ) {
     updateGlobalSmtpConfig({
       ...(b.smtpHost !== undefined ? { host: b.smtpHost } : {}),
@@ -1247,7 +1253,10 @@ r.put('/settings', async (req: AuthRequest, res) => {
       ...(b.smtpPassword !== undefined ? { password: b.smtpPassword } : {}),
       ...(b.smtpEncryption !== undefined ? { encryption: b.smtpEncryption } : {}),
       ...(b.smtpSenderEmail !== undefined ? { defaultSenderEmail: b.smtpSenderEmail } : {}),
-      ...(b.smtpSenderName !== undefined ? { defaultSenderName: b.smtpSenderName } : {})
+      ...(b.smtpSenderName !== undefined ? { defaultSenderName: b.smtpSenderName } : {}),
+      ...(b.brevoApiKey !== undefined ? { brevoApiKey: b.brevoApiKey } : {}),
+      ...(b.brevoSenderEmail !== undefined ? { brevoSenderEmail: b.brevoSenderEmail } : {}),
+      ...(b.brevoSenderName !== undefined ? { brevoSenderName: b.brevoSenderName } : {})
     });
   }
 
@@ -1275,6 +1284,9 @@ r.put('/smtp', async (req: AuthRequest, res) => {
   systemSettings.smtpEncryption = updated.encryption;
   systemSettings.smtpSenderEmail = updated.defaultSenderEmail;
   systemSettings.smtpSenderName = updated.defaultSenderName;
+  (systemSettings as any).brevoApiKey = updated.brevoApiKey;
+  (systemSettings as any).brevoSenderEmail = updated.brevoSenderEmail;
+  (systemSettings as any).brevoSenderName = updated.brevoSenderName;
 
   await logSystemAudit(
     req.user || { id: 'super-admin' },

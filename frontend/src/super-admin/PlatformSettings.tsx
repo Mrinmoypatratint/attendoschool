@@ -28,7 +28,7 @@ export const PlatformSettings: React.FC = () => {
   const [showSmtpPass, setShowSmtpPass] = useState<boolean>(false);
   const [smtpTesting, setSmtpTesting] = useState<boolean>(false);
   const [smtpTestMsg, setSmtpTestMsg] = useState<{ success: boolean; message: string } | null>(null);
-  const [testEmail, setTestEmail] = useState<string>('superadmin@attendoschool.com');
+  const [testEmail, setTestEmail] = useState<string>('rajbsmv@gmail.com');
 
   const loadSettings = async () => {
     setLoading(true);
@@ -487,6 +487,50 @@ export const PlatformSettings: React.FC = () => {
                     value={settings.smtpSenderName || ''}
                     onChange={(e) => setSettings({ ...settings, smtpSenderName: e.target.value })}
                   />
+                </div>
+              </div>
+
+              {/* Brevo HTTPS Gateway (Port 443 — Render & Cloud Egress Immune) */}
+              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontWeight: '700', fontSize: '13.5px', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></span>
+                    HTTPS REST Email Gateway (Port 443 — Render Cloud Ready)
+                  </div>
+                  <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '4px', fontWeight: '600', border: '1px solid #86efac' }}>
+                    ACTIVE (Bypasses Port 587/465 Cloud Blocks)
+                  </span>
+                </div>
+                <p style={{ margin: '0 0 12px 0', fontSize: '12.5px', color: '#14532d', lineHeight: '1.45' }}>
+                  Cloud deployment platforms like Render Free tier block outbound TCP on ports 25, 465, and 587. AttendoSchool automatically dispatches emails via <b>Brevo HTTPS REST API (Port 443)</b> with guaranteed deliverability, DKIM signing, and zero port blockage.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#166534' }}>
+                      Brevo API Key (xkeysib-...)
+                    </label>
+                    <input
+                      type="password"
+                      className="form-control"
+                      placeholder="xkeysib-..."
+                      value={settings.brevoApiKey || ''}
+                      onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
+                      style={{ fontSize: '13px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#166534' }}>
+                      Verified Brevo Sender Email
+                    </label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder="e.g. rajbsmv@gmail.com"
+                      value={settings.brevoSenderEmail || ''}
+                      onChange={(e) => setSettings({ ...settings, brevoSenderEmail: e.target.value })}
+                      style={{ fontSize: '13px' }}
+                    />
+                  </div>
                 </div>
               </div>
 

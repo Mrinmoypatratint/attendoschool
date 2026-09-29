@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { pool } from '../db';
-import { env, cleanEnv, cleanSmtpPass } from '../config/env';
+import { env, cleanEnv, cleanSmtpPass, extractEmailAddress, extractSenderName } from '../config/env';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool } from '../utils/tenant';
 
@@ -22,6 +22,9 @@ export interface SchoolSmtpConfig {
   senderName: string;
   replyTo?: string;
   isEnabled: boolean;
+  brevoApiKey?: string;
+  brevoSenderEmail?: string;
+  brevoSenderName?: string;
 }
 
 export interface GlobalSmtpConfig {
@@ -33,6 +36,11 @@ export interface GlobalSmtpConfig {
   defaultSenderEmail: string;
   defaultSenderName: string;
   defaultReplyTo?: string;
+  brevoApiKey?: string;
+  brevoSenderEmail?: string;
+  brevoSenderName?: string;
+  resendApiKey?: string;
+  gmailRelayUrl?: string;
 }
 
 export interface NotificationLog {
@@ -67,13 +75,18 @@ export interface NotificationLog {
 // Global SMTP settings derived from .env with fallback defaults
 let globalSmtpConfig: GlobalSmtpConfig = {
   host: cleanEnv(env.smtpHost, 'smtp.gmail.com'),
-  port: Number(env.smtpPort) || 465,
-  username: cleanEnv(env.smtpUser, ''),
+  port: Number(env.smtpPort) || 587,
+  username: cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
   password: cleanSmtpPass(env.smtpPass, ''),
   encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
-  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : cleanEnv(env.smtpUser, ''),
-  defaultSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'AttendoSchool'),
-  defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, '')
+  defaultSenderEmail: env.smtpFrom ? (extractEmailAddress(env.smtpFrom) || cleanEnv(env.smtpUser, 'rajbsmv@gmail.com')) : cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
+  defaultSenderName: env.smtpFromName || (env.smtpFrom ? extractSenderName(env.smtpFrom) : 'AttendoSchool Superadmin'),
+  defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, 'rajbsmv@gmail.com'),
+  brevoApiKey: cleanEnv(env.brevoApiKey, ''),
+  brevoSenderEmail: cleanEnv(env.brevoSenderEmail || env.smtpUser, 'rajbsmv@gmail.com'),
+  brevoSenderName: cleanEnv(env.brevoSenderName || env.smtpFromName, 'AttendoSchool Superadmin'),
+  resendApiKey: cleanEnv(env.resendApiKey, ''),
+  gmailRelayUrl: cleanEnv(env.gmailRelayUrl, '')
 };
 
 /**
@@ -115,6 +128,22 @@ export function persistSmtpConfigToEnv(config: {
     envUpdates['EMAIL_ENABLED'] = config.isEnabled ? 'true' : 'false';
   }
 
+  if ((config as any).brevoApiKey !== undefined) {
+    envUpdates['BREVO_API_KEY'] = cleanEnv(String((config as any).brevoApiKey));
+  }
+  if ((config as any).brevoSenderEmail !== undefined) {
+    envUpdates['BREVO_SENDER_EMAIL'] = cleanEnv(String((config as any).brevoSenderEmail));
+  }
+  if ((config as any).brevoSenderName !== undefined) {
+    envUpdates['BREVO_SENDER_NAME'] = cleanEnv(String((config as any).brevoSenderName));
+  }
+  if ((config as any).resendApiKey !== undefined) {
+    envUpdates['RESEND_API_KEY'] = cleanEnv(String((config as any).resendApiKey));
+  }
+  if ((config as any).gmailRelayUrl !== undefined) {
+    envUpdates['GMAIL_RELAY_URL'] = cleanEnv(String((config as any).gmailRelayUrl));
+  }
+
   // Construct standard RFC email from header: e.g. "AttendoSchool <no-reply@attendoschool.com>"
   const fromEmail = cleanEnv(config.senderEmail) || cleanEnv(config.username) || globalSmtpConfig.defaultSenderEmail || cleanEnv(env.smtpUser) || '';
   const fromName = cleanEnv(config.senderName) || globalSmtpConfig.defaultSenderName || env.smtpFromName || 'AttendoSchool';
@@ -136,6 +165,11 @@ export function persistSmtpConfigToEnv(config: {
   if (envUpdates['SMTP_FROM_NAME']) env.smtpFromName = envUpdates['SMTP_FROM_NAME'];
   if (envUpdates['SMTP_REPLY_TO']) env.smtpReplyTo = envUpdates['SMTP_REPLY_TO'];
   if (envUpdates['EMAIL_ENABLED']) env.emailEnabled = envUpdates['EMAIL_ENABLED'] !== 'false';
+  if (envUpdates['BREVO_API_KEY']) env.brevoApiKey = envUpdates['BREVO_API_KEY'];
+  if (envUpdates['BREVO_SENDER_EMAIL']) env.brevoSenderEmail = envUpdates['BREVO_SENDER_EMAIL'];
+  if (envUpdates['BREVO_SENDER_NAME']) env.brevoSenderName = envUpdates['BREVO_SENDER_NAME'];
+  if (envUpdates['RESEND_API_KEY']) env.resendApiKey = envUpdates['RESEND_API_KEY'];
+  if (envUpdates['GMAIL_RELAY_URL']) env.gmailRelayUrl = envUpdates['GMAIL_RELAY_URL'];
 
   // Discover all prospective .env locations across backend and root (case-insensitive deduplicated)
   const candidateEnvPaths = [
@@ -217,7 +251,10 @@ export function getSchoolSmtpConfig(schoolId: string): SchoolSmtpConfig {
     return {
       ...existing,
       username: existing.username || globalSmtpConfig.username,
-      password: existing.password || globalSmtpConfig.password
+      password: existing.password || globalSmtpConfig.password,
+      brevoApiKey: existing.brevoApiKey || globalSmtpConfig.brevoApiKey,
+      brevoSenderEmail: existing.brevoSenderEmail || globalSmtpConfig.brevoSenderEmail,
+      brevoSenderName: existing.brevoSenderName || globalSmtpConfig.brevoSenderName
     };
   }
   return {
@@ -230,7 +267,10 @@ export function getSchoolSmtpConfig(schoolId: string): SchoolSmtpConfig {
     senderEmail: globalSmtpConfig.defaultSenderEmail,
     senderName: globalSmtpConfig.defaultSenderName,
     replyTo: globalSmtpConfig.defaultReplyTo,
-    isEnabled: env.emailEnabled
+    isEnabled: env.emailEnabled,
+    brevoApiKey: globalSmtpConfig.brevoApiKey,
+    brevoSenderEmail: globalSmtpConfig.brevoSenderEmail,
+    brevoSenderName: globalSmtpConfig.brevoSenderName
   };
 }
 
@@ -1341,25 +1381,39 @@ export interface SmtpSendResult {
  * Brevo allows sending from any verified email without requiring custom domain DNS.
  * Port 443 is never blocked by cloud firewalls (Render Free tier, AWS, etc.).
  */
+/**
+ * Sends transactional email via Brevo (formerly Sendinblue) HTTPS REST API over port 443.
+ * Brevo allows sending from any verified email without requiring custom domain DNS.
+ * Port 443 is never blocked by cloud firewalls (Render Free tier, AWS, etc.).
+ */
 export async function sendViaBrevo(
   apiKey: string,
   mailOptions: any
 ): Promise<{ messageId: string }> {
-  let senderEmail = env.brevoSenderEmail || cleanEnv(env.smtpUser, '');
-  let senderName = env.brevoSenderName || env.smtpFromName || 'AttendoSchool Superadmin';
+  // 1. Determine verified sender address (must be a verified email on the Brevo account)
+  const accountVerifiedEmail = cleanEnv(env.brevoSenderEmail || env.smtpUser, 'rajbsmv@gmail.com');
+  const parsedFromEmail = extractEmailAddress(mailOptions.from);
+
+  // If parsedFromEmail is a local or unverified mock domain (e.g. .local, attendoschool.com without DNS),
+  // fallback to the account's verified email address so Brevo accepts the API call.
+  const senderEmail = accountVerifiedEmail || parsedFromEmail || 'rajbsmv@gmail.com';
+  let senderName = env.brevoSenderName || env.smtpFromName || 'AttendoSchool Notifications';
 
   if (mailOptions.from) {
-    const match = String(mailOptions.from).match(/(.*)<(.+)>/);
-    if (match) {
-      senderName = match[1].replace(/['"]/g, '').trim() || senderName;
-      senderEmail = match[2].trim() || senderEmail;
-    } else if (String(mailOptions.from).includes('@')) {
-      senderEmail = String(mailOptions.from).trim();
+    const parsedName = extractSenderName(mailOptions.from);
+    if (parsedName && parsedName !== 'AttendoSchool') {
+      senderName = parsedName;
     }
   }
 
+  // Preserve replyTo
+  let replyToEmail = mailOptions.replyTo || env.smtpReplyTo || undefined;
+  if (!replyToEmail && parsedFromEmail && parsedFromEmail !== senderEmail && !parsedFromEmail.includes('.local')) {
+    replyToEmail = parsedFromEmail;
+  }
+
   const recipients = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
-  const toList = recipients.map(r => ({ email: String(r).trim() }));
+  const toList = recipients.map((r: string) => ({ email: extractEmailAddress(r) || String(r).trim() }));
 
   const payload: any = {
     sender: { name: senderName, email: senderEmail },
@@ -1369,8 +1423,41 @@ export async function sendViaBrevo(
     textContent: mailOptions.text || ''
   };
 
-  if (mailOptions.replyTo) {
-    payload.replyTo = { email: String(mailOptions.replyTo).trim() };
+  if (replyToEmail) {
+    payload.replyTo = { email: String(replyToEmail).trim() };
+  }
+
+  // Attachment Support (PDFs, images, reports) encoded into base64 for Brevo API
+  if (Array.isArray(mailOptions.attachments) && mailOptions.attachments.length > 0) {
+    const brevoAttachments: { name: string; content: string }[] = [];
+    for (const att of mailOptions.attachments) {
+      try {
+        let base64Content = '';
+        if (att.content) {
+          if (Buffer.isBuffer(att.content)) {
+            base64Content = att.content.toString('base64');
+          } else if (typeof att.content === 'string') {
+            base64Content = Buffer.from(att.content).toString('base64');
+          }
+        } else if (att.path && typeof att.path === 'string') {
+          if (fs.existsSync(att.path)) {
+            base64Content = fs.readFileSync(att.path).toString('base64');
+          }
+        }
+
+        if (base64Content) {
+          brevoAttachments.push({
+            name: att.filename || 'document.pdf',
+            content: base64Content
+          });
+        }
+      } catch (attErr) {
+        console.warn('[sendViaBrevo] Attachment processing skipped:', attErr);
+      }
+    }
+    if (brevoAttachments.length > 0) {
+      payload.attachment = brevoAttachments;
+    }
   }
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -1599,6 +1686,22 @@ export async function sendMailWithDualPortFallback(
       console.error(`[SMTP Resiliency] Both primary (${primaryPort}) and fallback (${fallbackPort}) ports failed.`);
       console.error(`[SMTP Resiliency] Primary: ${errMsg} | Fallback: ${fallbackErr.message}`);
 
+      // Try alternative SMTP port 2525 if host is a relay (Brevo, SendGrid, Mailgun)
+      if (!host.includes('gmail.com')) {
+        try {
+          console.log(`[SMTP Resiliency] Attempting alternative SMTP port 2525 for ${host}...`);
+          const port2525Transporter = createTransport(2525, false);
+          const info2525 = await port2525Transporter.sendMail(mailOptions);
+          return {
+            messageId: info2525.messageId || `EMAIL-${Date.now()}`,
+            usedPort: 2525,
+            usedEncryption: 'STARTTLS',
+            fallbackTriggered: true,
+            primaryError: errMsg
+          };
+        } catch {}
+      }
+
       // 4. Fallback to Google Apps Script Relay if configured
       if (gmailRelayUrl) {
         try {
@@ -1699,19 +1802,32 @@ async function deliver(
     const cfg = getSchoolSmtpConfig(schoolId);
     if (!cfg.isEnabled) return `EMAIL-SKIPPED-DISABLED`;
 
-    // Sandbox / Mock fallback if credentials are unconfigured in dev
-    const hasSmtpCreds = Boolean((cfg.host && cfg.username && cfg.password) || (env.smtpHost && env.smtpUser && env.smtpPass));
+    // Sandbox / Mock fallback ONLY if both SMTP and HTTPS APIs are completely unconfigured
+    const hasHttpApi = Boolean(
+      env.brevoApiKey ||
+      env.resendApiKey ||
+      env.gmailRelayUrl ||
+      cfg.brevoApiKey ||
+      process.env.BREVO_API_KEY ||
+      process.env.RESEND_API_KEY ||
+      process.env.GMAIL_RELAY_URL
+    );
+    const hasSmtpCreds = Boolean(
+      (cfg.host && cfg.username && cfg.password) ||
+      (env.smtpHost && env.smtpUser && env.smtpPass) ||
+      hasHttpApi
+    );
     if (!hasSmtpCreds) {
       return `MOCK-SMTP-EMAIL-${Date.now()}`;
     }
 
     const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
-    const port = Number(cfg.port || env.smtpPort || 465);
-    const user = cleanEnv(cfg.username || env.smtpUser, '');
+    const port = Number(cfg.port || env.smtpPort || 587);
+    const user = cleanEnv(cfg.username || env.smtpUser, 'rajbsmv@gmail.com');
     const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
-    const from = cfg.senderName
-      ? `"${cfg.senderName}" <${cfg.senderEmail || user}>`
-      : (cfg.senderEmail || env.smtpFrom || user);
+    const rawSender = cfg.senderEmail || extractEmailAddress(env.smtpFrom) || user || 'rajbsmv@gmail.com';
+    const rawName = cfg.senderName || extractSenderName(env.smtpFrom) || 'AttendoSchool Notifications';
+    const from = `"${rawName}" <${rawSender}>`;
 
     const emailSubject = subject || (emailData?.student_name ? `Attendance Notice: ${emailData.student_name}` : 'AttendoSchool Notification');
     let finalHtml = htmlBody || `<p>${message.replace(/\n/g, '<br/>')}</p>`;
@@ -1906,7 +2022,17 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
   const user = cleanEnv(cfg.username || env.smtpUser, '');
   const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
 
-  if (!host || !user || !pass) {
+  const hasHttpApi = Boolean(
+    env.brevoApiKey ||
+    env.resendApiKey ||
+    env.gmailRelayUrl ||
+    cfg.brevoApiKey ||
+    process.env.BREVO_API_KEY ||
+    process.env.RESEND_API_KEY ||
+    process.env.GMAIL_RELAY_URL
+  );
+
+  if (!hasHttpApi && (!host || !user || !pass)) {
     return {
       success: true,
       mode: 'SANDBOX',
@@ -1915,7 +2041,9 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
     };
   }
 
-  const from = cfg.senderName ? `"${cfg.senderName}" <${cfg.senderEmail || user}>` : (cfg.senderEmail || user);
+  const rawSender = cfg.senderEmail || extractEmailAddress(env.smtpFrom) || user || 'rajbsmv@gmail.com';
+  const rawName = cfg.senderName || extractSenderName(env.smtpFrom) || 'AttendoSchool Verification';
+  const from = `"${rawName}" <${rawSender}>`;
   const testTemplate = renderEmailTemplate('TEST_EMAIL', { host, port, school_name: 'AttendoSchool Verification' });
   const logo = getLogoAttachment();
   const attachments: any[] = [];

@@ -26,6 +26,31 @@ export function cleanSmtpPass(val: string | undefined, fallback: string = ''): s
   return p;
 }
 
+/**
+ * Extracts a clean email address from RFC 5322 strings, even when wrapped in nested quotes or double brackets.
+ * e.g. '"School" <"Superadmin <rajbsmv@gmail.com>">' -> 'rajbsmv@gmail.com'
+ */
+export function extractEmailAddress(raw: string | undefined): string {
+  if (!raw) return '';
+  const match = String(raw).match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  return match ? match[1].toLowerCase().trim() : '';
+}
+
+/**
+ * Extracts the display name from a sender string.
+ * e.g. '"Greenwood High" <info@greenwood.edu>' -> 'Greenwood High'
+ */
+export function extractSenderName(raw: string | undefined, fallback: string = 'AttendoSchool Notifications'): string {
+  if (!raw) return fallback;
+  const s = String(raw).trim();
+  const angleIdx = s.indexOf('<');
+  if (angleIdx > 0) {
+    const namePart = s.slice(0, angleIdx).replace(/['"]/g, '').trim();
+    if (namePart) return namePart;
+  }
+  return fallback;
+}
+
 export const env = {
   port: Number(cleanEnv(process.env.PORT, '5000')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
@@ -35,10 +60,10 @@ export const env = {
   razorpayKeySecret: cleanEnv(process.env.RAZORPAY_KEY_SECRET, ''),
   razorpayWebhookSecret: cleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET, ''),
   smtpHost: cleanEnv(process.env.SMTP_HOST, 'smtp.gmail.com'),
-  smtpPort: Number(cleanEnv(process.env.SMTP_PORT, '465')),
-  smtpUser: cleanEnv(process.env.SMTP_USER, ''),
+  smtpPort: Number(cleanEnv(process.env.SMTP_PORT, '587')),
+  smtpUser: cleanEnv(process.env.SMTP_USER, 'rajbsmv@gmail.com'),
   smtpPass: cleanSmtpPass(process.env.SMTP_PASS, ''),
-  smtpFrom: cleanEnv(process.env.SMTP_FROM, 'AttendoSchool Notifications <no-reply@attendoschool.com>'),
+  smtpFrom: cleanEnv(process.env.SMTP_FROM, 'AttendoSchool Superadmin <rajbsmv@gmail.com>'),
   companyName: cleanEnv(process.env.COMPANY_NAME, 'School Attendance SaaS'),
   companyGstin: cleanEnv(process.env.COMPANY_GSTIN, ''),
   companyAddress: cleanEnv(process.env.COMPANY_ADDRESS, ''),
@@ -57,12 +82,12 @@ export const env = {
   emailEnabled: cleanEnv(process.env.EMAIL_ENABLED, 'true') !== 'false',
   emailRateLimit: Number(cleanEnv(process.env.EMAIL_RATE_LIMIT, '50')),
   emailMaxRetries: Number(cleanEnv(process.env.EMAIL_MAX_RETRIES, '4')),
-  smtpReplyTo: cleanEnv(process.env.SMTP_REPLY_TO, ''),
+  smtpReplyTo: cleanEnv(process.env.SMTP_REPLY_TO, 'rajbsmv@gmail.com'),
   smtpFromName: cleanEnv(process.env.SMTP_FROM_NAME, 'AttendoSchool Superadmin'),
   resendApiKey: cleanEnv(process.env.RESEND_API_KEY, ''),
   resendFrom: cleanEnv(process.env.RESEND_FROM, ''),
   brevoApiKey: cleanEnv(process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY, ''),
-  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, ''),
+  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, 'rajbsmv@gmail.com'),
   brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool Superadmin'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
   appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),

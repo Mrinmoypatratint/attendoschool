@@ -121,6 +121,9 @@ export interface SystemSettings {
   smtpEncryption?: 'SSL/TLS' | 'STARTTLS' | 'NONE';
   smtpSenderEmail?: string;
   smtpSenderName?: string;
+  brevoApiKey?: string;
+  brevoSenderEmail?: string;
+  brevoSenderName?: string;
 }
 
 export interface OverviewMetrics {

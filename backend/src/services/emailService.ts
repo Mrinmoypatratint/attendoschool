@@ -1,10 +1,19 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
-import { env } from '../config/env';
+import { env, extractEmailAddress, cleanEnv } from '../config/env';
 import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback } from './notificationService';
 
 function configured() {
-  return Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom);
+  const hasSmtp = Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom);
+  const hasHttp = Boolean(
+    env.brevoApiKey ||
+    env.resendApiKey ||
+    env.gmailRelayUrl ||
+    process.env.BREVO_API_KEY ||
+    process.env.RESEND_API_KEY ||
+    process.env.GMAIL_RELAY_URL
+  );
+  return hasSmtp || hasHttp;
 }
 
 export async function sendInvoiceEmail(to: string, invoiceNumber: string, pdf: Buffer) {
@@ -188,9 +197,8 @@ export async function sendPasswordResetEmail(options: PasswordResetEmailOptions)
   const roleDisplay = roleTitleMap[role.toUpperCase()] || 'Campus Portal';
   const cleanSchool = schoolName || 'Greenwood International School';
 
-  const fromSender = env.smtpFrom
-    ? `"${cleanSchool}" <${env.smtpFrom}>`
-    : `"${cleanSchool}" <noreply@attendoschool.local>`;
+  const rawSenderEmail = extractEmailAddress(env.smtpFrom) || cleanEnv(env.smtpUser, '') || 'rajbsmv@gmail.com';
+  const fromSender = `"${cleanSchool}" <${rawSenderEmail}>`;
 
   const emailSubject = `Set up your password for ${cleanSchool}`;
 

@@ -305,13 +305,19 @@ r.get('/smtp', ...adminOnly, async (req: AuthRequest, res) => {
     const schoolId = req.user!.schoolId || '00000000-0000-0000-0000-000000000001';
     const cfg = getSchoolSmtpConfig(schoolId);
 
+    const hasBrevo = Boolean(cfg.brevoApiKey || env.brevoApiKey);
+    const hasSmtp = Boolean((cfg.username || env.smtpUser) && (cfg.password || env.smtpPass));
+
     res.json({
       ...cfg,
       username: cfg.username || env.smtpUser || '',
       password: cfg.password || env.smtpPass || '',
+      brevoApiKey: cfg.brevoApiKey || env.brevoApiKey || '',
+      brevoSenderEmail: cfg.brevoSenderEmail || env.brevoSenderEmail || '',
       isSuperAdmin,
       isManagedBySuperAdmin: true,
-      hasConfiguredCredentials: Boolean((cfg.username || env.smtpUser) && (cfg.password || env.smtpPass))
+      hasConfiguredCredentials: hasSmtp || hasBrevo,
+      activeProvider: hasBrevo ? 'BREVO_HTTPS_PORT_443' : (hasSmtp ? 'SMTP_RELAY' : 'NONE')
     });
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to fetch SMTP settings' });
