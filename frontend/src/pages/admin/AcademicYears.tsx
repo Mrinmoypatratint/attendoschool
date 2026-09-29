@@ -7,6 +7,8 @@ import {
   PreviewSummaryCard
 } from '../../components/preview';
 
+type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
+
 export default function AcademicYears() {
   const [items, setItems] = useState<any[]>([]);
   const [name, setName] = useState('');
@@ -34,7 +36,7 @@ export default function AcademicYears() {
   const [actionConfirm, setActionConfirm] = useState<{
     isOpen: boolean;
     id: string;
-    type: 'activate' | 'archive';
+    type: ActionType;
     title: string;
     sessionName: string;
     warningMessage: string;
@@ -56,8 +58,8 @@ export default function AcademicYears() {
   async function load() {
     setLoading(true);
     try {
-      const r = await api.get('/academic-years-v15');
-      setItems(r.data);
+      const r = await api.get('/academic-years');
+      setItems(Array.isArray(r.data) ? r.data : []);
     } catch (e: any) {
       setMessage(e?.response?.data?.message || e?.message || 'Unable to load academic sessions');
     } finally {
@@ -116,7 +118,7 @@ export default function AcademicYears() {
   async function executeConfirmCreate() {
     setCreatePreview(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await api.post('/academic-years-v15', {
+      await api.post('/academic-years', {
         name: name.trim(),
         startDate,
         endDate,
@@ -136,17 +138,37 @@ export default function AcademicYears() {
     }
   }
 
-  function promptAction(item: any, type: 'activate' | 'archive') {
+  function promptAction(item: any, type: ActionType) {
+    let title = '';
+    let warningMessage = '';
+    let confirmText = '';
+
+    if (type === 'activate') {
+      title = 'Activate Academic Session';
+      warningMessage = `Setting "${item.name}" as the active academic year will switch current school attendance and roster defaults to this session. Any previously active session will become inactive.`;
+      confirmText = 'Set as Active Session';
+    } else if (type === 'deactivate') {
+      title = 'Deactivate Academic Session';
+      warningMessage = `Deactivating "${item.name}" will set this session to inactive status. There will be no default active academic session until another is activated.`;
+      confirmText = 'Deactivate Session';
+    } else if (type === 'archive') {
+      title = 'Archive Academic Session';
+      warningMessage = `Archiving "${item.name}" will make historical records read-only. No further daily attendance or routine modifications will be permitted for this session.`;
+      confirmText = 'Archive Session';
+    } else if (type === 'unarchive') {
+      title = 'Unarchive Academic Session';
+      warningMessage = `Unarchiving "${item.name}" will restore it to inactive status, allowing it to be activated and modified again.`;
+      confirmText = 'Unarchive Session';
+    }
+
     setActionConfirm({
       isOpen: true,
       id: item.id,
       type,
-      title: type === 'activate' ? 'Activate Academic Session' : 'Archive Academic Session',
+      title,
       sessionName: item.name,
-      warningMessage: type === 'activate'
-        ? `Setting "${item.name}" as the active academic year will switch current school attendance and roster defaults to this session.`
-        : `Archiving "${item.name}" will make historical records read-only. No further daily attendance modifications will be permitted for this session.`,
-      confirmText: type === 'activate' ? 'Set as Active Session' : 'Archive Session',
+      warningMessage,
+      confirmText,
       loading: false,
       error: null,
     });
@@ -155,7 +177,7 @@ export default function AcademicYears() {
   async function executeConfirmAction() {
     setActionConfirm(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await api.post(`/academic-years-v15/${actionConfirm.id}/${actionConfirm.type}`);
+      await api.post(`/academic-years/${actionConfirm.id}/${actionConfirm.type}`);
       setActionConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
       await load();
     } catch (e: any) {
@@ -199,19 +221,19 @@ export default function AcademicYears() {
               required
             />
           </label>
-          <button type="submit">Review & Create</button>
+          <button type="submit">Create</button>
         </form>
       </div>
 
       {message && <div className="error">{message}</div>}
       {loading ? (
-        <p className="muted">Loading academic years...</p>
+        <p className="muted">Loading academic years from database...</p>
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                {['Year', 'Start', 'End', 'Students', 'Classes', 'Status', 'Actions'].map(h => (
+                {['YEAR', 'START', 'END', 'STUDENTS', 'CLASSES', 'STATUS', 'ACTIONS'].map(h => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
@@ -222,22 +244,100 @@ export default function AcademicYears() {
                   <td><b>{x.name}</b></td>
                   <td>{String(x.start_date).slice(0, 10)}</td>
                   <td>{String(x.end_date).slice(0, 10)}</td>
-                  <td>{x.student_count}</td>
-                  <td>{x.class_count}</td>
+                  <td>{x.student_count ?? 0}</td>
+                  <td>{x.class_count ?? 0}</td>
                   <td>
-                    <span className={`badge ${x.is_archived ? 'expired' : x.is_active ? 'active' : ''}`}>
-                      {x.is_archived ? 'Archived' : x.is_active ? 'Active' : 'Inactive'}
+                    <span
+                      className={`badge ${x.is_archived ? 'expired' : x.is_active ? 'active' : ''}`}
+                      style={{
+                        display: 'inline-block',
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        background: x.is_archived ? '#fee2e2' : x.is_active ? '#dcfce7' : '#f1f5f9',
+                        color: x.is_archived ? '#b91c1c' : x.is_active ? '#15803d' : '#475569'
+                      }}
+                    >
+                      {x.is_archived ? 'ARCHIVED' : x.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </td>
                   <td>
-                    <div className="action-row">
-                      {!x.is_active && !x.is_archived && (
-                        <button className="small-btn" onClick={() => promptAction(x, 'activate')}>
+                    <div className="action-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {x.is_active ? (
+                        <button
+                          type="button"
+                          className="small-btn warning-btn"
+                          style={{
+                            background: '#f59e0b',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.82rem'
+                          }}
+                          onClick={() => promptAction(x, 'deactivate')}
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="small-btn"
+                          style={{
+                            background: '#1e60dc',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.82rem'
+                          }}
+                          onClick={() => promptAction(x, 'activate')}
+                        >
                           Activate
                         </button>
                       )}
-                      {!x.is_active && !x.is_archived && (
-                        <button className="small-btn danger-btn" onClick={() => promptAction(x, 'archive')}>
+
+                      {x.is_archived ? (
+                        <button
+                          type="button"
+                          className="small-btn"
+                          style={{
+                            background: '#059669',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.82rem'
+                          }}
+                          onClick={() => promptAction(x, 'unarchive')}
+                        >
+                          Unarchive
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="small-btn danger-btn"
+                          style={{
+                            background: '#dc2626',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.82rem'
+                          }}
+                          onClick={() => promptAction(x, 'archive')}
+                        >
                           Archive
                         </button>
                       )}
@@ -248,7 +348,7 @@ export default function AcademicYears() {
               {!items.length && (
                 <tr>
                   <td colSpan={7} className="muted" style={{ padding: 20 }}>
-                    No academic years created.
+                    No academic years created in database. Use the form above to create one.
                   </td>
                 </tr>
               )}
@@ -274,7 +374,7 @@ export default function AcademicYears() {
         error={createPreview.error}
       />
 
-      {/* Destructive Confirm Modal for Session Activate / Archive */}
+      {/* Destructive Confirm Modal for Session Activate / Deactivate / Archive / Unarchive */}
       <DestructiveConfirmModal
         isOpen={actionConfirm.isOpen}
         onClose={() => setActionConfirm(prev => ({ ...prev, isOpen: false }))}

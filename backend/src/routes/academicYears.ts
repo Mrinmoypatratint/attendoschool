@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import {
   listAcademicYears, createAcademicYear,
-  setActiveAcademicYear, archiveAcademicYear, getActiveAcademicYear
+  setActiveAcademicYear, deactivateAcademicYear,
+  archiveAcademicYear, unarchiveAcademicYear,
+  getActiveAcademicYear
 } from '../services/academicYearService';
 import { isTestSchool } from './auth';
 
@@ -18,14 +20,14 @@ export interface AcademicYearItem {
   class_count: number;
 }
 
-// In-memory store per school tenant
+// In-memory store per school tenant (fallback only when database is unavailable)
 const inMemoryAcademicYears: Record<string, AcademicYearItem[]> = {};
 
 function createDefaultSessions(schoolId: string): AcademicYearItem[] {
   return [
-    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 140, class_count: 8 },
-    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 185, class_count: 12 },
-    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 42, class_count: 6 }
+    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 0, class_count: 0 },
+    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 0, class_count: 0 },
+    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 0, class_count: 0 }
   ];
 }
 
@@ -64,6 +66,19 @@ export function setInMemoryActiveAcademicYear(schoolId: string | null | undefine
   return activated;
 }
 
+export function deactivateInMemoryAcademicYear(schoolId: string | null | undefined, yearId: string): AcademicYearItem | null {
+  const sid = schoolId || 'default';
+  const list = getInMemoryAcademicYears(sid);
+  let deactivated: AcademicYearItem | null = null;
+  for (const item of list) {
+    if (item.id === yearId) {
+      item.is_active = false;
+      deactivated = item;
+    }
+  }
+  return deactivated;
+}
+
 export function archiveInMemoryAcademicYear(schoolId: string | null | undefined, yearId: string): AcademicYearItem | null {
   const sid = schoolId || 'default';
   const list = getInMemoryAcademicYears(sid);
@@ -76,6 +91,20 @@ export function archiveInMemoryAcademicYear(schoolId: string | null | undefined,
     }
   }
   return archived;
+}
+
+export function unarchiveInMemoryAcademicYear(schoolId: string | null | undefined, yearId: string): AcademicYearItem | null {
+  const sid = schoolId || 'default';
+  const list = getInMemoryAcademicYears(sid);
+  let unarchived: AcademicYearItem | null = null;
+  for (const item of list) {
+    if (item.id === yearId) {
+      item.is_archived = false;
+      item.is_active = false;
+      unarchived = item;
+    }
+  }
+  return unarchived;
 }
 
 export function addInMemoryAcademicYear(schoolId: string | null | undefined, data: Partial<AcademicYearItem>): AcademicYearItem {
@@ -106,21 +135,20 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
 const router = Router();
 const schoolId = (req: Request) => (req as any).user?.schoolId;
 
+// GET /api/academic-years - Query real database records
 router.get('/', async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
   try {
     const rows = await listAcademicYears(sid);
-    if (rows && rows.length > 0) {
-      return res.json(rows);
-    }
-    return res.json(getInMemoryAcademicYears(sid));
+    return res.json(rows);
   } catch (_e: any) {
     return res.json(getInMemoryAcademicYears(sid));
   }
 });
 
+// GET /api/academic-years/active - Current active academic session
 router.get('/active', async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
@@ -136,6 +164,7 @@ router.get('/active', async (req, res) => {
   }
 });
 
+// POST /api/academic-years - Create new academic session
 router.post('/', async (req: Request, res: Response) => {
   const sid = schoolId(req) || 'default';
   const { name, startDate, endDate, makeActive } = req.body || {};
@@ -144,39 +173,87 @@ router.post('/', async (req: Request, res: Response) => {
     const created = await createAcademicYear(sid, name, startDate, endDate, Boolean(makeActive));
     addInMemoryAcademicYear(sid, created);
     return res.status(201).json(created);
-  } catch (_e: any) {
-    const memoryItem = addInMemoryAcademicYear(sid, {
-      name,
-      start_date: startDate,
-      end_date: endDate,
-      is_active: Boolean(makeActive)
-    });
-    return res.status(201).json(memoryItem);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to create academic year' });
   }
 });
 
+// POST /api/academic-years/:id/activate - Make this year the sole active session
 router.post('/:id/activate', async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
-  // Always update in-memory state so demo/offline mode updates instantly
-  const inMem = setInMemoryActiveAcademicYear(sid, yearId);
+  setInMemoryActiveAcademicYear(sid, yearId);
   try {
     const dbResult = await setActiveAcademicYear(sid, yearId);
-    return res.json(dbResult || inMem || { id: yearId, is_active: true, is_archived: false });
-  } catch (_e: any) {
-    return res.json(inMem || { id: yearId, is_active: true, is_archived: false });
+    return res.json(dbResult || { id: yearId, is_active: true, is_archived: false });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to activate academic session' });
   }
 });
 
+// POST /api/academic-years/:id/deactivate - Make session inactive
+router.post('/:id/deactivate', async (req, res) => {
+  const sid = schoolId(req) || 'default';
+  const yearId = String(req.params.id);
+  deactivateInMemoryAcademicYear(sid, yearId);
+  try {
+    const dbResult = await deactivateAcademicYear(sid, yearId);
+    return res.json(dbResult || { id: yearId, is_active: false });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to deactivate academic session' });
+  }
+});
+
+// POST /api/academic-years/:id/archive - Archive session (read-only)
 router.post('/:id/archive', async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
-  const inMem = archiveInMemoryAcademicYear(sid, yearId);
+  archiveInMemoryAcademicYear(sid, yearId);
   try {
     const dbResult = await archiveAcademicYear(sid, yearId);
-    return res.json(dbResult || inMem || { id: yearId, is_active: false, is_archived: true });
-  } catch (_e: any) {
-    return res.json(inMem || { id: yearId, is_active: false, is_archived: true });
+    return res.json(dbResult || { id: yearId, is_active: false, is_archived: true });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to archive academic session' });
+  }
+});
+
+// POST /api/academic-years/:id/unarchive - Unarchive session (restore to inactive)
+router.post('/:id/unarchive', async (req, res) => {
+  const sid = schoolId(req) || 'default';
+  const yearId = String(req.params.id);
+  unarchiveInMemoryAcademicYear(sid, yearId);
+  try {
+    const dbResult = await unarchiveAcademicYear(sid, yearId);
+    return res.json(dbResult || { id: yearId, is_active: false, is_archived: false });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to unarchive academic session' });
+  }
+});
+
+// Catch-all parameterized action endpoint: POST /:id/:action
+router.post('/:id/:action', async (req, res) => {
+  const sid = schoolId(req) || 'default';
+  const yearId = String(req.params.id);
+  const action = String(req.params.action).toLowerCase();
+
+  try {
+    if (action === 'activate') {
+      const dbResult = await setActiveAcademicYear(sid, yearId);
+      return res.json(dbResult);
+    } else if (action === 'deactivate') {
+      const dbResult = await deactivateAcademicYear(sid, yearId);
+      return res.json(dbResult);
+    } else if (action === 'archive') {
+      const dbResult = await archiveAcademicYear(sid, yearId);
+      return res.json(dbResult);
+    } else if (action === 'unarchive') {
+      const dbResult = await unarchiveAcademicYear(sid, yearId);
+      return res.json(dbResult);
+    } else {
+      return res.status(400).json({ message: `Unknown action: ${action}` });
+    }
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || `Action ${action} failed` });
   }
 });
 
