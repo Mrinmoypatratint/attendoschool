@@ -39,6 +39,7 @@ export const env = {
   emailMaxRetries: Number(process.env.EMAIL_MAX_RETRIES || 4),
   smtpReplyTo: process.env.SMTP_REPLY_TO || '',
   smtpFromName: process.env.SMTP_FROM_NAME || 'AttendoSchool Notifications',
+  resendApiKey: process.env.RESEND_API_KEY || '',
   appBaseUrl: process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://attendoschool.optinetinnovations.in',
 };
 

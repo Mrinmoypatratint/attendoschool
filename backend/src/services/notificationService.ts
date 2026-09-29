@@ -1413,6 +1413,43 @@ export async function sendMailWithDualPortFallback(
     } catch (fallbackErr: any) {
       console.error(`[SMTP Resiliency] Both primary (${primaryPort}) and fallback (${fallbackPort}) ports failed.`);
       console.error(`[SMTP Resiliency] Primary: ${errMsg} | Fallback: ${fallbackErr.message}`);
+
+      // 3. Fallback to HTTPS REST API (Resend) if configured (works seamlessly across Render free tier egress firewalls)
+      if (env.resendApiKey) {
+        try {
+          console.log(`[Email Dispatch] Attempting HTTPS delivery via Resend API (bypassing blocked cloud SMTP ports)...`);
+          const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: mailOptions.from || globalSmtpConfig.defaultSenderEmail || 'AttendoSchool <onboarding@resend.dev>',
+              to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
+              subject: mailOptions.subject,
+              html: mailOptions.html,
+              text: mailOptions.text
+            })
+          });
+          const resendData: any = await resendRes.json();
+          if (resendRes.ok && resendData?.id) {
+            console.log(`[Email Dispatch] Resend HTTPS delivery succeeded! ID: ${resendData.id}`);
+            return {
+              messageId: resendData.id,
+              usedPort: 443,
+              usedEncryption: 'HTTPS_REST',
+              fallbackTriggered: true,
+              primaryError: errMsg
+            };
+          } else {
+            console.warn(`[Email Dispatch] Resend returned error:`, resendData?.message);
+          }
+        } catch (resendErr: any) {
+          console.warn(`[Email Dispatch] Resend fallback attempt failed:`, resendErr.message);
+        }
+      }
+
       throw primaryErr;
     }
   }
