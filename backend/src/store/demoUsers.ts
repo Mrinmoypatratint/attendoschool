@@ -54,39 +54,6 @@ const demoUsers: DemoUser[] = [
     email: 'student@greenwood.local',
     role: 'STUDENT',
     password: 'ChangeMe123!'
-  },
-  // TINT (Techno International New Town) Demo Accounts
-  {
-    id: '00000000-0000-0000-0000-000000000031',
-    schoolId: '00000000-0000-0000-0000-000000000002',
-    name: 'TINT School Administrator',
-    email: 'admin@tint.edu.in',
-    role: 'SCHOOL_ADMIN',
-    password: 'ChangeMe123!'
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000032',
-    schoolId: '00000000-0000-0000-0000-000000000002',
-    name: 'TINT Administrator',
-    email: 'admin@tint.local',
-    role: 'SCHOOL_ADMIN',
-    password: 'ChangeMe123!'
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000033',
-    schoolId: '00000000-0000-0000-0000-000000000002',
-    name: 'TINT Faculty Member',
-    email: 'teacher@tint.local',
-    role: 'TEACHER',
-    password: 'ChangeMe123!'
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000034',
-    schoolId: '00000000-0000-0000-0000-000000000002',
-    name: 'TINT Student',
-    email: 'student@tint.local',
-    role: 'STUDENT',
-    password: 'ChangeMe123!'
   }
 ];
 

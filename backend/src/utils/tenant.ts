@@ -47,24 +47,15 @@ export function isGreenwoodSchool(schoolId?: string | null, schoolCode?: string 
   );
 }
 
-export function isTintSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
-  if (!schoolId && !schoolCode) return false;
-  const sid = (schoolId || '').toLowerCase().trim();
-  const scode = (schoolCode || '').toLowerCase().trim();
-  return (
-    TINT_TEST_ALIASES.includes(sid) ||
-    TINT_TEST_ALIASES.includes(scode) ||
-    sid.includes('tint') ||
-    scode.includes('tint') ||
-    sid.includes('techno')
-  );
+export function isTintSchool(_schoolId?: string | null, _schoolCode?: string | null): boolean {
+  return false;
 }
 
 /**
- * Checks if a given school ID or code belongs to either demo school (Greenwood or TINT).
+ * Checks if a given school ID or code belongs to the demo school (Greenwood only).
  */
 export function isTestSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
-  return isGreenwoodSchool(schoolId, schoolCode) || isTintSchool(schoolId, schoolCode);
+  return isGreenwoodSchool(schoolId, schoolCode);
 }
 
 /**
@@ -81,7 +72,6 @@ export function isSameSchool(a?: string | null, b?: string | null): boolean {
   if (lowA === lowB) return true;
 
   if (isGreenwoodSchool(lowA) && isGreenwoodSchool(lowB)) return true;
-  if (isTintSchool(lowA) && isTintSchool(lowB)) return true;
 
   return false;
 }
@@ -93,9 +83,6 @@ export function canonicalSchoolId(id?: string | null): string | null {
   if (!id) return null;
   if (isGreenwoodSchool(id)) {
     return '00000000-0000-0000-0000-000000000001';
-  }
-  if (isTintSchool(id)) {
-    return '00000000-0000-0000-0000-000000000002';
   }
   return id;
 }

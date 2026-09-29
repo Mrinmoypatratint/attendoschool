@@ -168,21 +168,6 @@ export const demoSchools: any[] = [
     end_date: '2027-12-31',
     computed_status: 'ACTIVE',
     created_at: new Date().toISOString()
-  },
-  {
-    id: '00000000-0000-0000-0000-000000000002',
-    name: 'Techno International New Town (TINT)',
-    code: 'TINT',
-    status: 'ACTIVE',
-    address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156',
-    city: 'Kolkata',
-    enquiry_number: '1800234567',
-    student_count: 220,
-    teacher_count: 18,
-    plan_name: 'Enterprise Plan',
-    end_date: '2028-12-31',
-    computed_status: 'ACTIVE',
-    created_at: new Date().toISOString()
   }
 ];
 export const demoPayments: any[] = [];

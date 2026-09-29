@@ -25,12 +25,6 @@ router.get('/institutes', async (_req, res) => {
       name: 'Greenwood International School',
       code: 'GIS001',
       address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000002',
-      name: 'Techno International New Town (TINT)',
-      code: 'TINT',
-      address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
     }
   ];
 
@@ -296,14 +290,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Account does not belong to the selected institute' });
     }
 
-    const isTint = isTintSchool(instituteId || demo.schoolId);
-    const resolvedSchoolId = isTint
-      ? '00000000-0000-0000-0000-000000000002'
-      : (demo.schoolId || '00000000-0000-0000-0000-000000000001');
-    const resolvedSchoolName = isTint
-      ? 'Techno International New Town (TINT)'
-      : 'Greenwood International School';
-    const resolvedSchoolCode = isTint ? 'TINT' : 'GIS001';
+    const resolvedSchoolId = demo.schoolId || '00000000-0000-0000-0000-000000000001';
+    const resolvedSchoolName = 'Greenwood International School';
+    const resolvedSchoolCode = 'GIS001';
 
     const userPayload: any = {
       id: demo.id,

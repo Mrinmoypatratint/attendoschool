@@ -195,34 +195,19 @@ function Login() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Discard legacy mock entries if any
-          const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== 'sch-1789773642845' && x.id !== 'school-delhi-001' && x.id !== 'school-central-001');
-          if (!clean.some((x: any) => x.name?.toUpperCase().includes('TINT') || x.code === 'TINT')) {
-            clean.push({
-              id: '00000000-0000-0000-0000-000000000002',
-              name: 'Techno International New Town (TINT)',
-              code: 'TINT',
-              address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
-            });
-          }
+          const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== '00000000-0000-0000-0000-000000000002' && !x.name?.toUpperCase().includes('TINT'));
           if (clean.length > 0) return clean;
         }
       }
     } catch {}
     return [
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      name: 'Greenwood International School',
-      code: 'GIS001',
-      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-    },
-    {
-      id: '00000000-0000-0000-0000-000000000002',
-      name: 'Techno International New Town (TINT)',
-      code: 'TINT',
-      address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
-    }
-  ];
+      {
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Greenwood International School',
+        code: 'GIS001',
+        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+      }
+    ];
   });
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
@@ -277,24 +262,17 @@ function Login() {
             address: String(i.address || '')
           }));
 
-        if (!cleanList.some(i => i.name.toUpperCase().includes('TINT') || i.code?.toUpperCase() === 'TINT')) {
-          cleanList.push({
-            id: '00000000-0000-0000-0000-000000000002',
-            name: 'Techno International New Town (TINT)',
-            code: 'TINT',
-            address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
-          });
-        }
+        const filteredList = cleanList.filter(i => i.id !== '00000000-0000-0000-0000-000000000002' && !i.name.toUpperCase().includes('TINT'));
 
-        setInstitutes(cleanList);
+        setInstitutes(filteredList);
         try {
-          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
+          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(filteredList));
         } catch {}
 
         // Preserve user selection if valid, otherwise select the first live school from Firestore
         setInstituteId(prev => {
-          if (prev && cleanList.some(i => i.id === prev)) return prev;
-          return cleanList.length > 0 ? cleanList[0].id : '';
+          if (prev && filteredList.some(i => i.id === prev)) return prev;
+          return filteredList.length > 0 ? filteredList[0].id : '';
         });
       }
     } catch (err) {
