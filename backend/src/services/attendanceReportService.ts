@@ -1,6 +1,6 @@
 import { pool } from '../db';
 import { isFirebaseConfigured, collections } from '../firebase';
-import { isSameSchool } from '../utils/tenant';
+import { isSameSchool, isTestSchool } from '../utils/tenant';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { demoStudents } from '../routes/schoolData';
 
@@ -39,29 +39,17 @@ export async function attendanceSummary(
     } catch {}
   }
 
-  // Fallback: Check In-Memory Store & Firestore
+  // Cloud Firestore & In-Memory aggregation
   let present = 0;
   let absent = 0;
   let marked = 0;
 
-  // 1. In-memory
-  const matchedMem = memAttendanceRecords.filter(r => {
-    if (!isGlobal && schoolId && !isSameSchool(r.schoolId, schoolId)) return false;
-    const d = r.attendanceDate || r.attendance_date;
-    return (!from || d >= from) && (!to || d <= to);
-  });
+  const validSessionIds = new Set<string>();
 
-  if (matchedMem.length > 0) {
-    present += matchedMem.filter(r => r.is_present || r.status === 'PRESENT').length;
-    absent += matchedMem.filter(r => !r.is_present || r.status === 'ABSENT').length;
-    marked += matchedMem.length;
-  }
-
-  // 2. Cloud Firestore
-  if (marked === 0 && isFirebaseConfigured()) {
+  // 1. Cloud Firestore Sessions
+  if (isFirebaseConfigured()) {
     try {
       const sessSnap = await collections.attendanceSessions().get();
-      const validSessionIds = new Set<string>();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -71,23 +59,55 @@ export async function attendanceSummary(
           validSessionIds.add(doc.id);
         }
       });
-
-      if (validSessionIds.size > 0) {
-        const recSnap = await collections.attendanceRecords().get();
-        recSnap.docs.forEach(doc => {
-          const r = doc.data();
-          if (validSessionIds.has(r.sessionId || r.attendance_session_id)) {
-            const isPres = r.status === 'PRESENT' || r.is_present === true || r.isPresent === true;
-            if (isPres) present++;
-            else absent++;
-            marked++;
-          }
-        });
-      }
     } catch (err: any) {
       console.warn('[AttendanceReport] Firestore summary query error:', err.message);
     }
   }
+
+  // 2. In-Memory Sessions
+  memAttendanceSessions.forEach(s => {
+    if (!isGlobal && schoolId && !isSameSchool(s.schoolId, schoolId)) return;
+    const dStr = s.attendanceDate || s.attendance_date;
+    if ((!from || dStr >= from) && (!to || dStr <= to)) {
+      validSessionIds.add(s.id);
+    }
+  });
+
+  const countedRecordKeys = new Set<string>();
+
+  // 3. Process Firestore Records
+  if (isFirebaseConfigured() && validSessionIds.size > 0) {
+    try {
+      const recSnap = await collections.attendanceRecords().get();
+      recSnap.docs.forEach(doc => {
+        const r = doc.data();
+        const sessId = r.sessionId || r.attendance_session_id;
+        const key = doc.id || `${sessId}-${r.studentId || r.student_id}`;
+        if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
+          countedRecordKeys.add(key);
+          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+          if (isPres) present++;
+          else absent++;
+          marked++;
+        }
+      });
+    } catch (err: any) {
+      console.warn('[AttendanceReport] Firestore summary records error:', err.message);
+    }
+  }
+
+  // 4. Process In-Memory Records
+  memAttendanceRecords.forEach(r => {
+    const sessId = r.sessionId || r.attendance_session_id;
+    const key = r.id || `${sessId}-${r.studentId || r.student_id}`;
+    if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
+      countedRecordKeys.add(key);
+      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+      if (isPres) present++;
+      else absent++;
+      marked++;
+    }
+  });
 
   const percentage = marked > 0 ? Number(((present / marked) * 100).toFixed(2)) : 0;
   return { present, absent, marked, percentage };
@@ -144,7 +164,58 @@ export async function studentAttendanceReport(
     } catch {}
   }
 
-  // Fallback: Query from in-memory and Firestore
+  // ── Step 1: Load Real Students for this School from Firestore ──
+  const schoolStudents = new Map<string, any>();
+  if (isFirebaseConfigured()) {
+    try {
+      const studSnap = await collections.students().get();
+      studSnap.docs.forEach(doc => {
+        const d = doc.data();
+        const docSid = d.school_id || d.schoolId;
+        if (!isGlobal && schoolId && docSid && !isSameSchool(docSid, schoolId)) return;
+        if (d.is_active === false || d.status === 'ARCHIVED' || d.status === 'DELETED') return;
+        schoolStudents.set(doc.id, { id: doc.id, ...d });
+      });
+    } catch (err: any) {
+      console.warn('[AttendanceReport] Failed to load students from Firestore:', err.message);
+    }
+  }
+
+  // Only Greenwood test school uses demoStudents fallback if Firestore is completely empty
+  if (schoolStudents.size === 0 && (!schoolId || isTestSchool(schoolId))) {
+    demoStudents.forEach(s => {
+      schoolStudents.set(s.id, s);
+    });
+  }
+
+  // ── Step 2: Fetch Attendance Sessions for this School in Date Range ──
+  const validSessions = new Map<string, any>();
+  if (isFirebaseConfigured()) {
+    try {
+      const sessSnap = await collections.attendanceSessions().get();
+      sessSnap.docs.forEach(doc => {
+        const d = doc.data();
+        const docSid = d.school_id || d.schoolId;
+        if (!isGlobal && schoolId && docSid && !isSameSchool(docSid, schoolId)) return;
+        const dStr = d.attendanceDate || d.attendance_date;
+        if ((!from || dStr >= from) && (!to || dStr <= to)) {
+          validSessions.set(doc.id, { id: doc.id, ...d });
+        }
+      });
+    } catch (err: any) {
+      console.warn('[AttendanceReport] Failed to load sessions from Firestore:', err.message);
+    }
+  }
+
+  memAttendanceSessions.forEach(s => {
+    if (!isGlobal && schoolId && !isSameSchool(s.schoolId, schoolId)) return;
+    const dStr = s.attendanceDate || s.attendance_date;
+    if ((!from || dStr >= from) && (!to || dStr <= to)) {
+      validSessions.set(s.id, s);
+    }
+  });
+
+  // ── Step 3: Populate Student Map with School's Enrolled Students ──
   const studentMap = new Map<string, {
     student_id: string;
     student_name: string;
@@ -157,90 +228,87 @@ export async function studentAttendanceReport(
     attendance_percentage: number;
   }>();
 
-  // Helper to record student day
-  const recordStudent = (stId: string, name: string, roll: any, cName: string, sName: string, isPres: boolean) => {
+  schoolStudents.forEach(s => {
+    if (studentId && s.id !== studentId) return;
+    const rawCls = s.class_number !== undefined && s.class_number !== null
+      ? (s.class_number === -1 ? 'L-KG' : s.class_number === 0 ? 'U-KG' : String(s.class_number))
+      : (s.className || s.class_name || s.class_id || '10');
+    studentMap.set(s.id, {
+      student_id: s.id,
+      student_name: s.name || s.fullName || s.full_name || 'Student',
+      roll: s.roll_number || s.rollNumber || '—',
+      class_name: String(rawCls).replace(/^cls-/, ''),
+      section_name: String(s.section_name || s.section || 'A').toUpperCase(),
+      present_days: 0,
+      absent_days: 0,
+      marked_days: 0,
+      attendance_percentage: 0
+    });
+  });
+
+  // ── Step 4: Aggregate Real Attendance Records from Firestore & In-Memory ──
+  const processedKeys = new Set<string>();
+
+  const processRecord = (r: any) => {
+    const sessId = r.sessionId || r.attendance_session_id;
+    const sess = validSessions.get(sessId);
+    if (!sess && validSessions.size > 0) return;
+
+    const stId = String(r.studentId || r.student_id || '');
+    if (!stId) return;
     if (studentId && stId !== studentId) return;
+
+    const key = `${sessId || r.attendanceDate || r.attendance_date}-${stId}`;
+    if (processedKeys.has(key)) return;
+    processedKeys.add(key);
+
     if (!studentMap.has(stId)) {
+      const rawCls = sess?.className || sess?.classNumber || sess?.class_number || '10';
       studentMap.set(stId, {
         student_id: stId,
-        student_name: name || 'Student',
-        roll: roll || '1',
-        class_name: String(cName || '10'),
-        section_name: String(sName || 'A'),
+        student_name: r.studentName || r.student_name || 'Student',
+        roll: r.rollNumber || r.roll_number || '—',
+        class_name: String(rawCls).replace(/^cls-/, ''),
+        section_name: String(sess?.sectionName || sess?.section_name || 'A').toUpperCase(),
         present_days: 0,
         absent_days: 0,
         marked_days: 0,
         attendance_percentage: 0
       });
     }
+
     const rec = studentMap.get(stId)!;
+    const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
     rec.marked_days++;
     if (isPres) rec.present_days++;
     else rec.absent_days++;
-    rec.attendance_percentage = Number(((rec.present_days / rec.marked_days) * 100).toFixed(2));
+    rec.attendance_percentage = rec.marked_days > 0 ? Number(((rec.present_days / rec.marked_days) * 100).toFixed(2)) : 0;
   };
 
-  // 1. In-memory
-  memAttendanceRecords.forEach(r => {
-    if (!isGlobal && schoolId && !isSameSchool(r.schoolId, schoolId)) return;
-    const d = r.attendanceDate || r.attendance_date;
-    if ((from && d < from) || (to && d > to)) return;
-    const isPres = r.is_present || r.status === 'PRESENT';
-    recordStudent(r.studentId, r.studentName || '', r.rollNumber, '10', 'A', isPres);
-  });
-
-  // 2. Cloud Firestore
-  if (studentMap.size === 0 && isFirebaseConfigured()) {
+  if (isFirebaseConfigured() && validSessions.size > 0) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
-      const validSessions = new Map<string, any>();
-      sessSnap.docs.forEach(doc => {
-        const d = doc.data();
-        const docSid = d.school_id || d.schoolId;
-        if (!isGlobal && schoolId && docSid && !isSameSchool(docSid, schoolId)) return;
-        const dStr = d.attendanceDate || d.attendance_date;
-        if ((!from || dStr >= from) && (!to || dStr <= to)) {
-          validSessions.set(doc.id, d);
-        }
+      const recSnap = await collections.attendanceRecords().get();
+      recSnap.docs.forEach(doc => {
+        processRecord(doc.data());
       });
-
-      if (validSessions.size > 0) {
-        const recSnap = await collections.attendanceRecords().get();
-        recSnap.docs.forEach(doc => {
-          const r = doc.data();
-          const sess = validSessions.get(r.sessionId || r.attendance_session_id);
-          if (sess) {
-            const isPres = r.status === 'PRESENT' || r.is_present === true || r.isPresent === true;
-            const stId = String(r.studentId || r.student_id || '');
-            const stName = r.studentName || r.student_name || '';
-            const roll = r.rollNumber || r.roll_number || '1';
-            const cName = sess.classNumber ?? sess.class_number ?? '10';
-            const sName = sess.sectionName || sess.section_name || 'A';
-            recordStudent(stId, stName, roll, cName, sName, isPres);
-          }
-        });
-      }
     } catch (err: any) {
-      console.warn('[AttendanceReport] Firestore student report error:', err.message);
+      console.warn('[AttendanceReport] Failed to process Firestore attendance records:', err.message);
     }
   }
 
+  memAttendanceRecords.forEach(r => {
+    processRecord(r);
+  });
+
+  // ── Step 5: Return Actual Student Records (No Fake Seed Data) ──
   if (studentMap.size > 0) {
-    return Array.from(studentMap.values()).sort((a, b) => String(a.roll).localeCompare(String(b.roll), undefined, { numeric: true }));
+    return Array.from(studentMap.values()).sort((a, b) =>
+      String(a.roll).localeCompare(String(b.roll), undefined, { numeric: true }) ||
+      a.student_name.localeCompare(b.student_name)
+    );
   }
 
-  // Fallback demo students
-  return demoStudents.slice(0, 5).map((s, idx) => ({
-    student_id: s.id,
-    student_name: s.name,
-    roll: s.roll_number || idx + 1,
-    class_name: String(s.class_number || '10'),
-    section_name: s.section_name || 'A',
-    present_days: 19,
-    absent_days: 1,
-    marked_days: 20,
-    attendance_percentage: 95.0
-  }));
+  return [];
 }
 
 export async function dailyAttendanceReport(
@@ -280,11 +348,38 @@ export async function dailyAttendanceReport(
     } catch {}
   }
 
-  // Fallback: Group in-memory and Firestore records by date
   const dayMap = new Map<string, { attendance_date: string; present: number; absent: number; marked: number; percentage: number }>();
 
-  const addRecord = (dateStr: string, isPres: boolean) => {
-    if ((from && dateStr < from) || (to && dateStr > to)) return;
+  const validSessions = new Map<string, string>();
+  if (isFirebaseConfigured()) {
+    try {
+      const sessSnap = await collections.attendanceSessions().get();
+      sessSnap.docs.forEach(doc => {
+        const d = doc.data();
+        const docSid = d.school_id || d.schoolId;
+        if (!isGlobal && schoolId && docSid && !isSameSchool(docSid, schoolId)) return;
+        const dStr = d.attendanceDate || d.attendance_date;
+        if ((!from || dStr >= from) && (!to || dStr <= to)) {
+          validSessions.set(doc.id, dStr);
+        }
+      });
+    } catch {}
+  }
+
+  memAttendanceSessions.forEach(s => {
+    if (!isGlobal && schoolId && !isSameSchool(s.schoolId, schoolId)) return;
+    const dStr = s.attendanceDate || s.attendance_date;
+    if ((!from || dStr >= from) && (!to || dStr <= to)) {
+      validSessions.set(s.id, dStr);
+    }
+  });
+
+  const processed = new Set<string>();
+  const addDayRecord = (dateStr: string, isPres: boolean, key: string) => {
+    if (!dateStr || (from && dateStr < from) || (to && dateStr > to)) return;
+    if (processed.has(key)) return;
+    processed.add(key);
+
     if (!dayMap.has(dateStr)) {
       dayMap.set(dateStr, { attendance_date: dateStr, present: 0, absent: 0, marked: 0, percentage: 0 });
     }
@@ -295,47 +390,33 @@ export async function dailyAttendanceReport(
     d.percentage = Number(((d.present / d.marked) * 100).toFixed(1));
   };
 
-  memAttendanceRecords.forEach(r => {
-    if (!isGlobal && schoolId && !isSameSchool(r.schoolId, schoolId)) return;
-    const d = r.attendanceDate || r.attendance_date;
-    const isPres = r.is_present || r.status === 'PRESENT';
-    addRecord(d, isPres);
-  });
-
-  if (dayMap.size === 0 && isFirebaseConfigured()) {
+  if (isFirebaseConfigured() && validSessions.size > 0) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
-      const validSessions = new Map<string, any>();
-      sessSnap.docs.forEach(doc => {
-        const d = doc.data();
-        const docSid = d.school_id || d.schoolId;
-        if (!isGlobal && schoolId && docSid && !isSameSchool(docSid, schoolId)) return;
-        const dStr = d.attendanceDate || d.attendance_date;
-        if ((!from || dStr >= from) && (!to || dStr <= to)) {
-          validSessions.set(doc.id, dStr);
+      const recSnap = await collections.attendanceRecords().get();
+      recSnap.docs.forEach(doc => {
+        const r = doc.data();
+        const sessId = r.sessionId || r.attendance_session_id;
+        const dStr = validSessions.get(sessId) || r.attendanceDate || r.attendance_date;
+        if (dStr) {
+          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+          addDayRecord(dStr, isPres, doc.id || `${sessId}-${r.studentId}`);
         }
       });
-
-      if (validSessions.size > 0) {
-        const recSnap = await collections.attendanceRecords().get();
-        recSnap.docs.forEach(doc => {
-          const r = doc.data();
-          const dStr = validSessions.get(r.sessionId || r.attendance_session_id);
-          if (dStr) {
-            const isPres = r.status === 'PRESENT' || r.is_present === true || r.isPresent === true;
-            addRecord(dStr, isPres);
-          }
-        });
-      }
-    } catch (err: any) {
-      console.warn('[AttendanceReport] Firestore daily report error:', err.message);
-    }
+    } catch {}
   }
+
+  memAttendanceRecords.forEach(r => {
+    const sessId = r.sessionId || r.attendance_session_id;
+    const dStr = validSessions.get(sessId) || r.attendanceDate || r.attendance_date;
+    if (dStr) {
+      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+      addDayRecord(dStr, isPres, r.id || `${sessId}-${r.studentId}`);
+    }
+  });
 
   if (dayMap.size > 0) {
     return Array.from(dayMap.values()).sort((a, b) => a.attendance_date.localeCompare(b.attendance_date));
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  return [{ attendance_date: todayStr, present: 9, absent: 1, marked: 10, percentage: 90.0 }];
+  return [];
 }

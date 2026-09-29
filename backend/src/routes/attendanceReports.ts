@@ -35,10 +35,6 @@ router.get('/', async (req: Request, res: Response) => {
     }
     res.json(await attendanceSummary(sid, from, to));
   } catch (_e: any) {
-    const sid = schoolId(req);
-    if (sid && isTestSchool(sid)) {
-      return res.json({ present: 17, absent: 3, marked: 20, percentage: 85.0 });
-    }
     res.json({ present: 0, absent: 0, marked: 0, percentage: 0 });
   }
 });
@@ -55,10 +51,6 @@ router.get('/summary', async (req: Request, res: Response) => {
     }
     res.json(await attendanceSummary(sid, from, to));
   } catch (_e: any) {
-    const sid = schoolId(req);
-    if (sid && isTestSchool(sid)) {
-      return res.json({ present: 17, absent: 3, marked: 20, percentage: 85.0 });
-    }
     res.json({ present: 0, absent: 0, marked: 0, percentage: 0 });
   }
 });
@@ -74,11 +66,7 @@ router.get('/students', async (req: Request, res: Response) => {
     }
     res.json(await studentAttendanceReport(sid, from, to, studentId));
   } catch (_e: any) {
-    res.json([
-      { student_id: 'st-01', student_name: 'Aarav Sharma', roll: 1, class_name: '8', section_name: 'A', present_days: 18, absent_days: 2, marked_days: 20, attendance_percentage: 90 },
-      { student_id: 'st-02', student_name: 'Ananya Verma', roll: 2, class_name: '8', section_name: 'A', present_days: 19, absent_days: 1, marked_days: 20, attendance_percentage: 95 },
-      { student_id: 'st-03', student_name: 'Rohan Gupta', roll: 3, class_name: '8', section_name: 'A', present_days: 16, absent_days: 4, marked_days: 20, attendance_percentage: 80 }
-    ]);
+    res.json([]);
   }
 });
 
@@ -92,9 +80,7 @@ router.get('/daily', async (req: Request, res: Response) => {
     }
     res.json(await dailyAttendanceReport(sid, from, to));
   } catch (_e: any) {
-    res.json([
-      { attendance_date: new Date().toISOString().slice(0,10), present: 9, absent: 1, total: 10, percentage: 90 }
-    ]);
+    res.json([]);
   }
 });
 
@@ -110,10 +96,7 @@ router.get('/export/csv', async (req: Request, res: Response) => {
     try {
       records = await studentAttendanceReport(sid, from, to);
     } catch {
-      records = [
-        { student_name: 'Aarav Sharma', roll: 101, class_name: '8', section_name: 'A', present_days: 18, absent_days: 2, marked_days: 20, attendance_percentage: 90 },
-        { student_name: 'Ananya Verma', roll: 102, class_name: '8', section_name: 'A', present_days: 19, absent_days: 1, marked_days: 20, attendance_percentage: 95 }
-      ];
+      records = [];
     }
 
     const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Sessions', 'Attendance Rate (%)'];
@@ -152,11 +135,9 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     try {
       records = await studentAttendanceReport(sid, from, to);
     } catch {
-      records = [
-        { student_name: 'Aarav Sharma', roll: 101, class_name: '8', section_name: 'A', present_days: 18, absent_days: 2, marked_days: 20, attendance_percentage: 90 },
-        { student_name: 'Ananya Verma', roll: 102, class_name: '8', section_name: 'A', present_days: 19, absent_days: 1, marked_days: 20, attendance_percentage: 95 }
-      ];
+      records = [];
     }
+
 
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
     res.setHeader('Content-Type', 'application/pdf');
