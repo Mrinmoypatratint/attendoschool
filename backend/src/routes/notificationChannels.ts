@@ -307,8 +307,8 @@ r.get('/smtp', ...adminOnly, async (req: AuthRequest, res) => {
 
     res.json({
       ...cfg,
-      username: cfg.username || env.smtpUser || 'rajbsmv@gmail.com',
-      password: cfg.password || env.smtpPass || 'ovmz huhs fxnx inlq',
+      username: cfg.username || env.smtpUser || '',
+      password: cfg.password || env.smtpPass || '',
       isSuperAdmin,
       isManagedBySuperAdmin: true,
       hasConfiguredCredentials: Boolean((cfg.username || env.smtpUser) && (cfg.password || env.smtpPass))

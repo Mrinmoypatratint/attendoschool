@@ -18,7 +18,7 @@ export function cleanEnv(val: string | undefined, fallback: string = ''): string
 
 export function cleanSmtpPass(val: string | undefined, fallback: string = ''): string {
   let p = cleanEnv(val, fallback);
-  // Gmail app passwords are 16 letters, displayed as 4 groups of 4: "ovmz huhs fxnx inlq"
+  // Gmail app passwords are 16 letters, displayed as 4 groups of 4: "abcd efgh ijkl mnop"
   // Remove whitespace if it matches standard 16-character 4-group app password or general space-separated token
   if (/^[a-zA-Z]{4}(\s+[a-zA-Z]{4}){3}$/.test(p.trim())) {
     p = p.replace(/\s+/g, '');
@@ -36,9 +36,9 @@ export const env = {
   razorpayWebhookSecret: cleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET, ''),
   smtpHost: cleanEnv(process.env.SMTP_HOST, 'smtp.gmail.com'),
   smtpPort: Number(cleanEnv(process.env.SMTP_PORT, '465')),
-  smtpUser: cleanEnv(process.env.SMTP_USER, 'rajbsmv@gmail.com'),
-  smtpPass: cleanSmtpPass(process.env.SMTP_PASS, 'ovmz huhs fxnx inlq'),
-  smtpFrom: cleanEnv(process.env.SMTP_FROM, 'AttendoSchool Superadmin <rajbsmv@gmail.com>'),
+  smtpUser: cleanEnv(process.env.SMTP_USER, ''),
+  smtpPass: cleanSmtpPass(process.env.SMTP_PASS, ''),
+  smtpFrom: cleanEnv(process.env.SMTP_FROM, 'AttendoSchool Notifications <no-reply@attendoschool.com>'),
   companyName: cleanEnv(process.env.COMPANY_NAME, 'School Attendance SaaS'),
   companyGstin: cleanEnv(process.env.COMPANY_GSTIN, ''),
   companyAddress: cleanEnv(process.env.COMPANY_ADDRESS, ''),
@@ -62,7 +62,7 @@ export const env = {
   resendApiKey: cleanEnv(process.env.RESEND_API_KEY, ''),
   resendFrom: cleanEnv(process.env.RESEND_FROM, ''),
   brevoApiKey: cleanEnv(process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY, ''),
-  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, 'rajbsmv@gmail.com'),
+  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, ''),
   brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool Superadmin'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
   appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),

@@ -64,7 +64,10 @@ r.get('/email-status', (_req, res) => {
 // ── Send a real test email to verify SMTP on the live server ──
 r.post('/email-test', async (req, res) => {
   const { to, port, host, encryption } = req.body || {};
-  const recipient = to || env.smtpUser || 'rajbsmv@gmail.com';
+  const recipient = to || env.smtpUser;
+  if (!recipient) {
+    return res.status(400).json({ success: false, message: 'Recipient email is required for SMTP test' });
+  }
 
   try {
     const result = await testSmtpConnection('global', recipient, {

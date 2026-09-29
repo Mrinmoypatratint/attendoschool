@@ -8162,9 +8162,9 @@ function NotificationCenter(){
               </label>
             </div>
             <div>
-              <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(e.g. rajbsmv@gmail.com)</span>
+              <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(e.g. notifications@school.edu)</span>
                 <input 
-                  placeholder="e.g. rajbsmv@gmail.com"
+                  placeholder="e.g. notifications@school.edu"
                   value={smtp.username || ''} 
                   onChange={e => setSmtp({ ...smtp, username: e.target.value })}
                 />
@@ -8175,7 +8175,7 @@ function NotificationCenter(){
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <input 
                     type={showPass ? 'text' : 'password'}
-                    placeholder="e.g. ovmz huhs fxnx inlq"
+                    placeholder="e.g. 16-digit App Password"
                     value={smtp.password || ''} 
                     onChange={e => setSmtp({ ...smtp, password: e.target.value })}
                     style={{ flex: 1 }}

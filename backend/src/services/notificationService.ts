@@ -68,12 +68,12 @@ export interface NotificationLog {
 let globalSmtpConfig: GlobalSmtpConfig = {
   host: cleanEnv(env.smtpHost, 'smtp.gmail.com'),
   port: Number(env.smtpPort) || 465,
-  username: cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
-  password: cleanSmtpPass(env.smtpPass, 'ovmz huhs fxnx inlq'),
+  username: cleanEnv(env.smtpUser, ''),
+  password: cleanSmtpPass(env.smtpPass, ''),
   encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
-  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
+  defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : cleanEnv(env.smtpUser, ''),
   defaultSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'AttendoSchool'),
-  defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, 'rajbsmv@gmail.com')
+  defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, '')
 };
 
 /**
@@ -115,8 +115,8 @@ export function persistSmtpConfigToEnv(config: {
     envUpdates['EMAIL_ENABLED'] = config.isEnabled ? 'true' : 'false';
   }
 
-  // Construct standard RFC email from header: e.g. "AttendoSchool <rajbsmv@gmail.com>"
-  const fromEmail = cleanEnv(config.senderEmail) || cleanEnv(config.username) || globalSmtpConfig.defaultSenderEmail || cleanEnv(env.smtpUser) || 'rajbsmv@gmail.com';
+  // Construct standard RFC email from header: e.g. "AttendoSchool <no-reply@attendoschool.com>"
+  const fromEmail = cleanEnv(config.senderEmail) || cleanEnv(config.username) || globalSmtpConfig.defaultSenderEmail || cleanEnv(env.smtpUser) || '';
   const fromName = cleanEnv(config.senderName) || globalSmtpConfig.defaultSenderName || env.smtpFromName || 'AttendoSchool';
   if (fromEmail) {
     envUpdates['SMTP_FROM'] = `${fromName} <${fromEmail}>`;
@@ -1338,14 +1338,14 @@ export interface SmtpSendResult {
 
 /**
  * Sends transactional email via Brevo (formerly Sendinblue) HTTPS REST API over port 443.
- * Brevo allows sending from any verified email (e.g. rajbsmv@gmail.com) without requiring custom domain DNS.
+ * Brevo allows sending from any verified email without requiring custom domain DNS.
  * Port 443 is never blocked by cloud firewalls (Render Free tier, AWS, etc.).
  */
 export async function sendViaBrevo(
   apiKey: string,
   mailOptions: any
 ): Promise<{ messageId: string }> {
-  let senderEmail = env.brevoSenderEmail || cleanEnv(env.smtpUser, 'rajbsmv@gmail.com');
+  let senderEmail = env.brevoSenderEmail || cleanEnv(env.smtpUser, '');
   let senderName = env.brevoSenderName || env.smtpFromName || 'AttendoSchool Superadmin';
 
   if (mailOptions.from) {
@@ -1393,7 +1393,7 @@ export async function sendViaBrevo(
 /**
  * Sends email directly through user's own Gmail account via a free Google Apps Script Webhook Relay.
  * Runs 100% over HTTPS Port 443 (never blocked by Render Free Tier).
- * Emails are sent directly from rajbsmv@gmail.com and appear in your Gmail Sent folder!
+ * Emails are sent directly from your configured Gmail account and appear in your Gmail Sent folder!
  */
 export async function sendViaGoogleAppsScriptRelay(
   relayUrl: string,
@@ -1448,8 +1448,8 @@ export async function sendMailWithDualPortFallback(
   }
 ): Promise<SmtpSendResult> {
   const host = cleanEnv(config.host || globalSmtpConfig.host || env.smtpHost, 'smtp.gmail.com');
-  const user = cleanEnv(config.username || globalSmtpConfig.username || env.smtpUser, 'rajbsmv@gmail.com');
-  const pass = cleanSmtpPass(config.password || globalSmtpConfig.password || env.smtpPass, 'ovmz huhs fxnx inlq');
+  const user = cleanEnv(config.username || globalSmtpConfig.username || env.smtpUser, '');
+  const pass = cleanSmtpPass(config.password || globalSmtpConfig.password || env.smtpPass, '');
 
   // Determine primary port and encryption
   const primaryPort = Number(config.port) || Number(globalSmtpConfig.port) || (host.includes('gmail.com') ? 465 : 587);
@@ -1707,8 +1707,8 @@ async function deliver(
 
     const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
     const port = Number(cfg.port || env.smtpPort || 465);
-    const user = cleanEnv(cfg.username || env.smtpUser, 'rajbsmv@gmail.com');
-    const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'ovmz huhs fxnx inlq');
+    const user = cleanEnv(cfg.username || env.smtpUser, '');
+    const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
     const from = cfg.senderName
       ? `"${cfg.senderName}" <${cfg.senderEmail || user}>`
       : (cfg.senderEmail || env.smtpFrom || user);
@@ -1903,8 +1903,8 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
   const cfg = customConfig ? { ...getSchoolSmtpConfig(schoolId), ...customConfig } : getSchoolSmtpConfig(schoolId);
   const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
   const port = Number(cfg.port || env.smtpPort || 465);
-  const user = cleanEnv(cfg.username || env.smtpUser, 'rajbsmv@gmail.com');
-  const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'ovmz huhs fxnx inlq');
+  const user = cleanEnv(cfg.username || env.smtpUser, '');
+  const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
 
   if (!host || !user || !pass) {
     return {

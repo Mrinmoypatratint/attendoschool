@@ -146,10 +146,10 @@ export let systemSettings = {
   // SMTP settings (managed exclusively by Superadmin)
   smtpHost: env.smtpHost || "smtp.gmail.com",
   smtpPort: Number(env.smtpPort) || 587,
-  smtpUsername: env.smtpUser || "rajbsmv@gmail.com",
-  smtpPassword: env.smtpPass || "ovmz huhs fxnx inlq",
+  smtpUsername: env.smtpUser || "",
+  smtpPassword: env.smtpPass || "",
   smtpEncryption: (env.smtpPort === 465 ? "SSL/TLS" : "STARTTLS") as "SSL/TLS" | "STARTTLS" | "NONE",
-  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || "rajbsmv@gmail.com"),
+  smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || ""),
   smtpSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "AttendoSchool")
 };
 

@@ -15,8 +15,8 @@ async function runTests() {
   const backendEnvPath = path.resolve(__dirname, '../.env');
   const rootEnvPath = path.resolve(__dirname, '../../.env');
 
-  const targetUser = env.smtpUser || 'rajbsmv@gmail.com';
-  const targetPass = env.smtpPass || 'ovmz huhs fxnx inlq';
+  const targetUser = env.smtpUser || 'mock-admin@demo-school.local';
+  const targetPass = env.smtpPass || 'mock-dummy-smtp-pass';
 
   // Test 1: Verify initial configuration
   const globalCfg = getGlobalSmtpConfig();
