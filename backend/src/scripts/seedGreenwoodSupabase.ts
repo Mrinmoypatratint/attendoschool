@@ -110,6 +110,8 @@ async function seedGreenwoodSupabase() {
 
     // 5. Seed Standard Classes (Class 5 to 12) & Sections (A, B) for Greenwood
     console.log('📚 Seeding Greenwood Classes (Class 5–12) & Sections (A, B)...');
+    let class10Id: string | null = null;
+    let section10AId: string | null = null;
     for (let c = 5; c <= 12; c++) {
       const clsRes = await client.query(`
         INSERT INTO classes (school_id, class_number)
@@ -119,15 +121,71 @@ async function seedGreenwoodSupabase() {
       `, [greenwoodSchoolId, c]);
 
       const classId = clsRes.rows[0]?.id;
+      if (c === 10) class10Id = classId;
       if (classId) {
         for (const secName of ['A', 'B']) {
-          await client.query(`
+          const secRes = await client.query(`
             INSERT INTO sections (school_id, class_id, name)
             VALUES ($1, $2, $3)
-            ON CONFLICT (class_id, name) DO NOTHING;
+            ON CONFLICT (class_id, name) DO UPDATE SET name = EXCLUDED.name
+            RETURNING id;
           `, [greenwoodSchoolId, classId, secName]);
+          if (c === 10 && secName === 'A') {
+            section10AId = secRes.rows[0]?.id;
+          }
         }
       }
+    }
+
+    // 6. Seed Super Admin
+    console.log('👑 Seeding Super Admin (superadmin@attendance.local)...');
+    await client.query(`
+      INSERT INTO users (school_id, name, email, password_hash, role, is_active, updated_at)
+      VALUES (NULL, $1, $2, $3, 'SUPER_ADMIN', true, NOW())
+      ON CONFLICT (email) DO UPDATE SET
+        name = EXCLUDED.name,
+        password_hash = EXCLUDED.password_hash,
+        role = 'SUPER_ADMIN',
+        is_active = true,
+        updated_at = NOW();
+    `, ['Company Super Admin', 'superadmin@attendance.local', passwordHash]);
+
+    // 7. Seed Student (Rohan Sharma)
+    if (class10Id && section10AId) {
+      console.log('🎒 Seeding Student (student@greenwood.local)...');
+      const studentRecordId = '00000000-0000-0000-0000-000000000099';
+      const userRes = await client.query(`
+        INSERT INTO users (school_id, name, email, password_hash, role, is_active, updated_at)
+        VALUES ($1, $2, $3, $4, 'STUDENT', true, NOW())
+        ON CONFLICT (email) DO UPDATE SET
+          school_id = EXCLUDED.school_id,
+          name = EXCLUDED.name,
+          password_hash = EXCLUDED.password_hash,
+          role = 'STUDENT',
+          is_active = true,
+          updated_at = NOW()
+        RETURNING id;
+      `, [greenwoodSchoolId, 'Rohan Sharma', 'student@greenwood.local', passwordHash]);
+
+      const studentUserId = userRes.rows[0]?.id;
+
+      await client.query(`
+        INSERT INTO students (id, user_id, school_id, class_id, section_id, roll_number, admission_number, name, email, parent_name, parent_sms_number, is_active, updated_at)
+        VALUES ($1, $2, $3, $4, $5, '25', 'ADM-2026-001', 'Rohan Sharma', 'student@greenwood.local', 'Rajesh Sharma', '+91 98765 43210', true, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          user_id = EXCLUDED.user_id,
+          school_id = EXCLUDED.school_id,
+          class_id = EXCLUDED.class_id,
+          section_id = EXCLUDED.section_id,
+          roll_number = EXCLUDED.roll_number,
+          admission_number = EXCLUDED.admission_number,
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          parent_name = EXCLUDED.parent_name,
+          parent_sms_number = EXCLUDED.parent_sms_number,
+          is_active = true,
+          updated_at = NOW();
+      `, [studentRecordId, studentUserId, greenwoodSchoolId, class10Id, section10AId]);
     }
 
     console.log('\n═════════════════════════════════════════════════════════════════');
