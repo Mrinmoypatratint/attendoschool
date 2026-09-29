@@ -19,6 +19,7 @@
     "seed:firestore": "tsx src/scripts/seedFirestore.ts",
     "test:firebase": "tsx src/scripts/verifyFirebaseConnection.ts",
     "test:dual-db": "tsx src/scripts/testDualDatabase.ts",
+    "migrate:firebase-to-supabase": "tsx src/scripts/migrateFirebaseToSupabase.ts",
     "backup:firestore": "tsx src/scripts/exportFullBackup.ts",
     "backup:watch": "tsx src/scripts/backupWatcher.ts",
     "emulator:firestore": "npx --package=firebase-tools firebase emulators:start --only firestore",
