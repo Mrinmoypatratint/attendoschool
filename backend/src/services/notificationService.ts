@@ -67,10 +67,10 @@ export interface NotificationLog {
 // Global SMTP settings derived from .env with fallback defaults
 let globalSmtpConfig: GlobalSmtpConfig = {
   host: env.smtpHost || 'smtp.gmail.com',
-  port: Number(env.smtpPort) || 587,
+  port: Number(env.smtpPort) || 465,
   username: env.smtpUser || 'rajbsmv@gmail.com',
   password: env.smtpPass || 'ovmz huhs fxnx inlq',
-  encryption: env.smtpPort === 465 ? 'SSL/TLS' : 'STARTTLS',
+  encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
   defaultSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || 'rajbsmv@gmail.com'),
   defaultSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : 'AttendoSchool'),
   defaultReplyTo: env.smtpReplyTo || (env.smtpUser || 'rajbsmv@gmail.com')
@@ -1314,6 +1314,147 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
   };
 }
 
+export interface SmtpSendResult {
+  messageId: string;
+  usedPort: number;
+  usedEncryption: string;
+  fallbackTriggered: boolean;
+  primaryError?: string;
+}
+
+/**
+ * Resilient SMTP mail dispatcher with strict cloud timeouts and automatic dual-port fallback (465 SSL/TLS <-> 587 STARTTLS).
+ * Prevents requests from hanging indefinitely on cloud platforms (Render, Hostinger VPS, AWS, etc.)
+ * where outbound port 587 STARTTLS handshake may stall or get blocked by firewall rules.
+ */
+export async function sendMailWithDualPortFallback(
+  mailOptions: any,
+  config: {
+    host?: string;
+    port?: number | string;
+    username?: string;
+    password?: string;
+    encryption?: 'SSL/TLS' | 'STARTTLS' | 'NONE' | string;
+  }
+): Promise<SmtpSendResult> {
+  const host = config.host || globalSmtpConfig.host || env.smtpHost || 'smtp.gmail.com';
+  const user = config.username || globalSmtpConfig.username || env.smtpUser;
+  const pass = config.password || globalSmtpConfig.password || env.smtpPass;
+
+  // Determine primary port and encryption
+  const primaryPort = Number(config.port) || Number(globalSmtpConfig.port) || (host.includes('gmail.com') ? 465 : 587);
+  const primaryEncryption = config.encryption || (primaryPort === 465 ? 'SSL/TLS' : 'STARTTLS');
+  const primarySecure = primaryPort === 465 || primaryEncryption === 'SSL/TLS';
+
+  // Determine fallback port (swap 465 <-> 587)
+  const fallbackPort = primaryPort === 465 ? 587 : 465;
+  const fallbackEncryption = fallbackPort === 465 ? 'SSL/TLS' : 'STARTTLS';
+  const fallbackSecure = fallbackPort === 465;
+
+  const createTransport = (port: number, secure: boolean) =>
+    nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      connectionTimeout: 8000, // 8s to establish TCP connection
+      greetingTimeout: 8000,   // 8s for SMTP banner
+      socketTimeout: 15000,    // 15s data stream
+      tls: { rejectUnauthorized: false }
+    });
+
+  // 1. Try primary port
+  try {
+    const primaryTransporter = createTransport(primaryPort, primarySecure);
+    const info = await primaryTransporter.sendMail(mailOptions);
+    return {
+      messageId: info.messageId || `EMAIL-${Date.now()}`,
+      usedPort: primaryPort,
+      usedEncryption: primaryEncryption,
+      fallbackTriggered: false
+    };
+  } catch (primaryErr: any) {
+    const errMsg = primaryErr.message || '';
+    const errCode = primaryErr.code || '';
+    const isConnErr =
+      errCode === 'ETIMEDOUT' ||
+      errCode === 'ECONNREFUSED' ||
+      errCode === 'ESOCKETTIMEDOUT' ||
+      errCode === 'EHOSTUNREACH' ||
+      errCode === 'ENETUNREACH' ||
+      errMsg.toLowerCase().includes('timeout') ||
+      errMsg.toLowerCase().includes('greeting') ||
+      errMsg.toLowerCase().includes('connect') ||
+      errMsg.toLowerCase().includes('handshake');
+
+    if (!isConnErr) {
+      throw primaryErr;
+    }
+
+    console.warn(`[SMTP Resiliency] Primary port ${primaryPort} connection failed (${errCode || errMsg}). Attempting automatic fallback to port ${fallbackPort}...`);
+
+    // 2. Try fallback port
+    try {
+      const fallbackTransporter = createTransport(fallbackPort, fallbackSecure);
+      const info = await fallbackTransporter.sendMail(mailOptions);
+      console.log(`[SMTP Resiliency] Fallback to port ${fallbackPort} succeeded! MessageId: ${info.messageId}`);
+
+      // Adaptively update active port & encryption so subsequent emails don't pay the timeout penalty
+      globalSmtpConfig.port = fallbackPort;
+      globalSmtpConfig.encryption = fallbackEncryption as any;
+
+      return {
+        messageId: info.messageId || `EMAIL-${Date.now()}`,
+        usedPort: fallbackPort,
+        usedEncryption: fallbackEncryption,
+        fallbackTriggered: true,
+        primaryError: errMsg
+      };
+    } catch (fallbackErr: any) {
+      console.error(`[SMTP Resiliency] Both primary (${primaryPort}) and fallback (${fallbackPort}) ports failed.`);
+      console.error(`[SMTP Resiliency] Primary: ${errMsg} | Fallback: ${fallbackErr.message}`);
+
+      // 3. Fallback to HTTPS REST API (Resend) if configured (works seamlessly across Render free tier egress firewalls)
+      if (env.resendApiKey) {
+        try {
+          console.log(`[Email Dispatch] Attempting HTTPS delivery via Resend API (bypassing blocked cloud SMTP ports)...`);
+          const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: mailOptions.from || globalSmtpConfig.defaultSenderEmail || 'AttendoSchool <onboarding@resend.dev>',
+              to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
+              subject: mailOptions.subject,
+              html: mailOptions.html,
+              text: mailOptions.text
+            })
+          });
+          const resendData: any = await resendRes.json();
+          if (resendRes.ok && resendData?.id) {
+            console.log(`[Email Dispatch] Resend HTTPS delivery succeeded! ID: ${resendData.id}`);
+            return {
+              messageId: resendData.id,
+              usedPort: 443,
+              usedEncryption: 'HTTPS_REST',
+              fallbackTriggered: true,
+              primaryError: errMsg
+            };
+          } else {
+            console.warn(`[Email Dispatch] Resend returned error:`, resendData?.message);
+          }
+        } catch (resendErr: any) {
+          console.warn(`[Email Dispatch] Resend fallback attempt failed:`, resendErr.message);
+        }
+      }
+
+      throw primaryErr;
+    }
+  }
+}
+
 // ── TRANSPORT DELIVER FUNCTION (Direct Nodemailer SMTP & Mock Sandbox) ──
 async function deliver(
   channel: Channel,
@@ -1335,20 +1476,12 @@ async function deliver(
     }
 
     const host = cfg.host || env.smtpHost;
-    const port = Number(cfg.port || env.smtpPort || 587);
+    const port = Number(cfg.port || env.smtpPort || 465);
     const user = cfg.username || env.smtpUser;
     const pass = cfg.password || env.smtpPass;
     const from = cfg.senderName
       ? `"${cfg.senderName}" <${cfg.senderEmail || user}>`
       : (cfg.senderEmail || env.smtpFrom || user);
-
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: cfg.encryption === 'SSL/TLS' || port === 465,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false }
-    });
 
     const emailSubject = subject || (emailData?.student_name ? `Attendance Notice: ${emailData.student_name}` : 'AttendoSchool Notification');
     let finalHtml = htmlBody || `<p>${message.replace(/\n/g, '<br/>')}</p>`;
@@ -1366,22 +1499,31 @@ async function deliver(
     }
 
     try {
-      const info = await transporter.sendMail({
-        from,
-        replyTo: cfg.replyTo || env.smtpReplyTo || undefined,
-        to: recipient,
-        subject: emailSubject,
-        text: message,
-        html: finalHtml,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        headers: {
-          'Auto-Submitted': 'auto-generated',
-          'Precedence': 'bulk',
-          'X-Entity-Ref-ID': `attendoschool-${Date.now()}`
+      const sendResult = await sendMailWithDualPortFallback(
+        {
+          from,
+          replyTo: cfg.replyTo || env.smtpReplyTo || undefined,
+          to: recipient,
+          subject: emailSubject,
+          text: message,
+          html: finalHtml,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          headers: {
+            'Auto-Submitted': 'auto-generated',
+            'Precedence': 'bulk',
+            'X-Entity-Ref-ID': `attendoschool-${Date.now()}`
+          }
+        },
+        {
+          host,
+          port,
+          username: user,
+          password: pass,
+          encryption: cfg.encryption
         }
-      });
+      );
 
-      return info.messageId || `EMAIL-${Date.now()}`;
+      return sendResult.messageId || `EMAIL-${Date.now()}`;
     } catch (sendErr: any) {
       if (
         process.env.NODE_ENV === 'test' ||
@@ -1530,7 +1672,7 @@ export async function queueAbsentNotifications(sessionId: string) {
 export async function testSmtpConnection(schoolId: string, testRecipient: string, customConfig?: Partial<SchoolSmtpConfig>) {
   const cfg = customConfig ? { ...getSchoolSmtpConfig(schoolId), ...customConfig } : getSchoolSmtpConfig(schoolId);
   const host = cfg.host || env.smtpHost;
-  const port = Number(cfg.port || env.smtpPort || 587);
+  const port = Number(cfg.port || env.smtpPort || 465);
   const user = cfg.username || env.smtpUser;
   const pass = cfg.password || env.smtpPass;
 
@@ -1542,15 +1684,6 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
       message: `SMTP test verified in sandbox environment (Target: ${host || 'smtp.local'}:${port})`
     };
   }
-
-  const isSecure = cfg.encryption === 'SSL/TLS' || port === 465;
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: isSecure,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false }
-  });
 
   const from = cfg.senderName ? `"${cfg.senderName}" <${cfg.senderEmail || user}>` : (cfg.senderEmail || user);
   const testTemplate = renderEmailTemplate('TEST_EMAIL', { host, port, school_name: 'AttendoSchool Verification' });
@@ -1568,19 +1701,34 @@ export async function testSmtpConnection(schoolId: string, testRecipient: string
   }
 
   try {
-    const info = await transporter.sendMail({
-      from,
-      to: testRecipient,
-      subject: testTemplate.subject,
-      text: testTemplate.text,
-      html: testHtml,
-      attachments: attachments.length > 0 ? attachments : undefined
-    });
+    const sendResult = await sendMailWithDualPortFallback(
+      {
+        from,
+        to: testRecipient,
+        subject: testTemplate.subject,
+        text: testTemplate.text,
+        html: testHtml,
+        attachments: attachments.length > 0 ? attachments : undefined
+      },
+      {
+        host,
+        port,
+        username: user,
+        password: pass,
+        encryption: cfg.encryption
+      }
+    );
 
     return {
       success: true,
-      messageId: info.messageId,
-      message: 'Test verification email delivered successfully via SMTP server!'
+      messageId: sendResult.messageId,
+      usedPort: sendResult.usedPort,
+      usedEncryption: sendResult.usedEncryption,
+      fallbackTriggered: sendResult.fallbackTriggered,
+      primaryError: sendResult.primaryError,
+      message: sendResult.fallbackTriggered
+        ? `Delivered successfully via fallback port ${sendResult.usedPort} (Primary port ${port} timed out/blocked: ${sendResult.primaryError})`
+        : `Test verification email delivered successfully via SMTP server (${host}:${sendResult.usedPort})!`
     };
   } catch (err: any) {
     // Only sandbox in true local development with demo/test credentials

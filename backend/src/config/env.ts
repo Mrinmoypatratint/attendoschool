@@ -15,7 +15,7 @@ export const env = {
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpPort: Number(process.env.SMTP_PORT || 465),
   smtpUser: process.env.SMTP_USER || 'rajbsmv@gmail.com',
   smtpPass: process.env.SMTP_PASS || 'ovmz huhs fxnx inlq',
   smtpFrom: process.env.SMTP_FROM || 'AttendoSchool Superadmin <rajbsmv@gmail.com>',
@@ -39,6 +39,7 @@ export const env = {
   emailMaxRetries: Number(process.env.EMAIL_MAX_RETRIES || 4),
   smtpReplyTo: process.env.SMTP_REPLY_TO || '',
   smtpFromName: process.env.SMTP_FROM_NAME || 'AttendoSchool Notifications',
+  resendApiKey: process.env.RESEND_API_KEY || '',
   appBaseUrl: process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'https://attendoschool.optinetinnovations.in',
 };
 

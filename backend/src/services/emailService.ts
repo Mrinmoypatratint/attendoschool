@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { env } from '../config/env';
-import { getLogoAttachment, escapeHtml } from './notificationService';
+import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback } from './notificationService';
 
 function configured() {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom);
@@ -140,21 +140,22 @@ AttendoSchool Billing Operations`;
 </body>
 </html>`;
 
-  const transporter = nodemailer.createTransport({
-    host: env.smtpHost,
-    port: env.smtpPort,
-    secure: env.smtpPort === 465,
-    auth: { user: env.smtpUser, pass: env.smtpPass }
-  });
-
-  await transporter.sendMail({
-    from: env.smtpFrom,
-    to,
-    subject,
-    text,
-    html,
-    attachments
-  });
+  await sendMailWithDualPortFallback(
+    {
+      from: env.smtpFrom,
+      to,
+      subject,
+      text,
+      html,
+      attachments
+    },
+    {
+      host: env.smtpHost,
+      port: env.smtpPort,
+      username: env.smtpUser,
+      password: env.smtpPass
+    }
+  );
 }
 
 export interface PasswordResetEmailOptions {
@@ -355,31 +356,32 @@ AttendoSchool Enterprise Campus Management
   // If SMTP is properly configured in environment, dispatch via nodemailer
   if (configured()) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: env.smtpHost,
-        port: env.smtpPort,
-        secure: env.smtpPort === 465,
-        auth: { user: env.smtpUser, pass: env.smtpPass },
-        headers: {
-          'X-Entity-Ref-ID': `attendoschool-auth-${resetToken.slice(0, 16)}`,
-          'X-Priority': '3',
-          'Precedence': 'bulk',
-          'Auto-Submitted': 'auto-generated'
+      const sendResult = await sendMailWithDualPortFallback(
+        {
+          from: fromSender,
+          to,
+          subject: emailSubject,
+          text: textContent,
+          html: htmlContent,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          messageId: `<pwd-${Date.now()}-${crypto.randomBytes(4).toString('hex')}@attendoschool.local>`,
+          headers: {
+            'X-Entity-Ref-ID': `attendoschool-auth-${resetToken.slice(0, 16)}`,
+            'X-Priority': '3',
+            'Precedence': 'bulk',
+            'Auto-Submitted': 'auto-generated'
+          }
+        },
+        {
+          host: env.smtpHost,
+          port: env.smtpPort,
+          username: env.smtpUser,
+          password: env.smtpPass
         }
-      });
+      );
 
-      const info = await transporter.sendMail({
-        from: fromSender,
-        to,
-        subject: emailSubject,
-        text: textContent,
-        html: htmlContent,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        messageId: `<pwd-${Date.now()}-${crypto.randomBytes(4).toString('hex')}@attendoschool.local>`
-      });
-
-      console.log(`[EmailService] Password setup email sent to ${to} (MessageID: ${info.messageId})`);
-      return { success: true, messageId: info.messageId, resetUrl };
+      console.log(`[EmailService] Password setup email sent to ${to} (MessageID: ${sendResult.messageId}, Port: ${sendResult.usedPort})`);
+      return { success: true, messageId: sendResult.messageId, resetUrl };
     } catch (err: any) {
       console.warn(`[EmailService] SMTP send failed (${err.message}). Logging clickable link to console.`);
     }

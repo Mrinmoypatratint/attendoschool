@@ -160,7 +160,7 @@ router.post('/login', async (req, res) => {
         userPayload.schoolName = userPayload.schoolName;
       }
 
-      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '8h' });
+      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
       return res.json({ token, user: userPayload, provider: 'firestore' });
     }
   } catch (fsErr: any) {
@@ -240,7 +240,7 @@ router.post('/login', async (req, res) => {
         userPayload.schoolName = u.school_name || selectedSchoolName;
       }
 
-      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '8h' });
+      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
       return res.json({ token, user: userPayload, provider: 'postgres' });
     }
   } catch (_e) {
@@ -279,7 +279,7 @@ router.post('/login', async (req, res) => {
       userPayload.schoolName = 'Greenwood International School';
     }
 
-    const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '8h' });
+    const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
     return res.json({ token, user: userPayload, provider: 'demo' });
   }
 
@@ -287,6 +287,15 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/me', requireAuth, (req: AuthRequest, res) => res.json({ user: req.user }));
+
+router.post('/refresh', requireAuth, (req: AuthRequest, res) => {
+  if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+  const userPayload: any = { ...req.user };
+  delete userPayload.iat;
+  delete userPayload.exp;
+  const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+  return res.json({ token, user: userPayload });
+});
 
 /* ────── Password Reset Architecture ────── */
 
