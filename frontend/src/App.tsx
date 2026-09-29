@@ -197,11 +197,32 @@ function Login() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           // Discard legacy mock entries if any
           const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== 'sch-1789773642845' && x.id !== 'school-delhi-001' && x.id !== 'school-central-001');
+          if (!clean.some((x: any) => x.name?.toUpperCase().includes('TINT') || x.code === 'TINT')) {
+            clean.push({
+              id: '00000000-0000-0000-0000-000000000002',
+              name: 'Techno International New Town (TINT)',
+              code: 'TINT',
+              address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+            });
+          }
           if (clean.length > 0) return clean;
         }
       }
     } catch {}
-    return [];
+    return [
+    {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Greenwood International School',
+      code: 'GIS001',
+      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Techno International New Town (TINT)',
+      code: 'TINT',
+      address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+    }
+  ];
   });
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
@@ -255,6 +276,15 @@ function Login() {
             code: String(i.code || 'SCH001'),
             address: String(i.address || '')
           }));
+
+        if (!cleanList.some(i => i.name.toUpperCase().includes('TINT') || i.code?.toUpperCase() === 'TINT')) {
+          cleanList.push({
+            id: '00000000-0000-0000-0000-000000000002',
+            name: 'Techno International New Town (TINT)',
+            code: 'TINT',
+            address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+          });
+        }
 
         setInstitutes(cleanList);
         try {
@@ -1631,6 +1661,42 @@ function Layout({children}:{children:React.ReactNode}){
   const [aySwitching, setAySwitching] = useState<string | null>(null);
   const ayDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Faculty In-App Inbox Drawer state
+  const [teacherDrawerOpen, setTeacherDrawerOpen] = useState(false);
+  const [teacherNotices, setTeacherNotices] = useState<any[]>([]);
+  const [teacherUnreadCount, setTeacherUnreadCount] = useState(0);
+  const [teacherLoadingNotices, setTeacherLoadingNotices] = useState(false);
+
+  async function loadTeacherNotices() {
+    if (user?.role !== 'TEACHER') return;
+    setTeacherLoadingNotices(true);
+    try {
+      const res = await api.get('/communication/teacher/inbox');
+      const data = res.data || [];
+      setTeacherNotices(data);
+      const unread = data.filter((n: any) => !n.read_at).length;
+      setTeacherUnreadCount(unread);
+    } catch (_e) {
+      setTeacherNotices([]);
+    } finally {
+      setTeacherLoadingNotices(false);
+    }
+  }
+
+  async function markTeacherNoticeRead(recipientId: string, noticeId: string) {
+    try {
+      await api.post(`/communication/teacher/read/${recipientId || noticeId}`);
+      setTeacherNotices(prev => prev.map(n => (n.id === noticeId || n.recipient_id === recipientId) ? { ...n, read_at: new Date().toISOString() } : n));
+      setTeacherUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (_e) {}
+  }
+
+  useEffect(() => {
+    if (user?.role === 'TEACHER') {
+      loadTeacherNotices();
+    }
+  }, [user?.role]);
+
   useEffect(() => {
     if (user?.role === 'SCHOOL_ADMIN') {
       api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
@@ -1793,7 +1859,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/communication', 'Announcements', MessageSquare],
     ['/notifications', 'Parent Communication', Bell],
     ['—', 'MANAGEMENT'],
-    ['/attendance-corrections', 'Corrections', CheckCircle2],
+    // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
     ['/people', 'People Directory', UserPlus],
     ['—', 'BILLING'],
@@ -1813,7 +1879,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/teacher-history','History',CalendarDays],
     ['—','ATTENDANCE'],
     ['/attendance-reports','Reports',FileText],
-    ['/attendance-corrections','Corrections',ArrowUpDown],
+    // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
     ['/offline-attendance','Offline Mode',Wifi],
   ];
@@ -2115,9 +2181,44 @@ function Layout({children}:{children:React.ReactNode}){
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
               2025–26 ACADEMIC SESSION
             </div>
-            <button className="header-icon-btn" title="Notifications" onClick={()=>nav(user.role==='TEACHER'?'/teacher-history':'/notifications')}>
+            <button
+              className="header-icon-btn"
+              title={user.role === 'TEACHER' ? 'Faculty In-App Inbox' : 'Notifications'}
+              style={{ position: 'relative' }}
+              onClick={() => {
+                if (user.role === 'TEACHER') {
+                  setTeacherDrawerOpen(true);
+                  loadTeacherNotices();
+                } else {
+                  nav('/notifications');
+                }
+              }}
+            >
               <Bell size={16}/>
-              <span className="header-badge-dot"></span>
+              {user.role === 'TEACHER' ? (
+                teacherUnreadCount > 0 ? (
+                  <span style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    minWidth: 16,
+                    height: 16,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 2px'
+                  }}>
+                    {teacherUnreadCount}
+                  </span>
+                ) : null
+              ) : (
+                <span className="header-badge-dot"></span>
+              )}
             </button>
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
@@ -2133,6 +2234,138 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
           </div>
         </header>
+      )}
+      {/* ── Faculty In-App Inbox Drawer (Teacher Portal) ── */}
+      {teacherDrawerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.55)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            zIndex: 1200
+          }}
+          onClick={() => setTeacherDrawerOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              backgroundColor: 'var(--surface, #ffffff)',
+              height: '100%',
+              overflowY: 'auto',
+              padding: '24px 20px',
+              boxSizing: 'border-box',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border, #e2e8f0)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Bell size={18} color="#2563eb" />
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Faculty In-App Inbox</h2>
+                {teacherUnreadCount > 0 && (
+                  <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10 }}>
+                    {teacherUnreadCount} unread
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setTeacherDrawerOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+              Official administrative notices and academic broadcasts strictly visible to faculty accounts.
+            </p>
+
+            {teacherLoadingNotices ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>Loading faculty inbox...</div>
+            ) : teacherNotices.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border, #cbd5e1)', borderRadius: 8, color: 'var(--text-muted, #94a3b8)' }}>
+                No notifications in your faculty inbox.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 14, overflowY: 'auto' }}>
+                {teacherNotices.map((n: any) => (
+                  <div
+                    key={n.id || n.recipient_id}
+                    style={{
+                      border: n.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
+                      borderRadius: 8,
+                      padding: 14,
+                      backgroundColor: n.read_at ? 'var(--surface-subtle, #f8fafc)' : 'var(--surface, #ffffff)',
+                      boxShadow: n.read_at ? 'none' : '0 1px 4px rgba(0,0,0,0.06)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          backgroundColor: n.priority === 'EMERGENCY' ? '#fee2e2' : n.priority === 'HIGH' ? '#ffedd5' : '#eff6ff',
+                          color: n.priority === 'EMERGENCY' ? '#b91c1c' : n.priority === 'HIGH' ? '#c2410c' : '#1d4ed8'
+                        }}
+                      >
+                        {n.priority}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                        {n.published_at ? new Date(n.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+                      </span>
+                    </div>
+
+                    <h4 style={{ margin: '0 0 6px', fontSize: 14.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                      {n.title}
+                    </h4>
+
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #334155)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                      {n.message}
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: 8 }}>
+                      {n.author_name ? (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>From: {n.author_name}</span>
+                      ) : <span />}
+
+                      {!n.read_at ? (
+                        <button
+                          type="button"
+                          onClick={() => markTeacherNoticeRead(n.recipient_id, n.id)}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            borderRadius: 4,
+                            border: '1px solid var(--border, #cbd5e1)',
+                            backgroundColor: 'transparent',
+                            color: 'var(--primary, #2563eb)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Mark as read
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>✓ Read</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {/* ── Global Search Command Palette ── */}
       {searchOpen && (
@@ -2436,6 +2669,7 @@ function AdminHome(){
         </div>
       </div>
 
+      {/* Temporarily commented out Attendance Corrections KPI card as requested
       <div className="kpi-card" onClick={() => nav('/attendance-corrections')}>
         <div className={`kpi-icon-wrap ${pendingCorrections > 0 ? 'amber' : 'slate'}`}><ArrowUpDown size={22} /></div>
         <div className="kpi-body">
@@ -2445,7 +2679,7 @@ function AdminHome(){
             {pendingCorrections > 0 ? 'Requires attention' : 'All clear'}
           </span>
         </div>
-      </div>
+      </div> */}
 
       <div className="kpi-card" onClick={() => nav('/subscription')}>
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
@@ -2588,13 +2822,14 @@ function AdminHome(){
             </div>
           </button>
 
+          {/* Temporarily commented out Attendance Corrections Quick Action as requested
           <button className="quick-action-tile" onClick={() => nav('/attendance-corrections')}>
             <div className="tile-icon orange"><CheckCircle2 size={18} /></div>
             <div className="tile-texts">
               <strong>Review Corrections</strong>
               <span>Approve or reject faculty requests</span>
             </div>
-          </button>
+          </button> */}
 
           <button className="quick-action-tile" onClick={() => nav('/communication')}>
             <div className="tile-icon purple"><MessageSquare size={18} /></div>
@@ -4181,6 +4416,8 @@ function Teachers(){
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
+  const [exportOpen,setExportOpen]=useState(false);
+  const [addTeacherPreview,setAddTeacherPreview]=useState(false);
   const [f,setF]=useState<any>({});
   const [saving,setSaving]=useState(false);
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
@@ -4384,15 +4621,66 @@ function Teachers(){
     }
   }
 
-  async function handleInitiateTeacherSave(e:React.FormEvent){
-    e.preventDefault();
+  function prepareExportData(): any[] {
+    const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : (filtered.length > 0 ? filtered : rows);
+    return list.map(r => {
+      let fn = r.first_name || r.firstName || '';
+      let ln = r.last_name || r.lastName || '';
+      if (!fn && !ln && r.name) {
+        const parts = r.name.split(' ');
+        fn = parts[0] || '';
+        ln = parts.slice(1).join(' ') || '';
+      }
+      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || `${fn} ${ln}`.trim());
+      const allocSummary = getTeacherAllocSummary(r.id);
+      
+      return {
+        'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
+        'Fist Name': fn,
+        'Last Name': ln,
+        'Full Name(Automatically generated)': fullName,
+        'Email_id': r.email || '',
+        'Class': allocSummary !== '—' ? allocSummary : '',
+        'Section': '',
+        'Status': r.is_active !== false ? 'Active' : 'Inactive',
+        'Designation': r.designation || 'Teacher'
+      };
+    });
+  }
+
+  function handleExportExcel() {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
+    XLSX.writeFile(wb, 'Faculty_Export.xlsx');
+  }
+
+  function handleExportCSV() {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'Faculty_Export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function handleInitiateTeacherSave(e: React.FormEvent) {
+    if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
-    const name = String(f.name || '').trim();
+    const firstName = String(f.firstName || '').trim();
+    const lastName = String(f.lastName || '').trim();
+    const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || f.name || '').trim();
+    const name = fullName;
     const email = String(f.email || '').trim().toLowerCase();
-    const employeeId = String(f.employeeId || f.employee_id || '').trim();
+    const employeeId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim();
 
     if (!name) {
-      alert('Validation Error: Please enter faculty member full name.');
+      alert('Validation Error: Please enter faculty member name.');
       return;
     }
     if (!email) {
@@ -4400,16 +4688,22 @@ function Teachers(){
       return;
     }
     if (!employeeId) {
-      alert('Validation Error: Please enter employee ID.');
+      alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
 
     const payload = {
+      ...f,
+      firstName,
+      lastName,
       name,
+      fullName,
       email,
       employeeId,
+      saviorNo: employeeId,
       employee_id: employeeId,
       mobile: f.mobile || '',
+      designation: f.designation || 'Teacher',
       is_active: f.is_active !== false,
       status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
       ...(f.password && f.password.trim() ? { password: f.password.trim() } : {}),
@@ -4421,7 +4715,8 @@ function Teachers(){
         title: 'Faculty Profile Details',
         fields: [
           { label: 'Full Name', value: name, color: 'blue' },
-          { label: 'Employee ID', value: employeeId, type: 'code' },
+          { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
+          { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
         ]
@@ -4448,6 +4743,7 @@ function Teachers(){
         email,
         employee_id: employeeId,
         mobile: f.mobile || '',
+        designation: f.designation || 'Teacher',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       },
       {
@@ -4455,6 +4751,7 @@ function Teachers(){
         email: 'Email Address',
         employee_id: 'Employee ID',
         mobile: 'Mobile Number',
+        designation: 'Designation',
         is_active: 'Status'
       }
     ) : [];
@@ -4489,7 +4786,7 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, mobile: payload.mobile, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -4611,16 +4908,28 @@ function Teachers(){
     }
   }
 
-  function downloadTemplate() {
-    const sample = [
-      { "Teacher Name": "Sunita Verma", "Email": "sunita.v@school.local", "Employee ID": "EMP010", "Mobile": "9876500001", "Default Password": "ChangeMe123!" },
-      { "Teacher Name": "Alok Mishra", "Email": "alok.m@school.local", "Employee ID": "EMP011", "Mobile": "9876500002", "Default Password": "ChangeMe123!" },
-      { "Teacher Name": "Rekha Sengupta", "Email": "rekha.s@school.local", "Employee ID": "EMP012", "Mobile": "9876500003", "Default Password": "ChangeMe123!" }
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-    XLSX.writeFile(wb, "teachers_import_template.xlsx");
+  async function downloadTemplate() {
+    try {
+      const res = await api.get('/teachers/template', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'teachers_import_template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Local fallback with exact requested headers
+      const sample = [
+        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      ];
+      const ws = XLSX.utils.json_to_sheet(sample);
+      ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
+      XLSX.writeFile(wb, "teachers_import_template.xlsx");
+    }
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -4633,13 +4942,38 @@ function Teachers(){
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        const mapped = json.map((r, idx) => ({
-          name: r["Teacher Name"] || r["Name"] || r["name"] || `Teacher ${idx + 1}`,
-          email: String(r["Email"] || r["Email Address"] || r["email"] || `teacher${idx+1}@school.local`).toLowerCase().trim(),
-          employeeId: String(r["Employee ID"] || r["Emp ID"] || r["employee_id"] || `EMP0${idx+10}`),
-          mobile: String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000'),
-          password: r["Default Password"] || r["Password"] || r["password"] || 'ChangeMe123!'
-        })).filter(x => x.name && x.email);
+        const mapped = json.map((r, idx) => {
+          const saviorNo = String(r["Savior_No"] || r["Savior No"] || r["savior_no"] || r["Employee ID"] || r["Employee Id/Savior_NO"] || r["Emp ID"] || r["employee_id"] || `EMP0${idx + 10}`).trim();
+          let firstName = String(r["Fist Name"] || r["First Name"] || r["firstName"] || '').trim();
+          let lastName = String(r["Last Name"] || r["lastName"] || '').trim();
+          const explicitFullName = String(r["Full Name(Automatically generated)"] || r["Full Name"] || r["Teacher Name"] || r["Name"] || r["name"] || '').trim();
+          if ((!firstName || !lastName) && explicitFullName) {
+            const parts = explicitFullName.split(' ');
+            if (!firstName) firstName = parts[0] || '';
+            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+          }
+          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
+          const email = String(r["Email_id"] || r["Email ID"] || r["Email"] || r["email"] || `teacher${idx + 1}@school.local`).toLowerCase().trim();
+          const mobile = String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000').trim();
+          const designation = String(r["Designation"] || r["designation"] || 'Teacher').trim();
+          const status = String(r["Status"] || r["status"] || 'Active').trim();
+          const className = String(r["Class"] || r["class"] || '').trim();
+          const sectionName = String(r["Section"] || r["section"] || 'A').trim().toUpperCase();
+          return {
+            saviorNo,
+            employeeId: saviorNo,
+            firstName,
+            lastName,
+            name,
+            email,
+            mobile,
+            designation,
+            status,
+            class: className,
+            section: sectionName,
+            emailStatus: 'Pending'
+          };
+        }).filter(x => x.name && x.email);
         setPreviewRows(mapped);
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
@@ -4653,7 +4987,7 @@ function Teachers(){
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
-      alert(`Successfully registered ${res.data.count} teachers!`);
+      alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
       setPreviewRows([]);
       load();
@@ -4675,6 +5009,7 @@ function Teachers(){
         <button 
           onClick={() => setImportOpen(true)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+          title="Import teachers via Excel spreadsheet or CSV with interactive preview"
         >
           <FileSpreadsheet size={16} /> Import Excel / CSV
         </button>
@@ -4763,18 +5098,20 @@ function Teachers(){
                 title="Select all"
               />
             </th>
-            <th>Employee ID</th>
+            <th>Employee Id/Savior_NO</th>
             <th>Teacher Name</th>
-            <th>Subjects & Classes</th>
+            <th>Designation</th>
+            <th>Assigned Classes</th>
             <th>Email</th>
             <th>Mobile</th>
+            <th>Email Delivery Status</th>
             <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -4784,13 +5121,23 @@ function Teachers(){
                   onChange={() => toggleSelect(x.id)}
                 />
               </td>
-              <td><code>{x.employee_id}</code></td>
-              <td><b>{x.name}</b></td>
-              <td style={{ fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
+              <td>
+                <b>{x.name}</b>
+              </td>
+              <td>
+                <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
+              </td>
+              <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span title={getTeacherAllocSummary(x.id)}>{getTeacherAllocSummary(x.id)}</span>
               </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
+              <td>
+                <span className={`badge ${x.email_status === 'Sent' ? 'active' : x.email_status === 'Failed' ? 'failed' : 'pending'}`} style={{ fontSize: 11 }}>
+                  {x.email_status === 'Sent' ? '✓ Sent' : x.email_status === 'Failed' ? '✕ Failed' : '● Pending'}
+                </span>
+              </td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -4855,20 +5202,61 @@ function Teachers(){
     )}
 
     {/* SINGLE TEACHER ADD / EDIT MODAL */}
-    {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
+    {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
       <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
-        <label>Teacher Full Name
-          <input required placeholder="Full Name (e.g. Rahul Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
+        {/* First Name + Last Name */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>First Name
+            <input
+              required
+              placeholder="First Name (e.g. Rahul)"
+              value={f.firstName || ''}
+              onChange={e => {
+                const fn = e.target.value;
+                const ln = f.lastName || '';
+                setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
+              }}
+            />
+          </label>
+          <label>Last Name
+            <input
+              placeholder="Last Name (e.g. Sharma)"
+              value={f.lastName || ''}
+              onChange={e => {
+                const ln = e.target.value;
+                const fn = f.firstName || '';
+                setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
+              }}
+            />
+          </label>
+        </div>
+
+        {/* Full Name — auto-computed, read-only */}
+        <label style={{ color: '#64748b', fontSize: 12 }}>
+          Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+          <input
+            readOnly
+            tabIndex={-1}
+            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            value={[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || ''}
+            placeholder="Full name will appear here automatically"
+          />
         </label>
+
         <label>Email Address (for Faculty Portal Login)
           <input required type="email" placeholder="teacher@school.local" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})}/>
         </label>
-        <label>Employee ID
-          <input required placeholder="EMP001" value={f.employeeId||''} onChange={e=>setF({...f,employeeId:e.target.value})}/>
+        <label>Employee Id / Savior_NO
+          <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
-        <label>Mobile Number
-          <input placeholder="Mobile Number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
-        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>Designation
+            <input placeholder="e.g. Senior Teacher, TGT Mathematics" value={f.designation||''} onChange={e=>setF({...f,designation:e.target.value})}/>
+          </label>
+          <label>Mobile Number
+            <input placeholder="10-digit mobile number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
+          </label>
+        </div>
 
         {editingTeacher && (
           <label>Account Status
@@ -4917,11 +5305,18 @@ function Teachers(){
           </label>
         </div>
 
-        <button type="submit" disabled={saving}>
-          {editingTeacher
-            ? (saving ? 'Saving changes...' : 'Save Changes')
-            : (saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher'))}
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => { setOpen(false); setEditingTeacher(null); setF({}); }}
+          >
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}>
+            {editingTeacher ? 'Preview & Update Teacher' : 'Preview & Save Teacher'}
+          </button>
+        </div>
       </form>
     </Modal>}
 
@@ -5035,21 +5430,29 @@ function Teachers(){
               <table>
                 <thead>
                   <tr>
-                    <th>Emp ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Mobile</th>
-                    <th>Default Password</th>
+                    <th>Savior_No</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Full Name</th>
+                    <th>Email ID</th>
+                    <th>Designation</th>
+                    <th>Class & Section</th>
+                    <th>Status</th>
+                    <th>Email Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {previewRows.map((r, i) => (
                     <tr key={i}>
-                      <td><code>{r.employeeId}</code></td>
+                      <td><code>{r.saviorNo || r.employeeId}</code></td>
+                      <td>{r.firstName || '—'}</td>
+                      <td>{r.lastName || '—'}</td>
                       <td><b>{r.name}</b></td>
                       <td>{r.email}</td>
-                      <td>{r.mobile}</td>
-                      <td><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>••••••••</span></td>
+                      <td>{r.designation || 'Teacher'}</td>
+                      <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
+                      <td><span className="badge active">{r.status || 'Active'}</span></td>
+                      <td><span className="badge pending">Pending Dispatch</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -5125,6 +5528,77 @@ function Teachers(){
       loading={deleteTeacherDialog.loading}
       error={deleteTeacherDialog.error}
     />
+
+    {/* ═══ EXPORT PREVIEW MODAL ═══ */}
+    {exportOpen && <Modal title="Export Faculty Directory (Preview)" close={()=>setExportOpen(false)}>
+      <div style={{ padding: '4px 2px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              Previewing <b>{prepareExportData().length}</b> faculty records for export
+            </div>
+            <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
+              Formatted with standardized template headers: Savior_No, Fist Name, Last Name, Full Name(Automatically generated), Email_id, Class, Section, Status, Designation
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button 
+              type="button" 
+              onClick={handleExportExcel}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+            >
+              <FileSpreadsheet size={15} /> Download Excel (.xlsx)
+            </button>
+            <button 
+              type="button" 
+              onClick={handleExportCSV}
+              className="btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={15} /> Download CSV (.csv)
+            </button>
+          </div>
+        </div>
+
+        <div className="preview-table-container" style={{ maxHeight: 360, overflowY: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Savior_No</th>
+                <th>Fist Name</th>
+                <th>Last Name</th>
+                <th>Full Name(Automatically generated)</th>
+                <th>Email_id</th>
+                <th>Class</th>
+                <th>Section</th>
+                <th>Status</th>
+                <th>Designation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {prepareExportData().slice(0, 15).map((r, i) => (
+                <tr key={i}>
+                  <td><code>{r['Savior_No'] || '—'}</code></td>
+                  <td>{r['Fist Name'] || '—'}</td>
+                  <td>{r['Last Name'] || '—'}</td>
+                  <td><b>{r['Full Name(Automatically generated)']}</b></td>
+                  <td>{r['Email_id']}</td>
+                  <td>{r['Class'] || '—'}</td>
+                  <td>{r['Section'] || '—'}</td>
+                  <td><span className="badge active">{r['Status']}</span></td>
+                  <td>{r['Designation']}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {prepareExportData().length > 15 && (
+          <p className="muted" style={{ fontSize: 11, margin: '8px 0 0', textAlign: 'center' }}>
+            Showing first 15 of {prepareExportData().length} faculty records in preview. Full dataset will be included in the export file.
+          </p>
+        )}
+      </div>
+    </Modal>}
   </Layout>
 }
 

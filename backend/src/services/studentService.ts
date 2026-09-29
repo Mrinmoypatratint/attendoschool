@@ -812,7 +812,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
        FROM announcements a
        LEFT JOIN users u ON u.id = a.created_by
        WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
-         AND (a.audience_type = 'SCHOOL' OR (a.audience_type = 'CLASS' AND a.class_id = $2) OR (a.audience_type = 'SECTION' AND a.section_id = $3))
+         AND (a.audience_type IN ('SCHOOL', 'STUDENT') OR (a.audience_type = 'CLASS' AND a.class_id = $2) OR (a.audience_type = 'SECTION' AND a.section_id = $3))
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
       [schoolId, st.class_id, st.section_id]
     );

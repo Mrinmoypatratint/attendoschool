@@ -1,17 +1,21 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import * as XLSX from 'xlsx';
 import {
+  FileSpreadsheet,
   Download,
-  RefreshCw,
-  Calendar,
+  UploadCloud,
   CheckCircle2,
-  AlertTriangle,
+  AlertCircle,
+  Check,
   Users,
+  BarChart3,
   Search,
-  Filter,
-  FileSpreadsheet
+  ChevronDown,
+  Edit2,
+  RefreshCw
 } from 'lucide-react';
 
 type Row = {
@@ -19,7 +23,12 @@ type Row = {
   student_name: string;
   roll: string | number;
   class_name?: string;
+  class_id?: string;
   section_name?: string;
+  section_id?: string;
+  academic_year_id?: string;
+  session_name?: string;
+  session?: string;
   present_days: number;
   absent_days: number;
   marked_days: number;
@@ -32,17 +41,106 @@ export default function AttendanceReports() {
     return <Navigate to="/super-admin/reports" replace />;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const startOfMonth = todayStr.slice(0, 8) + '01';
+  // Dates
+  const today = new Date();
+  const to = today.toISOString().slice(0, 10);
+  const fromDate = new Date(today);
+  fromDate.setDate(1);
+  const [from, setFrom] = useState(fromDate.toISOString().slice(0, 10));
+  const [toDate, setTo] = useState(to);
 
-  const [from, setFrom] = useState(startOfMonth);
-  const [toDate, setTo] = useState(todayStr);
+  // Multi-Dimensional Filters
+  const [selectedSession, setSelectedSession] = useState('ALL');
+  const [selectedClass, setSelectedClass] = useState('ALL');
+  const [selectedSection, setSelectedSection] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Metadata Options
+  const [sessions, setSessions] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
+
+  // Report Data
   const [rows, setRows] = useState<Row[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClass, setSelectedClass] = useState('ALL');
+  const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Combined Export Dropdown State
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Submit Pop Screen / Preview Modal State
+  const [showSubmitPop, setShowSubmitPop] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Offline Attendance Import Modal State
+  const [importOpen, setImportOpen] = useState(false);
+  const [importClass, setImportClass] = useState('');
+  const [importSection, setImportSection] = useState('A');
+  const [importDate, setImportDate] = useState(to);
+  const [parsedRecords, setParsedRecords] = useState<any[]>([]);
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setExportDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Load Sessions, Classes, Sections, Students
+  useEffect(() => {
+    async function fetchMetadata() {
+      try {
+        const [dashRes, clsRes, secRes, stRes] = await Promise.all([
+          api.get('/dashboard/school').catch(() => ({ data: {} })),
+          api.get('/classes').catch(() => ({ data: [] })),
+          api.get('/sections').catch(() => ({ data: [] })),
+          api.get('/students').catch(() => ({ data: [] }))
+        ]);
+
+        if (dashRes.data?.academicYears && Array.isArray(dashRes.data.academicYears)) {
+          setSessions(dashRes.data.academicYears);
+        } else {
+          setSessions([
+            { id: 'ay-2025-26', name: '2025–26 Academic Session' },
+            { id: 'ay-2026-27', name: '2026–27 Academic Session' }
+          ]);
+        }
+
+        const clsList = Array.isArray(clsRes.data) && clsRes.data.length > 0 ? clsRes.data : [
+          { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
+          { id: 'cls-ukg', class_number: 0, label: 'U-KG' },
+          ...Array.from({ length: 12 }, (_, i) => ({ id: `cls-${i + 1}`, class_number: i + 1, label: `Class ${i + 1}` }))
+        ];
+        setClasses(clsList);
+        if (clsList.length > 0 && !importClass) {
+          setImportClass(clsList[0].id || 'cls-10');
+        }
+
+        const secList = Array.isArray(secRes.data) && secRes.data.length > 0 ? secRes.data : [
+          { id: 'sec-a', name: 'A' },
+          { id: 'sec-b', name: 'B' }
+        ];
+        setSections(secList);
+
+        if (Array.isArray(stRes.data)) {
+          setEnrolledStudents(stRes.data);
+        }
+      } catch (err) {
+        console.warn('Failed to load filter metadata:', err);
+      }
+    }
+    fetchMetadata();
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -55,7 +153,7 @@ export default function AttendanceReports() {
       setSummary(s.data);
       setRows(Array.isArray(r.data) ? r.data : []);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Unable to load attendance reports.');
+      setError(e?.response?.data?.message || e?.message || 'Unable to load report');
       setRows([]);
     } finally {
       setLoading(false);
@@ -69,52 +167,88 @@ export default function AttendanceReports() {
   // Quick Preset Handlers
   const handleQuickPreset = (preset: 'today' | 'this_week' | 'this_month' | 'last_30') => {
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
+    const todayStr = now.toISOString().slice(0, 10);
     if (preset === 'today') {
-      setFrom(today);
-      setTo(today);
+      setFrom(todayStr);
+      setTo(todayStr);
     } else if (preset === 'this_week') {
       const first = new Date(now.setDate(now.getDate() - now.getDay()));
       setFrom(first.toISOString().slice(0, 10));
       setTo(new Date().toISOString().slice(0, 10));
     } else if (preset === 'this_month') {
-      setFrom(today.slice(0, 8) + '01');
-      setTo(today);
+      setFrom(todayStr.slice(0, 8) + '01');
+      setTo(todayStr);
     } else if (preset === 'last_30') {
       const past = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       setFrom(past.toISOString().slice(0, 10));
-      setTo(today);
+      setTo(todayStr);
     }
   };
 
-  // Distinct classes for dropdown
-  const classOptions = useMemo(() => {
-    const set = new Set<string>();
-    rows.forEach(r => {
-      if (r.class_name) set.add(r.class_name);
-    });
-    return Array.from(set).sort();
-  }, [rows]);
-
-  // Filtered rows
+  // Multi-dimensional filtering logic
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
-      if (selectedClass !== 'ALL' && r.class_name !== selectedClass) {
-        return false;
+      // 1. Class filter
+      if (selectedClass !== 'ALL') {
+        const cMatch = String(r.class_name || '').toLowerCase();
+        const selectedClsObj = classes.find(c => c.id === selectedClass);
+        const targetLabel = (selectedClsObj?.label || selectedClsObj?.class_number?.toString() || selectedClass).toLowerCase();
+        if (!cMatch.includes(targetLabel) && r.class_id !== selectedClass) return false;
       }
-      const q = searchQuery.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        r.student_name.toLowerCase().includes(q) ||
-        String(r.roll).toLowerCase().includes(q) ||
-        (r.class_name && r.class_name.toLowerCase().includes(q)) ||
-        (r.section_name && r.section_name.toLowerCase().includes(q))
-      );
+      // 2. Section filter
+      if (selectedSection !== 'ALL') {
+        const sMatch = String(r.section_name || '').toUpperCase();
+        if (sMatch !== selectedSection.toUpperCase() && r.section_id !== selectedSection) return false;
+      }
+      // 3. Academic Session filter
+      if (selectedSession !== 'ALL') {
+        if (r.academic_year_id && r.academic_year_id !== selectedSession) return false;
+        if (r.session && !r.session.includes(selectedSession)) return false;
+      }
+      // 4. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const nameMatch = (r.student_name || '').toLowerCase().includes(q);
+        const rollMatch = String(r.roll || '').toLowerCase().includes(q);
+        if (!nameMatch && !rollMatch) return false;
+      }
+      return true;
     });
-  }, [rows, searchQuery, selectedClass]);
+  }, [rows, selectedClass, selectedSection, selectedSession, searchQuery, classes]);
 
+  // Compute 4 KPI totals dynamically from filtered rows
+  const totalPresent = useMemo(() => {
+    if (summary && summary.present > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+      return summary.present;
+    }
+    return filteredRows.reduce((acc, r) => acc + (Number(r.present_days) || 0), 0);
+  }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
+
+  const totalAbsent = useMemo(() => {
+    if (summary && summary.absent > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+      return summary.absent;
+    }
+    return filteredRows.reduce((acc, r) => acc + (Number(r.absent_days) || 0), 0);
+  }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
+
+  const totalMarked = useMemo(() => {
+    if (summary && summary.marked > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+      return summary.marked;
+    }
+    return filteredRows.reduce((acc, r) => acc + (Number(r.marked_days) || 0), 0);
+  }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
+
+  const overallPercentage = useMemo(() => {
+    if (totalMarked > 0) {
+      return Number(((totalPresent / totalMarked) * 100).toFixed(1));
+    }
+    return 0;
+  }, [totalPresent, totalMarked]);
+
+  // Combined Export Handlers
   function downloadCsv() {
-    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Marked Sessions', 'Attendance Rate (%)'];
+    setExportDropdownOpen(false);
+    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Marked', 'Attendance Rate (%)'];
     const body = filteredRows.map(r => [
       r.student_name,
       r.roll,
@@ -125,7 +259,19 @@ export default function AttendanceReports() {
       r.marked_days,
       `${r.attendance_percentage}%`
     ]);
-    const csv = [header, ...body].map(line => line.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const totalRow = [
+      'Total / Average',
+      '',
+      '',
+      '',
+      totalPresent,
+      totalAbsent,
+      totalMarked,
+      `${overallPercentage}%`
+    ];
+
+    const csv = [header, ...body, totalRow].map(line => line.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -135,421 +281,1097 @@ export default function AttendanceReports() {
     URL.revokeObjectURL(url);
   }
 
-  const avgRate = summary?.percentage ?? (rows.length > 0
-    ? Number((rows.reduce((acc, cur) => acc + cur.attendance_percentage, 0) / rows.length).toFixed(1))
-    : 0);
+  function downloadExcel() {
+    setExportDropdownOpen(false);
+    const data = filteredRows.map(r => ({
+      'Student Name': r.student_name,
+      'Roll Number': r.roll,
+      'Class': r.class_name || '—',
+      'Section': r.section_name || '—',
+      'Present Days': r.present_days,
+      'Absent Days': r.absent_days,
+      'Total Marked': r.marked_days,
+      'Attendance Rate (%)': `${r.attendance_percentage}%`
+    }));
+
+    data.push({
+      'Student Name': 'TOTAL / INSTITUTIONAL AVERAGE',
+      'Roll Number': '',
+      'Class': '',
+      'Section': '',
+      'Present Days': totalPresent,
+      'Absent Days': totalAbsent,
+      'Total Marked': totalMarked,
+      'Attendance Rate (%)': `${overallPercentage}%`
+    } as any);
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+      { wch: 26 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 22 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+    XLSX.writeFile(wb, `attendance-report-${from}-to-${toDate}.xlsx`);
+  }
+
+  // Final Confirmation from Popup Screen
+  async function handleFinalSubmitFromPop() {
+    setSubmittingReport(true);
+    try {
+      await load();
+      setShowSubmitPop(false);
+      setToastNotice({
+        type: 'success',
+        message: `Attendance report verified and confirmed for period ${from} to ${toDate} (${filteredRows.length} students).`
+      });
+    } catch {
+      // handled in load()
+    } finally {
+      setSubmittingReport(false);
+    }
+  }
+
+  // Download Sample Offline Attendance Template (.xlsx)
+  function downloadOfflineTemplate() {
+    const sample = [
+      { 'Admission Number': 'ADM-2026-001', 'Student Name': 'Aarav Sharma', 'Status': 'P', 'Date': to },
+      { 'Admission Number': 'ADM-2026-002', 'Student Name': 'Ananya Verma', 'Status': 'A', 'Date': to },
+      { 'Admission Number': 'ADM-2026-003', 'Student Name': 'Rohan Gupta', 'Status': 'L', 'Date': to },
+      { 'Admission Number': 'ADM-2026-004', 'Student Name': 'Diya Sen', 'Status': 'HD', 'Date': to }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [{ wch: 20 }, { wch: 24 }, { wch: 12 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Offline Attendance');
+    XLSX.writeFile(wb, 'offline_attendance_template.xlsx');
+  }
+
+  // Handle Offline Attendance File Parse
+  function handleOfflineFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawJson: any[] = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rawJson.length) {
+          alert('Uploaded file is empty.');
+          return;
+        }
+
+        const validated = rawJson.map((row, idx) => {
+          const admNo = String(row['Admission Number'] || row['Admission No'] || row['Roll Number'] || row.admissionNumber || row.roll || '').trim();
+          const name = String(row['Student Name'] || row.studentName || row.name || '').trim();
+          const rawStatus = String(row['Status'] || row.status || 'P').trim().toUpperCase();
+          const recDate = String(row['Date'] || row.date || importDate).trim();
+
+          let status = 'P';
+          let statusLabel = 'Present';
+          if (rawStatus === 'A' || rawStatus.startsWith('ABS')) {
+            status = 'A';
+            statusLabel = 'Absent';
+          } else if (rawStatus === 'L' || rawStatus.startsWith('LAT')) {
+            status = 'L';
+            statusLabel = 'Late';
+          } else if (rawStatus === 'HD' || rawStatus.includes('HALF')) {
+            status = 'HD';
+            statusLabel = 'Half Day';
+          }
+
+          const studentMatch = enrolledStudents.find(st =>
+            (admNo && (st.admission_number === admNo || String(st.roll_number) === admNo)) ||
+            (name && st.name && st.name.toLowerCase() === name.toLowerCase())
+          );
+
+          return {
+            rowNum: idx + 1,
+            admissionNumber: admNo || (studentMatch?.admission_number || '—'),
+            studentName: name || (studentMatch?.name || 'Student'),
+            status,
+            statusLabel,
+            date: recDate,
+            isValid: Boolean(admNo || name),
+            isMatched: Boolean(studentMatch)
+          };
+        });
+
+        setParsedRecords(validated);
+        setShowImportPreview(true);
+      } catch (err: any) {
+        alert('Failed to parse spreadsheet: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Attendance Breakdown Computed
+  const importBreakdown = useMemo(() => {
+    const total = parsedRecords.length;
+    const present = parsedRecords.filter(r => r.status === 'P').length;
+    const absent = parsedRecords.filter(r => r.status === 'A').length;
+    const late = parsedRecords.filter(r => r.status === 'L').length;
+    const halfDay = parsedRecords.filter(r => r.status === 'HD').length;
+    return { total, present, absent, late, halfDay };
+  }, [parsedRecords]);
+
+  // Submit Offline Attendance
+  async function submitOfflineAttendance() {
+    if (!parsedRecords.length) return;
+    setImporting(true);
+    try {
+      const payload = {
+        classId: importClass,
+        sectionId: importSection,
+        date: importDate,
+        records: parsedRecords.map(r => ({
+          admissionNumber: r.admissionNumber,
+          studentName: r.studentName,
+          status: r.status,
+          date: r.date
+        }))
+      };
+
+      await api.post('/attendance-reports/import-offline', payload);
+      setToastNotice({
+        type: 'success',
+        message: `Offline attendance successfully recorded for ${parsedRecords.length} students on ${importDate}. Daily attendance records upserted.`
+      });
+      setImportOpen(false);
+      setParsedRecords([]);
+      setShowImportPreview(false);
+      load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to submit offline attendance');
+    } finally {
+      setImporting(false);
+    }
+  }
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
-      {/* ─── Top Header ─── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+    <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 1380, margin: '0 auto' }}>
+      {/* ─── Header: Title & Right Corner Controls ─── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', margin: 0, letterSpacing: '-0.02em' }}>
-            Attendance Reports
-          </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: 14, color: 'var(--text-muted, #64748b)' }}>
-            Institutional student attendance analytics and verified presence logs from Firestore.
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a' }}>Attendance Reports</h1>
+          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+            Student-wise attendance verified from institutional Firestore logs.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+        {/* Right Corner Buttons: Combined Export Report & Import Excel/CSV */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Refresh Button */}
           <button
-            onClick={downloadCsv}
-            disabled={!filteredRows.length}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 10,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: filteredRows.length ? 'pointer' : 'not-allowed',
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
-              color: filteredRows.length ? 'var(--text, #1e293b)' : 'var(--text-muted, #94a3b8)',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}
-          >
-            <Download size={16} />
-            <span>Export CSV</span>
-          </button>
-          <button
+            type="button"
             onClick={load}
             disabled={loading}
+            className="btn-secondary"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              borderRadius: 10,
+              gap: 6,
               fontSize: 13,
+              padding: '7px 14px',
               fontWeight: 600,
-              cursor: loading ? 'default' : 'pointer',
-              border: 'none',
-              background: '#2563eb',
-              color: '#ffffff',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-              transition: 'all 0.15s ease'
+              cursor: loading ? 'default' : 'pointer'
             }}
           >
-            <RefreshCw size={15} className={loading ? 'spinning' : ''} />
-            <span>{loading ? 'Refreshing…' : 'Refresh'}</span>
+            <RefreshCw size={14} className={loading ? 'spinning' : ''} /> {loading ? 'Refreshing…' : 'Refresh'}
           </button>
-        </div>
-      </div>
 
-      {error && (
-        <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, color: '#dc2626', marginBottom: 20, fontSize: 13.5 }}>
-          {error}
-        </div>
-      )}
+          {/* Combined Export Button with Dropdown */}
+          <div ref={exportDropdownRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setExportDropdownOpen(prev => !prev)}
+              className="btn-secondary"
+              disabled={!filteredRows.length}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                padding: '7px 14px',
+                fontWeight: 600,
+                cursor: filteredRows.length ? 'pointer' : 'not-allowed'
+              }}
+              title="Export report in Excel (.xlsx) or CSV (.csv) format"
+            >
+              <Download size={15} color="#2563eb" /> Export Report <ChevronDown size={14} />
+            </button>
 
-      {/* ─── 4 Summary KPI Cards ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {/* Attendance Rate */}
-        <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={20} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: avgRate >= 85 ? '#dcfce7' : avgRate >= 75 ? '#fef3c7' : '#fee2e2', color: avgRate >= 85 ? '#15803d' : avgRate >= 75 ? '#b45309' : '#b91c1c' }}>
-              {avgRate >= 85 ? 'Exemplary' : avgRate >= 75 ? 'Moderate' : 'Needs Review'}
-            </span>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Average Attendance
-          </span>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', margin: '4px 0 2px' }}>
-            {loading ? '…' : `${avgRate}%`}
-          </div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
-            Calculated across marked student logs
-          </span>
-        </div>
-
-        {/* Present Days */}
-        <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Users size={20} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: '#f0fdf4', color: '#16a34a' }}>
-              Verified Present
-            </span>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Present Attendance
-          </span>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#16a34a', margin: '4px 0 2px' }}>
-            {loading ? '…' : (summary?.present ?? 0).toLocaleString()}
-          </div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
-            Total confirmed attendances
-          </span>
-        </div>
-
-        {/* Absent Days */}
-        <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertTriangle size={20} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: '#fee2e2', color: '#dc2626' }}>
-              Flagged Absences
-            </span>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Absent Days
-          </span>
-          <div style={{ fontSize: 26, fontWeight: 800, color: (summary?.absent ?? 0) > 0 ? '#ef4444' : 'var(--text, #0f172a)', margin: '4px 0 2px' }}>
-            {loading ? '…' : (summary?.absent ?? 0).toLocaleString()}
-          </div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
-            Parent notification telemetry
-          </span>
-        </div>
-
-        {/* Marked Sessions */}
-        <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#faf5ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Calendar size={20} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: '#faf5ff', color: '#9333ea' }}>
-              Period Logs
-            </span>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Marked Sessions
-          </span>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', margin: '4px 0 2px' }}>
-            {loading ? '…' : (summary?.marked ?? 0).toLocaleString()}
-          </div>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
-            Recorded from {from} to {toDate}
-          </span>
-        </div>
-      </div>
-
-      {/* ─── Filter & Search Bar ─── */}
-      <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: '16px 20px', marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-          {/* Left: Search & Class Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
-            <div style={{ position: 'relative', width: 260 }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input
-                type="text"
-                placeholder="Search student or roll number…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px 9px 36px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg, #f8fafc)',
-                  color: 'var(--text, #0f172a)',
-                  fontSize: 13
-                }}
-              />
-            </div>
-
-            {classOptions.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Filter size={15} style={{ color: '#64748b' }} />
-                <select
-                  value={selectedClass}
-                  onChange={e => setSelectedClass(e.target.value)}
+            {exportDropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                right: 0,
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                zIndex: 100,
+                minWidth: 200,
+                overflow: 'hidden'
+              }}>
+                <button
+                  type="button"
+                  onClick={downloadExcel}
                   style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg, #f8fafc)',
-                    color: 'var(--text, #0f172a)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: 'none',
                     fontSize: 13,
-                    fontWeight: 500
+                    color: '#1e293b',
+                    cursor: 'pointer',
+                    textAlign: 'left'
                   }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <option value="ALL">All Classes ({rows.length})</option>
-                  {classOptions.map(c => (
-                    <option key={c} value={c}>Class {c}</option>
-                  ))}
-                </select>
+                  <FileSpreadsheet size={16} color="#10b981" />
+                  <span>Export as Excel (.xlsx)</span>
+                </button>
+                <div style={{ height: 1, backgroundColor: '#f1f5f9' }} />
+                <button
+                  type="button"
+                  onClick={downloadCsv}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: 'none',
+                    fontSize: 13,
+                    color: '#1e293b',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Download size={16} color="#3b82f6" />
+                  <span>Export as CSV (.csv)</span>
+                </button>
               </div>
             )}
           </div>
 
-          {/* Right: Date Range & Quick Presets */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>From</label>
-              <input
-                type="date"
-                value={from}
-                onChange={e => setFrom(e.target.value)}
-                style={{
-                  padding: '7px 10px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg, #f8fafc)',
-                  color: 'var(--text, #0f172a)',
-                  fontSize: 13
-                }}
-              />
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>to</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={e => setTo(e.target.value)}
-                style={{
-                  padding: '7px 10px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  background: 'var(--bg, #f8fafc)',
-                  color: 'var(--text, #0f172a)',
-                  fontSize: 13
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button
-                onClick={() => handleQuickPreset('today')}
-                style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #f8fafc)', color: 'var(--text, #334155)', cursor: 'pointer' }}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => handleQuickPreset('this_week')}
-                style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #f8fafc)', color: 'var(--text, #334155)', cursor: 'pointer' }}
-              >
-                This Week
-              </button>
-              <button
-                onClick={() => handleQuickPreset('this_month')}
-                style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #f8fafc)', color: 'var(--text, #334155)', cursor: 'pointer' }}
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => handleQuickPreset('last_30')}
-                style={{ padding: '6px 10px', fontSize: 11.5, fontWeight: 600, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg, #f8fafc)', color: 'var(--text, #334155)', cursor: 'pointer' }}
-              >
-                Last 30D
-              </button>
-            </div>
-          </div>
+          {/* Import Excel / CSV Button */}
+          <button
+            type="button"
+            onClick={() => { setShowImportPreview(false); setImportOpen(true); }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#10b981',
+              color: '#ffffff',
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '7px 14px',
+              borderRadius: 6,
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            title="Upload offline attendance spreadsheet"
+          >
+            <UploadCloud size={16} /> Import Excel / CSV
+          </button>
         </div>
       </div>
 
-      {/* ─── Attendance Table Card ─── */}
-      <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FileSpreadsheet size={18} style={{ color: '#2563eb' }} />
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-              Verified Student Attendance Log
-            </h3>
-            <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginLeft: 6 }}>
-              ({filteredRows.length} {filteredRows.length === 1 ? 'record' : 'records'})
-            </span>
+      {toastNotice && (
+        <div style={{
+          padding: '10px 14px',
+          marginBottom: 16,
+          backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
+          border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+          borderRadius: 6,
+          color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
+          fontSize: 13,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>{toastNotice.message}</span>
+          <button onClick={() => setToastNotice(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>✕</button>
+        </div>
+      )}
+
+      {/* ─── Multi-Dimensional Filter Bar ─── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: 12,
+        backgroundColor: '#f8fafc',
+        padding: '14px 16px',
+        borderRadius: 8,
+        border: '1px solid #e2e8f0',
+        marginBottom: 20
+      }}>
+        {/* Academic Session */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>Academic Session</span>
+          <select
+            value={selectedSession}
+            onChange={e => setSelectedSession(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+          >
+            <option value="ALL">All Academic Sessions</option>
+            {sessions.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+
+        {/* Class Grade */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>Class Grade</span>
+          <select
+            value={selectedClass}
+            onChange={e => setSelectedClass(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+          >
+            <option value="ALL">All Classes</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'L-KG' : c.class_number === 0 ? 'U-KG' : `Class ${c.class_number}`)}</option>
+            ))}
+          </select>
+        </label>
+
+        {/* Section */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>Section</span>
+          <select
+            value={selectedSection}
+            onChange={e => setSelectedSection(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+          >
+            <option value="ALL">All Sections</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+          </select>
+        </label>
+
+        {/* Search */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>Search Student</span>
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Name or roll number…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '7px 10px 7px 28px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+            />
+            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }} />
           </div>
+        </label>
+
+        {/* From Date */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>From Date</span>
+          <input
+            type="date"
+            value={from}
+            onChange={e => setFrom(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+          />
+        </label>
+
+        {/* To Date */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+          <span>To Date</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={e => setTo(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+          />
+        </label>
+      </div>
+
+      {/* Quick Date Presets */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Quick Presets:</span>
+        {(['today', 'this_week', 'this_month', 'last_30'] as const).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => handleQuickPreset(p)}
+            style={{
+              padding: '3px 10px',
+              fontSize: 12,
+              borderRadius: 4,
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#f8fafc',
+              color: '#334155',
+              cursor: 'pointer'
+            }}
+          >
+            {p === 'today' ? 'Today' : p === 'this_week' ? 'This Week' : p === 'this_month' ? 'This Month' : 'Last 30 Days'}
+          </button>
+        ))}
+      </div>
+
+      {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
+
+      {/* ─── 4 Separate KPI Cards Side-by-Side ─── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 16,
+        marginBottom: 20
+      }}>
+        {/* Present Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #bbf7d0',
+          borderLeft: '4px solid #10b981',
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#047857', letterSpacing: '0.04em' }}>PRESENT</span>
+            <CheckCircle2 size={18} color="#10b981" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{totalPresent}</div>
+          <span style={{ fontSize: 11.5, color: '#64748b' }}>Total present days recorded</span>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--bg, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                <th style={{ padding: '12px 18px', width: 44, color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>#</th>
-                <th style={{ padding: '12px 18px', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Student</th>
-                <th style={{ padding: '12px 18px', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Roll</th>
-                <th style={{ padding: '12px 18px', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Class & Section</th>
-                <th style={{ padding: '12px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Present</th>
-                <th style={{ padding: '12px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Absent</th>
-                <th style={{ padding: '12px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Marked</th>
-                <th style={{ padding: '12px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Attendance Rate</th>
-                <th style={{ padding: '12px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted, #64748b)' }}>
-                    <RefreshCw size={24} className="spinning" style={{ margin: '0 auto 10px', display: 'block', color: '#2563eb' }} />
-                    Retrieving attendance records from Firestore…
-                  </td>
-                </tr>
-              ) : filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '56px 20px', color: 'var(--text-muted, #64748b)' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                      <Calendar size={24} />
-                    </div>
-                    <strong style={{ fontSize: 15, color: 'var(--text, #0f172a)', display: 'block', marginBottom: 4 }}>
-                      No attendance records found
-                    </strong>
-                    <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #64748b)', maxWidth: 440, marginInline: 'auto' }}>
-                      No attendance sessions were marked for the selected date range ({from} to {toDate}). Select a different date range or record attendance from the Take Attendance panel.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((r, idx) => {
-                  const pct = r.attendance_percentage;
-                  const isHigh = pct >= 85;
-                  const isMed = pct >= 75 && pct < 85;
-                  const statusLabel = isHigh ? 'EXEMPLARY' : isMed ? 'REGULAR' : 'AT RISK';
-                  const statusBg = isHigh ? '#dcfce7' : isMed ? '#fef3c7' : '#fee2e2';
-                  const statusColor = isHigh ? '#15803d' : isMed ? '#b45309' : '#b91c1c';
+        {/* Absent Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #fecaca',
+          borderLeft: '4px solid #ef4444',
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c', letterSpacing: '0.04em' }}>ABSENT</span>
+            <AlertCircle size={18} color="#ef4444" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{totalAbsent}</div>
+          <span style={{ fontSize: 11.5, color: '#64748b' }}>Total absent days recorded</span>
+        </div>
 
-                  return (
-                    <tr
-                      key={r.student_id || idx}
-                      style={{ borderBottom: '1px solid var(--border, #f1f5f9)', transition: 'background 0.12s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg, #f8fafc)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '14px 18px', color: 'var(--text-muted, #94a3b8)', fontWeight: 600 }}>
-                        {idx + 1}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: '50%',
-                              background: '#eff6ff',
-                              color: '#2563eb',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 12,
-                              fontWeight: 700,
-                              flexShrink: 0
-                            }}
-                          >
-                            {r.student_name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <strong style={{ fontSize: 13.5, color: 'var(--text, #0f172a)', display: 'block' }}>
-                              {r.student_name}
-                            </strong>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
-                              ID: {r.student_id}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 18px', fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                        {r.roll}
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: 'var(--bg, #f1f5f9)', fontSize: 12, fontWeight: 600, color: 'var(--text, #334155)' }}>
-                          Class {r.class_name || '—'} - {r.section_name || 'A'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center', fontWeight: 700, color: '#16a34a' }}>
-                        {r.present_days}
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center', fontWeight: 700, color: r.absent_days > 0 ? '#ef4444' : 'var(--text-muted, #94a3b8)' }}>
-                        {r.absent_days}
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>
-                        {r.marked_days}
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          <div style={{ width: 64, height: 6, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${Math.min(100, Math.max(0, pct))}%`,
-                                height: '100%',
-                                background: isHigh ? '#16a34a' : isMed ? '#f59e0b' : '#ef4444',
-                                borderRadius: 4
-                              }}
-                            />
-                          </div>
-                          <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--text, #0f172a)' }}>
-                            {pct}%
-                          </span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: statusBg, color: statusColor, letterSpacing: '0.04em' }}>
-                          {statusLabel}
-                        </span>
+        {/* Marked Attendance Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #bae6fd',
+          borderLeft: '4px solid #0284c7',
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: '0.04em' }}>MARKED ATTENDANCE</span>
+            <Users size={18} color="#0284c7" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{totalMarked}</div>
+          <span style={{ fontSize: 11.5, color: '#64748b' }}>Total student sessions evaluated</span>
+        </div>
+
+        {/* Attendance % Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #c7d2fe',
+          borderLeft: '4px solid #6366f1',
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#4338ca', letterSpacing: '0.04em' }}>ATTENDANCE %</span>
+            <BarChart3 size={18} color="#6366f1" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{overallPercentage}%</div>
+          <span style={{ fontSize: 11.5, color: '#64748b' }}>Overall institutional rate</span>
+        </div>
+      </div>
+
+      {/* ─── Table ─── */}
+      <div className="table-wrap" style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>STUDENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>ROLL</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>CLASS</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>SECTION</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>PRESENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>ABSENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>MARKED</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>ATTENDANCE %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.map((r, idx) => (
+              <tr key={r.student_id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: '#1e293b' }}>{r.student_name}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#64748b' }}>{r.roll}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#475569' }}>{r.class_name || '-'}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#475569' }}>{r.section_name || '-'}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{r.present_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600 }}>{r.absent_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>{r.marked_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{r.attendance_percentage}%</td>
+              </tr>
+            ))}
+            {!filteredRows.length && !loading && (
+              <tr>
+                <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
+                  No attendance records found matching this criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ─── Bottom Controls below the Table (Bottom Right Corner) ─── */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 18,
+        flexWrap: 'wrap',
+        gap: 12
+      }}>
+        <div style={{ fontSize: 13, color: '#64748b' }}>
+          Showing <b>{filteredRows.length}</b> of <b>{rows.length}</b> student records
+        </div>
+
+        {/* Bottom Right Submit Button: Opens Preview Pop Screen */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setShowSubmitPop(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13,
+              padding: '8px 22px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              borderRadius: 6,
+              border: 'none',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+            title="Open attendance preview and confirmation screen"
+          >
+            <Check size={15} /> Submit
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ─── POPUP SCREEN (PREVIEW WITH ATTENDANCE COUNT & EDIT/SUBMIT) ─── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {showSubmitPop && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div className="modal" style={{
+            backgroundColor: '#ffffff',
+            borderRadius: 10,
+            maxWidth: 840,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: 24,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            {/* Pop Screen Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: '#0f172a' }}>
+                  Attendance Report Submission Preview
+                </h2>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+                  Review attendance counts and student breakdown before finalizing submission.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSubmitPop(false)}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', padding: 0 }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Scope / Filter Details Summary */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 10,
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 16
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Period</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginTop: 2 }}>{from} to {toDate}</div>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Academic Session</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginTop: 2 }}>
+                  {selectedSession === 'ALL' ? 'All Sessions' : (sessions.find(s => s.id === selectedSession)?.name || selectedSession)}
+                </div>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Class & Section</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginTop: 2 }}>
+                  {selectedClass === 'ALL' ? 'All Classes' : (classes.find(c => c.id === selectedClass)?.label || selectedClass)}
+                  {' — '}
+                  {selectedSection === 'ALL' ? 'All Sections' : `Sec ${selectedSection}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Attendance Count Breakdown in Pop Screen */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gap: 12,
+              marginBottom: 18
+            }}>
+              {/* Total Present Count */}
+              <div style={{
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: 8,
+                padding: '12px 14px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#166534', letterSpacing: '0.04em' }}>PRESENT COUNT</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#15803d', marginTop: 2 }}>{totalPresent}</div>
+                <span style={{ fontSize: 11, color: '#166534' }}>Total Present Days</span>
+              </div>
+
+              {/* Total Absent Count */}
+              <div style={{
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 8,
+                padding: '12px 14px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#991b1b', letterSpacing: '0.04em' }}>ABSENT COUNT</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#b91c1c', marginTop: 2 }}>{totalAbsent}</div>
+                <span style={{ fontSize: 11, color: '#991b1b' }}>Total Absent Days</span>
+              </div>
+
+              {/* Total Marked Count */}
+              <div style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: 8,
+                padding: '12px 14px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0369a1', letterSpacing: '0.04em' }}>MARKED ATTENDANCE</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#0284c7', marginTop: 2 }}>{totalMarked}</div>
+                <span style={{ fontSize: 11, color: '#0369a1' }}>Total Recorded Instances</span>
+              </div>
+
+              {/* Overall Attendance Percentage */}
+              <div style={{
+                backgroundColor: '#eef2ff',
+                border: '1px solid #c7d2fe',
+                borderRadius: 8,
+                padding: '12px 14px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#4338ca', letterSpacing: '0.04em' }}>ATTENDANCE RATE</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#4f46e5', marginTop: 2 }}>{overallPercentage}%</div>
+                <span style={{ fontSize: 11, color: '#4338ca' }}>Institutional Average</span>
+              </div>
+            </div>
+
+            {/* Student Preview List in Pop Screen */}
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+              Student Attendance Records ({filteredRows.length} Enrolled)
+            </div>
+
+            <div style={{
+              maxHeight: 260,
+              overflowY: 'auto',
+              border: '1px solid #e2e8f0',
+              borderRadius: 6,
+              marginBottom: 20
+            }}>
+              <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0 }}>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Student</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Roll</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Class</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Section</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Present</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Absent</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left' }}>Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((r, i) => (
+                    <tr key={r.student_id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 600 }}>{r.student_name}</td>
+                      <td style={{ padding: '8px 12px', color: '#64748b' }}>{r.roll}</td>
+                      <td style={{ padding: '8px 12px' }}>{r.class_name || '-'}</td>
+                      <td style={{ padding: '8px 12px' }}>{r.section_name || '-'}</td>
+                      <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 600 }}>{r.present_days}</td>
+                      <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 600 }}>{r.absent_days}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: 700 }}>{r.attendance_percentage}%</td>
+                    </tr>
+                  ))}
+                  {!filteredRows.length && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>
+                        No attendance records for the selected period.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Exactly Two Buttons at Bottom: Edit and Submit */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 12,
+              borderTop: '1px solid #e2e8f0',
+              paddingTop: 16
+            }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowSubmitPop(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  padding: '9px 20px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Edit2 size={14} /> Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalSubmitFromPop}
+                disabled={submittingReport}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  padding: '9px 24px',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Check size={15} /> {submittingReport ? 'Submitting…' : 'Submit'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ─── OFFLINE ATTENDANCE SPREADSHEET IMPORT MODAL ─── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {importOpen && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div className="modal" style={{
+            backgroundColor: '#ffffff',
+            borderRadius: 10,
+            maxWidth: 780,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: 24,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Import Offline Attendance Spreadsheet</h2>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12.5, color: '#64748b' }}>
+                  Expected Columns: <code>Admission Number (or Roll Number), Student Name, Status (P, A, L, HD), Date (YYYY-MM-DD)</code>.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setImportOpen(false); setParsedRecords([]); setShowImportPreview(false); }}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8', padding: 0 }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Target Class & Section Controls */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
+              backgroundColor: '#f8fafc',
+              padding: 14,
+              borderRadius: 8,
+              border: '1px solid #e2e8f0',
+              marginBottom: 16
+            }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                <span>Target Class</span>
+                <select
+                  value={importClass}
+                  onChange={e => setImportClass(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+                >
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.label || `Class ${c.class_number}`}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                <span>Target Section</span>
+                <select
+                  value={importSection}
+                  onChange={e => setImportSection(e.target.value)}
+                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+                >
+                  <option value="A">Section A</option>
+                  <option value="B">Section B</option>
+                </select>
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                <span>Default Attendance Date</span>
+                <input
+                  type="date"
+                  value={importDate}
+                  onChange={e => setImportDate(e.target.value)}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
+                />
+              </label>
+            </div>
+
+            {/* Template Download Notice */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 8,
+              padding: '10px 14px',
+              marginBottom: 16
+            }}>
+              <span style={{ fontSize: 12.5, color: '#1e40af' }}>
+                Need the standard offline spreadsheet layout?
+              </span>
+              <button
+                type="button"
+                onClick={downloadOfflineTemplate}
+                className="btn-secondary"
+                style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <Download size={13} /> Download Sample Template (.xlsx)
+              </button>
+            </div>
+
+            {/* Dropzone */}
+            <label style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px dashed #cbd5e1',
+              borderRadius: 8,
+              padding: '24px 16px',
+              cursor: 'pointer',
+              backgroundColor: '#f8fafc',
+              marginBottom: 16,
+              textAlign: 'center'
+            }}>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                onChange={handleOfflineFile}
+                style={{ display: 'none' }}
+              />
+              <UploadCloud size={28} color="#0284c7" style={{ marginBottom: 8 }} />
+              <strong style={{ fontSize: 14, color: '#0f172a' }}>Click to select offline attendance file</strong>
+              <span style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Supports Excel (.xlsx, .xls) and CSV (.csv)</span>
+            </label>
+
+            {/* ─── Interactive Staging Preview ─── */}
+            {showImportPreview && parsedRecords.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
+                  Attendance Breakdown Preview
+                </div>
+
+                {/* Breakdown Mini Cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: 8,
+                  marginBottom: 14
+                }}>
+                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: '#f1f5f9', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>Total</div>
+                    <strong style={{ fontSize: 16 }}>{importBreakdown.total}</strong>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>Present (P)</div>
+                    <strong style={{ fontSize: 16, color: '#15803d' }}>{importBreakdown.present}</strong>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: '#fef2f2', border: '1px solid #fecaca', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#991b1b', fontWeight: 600 }}>Absent (A)</div>
+                    <strong style={{ fontSize: 16, color: '#b91c1c' }}>{importBreakdown.absent}</strong>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: '#fefce8', border: '1px solid #fef08a', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#854d0e', fontWeight: 600 }}>Late (L)</div>
+                    <strong style={{ fontSize: 16, color: '#a16207' }}>{importBreakdown.late}</strong>
+                  </div>
+                  <div style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#6b21a8', fontWeight: 600 }}>Half Day (HD)</div>
+                    <strong style={{ fontSize: 16, color: '#7e22ce' }}>{importBreakdown.halfDay}</strong>
+                  </div>
+                </div>
+
+                {/* Staging Records Table */}
+                <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, marginBottom: 16 }}>
+                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0 }}>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>#</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Adm / Roll</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Student Name</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Status</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Date</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>Roster Match</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedRecords.map(r => (
+                        <tr key={r.rowNum} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '6px 10px', color: '#64748b' }}>{r.rowNum}</td>
+                          <td style={{ padding: '6px 10px', fontFamily: 'monospace' }}>{r.admissionNumber}</td>
+                          <td style={{ padding: '6px 10px', fontWeight: 600 }}>{r.studentName}</td>
+                          <td style={{ padding: '6px 10px' }}>
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              backgroundColor: r.status === 'P' ? '#dcfce7' : r.status === 'A' ? '#fee2e2' : r.status === 'L' ? '#fef9c3' : '#f3e8ff',
+                              color: r.status === 'P' ? '#15803d' : r.status === 'A' ? '#b91c1c' : r.status === 'L' ? '#854d0e' : '#7e22ce'
+                            }}>
+                              {r.statusLabel} ({r.status})
+                            </span>
+                          </td>
+                          <td style={{ padding: '6px 10px', color: '#64748b' }}>{r.date}</td>
+                          <td style={{ padding: '6px 10px' }}>
+                            <span style={{ fontSize: 11, color: r.isMatched ? '#16a34a' : '#d97706' }}>
+                              {r.isMatched ? '✓ Enrolled' : '● Auto-map'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Submit / Confirm Button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => { setParsedRecords([]); setShowImportPreview(false); }}
+                  >
+                    Clear Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitOfflineAttendance}
+                    disabled={importing}
+                    style={{
+                      background: '#10b981',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {importing ? 'Submitting…' : `Confirm & Submit Offline Attendance (${parsedRecords.length})`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

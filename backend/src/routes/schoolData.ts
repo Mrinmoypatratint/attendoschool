@@ -732,6 +732,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
                 school_name: req.user?.schoolName || 'School',
                 class_name: String(clsNum),
                 section_name: secName,
+                roll_number: rollNumber,
                 reset_link: resetInfo.resetUrl
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
@@ -1027,6 +1028,54 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       }
       await client.query('COMMIT');
       client.release();
+
+      // Student Email Automation on Bulk Import
+      for (const st of createdList) {
+        const studentEmail = String(st.email || st.student_email || '').trim().toLowerCase();
+        const parentEmail = String(st.parent_email || '').trim().toLowerCase();
+        const loginOption = st.login_option || st.loginOption || (studentEmail ? 'STUDENT' : (parentEmail ? 'PARENT' : 'NONE'));
+        const sendInviteEmail = st.sendInviteEmail !== false && req.body?.sendInviteEmail !== false;
+
+        if (sendInviteEmail && loginOption !== 'NONE') {
+          const isParent = loginOption === 'PARENT';
+          const targetLoginEmail = isParent ? (parentEmail || studentEmail) : (studentEmail || parentEmail);
+
+          if (targetLoginEmail) {
+            createAndSendPasswordReset({
+              email: targetLoginEmail,
+              name: st.name || st.full_name,
+              role: isParent ? 'PARENT' : 'STUDENT',
+              schoolId: schoolId || undefined,
+              schoolName: req.user?.schoolName || 'School',
+              req
+            }).then(resetInfo => {
+              if (resetInfo?.resetUrl) {
+                queueEmailNotification({
+                  schoolId: schoolId || 'school-default',
+                  recipientEmail: targetLoginEmail,
+                  recipientName: isParent ? (st.parent_name || 'Parent/Guardian') : (st.name || st.full_name),
+                  recipientType: isParent ? 'PARENT' : 'STUDENT',
+                  templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+                  templateData: {
+                    student_name: st.name || st.full_name,
+                    school_name: req.user?.schoolName || 'School',
+                    class_name: String(st.class_number || st.class_name || ''),
+                    section_name: String(st.section_name || 'A'),
+                    roll_number: String(st.roll_number || ''),
+                    reset_link: resetInfo.resetUrl
+                  },
+                  idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
+                }).catch(err => {
+                  console.warn('[BulkStudentEnrollment] SMTP network/dispatch error:', err.message);
+                });
+              }
+            }).catch(err => {
+              console.warn('[BulkStudentEnrollment] Error generating reset link:', err.message);
+            });
+          }
+        }
+      }
+
       return res.status(201).json({ success:true, count:createdList.length, items:createdList, session:bulkSessionName });
    } catch (txErr:any) {
      await client.query('ROLLBACK');
@@ -1333,6 +1382,54 @@ r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
  res.json({success:true});
 });
 
+// GET /teachers/template — standardized Excel import template
+r.get('/teachers/template', ...reader, (_req, res) => {
+  const XLSX = require('xlsx');
+  const sample = [
+    {
+      'Savior_No': 'EMP010',
+      'Fist Name': 'Sunita',
+      'Last Name': 'Verma',
+      'Full Name(Automatically generated)': 'Sunita Verma',
+      'Email_id': 'sunita.v@school.local',
+      'Class': 'Class 10',
+      'Section': 'A',
+      'Status': 'Active',
+      'Designation': 'Senior Teacher'
+    },
+    {
+      'Savior_No': 'EMP011',
+      'Fist Name': 'Alok',
+      'Last Name': 'Mishra',
+      'Full Name(Automatically generated)': 'Alok Mishra',
+      'Email_id': 'alok.m@school.local',
+      'Class': 'Class 9',
+      'Section': 'B',
+      'Status': 'Active',
+      'Designation': 'TGT Mathematics'
+    },
+    {
+      'Savior_No': 'EMP012',
+      'Fist Name': 'Rekha',
+      'Last Name': 'Sengupta',
+      'Full Name(Automatically generated)': 'Rekha Sengupta',
+      'Email_id': 'rekha.s@school.local',
+      'Class': 'Class 8',
+      'Section': 'A',
+      'Status': 'Active',
+      'Designation': 'PRT Science'
+    }
+  ];
+  const ws = XLSX.utils.json_to_sheet(sample);
+  ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Teachers Import Template');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', 'attachment; filename="teachers_import_template.xlsx"');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
 r.get('/teachers',...admin,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
  try {
@@ -1395,123 +1492,188 @@ r.get('/teachers',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
- const {name,email,password,employeeId,mobile,sendInviteEmail=true}=req.body;
- if(!name||!email||!employeeId) return res.status(400).json({message:'Name, email, and employee ID are required'});
- const cleanEmail = String(email).trim().toLowerCase();
- const rawPassword = password || (crypto.randomBytes(8).toString('hex') + 'Tt1!');
- let resetInfo: any = null;
+  const {
+    firstName: rawFirst, lastName: rawLast, fullName: rawFull, name: rawName,
+    email, password, employeeId: rawEmp, saviorNo, Savior_No,
+    mobile: rawMobile, designation: rawDesig,
+    classId, sectionId, sendInviteEmail=true
+  } = req.body;
 
- try {
-  const client=await pool.connect();
+  const firstName = String(rawFirst || '').trim();
+  const lastName = String(rawLast || '').trim();
+  const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawFull || rawName || '').trim());
+  const employeeId = String(rawEmp || saviorNo || Savior_No || '').trim();
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const mobile = String(rawMobile || '').trim();
+  const designation = String(rawDesig || 'Teacher').trim();
+
+  if (!name || !cleanEmail || !employeeId) {
+    return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
+  }
+
+  // Email format validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return res.status(400).json({ message: 'Invalid email format. Please provide a valid email address.' });
+  }
+
+  // Mobile validation: 10 digits if provided
+  if (mobile && !/^\d{10}$/.test(mobile.replace(/[^0-9]/g, ''))) {
+    return res.status(400).json({ message: 'Mobile number must be a 10-digit number.' });
+  }
+
+  // Check unique Employee ID / Savior_No within school tenant
+  const dup = demoTeachers.find(t => t.school_id === req.user!.schoolId && (t.employee_id === employeeId || t.savior_no === employeeId));
+  if (dup) {
+    return res.status(400).json({ message: `Employee ID / Savior_NO '${employeeId}' already exists for this school.` });
+  }
+
+  const rawPassword = password || (crypto.randomBytes(8).toString('hex') + 'Tt1!');
+  let resetInfo: any = null;
+  let emailDeliveryStatus: 'Sent' | 'Failed' | 'Pending' = 'Pending';
+
   try {
-   await client.query('BEGIN');
-   const hash=await bcrypt.hash(rawPassword,10);
-   const u=await client.query(`INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER') RETURNING id,name,email`,
-    [req.user!.schoolId,name,cleanEmail,hash]);
-   await client.query(`INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)`,[u.rows[0].id,employeeId,mobile||null]);
-   await client.query('COMMIT');
-   
-   if (sendInviteEmail) {
-     try {
-       resetInfo = await createAndSendPasswordReset({
-         email: cleanEmail,
-         name,
-         role: 'TEACHER',
-         userId: u.rows[0].id,
-         schoolId: req.user?.schoolId || undefined,
-         schoolName: req.user?.schoolName || 'School',
-         req
-       });
-       if (resetInfo?.resetUrl) {
-         queueEmailNotification({
-           schoolId: req.user?.schoolId || 'school-default',
-           recipientEmail: cleanEmail,
-           recipientName: name,
-           recipientType: 'TEACHER',
-           templateKey: 'TEACHER_CREATED',
-           templateData: {
-             teacher_name: name,
-             school_name: req.user?.schoolName || 'School',
-             employee_id: employeeId,
-             login_url: resetInfo.resetUrl
-           },
-           idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
-         }).catch(() => {});
-       }
-     } catch (err: any) {
-       console.warn('[TeacherOnboarding] Email invite failed:', err.message);
-     }
-   }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const hash = await bcrypt.hash(rawPassword, 10);
+      const u = await client.query(
+        `INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER') RETURNING id,name,email`,
+        [req.user!.schoolId, name, cleanEmail, hash]
+      );
+      await client.query(
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)`,
+        [u.rows[0].id, employeeId, mobile || null]
+      );
+      await client.query('COMMIT');
+      
+      // Automatic Teacher Welcome Email via SMTP
+      if (sendInviteEmail) {
+        try {
+          resetInfo = await createAndSendPasswordReset({
+            email: cleanEmail,
+            name,
+            role: 'TEACHER',
+            userId: u.rows[0].id,
+            schoolId: req.user?.schoolId || undefined,
+            schoolName: req.user?.schoolName || 'School',
+            req
+          });
+          if (resetInfo?.resetUrl) {
+            await queueEmailNotification({
+              schoolId: req.user?.schoolId || 'school-default',
+              recipientEmail: cleanEmail,
+              recipientName: name,
+              recipientType: 'TEACHER',
+              templateKey: 'TEACHER_CREATED',
+              templateData: {
+                teacher_name: name,
+                school_name: req.user?.schoolName || 'School',
+                employee_id: employeeId,
+                login_url: resetInfo.resetUrl,
+                temporary_password: rawPassword
+              },
+              idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+            });
+            emailDeliveryStatus = 'Sent';
+          }
+        } catch (err: any) {
+          console.warn('[TeacherOnboarding] Email invite failed:', err.message);
+          emailDeliveryStatus = 'Failed';
+        }
+      }
 
-   const created = {
-     ...u.rows[0],
-     employee_id: employeeId,
-     mobile: mobile || '—',
-     is_active: true,
-     reset_url: resetInfo?.resetUrl,
-     invite_sent: Boolean(resetInfo)
-   };
-   demoTeachers.unshift(created);
-   syncTeacherToFirestore(created, hash).catch(() => {});
-   return res.status(201).json(created);
-  } catch(e){await client.query('ROLLBACK');throw e;}
-  finally{client.release();}
- } catch (err: any) {
-   console.warn('[TeacherOnboarding] Database fallback:', err.message);
- }
+      const created = {
+        ...u.rows[0],
+        name,
+        full_name: name,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        employee_id: employeeId,
+        savior_no: employeeId,
+        designation,
+        mobile: mobile || '—',
+        email_status: emailDeliveryStatus,
+        is_active: true,
+        reset_url: resetInfo?.resetUrl,
+        invite_sent: Boolean(resetInfo)
+      };
+      demoTeachers.unshift(created);
+      syncTeacherToFirestore(created, hash).catch(() => {});
+      return res.status(201).json(created);
+    } catch(e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    console.warn('[TeacherOnboarding] Database fallback:', err.message);
+  }
 
- if (sendInviteEmail) {
-   try {
-     resetInfo = await createAndSendPasswordReset({
-       email: cleanEmail,
-       name,
-       role: 'TEACHER',
-       schoolId: req.user?.schoolId || undefined,
-       schoolName: req.user?.schoolName || 'School',
-       req
-     });
-     if (resetInfo?.resetUrl) {
-       queueEmailNotification({
-         schoolId: req.user?.schoolId || 'school-default',
-         recipientEmail: cleanEmail,
-         recipientName: name,
-         recipientType: 'TEACHER',
-         templateKey: 'TEACHER_CREATED',
-         templateData: {
-           teacher_name: name,
-           school_name: req.user?.schoolName || 'School',
-           employee_id: employeeId,
-           login_url: resetInfo.resetUrl
-         },
-         idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
-       }).catch(() => {});
-     }
-   } catch {}
- }
+  // Automatic Teacher Welcome Email via SMTP in Fallback
+  if (sendInviteEmail) {
+    try {
+      resetInfo = await createAndSendPasswordReset({
+        email: cleanEmail,
+        name,
+        role: 'TEACHER',
+        schoolId: req.user?.schoolId || undefined,
+        schoolName: req.user?.schoolName || 'School',
+        req
+      });
+      if (resetInfo?.resetUrl) {
+        await queueEmailNotification({
+          schoolId: req.user?.schoolId || 'school-default',
+          recipientEmail: cleanEmail,
+          recipientName: name,
+          recipientType: 'TEACHER',
+          templateKey: 'TEACHER_CREATED',
+          templateData: {
+            teacher_name: name,
+            school_name: req.user?.schoolName || 'School',
+            employee_id: employeeId,
+            login_url: resetInfo.resetUrl,
+            temporary_password: rawPassword
+          },
+          idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+        });
+        emailDeliveryStatus = 'Sent';
+      }
+    } catch (err: any) {
+      console.warn('[TeacherOnboarding] Fallback email invite failed:', err.message);
+      emailDeliveryStatus = 'Failed';
+    }
+  }
 
- const newTeacher = {
-   id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-   school_id: req.user!.schoolId,
-   schoolId: req.user!.schoolId,
-   name,
-   email: cleanEmail,
-   employee_id: employeeId,
-   mobile: mobile || '—',
-   is_active: true,
-   reset_url: resetInfo?.resetUrl,
-   invite_sent: Boolean(resetInfo)
- };
- demoTeachers.unshift(newTeacher);
- registerDemoUser({
-   id: newTeacher.id,
-   schoolId: req.user!.schoolId,
-   name,
-   email: cleanEmail,
-   role: 'TEACHER',
-   password: rawPassword
- });
- syncTeacherToFirestore(newTeacher, rawPassword).catch(() => {});
- res.status(201).json(newTeacher);
+  const newTeacher = {
+    id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    school_id: req.user!.schoolId,
+    schoolId: req.user!.schoolId,
+    name,
+    full_name: name,
+    first_name: firstName || null,
+    last_name: lastName || null,
+    email: cleanEmail,
+    employee_id: employeeId,
+    savior_no: employeeId,
+    designation,
+    mobile: mobile || '—',
+    email_status: emailDeliveryStatus,
+    is_active: true,
+    reset_url: resetInfo?.resetUrl,
+    invite_sent: Boolean(resetInfo)
+  };
+  demoTeachers.unshift(newTeacher);
+  registerDemoUser({
+    id: newTeacher.id,
+    schoolId: req.user!.schoolId,
+    name,
+    email: cleanEmail,
+    role: 'TEACHER',
+    password: rawPassword
+  });
+  syncTeacherToFirestore(newTeacher, rawPassword).catch(() => {});
+  res.status(201).json(newTeacher);
 });
 
 r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
@@ -1574,75 +1736,239 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
- const {teachers=[]}=req.body||{};
- if(!Array.isArray(teachers)||teachers.length===0) return res.status(400).json({message:'Array of teacher records is required'});
- const createdList: any[] = [];
- for (const t of teachers) {
-   const name = String(t.name||'').trim();
-   const email = String(t.email||'').trim().toLowerCase();
-   const employeeId = String(t.employeeId||t.employee_id||`EMP${Date.now().toString().slice(-4)}`).trim();
-   const mobile = String(t.mobile||t.phone||'9000000000').trim();
-   const password = t.password || 'ChangeMe123!';
+  const { teachers = [] } = req.body || {};
+  if (!Array.isArray(teachers) || teachers.length === 0) {
+    return res.status(400).json({ message: 'Array of teacher records is required' });
+  }
 
-   if (!name || !email) continue;
+  const schoolId = req.user!.schoolId;
+  const errors: { row: number; field: string; message: string }[] = [];
+  const seenEmployeeIds = new Set<string>();
+  const seenEmails = new Set<string>();
+  const validRows: any[] = [];
 
-   const teacherObj = {
-     id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-     school_id: req.user!.schoolId,
-     schoolId: req.user!.schoolId,
-     name,
-     email,
-     employee_id: employeeId,
-     mobile,
-     is_active: true
-   };
+  for (let i = 0; i < teachers.length; i++) {
+    const t = teachers[i];
+    const rowNum = i + 1;
 
-   let client: any;
-   try {
-     client = await pool.connect();
-     await client.query('BEGIN');
-     const hash = await bcrypt.hash(password, 10);
-     const u = await client.query(
-       `INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER') RETURNING id,name,email`,
-       [req.user!.schoolId, name, email, hash]
-     );
-     await client.query(
-       `INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)`,
-       [u.rows[0].id, employeeId, mobile || null]
-     );
-     await client.query('COMMIT');
-     const created = { ...u.rows[0], school_id: req.user!.schoolId, schoolId: req.user!.schoolId, employee_id: employeeId, mobile, is_active: true };
-     createdList.push(created);
-     demoTeachers.unshift(created);
-     registerDemoUser({
-       id: created.id,
-       schoolId: req.user!.schoolId,
-       name,
-       email,
-       role: 'TEACHER',
-       password
-     });
-     syncTeacherToFirestore(created, hash).catch(() => {});
-     continue;
-   } catch {
-     if (client) { try { await client.query('ROLLBACK'); } catch {} }
-   } finally {
-     if (client) { try { client.release(); } catch {} }
-   }
+    const getVal = (patterns: string[]): string => {
+      for (const p of patterns) {
+        if (t[p] !== undefined && t[p] !== null && String(t[p]).trim() !== '') return String(t[p]).trim();
+        const cleanP = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const foundKey = Object.keys(t).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanP);
+        if (foundKey && t[foundKey] !== undefined && t[foundKey] !== null && String(t[foundKey]).trim() !== '') {
+          return String(t[foundKey]).trim();
+        }
+      }
+      return '';
+    };
 
-   createdList.push(teacherObj);
-   demoTeachers.unshift(teacherObj);
-   registerDemoUser({
-     id: teacherObj.id,
-     schoolId: req.user!.schoolId,
-     name,
-     email,
-     role: 'TEACHER',
-     password
-   });
-   syncTeacherToFirestore(teacherObj).catch(() => {});
- }
- res.status(201).json({ success: true, count: createdList.length, items: createdList });
+    const saviorNo = getVal(['Savior_No', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO']);
+    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name']);
+    let lastName  = getVal(['Last Name', 'lastName', 'last_name']);
+    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'fullName', 'name']);
+
+    if ((!firstName || !lastName) && explicitFullName) {
+      const parts = explicitFullName.split(' ');
+      if (!firstName) firstName = parts[0] || '';
+      if (!lastName) lastName = parts.slice(1).join(' ') || '';
+    }
+    const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${rowNum}`));
+    const email = getVal(['Email_id', 'email_id', 'Email ID', 'emailId', 'Email', 'email', 'Email Address']).toLowerCase();
+    const rawClass = getVal(['Class', 'class']);
+    const rawSection = (getVal(['Section', 'section']) || 'A').toUpperCase();
+    const designation = getVal(['Designation', 'designation']) || 'Teacher';
+    const status = getVal(['Status', 'status']) || 'Active';
+    const rawMobile = getVal(['Mobile', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
+
+    // Validation engine:
+    if (!name) errors.push({ row: rowNum, field: 'First Name', message: 'First Name or Teacher Name is required' });
+    if (!email) {
+      errors.push({ row: rowNum, field: 'Email_id', message: 'Email address is required' });
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push({ row: rowNum, field: 'Email_id', message: `Invalid email format '${email}'` });
+    }
+    if (!saviorNo) {
+      errors.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
+    } else if (seenEmployeeIds.has(saviorNo)) {
+      errors.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in this file` });
+    } else {
+      seenEmployeeIds.add(saviorNo);
+    }
+    if (email && seenEmails.has(email)) {
+      errors.push({ row: rowNum, field: 'Email_id', message: `Duplicate email address '${email}' in this file` });
+    } else if (email) {
+      seenEmails.add(email);
+    }
+    if (rawMobile && rawMobile.length !== 10) {
+      errors.push({ row: rowNum, field: 'Mobile', message: `Mobile number must be exactly 10 digits (${rawMobile.length} given)` });
+    }
+
+    if (errors.filter(e => e.row === rowNum).length === 0) {
+      validRows.push({
+        saviorNo,
+        firstName,
+        lastName,
+        name,
+        email,
+        mobile: rawMobile || '9876500000',
+        designation,
+        status,
+        class: rawClass,
+        section: rawSection
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    return res.status(422).json({
+      success: false,
+      errors,
+      message: `${errors.length} validation error(s) found in uploaded faculty spreadsheet. Fix and re-upload.`
+    });
+  }
+
+  const createdList: any[] = [];
+  const schoolName = req.user?.schoolName || 'School';
+
+  for (const t of validRows) {
+    // Automated credentials: cryptographically random temporary password
+    const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+    let resetInfo: any = null;
+    let emailStatus: 'Sent' | 'Failed' | 'Pending' = 'Pending';
+
+    // Generate single-use 24-hour password setup link
+    try {
+      resetInfo = await createAndSendPasswordReset({
+        email: t.email,
+        name: t.name,
+        role: 'TEACHER',
+        schoolId,
+        schoolName,
+        req
+      });
+    } catch {}
+
+    // Asynchronous SMTP Dispatch: Enqueue welcome email in notification_logs
+    try {
+      await queueEmailNotification({
+        schoolId,
+        recipientEmail: t.email,
+        recipientName: t.name,
+        recipientType: 'TEACHER',
+        templateKey: 'TEACHER_CREATED',
+        templateData: {
+          teacher_name: t.name,
+          school_name: schoolName,
+          employee_id: t.saviorNo,
+          login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+          temporary_password: tempPassword
+        },
+        idempotencyKey: `tch-import-${schoolId}-${t.email}-${Date.now()}`
+      });
+      emailStatus = 'Sent';
+    } catch (err: any) {
+      console.warn(`[TeacherBulkImport] SMTP dispatch warning for ${t.email}:`, err.message);
+      emailStatus = 'Failed';
+    }
+
+    let client: any;
+    try {
+      client = await pool.connect();
+      await client.query('BEGIN');
+      const hash = await bcrypt.hash(tempPassword, 10);
+      const u = await client.query(
+        `INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER')
+         ON CONFLICT (school_id, email) DO UPDATE SET name=EXCLUDED.name, password_hash=EXCLUDED.password_hash
+         RETURNING id,name,email`,
+        [schoolId, t.name, t.email, hash]
+      );
+      await client.query(
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)
+         ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile`,
+        [u.rows[0].id, t.saviorNo, t.mobile || null]
+      );
+      await client.query('COMMIT');
+
+      const created = {
+        ...u.rows[0],
+        name: t.name,
+        full_name: t.name,
+        first_name: t.firstName,
+        last_name: t.lastName,
+        employee_id: t.saviorNo,
+        savior_no: t.saviorNo,
+        mobile: t.mobile,
+        designation: t.designation,
+        class_name: t.class,
+        section_name: t.section,
+        status: t.status,
+        email_status: emailStatus,
+        is_active: t.status.toUpperCase() !== 'INACTIVE',
+        school_id: schoolId,
+        schoolId,
+        reset_url: resetInfo?.resetUrl,
+        invite_sent: Boolean(resetInfo)
+      };
+      createdList.push(created);
+      demoTeachers.unshift(created);
+      registerDemoUser({
+        id: created.id,
+        schoolId,
+        name: t.name,
+        email: t.email,
+        role: 'TEACHER',
+        password: tempPassword
+      });
+      syncTeacherToFirestore(created, hash).catch(() => {});
+      continue;
+    } catch {
+      if (client) { try { await client.query('ROLLBACK'); } catch {} }
+    } finally {
+      if (client) { try { client.release(); } catch {} }
+    }
+
+    // In-memory / Firestore fallback
+    const teacherObj = {
+      id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      school_id: schoolId,
+      schoolId,
+      name: t.name,
+      full_name: t.name,
+      first_name: t.firstName,
+      last_name: t.lastName,
+      email: t.email,
+      employee_id: t.saviorNo,
+      savior_no: t.saviorNo,
+      mobile: t.mobile,
+      designation: t.designation,
+      class_name: t.class,
+      section_name: t.section,
+      status: t.status,
+      email_status: emailStatus,
+      is_active: t.status.toUpperCase() !== 'INACTIVE',
+      reset_url: resetInfo?.resetUrl,
+      invite_sent: Boolean(resetInfo)
+    };
+    createdList.push(teacherObj);
+    demoTeachers.unshift(teacherObj);
+    registerDemoUser({
+      id: teacherObj.id,
+      schoolId,
+      name: t.name,
+      email: t.email,
+      role: 'TEACHER',
+      password: tempPassword
+    });
+    syncTeacherToFirestore(teacherObj, tempPassword).catch(() => {});
+  }
+
+  res.status(201).json({
+    success: true,
+    count: createdList.length,
+    items: createdList,
+    message: `Successfully onboarded ${createdList.length} faculty members. Welcome credentials dispatched via SMTP.`
+  });
 });
 
 r.post('/teachers/bulk-delete',...admin,async(req:AuthRequest,res)=>{
