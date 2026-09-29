@@ -15,7 +15,7 @@ export const env = {
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpPort: Number(process.env.SMTP_PORT || 465),
   smtpUser: process.env.SMTP_USER || 'rajbsmv@gmail.com',
   smtpPass: process.env.SMTP_PASS || 'ovmz huhs fxnx inlq',
   smtpFrom: process.env.SMTP_FROM || 'AttendoSchool Superadmin <rajbsmv@gmail.com>',

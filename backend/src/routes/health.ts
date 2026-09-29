@@ -63,21 +63,31 @@ r.get('/email-status', (_req, res) => {
 
 // ── Send a real test email to verify SMTP on the live server ──
 r.post('/email-test', async (req, res) => {
-  const { to } = req.body || {};
+  const { to, port, host, encryption } = req.body || {};
   const recipient = to || env.smtpUser || 'rajbsmv@gmail.com';
 
   try {
-    const result = await testSmtpConnection('global', recipient);
+    const result = await testSmtpConnection('global', recipient, {
+      ...(host ? { host } : {}),
+      ...(port ? { port: Number(port) } : {}),
+      ...(encryption ? { encryption } : {})
+    });
     res.json({
       success: true,
       ...result,
       sentTo: recipient,
+      diagnostics: {
+        targetHost: host || env.smtpHost,
+        requestedPort: port ? Number(port) : env.smtpPort,
+        activeEncryption: encryption || (Number(port || env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS')
+      },
       timestamp: new Date().toISOString()
     });
   } catch (err: any) {
     res.status(500).json({
       success: false,
       error: err.message || 'SMTP delivery failed',
+      code: err.code,
       sentTo: recipient,
       timestamp: new Date().toISOString()
     });
