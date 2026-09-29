@@ -1295,6 +1295,9 @@ function SuperAdminHeader({
                       onClick={() => {
                         setCurrentSession(sess.name);
                         localStorage.setItem('attendo_academic_session', sess.name);
+                        localStorage.setItem('attendo_active_academic_year', sess.name);
+                        window.dispatchEvent(new CustomEvent('sessionChanged', { detail: sess.name }));
+                        window.dispatchEvent(new Event('storage'));
                         setSessionOpen(false);
                       }}
                     >
@@ -2841,46 +2844,114 @@ function TeacherHome(){
   </Layout>
 }
 
+const DEFAULT_CLASSES = [
+  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'U-KG' },
+  ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
+];
+
+const DEFAULT_SECTIONS = DEFAULT_CLASSES.flatMap(c => [
+  { id: `sec-${c.id}-a`, class_id: c.id, class_number: c.class_number, name: 'A', section_name: 'A' },
+  { id: `sec-${c.id}-b`, class_id: c.id, class_number: c.class_number, name: 'B', section_name: 'B' }
+]);
+
+function cleanSess(s?: string | null) {
+  return String(s || '').replace(/[\u2013\u2014]/g, '-').replace(/[^0-9-]/g, '').trim();
+}
+
+function studentMatchesSession(st: any, activeSess: string) {
+  if (!activeSess) return true;
+  const sName = st.session_name || st.session || '';
+  const sId = st.academic_year_id || st.session_id || '';
+  if (sName || sId) {
+    const cActive = cleanSess(activeSess);
+    const cStudent = cleanSess(sName || sId);
+    if (cActive && cStudent) {
+      return cActive === cStudent || cStudent.includes(cActive) || cActive.includes(cStudent);
+    }
+    return sId === activeSess || sName === activeSess;
+  }
+  return cleanSess(activeSess).includes('2025-26');
+}
+
 /* ────── Students ────── */
 function Students(){
   const {user}=useAuth();
+  const [activeSession, setActiveSession] = useState<string>(() => {
+    return localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
+  });
   const [rows,setRows]=useState<any[]>([]);
-  const [classes,setClasses]=useState<any[]>([]);
-  const [sections,setSections]=useState<any[]>([]);
+  const [classes,setClasses]=useState<any[]>(DEFAULT_CLASSES);
+  const [sections,setSections]=useState<any[]>(DEFAULT_SECTIONS);
+  const [sessions,setSessions]=useState<any[]>([]);
   const [editingStudent,setEditingStudent]=useState<any|null>(null);
   const [classFilter,setClassFilter]=useState('');
   const [sectionFilter,setSectionFilter]=useState('');
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
+  const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
+  const [importSession,setImportSession]=useState('');
+  const [importClass,setImportClass]=useState('');
+  const [importSection,setImportSection]=useState('');
   const [f,setF]=useState<any>({});
   const [saving,setSaving]=useState(false);
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
+  const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
-  async function load(){
+  useEffect(() => {
+    const onSessionChange = (e: any) => {
+      const sess = e?.detail || localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
+      setActiveSession(sess);
+    };
+    window.addEventListener('sessionChanged', onSessionChange);
+    window.addEventListener('storage', onSessionChange);
+    return () => {
+      window.removeEventListener('sessionChanged', onSessionChange);
+      window.removeEventListener('storage', onSessionChange);
+    };
+  }, []);
+
+  async function load(sessionToLoad = activeSession){
     try {
-      const [a,b,c]=await Promise.all([api.get('/students'),api.get('/classes'),api.get('/sections')]);
+      const sessParam = encodeURIComponent(sessionToLoad || '');
+      const [a,b,c,d]=await Promise.all([
+        api.get(`/students${sessParam ? `?session=${sessParam}` : ''}`),
+        api.get('/classes'),
+        api.get('/sections'),
+        api.get('/academic-years').catch(()=>({data:[]})) as any
+      ]);
       if (Array.isArray(a.data)) {
-        setRows(prev => (a.data.length > 0 || prev.length === 0 ? a.data : prev));
+        setRows(a.data);
       }
-      if (Array.isArray(b.data)) setClasses(b.data);
-      if (Array.isArray(c.data)) setSections(c.data);
+      if (Array.isArray(b.data) && b.data.length > 0) {
+        setClasses(b.data);
+      }
+      if (Array.isArray(c.data) && c.data.length > 0) {
+        setSections(c.data);
+      }
+      if (Array.isArray(d.data) && d.data.length > 0) setSessions(d.data);
+      else setSessions([
+        { id: 'ay-2024-25', name: '2024–25 Academic Session', code: '2024-25', label: '2024–25 Academic Session', is_active: false },
+        { id: 'ay-2025-26', name: '2025–26 Academic Session', code: '2025-26', label: '2025–26 Academic Session', is_active: true },
+        { id: 'ay-2026-27', name: '2026–27 Academic Session', code: '2026-27', label: '2026–27 Academic Session', is_active: false }
+      ]);
     } catch(err) {
       console.error('Failed to load students:', err);
     }
   }
 
   useEffect(()=>{
-    load();
+    load(activeSession);
     if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
       setEditingStudent(null);
-      setF({ loginOption: 'STUDENT', sendInviteEmail: true });
+      setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: activeSession });
       setOpen(true);
     }
-  },[]);
+  },[activeSession]);
 
   async function sendStudentResetEmail(st: any) {
     try {
@@ -2902,18 +2973,44 @@ function Students(){
     e.preventDefault();
     setSaving(true);
     try {
+      // Compute full name from first + last name
+      const firstName = String(f.firstName || '').trim();
+      const lastName = String(f.lastName || '').trim();
+      const fullName = [firstName, lastName].filter(Boolean).join(' ') || f.name || '';
+      const selectedSessionStr = f.session || activeSession || '2025–26 Academic Session';
+      const matchedSession = sessions.find(s => s.id === selectedSessionStr || s.name === selectedSessionStr || s.code === selectedSessionStr || cleanSess(s.name) === cleanSess(selectedSessionStr));
+      let finalSectionId = f.sectionId;
+      if (finalSectionId && f.classId) {
+        const curName = sections.find(s => s.id === finalSectionId)?.name || (finalSectionId.endsWith('-b') || finalSectionId === 'B' ? 'B' : 'A');
+        const targetSec = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === curName.toUpperCase());
+        if (targetSec) finalSectionId = targetSec.id;
+        else if (!finalSectionId.includes(f.classId)) finalSectionId = `sec-${f.classId}-${curName.toLowerCase()}`;
+      }
+      const payload = {
+        ...f,
+        sectionId: finalSectionId,
+        name: fullName,
+        firstName,
+        lastName,
+        session: matchedSession?.name || selectedSessionStr,
+        sessionId: matchedSession?.id || selectedSessionStr
+      };
       if (editingStudent) {
-        await api.put(`/students/${editingStudent.id}`, f);
-        setToastNotice({ type: 'success', message: `Student profile for ${f.name} updated successfully.` });
+        await api.put(`/students/${editingStudent.id}`, payload);
+        setToastNotice({ type: 'success', message: `Student profile for ${fullName} updated successfully.` });
       } else {
-        const res = await api.post('/students', f);
+        const res = await api.post('/students', payload);
         const created = res.data;
-        const cls = classes.find(c => c.id === f.classId);
-        const sec = sections.find(s => s.id === f.sectionId);
+        const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
+        const sec = sections.find(s => s.id === f.sectionId || s.name === f.sectionId);
+        const resolvedClsNum = (created.class_number !== undefined && created.class_number !== null)
+          ? Number(created.class_number)
+          : (cls ? Number(cls.class_number) : 1);
+        const resolvedSecName = created.section_name || sec?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
         const rowItem = {
           ...created,
-          class_number: created.class_number || cls?.class_number || 8,
-          section_name: created.section_name || sec?.name || 'A'
+          class_number: resolvedClsNum,
+          section_name: resolvedSecName
         };
         setRows(prev => [rowItem, ...prev.filter(r => r.id !== rowItem.id)]);
         if (created.invite_sent) {
@@ -2986,7 +3083,8 @@ function Students(){
       (r.parent_email && r.parent_email.toLowerCase().includes(q));
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
     const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
-    return matchesSearch && matchesClass && matchesSection;
+    const matchesSession = studentMatchesSession(r, activeSession);
+    return matchesSearch && matchesClass && matchesSection && matchesSession;
   });
 
   function toggleSelectAll() {
@@ -2997,17 +3095,29 @@ function Students(){
     }
   }
 
-  function downloadTemplate() {
-    const sample = [
-      { "Student Name": "Aarav Sharma", "Roll Number": "101", "Admission Number": "ADM-2025-001", "Class Number": 8, "Section Name": "A", "Parent Name": "Rajesh Sharma", "Parent Mobile": "9876543210", "Parent Email": "rajesh.sharma@example.com" },
-      { "Student Name": "Diya Patel", "Roll Number": "102", "Admission Number": "ADM-2025-002", "Class Number": 8, "Section Name": "A", "Parent Name": "Kirit Patel", "Parent Mobile": "9876543211", "Parent Email": "kirit.patel@example.com" },
-      { "Student Name": "Rohan Gupta", "Roll Number": "103", "Admission Number": "ADM-2025-003", "Class Number": 9, "Section Name": "B", "Parent Name": "Manoj Gupta", "Parent Mobile": "9876543212", "Parent Email": "manoj.gupta@example.com" },
-      { "Student Name": "Ananya Sen", "Roll Number": "104", "Admission Number": "ADM-2025-004", "Class Number": 10, "Section Name": "A", "Parent Name": "Subhash Sen", "Parent Mobile": "9876543213", "Parent Email": "subhash.sen@example.com" }
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Students");
-    XLSX.writeFile(wb, "students_import_template.xlsx");
+  async function downloadTemplate() {
+    try {
+      // Fetch from backend API — always up to date with correct columns
+      const res = await api.get('/students/template', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'students_import_template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: build locally
+      const sample = [
+        { "First Name": "Aarav", "Last Name": "Sharma", "Full Name": "Aarav Sharma", "Admission Number": "ADM-2025-001", "Roll Number": "101", "Session": "2025-26", "Class": "Class 1", "Section": "A", "Parent Name": "Rajesh Sharma", "Parent Phone": "9876543210", "Parent Email": "rajesh@example.com", "Student Email": "aarav@school.edu" },
+        { "First Name": "Diya",  "Last Name": "Patel",  "Full Name": "Diya Patel",   "Admission Number": "ADM-2025-002", "Roll Number": "102", "Session": "2025-26", "Class": "L-KG",    "Section": "A", "Parent Name": "Kirit Patel",   "Parent Phone": "9876543211", "Parent Email": "kirit@example.com",  "Student Email": "" },
+        { "First Name": "Rohan", "Last Name": "Gupta",  "Full Name": "Rohan Gupta",  "Admission Number": "ADM-2025-003", "Roll Number": "103", "Session": "2025-26", "Class": "U-KG",    "Section": "B", "Parent Name": "Manoj Gupta",   "Parent Phone": "9876543212", "Parent Email": "manoj@example.com", "Student Email": "" },
+      ];
+      const ws = XLSX.utils.json_to_sheet(sample);
+      ws['!cols'] = [14,14,20,18,14,12,12,10,20,16,24,26].map(wch => ({ wch }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
+      XLSX.writeFile(wb, 'students_import_template.xlsx');
+    }
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -3020,17 +3130,64 @@ function Students(){
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        const mapped = json.map((r, idx) => ({
-          name: r["Student Name"] || r["Name"] || r["name"] || `Student ${idx + 1}`,
-          rollNumber: String(r["Roll Number"] || r["Roll"] || r["roll_number"] || r["Roll No"] || idx + 101),
-          admissionNumber: String(r["Admission Number"] || r["Admission No"] || r["admission_number"] || r["Adm No"] || '').trim(),
-          classNumber: Number(r["Class Number"] || r["Class"] || r["class_number"] || 8),
-          sectionName: String(r["Section Name"] || r["Section"] || r["section_name"] || 'A').toUpperCase(),
-          parentName: r["Parent Name"] || r["Guardian Name"] || r["parent_name"] || '—',
-          parentSmsNumber: String(r["Parent Mobile"] || r["Parent SMS"] || r["Mobile"] || r["parent_sms_number"] || '9876543210'),
-          parentEmail: r["Parent Email"] || r["Email"] || r["parent_email"] || ''
-        })).filter(x => x.name && x.rollNumber);
+
+        // Required headers validation
+        const REQUIRED = ['First Name','Last Name','Admission Number','Roll Number','Parent Name','Parent Phone'];
+        const headers = Object.keys(json[0] || {});
+        const missingHeaders = REQUIRED.filter(h => !headers.some(hk => hk.trim()===h));
+        if (missingHeaders.length > 0) {
+          alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nPlease download the sample template and use the correct column names.`);
+          return;
+        }
+
+        const rowErrors: {row:number;field:string;message:string}[] = [];
+        const seenAdm = new Set<string>();
+
+        const mapped = json.map((r, idx) => {
+          const rowNum = idx + 1;
+          let firstName = String(r['First Name'] || r['first_name'] || r['FirstName'] || '').trim();
+          let lastName  = String(r['Last Name']  || r['last_name']  || r['LastName']  || '').trim();
+          const rawFullName = String(r['Full Name'] || r['full_name'] || r['FullName'] || r['Student Name'] || r['Full Name (Auto)'] || r['Name'] || r['name'] || '').trim();
+          if ((!firstName || !lastName) && rawFullName) {
+            const parts = rawFullName.split(' ');
+            if (!firstName) firstName = parts[0] || '';
+            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+          }
+          const fullName = rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
+          const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
+          const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
+          const parentName  = String(r['Parent Name']||r['parent_name']||'').trim();
+          const parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
+          const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
+          const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
+          const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
+
+          // Class parsing: supports 'L-KG','U-KG','Class 1','1' etc.
+          const rawClass = String(r['Class']||r['Class Number']||r['class_number']||importClass||'').trim();
+          let classId='', classNumber=1, classLabel='';
+          if (/l.?kg/i.test(rawClass))      { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
+          else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
+          else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||Number(importClass)||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
+          const sectionName = String(r['Section']||r['Section Name']||r['section_name']||importSection||'A').trim().toUpperCase();
+          const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
+
+          // Per-row validation
+          const rowErrs: {row:number;field:string;message:string}[] = [];
+          if (!firstName)       rowErrs.push({row:rowNum,field:'First Name',message:'First Name is required'});
+          if (!lastName)        rowErrs.push({row:rowNum,field:'Last Name',message:'Last Name is required'});
+          if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
+          if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
+          if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+          if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
+          if (admissionNumber) seenAdm.add(admissionNumber);
+
+          rowErrors.push(...rowErrs);
+          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _errors: rowErrs };
+        });
+
+        setImportErrors(rowErrors);
         setPreviewRows(mapped);
+        setImportStep(3);
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
       }
@@ -3040,15 +3197,40 @@ function Students(){
 
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
+    if (importErrors.length > 0) {
+      if (!confirm(`There are ${importErrors.length} validation error(s). Only valid rows will be submitted. Continue?`)) return;
+    }
     setImporting(true);
     try {
-      const res = await api.post('/students/bulk-import', { students: previewRows });
-      alert(`Successfully imported ${res.data.count} students!`);
+      const validRows = previewRows.filter(r => !r._errors || r._errors.length === 0);
+      if (validRows.length === 0) { alert('No valid rows to import.'); setImporting(false); return; }
+      // Resolve sessionId from wizard selection
+      const sessionObj = sessions.find(s => (s.name||s.code||s.id) === importSession);
+      const enrichedRows = validRows.map(r => ({
+        ...r,
+        session: r.session || importSession || '2025-26',
+        classNumber: r.classNumber || Number(importClass) || 1,
+        sectionName: r.sectionName || importSection || 'A'
+      }));
+      const res = await api.post('/students/bulk-import', {
+        students: enrichedRows,
+        sessionId: sessionObj?.id || undefined
+      });
+      alert(`Successfully imported ${res.data.count || enrichedRows.length} students${res.data.session ? ` into ${res.data.session}` : ''}!`);
       setImportOpen(false);
       setPreviewRows([]);
+      setImportErrors([]);
+      setImportStep(1);
+      setImportSession(''); setImportClass(''); setImportSection('');
       load();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to import students');
+      const msg = err?.response?.data?.message || 'Failed to import students';
+      const serverErrs = err?.response?.data?.errors;
+      if (serverErrs && Array.isArray(serverErrs)) {
+        setImportErrors(serverErrs);
+        setImportStep(3);
+      }
+      alert(msg);
     } finally {
       setImporting(false);
     }
@@ -3070,7 +3252,12 @@ function Students(){
             <FileSpreadsheet size={16} /> Import Excel / CSV
           </button>
           <button 
-            onClick={() => { setEditingStudent(null); setF({}); setOpen(true); }}
+            onClick={() => {
+              setEditingStudent(null);
+              const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2025–26 Academic Session';
+              setF({ session: curSess });
+              setOpen(true);
+            }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
             <Plus size={16} /> Add Student
@@ -3129,6 +3316,10 @@ function Students(){
     {/* Search & Filter Bar */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 'var(--radius-sm)', fontSize: 13, color: '#1d4ed8' }}>
+          <CalendarDays size={14} />
+          <span><b>Session:</b> {activeSession}</span>
+        </div>
         <input 
           placeholder="🔍 Search name, roll number, admission number, email..."
           value={search}
@@ -3141,7 +3332,7 @@ function Students(){
           style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
         >
           <option value="">All Classes</option>
-          {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+          {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
         </select>
         <select 
           value={sectionFilter} 
@@ -3149,7 +3340,19 @@ function Students(){
           style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
         >
           <option value="">All Sections</option>
-          {sections.filter(s => !classFilter || s.class_id === classFilter).map(s => <option key={s.id} value={s.id}>Section {s.name}</option>)}
+          {(() => {
+            const list = classFilter ? sections.filter(s => s.class_id === classFilter) : sections;
+            const seen = new Set<string>();
+            const unique: any[] = [];
+            for (const s of list) {
+              const name = String(s.name || '').toUpperCase();
+              if (name && !seen.has(name)) {
+                seen.add(name);
+                unique.push(s);
+              }
+            }
+            return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
+          })()}
         </select>
         {(search || classFilter || sectionFilter) && (
           <button 
@@ -3209,7 +3412,18 @@ function Students(){
                 )}
               </td>
               <td><b>{x.name}</b></td>
-              <td>Class {x.class_number} — {x.section_name}</td>
+              <td>
+                {(() => {
+                  const cNum = Number(x.class_number);
+                  const cId = String(x.class_id || '');
+                  if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
+                  if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
+                  if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
+                  const m = cId.match(/cls-(\d+)/);
+                  if (m) return `Class ${m[1]}`;
+                  return 'Class ' + (cNum || 1);
+                })()} — Section {x.section_name || 'A'}
+              </td>
               <td>
                 <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
                   {x.student_email || x.email || '—'}
@@ -3294,9 +3508,63 @@ function Students(){
     {/* SINGLE STUDENT ADD / EDIT MODAL */}
     {open && <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
       <form className="modal-form" onSubmit={save}>
-        <label>Student Full Name
-          <input required placeholder="Full Name (e.g. Aarav Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
+
+        {/* First Name + Last Name */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>First Name
+            <input
+              required
+              placeholder="e.g. Aarav"
+              value={f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || ''}
+              onChange={e => {
+                const fn = e.target.value;
+                const ln = f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '';
+                setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
+              }}
+            />
+          </label>
+          <label>Last Name
+            <input
+              placeholder="e.g. Sharma"
+              value={f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || ''}
+              onChange={e => {
+                const ln = e.target.value;
+                const fn = f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '';
+                setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
+              }}
+            />
+          </label>
+        </div>
+
+        {/* Full Name — auto-computed, read-only */}
+        <label style={{ color: '#64748b', fontSize: 12 }}>
+          Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+          <input
+            readOnly
+            tabIndex={-1}
+            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            value={[f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : ''), f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')].filter(Boolean).join(' ') || f.name || ''}
+            placeholder="Full name will appear here automatically"
+          />
         </label>
+
+        {/* Session Selection */}
+        <label>Session
+          <select
+            value={f.session || ''}
+            onChange={e => setF({ ...f, session: e.target.value })}
+          >
+            <option value="">Select Session</option>
+            {(sessions.length > 0 ? sessions : [
+              { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
+              { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
+              { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
+            ]).map(s => (
+              <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
+            ))}
+          </select>
+        </label>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>Roll Number
             <input required placeholder="Roll Number (e.g. 101)" value={f.rollNumber||''} onChange={e=>setF({...f,rollNumber:e.target.value})}/>
@@ -3306,15 +3574,68 @@ function Students(){
           </label>
         </div>
         <label>Class
-          <select required value={f.classId||''} onChange={e=>setF({...f,classId:e.target.value,sectionId:''})}>
+          <select 
+            required 
+            value={f.classId||''} 
+            onChange={e => {
+              const newClassId = e.target.value;
+              let newSecId = f.sectionId;
+              if (f.sectionId) {
+                const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
+                const targetSec = sections.find(s => s.class_id === newClassId && s.name.toUpperCase() === curName.toUpperCase());
+                newSecId = targetSec ? targetSec.id : (newClassId ? `sec-${newClassId}-${curName.toLowerCase()}` : `sec-${curName.toLowerCase()}`);
+              }
+              setF({ ...f, classId: newClassId, sectionId: newSecId });
+            }}
+          >
             <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
         <label>Section
-          <select required value={f.sectionId||''} onChange={e=>setF({...f,sectionId:e.target.value})}>
+          <select 
+            required 
+            value={(() => {
+              if (!f.sectionId) return '';
+              const found = sections.find(s => s.id === f.sectionId);
+              if (found) return found.id;
+              if (f.classId) {
+                const letter = (f.sectionId === 'B' || f.sectionId.endsWith('-b')) ? 'B' : 'A';
+                const match = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === letter);
+                if (match) return match.id;
+              }
+              return f.sectionId;
+            })()} 
+            onChange={e => {
+              const val = e.target.value;
+              setF({ ...f, sectionId: val });
+            }}
+          >
             <option value="">Select Section</option>
-            {sections.filter(s=>!f.classId || s.class_id===f.classId).map(s=><option key={s.id} value={s.id}>Section {s.name}</option>)}
+            {(() => {
+              const selectedCls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
+              const classNum = selectedCls ? selectedCls.class_number : null;
+              // If class is chosen, get sections for that specific class; otherwise generic Section A & Section B
+              const matching = f.classId
+                ? sections.filter(s => s.class_id === f.classId || (classNum !== null && Number(s.class_number) === Number(classNum)))
+                : [];
+              const opts = matching.length > 0 ? matching : [
+                { id: f.classId ? `sec-${f.classId}-a` : 'sec-a', name: 'A' },
+                { id: f.classId ? `sec-${f.classId}-b` : 'sec-b', name: 'B' }
+              ];
+              // Strictly deduplicate by name ('A', 'B') so only ONE Section A and ONE Section B are displayed
+              const seen = new Set<string>();
+              const deduped = [];
+              for (const opt of opts) {
+                const name = String(opt.name || '').trim().toUpperCase();
+                if (name && !seen.has(name)) {
+                  seen.add(name);
+                  deduped.push(opt);
+                }
+              }
+              deduped.sort((a,b) => a.name.localeCompare(b.name));
+              return deduped.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>);
+            })()}
           </select>
         </label>
 
@@ -3407,95 +3728,198 @@ function Students(){
       </form>
     </Modal>}
 
-    {/* EXCEL / CSV BULK IMPORT MODAL */}
-    {importOpen && <Modal title="Bulk Import Students (Excel / CSV)" close={()=>{setImportOpen(false); setPreviewRows([]);}}>
+    {/* EXCEL / CSV BULK IMPORT MODAL — Multi-Step Wizard */}
+    {importOpen && <Modal title="Bulk Import Students (Excel / CSV)" close={()=>{setImportOpen(false); setPreviewRows([]); setImportStep(1); setImportSession(''); setImportClass(''); setImportSection('');}}>
       <div style={{ padding: '0 4px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Upload an Excel (.xlsx, .xls) or CSV file with student rosters.
-          </p>
-          <button 
-            type="button" 
-            className="template-download-btn"
-            onClick={downloadTemplate}
-          >
-            <Download size={13} /> Download Sample Template (.xlsx)
-          </button>
+
+        {/* Step indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 20, fontSize: 12 }}>
+          {['Select Session', 'Upload File', 'Preview & Confirm'].map((label, idx) => {
+            const step = idx + 1;
+            const active = importStep === step;
+            const done = importStep > step;
+            return (
+              <div key={step} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, flexShrink: 0,
+                    background: done ? '#10b981' : active ? '#2563eb' : '#e2e8f0',
+                    color: (done || active) ? '#fff' : '#94a3b8'
+                  }}>{done ? '✓' : step}</div>
+                  <span style={{ color: active ? '#1e293b' : done ? '#10b981' : '#94a3b8', fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' }}>{label}</span>
+                </div>
+                {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : '#e2e8f0', flex: 1, margin: '0 6px' }} />}
+              </div>
+            );
+          })}
         </div>
 
-        <label className="dropzone">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls, .csv" 
-            onChange={handleFile}
-            style={{ display: 'none' }}
-          />
-          <div className="dropzone-icon">
-            <UploadCloud size={24} />
-          </div>
-          <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
-          <span className="muted" style={{ fontSize: 12 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-        </label>
-
-        {previewRows.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: 14 }}>Preview Data ({previewRows.length} students ready to import)</strong>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                style={{ fontSize: 12, padding: '4px 10px' }}
-                onClick={() => setPreviewRows([])}
+        {/* ── STEP 1: Select Session / Class / Section ── */}
+        {importStep === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label>Academic Session <span style={{ color: '#ef4444', fontSize: 11 }}>*</span>
+              <select value={importSession} onChange={e => setImportSession(e.target.value)}>
+                <option value="">Select Session</option>
+                {(sessions.length > 0 ? sessions : [
+                  { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
+                  { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
+                  { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
+                ]).map(s => (
+                  <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>Class (default for import) <span style={{ fontSize: 11, color: '#64748b' }}>— overridden by Excel column</span>
+              <select value={importClass} onChange={e => setImportClass(e.target.value)}>
+                <option value="">Select Class</option>
+                {classes.map(c => <option key={c.id} value={c.class_number}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+              </select>
+            </label>
+            <label>Section (default for import) <span style={{ fontSize: 11, color: '#64748b' }}>— overridden by Excel column</span>
+              <select value={importSection} onChange={e => setImportSection(e.target.value)}>
+                <option value="">Select Section</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+              </select>
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <button
+                type="button"
+                className="template-download-btn"
+                onClick={downloadTemplate}
               >
-                Clear
+                <Download size={13} /> Download Sample Template (.xlsx)
               </button>
+              <button
+                type="button"
+                disabled={!importSession}
+                onClick={() => setImportStep(2)}
+                style={{ background: '#2563eb', color: '#fff', opacity: importSession ? 1 : 0.5 }}
+              >
+                Next: Upload File →
+              </button>
+            </div>
+            {!importSession && <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>Please select a session to continue.</p>}
+          </div>
+        )}
+
+        {/* ── STEP 2: Upload File ── */}
+        {importStep === 2 && (
+          <div>
+            <div style={{ marginBottom: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
+              📋 Session: <b>{importSession}</b>{importClass ? ` · Class ${importClass}` : ''}{importSection ? ` · Section ${importSection}` : ''}
+            </div>
+            <label className="dropzone">
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                onChange={handleFile}
+                style={{ display: 'none' }}
+              />
+              <div className="dropzone-icon">
+                <UploadCloud size={24} />
+              </div>
+              <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
+              <span className="muted" style={{ fontSize: 12 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
+              <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Parent Phone, Student Email</span>
+            </label>
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between' }}>
+              <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Preview & Confirm ── */}
+        {importStep === 3 && previewRows.length > 0 && (
+          <div>
+            <div style={{ marginBottom: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
+              ✅ <b>{previewRows.length} students</b> ready to import · Session: <b>{importSession}</b>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <strong style={{ fontSize: 14 }}>Preview Data</strong>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {importErrors.length > 0 && (
+                  <span style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:6, padding:'3px 10px', fontSize:12 }}>
+                    ⚠ {importErrors.length} error{importErrors.length>1?'s':''} — highlighted in red
+                  </span>
+                )}
+                <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => { setPreviewRows([]); setImportErrors([]); setImportStep(2); }}>Re-upload</button>
+              </div>
             </div>
             <div className="preview-table-container">
               <table>
                 <thead>
                   <tr>
-                    <th>Roll</th>
-                    <th>Adm No</th>
-                    <th>Name</th>
+                    <th>#</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Full Name</th>
+                    <th>Adm. No.</th>
+                    <th>Roll No</th>
+                    <th>Session</th>
                     <th>Class</th>
                     <th>Section</th>
-                    <th>Parent Name</th>
-                    <th>Mobile</th>
-                    <th>Email</th>
+                    <th>Parent Phone</th>
+                    <th>Student Email</th>
                   </tr>
                 </thead>
                 <tbody>
                   {previewRows.map((r, i) => (
-                    <tr key={i}>
-                      <td><span className="roll">{r.rollNumber}</span></td>
-                      <td><code style={{ fontSize: 11 }}>{r.admissionNumber || '—'}</code></td>
+                    <tr key={i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
+                      <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11 }}>
+                        {r._errors?.length ? '⚠' : i+1}
+                      </td>
+                      <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
+                        {r.firstName || r.name?.split(' ')[0] || '—'}
+                        {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
+                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                        )}
+                      </td>
+                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
+                        {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
+                        {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
+                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                        )}
+                      </td>
                       <td><b>{r.name}</b></td>
-                      <td>Class {r.classNumber}</td>
+                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
+                        {r.admissionNumber||'—'}
+                        {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
+                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                        )}
+                      </td>
+                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
+                        <span className="roll">{r.rollNumber}</span>
+                      </td>
+                      <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                      <td>{r.classLabel || r.classNumber}</td>
                       <td>{r.sectionName}</td>
-                      <td>{r.parentName}</td>
-                      <td>{r.parentSmsNumber}</td>
-                      <td>{r.parentEmail || '—'}</td>
+                      <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
+                        {r.parentPhone || r.parentSmsNumber || '—'}
+                        {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
+                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                        )}
+                      </td>
+                      <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={() => { setImportOpen(false); setPreviewRows([]); }}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                onClick={submitBulkImport}
-                disabled={importing}
-                style={{ background: '#10b981', color: '#ffffff' }}
-              >
-                {importing ? 'Importing Students...' : `Confirm & Import ${previewRows.length} Students`}
-              </button>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); }}>← Back</button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportStep(1); }}>Cancel</button>
+                <button
+                  type="button"
+                  onClick={submitBulkImport}
+                  disabled={importing}
+                  style={{ background: '#10b981', color: '#ffffff' }}
+                >
+                  {importing ? 'Importing Students...' : `Confirm & Import ${previewRows.filter(r=>!r._errors?.length).length} Valid Students`}
+                </button>
+              </div>
             </div>
           </div>
         )}

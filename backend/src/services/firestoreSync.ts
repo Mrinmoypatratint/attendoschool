@@ -24,8 +24,28 @@ export async function syncStudentToFirestore(student: any): Promise<boolean> {
       roll_number: String(student.roll_number || student.rollNumber || ''),
       admissionNumber: student.admissionNumber || student.admission_number || (student.id ? `ADM-${student.id}` : `ADM-${id}`),
       admission_number: student.admission_number || student.admissionNumber || (student.id ? `ADM-${student.id}` : `ADM-${id}`),
-      className: String(student.class_number || student.className || ''),
-      class_number: Number(student.class_number || student.className) || null,
+      className: (() => {
+        const cId = String(student.class_id || student.classId || '');
+        if (/l.?kg/i.test(cId)) return 'L-KG';
+        if (/u.?kg/i.test(cId)) return 'U-KG';
+        const m = cId.match(/cls-(\d+)/);
+        if (m) return `Class ${m[1]}`;
+        if (student.class_number !== undefined && student.class_number !== null) {
+          return student.class_number === -1 ? 'L-KG' : student.class_number === 0 ? 'U-KG' : `Class ${student.class_number}`;
+        }
+        return String(student.className || '');
+      })(),
+      class_number: (() => {
+        const cId = String(student.class_id || student.classId || '');
+        if (/l.?kg/i.test(cId)) return -1;
+        if (/u.?kg/i.test(cId)) return 0;
+        const m = cId.match(/cls-(\d+)/);
+        if (m) return Number(m[1]);
+        if (student.class_number !== undefined && student.class_number !== null && !isNaN(Number(student.class_number))) {
+          return Number(student.class_number);
+        }
+        return 1;
+      })(),
       section: String(student.section_name || student.section || 'A'),
       section_name: String(student.section_name || student.section || 'A'),
       classId: student.class_id || student.classId || null,
@@ -43,6 +63,13 @@ export async function syncStudentToFirestore(student: any): Promise<boolean> {
       email: cleanStudentEmail,
       schoolId: student.school_id || student.schoolId || null,
       school_id: student.school_id || student.schoolId || null,
+      academic_year_id: student.academic_year_id || student.session_id || student.sessionId || null,
+      academicYearId: student.academic_year_id || student.session_id || student.sessionId || null,
+      session_id: student.session_id || student.academic_year_id || student.sessionId || null,
+      sessionId: student.session_id || student.academic_year_id || student.sessionId || null,
+      session_name: student.session_name || student.session || null,
+      sessionName: student.session_name || student.session || null,
+      session: student.session || student.session_name || null,
       status: student.status || (student.is_active === false ? 'ARCHIVED' : 'ACTIVE'),
       is_active: student.is_active !== false,
       updatedAt: new Date().toISOString()
@@ -647,6 +674,10 @@ export async function rehydrateAllFromFirestore(stores: {
             class_number: Number(dt.class_number || dt.className) || 8,
             section_id: dt.section_id || dt.sectionId || `sec-${dt.class_number || 8}-${(dt.section_name || dt.section || 'A').toLowerCase()}`,
             section_name: dt.section_name || dt.section || 'A',
+            academic_year_id: dt.academic_year_id || dt.academicYearId || dt.session_id || dt.sessionId || null,
+            session_id: dt.session_id || dt.sessionId || dt.academic_year_id || null,
+            session_name: dt.session_name || dt.sessionName || dt.session || null,
+            session: dt.session || dt.session_name || dt.sessionName || null,
             is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
             ...dt
           };
