@@ -1784,7 +1784,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/communication', 'Announcements', MessageSquare],
     ['/notifications', 'Parent Communication', Bell],
     ['—', 'MANAGEMENT'],
-    ['/attendance-corrections', 'Corrections', CheckCircle2],
+    // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
     ['/people', 'People Directory', UserPlus],
     ['—', 'BILLING'],
@@ -1804,7 +1804,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/teacher-history','History',CalendarDays],
     ['—','ATTENDANCE'],
     ['/attendance-reports','Reports',FileText],
-    ['/attendance-corrections','Corrections',ArrowUpDown],
+    // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
     ['/offline-attendance','Offline Mode',Wifi],
   ];
@@ -2427,6 +2427,7 @@ function AdminHome(){
         </div>
       </div>
 
+      {/* Temporarily commented out Attendance Corrections KPI card as requested
       <div className="kpi-card" onClick={() => nav('/attendance-corrections')}>
         <div className={`kpi-icon-wrap ${pendingCorrections > 0 ? 'amber' : 'slate'}`}><ArrowUpDown size={22} /></div>
         <div className="kpi-body">
@@ -2436,7 +2437,7 @@ function AdminHome(){
             {pendingCorrections > 0 ? 'Requires attention' : 'All clear'}
           </span>
         </div>
-      </div>
+      </div> */}
 
       <div className="kpi-card" onClick={() => nav('/subscription')}>
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
@@ -2579,13 +2580,14 @@ function AdminHome(){
             </div>
           </button>
 
+          {/* Temporarily commented out Attendance Corrections Quick Action as requested
           <button className="quick-action-tile" onClick={() => nav('/attendance-corrections')}>
             <div className="tile-icon orange"><CheckCircle2 size={18} /></div>
             <div className="tile-texts">
               <strong>Review Corrections</strong>
               <span>Approve or reject faculty requests</span>
             </div>
-          </button>
+          </button> */}
 
           <button className="quick-action-tile" onClick={() => nav('/communication')}>
             <div className="tile-icon purple"><MessageSquare size={18} /></div>
@@ -3940,6 +3942,8 @@ function Teachers(){
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
+  const [exportOpen,setExportOpen]=useState(false);
+  const [addTeacherPreview,setAddTeacherPreview]=useState(false);
   const [f,setF]=useState<any>({});
   const [saving,setSaving]=useState(false);
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
@@ -4055,11 +4059,72 @@ function Teachers(){
     }
   }
 
-  async function save(e:React.FormEvent){
-    e.preventDefault();
+  function prepareExportData(): any[] {
+    const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : (filtered.length > 0 ? filtered : rows);
+    return list.map(r => {
+      let fn = r.first_name || r.firstName || '';
+      let ln = r.last_name || r.lastName || '';
+      if (!fn && !ln && r.name) {
+        const parts = r.name.split(' ');
+        fn = parts[0] || '';
+        ln = parts.slice(1).join(' ') || '';
+      }
+      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || `${fn} ${ln}`.trim());
+      const allocSummary = getTeacherAllocSummary(r.id);
+      
+      return {
+        'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
+        'Fist Name': fn,
+        'Last Name': ln,
+        'Full Name(Automatically generated)': fullName,
+        'Email_id': r.email || '',
+        'Class': allocSummary !== '—' ? allocSummary : '',
+        'Section': '',
+        'Status': r.is_active !== false ? 'Active' : 'Inactive',
+        'Designation': r.designation || 'Teacher'
+      };
+    });
+  }
+
+  function handleExportExcel() {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
+    XLSX.writeFile(wb, 'Faculty_Export.xlsx');
+  }
+
+  function handleExportCSV() {
+    const data = prepareExportData();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'Faculty_Export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  async function save(e?:React.FormEvent){
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     try {
-      const res = await api.post('/teachers', f);
+      const firstName = String(f.firstName || '').trim();
+      const lastName = String(f.lastName || '').trim();
+      const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || f.name || '');
+      const empId = f.employeeId || f.saviorNo;
+      const payload = {
+        ...f,
+        firstName,
+        lastName,
+        name: fullName,
+        fullName,
+        employeeId: empId,
+        saviorNo: empId
+      };
+      const res = await api.post('/teachers', payload);
       const created = res.data;
       setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
       setOpen(false);
@@ -4135,16 +4200,28 @@ function Teachers(){
     }
   }
 
-  function downloadTemplate() {
-    const sample = [
-      { "Teacher Name": "Sunita Verma", "Email": "sunita.v@school.local", "Employee ID": "EMP010", "Mobile": "9876500001", "Default Password": "ChangeMe123!" },
-      { "Teacher Name": "Alok Mishra", "Email": "alok.m@school.local", "Employee ID": "EMP011", "Mobile": "9876500002", "Default Password": "ChangeMe123!" },
-      { "Teacher Name": "Rekha Sengupta", "Email": "rekha.s@school.local", "Employee ID": "EMP012", "Mobile": "9876500003", "Default Password": "ChangeMe123!" }
-    ];
-    const ws = XLSX.utils.json_to_sheet(sample);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-    XLSX.writeFile(wb, "teachers_import_template.xlsx");
+  async function downloadTemplate() {
+    try {
+      const res = await api.get('/teachers/template', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'teachers_import_template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Local fallback with exact requested headers
+      const sample = [
+        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      ];
+      const ws = XLSX.utils.json_to_sheet(sample);
+      ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
+      XLSX.writeFile(wb, "teachers_import_template.xlsx");
+    }
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -4157,13 +4234,38 @@ function Teachers(){
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        const mapped = json.map((r, idx) => ({
-          name: r["Teacher Name"] || r["Name"] || r["name"] || `Teacher ${idx + 1}`,
-          email: String(r["Email"] || r["Email Address"] || r["email"] || `teacher${idx+1}@school.local`).toLowerCase().trim(),
-          employeeId: String(r["Employee ID"] || r["Emp ID"] || r["employee_id"] || `EMP0${idx+10}`),
-          mobile: String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000'),
-          password: r["Default Password"] || r["Password"] || r["password"] || 'ChangeMe123!'
-        })).filter(x => x.name && x.email);
+        const mapped = json.map((r, idx) => {
+          const saviorNo = String(r["Savior_No"] || r["Savior No"] || r["savior_no"] || r["Employee ID"] || r["Employee Id/Savior_NO"] || r["Emp ID"] || r["employee_id"] || `EMP0${idx + 10}`).trim();
+          let firstName = String(r["Fist Name"] || r["First Name"] || r["firstName"] || '').trim();
+          let lastName = String(r["Last Name"] || r["lastName"] || '').trim();
+          const explicitFullName = String(r["Full Name(Automatically generated)"] || r["Full Name"] || r["Teacher Name"] || r["Name"] || r["name"] || '').trim();
+          if ((!firstName || !lastName) && explicitFullName) {
+            const parts = explicitFullName.split(' ');
+            if (!firstName) firstName = parts[0] || '';
+            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+          }
+          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
+          const email = String(r["Email_id"] || r["Email ID"] || r["Email"] || r["email"] || `teacher${idx + 1}@school.local`).toLowerCase().trim();
+          const mobile = String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000').trim();
+          const designation = String(r["Designation"] || r["designation"] || 'Teacher').trim();
+          const status = String(r["Status"] || r["status"] || 'Active').trim();
+          const className = String(r["Class"] || r["class"] || '').trim();
+          const sectionName = String(r["Section"] || r["section"] || 'A').trim().toUpperCase();
+          return {
+            saviorNo,
+            employeeId: saviorNo,
+            firstName,
+            lastName,
+            name,
+            email,
+            mobile,
+            designation,
+            status,
+            class: className,
+            section: sectionName,
+            emailStatus: 'Pending'
+          };
+        }).filter(x => x.name && x.email);
         setPreviewRows(mapped);
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
@@ -4177,7 +4279,7 @@ function Teachers(){
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
-      alert(`Successfully registered ${res.data.count} teachers!`);
+      alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
       setPreviewRows([]);
       load();
@@ -4199,11 +4301,12 @@ function Teachers(){
         <button 
           onClick={() => setImportOpen(true)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+          title="Import teachers via Excel spreadsheet or CSV with interactive preview"
         >
           <FileSpreadsheet size={16} /> Import Excel / CSV
         </button>
         <button 
-          onClick={() => setOpen(true)}
+          onClick={() => { setF({ sendInviteEmail: true }); setAddTeacherPreview(false); setOpen(true); }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <Plus size={16} /> Add Teacher
@@ -4283,18 +4386,20 @@ function Teachers(){
                 title="Select all"
               />
             </th>
-            <th>Employee ID</th>
+            <th>Employee Id/Savior_NO</th>
             <th>Teacher Name</th>
-            <th>Subjects & Classes</th>
+            <th>Designation</th>
+            <th>Assigned Classes</th>
             <th>Email</th>
             <th>Mobile</th>
+            <th>Email Delivery Status</th>
             <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -4304,13 +4409,23 @@ function Teachers(){
                   onChange={() => toggleSelect(x.id)}
                 />
               </td>
-              <td><code>{x.employee_id}</code></td>
-              <td><b>{x.name}</b></td>
-              <td style={{ fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
+              <td>
+                <b>{x.name}</b>
+              </td>
+              <td>
+                <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
+              </td>
+              <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span title={getTeacherAllocSummary(x.id)}>{getTeacherAllocSummary(x.id)}</span>
               </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
+              <td>
+                <span className={`badge ${x.email_status === 'Sent' ? 'active' : x.email_status === 'Failed' ? 'failed' : 'pending'}`} style={{ fontSize: 11 }}>
+                  {x.email_status === 'Sent' ? '✓ Sent' : x.email_status === 'Failed' ? '✕ Failed' : '● Pending'}
+                </span>
+              </td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -4356,56 +4471,202 @@ function Teachers(){
       </div>
     )}
 
-    {/* SINGLE TEACHER ADD MODAL */}
-    {open && <Modal title="Add Teacher" close={()=>setOpen(false)}>
-      <form className="modal-form" onSubmit={save}>
-        <label>Teacher Full Name
-          <input required placeholder="Full Name (e.g. Rahul Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
-        </label>
-        <label>Email Address (for Faculty Portal Login)
-          <input required type="email" placeholder="teacher@school.local" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})}/>
-        </label>
-        <label>Employee ID
-          <input required placeholder="EMP001" value={f.employeeId||''} onChange={e=>setF({...f,employeeId:e.target.value})}/>
-        </label>
-        <label>Mobile Number
-          <input placeholder="Mobile Number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
-        </label>
-
-        {/* Password Setup & Activation Box */}
-        <div style={{
-          padding: 14,
-          backgroundColor: '#f8fafc',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          margin: '6px 0 16px 0'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <KeyRound size={14} style={{ color: '#2563eb' }} />
-            Password Setup & Account Activation
+    {/* SINGLE TEACHER ADD MODAL WITH PREVIEW */}
+    {open && <Modal title={addTeacherPreview ? "Preview Teacher Details" : "Add Faculty Member / Teacher"} close={()=>{ setOpen(false); setAddTeacherPreview(false); }}>
+      {!addTeacherPreview ? (
+        <form className="modal-form" onSubmit={(e) => { e.preventDefault(); setAddTeacherPreview(true); }}>
+          {/* First Name + Last Name */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label>First Name
+              <input
+                required
+                placeholder="First Name (e.g. Rahul)"
+                value={f.firstName || ''}
+                onChange={e => {
+                  const fn = e.target.value;
+                  const ln = f.lastName || '';
+                  setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
+                }}
+              />
+            </label>
+            <label>Last Name
+              <input
+                placeholder="Last Name (e.g. Sharma)"
+                value={f.lastName || ''}
+                onChange={e => {
+                  const ln = e.target.value;
+                  const fn = f.firstName || '';
+                  setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
+                }}
+              />
+            </label>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
-            <input
-              type="checkbox"
-              checked={f.sendInviteEmail !== false}
-              onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
-            />
-            <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
-          </label>
-          <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
-            Optional Initial Password (leave empty to let teacher set password via email):
-            <input
-              type="password"
-              placeholder="Optional initial password (e.g. ChangeMe123!)"
-              value={f.password||''}
-              onChange={e => setF({...f,password:e.target.value})}
-              style={{ marginTop: 4 }}
-            />
-          </label>
-        </div>
 
-        <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}</button>
-      </form>
+          {/* Full Name — auto-computed, read-only */}
+          <label style={{ color: '#64748b', fontSize: 12 }}>
+            Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+            <input
+              readOnly
+              tabIndex={-1}
+              style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+              value={[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || ''}
+              placeholder="Full name will appear here automatically"
+            />
+          </label>
+
+          <label>Email Address (for Faculty Portal Login)
+            <input required type="email" placeholder="teacher@school.local" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})}/>
+          </label>
+          <label>Employee Id/Savior_NO
+            <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label>Designation
+              <input placeholder="e.g. Senior Teacher, TGT Mathematics" value={f.designation||''} onChange={e=>setF({...f,designation:e.target.value})}/>
+            </label>
+            <label>Mobile Number
+              <input placeholder="10-digit mobile number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
+            </label>
+          </div>
+
+          {/* Password Setup & Activation Box */}
+          <div style={{
+            padding: 14,
+            backgroundColor: '#f8fafc',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+            margin: '6px 0 16px 0'
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <KeyRound size={14} style={{ color: '#2563eb' }} />
+              Password Setup & Account Activation
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+              <input
+                type="checkbox"
+                checked={f.sendInviteEmail !== false}
+                onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+              />
+              <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
+            </label>
+            <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
+              Optional Initial Password (leave empty to let teacher set password via email):
+              <input
+                type="password"
+                placeholder="Optional initial password (e.g. ChangeMe123!)"
+                value={f.password||''}
+                onChange={e => setF({...f,password:e.target.value})}
+                style={{ marginTop: 4 }}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => {
+                if (!f.firstName && !f.name) { alert('Please enter First Name.'); return; }
+                if (!f.email) { alert('Please enter Email Address.'); return; }
+                if (!(f.employeeId || f.saviorNo)) { alert('Please enter Employee Id/Savior_NO.'); return; }
+                setAddTeacherPreview(true);
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Eye size={15} /> Preview Details
+            </button>
+            <button type="submit" disabled={saving}>
+              {saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}
+            </button>
+          </div>
+        </form>
+      ) : (
+        /* Add Teacher Preview View */
+        <div style={{ padding: '6px 2px' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+            border: '1px solid #a7f3d0',
+            borderRadius: 8,
+            padding: 14,
+            marginBottom: 14
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#065f46', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+              <CheckCircle2 size={18} color="#10b981" />
+              Teacher Details Summary (Preview)
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: '#047857' }}>
+              Please review the teacher's profile details below before finalizing creation.
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            gap: 12,
+            background: '#ffffff',
+            padding: 14,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            marginBottom: 14
+          }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Employee Id / Savior_NO</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2, fontFamily: 'monospace' }}>{f.employeeId || f.saviorNo || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>First Name</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{f.firstName || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Last Name</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{f.lastName || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Full Name (Auto-Generated)</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', marginTop: 2 }}>{[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Official Email</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{f.email || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Designation</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{f.designation || 'Teacher'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Mobile Number</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{f.mobile || '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Email Notification</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: f.sendInviteEmail !== false ? '#10b981' : '#64748b', marginTop: 2 }}>
+                {f.sendInviteEmail !== false ? '✓ Automatic SMTP Welcome Email' : 'Disabled'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            fontSize: 12,
+            color: '#1e3a8a',
+            background: '#eff6ff',
+            padding: '10px 14px',
+            borderRadius: 6,
+            border: '1px solid #bfdbfe',
+            marginBottom: 16
+          }}>
+            <b>Automatic Credential Dispatch:</b> A cryptographically random temporary password and 24-hour setup link will be generated and dispatched to <b>{f.email}</b> upon confirmation.
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" className="btn-secondary" onClick={() => setAddTeacherPreview(false)}>
+              ← Back to Edit
+            </button>
+            <button type="button" className="btn-primary" onClick={save} disabled={saving}>
+              {saving ? 'Creating teacher...' : '✓ Confirm & Create Teacher'}
+            </button>
+          </div>
+        </div>
+      )}
     </Modal>}
 
     {/* ═══ TEACHING ALLOCATIONS MODAL ═══ */}
@@ -4518,21 +4779,29 @@ function Teachers(){
               <table>
                 <thead>
                   <tr>
-                    <th>Emp ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Mobile</th>
-                    <th>Default Password</th>
+                    <th>Savior_No</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Full Name</th>
+                    <th>Email ID</th>
+                    <th>Designation</th>
+                    <th>Class & Section</th>
+                    <th>Status</th>
+                    <th>Email Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {previewRows.map((r, i) => (
                     <tr key={i}>
-                      <td><code>{r.employeeId}</code></td>
+                      <td><code>{r.saviorNo || r.employeeId}</code></td>
+                      <td>{r.firstName || '—'}</td>
+                      <td>{r.lastName || '—'}</td>
                       <td><b>{r.name}</b></td>
                       <td>{r.email}</td>
-                      <td>{r.mobile}</td>
-                      <td><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>••••••••</span></td>
+                      <td>{r.designation || 'Teacher'}</td>
+                      <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
+                      <td><span className="badge active">{r.status || 'Active'}</span></td>
+                      <td><span className="badge pending">Pending Dispatch</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -4556,6 +4825,77 @@ function Teachers(){
               </button>
             </div>
           </div>
+        )}
+      </div>
+    </Modal>}
+
+    {/* ═══ EXPORT PREVIEW MODAL ═══ */}
+    {exportOpen && <Modal title="Export Faculty Directory (Preview)" close={()=>setExportOpen(false)}>
+      <div style={{ padding: '4px 2px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              Previewing <b>{prepareExportData().length}</b> faculty records for export
+            </div>
+            <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
+              Formatted with standardized template headers: Savior_No, Fist Name, Last Name, Full Name(Automatically generated), Email_id, Class, Section, Status, Designation
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button 
+              type="button" 
+              onClick={handleExportExcel}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+            >
+              <FileSpreadsheet size={15} /> Download Excel (.xlsx)
+            </button>
+            <button 
+              type="button" 
+              onClick={handleExportCSV}
+              className="btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={15} /> Download CSV (.csv)
+            </button>
+          </div>
+        </div>
+
+        <div className="preview-table-container" style={{ maxHeight: 360, overflowY: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Savior_No</th>
+                <th>Fist Name</th>
+                <th>Last Name</th>
+                <th>Full Name(Automatically generated)</th>
+                <th>Email_id</th>
+                <th>Class</th>
+                <th>Section</th>
+                <th>Status</th>
+                <th>Designation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {prepareExportData().slice(0, 15).map((r, i) => (
+                <tr key={i}>
+                  <td><code>{r['Savior_No'] || '—'}</code></td>
+                  <td>{r['Fist Name'] || '—'}</td>
+                  <td>{r['Last Name'] || '—'}</td>
+                  <td><b>{r['Full Name(Automatically generated)']}</b></td>
+                  <td>{r['Email_id']}</td>
+                  <td>{r['Class'] || '—'}</td>
+                  <td>{r['Section'] || '—'}</td>
+                  <td><span className="badge active">{r['Status']}</span></td>
+                  <td>{r['Designation']}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {prepareExportData().length > 15 && (
+          <p className="muted" style={{ fontSize: 11, margin: '8px 0 0', textAlign: 'center' }}>
+            Showing first 15 of {prepareExportData().length} faculty records in preview. Full dataset will be included in the export file.
+          </p>
         )}
       </div>
     </Modal>}
