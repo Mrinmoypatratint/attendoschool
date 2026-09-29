@@ -1,3 +1,4 @@
+import { CollectionReference, WhereFilterOp } from 'firebase-admin/firestore';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { getFirestoreSchoolById } from './firestoreService';
 
@@ -22,9 +23,9 @@ export function invalidateSchoolCache(schoolId: string): void {
  * Helper to execute a scoped count query against Firestore with fallback for legacy camelCase/snake_case
  */
 async function countTenantCollection(
-  collectionFn: () => FirebaseFirestore.CollectionReference,
+  collectionFn: () => CollectionReference,
   schoolId: string,
-  extraFilter?: { field: string; op: FirebaseFirestore.WhereFilterOp; value: any }
+  extraFilter?: { field: string; op: WhereFilterOp; value: any }
 ): Promise<number> {
   if (!isFirebaseConfigured() || !schoolId) return 0;
 
