@@ -62,8 +62,8 @@ export const env = {
   resendApiKey: cleanEnv(process.env.RESEND_API_KEY, ''),
   resendFrom: cleanEnv(process.env.RESEND_FROM, ''),
   brevoApiKey: cleanEnv(process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY, ''),
-  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL, ''),
-  brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME, ''),
+  brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, 'rajbsmv@gmail.com'),
+  brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool Superadmin'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
   appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),
 };

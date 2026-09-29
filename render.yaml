@@ -47,6 +47,13 @@ services:
         value: rajbsmv@gmail.com
       - key: EMAIL_ENABLED
         value: "true"
+      # ── Brevo HTTPS Email Gateway (Port 443 - 100% Free on Render) ──
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        value: rajbsmv@gmail.com
+      - key: BREVO_SENDER_NAME
+        value: "AttendoSchool Superadmin"
       # ── Application URLs ──
       - key: APP_BASE_URL
         value: https://attendoschool.optinetinnovations.in
