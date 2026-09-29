@@ -215,6 +215,10 @@ export async function studentAttendanceReport(
     }
   });
 
+  if (validSessions.size === 0) {
+    return [];
+  }
+
   // ── Step 3: Populate Student Map with School's Enrolled Students ──
   const studentMap = new Map<string, {
     student_id: string;
@@ -301,8 +305,9 @@ export async function studentAttendanceReport(
   });
 
   // ── Step 5: Return Actual Student Records (No Fake Seed Data) ──
-  if (studentMap.size > 0) {
-    return Array.from(studentMap.values()).sort((a, b) =>
+  const attendedStudents = Array.from(studentMap.values()).filter(s => s.marked_days > 0);
+  if (attendedStudents.length > 0) {
+    return attendedStudents.sort((a, b) =>
       String(a.roll).localeCompare(String(b.roll), undefined, { numeric: true }) ||
       a.student_name.localeCompare(b.student_name)
     );

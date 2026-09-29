@@ -86,17 +86,10 @@ export const ReportsManagement: React.FC = () => {
 
       const [sumRes, studRes] = await Promise.all([
         api.get('/attendance-reports/summary', { params }).catch(() => ({
-          data: { present: 18, absent: 2, marked: 20, percentage: 90.0 }
+          data: { present: 0, absent: 0, marked: 0, percentage: 0 }
         })),
         api.get('/attendance-reports/students', { params }).catch(() => ({
-          data: [
-            { student_id: 'st-01', student_name: 'Aarav Sharma', roll: '01', class_name: '10', section_name: 'A', present_days: 19, absent_days: 1, marked_days: 20, attendance_percentage: 95 },
-            { student_id: 'st-02', student_name: 'Ananya Patel', roll: '02', class_name: '10', section_name: 'A', present_days: 18, absent_days: 2, marked_days: 20, attendance_percentage: 90 },
-            { student_id: 'st-03', student_name: 'Rohan Verma', roll: '03', class_name: '10', section_name: 'A', present_days: 17, absent_days: 3, marked_days: 20, attendance_percentage: 85 },
-            { student_id: 'st-04', student_name: 'Diya Mukherjee', roll: '04', class_name: '10', section_name: 'A', present_days: 20, absent_days: 0, marked_days: 20, attendance_percentage: 100 },
-            { student_id: 'st-05', student_name: 'Vivaan Reddy', roll: '05', class_name: '10', section_name: 'A', present_days: 16, absent_days: 4, marked_days: 20, attendance_percentage: 80 },
-            { student_id: 'st-25', student_name: 'Rohan Sharma', roll: '25', class_name: '10', section_name: 'A', present_days: 18, absent_days: 2, marked_days: 20, attendance_percentage: 90 }
-          ]
+          data: []
         }))
       ]);
 
