@@ -1075,63 +1075,189 @@ r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
  res.json({ success: true, count: ids.length });
 });
 
-r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
- const {name,rollNumber,admissionNumber,admission_number,parentName,parentSmsNumber,studentEmail,email,parentEmail,classId,sectionId}=req.body;
- const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
- const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
- const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
- try {
-  const q=await pool.query(`UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,updated_at=NOW()
-  WHERE id=$10 AND school_id=$11 RETURNING *`,[name,rollNumber,cleanAdmissionNumber||null,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,classId,sectionId,req.params.id,req.user!.schoolId]);
-  if(!q.rowCount)return res.status(404).json({message:'Student not found'});
-  const result = {
-    ...q.rows[0],
-    admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
-    admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
-    student_email: cleanStudentEmail,
-    parent_email: cleanParentEmail
-  };
-  syncStudentToFirestore(result).catch(() => {});
-  return res.json(result);
- } catch {
-  let putClsNum = 1;
-    const strPutClassId = String(classId || '').trim();
-    if (/l.?kg/i.test(strPutClassId)) putClsNum = -1;
-    else if (/u.?kg/i.test(strPutClassId)) putClsNum = 0;
-    else {
-      const m = strPutClassId.match(/cls-(\d+)/);
-      if (m) putClsNum = Number(m[1]);
-      else if (/^\d+$/.test(strPutClassId)) putClsNum = Number(strPutClassId);
-    }
-    const strPutSecId = String(sectionId || '').trim().toUpperCase();
-    const putSecName = (strPutSecId === 'B' || strPutSecId.endsWith('-B') || strPutSecId.endsWith('_B')) ? 'B' : 'A';
+r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
+  const studentId = String(req.params.id);
+  const schoolId = req.user!.schoolId;
 
-    const updated = {
-      id: req.params.id,
-      name,
-      roll_number: rollNumber,
-      admission_number: cleanAdmissionNumber,
-      admissionNumber: cleanAdmissionNumber,
-      parent_name: parentName,
-      parent_sms_number: parentSmsNumber,
-      email: cleanStudentEmail,
-      student_email: cleanStudentEmail,
-      parent_email: cleanParentEmail,
-      class_id: classId,
-      class_number: putClsNum,
-      section_id: sectionId,
-      section_name: putSecName
-    };
-  const idx = demoStudents.findIndex(s => s.id === req.params.id);
-  if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...updated };
-  else demoStudents.unshift(updated);
-  syncStudentToFirestore(updated).catch(() => {});
-  res.json(updated);
- }
+  try {
+    const q = await pool.query(
+      `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
+       st.academic_year_id, ay.name AS session_name,
+       c.id class_id,c.class_number,sec.id section_id,sec.name section_name
+       FROM students st 
+       JOIN classes c ON c.id=st.class_id 
+       JOIN sections sec ON sec.id=st.section_id
+       LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
+       WHERE st.id=$1 AND st.school_id=$2 AND st.is_active=true LIMIT 1`,
+      [studentId, schoolId]
+    );
+    if (q.rowCount && q.rows.length > 0) return res.json(q.rows[0]);
+  } catch {}
+
+  if (isFirebaseConfigured()) {
+    try {
+      const doc = await collections.students().doc(studentId).get();
+      if (doc.exists) {
+        return res.json({ id: doc.id, ...doc.data() });
+      }
+    } catch {}
+  }
+
+  const mem = demoStudents.find(s => s.id === studentId);
+  if (mem) return res.json(mem);
+
+  return res.status(404).json({ message: 'Student not found' });
+});
+
+r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
+  const {
+    name, firstName: rawFirst, lastName: rawLast,
+    rollNumber, roll_number,
+    admissionNumber, admission_number,
+    parentName, parent_name,
+    parentSmsNumber, parentPhone, parent_sms_number,
+    studentEmail, email, parentEmail, parent_email,
+    classId, class_id,
+    sectionId, section_id,
+    sessionId, session, academic_year_id
+  } = req.body || {};
+
+  const studentId = String(req.params.id);
+  const schoolId = req.user!.schoolId;
+
+  const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
+  const cleanParentEmail = String(parentEmail || parent_email || '').trim().toLowerCase();
+  const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
+  const cleanRollNumber = String(rollNumber !== undefined ? rollNumber : (roll_number !== undefined ? roll_number : '')).trim();
+  const cleanParentName = String(parentName !== undefined ? parentName : (parent_name !== undefined ? parent_name : '')).trim();
+  const cleanParentPhone = String(parentSmsNumber !== undefined ? parentSmsNumber : (parentPhone !== undefined ? parentPhone : (parent_sms_number !== undefined ? parent_sms_number : ''))).trim();
+
+  const firstName = String(rawFirst || '').trim();
+  const lastName = String(rawLast || '').trim();
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(name || '').trim());
+
+  const resolvedClassId = String(classId || class_id || '').trim();
+  const resolvedSectionId = String(sectionId || section_id || '').trim();
+
+  // Class number and section name resolution
+  let putClsNum = 1;
+  if (/l.?kg/i.test(resolvedClassId)) putClsNum = -1;
+  else if (/u.?kg/i.test(resolvedClassId)) putClsNum = 0;
+  else {
+    const m = resolvedClassId.match(/cls-(\d+)/);
+    if (m) putClsNum = Number(m[1]);
+    else if (/^\d+$/.test(resolvedClassId)) putClsNum = Number(resolvedClassId);
+  }
+  const strPutSecId = resolvedSectionId.toUpperCase();
+  const putSecName = (strPutSecId === 'B' || strPutSecId.endsWith('-B') || strPutSecId.endsWith('_B')) ? 'B' : 'A';
+  const putClassLabel = putClsNum === -1 ? 'L-KG' : putClsNum === 0 ? 'U-KG' : `Class ${putClsNum}`;
+
+  const resolvedSession = String(session || sessionId || academic_year_id || '').trim();
+
+  // Try PostgreSQL if available
+  try {
+    const q = await pool.query(
+      `UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,academic_year_id=COALESCE($10, academic_year_id),updated_at=NOW()
+       WHERE id=$11 AND school_id=$12 RETURNING *`,
+      [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, resolvedClassId, resolvedSectionId, resolvedSession || null, studentId, schoolId]
+    );
+    if (q.rowCount && q.rows.length > 0) {
+      const result = {
+        ...q.rows[0],
+        name: fullName || q.rows[0].name,
+        roll_number: cleanRollNumber || q.rows[0].roll_number,
+        rollNumber: cleanRollNumber || q.rows[0].roll_number,
+        admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
+        admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
+        student_email: cleanStudentEmail || q.rows[0].email,
+        email: cleanStudentEmail || q.rows[0].email,
+        parent_email: cleanParentEmail || q.rows[0].parent_email,
+        parent_name: cleanParentName || q.rows[0].parent_name,
+        parentName: cleanParentName || q.rows[0].parent_name,
+        parent_sms_number: cleanParentPhone || q.rows[0].parent_sms_number,
+        parentPhone: cleanParentPhone || q.rows[0].parent_sms_number,
+        class_id: resolvedClassId || q.rows[0].class_id,
+        classId: resolvedClassId || q.rows[0].class_id,
+        class_number: putClsNum,
+        class_label: putClassLabel,
+        section_id: resolvedSectionId || q.rows[0].section_id,
+        sectionId: resolvedSectionId || q.rows[0].section_id,
+        section_name: putSecName,
+        session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
+        session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
+        academic_year_id: resolvedSession || q.rows[0].academic_year_id,
+        is_active: true
+      };
+      const idx = demoStudents.findIndex(s => s.id === studentId);
+      if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...result };
+      else demoStudents.unshift(result);
+      syncStudentToFirestore(result).catch(() => {});
+      return res.json(result);
+    }
+  } catch {}
+
+  // Pure Cloud Firestore & in-memory update
+  let existingFirestoreData: any = {};
+  if (isFirebaseConfigured()) {
+    try {
+      const docSnap = await collections.students().doc(studentId).get();
+      if (docSnap.exists) {
+        existingFirestoreData = docSnap.data() || {};
+      }
+    } catch {}
+  }
+
+  const idx = demoStudents.findIndex(s => s.id === studentId);
+  const existingMem = idx >= 0 ? demoStudents[idx] : {};
+
+  const updated: any = {
+    ...existingFirestoreData,
+    ...existingMem,
+    id: studentId,
+    name: fullName || existingFirestoreData.name || existingMem.name || 'Student',
+    full_name: fullName || existingFirestoreData.full_name || existingFirestoreData.name || existingMem.full_name || existingMem.name || 'Student',
+    first_name: firstName || existingFirestoreData.first_name || existingMem.first_name || '',
+    last_name: lastName || existingFirestoreData.last_name || existingMem.last_name || '',
+    roll_number: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
+    rollNumber: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
+    admission_number: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
+    admissionNumber: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
+    parent_name: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
+    parentName: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
+    parent_sms_number: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
+    parentPhone: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
+    email: cleanStudentEmail || existingFirestoreData.email || existingMem.email || '',
+    student_email: cleanStudentEmail || existingFirestoreData.student_email || existingMem.student_email || '',
+    parent_email: cleanParentEmail || existingFirestoreData.parent_email || existingMem.parent_email || '',
+    class_id: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
+    classId: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
+    class_number: putClsNum,
+    class_label: putClassLabel,
+    section_id: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
+    sectionId: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
+    section_name: putSecName,
+    school_id: schoolId || existingFirestoreData.school_id || existingMem.school_id,
+    schoolId: schoolId || existingFirestoreData.school_id || existingMem.school_id,
+    academic_year_id: resolvedSession || existingFirestoreData.academic_year_id || existingMem.academic_year_id || null,
+    session_id: resolvedSession || existingFirestoreData.session_id || existingMem.session_id || null,
+    session_name: resolvedSession || existingFirestoreData.session_name || existingMem.session_name || null,
+    session: resolvedSession || existingFirestoreData.session || existingMem.session || null,
+    is_active: true,
+    updated_at: new Date().toISOString()
+  };
+
+  if (idx >= 0) {
+    demoStudents[idx] = { ...demoStudents[idx], ...updated };
+  } else {
+    demoStudents.unshift(updated);
+  }
+
+  await syncStudentToFirestore(updated).catch(() => {});
+  return res.json(updated);
 });
 
 r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
-  const studentId = req.params.id;
+  const studentId = String(req.params.id);
   let targetEmail = '';
   let studentName = 'Student';
   let role = 'STUDENT';
@@ -1154,6 +1280,18 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
       }
     }
   } catch {}
+
+  if (!targetEmail && isFirebaseConfigured()) {
+    try {
+      const doc = await collections.students().doc(studentId).get();
+      if (doc.exists) {
+        const dt = doc.data() || {};
+        studentName = dt.name || dt.fullName || studentName;
+        targetEmail = dt.student_email || dt.studentEmail || dt.email || dt.parent_email || dt.parentEmail || '';
+        userId = dt.user_id || dt.userId || userId;
+      }
+    } catch {}
+  }
 
   if (!targetEmail) {
     const demo = demoStudents.find(s => s.id === studentId);
@@ -1183,6 +1321,7 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     resetUrl: resetResult.resetUrl
   });
 });
+
 
 r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
  try {
@@ -1376,7 +1515,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
-  const teacherId = req.params.id;
+  const teacherId = String(req.params.id);
   let teacherEmail = '';
   let teacherName = 'Teacher';
   let userId: string | undefined = undefined;
@@ -1392,6 +1531,18 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
       teacherEmail = q.rows[0].email;
     }
   } catch {}
+
+  if (!teacherEmail && isFirebaseConfigured()) {
+    try {
+      const doc = await collections.teachers().doc(teacherId).get();
+      if (doc.exists) {
+        const dt = doc.data() || {};
+        teacherName = dt.name || dt.fullName || teacherName;
+        teacherEmail = dt.email || '';
+        userId = dt.user_id || dt.userId || userId;
+      }
+    } catch {}
+  }
 
   if (!teacherEmail) {
     const demo = demoTeachers.find(t => t.id === teacherId);
