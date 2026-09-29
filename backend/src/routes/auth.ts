@@ -17,20 +17,34 @@ const router = Router();
 export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
 import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool } from '../utils/tenant';
 
-// GET /api/auth/institutes - Public active institutes for multi-tenant selector
+// GET /api/auth/institutes - Public active institutes strictly from Database (Supabase / Firestore)
 router.get('/institutes', async (_req, res) => {
-  const defaultInstitutes = [
-    {
-      id: '00000000-0000-0000-0000-000000000001',
-      name: 'Greenwood International School',
-      code: 'GIS001',
-      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-    }
-  ];
-
   let list: any[] = [];
 
-  // 1. Direct Firebase Cloud Firestore
+  // 1. Supabase / PostgreSQL Database (Live SQL query)
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
+         FROM schools
+         WHERE status = 'ACTIVE'
+         ORDER BY name ASC`
+      );
+      if (q.rows && q.rows.length > 0) {
+        list = q.rows.map(s => ({
+          id: String(s.id),
+          name: String(s.name),
+          code: String(s.code || 'SCH001'),
+          address: String(s.address || 'Main Campus')
+        }));
+        return res.json(list);
+      }
+    } catch (err: any) {
+      console.warn('[Auth] Database error fetching schools from PostgreSQL/Supabase:', err.message);
+    }
+  }
+
+  // 2. Direct Firebase Cloud Firestore
   if (isFirebaseConfigured()) {
     try {
       const fsSchools = await getFirestoreSchools();
@@ -44,56 +58,14 @@ router.get('/institutes', async (_req, res) => {
         }));
 
       if (fsList.length > 0) {
-        list = fsList;
+        return res.json(fsList);
       }
     } catch (err: any) {
       console.warn('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
     }
   }
 
-  // 2. PostgreSQL fallback
-  if (list.length === 0) {
-    try {
-      const q = await pool.query(
-        `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
-         FROM schools
-         WHERE status = 'ACTIVE'
-         ORDER BY name ASC`
-      );
-      if (q.rows && q.rows.length > 0) {
-        list = q.rows.map(s => ({
-          id: s.id,
-          name: s.name,
-          code: s.code || 'SCH001',
-          address: s.address || 'Main Campus'
-        }));
-      }
-    } catch (_e) {}
-  }
-
-  // 3. In-memory demo schools fallback (guarantees Greenwood & TINT are selectable)
-  if (list.length === 0 && demoSchools && demoSchools.length > 0) {
-    list = demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
-      id: s.id,
-      name: s.name,
-      code: s.code || (s.id.endsWith('2') ? 'TINT' : 'GIS001'),
-      address: s.address || (s.id.endsWith('2') ? 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156' : 'Campus 4, Tech Park Boulevard, Bengaluru')
-    }));
-  }
-
-  // Ensure default institutions (Greenwood and TINT) are ALWAYS in the selectable list
-  for (const def of defaultInstitutes) {
-    const exists = list.some(
-      s => s.id === def.id ||
-           (s.code && s.code.toUpperCase() === def.code.toUpperCase()) ||
-           (s.name && s.name.toUpperCase().includes('TINT') && def.code === 'TINT') ||
-           (s.name && s.name.toUpperCase().includes('GREENWOOD') && def.code === 'GIS001')
-    );
-    if (!exists) {
-      list.push(def);
-    }
-  }
-
+  // Return strictly what the database has (empty array if no active schools exist in database)
   return res.json(list);
 });
 

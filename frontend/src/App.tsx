@@ -189,26 +189,7 @@ function Login() {
   const { login } = useAuth();
   const { dark, toggle } = useTheme();
 
-  const [institutes, setInstitutes] = useState<Institute[]>(() => {
-    try {
-      const cached = localStorage.getItem('attendoschool_cached_institutes');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== '00000000-0000-0000-0000-000000000002' && !x.name?.toUpperCase().includes('TINT'));
-          if (clean.length > 0) return clean;
-        }
-      }
-    } catch {}
-    return [
-      {
-        id: '00000000-0000-0000-0000-000000000001',
-        name: 'Greenwood International School',
-        code: 'GIS001',
-        address: 'Campus 4, Tech Park Boulevard, Bengaluru'
-      }
-    ];
-  });
+  const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
   const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
@@ -262,17 +243,15 @@ function Login() {
             address: String(i.address || '')
           }));
 
-        const filteredList = cleanList.filter(i => i.id !== '00000000-0000-0000-0000-000000000002' && !i.name.toUpperCase().includes('TINT'));
-
-        setInstitutes(filteredList);
+        setInstitutes(cleanList);
         try {
-          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(filteredList));
+          localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Preserve user selection if valid, otherwise select the first live school from Firestore
+        // Preserve user selection if valid, otherwise select the first live school from Database
         setInstituteId(prev => {
-          if (prev && filteredList.some(i => i.id === prev)) return prev;
-          return filteredList.length > 0 ? filteredList[0].id : '';
+          if (prev && cleanList.some(i => i.id === prev)) return prev;
+          return cleanList.length > 0 ? cleanList[0].id : '';
         });
       }
     } catch (err) {
@@ -287,6 +266,9 @@ function Login() {
   }, []);
 
   useEffect(() => {
+    try {
+      localStorage.removeItem('attendoschool_cached_institutes');
+    } catch {}
     fetchInstitutes();
   }, [fetchInstitutes]);
 
