@@ -10437,8 +10437,19 @@ header {
   }
 }
 
+/* ─── AttendoSchool Enterprise Popup Modal Animations ─── */
+@keyframes attendoFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-
-
-
-
+@keyframes attendoScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
