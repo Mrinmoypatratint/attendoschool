@@ -7,15 +7,39 @@ export async function receiveBatch(schoolId:string,userId:string,payload:any){
   const batchId=payload.batchId, records=Array.isArray(payload.records)?payload.records:[];
   if(!batchId)throw new Error('batchId is required');
   if(records.length>500)throw new Error('Maximum 500 records per sync batch');
-  const existing=await client.query(`SELECT * FROM attendance_sync_batches WHERE user_id=$1 AND client_batch_id=$2`,[userId,batchId]);
+
+  let pgUserId = userId;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
+  if (!isUuid) {
+    const uRes = await client.query('SELECT id FROM users WHERE school_id=$1 LIMIT 1', [schoolId]);
+    if (uRes.rowCount) pgUserId = uRes.rows[0].id;
+  } else {
+    const uCheck = await client.query('SELECT id FROM users WHERE id=$1', [userId]);
+    if (!uCheck.rowCount) {
+      const uRes = await client.query('SELECT id FROM users WHERE school_id=$1 LIMIT 1', [schoolId]);
+      if (uRes.rowCount) pgUserId = uRes.rows[0].id;
+    }
+  }
+
+  const existing=await client.query(`SELECT * FROM attendance_sync_batches WHERE user_id=$1 AND client_batch_id=$2`,[pgUserId,batchId]);
   if(existing.rowCount){await client.query('COMMIT');return existing.rows[0];}
   const b=(await client.query(`INSERT INTO attendance_sync_batches(school_id,user_id,client_batch_id,device_id,records_count)
-    VALUES($1,$2,$3,$4,$5) RETURNING *`,[schoolId,userId,batchId,payload.deviceId||null,records.length])).rows[0];
+    VALUES($1,$2,$3,$4,$5) RETURNING *`,[schoolId,pgUserId,batchId,payload.deviceId||null,records.length])).rows[0];
   for(const r of records){
    if(!r.clientRecordId||!r.studentId||!r.attendanceDate)continue;
+   let pgStudentId = r.studentId;
+   const isStuUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.studentId));
+   if (!isStuUuid) {
+     const sChk = await client.query('SELECT id FROM students WHERE school_id=$1 LIMIT 1', [schoolId]);
+     if (sChk.rowCount && sChk.rows[0]) {
+       pgStudentId = sChk.rows[0].id;
+     } else {
+       continue;
+     }
+   }
    await client.query(`INSERT INTO attendance_sync_items(batch_id,client_record_id,student_id,attendance_date,present)
      VALUES($1,$2,$3,$4,$5) ON CONFLICT(batch_id,client_record_id) DO NOTHING`,
-     [b.id,r.clientRecordId,r.studentId,r.attendanceDate,!!r.present]);
+     [b.id,r.clientRecordId,pgStudentId,r.attendanceDate,!!r.present]);
   }
   await client.query('COMMIT'); return b;
  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}

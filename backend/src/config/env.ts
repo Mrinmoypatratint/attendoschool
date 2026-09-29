@@ -51,7 +51,7 @@ export const env = {
   firebaseServiceAccountPath: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, ''),
   firebaseServiceAccount: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_KEY, ''),
   firestoreEmulatorHost: cleanEnv(process.env.FIRESTORE_EMULATOR_HOST, ''),
-  dbDriver: cleanEnv(process.env.DB_DRIVER, 'firebase').toLowerCase(), // 'firebase' | 'postgres'
+  dbDriver: cleanEnv(process.env.DB_DRIVER, 'postgres').toLowerCase(), // 'firebase' | 'postgres'
   keepAliveUrl: cleanEnv(process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL, ''),
   // Email & deliverability settings
   emailEnabled: cleanEnv(process.env.EMAIL_ENABLED, 'true') !== 'false',

@@ -173,7 +173,7 @@ router.post('/login', async (req, res) => {
       SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
              st.id AS student_id, st.roll_number, st.admission_number,
              c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-             sch.name AS school_name
+             sch.name AS school_name, sch.code AS school_code
       FROM users u
       LEFT JOIN schools sch ON sch.id = u.school_id
       LEFT JOIN students st ON (st.user_id = u.id OR (st.school_id = u.school_id AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))

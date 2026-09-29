@@ -132,16 +132,16 @@ r.post('/classes',...admin,async(req:AuthRequest,res)=>{
  const n=Number(req.body.classNumber || req.body.class_number);
  const sid=req.user!.schoolId;
  if(!Number.isInteger(n)||n<-1||n>12) return res.status(400).json({message:'Class must be between L-KG (-1) and 12'});
- try {
-  const q=await pool.query('INSERT INTO classes(school_id,class_number) VALUES($1,$2) RETURNING *',[sid,n]);
-  if (q.rowCount) {
-    const created = { id: q.rows[0].id, class_number: n, section_count: 0, school_id: sid };
-    demoClasses.push(created);
-    demoClasses.sort((a,b) => a.class_number - b.class_number);
-    syncClassToFirestore(created).catch(() => {});
-    return res.status(201).json(created);
-  }
- } catch {}
+  try {
+   const q=await pool.query('INSERT INTO classes(school_id,class_number) VALUES($1,$2) ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING *',[sid,n]);
+   if (q.rowCount) {
+     const created = { id: q.rows[0].id, class_number: n, section_count: 0, school_id: sid };
+     demoClasses.push(created);
+     demoClasses.sort((a,b) => a.class_number - b.class_number);
+     syncClassToFirestore(created).catch(() => {});
+     return res.status(201).json(created);
+   }
+  } catch {}
  const existing = demoClasses.find(c => c.class_number === n && c.school_id && isSameSchool(c.school_id, sid));
  if (existing) return res.status(200).json(existing);
  const newClass = { id: `cls-${sid}-${n}`, class_number: n, section_count: 0, school_id: sid };
@@ -259,7 +259,8 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
 
 r.post('/sections',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
- const {classId,name}=req.body || {};
+ const classId = req.body?.classId || req.body?.class_id;
+ const name = req.body?.name;
  if(!classId||!name||!String(name).trim()) return res.status(400).json({message:'Class and section name are required'});
  const cleanName = String(name).trim().toUpperCase();
 
@@ -271,21 +272,27 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
    classNumber = Number(classId.replace(/cls-.*?-?/, '')) || 8;
  }
 
- try {
-  const valid=await pool.query('SELECT id, class_number FROM classes WHERE (id=$1 OR class_number=$2) AND school_id=$3',[classId,classNumber,sid]);
-  if(valid.rowCount) {
-    const realClassId = valid.rows[0].id;
-    classNumber = valid.rows[0].class_number;
-    const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) RETURNING *',[sid,realClassId,cleanName]);
-    const created = { id: q.rows[0].id, class_id: realClassId, class_number: classNumber, name: cleanName, school_id: sid };
-    demoSections.push(created);
-    demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
-    const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
-    if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
-    syncSectionToFirestore(created).catch(() => {});
-    return res.status(201).json(created);
-  }
- } catch {}
+  try {
+   const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
+   const valid=await pool.query(
+     `SELECT id, class_number FROM classes 
+      WHERE (${isClassUuid ? 'id=$1' : 'FALSE'} OR class_number=$2) 
+        AND school_id=$3 LIMIT 1`,
+     [isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', classNumber, sid]
+   );
+   if(valid.rowCount) {
+     const realClassId = valid.rows[0].id;
+     classNumber = valid.rows[0].class_number;
+     const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) ON CONFLICT (school_id, class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING *',[sid,realClassId,cleanName]);
+     const created = { id: q.rows[0].id, class_id: realClassId, class_number: classNumber, name: cleanName, school_id: sid };
+     demoSections.push(created);
+     demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
+     const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
+     if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+     syncSectionToFirestore(created).catch(() => {});
+     return res.status(201).json(created);
+   }
+  } catch {}
 
  const newSection = {
    id: `sec-${sid}-${classNumber}-${cleanName.toLowerCase()}-${Date.now().toString().slice(-4)}`,
@@ -511,23 +518,32 @@ r.get('/students/template', ...reader, (_req, res) => {
 });
 
 r.post('/students',...admin,async(req:AuthRequest,res)=>{
- const {
-   firstName: rawFirst, lastName: rawLast, name: rawName,
-   rollNumber, admissionNumber, admission_number, parentName, parentSmsNumber, classId, sectionId,
-   studentEmail, email, parentEmail, loginOption, sendInviteEmail = true,
-   sessionId, session
- } = req.body;
+  const b = req.body || {};
+  const rawFirst = b.firstName;
+  const rawLast = b.lastName;
+  const rawName = b.name;
+  const rollNumber = b.rollNumber || b.roll_number;
+  const admissionNumber = b.admissionNumber || b.admission_number;
+  const parentName = b.parentName || b.parent_name;
+  const parentSmsNumber = b.parentSmsNumber || b.parent_phone || b.parent_sms_number;
+  const classId = b.classId || b.class_id;
+  const sectionId = b.sectionId || b.section_id;
+  const studentEmail = b.studentEmail || b.student_email || b.email;
+  const parentEmail = b.parentEmail || b.parent_email;
+  const loginOption = b.loginOption || b.login_option;
+  const sendInviteEmail = b.sendInviteEmail !== undefined ? b.sendInviteEmail : true;
+  const sessionId = b.sessionId || b.session_id || b.session;
 
- // Name normalization
- const firstName  = String(rawFirst || '').trim();
- const lastName   = String(rawLast  || '').trim();
- const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawName||'').trim());
- if(!name||!rollNumber||!classId||!sectionId) return res.status(400).json({message:'First Name, Last Name (or full name), roll number, class and section are required'});
+  // Name normalization
+  const firstName  = String(rawFirst || '').trim();
+  const lastName   = String(rawLast  || '').trim();
+  const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawName||'').trim());
+  if(!name||!rollNumber||!classId||!sectionId) return res.status(400).json({message:'First Name, Last Name (or full name), roll number, class and section are required'});
 
  // Mandatory session binding — resolve academic_year_id
  const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } = await import('./academicYears');
  const schoolId = req.user!.schoolId;
- const rawSession = String(sessionId || session || '').trim();
+ const rawSession = String(sessionId || '').trim();
  let resolvedSessionId: string | null = null;
  let resolvedSessionName: string | null = null;
  try {
@@ -556,9 +572,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    resolvedSessionName = target?.name || rawSession || '2025–26 Academic Session';
  }
  
- const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
+ const cleanStudentEmail = String(studentEmail || '').trim().toLowerCase();
  const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
- const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
+ const cleanAdmissionNumber = String(admissionNumber || '').trim();
  const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
 
  // Unique admission number constraint — check at application level
@@ -572,6 +588,33 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    // Also check in-memory
    const dup = demoStudents.find(s => s.school_id === schoolId && s.admission_number === cleanAdmissionNumber);
    if (dup) return res.status(400).json({ message: `Admission number '${cleanAdmissionNumber}' already exists (in-memory).` });
+ }
+
+ // Duplicate Roll Number check in same section
+ if (rollNumber) {
+   try {
+     const rollChk = await pool.query(
+       `SELECT id FROM students 
+        WHERE school_id = $1 
+          AND (section_id = $2 OR section_id::text = $2) 
+          AND (roll_number = $3 OR roll_number::text = $3) 
+          AND is_active = true 
+        LIMIT 1`,
+       [schoolId, sectionId, String(rollNumber)]
+     );
+     if (rollChk.rowCount && rollChk.rowCount > 0) {
+       return res.status(400).json({ message: `Roll number ${rollNumber} is already assigned in this section.` });
+     }
+   } catch {}
+   const dupRoll = demoStudents.find(s => 
+     s.school_id === schoolId && 
+     (s.section_id === sectionId || s.sectionId === sectionId) && 
+     String(s.roll_number || s.rollNumber) === String(rollNumber) && 
+     s.is_active !== false
+   );
+   if (dupRoll) {
+     return res.status(400).json({ message: `Roll number ${rollNumber} is already assigned in this section.` });
+   }
  }
 
  let clsNum = 1;
@@ -601,14 +644,28 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   } else if (strSecId === 'A' || strSecId.endsWith('-A') || strSecId.endsWith('_A') || strSecId.endsWith('/A')) {
     secName = 'A';
   }
+  let resetInfo: any = null;
+  let realClassId = classId;
+  let realSectionId = sectionId;
+  const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
+  const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(sectionId));
 
- let resetInfo: any = null;
-
- try {
-  const valid=await pool.query(`SELECT s.id, s.name section_name, c.class_number FROM sections s JOIN classes c ON c.id=s.class_id WHERE s.id=$1 AND c.id=$2 AND s.school_id=$3`,[sectionId,classId,req.user!.schoolId]);
-  if(valid.rowCount) {
-    clsNum = valid.rows[0].class_number;
-    secName = valid.rows[0].section_name;
+  try {
+    const valid = await pool.query(
+      `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
+       FROM sections s 
+       JOIN classes c ON c.id = s.class_id 
+       WHERE s.school_id = $1 
+         AND (${isSecUuid ? 's.id = $2' : 'FALSE'} OR LOWER(s.name) = LOWER($3))
+         AND (${isClassUuid ? 'c.id = $4' : 'FALSE'} OR c.class_number = $5)
+       LIMIT 1`,
+      [req.user!.schoolId, isSecUuid ? sectionId : '00000000-0000-0000-0000-000000000000', secName, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum]
+    );
+    if(valid.rowCount) {
+      realSectionId = valid.rows[0].section_id;
+      realClassId = valid.rows[0].class_id;
+      clsNum = valid.rows[0].class_number;
+      secName = valid.rows[0].section_name;
 
     let linkedUserId: string | null = null;
     let targetLoginEmail = '';
@@ -674,6 +731,18 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
     }
 
+    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedSessionId));
+    let pgAyId: string | null = isAyUuid ? resolvedSessionId : null;
+    if (!pgAyId) {
+      try {
+        const ayRow = await pool.query('SELECT id FROM academic_years WHERE school_id=$1 AND is_active=true LIMIT 1', [req.user!.schoolId]);
+        if (ayRow.rowCount) pgAyId = ayRow.rows[0].id;
+      } catch {}
+    }
+
+    const isUserUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(linkedUserId));
+    const pgUserId = isUserUuid ? linkedUserId : null;
+
     const q=await pool.query(
       `INSERT INTO students(
         school_id, academic_year_id, class_id, section_id, roll_number, 
@@ -682,9 +751,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
       [
         req.user!.schoolId,
-        resolvedSessionId,
-        classId,
-        sectionId,
+        pgAyId,
+        realClassId,
+        realSectionId,
         rollNumber,
         cleanAdmissionNumber || null,
         firstName || null,
@@ -695,7 +764,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         parentSmsNumber,
         cleanStudentEmail || null,
         cleanParentEmail || null,
-        linkedUserId
+        pgUserId
       ]
     );
     
@@ -1430,7 +1499,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const firstName = String(rawFirst || '').trim();
   const lastName = String(rawLast || '').trim();
   const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawFull || rawName || '').trim());
-  const employeeId = String(rawEmp || saviorNo || Savior_No || '').trim();
+  const employeeId = String(rawEmp || req.body?.employee_id || saviorNo || Savior_No || '').trim();
   const cleanEmail = String(email || '').trim().toLowerCase();
   const mobile = String(rawMobile || '').trim();
   const designation = String(rawDesig || 'Teacher').trim();

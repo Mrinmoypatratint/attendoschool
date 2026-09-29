@@ -89,6 +89,39 @@ router.get('/daily', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/monthly', async (req: Request, res: Response) => {
+  try {
+    const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';
+    const month = String(req.query.month || new Date().toISOString().slice(0, 7));
+    const parts = month.split('-');
+    const year = Number(parts[0]) || new Date().getFullYear();
+    const m = Number(parts[1]) || (new Date().getMonth() + 1);
+    const lastDay = new Date(year, m, 0).getDate();
+    const from = `${year}-${String(m).padStart(2, '0')}-01`;
+    const to = `${year}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const records = await studentAttendanceReport(sid, from, to);
+    res.json({ month, from, to, records });
+  } catch (_e: any) {
+    res.json({ month: req.query.month, records: [] });
+  }
+});
+
+router.get('/defaulters', async (req: Request, res: Response) => {
+  try {
+    const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';
+    const threshold = Number(req.query.threshold || 75);
+    const today = new Date().toISOString().slice(0, 10);
+    const startOfMonth = today.slice(0, 8) + '01';
+    const from = String(req.query.from || startOfMonth);
+    const to = String(req.query.to || today);
+    const all = await studentAttendanceReport(sid, from, to);
+    const defaulters = all.filter((s: any) => (s.attendance_percentage ?? 100) < threshold);
+    res.json({ threshold, count: defaulters.length, defaulters });
+  } catch (_e: any) {
+    res.json({ threshold: req.query.threshold, count: 0, defaulters: [] });
+  }
+});
+
 router.get('/export/csv', async (req: Request, res: Response) => {
   try {
     const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';

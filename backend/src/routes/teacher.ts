@@ -557,10 +557,8 @@ async function dispatchStudentReattendanceAlert(params: {
   }
 }
 
-// ── GET /api/teacher/attendance/today-status ──
-// Checks if attendance has already been recorded for this class & section today.
-// Accessible by all teachers assigned to this class/section regardless of subject!
-r.get('/attendance/today-status', ...teacher, async (req: AuthRequest, res) => {
+// ── GET /api/teacher/attendance/today-status & GET /api/attendance/today-status ──
+const todayStatusHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
   const classParam = String(req.query.classId || req.query.class_id || req.query.class_number || '');
   const secParam = String(req.query.sectionId || req.query.section_id || req.query.section_name || '');
@@ -790,11 +788,13 @@ r.get('/attendance/today-status', ...teacher, async (req: AuthRequest, res) => {
     records,
     auditLogs
   });
-});
+};
 
-// ── GET /api/teacher/attendance/:sessionId/records ──
-// Returns records and full re-attendance audit trail for a specific attendance session
-r.get('/attendance/:sessionId/records', ...teacher, async (req: AuthRequest, res) => {
+r.get('/attendance/today-status', ...teacher, todayStatusHandler);
+r.get('/today-status', ...teacher, todayStatusHandler);
+
+// ── GET /api/teacher/attendance/:sessionId/records & GET /api/attendance/:sessionId/records ──
+const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
 
@@ -829,12 +829,13 @@ r.get('/attendance/:sessionId/records', ...teacher, async (req: AuthRequest, res
   }
 
   return res.json({ session, records, auditLogs });
-});
+};
 
-// ── PUT /api/teacher/attendance/:sessionId/student/:studentId ──
-// Scenario: A student came in 1st period and went after 1st period (LEFT_EARLY), or came late (LATE).
-// Allows any teacher or class teacher to re-attend and update the student's status with reasons and parent notification!
-r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthRequest, res) => {
+r.get('/attendance/:sessionId/records', ...teacher, sessionRecordsHandler);
+r.get('/:sessionId/records', ...teacher, sessionRecordsHandler);
+
+// ── PUT /api/teacher/attendance/:sessionId/student/:studentId & PUT /api/attendance/:sessionId/student/:studentId ──
+const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
   const studentId = String(req.params.studentId);
@@ -1044,11 +1045,13 @@ r.put('/attendance/:sessionId/student/:studentId', ...teacher, async (req: AuthR
     record,
     auditLog
   });
-});
+};
 
-// ── POST /api/teacher/attendance/:sessionId/reattendance ──
-// Batch re-attendance (e.g. Period 2 / Period 3 re-roll call or bulk adjustments)
-r.post('/attendance/:sessionId/reattendance', ...teacher, async (req: AuthRequest, res) => {
+r.put('/attendance/:sessionId/student/:studentId', ...teacher, updateStudentAttendanceHandler);
+r.put('/:sessionId/student/:studentId', ...teacher, updateStudentAttendanceHandler);
+
+// ── POST /api/teacher/attendance/:sessionId/reattendance & POST /api/attendance/:sessionId/reattendance ──
+const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
   const { records, reason, notifyParents } = req.body || {};
@@ -1191,10 +1194,13 @@ r.post('/attendance/:sessionId/reattendance', ...teacher, async (req: AuthReques
     leftEarly: leftEarlyCount,
     late: lateCount
   });
-});
+};
 
-// ── POST /api/teacher/attendance ──
-r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
+r.post('/attendance/:sessionId/reattendance', ...teacher, batchReattendanceHandler);
+r.post('/:sessionId/reattendance', ...teacher, batchReattendanceHandler);
+
+// ── POST /api/teacher/attendance & POST /api/attendance ──
+const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   const x = req.body;
   const schoolId = req.user!.schoolId!;
 
@@ -1219,6 +1225,7 @@ r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
 
   let sessionId = 'sess-' + Date.now();
   let sessionSavedInDb = false;
+  let isExistingSession = false;
   let finalRecords: any[] = [];
   let finalClassNum = Number(x.classNumber ?? x.class_number ?? (String(x.classId).match(/\d+/)?.[0] || 10));
   let finalSecName = String(x.sectionName || x.section_name || 'A').replace(/section\s*/i, '').trim() || 'A';
@@ -1278,6 +1285,7 @@ r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
 
         if (duplicate.rowCount) {
           sessionId = duplicate.rows[0].id;
+          isExistingSession = true;
           await client.query('DELETE FROM attendance_records WHERE attendance_session_id = $1', [sessionId]);
         } else {
           const session = (await client.query(
@@ -1458,6 +1466,7 @@ r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
   if (existingMemIdx >= 0) {
     const prior = memAttendanceSessions[existingMemIdx];
     sessionId = prior.id;
+    isExistingSession = true;
     sessionMeta.id = prior.id;
     sessionMeta.is_reattendance = true;
     sessionMeta.isReattendance = true;
@@ -1524,7 +1533,7 @@ r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
     console.warn('[Teacher] Background Firestore attendance sync warning:', err.message);
   });
 
-  return res.status(201).json({
+  return res.status(isExistingSession ? 200 : 201).json({
     success: true,
     sessionId,
     total: finalRecords.length,
@@ -1534,12 +1543,13 @@ r.post('/attendance', ...teacher, async (req: AuthRequest, res) => {
     late: lateCount,
     isReattendance: sessionMeta.isReattendance
   });
-});
+};
 
-// ── GET /api/teacher/attendance/history ──
-// Returns attendance sessions for this school.
-// All teachers who teach this class/section (and all faculty in the school) can see the attendance recorded!
-r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
+r.post('/attendance', ...teacher, postAttendanceHandler);
+r.post('/', ...teacher, postAttendanceHandler);
+
+// ── GET /api/teacher/attendance/history & GET /api/attendance/history ──
+const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
 
   // 1. Try PostgreSQL if enabled
@@ -1686,6 +1696,9 @@ r.get('/attendance/history', ...teacher, async (req: AuthRequest, res) => {
   }
 
   res.json([]);
-});
+};
+
+r.get('/attendance/history', ...teacher, attendanceHistoryHandler);
+r.get('/history', ...teacher, attendanceHistoryHandler);
 
 export default r;

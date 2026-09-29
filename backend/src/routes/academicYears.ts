@@ -132,11 +132,14 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
   return newItem;
 }
 
+import { requireRoles } from '../middleware/auth';
+
 const router = Router();
 const schoolId = (req: Request) => (req as any).user?.schoolId;
+const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
 
-// GET /api/academic-years - Query real database records
-router.get('/', async (req, res) => {
+// GET /api/academic-years - Query real database records (Admin only)
+router.get('/', adminOnly, async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
@@ -165,7 +168,7 @@ router.get('/active', async (req, res) => {
 });
 
 // POST /api/academic-years - Create new academic session
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', adminOnly, async (req: Request, res: Response) => {
   const sid = schoolId(req) || 'default';
   const { name, startDate, endDate, makeActive } = req.body || {};
   if (!name || !startDate || !endDate) return res.status(400).json({ message: 'name, startDate and endDate are required' });
@@ -179,7 +182,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/academic-years/:id/activate - Make this year the sole active session
-router.post('/:id/activate', async (req, res) => {
+router.post('/:id/activate', adminOnly, async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
   setInMemoryActiveAcademicYear(sid, yearId);
@@ -192,7 +195,7 @@ router.post('/:id/activate', async (req, res) => {
 });
 
 // POST /api/academic-years/:id/deactivate - Make session inactive
-router.post('/:id/deactivate', async (req, res) => {
+router.post('/:id/deactivate', adminOnly, async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
   deactivateInMemoryAcademicYear(sid, yearId);
@@ -205,7 +208,7 @@ router.post('/:id/deactivate', async (req, res) => {
 });
 
 // POST /api/academic-years/:id/archive - Archive session (read-only)
-router.post('/:id/archive', async (req, res) => {
+router.post('/:id/archive', adminOnly, async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
   archiveInMemoryAcademicYear(sid, yearId);
@@ -218,7 +221,7 @@ router.post('/:id/archive', async (req, res) => {
 });
 
 // POST /api/academic-years/:id/unarchive - Unarchive session (restore to inactive)
-router.post('/:id/unarchive', async (req, res) => {
+router.post('/:id/unarchive', adminOnly, async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
   unarchiveInMemoryAcademicYear(sid, yearId);
@@ -231,7 +234,7 @@ router.post('/:id/unarchive', async (req, res) => {
 });
 
 // Catch-all parameterized action endpoint: POST /:id/:action
-router.post('/:id/:action', async (req, res) => {
+router.post('/:id/:action', adminOnly, async (req, res) => {
   const sid = schoolId(req) || 'default';
   const yearId = String(req.params.id);
   const action = String(req.params.action).toLowerCase();

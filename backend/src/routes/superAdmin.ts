@@ -502,6 +502,17 @@ r.post('/schools', async (req: AuthRequest, res) => {
     return res.status(400).json({ message: 'name, code, and adminEmail are required' });
   }
 
+  // Pre-check duplicate school code across database and memory
+  try {
+    const codeChk = await pool.query('SELECT 1 FROM schools WHERE LOWER(code)=LOWER($1) LIMIT 1', [code]);
+    if (codeChk.rowCount && codeChk.rowCount > 0) {
+      return res.status(409).json({ message: 'A school with this code already exists' });
+    }
+  } catch {}
+  if (demoSchools.some(s => String(s.code).toUpperCase() === String(code).toUpperCase())) {
+    return res.status(409).json({ message: 'A school with this code already exists' });
+  }
+
   const schoolId = `sch-${Date.now()}`;
   const userId = `user-${Date.now()}`;
   const end = endDate(startDate, days);
@@ -609,17 +620,31 @@ r.post('/schools', async (req: AuthRequest, res) => {
         [pgSchoolId, adminName, adminEmail, passwordHash]);
       await client.query(`INSERT INTO classes(school_id,class_number) SELECT $1,x FROM generate_series(5,12) x ON CONFLICT DO NOTHING`, [pgSchoolId]);
 
-      let selectedPlanId = planId;
-      const plan = await client.query('SELECT id,price_monthly FROM subscription_plans WHERE id::text=$1 OR LOWER(name)=LOWER($2) AND is_active=true LIMIT 1', [planId, String(planId).replace(/^plan-/i, '')]);
+      let selectedPlanId: string | null = null;
       let price = planPrice;
-      if (plan.rowCount) {
+      const isPlanUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(planId));
+      const plan = await client.query(
+        `SELECT id, price_monthly FROM subscription_plans WHERE (${isPlanUuid ? 'id = $1' : 'FALSE'} OR LOWER(name) = LOWER($2)) LIMIT 1`,
+        [isPlanUuid ? planId : '00000000-0000-0000-0000-000000000000', String(planId).replace(/^plan-/i, '')]
+      );
+      if (plan.rowCount && plan.rows.length > 0) {
         selectedPlanId = plan.rows[0].id;
         price = Number(plan.rows[0].price_monthly || 0);
+      } else {
+        const anyPlan = await client.query('SELECT id, price_monthly FROM subscription_plans WHERE is_active=true LIMIT 1');
+        if (anyPlan.rowCount && anyPlan.rows.length > 0) {
+          selectedPlanId = anyPlan.rows[0].id;
+          price = Number(anyPlan.rows[0].price_monthly || 0);
+        }
       }
-      const sub = await client.query(`INSERT INTO school_subscriptions(school_id,plan_id,start_date,end_date,status) VALUES($1,$2,$3,$4,'ACTIVE') RETURNING id`,
-        [pgSchoolId, selectedPlanId, startDate, end]);
-      await client.query(`INSERT INTO payments(school_id,subscription_id,provider,amount,currency,status,paid_at) VALUES($1,$2,'MOCK',$3,$4,'INR','PAID',NOW())`,
-        [pgSchoolId, sub.rows[0].id, price]);
+      const sub = await client.query(
+        `INSERT INTO school_subscriptions(school_id,plan_id,start_date,end_date,status) VALUES($1,$2,$3,$4,'ACTIVE') RETURNING id`,
+        [pgSchoolId, selectedPlanId, startDate, end]
+      );
+      await client.query(
+        `INSERT INTO payments(school_id,subscription_id,provider,amount,currency,status,paid_at) VALUES($1,$2,'MOCK',$3,'INR','PAID',NOW())`,
+        [pgSchoolId, sub.rows[0].id, price]
+      );
       await client.query('COMMIT');
 
       await logSystemAudit(
@@ -643,7 +668,10 @@ r.post('/schools', async (req: AuthRequest, res) => {
       client.release();
     }
   } catch (e: any) {
-    if (e.status === 409) return res.status(409).json({ message: e.message });
+    if (e.status === 409 || e.code === '23505') {
+      return res.status(409).json({ message: e.detail || e.message || 'A school with this code or email already exists' });
+    }
+    console.error('[CreateSchool] PostgreSQL creation failed:', e.message);
   }
 
   // 3. In-memory demo fallback

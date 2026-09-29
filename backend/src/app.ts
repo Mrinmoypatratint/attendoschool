@@ -163,6 +163,7 @@ app.use('/api/school-payment', razorpaySchool);
 app.use('/api', schoolData);
 app.use('/api/routines', routines);
 app.use('/api/teacher', teacher);
+app.use('/api/attendance', teacher);
 app.use('/api/notifications', notifications);
 app.use('/api/student', student);
 
