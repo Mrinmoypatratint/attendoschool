@@ -13,7 +13,13 @@
 
 ## Quick Navigation
 
-- **[Enterprise SRS Specification (ATTENDOSCHOOL_SRS.md)](file:///d:/Project_Abir/attendoschool/ATTENDOSCHOOL_SRS.md)** — Complete 56-section enterprise-grade Software Requirements Specification (SRS) with workflows, ERDs, sequence diagrams, and traceability matrices.
+- **[Enterprise SRS Specification (ATTENDOSCHOOL_SRS.md)](file:///d:/Project_Abir/attendoschool/ATTENDOSCHOOL_SRS.md)** — Complete enterprise-grade Software Requirements Specification (SRS) with workflows, ERDs, sequence diagrams, and traceability matrices.
+- **[Firebase Data Architecture (FIREBASE_DATA_ARCHITECTURE.md)](file:///d:/Project_Abir/attendoschool/FIREBASE_DATA_ARCHITECTURE.md)** — Core specification for 100% Firebase-backed, school-isolated data architecture.
+- **[Multi-Tenant Security Architecture (MULTI_TENANT_SECURITY.md)](file:///d:/Project_Abir/attendoschool/MULTI_TENANT_SECURITY.md)** — Multi-tenant security principles, JWT derivation, and RBAC matrix.
+- **[School Data Isolation (SCHOOL_DATA_ISOLATION.md)](file:///d:/Project_Abir/attendoschool/SCHOOL_DATA_ISOLATION.md)** — Detailed specification of tenant partitioning, query scoping, and zero-fallback data hygiene.
+- **[Firebase Security Rules Specification (FIREBASE_SECURITY_RULES.md)](file:///d:/Project_Abir/attendoschool/FIREBASE_SECURITY_RULES.md)** — Production Firestore rules, helper functions, and custom claims verification.
+- **[Dashboard Data Mapping (DASHBOARD_DATA_MAPPING.md)](file:///d:/Project_Abir/attendoschool/DASHBOARD_DATA_MAPPING.md)** — Direct mapping of all dashboard metrics and cards to Firestore collections and aggregation queries.
+- **[Data Integrity & Isolation Test Plan (DATA_INTEGRITY_TEST_PLAN.md)](file:///d:/Project_Abir/attendoschool/DATA_INTEGRITY_TEST_PLAN.md)** — Verification procedures for cross-tenant boundaries, clean slate testing, and preview workflows.
 - **[Detailed Setup Guide (SETUP.md)](file:///d:/Project_Abir/attendoschool/SETUP.md)** — Step-by-step installation, environment variables, Firebase emulator, and troubleshooting.
 - **[System Architecture & Documentation (DOCUMENTATION.md)](file:///d:/Project_Abir/attendoschool/DOCUMENTATION.md)** — Comprehensive 2,300+ line technical architecture, schemas, and API documentation.
 - **[Hostinger Full-Stack VPS Guide (HOSTINGER-VPS-DEPLOYMENT.md)](file:///d:/Project_Abir/attendoschool/HOSTINGER-VPS-DEPLOYMENT.md)** — Host frontend and backend together on Hostinger VPS with Nginx, PM2, and SSL.

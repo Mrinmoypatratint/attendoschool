@@ -35,7 +35,9 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
         if (uDoc.exists) userEmail = uDoc.data()?.email || '';
       } catch {}
 
-      const snap = await collections.students().get();
+      const snap = schoolId
+        ? await collections.students().where('school_id', '==', schoolId).get()
+        : await collections.students().get();
       for (const doc of snap.docs) {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -111,32 +113,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
     }
   }
 
-  // 3. Match demoStudents
-  const matchDemo = demoStudents.find(s =>
-    (s.id === userId || (s as any).user_id === userId || s.student_email === userId) &&
-    (!s.school_id || isSameSchool(s.school_id, schoolId))
-  );
-  if (matchDemo) return matchDemo;
-
-  // 4. Fallback demo student context
-  return {
-    id: 'stud-001',
-    school_id: schoolId || '00000000-0000-0000-0000-000000000001',
-    user_id: userId,
-    name: 'Rohan Sharma',
-    roll_number: '1',
-    admission_number: 'GW-2025-001',
-    class_id: 'cls-10',
-    class_number: 10,
-    section_id: 'sec-10-a',
-    section_name: 'A',
-    school_name: 'Greenwood International School',
-    parent_name: 'Vikram Sharma',
-    parent_sms_number: '+91 98765 43210',
-    parent_email: 'vikram.sharma@example.com',
-    date_of_birth: '2009-07-15',
-    photo_url: '/student-avatar.png'
-  };
+  return null;
 }
 
 /**

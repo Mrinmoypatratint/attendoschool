@@ -141,6 +141,8 @@ export const collections = {
   teacherAssignments: (): CollectionReference<DocumentData> => firestore.collection('teacher_assignments'),
   notifications: (): CollectionReference<DocumentData> => firestore.collection('notifications'),
   announcements: (): CollectionReference<DocumentData> => firestore.collection('announcements'),
+  academicYears: (): CollectionReference<DocumentData> => firestore.collection('academic_years'),
+  attendanceCorrections: (): CollectionReference<DocumentData> => firestore.collection('attendance_correction_requests'),
   auditLogs: (): CollectionReference<DocumentData> => firestore.collection('audit_logs'),
 };
 

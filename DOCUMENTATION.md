@@ -743,6 +743,17 @@ AttendoSchool features a **dual database architecture** supporting both modern d
 - `migrations/028_final_integrated.sql`: Multi-channel delivery attempts and end-to-end telemetry.
 - `migrations/029_student_role_and_portal.sql`: Adds `'STUDENT'` role to `user_role` ENUM/check, student login credential columns (`user_id`, `email`, `admission_number`, `date_of_birth`), `student_assignments`, `student_assignment_submissions`, `student_exams`, `student_exam_results`, and `student_leave_requests` tables.
 
+### 14.3 Multi-Tenant Isolation & Zero Synthetic Fallback Policy
+In production deployment, every data query is strictly scoped to the tenant's cryptographically verified `school_id`:
+- **Cryptographic Origin**: `req.user.schoolId` is derived exclusively from the verified JWT bearer token, never accepted from unverified client parameters.
+- **Zero Synthetic Fallbacks**: When database collections have zero records, the backend returns empty arrays (`[]`) and zero counts (`0`). Synthetic mock fallbacks (e.g. `demoStudents`, `demoTeachers`, or static `94.2%` attendance trends) are completely eliminated.
+- **Clean Slate Onboarding**: Newly registered institutions experience authentic empty states with onboarding calls to action.
+
+### 14.4 Cloud Firestore Aggregation & Quota Protection
+To ensure rapid response times (<50ms) and eliminate Cloud Firestore read quota exhaustion:
+- **Native Aggregation API**: Entity counts utilize `.count().get()`, which incurs 1 document read per 1,000 index entries instead of 1 read per document.
+- **Tenant Memory Caching**: In `tenantDataService.ts`, calculated metrics are cached in-memory for 30 seconds per tenant (`dashboard:${schoolId}`). Rapid page refreshes and multi-user dashboard visits are served directly from cache with zero database latency.
+
 ---
 
 ## 15. Database Schema

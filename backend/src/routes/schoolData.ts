@@ -429,10 +429,10 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   }
  } catch {}
 
- // If Firestore is configured, load from Cloud Firestore
- if (isFirebaseConfigured()) {
+ // If Firestore is configured, load from Cloud Firestore strictly scoped to userSchoolId
+ if (isFirebaseConfigured() && userSchoolId) {
   try {
-    const snap = await collections.students().get();
+    const snap = await collections.students().where('school_id', '==', userSchoolId).get();
     if (!snap.empty) {
       let list = snap.docs.map(d => {
         const dt = d.data();
@@ -451,7 +451,6 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
           parent_email: dt.parent_email || dt.parentEmail || '',
           student_email: dt.student_email || dt.studentEmail || dt.email || '',
           email: dt.email || dt.student_email || '',
-          // Robust class and section extraction
           class_id: dt.class_id || dt.classId || 'cls-1',
           class_number: (() => {
             const cId = String(dt.class_id || dt.classId || '');
@@ -479,20 +478,7 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
           is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
           ...dt
         };
-      }).filter(s => {
-        if (s.is_active === false) return false;
-        if (!userSchoolId || !s.school_id) return false;
-        return isSameSchool(s.school_id, userSchoolId);
-      });
-
-      // Merge in-memory demoStudents newly created or updated for this specific school
-      for (const ds of demoStudents) {
-        if (!list.some(x => x.id === ds.id)) {
-          if (ds.school_id && userSchoolId && isSameSchool(ds.school_id, userSchoolId)) {
-            list.unshift(ds);
-          }
-        }
-      }
+      }).filter(s => s.is_active !== false);
 
       if (list.length > 0) {
         let filtered = search
@@ -517,48 +503,7 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   }
  }
 
-  // Check in-memory students registered for this specific school
-  const memSchoolStudents = demoStudents.filter(s => s.school_id && userSchoolId && isSameSchool(s.school_id, userSchoolId));
-  if (memSchoolStudents.length > 0) {
-    let filtered = search
-      ? memSchoolStudents.filter(s =>
-          s.name.toLowerCase().includes(search) ||
-          String(s.roll_number).includes(search) ||
-          (s.admission_number && s.admission_number.toLowerCase().includes(search)) ||
-          (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) ||
-          (s.email && s.email.toLowerCase().includes(search)) ||
-          (s.student_email && s.student_email.toLowerCase().includes(search)) ||
-          (s.parent_email && s.parent_email.toLowerCase().includes(search))
-        )
-      : memSchoolStudents;
-    if (sessionFilter) {
-      filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
-    }
-    return res.json(filtered);
-  }
-
-  // Only Greenwood test school may access demoStudents fallback
-  if (isTestSchool(userSchoolId)) {
-   const schoolStudents = demoStudents.filter(s => isSameSchool(s.school_id, userSchoolId));
-   const studentList = schoolStudents.length ? schoolStudents : demoStudents;
-   let filtered = search
-     ? studentList.filter(s =>
-         s.name.toLowerCase().includes(search) ||
-         String(s.roll_number).includes(search) ||
-         (s.admission_number && s.admission_number.toLowerCase().includes(search)) ||
-         (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) ||
-         (s.email && s.email.toLowerCase().includes(search)) ||
-         (s.student_email && s.student_email.toLowerCase().includes(search)) ||
-         (s.parent_email && s.parent_email.toLowerCase().includes(search))
-       )
-     : studentList;
-   if (sessionFilter) {
-     filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
-   }
-   return res.json(filtered);
- }
-
- // Any other school starts completely clean with 0 students
+ // Return empty array if school has no registered students (zero fake demo data)
  res.json([]);
 });
 

@@ -2523,15 +2523,17 @@ function AdminHome(){
   const nav=useNavigate();
   const [data,setData]=useState<any>(null);
   const [loading,setLoading]=useState(true);
-  const [simulating,setSimulating]=useState(false);
+  const [dashboardError,setDashboardError]=useState<string | null>(null);
 
   async function load(){
     setLoading(true);
+    setDashboardError(null);
     try {
       const res = await api.get('/dashboard/school');
       setData(res.data);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load school dashboard', e);
+      setDashboardError(e?.response?.data?.message || 'Unable to load school dashboard from Firebase.');
     } finally {
       setLoading(false);
     }
@@ -2539,50 +2541,34 @@ function AdminHome(){
 
   useEffect(()=>{ load(); }, []);
 
-  async function quickDemoAttendance() {
-    setSimulating(true);
-    try {
-      const [cRes, sRes] = await Promise.all([api.get('/classes'), api.get('/sections')]);
-      const cls = cRes.data?.[0];
-      const sec = (sRes.data || []).find((s:any)=>s.class_id === cls?.id) || sRes.data?.[0];
-      if (cls && sec) {
-        const studentsRes = await api.get(`/teacher/students/${cls.id}/${sec.id}`);
-        const stList = studentsRes.data || [];
-        const presentIds = stList.slice(0, Math.max(1, stList.length - 1)).map((s:any)=>s.id);
-        await api.post('/teacher/attendance', {
-          classId: cls.id,
-          sectionId: sec.id,
-          subjectId: null,
-          startTime: '09:00:00',
-          endTime: '09:45:00',
-          attendanceDate: new Date().toISOString().slice(0, 10),
-          presentStudentIds: presentIds
-        });
-        await load();
-      }
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Quick attendance simulation completed');
-      await load();
-    } finally {
-      setSimulating(false);
-    }
-  }
-
   const school = data?.school;
   const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, percentage: 0, classBreakdown: [] };
   const sub = data?.subscription;
   const pendingCorrections = data?.pendingCorrectionsCount || 0;
-  const weeklyTrend = data?.weeklyTrend || [
-    { day: 'Mon', percentage: 94.2, present: 14, absent: 1, total: 15, isToday: false },
-    { day: 'Tue', percentage: 93.3, present: 14, absent: 1, total: 15, isToday: false },
-    { day: 'Wed', percentage: 96.0, present: 15, absent: 0, total: 15, isToday: false },
-    { day: 'Thu', percentage: 91.8, present: 13, absent: 2, total: 15, isToday: false },
-    { day: 'Fri', percentage: todayAtt.percentage > 0 ? todayAtt.percentage : 93.5, present: todayAtt.present > 0 ? todayAtt.present : 14, absent: todayAtt.absent > 0 ? todayAtt.absent : 1, total: todayAtt.total > 0 ? todayAtt.total : 15, isToday: true }
-  ];
+  const weeklyTrend = Array.isArray(data?.weeklyTrend) ? data.weeklyTrend : [];
+  const weeklyAvg = weeklyTrend.length > 0 
+    ? Number((weeklyTrend.reduce((acc: number, t: any) => acc + (Number(t.percentage) || 0), 0) / weeklyTrend.length).toFixed(1))
+    : 0;
   const todaySchedule = data?.todaySchedule || [];
   const recentActivity = data?.recentActivity || [];
 
   return <Layout>
+    {/* Dashboard Error / Quota Notice */}
+    {dashboardError && (
+      <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+        <div className="alert-left">
+          <AlertTriangle size={20} color="#dc2626" />
+          <div>
+            <strong>Unable to Load Live Data from Firebase</strong>
+            <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
+          </div>
+        </div>
+        <button className="alert-action-btn" onClick={load} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
+          Retry Connection
+        </button>
+      </div>
+    )}
+
     {/* Institutional Header Banner */}
     <div className="admin-dashboard-hero">
       <div className="hero-content">
@@ -2596,10 +2582,10 @@ function AdminHome(){
           Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
         </p>
         <div className="hero-meta-row">
-          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || 'SCH'}</b></span>
-          <span>📅 Session: <b>{data?.activeAcademicYear?.name || '2026-27'}</b></span>
-          <span>📞 Enquiry: <b>{school?.enquiry_number || '1800-999-000'}</b></span>
-          <span>🛡️ Plan: <b>{sub?.plan_name || 'Enterprise'}</b></span>
+          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || '—'}</b></span>
+          <span>📅 Session: <b>{data?.activeAcademicYear?.name || 'Current Session'}</b></span>
+          <span>📞 Enquiry: <b>{school?.enquiry_number || school?.phone || '—'}</b></span>
+          <span>🛡️ Plan: <b>{sub?.plan_name || 'Standard'}</b></span>
         </div>
       </div>
       <div className="hero-actions">
@@ -2720,14 +2706,6 @@ function AdminHome(){
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
               <button className="action-btn-primary small" onClick={() => nav('/take-attendance')}>
                 <ClipboardCheck size={14} /> Take Attendance Now
-              </button>
-              <button 
-                className="action-btn-secondary small" 
-                onClick={quickDemoAttendance} 
-                disabled={simulating}
-              >
-                {simulating ? <RefreshCw size={14} className="spin" /> : <ClipboardCheck size={14} color="#2563eb" />}
-                <span>{simulating ? 'Recording...' : 'Sample Attendance Session'}</span>
               </button>
             </div>
           </div>
@@ -2872,27 +2850,37 @@ function AdminHome(){
           </button>
         </div>
 
-        <div className="dashboard-trend-grid">
-          {weeklyTrend.map((t: any, idx: number) => (
-            <div key={idx} className="trend-col">
-              <span className="trend-pct-label">{t.percentage}%</span>
-              <div className="trend-bar-track">
-                <div 
-                  className={`trend-bar-fill ${t.isToday ? 'today' : ''}`}
-                  style={{ height: `${Math.max(10, Math.min(100, t.percentage))}%` }}
-                ></div>
-              </div>
-              <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                {t.day} {t.isToday ? '(Today)' : ''}
-              </span>
+        {weeklyTrend.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+            <CalendarDays size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+            <p style={{ margin: 0, fontSize: 13.5 }}>No weekly attendance data recorded yet.</p>
+            <span style={{ fontSize: 12 }}>Daily attendance sessions submitted this week will chart here automatically.</span>
+          </div>
+        ) : (
+          <>
+            <div className="dashboard-trend-grid">
+              {weeklyTrend.map((t: any, idx: number) => (
+                <div key={idx} className="trend-col">
+                  <span className="trend-pct-label">{t.percentage}%</span>
+                  <div className="trend-bar-track">
+                    <div 
+                      className={`trend-bar-fill ${t.isToday ? 'today' : ''}`}
+                      style={{ height: `${Math.max(10, Math.min(100, t.percentage))}%` }}
+                    ></div>
+                  </div>
+                  <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
+                    {t.day} {t.isToday ? '(Today)' : ''}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
-          <span>Institutional Target: <b>90% Minimum</b></span>
-          <span style={{ color: '#10b981', fontWeight: 600 }}>Weekly Average: ~94.1%</span>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+              <span>Institutional Target: <b>90% Minimum</b></span>
+              <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Today's Schedule & Live Stream */}

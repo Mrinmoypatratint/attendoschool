@@ -7,7 +7,7 @@
 - **Document Title**: Software Requirements Specification (SRS) for AttendO School Platform
 - **Product Name**: AttendO School (`school-attendance-saas`)
 - **System Version**: 0.11.0 (Enterprise Multi-Tenant Release)
-- **Document Version**: 2.0.0
+- **Document Version**: 2.1.0
 - **Status**: Implementation-Ready / Production Baseline
 - **Classification**: Confidential / Institutional Enterprise Documentation
 - **Target Audience**: Software Engineers, QA Engineers, DevOps/SecOps Architects, School Administrators, Product Managers, Institutional Clients
@@ -20,6 +20,7 @@
 | `1.5.0` | 2026-09-10 | Multi-Tenant Platform Team | Dual-database migration (Firestore + PostgreSQL), GST invoicing, Razorpay billing. |
 | `1.8.0` | 2026-09-22 | Security & Infrastructure | Offline IndexedDB attendance sync, Student/Parent portals, automated email dispatch. |
 | `2.0.0` | 2026-09-29 | Principal Solution Architect | Comprehensive 56-section enterprise SRS with verification against live codebase. |
+| `2.1.0` | 2026-09-29 | Security & Multi-Tenant Lead | Full Firebase-driven tenant isolation, elimination of synthetic fallbacks, and Universal Preview & Confirmation modal architecture. |
 
 ---
 
@@ -858,6 +859,39 @@ To eliminate third-party cloud tier restrictions (such as Render Free Tier SMTP 
 | **Email Infrastructure** | **95% READY** | SMTP verified; requires HTTPS API (Brevo/Resend) on Render Free or direct SMTP on VPS. |
 | **QA & Test Suites** | **100% READY** | Comprehensive test suites (`comprehensive-test-suite.ts`, `student-portal-e2e.ts`). |
 | **DevOps & CI/CD** | **100% READY** | GitHub Actions workflows, Render deployment manifests, and Hostinger setup scripts. |
+
+---
+
+## 23. Multi-Tenant Data Isolation & Zero-Demo Data Specification
+
+### 23.1 Inviolable Isolation Invariant
+Every persistent operational document, table row, audit trail, and aggregate calculation must belong strictly to the authenticated institution's `school_id`. No user, teacher, student, or institutional administrator shall ever access, infer, or modify data belonging to another tenant under any circumstance.
+
+### 23.2 Elimination of Synthetic Fallbacks
+In production mode, the application mandates **Zero Synthetic Fallbacks**:
+- When queries return zero records, the system must return verified empty data structures (`[]`, `0`), never mock entities (e.g. `demoStudents`, `demoTeachers`, or static attendance percentages like `94.2%`).
+- New institutions must render clean onboarding states.
+
+### 23.3 High-Performance Native Aggregation
+To prevent Firebase read quota exhaustion and guarantee sub-100ms dashboard latency:
+- Aggregations utilize Cloud Firestore native `.count().get()` queries.
+- Dashboard metrics implement a 30-second tenant-keyed in-memory cache in `tenantDataService.ts`.
+
+---
+
+## 24. Universal Preview & Confirmation System
+
+### 24.1 Non-Destructive Mutation Architecture
+To prevent accidental data corruption, bulk notification spam, or erroneous teacher/student record changes, every administrative creation, modification, deletion, and broadcast action requires explicit pre-commit verification.
+
+### 24.2 Modal Standards
+1. **UniversalPreviewModal (`frontend/src/components/common/UniversalPreviewModal.tsx`)**:
+   - Renders a clean, structured summary of fields to be written or updated before committing.
+   - Provides explicit actions: "Back to Edit" (returns to form with state intact) and "Confirm & Submit".
+   - Displays severity warnings for irreversible actions or bulk dispatches.
+2. **DestructiveConfirmModal (`frontend/src/components/common/DestructiveConfirmModal.tsx`)**:
+   - Mandated for record deletions, deactivations, and class drops.
+   - Enforces explicit verification to prevent accidental clicks.
 
 ---
 

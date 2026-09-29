@@ -49,7 +49,9 @@ export async function attendanceSummary(
   // 1. Cloud Firestore Sessions
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
+      const sessSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
+        : await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -78,7 +80,9 @@ export async function attendanceSummary(
   // 3. Process Firestore Records
   if (isFirebaseConfigured() && validSessionIds.size > 0) {
     try {
-      const recSnap = await collections.attendanceRecords().get();
+      const recSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceRecords().where('school_id', '==', schoolId).get()
+        : await collections.attendanceRecords().get();
       recSnap.docs.forEach(doc => {
         const r = doc.data();
         const sessId = r.sessionId || r.attendance_session_id;
@@ -168,7 +172,9 @@ export async function studentAttendanceReport(
   const schoolStudents = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const studSnap = await collections.students().get();
+      const studSnap = (!isGlobal && schoolId)
+        ? await collections.students().where('school_id', '==', schoolId).get()
+        : await collections.students().get();
       studSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -181,18 +187,13 @@ export async function studentAttendanceReport(
     }
   }
 
-  // Only Greenwood test school uses demoStudents fallback if Firestore is completely empty
-  if (schoolStudents.size === 0 && (!schoolId || isTestSchool(schoolId))) {
-    demoStudents.forEach(s => {
-      schoolStudents.set(s.id, s);
-    });
-  }
-
   // ── Step 2: Fetch Attendance Sessions for this School in Date Range ──
   const validSessions = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
+      const sessSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
+        : await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;

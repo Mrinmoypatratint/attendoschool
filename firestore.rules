@@ -1,8 +1,126 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions for Multi-Tenant School Isolation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.email.matches('.*@attendoschool\\.admin')
+      );
+    }
+
+    function userSchoolId() {
+      return request.auth.token.schoolId != null 
+        ? request.auth.token.schoolId 
+        : request.auth.token.school_id;
+    }
+
+    function isTenantUser(schoolId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        userSchoolId() == schoolId
+      );
+    }
+
+    function isDocumentTenantMatch() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        resource == null ||
+        resource.data.school_id == userSchoolId() ||
+        resource.data.schoolId == userSchoolId()
+      );
+    }
+
+    function isWriteTenantMatch() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        request.resource.data.school_id == userSchoolId() ||
+        request.resource.data.schoolId == userSchoolId()
+      );
+    }
+
+    // ── School Master Profile & Settings ──
+    match /schools/{schoolId} {
+      allow read: if isTenantUser(schoolId);
+      allow write: if isSuperAdmin() || (isTenantUser(schoolId) && request.auth.token.role == 'SCHOOL_ADMIN');
+    }
+
+    // ── Student Directory & Enrolment ──
+    match /students/{studentId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    // ── Faculty Directory ──
+    match /teachers/{teacherId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    // ── Classes & Sections ──
+    match /classes/{classId} {
+      allow read: if isDocumentTenantMatch();
+      allow create, update, delete: if isTenantUser(request.resource.data.school_id);
+    }
+
+    match /sections/{sectionId} {
+      allow read: if isDocumentTenantMatch();
+      allow create, update, delete: if isTenantUser(request.resource.data.school_id);
+    }
+
+    // ── Attendance Sessions & Daily Roll Logs ──
+    match /attendanceSessions/{sessionId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    match /attendanceRecords/{recordId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    // ── Institutional Announcements & Broadcasts ──
+    match /announcements/{announcementId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    // ── Threaded Parent & Student Replies ──
+    match /announcementReplies/{replyId} {
+      allow read: if isDocumentTenantMatch();
+      allow create: if isWriteTenantMatch();
+      allow update, delete: if isDocumentTenantMatch() && isWriteTenantMatch();
+    }
+
+    // ── Academic Sessions ──
+    match /academicYears/{yearId} {
+      allow read: if isDocumentTenantMatch();
+      allow create, update, delete: if isWriteTenantMatch();
+    }
+
+    // ── User Profiles ──
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        request.auth.uid == userId ||
+        resource.data.school_id == userSchoolId()
+      );
+      allow write: if isSuperAdmin() || (isAuthenticated() && request.auth.uid == userId);
+    }
+
+    // ── Fallback Catch-All (Default Deny for Unauthenticated / Cross-Tenant) ──
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isSuperAdmin();
     }
   }
 }

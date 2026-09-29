@@ -484,15 +484,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     } catch {}
   }
 
-  // 3. Fallback for test school
-  if (isTestSchool(sid)) {
-    const filtered = demoStudents.filter(s =>
-      matchesStudentClassAndSection(s, classParam, secId)
-    );
-    return res.json(filtered.length ? filtered : demoStudents);
-  }
-
-  res.json([]);
+  return res.json([]);
 };
 
 r.get('/classes/:classId/:sectionId/students', ...teacher, getStudentsHandler);
