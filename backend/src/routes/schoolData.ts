@@ -1663,25 +1663,93 @@ r.post('/teachers/bulk-delete',...admin,async(req:AuthRequest,res)=>{
  res.json({ success: true, count: ids.length });
 });
 
+r.get('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
+  const tid = String(req.params.id);
+  const userSchoolId = typeof req.user?.schoolId === 'string' ? req.user.schoolId : undefined;
+
+  if (isFirebaseConfigured()) {
+    try {
+      const tDoc = await collections.teachers().doc(tid).get();
+      if (tDoc.exists) {
+        const d = tDoc.data()!;
+        const docSid = String(d.school_id || d.schoolId || '');
+        if (!userSchoolId || isSameSchool(docSid, userSchoolId)) {
+          return res.json({ id: tDoc.id, ...d });
+        }
+      }
+      const uDoc = await collections.users().doc(tid).get();
+      if (uDoc.exists) {
+        const d = uDoc.data()!;
+        const docSid = String(d.school_id || d.schoolId || '');
+        if (!userSchoolId || isSameSchool(docSid, userSchoolId)) {
+          return res.json({ id: uDoc.id, ...d });
+        }
+      }
+    } catch {}
+  }
+
+  const mem = demoTeachers.find(t => t.id === tid);
+  if (mem) return res.json(mem);
+
+  res.status(404).json({ message: 'Teacher not found' });
+});
+
 r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
-  const {name,email,employeeId,mobile}=req.body||{};
-  const tid = req.params.id;
-  try {
-    await pool.query(`UPDATE users SET name=$1,email=$2,updated_at=NOW() WHERE id=$3 AND school_id=$4`,[name,email,tid,req.user!.schoolId]);
-    await pool.query(`UPDATE teacher_profiles SET employee_id=$1,mobile=$2 WHERE user_id=$3`,[employeeId,mobile,tid]);
-  } catch {}
+  const { name, email, employeeId, employee_id, mobile, phone, is_active, status, password } = req.body || {};
+  const tid = String(req.params.id);
+  const userSchoolId = typeof req.user?.schoolId === 'string' ? req.user.schoolId : undefined;
+
+  let existingDocData: any = {};
+  if (isFirebaseConfigured()) {
+    try {
+      const tDoc = await collections.teachers().doc(tid).get();
+      if (tDoc.exists) existingDocData = tDoc.data() || {};
+      else {
+        const uDoc = await collections.users().doc(tid).get();
+        if (uDoc.exists) existingDocData = uDoc.data() || {};
+      }
+    } catch {}
+  }
+
   const idx = demoTeachers.findIndex(t => t.id === tid);
+  const resolvedSchoolId = userSchoolId || existingDocData.school_id || existingDocData.schoolId || demoTeachers[idx]?.school_id || null;
+  const resolvedStatus = status || (is_active === false ? 'INACTIVE' : 'ACTIVE');
+  const cleanEmail = email ? String(email).trim().toLowerCase() : (existingDocData.email || demoTeachers[idx]?.email || '');
+
+  try {
+    await pool.query(
+      `UPDATE users SET name=$1, email=$2, is_active=$3, updated_at=NOW() WHERE id=$4 AND school_id=$5`,
+      [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
+    );
+    await pool.query(
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2 WHERE user_id=$3`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, tid]
+    );
+  } catch {}
+
   const updated = {
     id: tid,
-    name: name || demoTeachers[idx]?.name || '',
-    email: email || demoTeachers[idx]?.email || '',
-    employee_id: employeeId || demoTeachers[idx]?.employee_id || '',
-    mobile: mobile || demoTeachers[idx]?.mobile || '',
-    is_active: true
+    name: name || existingDocData.name || demoTeachers[idx]?.name || '',
+    email: cleanEmail,
+    employee_id: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',
+    employeeId: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',
+    mobile: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
+    phone: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
+    school_id: resolvedSchoolId,
+    schoolId: resolvedSchoolId,
+    status: resolvedStatus,
+    is_active: resolvedStatus === 'ACTIVE'
   };
+
   if (idx >= 0) demoTeachers[idx] = { ...demoTeachers[idx], ...updated };
   else demoTeachers.push(updated);
-  syncTeacherToFirestore(updated).catch(() => {});
+
+  let newPasswordHash: string | undefined = undefined;
+  if (password && String(password).trim().length >= 6) {
+    newPasswordHash = await bcrypt.hash(String(password).trim(), 10);
+  }
+
+  await syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
   res.json(updated);
 });
 

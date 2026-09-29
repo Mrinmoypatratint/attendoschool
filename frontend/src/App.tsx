@@ -3947,6 +3947,7 @@ function Teachers(){
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
+  const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
 
   // Teaching allocations state
   const [allAssignments,setAllAssignments]=useState<any[]>([]);
@@ -4059,23 +4060,44 @@ function Teachers(){
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await api.post('/teachers', f);
-      const created = res.data;
-      setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
-      setOpen(false);
-      setF({});
-      if (created.invite_sent) {
+      if (editingTeacher) {
+        const payload = {
+          name: f.name,
+          email: f.email,
+          employeeId: f.employeeId,
+          employee_id: f.employeeId,
+          mobile: f.mobile,
+          is_active: f.is_active !== false,
+          status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+          ...(f.password && f.password.trim() ? { password: f.password.trim() } : {})
+        };
+        const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
+        const updated = res.data;
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: f.employeeId, mobile: f.mobile, is_active: f.is_active !== false } : r));
         setToastNotice({
           type: 'success',
-          message: `Faculty member created! Official password setup email has been dispatched to ${created.email}.`,
-          resetUrl: created.reset_url
+          message: `Faculty member ${f.name} updated successfully.`
         });
       } else {
-        setToastNotice({
-          type: 'success',
-          message: `Faculty member ${created.name} registered successfully.`
-        });
+        const res = await api.post('/teachers', f);
+        const created = res.data;
+        setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
+        if (created.invite_sent) {
+          setToastNotice({
+            type: 'success',
+            message: `Faculty member created! Official password setup email has been dispatched to ${created.email}.`,
+            resetUrl: created.reset_url
+          });
+        } else {
+          setToastNotice({
+            type: 'success',
+            message: `Faculty member ${created.name} registered successfully.`
+          });
+        }
       }
+      setOpen(false);
+      setEditingTeacher(null);
+      setF({});
       load();
     } catch(err:any){
       alert(err?.response?.data?.message || 'Could not save teacher');
@@ -4203,7 +4225,11 @@ function Teachers(){
           <FileSpreadsheet size={16} /> Import Excel / CSV
         </button>
         <button 
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setEditingTeacher(null);
+            setF({ sendInviteEmail: true, is_active: true });
+            setOpen(true);
+          }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <Plus size={16} /> Add Teacher
@@ -4323,6 +4349,24 @@ function Teachers(){
                 </button>
                 <button
                   className="table-action-btn"
+                  onClick={() => {
+                    setEditingTeacher(x);
+                    setF({
+                      name: x.name,
+                      email: x.email,
+                      employeeId: x.employee_id || x.employeeId || '',
+                      mobile: x.mobile || x.phone || '',
+                      is_active: x.is_active !== false
+                    });
+                    setOpen(true);
+                  }}
+                  title="Edit teacher profile"
+                  style={{ marginRight: 6, color: '#0d9488' }}
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  className="table-action-btn"
                   onClick={() => sendTeacherResetEmail(x)}
                   title="Send password setup / reset email"
                   style={{ marginRight: 6, color: '#2563eb' }}
@@ -4356,8 +4400,8 @@ function Teachers(){
       </div>
     )}
 
-    {/* SINGLE TEACHER ADD MODAL */}
-    {open && <Modal title="Add Teacher" close={()=>setOpen(false)}>
+    {/* SINGLE TEACHER ADD / EDIT MODAL */}
+    {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
       <form className="modal-form" onSubmit={save}>
         <label>Teacher Full Name
           <input required placeholder="Full Name (e.g. Rahul Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
@@ -4372,6 +4416,19 @@ function Teachers(){
           <input placeholder="Mobile Number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
         </label>
 
+        {editingTeacher && (
+          <label>Account Status
+            <select
+              value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+              onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE' })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+            >
+              <option value="ACTIVE">ACTIVE</option>
+              <option value="INACTIVE">INACTIVE</option>
+            </select>
+          </label>
+        )}
+
         {/* Password Setup & Activation Box */}
         <div style={{
           padding: 14,
@@ -4382,21 +4439,23 @@ function Teachers(){
         }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
             <KeyRound size={14} style={{ color: '#2563eb' }} />
-            Password Setup & Account Activation
+            {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
-            <input
-              type="checkbox"
-              checked={f.sendInviteEmail !== false}
-              onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
-            />
-            <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
-          </label>
+          {!editingTeacher && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+              <input
+                type="checkbox"
+                checked={f.sendInviteEmail !== false}
+                onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+              />
+              <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
+            </label>
+          )}
           <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
-            Optional Initial Password (leave empty to let teacher set password via email):
+            {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
             <input
               type="password"
-              placeholder="Optional initial password (e.g. ChangeMe123!)"
+              placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
               value={f.password||''}
               onChange={e => setF({...f,password:e.target.value})}
               style={{ marginTop: 4 }}
@@ -4404,7 +4463,11 @@ function Teachers(){
           </label>
         </div>
 
-        <button type="submit" disabled={saving}>{saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher')}</button>
+        <button type="submit" disabled={saving}>
+          {editingTeacher
+            ? (saving ? 'Saving changes...' : 'Save Changes')
+            : (saving ? 'Creating teacher...' : (f.sendInviteEmail !== false ? 'Create teacher & send invite' : 'Create teacher'))}
+        </button>
       </form>
     </Modal>}
 
