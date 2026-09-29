@@ -225,6 +225,12 @@ function Login() {
   const instituteDropdownRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
+      setError('Your session has expired. Please sign in again.');
+    }
+  }, []);
+
   const fetchInstitutes = useCallback(async (isRetry = false) => {
     setInstitutesLoading(true);
     setInstitutesError(false);
@@ -4177,7 +4183,9 @@ function Classes(){
       setN('');
       load();
     } catch(err:any){
-      alert(err?.response?.data?.message || 'Could not add class');
+      if (err?.response?.status !== 401) {
+        alert(err?.response?.data?.message || 'Could not add class');
+      }
     } finally {
       setAddingClass(false);
     }
@@ -4202,7 +4210,9 @@ function Classes(){
       setSn('');
       load();
     } catch(err:any){
-      alert(err?.response?.data?.message || 'Could not add section');
+      if (err?.response?.status !== 401) {
+        alert(err?.response?.data?.message || 'Could not add section');
+      }
     } finally {
       setAddingSection(false);
     }
