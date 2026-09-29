@@ -690,17 +690,27 @@ The backend is structured as an Express 5 REST API written in TypeScript.
 
 ## 14. Database Architecture
 
-AttendoSchool features a **dual database architecture** supporting both modern document persistence and relational SQL storage:
+AttendoSchool features an enterprise **hybrid dual-database architecture** supporting primary relational ACID persistence with continuous failover and cloud synchronization:
 
-### 14.1 Firebase Cloud Firestore (Primary Document Engine)
-- **Engine**: Google Cloud Firestore (Serverless NoSQL Document Database)
+### 14.1 Supabase PostgreSQL 16 (Primary Persistence Engine)
+- **Engine**: PostgreSQL 16 on **Supabase** (with connection pooler and SSL encryption).
+- **Configuration**: `DB_DRIVER=postgres`, `USE_POSTGRES=true`, `SUPABASE_DATABASE_URL=...`.
+- **Connection Mechanism**: High-performance connection pool managed via `pg.Pool` in [backend/src/db.ts](file:///d:/Project_Abir/attendoschool/backend/src/db.ts) with automatic SSL mode detection for `supabase.co` and `neon.tech`.
+- **Isolation Model**: Multi-tenant with shared database and shared schema (`public`). Multi-tenancy is enforced through `school_id` foreign keys indexed across operational tables.
+- **Migration Strategy**: 34 sequential `.sql` migration files executed in sorted order by [backend/src/scripts/migrate.ts](file:///d:/Project_Abir/attendoschool/backend/src/scripts/migrate.ts) (fully applied up to `034_notification_replies.sql`).
+- **Clean Operational Baseline**: Zero dummy students, zero dummy classes, and zero dummy attendance records in Greenwood International School; strictly foundational login credentials preserved.
+
+### 14.2 Firebase Cloud Firestore (Secondary / Quota Failover Engine)
+- **Engine**: Google Cloud Firestore (Serverless NoSQL Document Database).
+- **Failover Engine**: Managed by [backend/src/services/dualDatabaseService.ts](file:///d:/Project_Abir/attendoschool/backend/src/services/dualDatabaseService.ts). When Firestore hits free-tier daily read/write limits (`8 RESOURCE_EXHAUSTED`), queries seamlessly fail over to query Supabase PostgreSQL directly with zero system interruption.
+- **One-Click Historical Data Migrator**: [backend/src/scripts/migrateFirebaseToSupabase.ts](file:///d:/Project_Abir/attendoschool/backend/src/scripts/migrateFirebaseToSupabase.ts) (`npm run migrate:firebase-to-supabase`) enables one-click synchronization of historical documents from Firebase into Supabase.
 - **Local Development**: Firebase Emulator Suite (`firebase-tools`) listening on port `8080`, with real-time web emulator UI on `http://127.0.0.1:4000/firestore`.
 - **SDK**: `firebase-admin` v14.4.0 with modular imports (`firebase-admin/app`, `firebase-admin/firestore`).
 - **Initialization**: Managed by [backend/src/firebase.ts](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts), supporting service account keys (`FIREBASE_SERVICE_ACCOUNT_PATH`), direct environment credentials (`FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), or local emulator (`FIRESTORE_EMULATOR_HOST`).
 - **Typed Schema Models**: Defined in [backend/src/types/firestoreSchema.ts](file:///d:/Project_Abir/attendoschool/backend/src/types/firestoreSchema.ts).
 - **Core Collections**:
   - `schools`: Tenant organization details, plan references, student limits, contact metadata.
-  - `users`: Super Admin, School Admin, Teacher, and Parent accounts with hashed passwords and roles.
+  - `users`: Super Admin, School Admin, Teacher, and Student accounts with hashed passwords and roles.
   - `students`: Student rosters, admission numbers, class/section assignments, and guardian contacts.
   - `classes` & `sections`: Class structure (1 to 12) and section groupings.
   - `attendance_sessions`: Daily attendance batches marked by teachers with status (`PENDING`, `SUBMITTED`).
@@ -710,12 +720,6 @@ AttendoSchool features a **dual database architecture** supporting both modern d
   - `timetables`: Routine slots, period mappings, room assignments.
   - `notifications` & `announcements`: Multi-channel alerts and school-wide broadcast notices.
   - `audit_logs`: Administrative actions and security events.
-
-### 14.2 PostgreSQL 16 (Relational Engine)
-- **Engine**: PostgreSQL 16
-- **Connection Mechanism**: Connection pool managed via `pg.Pool` with SSL mode auto-detection for cloud providers (`neon.tech`, `render.com`, `railway.app`, `supabase.co`).
-- **Isolation Model**: Multi-tenant with shared database and shared schema (`public`). Multi-tenancy is enforced through `school_id` foreign keys indexed across operational tables.
-- **Migration Strategy**: Sequential `.sql` migration files executed in sorted order by [backend/src/scripts/migrate.ts](file:///d:/Project_Abir/attendoschool/backend/src/scripts/migrate.ts).
 
 ### Database Evolution History (29 Migrations)
 - `schema.sql`: Baseline tables (`schools`, `users`, `classes`, `sections`, `subjects`, `students`, `class_routines`, `attendance_sessions`, `attendance_records`, `subscription_plans`, `school_subscriptions`, `payments`, `audit_logs`).

@@ -21,6 +21,7 @@
 | `1.8.0` | 2026-09-22 | Security & Infrastructure | Offline IndexedDB attendance sync, Student/Parent portals, automated email dispatch. |
 | `2.0.0` | 2026-09-29 | Principal Solution Architect | Comprehensive 56-section enterprise SRS with verification against live codebase. |
 | `2.1.0` | 2026-09-29 | Security & Multi-Tenant Lead | Full Firebase-driven tenant isolation, elimination of synthetic fallbacks, and Universal Preview & Confirmation modal architecture. |
+| `2.2.0` | 2026-09-29 | Principal Enterprise Architect | Production switch to Supabase PostgreSQL 16 as primary persistence engine (`DB_DRIVER=postgres`), purge of legacy Greenwood operational mock data (clean baseline: 0 students, 0 classes, 0 attendance records, credentials preserved only), Render cloud deployment hardening, and one-click Firebase-to-Supabase migration pipeline. |
 
 ---
 
@@ -35,7 +36,9 @@
 4. **Subscription & Tax Compliance**: Multi-branch educational networks struggle to manage modular software licensing and GST-compliant tax invoicing across distinct educational entities.
 
 ### 1.2 Core Architectural Philosophy
-- **Dual-Database Persistence Layer**: Native support for **Firebase Cloud Firestore** (document-store NoSQL for low-latency operational access) and **PostgreSQL 16** (relational ACID persistence across 67 tables and 33 migration sets).
+- **Primary Relational Engine (Supabase PostgreSQL 16)**: Production relational ACID persistence across 67 normalized tables and 34 sequential migrations with automated connection pooling and SSL encryption.
+- **Hybrid Secondary / Quota Failover (Firebase Cloud Firestore)**: Cloud document-store serving as continuous secondary mirror and fallback engine with one-click bidirectional migration.
+- **Clean Slate Policy**: Absolute elimination of synthetic mock records; operational tables maintain zero ghost students or synthetic sessions while preserving foundational administrative credentials.
 - **Zero-Trust Multi-Tenancy**: Every operational record is partitioned by `school_id`, validated via middleware tokens and cryptographically isolated.
 - **Fail-Safe Offline Attendance**: Resilient local-first offline queueing utilizing IndexedDB with deterministic idempotency replay to prevent data loss in poor connectivity areas.
 
@@ -454,13 +457,15 @@ Master governance dashboard for platform operators to monitor infrastructure hea
 ## 10. Database Architecture & Design
 
 ### 10.1 Dual Persistence Engine Strategy
-AttendO School features an abstraction layer enabling operation across two distinct database paradigms:
-1. **Cloud Firestore Mode (`DB_DRIVER=firebase`)**:
-   - Primary operational data resides in hierarchical collections (`schools`, `users`, `attendance`, `students`, `routines`, `subscriptions`, `invoices`).
-   - Supports local development via the Firebase Emulator Suite.
-2. **PostgreSQL 16 Relational Engine (`DB_DRIVER=postgres`)**:
-   - Structured schema spanning 67 normalized tables, partitioned with strict foreign-key integrity and index optimizations.
-   - 33 sequential migration files located in `database/migrations/`.
+AttendO School features an enterprise database abstraction layer enabling seamless operation across relational and document database paradigms:
+1. **Primary Relational Engine (Supabase PostgreSQL 16 - `DB_DRIVER=postgres`, `USE_POSTGRES=true`)**:
+   - Production relational ACID persistence across 67 normalized tables, partitioned with strict foreign-key cascade integrity, index optimizations, and SSL connectivity.
+   - 34 sequential migration files located in `database/migrations/` (fully applied up to `034_notification_replies.sql`).
+   - Clean Operational Baseline: All legacy demo records (students, classes, sections, routines, attendance) purged; only verified administrative and user credentials are preserved.
+2. **Secondary / Quota Failover Engine (Firebase Cloud Firestore - `SECONDARY_DB=supabase`, `ENABLE_DUAL_DB_SYNC=true`)**:
+   - Cloud Firestore document store serving real-time updates and secondary failover.
+   - When Firebase encounters free-tier daily quotas (`8 RESOURCE_EXHAUSTED`), the backend seamlessly fails over to query Supabase PostgreSQL directly with zero system downtime.
+   - One-Click Data Migration: `npm run migrate:firebase-to-supabase` utility script enables moving all historical documents from Firebase into Supabase as soon as quota resets.
 
 ### 10.2 Relational Entity-Relationship Diagram (PostgreSQL)
 
@@ -874,8 +879,19 @@ In production mode, the application mandates **Zero Synthetic Fallbacks**:
 
 ### 23.3 High-Performance Native Aggregation
 To prevent Firebase read quota exhaustion and guarantee sub-100ms dashboard latency:
-- Aggregations utilize Cloud Firestore native `.count().get()` queries.
+- Aggregations utilize Cloud Firestore native `.count().get()` queries when in Firestore mode and direct SQL `COUNT(*)` in PostgreSQL mode.
 - Dashboard metrics implement a 30-second tenant-keyed in-memory cache in `tenantDataService.ts`.
+
+### 23.4 Clean Baseline State & Credential Preservation
+Following architectural hardening, all legacy demo operational records for Greenwood International School have been purged across the primary database:
+- **0 Students, 0 Classes, 0 Sections, 0 Attendance Sessions, 0 Routines**.
+- The database preserves **strictly** the 5 foundational login credentials for authentication:
+  - Super Admin: `superadmin@attendance.local` (`SUPER_ADMIN`)
+  - School Admin: `admin@demo-school.local` (`SCHOOL_ADMIN`)
+  - Teacher: `rahul@demo-school.local` (`TEACHER`)
+  - Teacher: `priya@demo-school.local` (`TEACHER`)
+  - Student: `student@greenwood.local` (`STUDENT`)
+- All seeded passwords standardized to `ChangeMe123!`. Real school operations begin with a verified clean canvas.
 
 ---
 

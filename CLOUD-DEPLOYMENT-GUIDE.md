@@ -53,7 +53,10 @@ This production release is pre-configured for immediate one-click cloud deployme
    |---|---|---|
    | `NODE_ENV` | `production` | Production optimizations |
    | `PORT` | `10000` | Port used by Render |
-   | `DATABASE_URL` | `postgresql://...` | Connection string from Step 1 |
+   | `DB_DRIVER` | `postgres` | Primary persistence driver |
+   | `USE_POSTGRES` | `true` | Enables PostgreSQL database engine |
+   | `DATABASE_URL` | `postgresql://...` | Connection string from Step 1 (Supabase/Neon pooler) |
+   | `SUPABASE_DATABASE_URL` | `postgresql://...` | Supabase connection URL |
    | `JWT_SECRET` | *(Generate a 32+ character random string)* | Token encryption secret |
    | `CORS_ORIGIN` | `*` *(or your Vercel frontend URL)* | Allowed cross-origin domains |
 5. Click **Deploy Web Service**.

@@ -47,8 +47,13 @@ To guarantee real-time scalability while protecting the Firebase Cloud Firestore
 
 ---
 
-## 4. Dual-Engine Persistence Model
+## 4. Dual-Engine Persistence Model & Supabase Migration
 
 AttendoSchool supports a robust hybrid architecture:
-- **Cloud Firestore (Primary Cloud Real-Time Store):** Multi-region, low-latency document database for frontend subscriptions, mobile apps, and tenant records.
-- **PostgreSQL (Enterprise Relational Engine):** When `USE_POSTGRES=true`, transactional SQL queries execute with foreign-key constraints and ACID guarantees, continuously synchronized with Firestore via `firestoreSync.ts`.
+- **Supabase PostgreSQL 16 (Primary Persistence Engine):** When `DB_DRIVER=postgres` and `USE_POSTGRES=true`, transactional SQL queries execute with foreign-key constraints, ACID guarantees, SSL encryption, and zero free-tier quota throttling.
+- **Cloud Firestore (Secondary / Failover Store):** Serverless document database providing real-time synchronization and automatic failover.
+- **One-Click Historical Data Migrator:** Historical Firestore documents can be migrated to Supabase at any time via:
+  ```bash
+  npm run migrate:firebase-to-supabase
+  ```
+  This reads historical records from Cloud Firestore and safely inserts/upserts them into Supabase PostgreSQL.

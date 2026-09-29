@@ -5,8 +5,8 @@
 [![Release](https://img.shields.io/badge/release-Production%20Ready-blue.svg)](#)
 [![Backend](https://img.shields.io/badge/backend-Express%205%20%7C%20TypeScript-green.svg)](file:///d:/Project_Abir/attendoschool/backend)
 [![Frontend](https://img.shields.io/badge/frontend-React%2019%20%7C%20Vite%207-indigo.svg)](file:///d:/Project_Abir/attendoschool/frontend)
-[![Primary DB](https://img.shields.io/badge/database-Cloud%20Firestore%20%2F%20Emulator-amber.svg)](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts)
-[![Relational DB](https://img.shields.io/badge/database-PostgreSQL%2016-blue.svg)](file:///d:/Project_Abir/attendoschool/database)
+[![Primary DB](https://img.shields.io/badge/primary%20database-Supabase%20PostgreSQL%2016-3ECF8E.svg)](file:///d:/Project_Abir/attendoschool/database)
+[![Secondary DB](https://img.shields.io/badge/failover%20store-Cloud%20Firestore-FFCA28.svg)](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts)
 [![Tests](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](file:///d:/Project_Abir/attendoschool/backend/tests)
 
 ---
@@ -107,31 +107,35 @@
 
 ## User Roles & Demo Credentials
 
-All seeded accounts share the development password: **`ChangeMe123!`**
+All administrative and portal accounts share the default credential password: **`ChangeMe123!`**
 
 | Persona | Role Key | Email / Identifier | Password | Primary Capabilities |
 |---|---|---|---|---|
 | **Platform Super Admin** | `SUPER_ADMIN` | `superadmin@attendance.local` | `ChangeMe123!` | School onboarding, plan management, global SaaS revenue monitoring, system backups, RBAC policies |
-| **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student/Teacher roster, Class 1-12 routines, reports, attendance corrections, academic year promotions, billing |
+| **School Administrator** | `SCHOOL_ADMIN` | `admin@demo-school.local` | `ChangeMe123!` | Student/Teacher roster, Class routines, reports, attendance corrections, academic year promotions, billing |
 | **Classroom Teacher** | `TEACHER` | `rahul@demo-school.local` | `ChangeMe123!` | Today's assigned schedule, classroom attendance submission, attendance history, offline mode |
-| **Classroom Teacher (Alt)** | `TEACHER` | `priya@demo-school.local` | `ChangeMe123!` | Secondary demo teacher account |
-| **Student Portal** | `STUDENT` | `student@greenwood.local` or Roll `25` | `ChangeMe123!` | Timetable, attendance percentage, homework & assignments, exam marks, announcements, leave requests |
+| **Classroom Teacher (Alt)** | `TEACHER` | `priya@demo-school.local` | `ChangeMe123!` | Secondary faculty account for routine and class allocation |
+| **Student Portal** | `STUDENT` | `student@greenwood.local` | `ChangeMe123!` | Timetable, attendance percentage, homework & assignments, exam marks, announcements, leave requests |
+
+> [!NOTE]
+> **Clean Baseline Architecture (Zero Mock Data)**:
+> In accordance with production hygiene standards, all operational dummy records (students, classes, sections, routines, and attendance sessions) have been purged. The database begins with **0 ghost students and 0 mock attendance sessions**, keeping strictly the foundational login credentials for authentication.
 
 > [!IMPORTANT]
 > **Scope Boundary: Unified Student Portal Only**
 > There is **no separate Parent Portal** in AttendoSchool. Guardians who need access to their child's academic tracking are configured during student enrollment using **"Use Parent Email for Student Portal Login"**, which creates a Student Portal user account (`role = 'STUDENT'`). All guardian and student tracking is centralized within the **Student Portal** (`/student/dashboard`).
 
 > [!TIP]
-> On the login page, click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`, `Student`) to auto-populate credentials instantly.
+> On the login page, select **Greenwood International School** and click any of the **Quick Demo Switcher** buttons (`Super Admin`, `School Admin`, `Teacher`, `Student`) to auto-populate credentials instantly.
 
 ---
 
 ## Quick Start Guide
 
 ### Prerequisites
-- **Node.js**: v20.x or v22.x+ (LTS)
+- **Node.js**: v20.x, v22.x, or v24.x+ (LTS)
 - **npm**: v10.x+
-- **Java**: JRE/JDK 11+ or 21+ (required for Firebase Firestore Emulator)
+- **Supabase PostgreSQL** account (or local PostgreSQL 16)
 
 ### 1. Clone & Install Dependencies
 ```bash
@@ -147,31 +151,40 @@ cd ../frontend
 npm install
 ```
 
-### 2. Start the Firebase Firestore Emulator
-In terminal 1 (from `backend/` or repo root):
-```bash
-cd backend
-npm run emulator:firestore
+### 2. Configure Database & Apply Migrations
+Configure your Supabase connection URL in `backend/.env`:
+```env
+DB_DRIVER=postgres
+USE_POSTGRES=true
+DATABASE_URL=postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:5432/postgres
+SUPABASE_DATABASE_URL=postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:5432/postgres
 ```
-*The emulator starts on `127.0.0.1:8080`, and the Emulator UI is available at [http://127.0.0.1:4000/firestore](http://127.0.0.1:4000/firestore).*
 
-### 3. Seed Demo Data
-In terminal 2 (from `backend/`):
+Run schema migrations and initialize baseline credentials:
 ```bash
 cd backend
-npm run seed:firestore
+# 1. Run all 34 incremental database migrations
+npm run db:migrate
+
+# 2. Seed clean baseline login credentials
+npx tsx src/scripts/seedGreenwoodSupabase.ts
 ```
-*Seeds Greenwood International School, Super Admin, School Admin, Teacher, demo students, and subscription plans.*
+
+### 3. (Optional) Historical Firebase Data Migration
+If you previously used Firebase Cloud Firestore and wish to copy historical documents into Supabase:
+```bash
+cd backend
+npm run migrate:firebase-to-supabase
+```
 
 ### 4. Launch Backend API Server
-In terminal 2 (after seeding):
 ```bash
+cd backend
 npm run dev
 ```
 *Backend API server is live on [http://localhost:5000](http://localhost:5000).*
 
 ### 5. Launch Frontend Web App
-In terminal 3 (from `frontend/`):
 ```bash
 cd frontend
 npm run dev

@@ -105,20 +105,18 @@ CORS_ORIGIN=http://localhost:5173
 JWT_SECRET=super-secret-jwt-key-for-local-testing-12345
 
 # Database Persistence Selection
-# Options: 'firebase' (default) | 'postgres'
-DB_DRIVER=firebase
+# Primary Engine: 'postgres' (Supabase / PostgreSQL 16) | Secondary: 'firebase'
+DB_DRIVER=postgres
+USE_POSTGRES=true
 
-# Firebase Firestore Configuration (Emulator)
-FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
-FIREBASE_PROJECT_ID=attendoschool-saas
+# Supabase PostgreSQL Connection Pooler URL (SSL Enabled)
+DATABASE_URL=postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:5432/postgres
+SUPABASE_DATABASE_URL=postgresql://postgres.xxx:password@aws-0-xx.pooler.supabase.com:5432/postgres
 
-# (Optional) Cloud Firebase Credentials (leave empty when using local emulator)
-# FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json
-# FIREBASE_CLIENT_EMAIL=
-# FIREBASE_PRIVATE_KEY=
-
-# PostgreSQL Database (Optional / Fallback)
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/school_attendance
+# Secondary Hybrid Failover (Firebase Firestore)
+SECONDARY_DB=supabase
+ENABLE_DUAL_DB_SYNC=true
+FIREBASE_PROJECT_ID=attendoschool
 
 # Communications & SMS Settings (Mock mode for local dev)
 SMS_PROVIDER=mock
