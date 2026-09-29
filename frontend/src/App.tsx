@@ -188,11 +188,32 @@ function Login() {
         if (Array.isArray(parsed) && parsed.length > 0) {
           // Discard legacy mock entries if any
           const clean = parsed.filter((x: any) => x && x.id && x.name && x.id !== 'sch-1789773642845' && x.id !== 'school-delhi-001' && x.id !== 'school-central-001');
+          if (!clean.some((x: any) => x.name?.toUpperCase().includes('TINT') || x.code === 'TINT')) {
+            clean.push({
+              id: '00000000-0000-0000-0000-000000000002',
+              name: 'Techno International New Town (TINT)',
+              code: 'TINT',
+              address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+            });
+          }
           if (clean.length > 0) return clean;
         }
       }
     } catch {}
-    return [];
+    return [
+    {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Greenwood International School',
+      code: 'GIS001',
+      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Techno International New Town (TINT)',
+      code: 'TINT',
+      address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+    }
+  ];
   });
   const [institutesLoading, setInstitutesLoading] = useState(false);
   const [institutesError, setInstitutesError] = useState(false);
@@ -246,6 +267,15 @@ function Login() {
             code: String(i.code || 'SCH001'),
             address: String(i.address || '')
           }));
+
+        if (!cleanList.some(i => i.name.toUpperCase().includes('TINT') || i.code?.toUpperCase() === 'TINT')) {
+          cleanList.push({
+            id: '00000000-0000-0000-0000-000000000002',
+            name: 'Techno International New Town (TINT)',
+            code: 'TINT',
+            address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+          });
+        }
 
         setInstitutes(cleanList);
         try {
@@ -1622,6 +1652,42 @@ function Layout({children}:{children:React.ReactNode}){
   const [aySwitching, setAySwitching] = useState<string | null>(null);
   const ayDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Faculty In-App Inbox Drawer state
+  const [teacherDrawerOpen, setTeacherDrawerOpen] = useState(false);
+  const [teacherNotices, setTeacherNotices] = useState<any[]>([]);
+  const [teacherUnreadCount, setTeacherUnreadCount] = useState(0);
+  const [teacherLoadingNotices, setTeacherLoadingNotices] = useState(false);
+
+  async function loadTeacherNotices() {
+    if (user?.role !== 'TEACHER') return;
+    setTeacherLoadingNotices(true);
+    try {
+      const res = await api.get('/communication/teacher/inbox');
+      const data = res.data || [];
+      setTeacherNotices(data);
+      const unread = data.filter((n: any) => !n.read_at).length;
+      setTeacherUnreadCount(unread);
+    } catch (_e) {
+      setTeacherNotices([]);
+    } finally {
+      setTeacherLoadingNotices(false);
+    }
+  }
+
+  async function markTeacherNoticeRead(recipientId: string, noticeId: string) {
+    try {
+      await api.post(`/communication/teacher/read/${recipientId || noticeId}`);
+      setTeacherNotices(prev => prev.map(n => (n.id === noticeId || n.recipient_id === recipientId) ? { ...n, read_at: new Date().toISOString() } : n));
+      setTeacherUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (_e) {}
+  }
+
+  useEffect(() => {
+    if (user?.role === 'TEACHER') {
+      loadTeacherNotices();
+    }
+  }, [user?.role]);
+
   useEffect(() => {
     if (user?.role === 'SCHOOL_ADMIN') {
       api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
@@ -2106,9 +2172,44 @@ function Layout({children}:{children:React.ReactNode}){
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
               2025–26 ACADEMIC SESSION
             </div>
-            <button className="header-icon-btn" title="Notifications" onClick={()=>nav(user.role==='TEACHER'?'/teacher-history':'/notifications')}>
+            <button
+              className="header-icon-btn"
+              title={user.role === 'TEACHER' ? 'Faculty In-App Inbox' : 'Notifications'}
+              style={{ position: 'relative' }}
+              onClick={() => {
+                if (user.role === 'TEACHER') {
+                  setTeacherDrawerOpen(true);
+                  loadTeacherNotices();
+                } else {
+                  nav('/notifications');
+                }
+              }}
+            >
               <Bell size={16}/>
-              <span className="header-badge-dot"></span>
+              {user.role === 'TEACHER' ? (
+                teacherUnreadCount > 0 ? (
+                  <span style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    minWidth: 16,
+                    height: 16,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 2px'
+                  }}>
+                    {teacherUnreadCount}
+                  </span>
+                ) : null
+              ) : (
+                <span className="header-badge-dot"></span>
+              )}
             </button>
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
@@ -2124,6 +2225,138 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
           </div>
         </header>
+      )}
+      {/* ── Faculty In-App Inbox Drawer (Teacher Portal) ── */}
+      {teacherDrawerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.55)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            zIndex: 1200
+          }}
+          onClick={() => setTeacherDrawerOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              backgroundColor: 'var(--surface, #ffffff)',
+              height: '100%',
+              overflowY: 'auto',
+              padding: '24px 20px',
+              boxSizing: 'border-box',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border, #e2e8f0)', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Bell size={18} color="#2563eb" />
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Faculty In-App Inbox</h2>
+                {teacherUnreadCount > 0 && (
+                  <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10 }}>
+                    {teacherUnreadCount} unread
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setTeacherDrawerOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
+              Official administrative notices and academic broadcasts strictly visible to faculty accounts.
+            </p>
+
+            {teacherLoadingNotices ? (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>Loading faculty inbox...</div>
+            ) : teacherNotices.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', border: '1px dashed var(--border, #cbd5e1)', borderRadius: 8, color: 'var(--text-muted, #94a3b8)' }}>
+                No notifications in your faculty inbox.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 14, overflowY: 'auto' }}>
+                {teacherNotices.map((n: any) => (
+                  <div
+                    key={n.id || n.recipient_id}
+                    style={{
+                      border: n.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
+                      borderRadius: 8,
+                      padding: 14,
+                      backgroundColor: n.read_at ? 'var(--surface-subtle, #f8fafc)' : 'var(--surface, #ffffff)',
+                      boxShadow: n.read_at ? 'none' : '0 1px 4px rgba(0,0,0,0.06)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          backgroundColor: n.priority === 'EMERGENCY' ? '#fee2e2' : n.priority === 'HIGH' ? '#ffedd5' : '#eff6ff',
+                          color: n.priority === 'EMERGENCY' ? '#b91c1c' : n.priority === 'HIGH' ? '#c2410c' : '#1d4ed8'
+                        }}
+                      >
+                        {n.priority}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                        {n.published_at ? new Date(n.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+                      </span>
+                    </div>
+
+                    <h4 style={{ margin: '0 0 6px', fontSize: 14.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                      {n.title}
+                    </h4>
+
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #334155)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                      {n.message}
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: 8 }}>
+                      {n.author_name ? (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>From: {n.author_name}</span>
+                      ) : <span />}
+
+                      {!n.read_at ? (
+                        <button
+                          type="button"
+                          onClick={() => markTeacherNoticeRead(n.recipient_id, n.id)}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            borderRadius: 4,
+                            border: '1px solid var(--border, #cbd5e1)',
+                            backgroundColor: 'transparent',
+                            color: 'var(--primary, #2563eb)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Mark as read
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>✓ Read</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {/* ── Global Search Command Palette ── */}
       {searchOpen && (

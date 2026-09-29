@@ -1,6 +1,6 @@
 /**
  * Shared in-memory user store for fallback mode.
- * Contains only the initial Company Super Admin seed.
+ * Contains demo accounts for Greenwood International School and Techno International New Town (TINT).
  * All school admins and teachers are registered dynamically when created.
  */
 
@@ -22,6 +22,7 @@ const demoUsers: DemoUser[] = [
     role: 'SUPER_ADMIN',
     password: 'ChangeMe123!'
   },
+  // Greenwood School Admin & Faculty
   {
     id: '00000000-0000-0000-0000-000000000021',
     schoolId: '00000000-0000-0000-0000-000000000001',
@@ -53,19 +54,52 @@ const demoUsers: DemoUser[] = [
     email: 'student@greenwood.local',
     role: 'STUDENT',
     password: 'ChangeMe123!'
+  },
+  // TINT (Techno International New Town) Demo Accounts
+  {
+    id: '00000000-0000-0000-0000-000000000031',
+    schoolId: '00000000-0000-0000-0000-000000000002',
+    name: 'TINT School Administrator',
+    email: 'admin@tint.edu.in',
+    role: 'SCHOOL_ADMIN',
+    password: 'ChangeMe123!'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000032',
+    schoolId: '00000000-0000-0000-0000-000000000002',
+    name: 'TINT Administrator',
+    email: 'admin@tint.local',
+    role: 'SCHOOL_ADMIN',
+    password: 'ChangeMe123!'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000033',
+    schoolId: '00000000-0000-0000-0000-000000000002',
+    name: 'TINT Faculty Member',
+    email: 'teacher@tint.local',
+    role: 'TEACHER',
+    password: 'ChangeMe123!'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000034',
+    schoolId: '00000000-0000-0000-0000-000000000002',
+    name: 'TINT Student',
+    email: 'student@tint.local',
+    role: 'STUDENT',
+    password: 'ChangeMe123!'
   }
 ];
 
 /** Find a demo user by email or student identifier (case-insensitive) */
 export function findDemoUser(identifier: string): DemoUser | undefined {
-  const clean = String(identifier || '').trim().toLowerCase();
+  const norm = identifier.toLowerCase().trim();
   return demoUsers.find(u =>
-    u.email.toLowerCase() === clean ||
-    (u.role === 'STUDENT' && (clean === '25' || clean === 'rohan' || clean === 'stu025' || clean === 'student@greenwood.local' || clean === 'rohan.sharma@greenwood.local'))
+    u.email.toLowerCase() === norm ||
+    u.id.toLowerCase() === norm
   );
 }
 
-/** Register a new user in the in-memory store */
+/** Register a user in the fallback demo store */
 export function registerDemoUser(user: DemoUser): void {
   const existing = demoUsers.findIndex(u => u.email.toLowerCase() === user.email.toLowerCase());
   if (existing >= 0) {

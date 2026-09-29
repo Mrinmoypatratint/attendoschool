@@ -167,6 +167,7 @@ export const studentApi = {
     api.get<AttendanceData>('/student/attendance', { params: { from, to } }).then((r) => r.data),
   getTimetable: () => api.get<TimetableEntry[]>('/student/timetable').then((r) => r.data),
   getAnnouncements: () => api.get<Announcement[]>('/student/announcements').then((r) => r.data),
+  replyToAnnouncement: (id: string, replyText: string) => api.post('/communication/announcements/' + id + '/reply', { replyText }).then((r) => r.data),
   getAssignments: () => api.get<Assignment[]>('/student/assignments').then((r) => r.data),
   submitAssignment: (id: string, submissionText: string) =>
     api.post(`/student/assignments/${id}/submit`, { submissionText }).then((r) => r.data),

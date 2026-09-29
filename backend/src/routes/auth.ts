@@ -15,15 +15,32 @@ import { isFirebaseConfigured, collections } from '../firebase';
 const router = Router();
 
 export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
-import { isSameSchool, canonicalSchoolId, isTestSchool } from '../utils/tenant';
+import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool } from '../utils/tenant';
 
-// GET /api/auth/institutes - Public active institutes for multi-tenant selector (Direct Cloud Firestore)
+// GET /api/auth/institutes - Public active institutes for multi-tenant selector
 router.get('/institutes', async (_req, res) => {
+  const defaultInstitutes = [
+    {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Greenwood International School',
+      code: 'GIS001',
+      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Techno International New Town (TINT)',
+      code: 'TINT',
+      address: 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156'
+    }
+  ];
+
+  let list: any[] = [];
+
   // 1. Direct Firebase Cloud Firestore
   if (isFirebaseConfigured()) {
     try {
       const fsSchools = await getFirestoreSchools();
-      const list = fsSchools
+      const fsList = fsSchools
         .filter((s: any) => s && s.name && s.status !== 'SUSPENDED' && s.status !== 'DELETED')
         .map((s: any) => ({
           id: String(s.id),
@@ -32,43 +49,58 @@ router.get('/institutes', async (_req, res) => {
           address: String(s.address || s.city || 'Main Campus')
         }));
 
-      if (list.length > 0) {
-        return res.json(list);
+      if (fsList.length > 0) {
+        list = fsList;
       }
     } catch (err: any) {
-      console.error('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
+      console.warn('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
     }
   }
 
   // 2. PostgreSQL fallback
-  try {
-    const q = await pool.query(
-      `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
-       FROM schools
-       WHERE status = 'ACTIVE'
-       ORDER BY name ASC`
-    );
-    if (q.rows && q.rows.length > 0) {
-      return res.json(q.rows.map(s => ({
-        id: s.id,
-        name: s.name,
-        code: s.code || 'SCH001',
-        address: s.address || 'Main Campus'
-      })));
-    }
-  } catch (_e) {}
-
-  // 3. In-memory demo schools fallback (guarantees Greenwood International is selectable)
-  if (demoSchools && demoSchools.length > 0) {
-    return res.json(demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
-      id: s.id,
-      name: s.name,
-      code: s.code || 'GIS001',
-      address: s.address || 'Campus 4, Tech Park Boulevard, Bengaluru'
-    })));
+  if (list.length === 0) {
+    try {
+      const q = await pool.query(
+        `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
+         FROM schools
+         WHERE status = 'ACTIVE'
+         ORDER BY name ASC`
+      );
+      if (q.rows && q.rows.length > 0) {
+        list = q.rows.map(s => ({
+          id: s.id,
+          name: s.name,
+          code: s.code || 'SCH001',
+          address: s.address || 'Main Campus'
+        }));
+      }
+    } catch (_e) {}
   }
 
-  return res.json([]);
+  // 3. In-memory demo schools fallback (guarantees Greenwood & TINT are selectable)
+  if (list.length === 0 && demoSchools && demoSchools.length > 0) {
+    list = demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
+      id: s.id,
+      name: s.name,
+      code: s.code || (s.id.endsWith('2') ? 'TINT' : 'GIS001'),
+      address: s.address || (s.id.endsWith('2') ? 'Block - DG 1/1, Action Area 1D, New Town, Kolkata - 700156' : 'Campus 4, Tech Park Boulevard, Bengaluru')
+    }));
+  }
+
+  // Ensure default institutions (Greenwood and TINT) are ALWAYS in the selectable list
+  for (const def of defaultInstitutes) {
+    const exists = list.some(
+      s => s.id === def.id ||
+           (s.code && s.code.toUpperCase() === def.code.toUpperCase()) ||
+           (s.name && s.name.toUpperCase().includes('TINT') && def.code === 'TINT') ||
+           (s.name && s.name.toUpperCase().includes('GREENWOOD') && def.code === 'GIS001')
+    );
+    if (!exists) {
+      list.push(def);
+    }
+  }
+
+  return res.json(list);
 });
 
 function roleMatches(userRole: string, expectedRole?: string): boolean {
@@ -255,15 +287,29 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Account is not authorized for the selected role' });
     }
 
-    if (instituteId && demo.role !== 'SUPER_ADMIN' && !isSameSchool(demo.schoolId, instituteId)) {
+    if (
+      instituteId &&
+      demo.role !== 'SUPER_ADMIN' &&
+      !isSameSchool(demo.schoolId, instituteId) &&
+      !(isTestSchool(demo.schoolId) && isTestSchool(instituteId))
+    ) {
       return res.status(401).json({ message: 'Account does not belong to the selected institute' });
     }
 
+    const isTint = isTintSchool(instituteId || demo.schoolId);
+    const resolvedSchoolId = isTint
+      ? '00000000-0000-0000-0000-000000000002'
+      : (demo.schoolId || '00000000-0000-0000-0000-000000000001');
+    const resolvedSchoolName = isTint
+      ? 'Techno International New Town (TINT)'
+      : 'Greenwood International School';
+    const resolvedSchoolCode = isTint ? 'TINT' : 'GIS001';
+
     const userPayload: any = {
       id: demo.id,
-      schoolId: demo.schoolId,
-      schoolName: 'Greenwood International School',
-      schoolCode: 'GIS001',
+      schoolId: resolvedSchoolId,
+      schoolName: resolvedSchoolName,
+      schoolCode: resolvedSchoolCode,
       name: demo.name,
       email: demo.email,
       role: demo.role as Role
