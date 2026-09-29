@@ -29,70 +29,109 @@ const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
 
-export const demoClasses: any[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
-  id: `cls-${n}`,
-  class_number: n,
+// Helper function for session matching across formats
+export function isSameSession(s1?: string | null, s2?: string | null): boolean {
+  if (!s1 || !s2) return false;
+  if (s1 === s2) return true;
+  const clean = (s: string) => String(s).replace(/[\u2013\u2014]/g, '-').replace(/[^0-9-]/g, '').trim();
+  const c1 = clean(s1);
+  const c2 = clean(s2);
+  if (c1 && c2 && (c1 === c2 || c1.includes(c2) || c2.includes(c1))) return true;
+  return s1.toLowerCase().includes(s2.toLowerCase()) || s2.toLowerCase().includes(s1.toLowerCase());
+}
+
+// Class grades: L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
+export const CLASS_GRADES = [
+  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'U-KG' },
+  ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
+];
+
+export const demoClasses: any[] = CLASS_GRADES.map(g => ({
+  id: g.id,
+  class_number: g.class_number,
+  label: g.label,
   section_count: 2,
   school_id: '00000000-0000-0000-0000-000000000001'
 }));
 
 export const demoSections: any[] = [];
-[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].forEach(n => {
-  demoSections.push({ id: `sec-${n}-a`, class_id: `cls-${n}`, class_number: n, name: 'A', school_id: '00000000-0000-0000-0000-000000000001' });
-  demoSections.push({ id: `sec-${n}-b`, class_id: `cls-${n}`, class_number: n, name: 'B', school_id: '00000000-0000-0000-0000-000000000001' });
+CLASS_GRADES.forEach(g => {
+  demoSections.push({ id: `sec-${g.id}-a`, class_id: g.id, class_number: g.class_number, label: g.label, name: 'A', section_name: 'A', school_id: '00000000-0000-0000-0000-000000000001' });
+  demoSections.push({ id: `sec-${g.id}-b`, class_id: g.id, class_number: g.class_number, label: g.label, name: 'B', section_name: 'B', school_id: '00000000-0000-0000-0000-000000000001' });
 });
 
 r.get('/classes',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ // Build standard class list from CLASS_GRADES — always the full L-KG → Class 12 set
+ const standardClasses = CLASS_GRADES.map(g => ({
+   id: `${sid}-${g.id}`,
+   class_number: g.class_number,
+   label: g.label,
+   section_count: 2,
+   school_id: sid
+ }));
+
  try {
   const q=await pool.query(`SELECT c.id,c.class_number,COUNT(s.id)::int section_count
   FROM classes c LEFT JOIN sections s ON s.class_id=c.id
   WHERE c.school_id=$1 GROUP BY c.id ORDER BY c.class_number`,[sid]);
-  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  if (q.rowCount && q.rows.length > 0) {
+    const merged = standardClasses.map(sc => {
+      const db = q.rows.find((r: any) => Number(r.class_number) === sc.class_number);
+      return db ? { ...sc, ...db, label: sc.label } : sc;
+    });
+    for (const r of q.rows) {
+      if (!merged.some(m => Number(m.class_number) === Number(r.class_number))) {
+        merged.push({ id: r.id, class_number: Number(r.class_number), label: `Class ${r.class_number}`, section_count: r.section_count, school_id: sid });
+      }
+    }
+    merged.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
+    return res.json(merged);
+  }
  } catch {}
 
- // Query Cloud Firestore for classes belonging to this school
+ // Merge any Firestore classes on top
  if (isFirebaseConfigured()) {
    try {
-      const snap = await collections.classes().get();
-      if (!snap.empty) {
-        const list = snap.docs
-          .map(d => {
-            const data = d.data();
-            const cNum = Number(data.class_number ?? data.classNumber ?? 10);
-            return {
-              id: d.id,
-              class_number: cNum,
-              classNumber: cNum,
-              name: data.name || `Class ${cNum}`,
-              section_count: data.section_count ?? data.sectionCount ?? 2,
-              school_id: data.school_id || data.schoolId,
-              schoolId: data.schoolId || data.school_id,
-              ...data
-            };
-          })
-          .filter((c: any) => (c.school_id && isSameSchool(c.school_id, sid)) || (c.schoolId && isSameSchool(c.schoolId, sid)));
-        if (list.length > 0) {
-          list.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
-          return res.json(list);
-        }
-      }
-    } catch {}
-  }
+     const snap = await collections.classes().get();
+     if (!snap.empty) {
+       const fsClasses = snap.docs
+         .map(d => {
+           const data = d.data();
+           const cNum = Number(data.class_number ?? data.classNumber ?? 1);
+           const lbl = cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : `Class ${cNum}`;
+           return {
+             id: d.id,
+             class_number: cNum,
+             classNumber: cNum,
+             label: data.label || lbl,
+             name: data.name || lbl,
+             section_count: data.section_count ?? data.sectionCount ?? 2,
+             school_id: data.school_id || data.schoolId,
+             schoolId: data.schoolId || data.school_id,
+             ...data
+           };
+         })
+         .filter((c: any) => !c.school_id || isSameSchool(c.school_id, sid) || (c.schoolId && isSameSchool(c.schoolId, sid)));
 
- const memSchoolClasses = demoClasses.filter(c => c.school_id && isSameSchool(c.school_id, sid));
- if (memSchoolClasses.length > 0) return res.json(memSchoolClasses);
-
- if (isTestSchool(sid)) {
-   return res.json(demoClasses);
+       const merged = standardClasses.map(sc => {
+         const fs = fsClasses.find((f: any) => Number(f.class_number) === sc.class_number);
+         return fs ? { ...sc, ...fs, label: sc.label } : sc;
+       });
+       merged.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
+       return res.json(merged);
+     }
+   } catch {}
  }
- res.json([]);
+
+ res.json(standardClasses);
 });
 
 r.post('/classes',...admin,async(req:AuthRequest,res)=>{
  const n=Number(req.body.classNumber || req.body.class_number);
  const sid=req.user!.schoolId;
- if(!Number.isInteger(n)||n<1||n>12) return res.status(400).json({message:'Class must be between 1 and 12'});
+ if(!Number.isInteger(n)||n<-1||n>12) return res.status(400).json({message:'Class must be between L-KG (-1) and 12'});
  try {
   const q=await pool.query('INSERT INTO classes(school_id,class_number) VALUES($1,$2) RETURNING *',[sid,n]);
   if (q.rowCount) {
@@ -125,9 +164,44 @@ r.delete('/classes/:id',...admin,async(req:AuthRequest,res)=>{
 
 r.get('/sections',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ // Standard sections: Section A and Section B for each class in CLASS_GRADES
+ const standardSections: any[] = [];
+ CLASS_GRADES.forEach(g => {
+   const classId = `${sid}-${g.id}`;
+   standardSections.push({
+     id: `${sid}-sec-${g.id}-a`,
+     class_id: classId,
+     classId: classId,
+     class_number: g.class_number,
+     label: g.label,
+     name: 'A',
+     section_name: 'A',
+     school_id: sid
+   });
+   standardSections.push({
+     id: `${sid}-sec-${g.id}-b`,
+     class_id: classId,
+     classId: classId,
+     class_number: g.class_number,
+     label: g.label,
+     name: 'B',
+     section_name: 'B',
+     school_id: sid
+   });
+ });
+
  try {
   const q=await pool.query(`SELECT s.id,s.name,c.id class_id,c.class_number FROM sections s JOIN classes c ON c.id=s.class_id WHERE s.school_id=$1 ORDER BY c.class_number,s.name`,[sid]);
-  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  if (q.rowCount && q.rows.length > 0) {
+    const list = q.rows.map((r: any) => ({ ...r, section_name: r.name, school_id: sid }));
+    for (const std of standardSections) {
+      if (!list.some(r => Number(r.class_number) === std.class_number && r.name === std.name)) {
+        list.push(std);
+      }
+    }
+    list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
+    return res.json(list);
+  }
  } catch {}
 
  // Query Cloud Firestore for sections belonging to this school
@@ -135,12 +209,12 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
    try {
       const snap = await collections.sections().get();
       if (!snap.empty) {
-        const list = snap.docs
+        const fsSections = snap.docs
           .map(d => {
             const data = d.data();
             const cNum = Number(data.class_number ?? data.classNumber ?? data.className ?? 10);
-            const sName = data.name || data.sectionName || data.section || 'A';
-            const cId = data.class_id || data.classId || `cls-${cNum}`;
+            const sName = String(data.name || data.sectionName || data.section || 'A').toUpperCase();
+            const cId = data.class_id || data.classId || `${sid}-cls-${cNum}`;
             return {
               id: d.id,
               class_id: cId,
@@ -150,27 +224,37 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
               name: sName,
               section_name: sName,
               sectionName: sName,
-              school_id: data.school_id || data.schoolId,
-              schoolId: data.schoolId || data.school_id,
+              school_id: data.school_id || data.schoolId || sid,
               ...data
             };
           })
-          .filter((s: any) => (s.school_id && isSameSchool(s.school_id, sid)) || (s.schoolId && isSameSchool(s.schoolId, sid)));
-        if (list.length > 0) {
-          list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
-          return res.json(list);
+          .filter((s: any) => !s.school_id || isSameSchool(s.school_id, sid) || (s.schoolId && isSameSchool(s.schoolId, sid)));
+
+        const list = [...fsSections];
+        for (const std of standardSections) {
+          if (!list.some(r => Number(r.class_number) === std.class_number && r.name === std.name)) {
+            list.push(std);
+          }
         }
+        list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
+        return res.json(list);
       }
     } catch {}
   }
 
  const memSchoolSections = demoSections.filter(s => s.school_id && isSameSchool(s.school_id, sid));
- if (memSchoolSections.length > 0) return res.json(memSchoolSections);
-
- if (isTestSchool(sid)) {
-   return res.json(demoSections);
+ if (memSchoolSections.length > 0) {
+   const list = [...memSchoolSections];
+   for (const std of standardSections) {
+     if (!list.some(r => Number(r.class_number) === std.class_number && r.name === std.name)) {
+       list.push(std);
+     }
+   }
+   list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
+   return res.json(list);
  }
- res.json([]);
+
+ res.json(standardSections);
 });
 
 r.post('/sections',...admin,async(req:AuthRequest,res)=>{
@@ -322,16 +406,27 @@ r.put('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
 
 r.get('/students',...admin,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
+ const sessionFilter=String(req.query.session||req.query.sessionId||req.query.academic_year_id||'').trim();
  const userSchoolId = req.user?.schoolId;
 
  try {
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
+  st.academic_year_id, ay.name AS session_name,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
-  FROM students st JOIN classes c ON c.id=st.class_id JOIN sections sec ON sec.id=st.section_id
+  FROM students st 
+  JOIN classes c ON c.id=st.class_id 
+  JOIN sections sec ON sec.id=st.section_id
+  LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
   WHERE st.school_id=$1 AND st.is_active=true
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY c.class_number,sec.name,st.roll_number`,[userSchoolId,search]);
-  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  if (q.rowCount && q.rows.length > 0) {
+    let rows = q.rows;
+    if (sessionFilter) {
+      rows = rows.filter((st: any) => isSameSession(st.session_name || st.academic_year_id, sessionFilter));
+    }
+    return res.json(rows);
+  }
  } catch {}
 
  // If Firestore is configured, load from Cloud Firestore
@@ -344,7 +439,10 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
         const docSchoolId = dt.school_id || dt.schoolId;
         return {
           id: d.id,
-          name: dt.name || dt.fullName || '',
+          name: dt.name || dt.fullName || dt.full_name || '',
+          full_name: dt.full_name || dt.name || dt.fullName || '',
+          first_name: dt.first_name || dt.firstName || '',
+          last_name: dt.last_name || dt.lastName || '',
           roll_number: dt.roll_number || dt.rollNumber || '',
           admission_number: dt.admission_number || dt.admissionNumber || '',
           admissionNumber: dt.admissionNumber || dt.admission_number || '',
@@ -353,10 +451,29 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
           parent_email: dt.parent_email || dt.parentEmail || '',
           student_email: dt.student_email || dt.studentEmail || dt.email || '',
           email: dt.email || dt.student_email || '',
-          class_id: dt.class_id || dt.classId || `cls-${dt.class_number || dt.className || 8}`,
-          class_number: Number(dt.class_number || dt.className) || 8,
-          section_id: dt.section_id || dt.sectionId || `sec-${dt.class_number || 8}-${(dt.section_name || dt.section || 'A').toLowerCase()}`,
-          section_name: dt.section_name || dt.section || 'A',
+          // Robust class and section extraction
+          class_id: dt.class_id || dt.classId || 'cls-1',
+          class_number: (() => {
+            const cId = String(dt.class_id || dt.classId || '');
+            if (/l.?kg/i.test(cId)) return -1;
+            if (/u.?kg/i.test(cId)) return 0;
+            const m = cId.match(/cls-(\d+)/);
+            if (m) return Number(m[1]);
+            if (dt.class_number !== undefined && dt.class_number !== null && !isNaN(Number(dt.class_number))) return Number(dt.class_number);
+            if (dt.className !== undefined && dt.className !== null && !isNaN(Number(dt.className))) return Number(dt.className);
+            return 1;
+          })(),
+          section_id: dt.section_id || dt.sectionId || 'sec-a',
+          section_name: (() => {
+            const sId = String(dt.section_id || dt.sectionId || '').toUpperCase();
+            const sName = String(dt.section_name || dt.section || '').toUpperCase();
+            if (sName === 'B' || sId.endsWith('-B') || sId.endsWith('_B') || sId === 'B') return 'B';
+            return 'A';
+          })(),
+          academic_year_id: dt.academic_year_id || dt.session_id || dt.sessionId || null,
+          session_id: dt.session_id || dt.academic_year_id || null,
+          session_name: dt.session_name || dt.session || null,
+          session: dt.session || dt.session_name || null,
           school_id: docSchoolId,
           schoolId: docSchoolId,
           is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
@@ -378,7 +495,7 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
       }
 
       if (list.length > 0) {
-        const filtered = search
+        let filtered = search
           ? list.filter(s =>
               s.name.toLowerCase().includes(search) ||
               String(s.roll_number).includes(search) ||
@@ -389,6 +506,9 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
               (s.parent_email && s.parent_email.toLowerCase().includes(search))
             )
           : list;
+        if (sessionFilter) {
+          filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
+        }
         return res.json(filtered);
       }
     }
@@ -400,7 +520,7 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   // Check in-memory students registered for this specific school
   const memSchoolStudents = demoStudents.filter(s => s.school_id && userSchoolId && isSameSchool(s.school_id, userSchoolId));
   if (memSchoolStudents.length > 0) {
-    const filtered = search
+    let filtered = search
       ? memSchoolStudents.filter(s =>
           s.name.toLowerCase().includes(search) ||
           String(s.roll_number).includes(search) ||
@@ -411,6 +531,9 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
           (s.parent_email && s.parent_email.toLowerCase().includes(search))
         )
       : memSchoolStudents;
+    if (sessionFilter) {
+      filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
+    }
     return res.json(filtered);
   }
 
@@ -418,7 +541,7 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   if (isTestSchool(userSchoolId)) {
    const schoolStudents = demoStudents.filter(s => isSameSchool(s.school_id, userSchoolId));
    const studentList = schoolStudents.length ? schoolStudents : demoStudents;
-   const filtered = search
+   let filtered = search
      ? studentList.filter(s =>
          s.name.toLowerCase().includes(search) ||
          String(s.roll_number).includes(search) ||
@@ -429,6 +552,9 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
          (s.parent_email && s.parent_email.toLowerCase().includes(search))
        )
      : studentList;
+   if (sessionFilter) {
+     filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
+   }
    return res.json(filtered);
  }
 
@@ -436,27 +562,117 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
  res.json([]);
 });
 
+// GET /students/template — download standardized Excel import template
+r.get('/students/template', ...reader, (_req, res) => {
+  const XLSX = require('xlsx');
+  const sample = [
+    { 'First Name': 'Aarav',  'Last Name': 'Sharma',  'Full Name': 'Aarav Sharma',  'Admission Number': 'ADM-2025-001', 'Roll Number': '101', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Parent Name': 'Rajesh Sharma', 'Parent Phone': '9876543210', 'Parent Email': 'rajesh@example.com', 'Student Email': 'aarav@school.edu' },
+    { 'First Name': 'Diya',   'Last Name': 'Patel',   'Full Name': 'Diya Patel',    'Admission Number': 'ADM-2025-002', 'Roll Number': '102', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Parent Name': 'Kirit Patel',   'Parent Phone': '9876543211', 'Parent Email': 'kirit@example.com',  'Student Email': 'diya@school.edu' },
+    { 'First Name': 'Rohan',  'Last Name': 'Gupta',   'Full Name': 'Rohan Gupta',   'Admission Number': 'ADM-2025-003', 'Roll Number': '103', 'Session': '2025-26', 'Class': 'Class 2', 'Section': 'B', 'Parent Name': 'Manoj Gupta',   'Parent Phone': '9876543212', 'Parent Email': 'manoj@example.com', 'Student Email': 'rohan@school.edu' },
+    { 'First Name': 'L-KG',   'Last Name': 'Example', 'Full Name': 'L-KG Example',  'Admission Number': 'ADM-2025-004', 'Roll Number': '104', 'Session': '2025-26', 'Class': 'L-KG',    'Section': 'A', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543213', 'Parent Email': 'p@example.com',    'Student Email': '' },
+    { 'First Name': 'U-KG',   'Last Name': 'Example', 'Full Name': 'U-KG Example',  'Admission Number': 'ADM-2025-005', 'Roll Number': '105', 'Session': '2025-26', 'Class': 'U-KG',    'Section': 'B', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543214', 'Parent Email': 'p2@example.com',   'Student Email': '' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(sample);
+  ws['!cols'] = [14,14,20,18,14,12,12,10,20,16,24,26].map(wch => ({ wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', 'attachment; filename="students_import_template.xlsx"');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
 r.post('/students',...admin,async(req:AuthRequest,res)=>{
  const {
-   name, rollNumber, admissionNumber, admission_number, parentName, parentSmsNumber, classId, sectionId,
-   studentEmail, email, parentEmail, loginOption, sendInviteEmail = true
+   firstName: rawFirst, lastName: rawLast, name: rawName,
+   rollNumber, admissionNumber, admission_number, parentName, parentSmsNumber, classId, sectionId,
+   studentEmail, email, parentEmail, loginOption, sendInviteEmail = true,
+   sessionId, session
  } = req.body;
- if(!name||!rollNumber||!parentSmsNumber||!classId||!sectionId) return res.status(400).json({message:'Name, roll, parent SMS, class and section are required'});
+
+ // Name normalization
+ const firstName  = String(rawFirst || '').trim();
+ const lastName   = String(rawLast  || '').trim();
+ const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawName||'').trim());
+ if(!name||!rollNumber||!classId||!sectionId) return res.status(400).json({message:'First Name, Last Name (or full name), roll number, class and section are required'});
+
+ // Mandatory session binding — resolve academic_year_id
+ const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } = await import('./academicYears');
+ const schoolId = req.user!.schoolId;
+ const rawSession = String(sessionId || session || '').trim();
+ let resolvedSessionId: string | null = null;
+ let resolvedSessionName: string | null = null;
+ try {
+   const ayQ = await pool.query(`SELECT id, name, code, is_active FROM academic_years WHERE school_id=$1 AND is_archived=false`, [schoolId]);
+   if (ayQ.rowCount && ayQ.rows.length > 0) {
+     if (rawSession) {
+       const found = ayQ.rows.find((r: any) => r.id === rawSession || r.code === rawSession || isSameSession(r.name, rawSession));
+       if (found) {
+         resolvedSessionId = found.id;
+         resolvedSessionName = found.name;
+       }
+     }
+     if (!resolvedSessionId) {
+       const active = ayQ.rows.find((r: any) => r.is_active) || ayQ.rows[0];
+       resolvedSessionId = active.id;
+       resolvedSessionName = active.name;
+     }
+   }
+ } catch {}
+ if (!resolvedSessionId) {
+   const memYears = getInMemoryAcademicYears(schoolId);
+   const target = rawSession
+     ? memYears.find(y => (y.id === rawSession || y.code === rawSession || isSameSession(y.name, rawSession)) && !y.is_archived)
+     : (memYears.find(y => y.is_active && !y.is_archived) || memYears[1] || memYears[0]);
+   resolvedSessionId = target?.id || (rawSession ? `ay-${rawSession}` : 'ay-2025-26');
+   resolvedSessionName = target?.name || rawSession || '2025–26 Academic Session';
+ }
  
  const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
  const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
  const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
  const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
 
- let clsNum = 8;
- let secName = 'A';
- if (typeof classId === 'string' && classId.startsWith('cls-')) {
-   clsNum = Number(classId.replace('cls-', '')) || 8;
+ // Unique admission number constraint — check at application level
+ if (cleanAdmissionNumber) {
+   try {
+     const admChk = await pool.query(`SELECT id FROM students WHERE school_id=$1 AND admission_number=$2 AND is_active=true LIMIT 1`, [schoolId, cleanAdmissionNumber]);
+     if (admChk.rowCount && admChk.rowCount > 0) {
+       return res.status(400).json({ message: `Admission number '${cleanAdmissionNumber}' already exists for this school.` });
+     }
+   } catch {}
+   // Also check in-memory
+   const dup = demoStudents.find(s => s.school_id === schoolId && s.admission_number === cleanAdmissionNumber);
+   if (dup) return res.status(400).json({ message: `Admission number '${cleanAdmissionNumber}' already exists (in-memory).` });
  }
- if (typeof sectionId === 'string') {
-   const parts = sectionId.split('-');
-   secName = parts[parts.length - 1].toUpperCase() || 'A';
- }
+
+ let clsNum = 1;
+  const strClassId = String(classId || '').trim();
+  const matchedGrade = CLASS_GRADES.find(g => 
+    g.id === strClassId || 
+    strClassId.endsWith(`-${g.id}`) || 
+    strClassId === `cls-${g.class_number}` ||
+    String(g.class_number) === strClassId
+  );
+  if (matchedGrade) {
+    clsNum = matchedGrade.class_number;
+  } else if (/l.?kg/i.test(strClassId)) {
+    clsNum = -1;
+  } else if (/u.?kg/i.test(strClassId)) {
+    clsNum = 0;
+  } else {
+    const m = strClassId.match(/cls-(\d+)/);
+    if (m) clsNum = Number(m[1]);
+    else if (/^\d+$/.test(strClassId)) clsNum = Number(strClassId);
+  }
+
+  let secName = 'A';
+  const strSecId = String(sectionId || '').trim().toUpperCase();
+  if (strSecId === 'B' || strSecId.endsWith('-B') || strSecId.endsWith('_B') || strSecId.endsWith('/B')) {
+    secName = 'B';
+  } else if (strSecId === 'A' || strSecId.endsWith('-A') || strSecId.endsWith('_A') || strSecId.endsWith('/A')) {
+    secName = 'A';
+  }
 
  let resetInfo: any = null;
 
@@ -529,11 +745,40 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
     }
 
-    const q=await pool.query(`INSERT INTO students(school_id,class_id,section_id,roll_number,admission_number,name,parent_name,parent_sms_number,email,parent_email,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [req.user!.schoolId,classId,sectionId,rollNumber,cleanAdmissionNumber||null,name,parentName||null,parentSmsNumber,cleanStudentEmail||null,cleanParentEmail||null,linkedUserId]);
+    const q=await pool.query(
+      `INSERT INTO students(
+        school_id, academic_year_id, class_id, section_id, roll_number, 
+        admission_number, first_name, last_name, full_name, name, 
+        parent_name, parent_sms_number, email, parent_email, user_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+      [
+        req.user!.schoolId,
+        resolvedSessionId,
+        classId,
+        sectionId,
+        rollNumber,
+        cleanAdmissionNumber || null,
+        firstName || null,
+        lastName || null,
+        name,
+        name,
+        parentName || null,
+        parentSmsNumber,
+        cleanStudentEmail || null,
+        cleanParentEmail || null,
+        linkedUserId
+      ]
+    );
     
     const created = {
       ...q.rows[0],
+      academic_year_id: resolvedSessionId,
+      session_id: resolvedSessionId,
+      session_name: resolvedSessionName,
+      session: resolvedSessionName || resolvedSessionId,
+      full_name: name,
+      first_name: firstName || null,
+      last_name: lastName || null,
       class_number: clsNum,
       section_name: secName,
       admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
@@ -543,7 +788,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       login_email: targetLoginEmail,
       login_option: loginOpt,
       reset_url: resetInfo?.resetUrl,
-      invite_sent: Boolean(resetInfo)
+      invite_sent: Boolean(resetInfo),
+      is_active: true
     };
     demoStudents.unshift(created);
     syncStudentToFirestore(created).catch(() => {});
@@ -598,7 +844,16 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
 
  const newStudent = {
    id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+   school_id: req.user!.schoolId,
+   schoolId: req.user!.schoolId,
+   academic_year_id: resolvedSessionId,
+   session_id: resolvedSessionId,
+   session_name: resolvedSessionName,
+   session: resolvedSessionName || resolvedSessionId,
    name,
+   full_name: name,
+   first_name: firstName || null,
+   last_name: lastName || null,
    roll_number: rollNumber,
    admission_number: cleanAdmissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
    admissionNumber: cleanAdmissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
@@ -611,11 +866,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    section_name: secName,
    class_id: classId,
    section_id: sectionId,
-   school_id: req.user!.schoolId,
-   schoolId: req.user!.schoolId,
+   user_id: null,
    login_option: loginOpt,
    reset_url: resetInfo?.resetUrl,
-   invite_sent: Boolean(resetInfo)
+   invite_sent: Boolean(resetInfo),
+   is_active: true
  };
  demoStudents.unshift(newStudent);
  syncStudentToFirestore(newStudent).catch(() => {});
@@ -623,63 +878,183 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
- const {students=[]}=req.body||{};
+ const {students=[],sessionId:reqSessionId}=req.body||{};
  if(!Array.isArray(students)||students.length===0) return res.status(400).json({message:'Array of student records is required'});
- const createdList: any[] = [];
- for (const st of students) {
-    const name = String(st.name||'').trim();
-    const rollNumber = String(st.rollNumber||st.roll_number||'').trim();
-    const admissionNumber = String(st.admissionNumber||st.admission_number||'').trim();
-    const parentName = String(st.parentName||st.parent_name||'').trim();
-    const parentSmsNumber = String(st.parentSmsNumber||st.parent_sms_number||st.phone||'9876543210').trim();
-    const parentEmail = String(st.parentEmail||st.parent_email||'').trim();
-    let classId = st.classId || st.class_id;
-    let sectionId = st.sectionId || st.section_id;
-    let classNumber = Number(st.classNumber || st.class_number) || 8;
-    let sectionName = String(st.sectionName || st.section_name || 'A').toUpperCase();
 
-    if (!classId) classId = `cls-${classNumber}`;
-    if (!sectionId) sectionId = `sec-${classNumber}-${sectionName.toLowerCase()}`;
+ const schoolId = req.user!.schoolId;
 
-    if (!name || !rollNumber) continue;
+ // Resolve session for bulk import
+ const { getInMemoryAcademicYears } = await import('./academicYears');
+ let bulkSessionId: string | null = null;
+ let bulkSessionName: string | null = null;
+ try {
+   const ayQ = reqSessionId
+     ? await pool.query(`SELECT id,name FROM academic_years WHERE id=$1 AND school_id=$2 AND is_archived=false LIMIT 1`,[reqSessionId,schoolId])
+     : await pool.query(`SELECT id,name FROM academic_years WHERE school_id=$1 AND is_active=true AND is_archived=false LIMIT 1`,[schoolId]);
+   if (ayQ.rowCount && ayQ.rows.length>0){ bulkSessionId=ayQ.rows[0].id; bulkSessionName=ayQ.rows[0].name; }
+ } catch {}
+ if (!bulkSessionId) {
+   const memYears = getInMemoryAcademicYears(schoolId);
+   const target = reqSessionId ? memYears.find(y=>y.id===reqSessionId&&!y.is_archived) : memYears.find(y=>y.is_active&&!y.is_archived);
+   if (reqSessionId && !target) return res.status(400).json({ message: 'Invalid sessionId for bulk import.' });
+   bulkSessionId = target?.id || null;
+   bulkSessionName = target?.name || null;
+ }
 
-    const studentObj = {
-      id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      name,
-      roll_number: rollNumber,
-      admission_number: admissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
-      admissionNumber: admissionNumber || `ADM-${Date.now().toString().slice(-4)}`,
-      parent_name: parentName || '—',
-      parent_sms_number: parentSmsNumber,
-      parent_email: parentEmail,
-      class_id: classId,
-      class_number: classNumber,
-      section_id: sectionId,
-      section_name: sectionName,
-      school_id: req.user!.schoolId,
-      schoolId: req.user!.schoolId
-    };
+ const REQUIRED_HEADERS = ['First Name','Last Name','Admission Number','Roll Number','Parent Name','Parent Phone','Parent Email','Student Email'];
 
+ // Validate rows and collect errors
+ const validRows: any[] = [];
+ const errors: {row:number;field:string;message:string}[] = [];
+ const seenAdmNums = new Set<string>();
+
+ for (let i=0;i<students.length;i++) {
+   const st = students[i];
+   const rowNum = i+1;
+   let firstName  = String(st.firstName||st['First Name']||st.first_name||'').trim();
+    let lastName   = String(st.lastName||st['Last Name']||st.last_name||'').trim();
+    const rawFullName = String(st.fullName||st['Full Name']||st.full_name||st.name||'').trim();
+    if ((!firstName || !lastName) && rawFullName) {
+      const parts = rawFullName.split(' ');
+      if (!firstName) firstName = parts[0] || '';
+      if (!lastName) lastName = parts.slice(1).join(' ') || '';
+    }
+    const name = rawFullName || (firstName&&lastName ? `${firstName} ${lastName}` : (firstName||lastName||String(st.name||'').trim()));
+   const rollNumber = String(st.rollNumber||st['Roll Number']||st.roll_number||'').trim();
+   const admissionNumber = String(st.admissionNumber||st['Admission Number']||st.admission_number||'').trim();
+   const parentName = String(st.parentName||st['Parent Name']||st.parent_name||'').trim();
+   const parentPhone = String(st.parentPhone||st['Parent Phone']||st.parentSmsNumber||st.parent_sms_number||'').trim();
+   const parentEmail = String(st.parentEmail||st['Parent Email']||st.parent_email||'').trim();
+   const studentEmail = String(st.studentEmail||st['Student Email']||st.email||'').trim();
+
+   // Class/section resolution — support label names like 'L-KG','U-KG','Class 1' etc.
+   const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
+   const rawSection = String(st.sectionName||st['Section']||st.section_name||'A').trim().toUpperCase();
+   let classId = st.classId || st.class_id || '';
+   let classNumber: number;
+   let classLabel = rawClass;
+   if (!classId) {
+     if (/l.?kg/i.test(rawClass)) { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
+     else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
+     else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
+   } else {
+     classNumber = Number(String(classId).replace(/[^0-9]/g,'')) || 1;
+   }
+   const sectionName = rawSection || 'A';
+    let sectionId = st.sectionId || st.section_id || `sec-${classId}-${sectionName.toLowerCase()}`;
     try {
-      const q = await pool.query(
-        `INSERT INTO students(school_id,class_id,section_id,roll_number,admission_number,name,parent_name,parent_sms_number,parent_email)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-        [req.user!.schoolId, classId, sectionId, rollNumber, admissionNumber || null, name, parentName || null, parentSmsNumber, parentEmail || null]
-      );
-      if (q.rowCount) {
-        const created = { ...q.rows[0], school_id: req.user!.schoolId, schoolId: req.user!.schoolId, class_number: classNumber, section_name: sectionName, admission_number: admissionNumber || q.rows[0].admission_number, admissionNumber: admissionNumber || q.rows[0].admission_number };
-        createdList.push(created);
-        demoStudents.unshift(created);
-        syncStudentToFirestore(created).catch(() => {});
-        continue;
+      const cQ = await pool.query(`SELECT id FROM classes WHERE school_id=$1 AND (class_number=$2 OR LOWER(label)=LOWER($3) OR id=$4) LIMIT 1`, [schoolId, classNumber, classLabel, classId]);
+      if (cQ.rowCount && cQ.rows.length > 0) {
+        classId = cQ.rows[0].id;
+        const sQ = await pool.query(`SELECT id FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=$3 LIMIT 1`, [schoolId, classId, sectionName]);
+        if (sQ.rowCount && sQ.rows.length > 0) sectionId = sQ.rows[0].id;
       }
     } catch {}
 
-    createdList.push(studentObj);
-    demoStudents.unshift(studentObj);
-    syncStudentToFirestore(studentObj).catch(() => {});
-  }
-  res.status(201).json({ success: true, count: createdList.length, items: createdList });
+   // Validation
+   if (!firstName) errors.push({row:rowNum,field:'First Name',message:'First Name is required'});
+   if (!lastName)  errors.push({row:rowNum,field:'Last Name', message:'Last Name is required'});
+   if (!rollNumber) errors.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
+   if (!admissionNumber) errors.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
+   if (!parentPhone) errors.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+   if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({row:rowNum,field:'Admission Number',message:`Duplicate admission number '${admissionNumber}' in this batch`});
+   if (admissionNumber) seenAdmNums.add(admissionNumber);
+
+   if (errors.filter(e=>e.row===rowNum).length===0) {
+     validRows.push({ firstName,lastName,name,rollNumber,admissionNumber,parentName,parentPhone,parentEmail,studentEmail,classId,classNumber,classLabel,sectionId,sectionName });
+   }
+ }
+
+ if (errors.length>0) {
+   return res.status(422).json({ success:false, errors, message:`${errors.length} validation error(s) found. Fix and re-import.` });
+ }
+
+ // Check existing admission numbers in DB
+ const admNums = validRows.map(r=>r.admissionNumber).filter(Boolean);
+ if (admNums.length>0) {
+   try {
+     const dupChk = await pool.query(`SELECT admission_number FROM students WHERE school_id=$1 AND admission_number=ANY($2) AND is_active=true`,[schoolId,admNums]);
+     if (dupChk.rows.length>0) {
+       const dups = dupChk.rows.map((r:any)=>r.admission_number);
+       return res.status(400).json({ success:false, message:`Duplicate admission numbers already exist: ${dups.join(', ')}` });
+     }
+   } catch {}
+ }
+
+ const createdList: any[] = [];
+
+ // Try PostgreSQL transaction
+ try {
+   const client = await pool.connect();
+   try {
+     await client.query('BEGIN');
+     for (const st of validRows) {
+       try {
+         const q = await client.query(
+           `INSERT INTO students(
+              school_id, academic_year_id, class_id, section_id, roll_number, 
+              admission_number, first_name, last_name, full_name, name, 
+              parent_name, parent_sms_number, email, parent_email, user_id
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            ON CONFLICT (school_id,admission_number) WHERE is_active=true DO NOTHING
+            RETURNING *`,
+           [schoolId,bulkSessionId,st.classId,st.sectionId,st.rollNumber,st.admissionNumber||null,st.firstName||null,st.lastName||null,st.name,st.name,st.parentName||null,st.parentPhone,st.studentEmail||null,st.parentEmail||null,null]
+         );
+         if (q.rowCount && q.rows.length>0) {
+           const created = {
+              ...q.rows[0],
+              academic_year_id: bulkSessionId,
+              session_id: bulkSessionId,
+              session_name: bulkSessionName,
+              session: bulkSessionName || bulkSessionId,
+              full_name: st.name,
+              class_number: st.classNumber,
+              class_label: st.classLabel,
+              section_name: st.sectionName,
+              is_active: true
+            };
+           createdList.push(created);
+           demoStudents.unshift(created);
+           syncStudentToFirestore(created).catch(()=>{});
+         }
+       } catch { /* skip individual row insert errors inside tx */ }
+     }
+     if (createdList.length === 0 && validRows.length > 0) {
+        await client.query('ROLLBACK');
+        client.release();
+        throw new Error('Zero DB rows inserted, falling back to memory/Firestore');
+      }
+      await client.query('COMMIT');
+      client.release();
+      return res.status(201).json({ success:true, count:createdList.length, items:createdList, session:bulkSessionName });
+   } catch (txErr:any) {
+     await client.query('ROLLBACK');
+     client.release();
+     throw txErr;
+   }
+ } catch {}
+
+ // Fallback: in-memory / Firestore
+ for (const st of validRows) {
+   const studentObj = {
+     id: `st-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+     name: st.name, first_name: st.firstName||null, last_name: st.lastName||null,
+     roll_number: st.rollNumber,
+     admission_number: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
+     admissionNumber: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
+     parent_name: st.parentName||'—', parent_sms_number: st.parentPhone,
+     parent_email: st.parentEmail, email: st.studentEmail,
+     class_id: st.classId, class_number: st.classNumber, class_label: st.classLabel,
+     section_id: st.sectionId, section_name: st.sectionName,
+     school_id: schoolId, schoolId,
+     academic_year_id: bulkSessionId, session_id: bulkSessionId, session_name: bulkSessionName, session: bulkSessionName || bulkSessionId, full_name: st.name, is_active: true
+   };
+   createdList.push(studentObj);
+   demoStudents.unshift(studentObj);
+   syncStudentToFirestore(studentObj).catch(()=>{});
+ }
+ res.status(201).json({ success:true, count:createdList.length, items:createdList, session:bulkSessionName });
 });
 
 r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
@@ -719,20 +1094,34 @@ r.put('/students/:id',...admin,async(req:AuthRequest,res)=>{
   syncStudentToFirestore(result).catch(() => {});
   return res.json(result);
  } catch {
-  const updated = {
-    id: req.params.id,
-    name,
-    roll_number: rollNumber,
-    admission_number: cleanAdmissionNumber,
-    admissionNumber: cleanAdmissionNumber,
-    parent_name: parentName,
-    parent_sms_number: parentSmsNumber,
-    email: cleanStudentEmail,
-    student_email: cleanStudentEmail,
-    parent_email: cleanParentEmail,
-    class_id: classId,
-    section_id: sectionId
-  };
+  let putClsNum = 1;
+    const strPutClassId = String(classId || '').trim();
+    if (/l.?kg/i.test(strPutClassId)) putClsNum = -1;
+    else if (/u.?kg/i.test(strPutClassId)) putClsNum = 0;
+    else {
+      const m = strPutClassId.match(/cls-(\d+)/);
+      if (m) putClsNum = Number(m[1]);
+      else if (/^\d+$/.test(strPutClassId)) putClsNum = Number(strPutClassId);
+    }
+    const strPutSecId = String(sectionId || '').trim().toUpperCase();
+    const putSecName = (strPutSecId === 'B' || strPutSecId.endsWith('-B') || strPutSecId.endsWith('_B')) ? 'B' : 'A';
+
+    const updated = {
+      id: req.params.id,
+      name,
+      roll_number: rollNumber,
+      admission_number: cleanAdmissionNumber,
+      admissionNumber: cleanAdmissionNumber,
+      parent_name: parentName,
+      parent_sms_number: parentSmsNumber,
+      email: cleanStudentEmail,
+      student_email: cleanStudentEmail,
+      parent_email: cleanParentEmail,
+      class_id: classId,
+      class_number: putClsNum,
+      section_id: sectionId,
+      section_name: putSecName
+    };
   const idx = demoStudents.findIndex(s => s.id === req.params.id);
   if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...updated };
   else demoStudents.unshift(updated);

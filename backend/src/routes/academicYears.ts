@@ -32,11 +32,7 @@ function createDefaultSessions(schoolId: string): AcademicYearItem[] {
 export function getInMemoryAcademicYears(schoolId?: string | null): AcademicYearItem[] {
   const sid = schoolId || 'default';
   if (!inMemoryAcademicYears[sid] || inMemoryAcademicYears[sid].length === 0) {
-    if (isTestSchool(sid)) {
-      inMemoryAcademicYears[sid] = createDefaultSessions(sid);
-    } else {
-      inMemoryAcademicYears[sid] = [];
-    }
+    inMemoryAcademicYears[sid] = createDefaultSessions(sid);
   }
   return inMemoryAcademicYears[sid];
 }
