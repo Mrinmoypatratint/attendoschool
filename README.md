@@ -13,8 +13,11 @@
 
 ## Quick Navigation
 
+- **[Enterprise SRS Specification (ATTENDOSCHOOL_SRS.md)](file:///d:/Project_Abir/attendoschool/ATTENDOSCHOOL_SRS.md)** — Complete 56-section enterprise-grade Software Requirements Specification (SRS) with workflows, ERDs, sequence diagrams, and traceability matrices.
 - **[Detailed Setup Guide (SETUP.md)](file:///d:/Project_Abir/attendoschool/SETUP.md)** — Step-by-step installation, environment variables, Firebase emulator, and troubleshooting.
-- **[System Architecture & Documentation (DOCUMENTATION.md)](file:///d:/Project_Abir/attendoschool/DOCUMENTATION.md)** — Comprehensive 1,800+ line technical architecture, schemas, and API documentation.
+- **[System Architecture & Documentation (DOCUMENTATION.md)](file:///d:/Project_Abir/attendoschool/DOCUMENTATION.md)** — Comprehensive 2,300+ line technical architecture, schemas, and API documentation.
+- **[Hostinger Full-Stack VPS Guide (HOSTINGER-VPS-DEPLOYMENT.md)](file:///d:/Project_Abir/attendoschool/HOSTINGER-VPS-DEPLOYMENT.md)** — Host frontend and backend together on Hostinger VPS with Nginx, PM2, and SSL.
+- **[Hostinger hPanel CI/CD Guide (HOSTINGER-DEPLOYMENT-GUIDE.md)](file:///d:/Project_Abir/attendoschool/HOSTINGER-DEPLOYMENT-GUIDE.md)** — Automated GitHub Actions CI/CD to Hostinger hPanel subdomain.
 - **[Cloud Deployment Guide (CLOUD-DEPLOYMENT-GUIDE.md)](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** — Cloud deployment instructions for Render, Vercel, and Docker.
 
 ---
@@ -54,6 +57,7 @@
 - **Audit-Trailed Corrections**: Post-submission attendance modifications require structured correction tickets with teacher remarks and administrator approval.
 - **Complete Billing Lifecycle**: Starter, Standard, and Enterprise tiers, 18% GST split (CGST 9% + SGST 9%), downloadable PDF tax invoices via PDFKit, and Razorpay integration.
 - **Offline Attendance**: Progressive offline queueing in IndexedDB/localStorage with automated synchronization when internet connectivity restores.
+- **Flexible Notification Architecture**: Nodemailer SMTP with CID-embedded school logos, development sandbox fallback, diagnostic health endpoints (`/api/health/email-status`), and HTTP email API support for cloud providers blocking outbound SMTP ports.
 
 ---
 
@@ -75,8 +79,8 @@
     ┌───────────▼────────────┐    ┌───────────▼───────────┐
     │ Firebase Cloud Firestore│    │  PostgreSQL 16 Engine │
     │ (Local Emulator / Cloud)│    │  (Relational Storage) │
-    │ Collections: users,     │    │  & Historical Audits  │
-    │ schools, students, etc. │    │                       │
+    │ Collections: users,     │    │  67 Normalized Tables │
+    │ schools, students, etc. │    │  33 Migration Sets    │
     └─────────────────────────┘    └───────────────────────┘
                 │                             │
     ┌───────────▼────────────┐    ┌───────────▼───────────┐
@@ -90,7 +94,7 @@
 - **Backend**: Node.js, Express 5, TypeScript, Firebase Admin SDK (`firebase-admin` v14), PostgreSQL client (`pg`), `bcryptjs`, `jsonwebtoken`, `pdfkit`, `nodemailer`.
 - **Database**:
   - **Firebase Cloud Firestore**: Cloud NoSQL document store with Firebase Local Emulator (`127.0.0.1:8080`, UI `127.0.0.1:4000/firestore`).
-  - **PostgreSQL 16**: Relational storage engine with 23 migrations (`007_payment_invoices.sql` to `029_student_role_and_portal.sql`).
+  - **PostgreSQL 16**: Relational storage engine with 33 migrations (`007_payment_invoices.sql` to `033_reattendance_and_cross_teacher_visibility.sql`) across 67 normalized tables.
 - **Security**: Strict HTTP security headers (`nosniff`, `X-Frame-Options: DENY`, referrer policy), memory-bucket rate limiting (120 req/min), PBKDF2/bcrypt hashing, and request ID context propagation.
 
 ---
