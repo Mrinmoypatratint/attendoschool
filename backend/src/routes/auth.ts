@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { env } from '../config/env';
 import { requireAuth, AuthRequest, Role } from '../middleware/auth';
 import { findDemoUser } from '../store/demoUsers';
