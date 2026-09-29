@@ -43,6 +43,15 @@ import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
+import {
+  UniversalPreviewModal,
+  DestructiveConfirmModal,
+  calculateChanges,
+  PreviewSectionData,
+  PreviewChangeData,
+  PreviewSummaryCard,
+  PreviewTableData
+} from './components/preview';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -2908,6 +2917,52 @@ function Students(){
   const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  // Universal Preview & Edit State
+  const [studentPreview, setStudentPreview] = useState<{
+    isOpen: boolean;
+    operationType: 'create' | 'update';
+    title: string;
+    subtitle?: string;
+    confirmText: string;
+    sections: PreviewSectionData[];
+    changes?: PreviewChangeData[];
+    summaryCards?: PreviewSummaryCard[];
+    payload?: any;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    operationType: 'create',
+    title: '',
+    confirmText: 'Confirm & Save',
+    sections: [],
+    loading: false,
+    error: null,
+  });
+
+  // Destructive Delete State
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    studentId?: string;
+    isBulk?: boolean;
+    entityName: string;
+    entityType: string;
+    details: { label: string; value: string | number }[];
+    warningMessage: string;
+    confirmText: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    entityName: '',
+    entityType: 'Student Record',
+    details: [],
+    warningMessage: '',
+    confirmText: 'Delete',
+    loading: false,
+    error: null,
+  });
+
   useEffect(() => {
     const onSessionChange = (e: any) => {
       const sess = e?.detail || localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
@@ -2975,44 +3030,156 @@ function Students(){
     }
   }
 
-  async function save(e:React.FormEvent){
+  async function handleInitiateSave(e:React.FormEvent){
     e.preventDefault();
-    setSaving(true);
-    try {
-      // Compute full name from first + last name
-      const firstName = String(f.firstName || '').trim();
-      const lastName = String(f.lastName || '').trim();
-      const fullName = [firstName, lastName].filter(Boolean).join(' ') || f.name || '';
-      const selectedSessionStr = f.session || activeSession || '2025–26 Academic Session';
-      const matchedSession = sessions.find(s => s.id === selectedSessionStr || s.name === selectedSessionStr || s.code === selectedSessionStr || cleanSess(s.name) === cleanSess(selectedSessionStr));
-      let finalSectionId = f.sectionId;
-      if (finalSectionId && f.classId) {
-        const curName = sections.find(s => s.id === finalSectionId)?.name || (finalSectionId.endsWith('-b') || finalSectionId === 'B' ? 'B' : 'A');
-        const targetSec = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === curName.toUpperCase());
-        if (targetSec) finalSectionId = targetSec.id;
-        else if (!finalSectionId.includes(f.classId)) finalSectionId = `sec-${f.classId}-${curName.toLowerCase()}`;
+    // STAGE 1 VALIDATION
+    const firstName = String(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
+    const lastName = String(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
+    const fullName = [firstName, lastName].filter(Boolean).join(' ') || f.name || '';
+    if (!fullName) {
+      alert('Validation Error: Please enter student first name or full name.');
+      return;
+    }
+    if (!f.classId) {
+      alert('Validation Error: Please select an enrolled class.');
+      return;
+    }
+    if (!f.sectionId) {
+      alert('Validation Error: Please select an assigned section.');
+      return;
+    }
+
+    const selectedSessionStr = f.session || activeSession || '2025–26 Academic Session';
+    const matchedSession = sessions.find(s => s.id === selectedSessionStr || s.name === selectedSessionStr || s.code === selectedSessionStr || cleanSess(s.name) === cleanSess(selectedSessionStr));
+    let finalSectionId = f.sectionId;
+    if (finalSectionId && f.classId) {
+      const curName = sections.find(s => s.id === finalSectionId)?.name || (finalSectionId.endsWith('-b') || finalSectionId === 'B' ? 'B' : 'A');
+      const targetSec = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === curName.toUpperCase());
+      if (targetSec) finalSectionId = targetSec.id;
+      else if (!finalSectionId.includes(f.classId)) finalSectionId = `sec-${f.classId}-${curName.toLowerCase()}`;
+    }
+    const payload = {
+      ...f,
+      sectionId: finalSectionId,
+      name: fullName,
+      firstName,
+      lastName,
+      session: matchedSession?.name || selectedSessionStr,
+      sessionId: matchedSession?.id || selectedSessionStr
+    };
+
+    const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
+    const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'L-KG' : cls.class_number === 0 ? 'U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
+
+    const previewSections: PreviewSectionData[] = [
+      {
+        title: 'Student Identity',
+        fields: [
+          { label: 'Full Name', value: fullName, color: 'blue' },
+          { label: 'Roll Number', value: f.rollNumber || editingStudent?.roll_number || 'Auto-assigned', type: 'code' },
+          { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
+          { label: 'Academic Session', value: selectedSessionStr, type: 'badge', color: 'blue' },
+          { label: 'Date of Birth', value: f.dob || editingStudent?.dob || '—', type: 'date' },
+          { label: 'Gender', value: f.gender || editingStudent?.gender || '—' },
+        ]
+      },
+      {
+        title: 'Academic Placement',
+        fields: [
+          { label: 'Enrolled Class', value: classLabel, color: 'blue' },
+          { label: 'Assigned Section', value: secLabel, color: 'green' },
+        ]
+      },
+      {
+        title: 'Guardian & Contact Coordinates',
+        fields: [
+          { label: 'Guardian / Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
+          { label: 'Contact Phone Number', value: f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
+          { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
+        ]
+      },
+      {
+        title: 'Portal Credentials & Security',
+        fields: [
+          { label: 'Student Portal Email', value: f.studentEmail || f.email || editingStudent?.student_email || '—', type: 'email' },
+          { label: 'Parent Portal Email', value: f.parentEmail || editingStudent?.parent_email || '—', type: 'email' },
+          { label: 'Login Provisioning', value: f.loginOption || 'STUDENT', type: 'pill', color: 'purple' },
+          { label: 'Dispatch Activation Email', value: f.sendInviteEmail !== false ? 'Yes (24hr secure token)' : 'No', type: 'boolean' },
+        ]
       }
-      const payload = {
-        ...f,
-        sectionId: finalSectionId,
+    ];
+
+    const summaryCards: PreviewSummaryCard[] = [
+      { label: 'Student Name', value: fullName, color: 'blue' },
+      { label: 'Class & Section', value: `${classLabel} · ${secLabel}`, color: 'green' },
+      { label: 'Roll No', value: f.rollNumber || editingStudent?.roll_number || 'Auto', color: 'purple' },
+    ];
+
+    const changes = editingStudent ? calculateChanges(
+      editingStudent,
+      {
         name: fullName,
-        firstName,
-        lastName,
-        session: matchedSession?.name || selectedSessionStr,
-        sessionId: matchedSession?.id || selectedSessionStr
-      };
+        roll_number: f.rollNumber || editingStudent.roll_number,
+        admission_number: f.admissionNumber || editingStudent.admission_number,
+        parent_name: f.guardianName || f.parentName,
+        parent_phone: f.parentPhone || f.phone,
+        address: f.address,
+        student_email: f.studentEmail || f.email,
+        parent_email: f.parentEmail,
+      },
+      {
+        name: 'Student Name',
+        roll_number: 'Roll Number',
+        admission_number: 'Admission Number',
+        parent_name: 'Guardian Name',
+        parent_phone: 'Contact Phone',
+        address: 'Residential Address',
+        student_email: 'Student Email',
+        parent_email: 'Parent Email',
+      }
+    ) : [];
+
+    setStudentPreview({
+      isOpen: true,
+      operationType: editingStudent ? 'update' : 'create',
+      title: editingStudent ? `Review Updates for ${fullName}` : `Review Enrollment for ${fullName}`,
+      subtitle: editingStudent ? 'Confirm changes before updating institutional database' : 'Verify student credentials and class placement before enrolling',
+      confirmText: editingStudent ? 'Confirm & Save Changes' : 'Confirm & Enroll Student',
+      sections: previewSections,
+      changes,
+      summaryCards,
+      payload,
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmStudentSave() {
+    if (!studentPreview.payload) return;
+    const payload = studentPreview.payload;
+
+    // STAGE 2 VALIDATION
+    if (!payload.name || !payload.classId || !payload.sectionId) {
+      setStudentPreview(prev => ({ ...prev, error: 'Data integrity error: Required fields missing.' }));
+      return;
+    }
+
+    setStudentPreview(prev => ({ ...prev, loading: true, error: null }));
+    try {
       if (editingStudent) {
         await api.put(`/students/${editingStudent.id}`, payload);
-        setToastNotice({ type: 'success', message: `Student profile for ${fullName} updated successfully.` });
+        setToastNotice({ type: 'success', message: `Student profile for ${payload.name} updated successfully.` });
       } else {
         const res = await api.post('/students', payload);
         const created = res.data;
         const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
-        const sec = sections.find(s => s.id === f.sectionId || s.name === f.sectionId);
+        const sec = sections.find(s => s.id === payload.sectionId || s.name === payload.sectionId);
         const resolvedClsNum = (created.class_number !== undefined && created.class_number !== null)
           ? Number(created.class_number)
           : (cls ? Number(cls.class_number) : 1);
-        const resolvedSecName = created.section_name || sec?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
+        const resolvedSecName = created.section_name || sec?.name || (payload.sectionId?.endsWith('-b') || payload.sectionId === 'B' ? 'B' : 'A');
         const rowItem = {
           ...created,
           class_number: resolvedClsNum,
@@ -3029,42 +3196,83 @@ function Students(){
           setToastNotice({ type: 'success', message: `Student ${created.name} enrolled successfully.` });
         }
       }
+      setStudentPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setOpen(false);
       setEditingStudent(null);
       setF({});
       load();
-    } catch(err:any){
-      alert(err?.response?.data?.message || 'Could not save student');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteStudent(id: string) {
-    if (!confirm('Are you sure you want to delete this student record?')) return;
-    try {
-      await api.delete(`/students/${id}`);
-      setRows(prev => prev.filter(r => r.id !== id));
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete student');
+      setStudentPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Could not save student. Please try again.'
+      }));
     }
   }
 
-  async function deleteBulk() {
+  function promptDeleteStudent(student: any) {
+    const cls = classes.find(c => c.id === student.class_id || String(c.class_number) === String(student.class_number));
+    const classLabel = cls ? (cls.label || `Class ${cls.class_number}`) : (student.class_number ? `Class ${student.class_number}` : '—');
+    setDeleteDialog({
+      isOpen: true,
+      studentId: student.id,
+      isBulk: false,
+      entityName: student.name,
+      entityType: 'Student Profile',
+      details: [
+        { label: 'Roll Number', value: student.roll_number || '—' },
+        { label: 'Class & Section', value: `${classLabel} - ${student.section_name || 'A'}` },
+        { label: 'Guardian', value: student.parent_name || '—' },
+      ],
+      warningMessage: 'Deleting this student will permanently erase all associated academic records, historical attendance sessions, and disable their portal account. This action cannot be reversed.',
+      confirmText: 'Delete Student Record',
+      loading: false,
+      error: null,
+    });
+  }
+
+  function promptBulkDelete() {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Are you sure you want to permanently delete ${selectedIds.size} selected students?`)) return;
+    setDeleteDialog({
+      isOpen: true,
+      isBulk: true,
+      entityName: `${selectedIds.size} Selected Students`,
+      entityType: 'Student Profiles',
+      details: [
+        { label: 'Total Selected', value: selectedIds.size },
+        { label: 'Session', value: activeSession },
+      ],
+      warningMessage: `Are you sure you want to permanently delete these ${selectedIds.size} student records? All associated attendance logs and login profiles will be deleted.`,
+      confirmText: `Permanently Delete ${selectedIds.size} Students`,
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmDelete() {
+    setDeleteDialog(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const ids = Array.from(selectedIds);
-      await api.post('/students/bulk-delete', { ids });
-      setRows(prev => prev.filter(r => !selectedIds.has(r.id)));
-      setSelectedIds(new Set());
+      if (deleteDialog.isBulk) {
+        const ids = Array.from(selectedIds);
+        await api.post('/students/bulk-delete', { ids });
+        setRows(prev => prev.filter(r => !selectedIds.has(r.id)));
+        setSelectedIds(new Set());
+      } else if (deleteDialog.studentId) {
+        await api.delete(`/students/${deleteDialog.studentId}`);
+        setRows(prev => prev.filter(r => r.id !== deleteDialog.studentId));
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          next.delete(deleteDialog.studentId!);
+          return next;
+        });
+      }
+      setDeleteDialog(prev => ({ ...prev, isOpen: false, loading: false }));
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to bulk delete students');
+      setDeleteDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Failed to delete student(s).'
+      }));
     }
   }
 
@@ -3486,7 +3694,7 @@ function Students(){
                 </button>
                 <button 
                   className="table-action-btn danger" 
-                  onClick={() => deleteStudent(x.id)}
+                  onClick={() => promptDeleteStudent(x)}
                   title="Delete student"
                 >
                   <Trash2 size={14} />
@@ -3505,7 +3713,7 @@ function Students(){
         <button className="btn-secondary" onClick={() => setSelectedIds(new Set())}>
           Deselect All
         </button>
-        <button className="btn-danger" onClick={deleteBulk}>
+        <button className="btn-danger" onClick={promptBulkDelete}>
           <Trash2 size={14} /> Delete Selected ({selectedIds.size})
         </button>
       </div>
@@ -3513,7 +3721,7 @@ function Students(){
 
     {/* SINGLE STUDENT ADD / EDIT MODAL */}
     {open && <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
-      <form className="modal-form" onSubmit={save}>
+      <form className="modal-form" onSubmit={handleInitiateSave}>
 
         {/* First Name + Last Name */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -3931,6 +4139,39 @@ function Students(){
         )}
       </div>
     </Modal>}
+
+    {/* Universal Student Preview & Edit Modal */}
+    <UniversalPreviewModal
+      isOpen={studentPreview.isOpen}
+      onClose={() => setStudentPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setStudentPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmStudentSave}
+      title={studentPreview.title}
+      subtitle={studentPreview.subtitle}
+      operationType={studentPreview.operationType}
+      confirmText={studentPreview.confirmText}
+      editText="Back to Edit"
+      sections={studentPreview.sections}
+      changes={studentPreview.changes}
+      summaryCards={studentPreview.summaryCards}
+      loading={studentPreview.loading}
+      error={studentPreview.error}
+    />
+
+    {/* Destructive Confirm Modal for Single / Bulk Student Delete */}
+    <DestructiveConfirmModal
+      isOpen={deleteDialog.isOpen}
+      onClose={() => setDeleteDialog(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmDelete}
+      title={deleteDialog.isBulk ? "Confirm Bulk Student Deletion" : "Confirm Student Deletion"}
+      entityName={deleteDialog.entityName}
+      entityType={deleteDialog.entityType}
+      details={deleteDialog.details}
+      warningMessage={deleteDialog.warningMessage}
+      confirmText={deleteDialog.confirmText}
+      loading={deleteDialog.loading}
+      error={deleteDialog.error}
+    />
   </Layout>
 }
 
@@ -3948,6 +4189,65 @@ function Teachers(){
   const [importing,setImporting]=useState(false);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
   const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
+
+  // Universal Preview State for Teacher Add/Edit
+  const [teacherPreview, setTeacherPreview] = useState<{
+    isOpen: boolean;
+    operationType: 'create' | 'update';
+    title: string;
+    subtitle?: string;
+    confirmText: string;
+    sections: PreviewSectionData[];
+    changes?: PreviewChangeData[];
+    summaryCards?: PreviewSummaryCard[];
+    payload?: any;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    operationType: 'create',
+    title: '',
+    confirmText: 'Confirm & Save',
+    sections: [],
+    loading: false,
+    error: null,
+  });
+
+  // Teaching Allocations Preview State
+  const [allocPreview, setAllocPreview] = useState<{
+    isOpen: boolean;
+    tableData?: PreviewTableData;
+    validRows?: any[];
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    loading: false,
+    error: null,
+  });
+
+  // Destructive Delete State for Teachers
+  const [deleteTeacherDialog, setDeleteTeacherDialog] = useState<{
+    isOpen: boolean;
+    teacherId?: string;
+    isBulk?: boolean;
+    entityName: string;
+    entityType: string;
+    details: { label: string; value: string | number }[];
+    warningMessage: string;
+    confirmText: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    entityName: '',
+    entityType: 'Faculty Account',
+    details: [],
+    warningMessage: '',
+    confirmText: 'Delete Faculty',
+    loading: false,
+    error: null,
+  });
 
   // Teaching allocations state
   const [allAssignments,setAllAssignments]=useState<any[]>([]);
@@ -4017,19 +4317,47 @@ function Teachers(){
     }));
   }
 
-  async function saveAllocations() {
+  function handleInitiateAllocSave() {
     if (!allocTeacher) return;
-    setAllocSaving(true);
+    const validRows = allocRows.filter(r => r.subject_id && r.class_id);
+    if (validRows.length === 0) {
+      alert('Validation Error: Please configure at least one valid Subject and Class assignment.');
+      return;
+    }
+
+    const headers = ['Subject', 'Class', 'Section', 'Session', 'Alt / Substitute Faculty'];
+    const tableRows = validRows.map(r => [
+      r.subject_name || allocSubjects.find(s=>s.id===r.subject_id)?.name || '—',
+      `Class ${r.class_number || allocClasses.find(c=>c.id===r.class_id)?.class_number || '—'}`,
+      `Section ${r.section_name || allocSections.find(s=>s.id===r.section_id)?.name || 'All'}`,
+      r.session_name || allocSessions.find(s=>s.id===r.session_id)?.name || 'Default Session',
+      r.alt_teacher_name || rows.find(t=>t.id===r.alt_teacher_id)?.name || 'None'
+    ]);
+
+    setAllocPreview({
+      isOpen: true,
+      validRows,
+      tableData: { headers, rows: tableRows },
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmAllocSave() {
+    if (!allocTeacher || !allocPreview.validRows) return;
+    setAllocPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const validRows = allocRows.filter(r => r.subject_id && r.class_id);
-      await api.put(`/teachers/${allocTeacher.id}/assignments`, { assignments: validRows });
+      await api.put(`/teachers/${allocTeacher.id}/assignments`, { assignments: allocPreview.validRows });
       setToastNotice({ type: 'success', message: `Allocations updated for ${allocTeacher.name}.` });
+      setAllocPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setAllocOpen(false);
       load();
     } catch (err: any) {
-      setToastNotice({ type: 'error', message: err?.response?.data?.message || 'Failed to save allocations' });
-    } finally {
-      setAllocSaving(false);
+      setAllocPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Failed to save allocations'
+      }));
     }
   }
 
@@ -4056,30 +4384,118 @@ function Teachers(){
     }
   }
 
-  async function save(e:React.FormEvent){
+  async function handleInitiateTeacherSave(e:React.FormEvent){
     e.preventDefault();
-    setSaving(true);
+    // STAGE 1 VALIDATION
+    const name = String(f.name || '').trim();
+    const email = String(f.email || '').trim().toLowerCase();
+    const employeeId = String(f.employeeId || f.employee_id || '').trim();
+
+    if (!name) {
+      alert('Validation Error: Please enter faculty member full name.');
+      return;
+    }
+    if (!email) {
+      alert('Validation Error: Please enter registered email address.');
+      return;
+    }
+    if (!employeeId) {
+      alert('Validation Error: Please enter employee ID.');
+      return;
+    }
+
+    const payload = {
+      name,
+      email,
+      employeeId,
+      employee_id: employeeId,
+      mobile: f.mobile || '',
+      is_active: f.is_active !== false,
+      status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+      ...(f.password && f.password.trim() ? { password: f.password.trim() } : {}),
+      sendInviteEmail: f.sendInviteEmail !== false
+    };
+
+    const previewSections: PreviewSectionData[] = [
+      {
+        title: 'Faculty Profile Details',
+        fields: [
+          { label: 'Full Name', value: name, color: 'blue' },
+          { label: 'Employee ID', value: employeeId, type: 'code' },
+          { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
+          { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
+        ]
+      },
+      {
+        title: 'Security & Portal Access',
+        fields: [
+          { label: 'Registered Email', value: email, type: 'email' },
+          { label: 'Password Setup', value: editingTeacher ? (f.password ? 'Custom password specified' : 'Retain existing password') : (f.password ? 'Initial password set' : 'Auto-generated setup invite email dispatched'), type: 'pill', color: 'purple' },
+        ]
+      }
+    ];
+
+    const summaryCards: PreviewSummaryCard[] = [
+      { label: 'Faculty Name', value: name, color: 'blue' },
+      { label: 'Employee ID', value: employeeId, color: 'purple' },
+      { label: 'Status', value: f.is_active !== false ? 'Active' : 'Inactive', color: f.is_active !== false ? 'green' : 'amber' },
+    ];
+
+    const changes = editingTeacher ? calculateChanges(
+      editingTeacher,
+      {
+        name,
+        email,
+        employee_id: employeeId,
+        mobile: f.mobile || '',
+        is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
+      },
+      {
+        name: 'Faculty Name',
+        email: 'Email Address',
+        employee_id: 'Employee ID',
+        mobile: 'Mobile Number',
+        is_active: 'Status'
+      }
+    ) : [];
+
+    setTeacherPreview({
+      isOpen: true,
+      operationType: editingTeacher ? 'update' : 'create',
+      title: editingTeacher ? `Review Updates for ${name}` : `Review Registration for ${name}`,
+      subtitle: editingTeacher ? 'Verify faculty changes before saving to database' : 'Verify faculty profile coordinates before onboarding',
+      confirmText: editingTeacher ? 'Confirm & Update Faculty' : 'Confirm & Register Faculty',
+      sections: previewSections,
+      changes,
+      summaryCards,
+      payload,
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmTeacherSave() {
+    if (!teacherPreview.payload) return;
+    const payload = teacherPreview.payload;
+
+    // STAGE 2 VALIDATION
+    if (!payload.name || !payload.email || !payload.employeeId) {
+      setTeacherPreview(prev => ({ ...prev, error: 'Validation error: Missing mandatory profile fields.' }));
+      return;
+    }
+
+    setTeacherPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       if (editingTeacher) {
-        const payload = {
-          name: f.name,
-          email: f.email,
-          employeeId: f.employeeId,
-          employee_id: f.employeeId,
-          mobile: f.mobile,
-          is_active: f.is_active !== false,
-          status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
-          ...(f.password && f.password.trim() ? { password: f.password.trim() } : {})
-        };
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: f.employeeId, mobile: f.mobile, is_active: f.is_active !== false } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, mobile: payload.mobile, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
-          message: `Faculty member ${f.name} updated successfully.`
+          message: `Faculty member ${payload.name} updated successfully.`
         });
       } else {
-        const res = await api.post('/teachers', f);
+        const res = await api.post('/teachers', payload);
         const created = res.data;
         setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
         if (created.invite_sent) {
@@ -4095,42 +4511,80 @@ function Teachers(){
           });
         }
       }
+      setTeacherPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setOpen(false);
       setEditingTeacher(null);
       setF({});
       load();
-    } catch(err:any){
-      alert(err?.response?.data?.message || 'Could not save teacher');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteTeacher(id: string) {
-    if (!confirm('Are you sure you want to deactivate and remove this teacher?')) return;
-    try {
-      await api.delete(`/teachers/${id}`);
-      setRows(prev => prev.filter(r => r.id !== id));
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete teacher');
+      setTeacherPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Could not save faculty record.'
+      }));
     }
   }
 
-  async function deleteBulk() {
+  function promptDeleteTeacher(teacher: any) {
+    setDeleteTeacherDialog({
+      isOpen: true,
+      teacherId: teacher.id,
+      isBulk: false,
+      entityName: teacher.name,
+      entityType: 'Faculty Account',
+      details: [
+        { label: 'Employee ID', value: teacher.employee_id || '—' },
+        { label: 'Email', value: teacher.email || '—' },
+        { label: 'Teaching Summary', value: getTeacherAllocSummary(teacher.id) },
+      ],
+      warningMessage: 'Deactivating and removing this faculty member will revoke their portal access and remove their routine allocations.',
+      confirmText: 'Delete Faculty Account',
+      loading: false,
+      error: null,
+    });
+  }
+
+  function promptBulkDeleteTeachers() {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedIds.size} selected faculty accounts?`)) return;
+    setDeleteTeacherDialog({
+      isOpen: true,
+      isBulk: true,
+      entityName: `${selectedIds.size} Selected Faculty`,
+      entityType: 'Faculty Accounts',
+      details: [
+        { label: 'Total Selected', value: selectedIds.size }
+      ],
+      warningMessage: `Are you sure you want to delete these ${selectedIds.size} faculty accounts? Portal access will be terminated.`,
+      confirmText: `Delete ${selectedIds.size} Faculty`,
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmDeleteTeacher() {
+    setDeleteTeacherDialog(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const ids = Array.from(selectedIds);
-      await api.post('/teachers/bulk-delete', { ids });
-      setRows(prev => prev.filter(r => !selectedIds.has(r.id)));
-      setSelectedIds(new Set());
+      if (deleteTeacherDialog.isBulk) {
+        const ids = Array.from(selectedIds);
+        await api.post('/teachers/bulk-delete', { ids });
+        setRows(prev => prev.filter(r => !selectedIds.has(r.id)));
+        setSelectedIds(new Set());
+      } else if (deleteTeacherDialog.teacherId) {
+        await api.delete(`/teachers/${deleteTeacherDialog.teacherId}`);
+        setRows(prev => prev.filter(r => r.id !== deleteTeacherDialog.teacherId));
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          next.delete(deleteTeacherDialog.teacherId!);
+          return next;
+        });
+      }
+      setDeleteTeacherDialog(prev => ({ ...prev, isOpen: false, loading: false }));
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to bulk delete teachers');
+      setDeleteTeacherDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Failed to delete faculty member(s).'
+      }));
     }
   }
 
@@ -4375,7 +4829,7 @@ function Teachers(){
                 </button>
                 <button 
                   className="table-action-btn danger" 
-                  onClick={() => deleteTeacher(x.id)}
+                  onClick={() => promptDeleteTeacher(x)}
                   title="Delete teacher"
                 >
                   <Trash2 size={14} />
@@ -4394,7 +4848,7 @@ function Teachers(){
         <button className="btn-secondary" onClick={() => setSelectedIds(new Set())}>
           Deselect All
         </button>
-        <button className="btn-danger" onClick={deleteBulk}>
+        <button className="btn-danger" onClick={promptBulkDeleteTeachers}>
           <Trash2 size={14} /> Delete Selected ({selectedIds.size})
         </button>
       </div>
@@ -4402,7 +4856,7 @@ function Teachers(){
 
     {/* SINGLE TEACHER ADD / EDIT MODAL */}
     {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
-      <form className="modal-form" onSubmit={save}>
+      <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
         <label>Teacher Full Name
           <input required placeholder="Full Name (e.g. Rahul Sharma)" value={f.name||''} onChange={e=>setF({...f,name:e.target.value})}/>
         </label>
@@ -4526,9 +4980,9 @@ function Teachers(){
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button type="button" onClick={addAllocRow} style={{ fontSize: 12, padding: '5px 12px', background: 'transparent', border: '1px dashed var(--border)', color: '#2563eb', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>+ Add Row</button>
-          <button type="button" onClick={saveAllocations} disabled={allocSaving}
+          <button type="button" onClick={handleInitiateAllocSave} disabled={allocSaving}
             style={{ background: '#2563eb', color: '#fff', padding: '8px 18px', borderRadius: 8, fontSize: 13 }}>
-            {allocSaving ? 'Saving...' : 'Save Allocations'}
+            Review & Save Allocations
           </button>
         </div>
       </div>
@@ -4622,6 +5076,55 @@ function Teachers(){
         )}
       </div>
     </Modal>}
+
+    {/* Universal Teacher Preview & Edit Modal */}
+    <UniversalPreviewModal
+      isOpen={teacherPreview.isOpen}
+      onClose={() => setTeacherPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setTeacherPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmTeacherSave}
+      title={teacherPreview.title}
+      subtitle={teacherPreview.subtitle}
+      operationType={teacherPreview.operationType}
+      confirmText={teacherPreview.confirmText}
+      editText="Back to Edit"
+      sections={teacherPreview.sections}
+      changes={teacherPreview.changes}
+      summaryCards={teacherPreview.summaryCards}
+      loading={teacherPreview.loading}
+      error={teacherPreview.error}
+    />
+
+    {/* Universal Allocations Preview Modal */}
+    <UniversalPreviewModal
+      isOpen={allocPreview.isOpen}
+      onClose={() => setAllocPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setAllocPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmAllocSave}
+      title={`Confirm Teaching Allocations — ${allocTeacher?.name || 'Faculty'}`}
+      subtitle="Verify assigned subjects, classes, and sections before committing"
+      operationType="submit"
+      confirmText="Confirm & Save Allocations"
+      editText="Back to Edit"
+      tableData={allocPreview.tableData}
+      loading={allocPreview.loading}
+      error={allocPreview.error}
+    />
+
+    {/* Destructive Confirm Modal for Single / Bulk Teacher Deletion */}
+    <DestructiveConfirmModal
+      isOpen={deleteTeacherDialog.isOpen}
+      onClose={() => setDeleteTeacherDialog(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmDeleteTeacher}
+      title={deleteTeacherDialog.isBulk ? "Confirm Bulk Faculty Deletion" : "Confirm Faculty Deactivation"}
+      entityName={deleteTeacherDialog.entityName}
+      entityType={deleteTeacherDialog.entityType}
+      details={deleteTeacherDialog.details}
+      warningMessage={deleteTeacherDialog.warningMessage}
+      confirmText={deleteTeacherDialog.confirmText}
+      loading={deleteTeacherDialog.loading}
+      error={deleteTeacherDialog.error}
+    />
   </Layout>
 }
 
@@ -4635,6 +5138,23 @@ function Classes(){
   const [sn,setSn]=useState('');
   const [addingClass,setAddingClass]=useState(false);
   const [addingSection,setAddingSection]=useState(false);
+
+  // Preview state for Class and Section
+  const [classPreview, setClassPreview] = useState<{
+    isOpen: boolean;
+    classNumber?: number;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
+  const [sectionPreview, setSectionPreview] = useState<{
+    isOpen: boolean;
+    classId?: string;
+    className?: string;
+    sectionName?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
 
   async function load(){
     try {
@@ -4653,55 +5173,80 @@ function Classes(){
 
   useEffect(()=>{load()},[]);
 
-  async function addClass(e?: React.FormEvent){
+  function initiateAddClass(e?: React.FormEvent){
     if (e) e.preventDefault();
     if (!n) {
-      alert('Please select a class number to add.');
+      alert('Validation Error: Please select a class number to add.');
       return;
     }
-    setAddingClass(true);
+    setClassPreview({
+      isOpen: true,
+      classNumber: Number(n),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmAddClass(){
+    if (!classPreview.classNumber) return;
+    setClassPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await api.post('/classes', { classNumber: Number(n) });
+      const res = await api.post('/classes', { classNumber: classPreview.classNumber });
       const created = res.data;
       setC(prev => {
         const filtered = prev.filter(x => x.class_number !== created.class_number);
         return [...filtered, created].sort((a,b) => a.class_number - b.class_number);
       });
       setN('');
+      setClassPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       load();
     } catch(err:any){
-      if (err?.response?.status !== 401) {
-        alert(err?.response?.data?.message || 'Could not add class');
-      }
-    } finally {
-      setAddingClass(false);
+      setClassPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not add class'
+      }));
     }
   }
 
-  async function addSection(e?: React.FormEvent){
+  function initiateAddSection(e?: React.FormEvent){
     if (e) e.preventDefault();
     const targetCid = cid || c[0]?.id;
     if (!targetCid) {
-      alert('Please select a class first.');
+      alert('Validation Error: Please select a class first.');
       return;
     }
     if (!sn.trim()) {
-      alert('Please enter a section name (e.g. C).');
+      alert('Validation Error: Please enter a section name (e.g. C).');
       return;
     }
-    setAddingSection(true);
+    const targetClass = c.find(x => x.id === targetCid);
+    setSectionPreview({
+      isOpen: true,
+      classId: targetCid,
+      className: targetClass ? `Class ${targetClass.class_number}` : 'Selected Class',
+      sectionName: sn.trim().toUpperCase(),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmAddSection(){
+    if (!sectionPreview.classId || !sectionPreview.sectionName) return;
+    setSectionPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await api.post('/sections', { classId: targetCid, name: sn.trim() });
+      const res = await api.post('/sections', { classId: sectionPreview.classId, name: sectionPreview.sectionName });
       const created = res.data;
       setS(prev => [...prev, created].sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name)));
       setSn('');
+      setSectionPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       load();
     } catch(err:any){
-      if (err?.response?.status !== 401) {
-        alert(err?.response?.data?.message || 'Could not add section');
-      }
-    } finally {
-      setAddingSection(false);
+      setSectionPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not add section'
+      }));
     }
   }
 
@@ -4710,7 +5255,7 @@ function Classes(){
     <div className="two-col">
       <div className="panel">
         <h3>Add class</h3>
-        <form className="inline" onSubmit={addClass}>
+        <form className="inline" onSubmit={initiateAddClass}>
           <select value={n} onChange={e=>setN(e.target.value)}>
             <option value="">Select Class</option>
             {[1,2,3,4,5,6,7,8,9,10,11,12].map(x=><option key={x} value={x}>Class {x}</option>)}
@@ -4727,7 +5272,7 @@ function Classes(){
 
       <div className="panel">
         <h3>Add section</h3>
-        <form className="inline" onSubmit={addSection}>
+        <form className="inline" onSubmit={initiateAddSection}>
           <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
             {c.map(x=><option key={x.id} value={x.id}>Class {x.class_number}</option>)}
           </select>
@@ -4741,6 +5286,54 @@ function Classes(){
         </div>
       </div>
     </div>
+
+    {/* Universal Preview Modal for Adding Class */}
+    <UniversalPreviewModal
+      isOpen={classPreview.isOpen}
+      onClose={() => setClassPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setClassPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmAddClass}
+      title={`Confirm Class Creation — Class ${classPreview.classNumber || ''}`}
+      subtitle="Verify class grade level before provisioning"
+      operationType="create"
+      confirmText="Confirm & Create Class"
+      editText="Back to Edit"
+      sections={[
+        {
+          title: 'Class Grade Level',
+          fields: [
+            { label: 'Grade / Class', value: `Class ${classPreview.classNumber}`, color: 'blue' },
+            { label: 'Default Provisioning', value: 'Will auto-generate Section A & Section B', color: 'green' }
+          ]
+        }
+      ]}
+      loading={classPreview.loading}
+      error={classPreview.error}
+    />
+
+    {/* Universal Preview Modal for Adding Section */}
+    <UniversalPreviewModal
+      isOpen={sectionPreview.isOpen}
+      onClose={() => setSectionPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setSectionPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmAddSection}
+      title={`Confirm Section Creation — Section ${sectionPreview.sectionName || ''}`}
+      subtitle="Verify class assignment before creating section"
+      operationType="create"
+      confirmText="Confirm & Create Section"
+      editText="Back to Edit"
+      sections={[
+        {
+          title: 'Section Assignment Details',
+          fields: [
+            { label: 'Assigned Class', value: sectionPreview.className, color: 'blue' },
+            { label: 'Section Letter / Name', value: `Section ${sectionPreview.sectionName}`, color: 'green' }
+          ]
+        }
+      ]}
+      loading={sectionPreview.loading}
+      error={sectionPreview.error}
+    />
   </Layout>
 }
 
@@ -4750,6 +5343,13 @@ function Subjects(){
   const [rows,setRows]=useState<any[]>([]);
   const [n,setN]=useState('');
   const [adding,setAdding]=useState(false);
+
+  const [subjectPreview, setSubjectPreview] = useState<{
+    isOpen: boolean;
+    name?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
 
   async function load(){
     try {
@@ -4762,30 +5362,43 @@ function Subjects(){
 
   useEffect(()=>{load()},[]);
 
-  async function addSubject(e?: React.FormEvent){
+  function initiateAddSubject(e?: React.FormEvent){
     if (e) e.preventDefault();
     if (!n.trim()) {
-      alert('Please enter a subject name (e.g. Economics).');
+      alert('Validation Error: Please enter a subject name (e.g. Economics).');
       return;
     }
-    setAdding(true);
+    setSubjectPreview({
+      isOpen: true,
+      name: n.trim(),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmAddSubject(){
+    if (!subjectPreview.name) return;
+    setSubjectPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await api.post('/subjects', { name: n.trim() });
+      const res = await api.post('/subjects', { name: subjectPreview.name });
       const created = res.data;
       setRows(prev => [...prev, created]);
       setN('');
+      setSubjectPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       load();
     } catch(err:any){
-      alert(err?.response?.data?.message || 'Could not add subject');
-    } finally {
-      setAdding(false);
+      setSubjectPreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not add subject'
+      }));
     }
   }
 
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
-      <form className="inline" onSubmit={addSubject}>
+      <form className="inline" onSubmit={initiateAddSubject}>
         <input placeholder="Subject name (e.g. Mathematics)" value={n} onChange={e=>setN(e.target.value)}/>
         <button type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add subject'}</button>
       </form>
@@ -4795,6 +5408,30 @@ function Subjects(){
         </div>)}
       </div>
     </div>
+
+    {/* Universal Preview Modal for Adding Subject */}
+    <UniversalPreviewModal
+      isOpen={subjectPreview.isOpen}
+      onClose={() => setSubjectPreview(prev => ({ ...prev, isOpen: false }))}
+      onEdit={() => setSubjectPreview(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmAddSubject}
+      title={`Confirm Subject Creation — ${subjectPreview.name || ''}`}
+      subtitle="Verify subject title before adding to academic catalog"
+      operationType="create"
+      confirmText="Confirm & Add Subject"
+      editText="Back to Edit"
+      sections={[
+        {
+          title: 'Subject Information',
+          fields: [
+            { label: 'Subject Name', value: subjectPreview.name, color: 'blue' },
+            { label: 'Academic Availability', value: 'Active across all class routines', color: 'green' }
+          ]
+        }
+      ]}
+      loading={subjectPreview.loading}
+      error={subjectPreview.error}
+    />
   </Layout>
 }
 
@@ -4894,6 +5531,95 @@ function Attendance(){
     failed?: number;
     message?: string;
   } | null>(null);
+
+  // Universal Preview State for Attendance
+  const [attendancePreview, setAttendancePreview] = useState<{
+    isOpen: boolean;
+    isReattendance?: boolean;
+    summaryCards: PreviewSummaryCard[];
+    tableData?: PreviewTableData;
+    title: string;
+    subtitle?: string;
+    confirmText: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    summaryCards: [],
+    title: '',
+    confirmText: 'Confirm & Submit Attendance',
+    loading: false,
+    error: null,
+  });
+
+  function initiateAttendancePreview(isReattendance = false) {
+    if (!selectedClassId || !selectedSectionId) {
+      alert('Validation Error: Please select both Class and Section.');
+      return;
+    }
+    if (students.length === 0) {
+      alert('Validation Error: No students enrolled in this section.');
+      return;
+    }
+
+    const cObj = classes.find(c => c.id === selectedClassId);
+    const sObj = sections.find(s => s.id === selectedSectionId);
+    const subObj = subjects.find(s => s.id === selectedSubjectId);
+    const classLabel = `Class ${cObj?.class_number ?? cObj?.classNumber ?? '—'} - Section ${sObj?.name || sObj?.sectionName || 'A'}`;
+
+    const summaryCards: PreviewSummaryCard[] = [
+      { label: 'Total Enrolled', value: students.length, color: 'purple' },
+      { label: 'Present', value: presentCount, color: 'green' },
+      { label: 'Absent', value: absentCount, color: 'red' },
+      { label: 'Late / Left Early', value: lateCount + leftEarlyCount, color: 'amber' },
+      { label: 'Attendance Rate', value: `${ratePct}%`, color: 'blue' },
+    ];
+
+    const headers = ['Roll', 'Student Name', 'Status', 'Notes'];
+    const previewRows = students.map(s => {
+      const st = studentStatusMap[s.id] || {};
+      const isPres = checked[s.id];
+      let status = st.status;
+      if (!status) status = isPres ? 'PRESENT' : 'ABSENT';
+      const note = st.departurePeriod || st.arrivalPeriod || st.remarks || '—';
+      return [
+        s.roll_number || '•',
+        s.name,
+        status,
+        note
+      ];
+    });
+
+    setAttendancePreview({
+      isOpen: true,
+      isReattendance,
+      title: isReattendance ? `Review Whole-Class Re-attendance — ${classLabel}` : `Review Daily Attendance Roster — ${classLabel}`,
+      subtitle: `Date: ${attendanceDate}${subObj?.name ? ` • Subject: ${subObj.name}` : ''}`,
+      confirmText: isReattendance ? 'Confirm & Save Re-attendance' : 'Confirm & Commit Attendance',
+      summaryCards,
+      tableData: { headers, rows: previewRows },
+      loading: false,
+      error: null,
+    });
+  }
+
+  async function executeConfirmAttendance() {
+    setAttendancePreview(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      if (attendancePreview.isReattendance) {
+        await submitWholeClassReattendance();
+      } else {
+        await submit();
+      }
+      setAttendancePreview(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setAttendancePreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Attendance submission failed'
+      }));
+    }
+  }
 
   // Load initial reference data
   useEffect(()=>{
@@ -6026,10 +6752,10 @@ function Attendance(){
             )}
             <button
               disabled={busy}
-              onClick={existingSession ? submitWholeClassReattendance : submit}
+              onClick={() => initiateAttendancePreview(Boolean(existingSession))}
               style={{ minWidth: 160 }}
             >
-              {busy ? 'Saving…' : existingSession ? '🔄 Save Re-attendance' : 'Submit Attendance'}
+              {busy ? 'Saving…' : existingSession ? '🔄 Review & Save Re-attendance' : 'Review & Submit Attendance'}
             </button>
           </div>
         </div>
@@ -6405,6 +7131,23 @@ function Attendance(){
           </div>
         </div>
       )}
+
+      {/* Universal Attendance Roster Preview Modal */}
+      <UniversalPreviewModal
+        isOpen={attendancePreview.isOpen}
+        onClose={() => setAttendancePreview(prev => ({ ...prev, isOpen: false }))}
+        onEdit={() => setAttendancePreview(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={executeConfirmAttendance}
+        title={attendancePreview.title}
+        subtitle={attendancePreview.subtitle}
+        operationType="submit"
+        confirmText={attendancePreview.confirmText}
+        editText="Back to Edit Sheet"
+        summaryCards={attendancePreview.summaryCards}
+        tableData={attendancePreview.tableData}
+        loading={attendancePreview.loading}
+        error={attendancePreview.error}
+      />
     </Layout>
   );
 }
@@ -7774,6 +8517,20 @@ function SchoolProfile() {
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Universal Preview State for School Profile
+  const [profilePreview, setProfilePreview] = useState<{
+    isOpen: boolean;
+    sections: PreviewSectionData[];
+    changes?: PreviewChangeData[];
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    sections: [],
+    loading: false,
+    error: null,
+  });
+
   async function load() {
     setLoading(true);
     try {
@@ -7793,18 +8550,56 @@ function SchoolProfile() {
 
   useEffect(() => { load(); }, []);
 
-  async function save(e: React.FormEvent) {
+  function initiateSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setMsg(null);
+    if (!form.contact_number && !form.address && !form.website) {
+      alert('Validation Error: Please provide at least one contact coordinate to update.');
+      return;
+    }
+
+    const changes = calculateChanges(
+      profile,
+      form,
+      {
+        contact_number: 'Contact / Enquiry Phone',
+        website: 'Official Website',
+        address: 'Physical Campus Address'
+      }
+    );
+
+    const sections: PreviewSectionData[] = [
+      {
+        title: 'Institution Contact Coordinates',
+        fields: [
+          { label: 'Enquiry / Contact Number', value: form.contact_number || '—', type: 'phone' },
+          { label: 'Official Website', value: form.website || '—' },
+          { label: 'Campus Physical Address', value: form.address || '—', span: 2 }
+        ]
+      }
+    ];
+
+    setProfilePreview({
+      isOpen: true,
+      sections,
+      changes,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmSaveProfile() {
+    setProfilePreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       const res = await api.put('/school-profile', form);
       setProfile(res.data);
+      setProfilePreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setMsg({ type: 'success', text: 'School profile updated successfully!' });
     } catch (err: any) {
-      setMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update school profile' });
-    } finally {
-      setSaving(false);
+      setProfilePreview(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Failed to update school profile'
+      }));
     }
   }
 
@@ -7855,7 +8650,7 @@ function SchoolProfile() {
 
           <div className="panel">
             <h3>Campus Contact & Location</h3>
-            <form onSubmit={save} className="modal-form" style={{ gap: 14 }}>
+            <form onSubmit={initiateSaveProfile} className="modal-form" style={{ gap: 14 }}>
               <label>
                 Enquiry / Emergency Contact Number
                 <input
@@ -7884,12 +8679,29 @@ function SchoolProfile() {
                 />
               </label>
               <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
-                {saving ? 'Saving changes...' : 'Update Institutional Profile'}
+                Review & Update Profile
               </button>
             </form>
           </div>
         </div>
       )}
+
+      {/* Universal School Profile Preview Modal */}
+      <UniversalPreviewModal
+        isOpen={profilePreview.isOpen}
+        onClose={() => setProfilePreview(prev => ({ ...prev, isOpen: false }))}
+        onEdit={() => setProfilePreview(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={executeConfirmSaveProfile}
+        title="Review Institutional Profile Updates"
+        subtitle="Verify contact coordinates and physical address before updating"
+        operationType="update"
+        confirmText="Confirm & Save Profile"
+        editText="Back to Edit"
+        sections={profilePreview.sections}
+        changes={profilePreview.changes}
+        loading={profilePreview.loading}
+        error={profilePreview.error}
+      />
     </Layout>
   );
 }
