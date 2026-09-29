@@ -1,6 +1,7 @@
 import { CollectionReference, WhereFilterOp } from 'firebase-admin/firestore';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { getFirestoreSchoolById } from './firestoreService';
+import { DualDatabaseService } from './dualDatabaseService';
 
 // In-memory short-lived cache (30-second TTL) per school to prevent burning Firestore quota
 interface CacheEntry<T> {
@@ -21,13 +22,20 @@ export function invalidateSchoolCache(schoolId: string): void {
 
 /**
  * Helper to execute a scoped count query against Firestore with fallback for legacy camelCase/snake_case
+ * and automatic failover to Supabase (PostgreSQL) when Firebase quota is exhausted.
  */
 async function countTenantCollection(
   collectionFn: () => CollectionReference,
   schoolId: string,
-  extraFilter?: { field: string; op: WhereFilterOp; value: any }
+  extraFilter?: { field: string; op: WhereFilterOp; value: any },
+  secondaryFallbackFn?: () => Promise<number>
 ): Promise<number> {
-  if (!isFirebaseConfigured() || !schoolId) return 0;
+  if (!isFirebaseConfigured() || !schoolId) {
+    if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
+      return await secondaryFallbackFn();
+    }
+    return 0;
+  }
 
   try {
     let q1 = collectionFn().where('school_id', '==', schoolId);
@@ -45,11 +53,25 @@ async function countTenantCollection(
 
     return count;
   } catch (err: any) {
-    if (err.message && err.message.includes('Quota exceeded')) {
+    const isQuota = err?.message && (
+      err.message.includes('Quota exceeded') ||
+      err.message.includes('RESOURCE_EXHAUSTED') ||
+      err.code === 8
+    );
+
+    if (isQuota) {
+      if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
+        console.warn(`[DualDB Failover] Firestore quota exceeded during count for school ${schoolId}. Serving live data from Supabase...`);
+        return await secondaryFallbackFn();
+      }
       console.error(`[TenantDataService] Firestore quota exceeded during count query for school ${schoolId}`);
       throw err;
     }
+
     console.warn(`[TenantDataService] Count query warning for school ${schoolId}:`, err.message);
+    if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
+      return await secondaryFallbackFn();
+    }
     return 0;
   }
 }
@@ -130,10 +152,22 @@ export async function getTenantTodayAttendance(schoolId: string, targetDate?: st
       classBreakdown
     };
   } catch (err: any) {
-    if (err.message && err.message.includes('Quota exceeded')) {
+    const isQuota = err?.message && (
+      err.message.includes('Quota exceeded') ||
+      err.message.includes('RESOURCE_EXHAUSTED') ||
+      err.code === 8
+    );
+    if (isQuota) {
+      if (DualDatabaseService.isSecondaryAvailable()) {
+        console.warn(`[DualDB Failover] Firestore quota exceeded for today attendance of ${schoolId}. Serving from Supabase...`);
+        return await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr);
+      }
       throw err;
     }
     console.warn(`[TenantDataService] Error retrieving today attendance for ${schoolId}:`, err.message);
+    if (DualDatabaseService.isSecondaryAvailable()) {
+      return await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr);
+    }
     return result;
   }
 }
@@ -203,8 +237,8 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     return cached.data;
   }
 
-  // 1. Resolve authentic school record from Firestore
-  let fsSchool = await getFirestoreSchoolById(schoolId);
+  // 1. Resolve authentic school record from Firestore (or Supabase failover)
+  let fsSchool = await getFirestoreSchoolById(schoolId).catch(() => null);
   const schoolProfile = {
     id: schoolId,
     name: fsSchool?.name || userSchoolName || 'Institutional Campus',
@@ -217,7 +251,7 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     affiliation: fsSchool?.affiliation || (fsSchool?.code ? `${fsSchool.code} · Affiliated` : 'Affiliated')
   };
 
-  // 2. Perform tenant-scoped aggregation counts concurrently
+  // 2. Perform tenant-scoped aggregation counts concurrently with Supabase failover
   const [
     studentCount,
     teacherCount,
@@ -228,9 +262,24 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     activeAcademicYearSnap,
     announcementsSnap
   ] = await Promise.all([
-    countTenantCollection(collections.students, schoolId, { field: 'is_active', op: '==', value: true }),
-    countTenantCollection(collections.users, schoolId, { field: 'role', op: '==', value: 'TEACHER' }),
-    countTenantCollection(collections.classes, schoolId),
+    countTenantCollection(
+      collections.students,
+      schoolId,
+      { field: 'is_active', op: '==', value: true },
+      () => DualDatabaseService.getStudentCountFromSupabase(schoolId)
+    ),
+    countTenantCollection(
+      collections.users,
+      schoolId,
+      { field: 'role', op: '==', value: 'TEACHER' },
+      () => DualDatabaseService.getTeacherCountFromSupabase(schoolId)
+    ),
+    countTenantCollection(
+      collections.classes,
+      schoolId,
+      undefined,
+      () => DualDatabaseService.getClassCountFromSupabase(schoolId)
+    ),
     countTenantCollection(collections.sections, schoolId),
     countTenantCollection(collections.attendanceCorrections, schoolId, { field: 'status', op: '==', value: 'PENDING' }),
     getTenantTodayAttendance(schoolId),
