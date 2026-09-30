@@ -20,6 +20,8 @@ import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool } from '../
 // GET /api/auth/institutes - Public active institutes strictly from Database (Supabase / Firestore)
 router.get('/institutes', async (_req, res) => {
   let list: any[] = [];
+  const existingIds = new Set<string>();
+  const existingCodes = new Set<string>();
 
   // 1. Supabase / PostgreSQL Database (Live SQL query)
   if (isPostgresConfigured) {
@@ -31,41 +33,59 @@ router.get('/institutes', async (_req, res) => {
          ORDER BY name ASC`
       );
       if (q.rows && q.rows.length > 0) {
-        list = q.rows.map(s => ({
-          id: String(s.id),
-          name: String(s.name),
-          code: String(s.code || 'SCH001'),
-          address: String(s.address || 'Main Campus')
-        }));
-        return res.json(list);
+        list = q.rows.map(s => {
+          const sid = String(s.id);
+          const scode = String(s.code || 'SCH001').toUpperCase();
+          existingIds.add(sid);
+          existingCodes.add(scode);
+          return {
+            id: sid,
+            name: String(s.name),
+            code: scode,
+            address: String(s.address || 'Main Campus')
+          };
+        });
       }
     } catch (err: any) {
       console.warn('[Auth] Database error fetching schools from PostgreSQL/Supabase:', err.message);
     }
   }
 
-  // 2. Direct Firebase Cloud Firestore
+  // 2. Direct Firebase Cloud Firestore - merge any additional active schools
   if (isFirebaseConfigured()) {
     try {
       const fsSchools = await getFirestoreSchools();
-      const fsList = fsSchools
+      fsSchools
         .filter((s: any) => s && s.name && s.status !== 'SUSPENDED' && s.status !== 'DELETED')
-        .map((s: any) => ({
-          id: String(s.id),
-          name: String(s.name),
-          code: String(s.code || 'SCH001'),
-          address: String(s.address || s.city || 'Main Campus')
-        }));
-
-      if (fsList.length > 0) {
-        return res.json(fsList);
-      }
+        .forEach((s: any) => {
+          const sId = String(s.id);
+          const sCode = String(s.code || '').toUpperCase();
+          if (!existingIds.has(sId) && (!sCode || !existingCodes.has(sCode))) {
+            list.push({
+              id: sId,
+              name: String(s.name),
+              code: sCode || 'SCH001',
+              address: String(s.address || s.city || 'Main Campus')
+            });
+            existingIds.add(sId);
+            if (sCode) existingCodes.add(sCode);
+          }
+        });
     } catch (err: any) {
       console.warn('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
     }
   }
 
-  // Return strictly what the database has (empty array if no active schools exist in database)
+  // 3. In-memory demoSchools fallback if list is still completely empty
+  if (list.length === 0) {
+    list = demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
+      id: String(s.id),
+      name: String(s.name),
+      code: String(s.code || 'GIS001').toUpperCase(),
+      address: String(s.address || 'Bengaluru')
+    }));
+  }
+
   return res.json(list);
 });
 
@@ -87,11 +107,57 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Email/Student ID and password are required' });
   }
 
+  let resolvedInstituteId = instituteId ? String(instituteId).trim() : '';
+  let selectedSchoolName = '';
+  let selectedSchoolCode = '';
+
+  if (instituteId) {
+    let schCheck: any = { rowCount: 0, rows: [] };
+    if (isPostgresConfigured) {
+      try {
+        schCheck = await pool.query(
+          `SELECT id, name, code, status FROM schools WHERE id::text = $1 OR LOWER(code) = LOWER($1) LIMIT 1`,
+          [instituteId]
+        );
+      } catch (err: any) {
+        console.warn('[Login] School resolution error in PostgreSQL:', err.message);
+      }
+    }
+
+    if (schCheck.rowCount && schCheck.rowCount > 0) {
+      if (schCheck.rows[0].status !== 'ACTIVE') {
+        return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+      }
+      resolvedInstituteId = String(schCheck.rows[0].id);
+      selectedSchoolName = schCheck.rows[0].name;
+      selectedSchoolCode = schCheck.rows[0].code;
+    } else {
+      let fsSchool: any = null;
+      if (isFirebaseConfigured()) {
+        try {
+          fsSchool = await getFirestoreSchoolById(instituteId);
+        } catch {}
+      }
+      if (fsSchool && fsSchool.status === 'ACTIVE') {
+        resolvedInstituteId = String(fsSchool.id);
+        selectedSchoolName = fsSchool.name;
+        selectedSchoolCode = fsSchool.code;
+      } else {
+        const demoMatch = demoSchools.find(s => (s.id === instituteId || s.code === instituteId || isSameSchool(s.id, instituteId)) && s.status === 'ACTIVE');
+        if (!demoMatch) {
+          return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+        } else {
+          resolvedInstituteId = String(demoMatch.id);
+          selectedSchoolName = demoMatch.name;
+          selectedSchoolCode = demoMatch.code;
+        }
+      }
+    }
+  }
+
   // 1. PRIMARY: Try Supabase PostgreSQL Database
   if (isPostgresConfigured) {
     try {
-      let selectedSchoolName = 'Greenwood International School';
-
       const query = `
         SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
                st.id AS student_id, st.roll_number, st.admission_number,
@@ -103,48 +169,39 @@ router.post('/login', async (req, res) => {
         LEFT JOIN classes c ON c.id = st.class_id
         LEFT JOIN sections sec ON sec.id = st.section_id
         WHERE (LOWER(u.email) = LOWER($1) OR (st.id IS NOT NULL AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
-        ORDER BY (u.role = 'STUDENT') DESC
+        ORDER BY (u.role = 'STUDENT') DESC, (u.school_id::text = $2) DESC
         LIMIT 1
       `;
-      const result = await pool.query(query, [identifier]);
+      const result = await pool.query(query, [identifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
       const u = result.rows[0];
 
       if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
-        if (instituteId) {
-          const schCheck = await pool.query(
-            `SELECT id, name, status FROM schools WHERE id = $1 LIMIT 1`,
-            [instituteId]
-          );
-          if (schCheck.rowCount && schCheck.rowCount > 0) {
-            if (schCheck.rows[0].status !== 'ACTIVE') {
-              return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-            }
-            selectedSchoolName = schCheck.rows[0].name;
-          } else {
-            const demoMatch = demoSchools.find(s => isSameSchool(s.id, instituteId) && s.status === 'ACTIVE');
-            if (!demoMatch) {
-              return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-            } else {
-              selectedSchoolName = demoMatch.name;
-            }
-          }
-        }
-
         // Validate role if expectedRole provided
         if (expectedRole && !roleMatches(u.role, expectedRole)) {
           return res.status(401).json({ message: 'Account is not authorized for the selected role' });
         }
 
-        if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id && !isSameSchool(u.school_id, instituteId)) {
-          return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        // Validate tenant isolation
+        if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id) {
+          const userSid = String(u.school_id);
+          const matches =
+            userSid === resolvedInstituteId ||
+            userSid === String(instituteId) ||
+            isSameSchool(userSid, resolvedInstituteId) ||
+            isSameSchool(userSid, String(instituteId)) ||
+            (selectedSchoolCode && isSameSchool(u.school_code, selectedSchoolCode));
+
+          if (!matches) {
+            return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+          }
         }
 
         const role = u.role as Role;
         const userPayload: any = {
           id: u.id,
-          schoolId: u.school_id,
-          schoolName: u.school_name || selectedSchoolName,
-          schoolCode: u.school_code || 'GIS001',
+          schoolId: u.school_id || resolvedInstituteId,
+          schoolName: u.school_name || selectedSchoolName || 'Institutional Campus',
+          schoolCode: u.school_code || selectedSchoolCode || 'SCH',
           name: u.name,
           email: u.email,
           role
@@ -178,9 +235,19 @@ router.post('/login', async (req, res) => {
           return res.status(401).json({ message: 'Account is not authorized for the selected role' });
         }
 
-        // Validate tenant if instituteId provided and not super admin
-        if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId && !isSameSchool(fUser.schoolId, instituteId)) {
-          return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        // Validate tenant isolation
+        if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId) {
+          const fsUserSid = String(fUser.schoolId);
+          const matches =
+            fsUserSid === resolvedInstituteId ||
+            fsUserSid === String(instituteId) ||
+            isSameSchool(fsUserSid, resolvedInstituteId) ||
+            isSameSchool(fsUserSid, String(instituteId)) ||
+            (selectedSchoolCode && String(fUser.schoolCode || '').toUpperCase() === selectedSchoolCode.toUpperCase());
+
+          if (!matches) {
+            return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+          }
         }
 
         const role = fUser.role as Role;
@@ -198,9 +265,9 @@ router.post('/login', async (req, res) => {
 
         const userPayload: any = {
           id: fUser.id,
-          schoolId: canonicalSchoolId(fUser.schoolId),
-          schoolName: schoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
-          schoolCode: schoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
+          schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
+          schoolName: schoolName || selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
+          schoolCode: schoolCode || selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
           name: fUser.name,
           email: fUser.email,
           role
@@ -259,15 +326,18 @@ router.post('/login', async (req, res) => {
     if (
       instituteId &&
       demo.role !== 'SUPER_ADMIN' &&
+      !isSameSchool(demo.schoolId, resolvedInstituteId) &&
       !isSameSchool(demo.schoolId, instituteId) &&
+      demo.schoolId !== resolvedInstituteId &&
       !(isTestSchool(demo.schoolId) && isTestSchool(instituteId))
     ) {
       return res.status(401).json({ message: 'Account does not belong to the selected institute' });
     }
 
-    const resolvedSchoolId = demo.schoolId || '00000000-0000-0000-0000-000000000001';
-    const resolvedSchoolName = 'Greenwood International School';
-    const resolvedSchoolCode = 'GIS001';
+    const demoSchoolObj = demoSchools.find(s => s.id === demo.schoolId || s.code === demo.schoolId);
+    const resolvedSchoolId = demo.schoolId || resolvedInstituteId || '00000000-0000-0000-0000-000000000001';
+    const resolvedSchoolName = demoSchoolObj?.name || selectedSchoolName || (isTestSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus');
+    const resolvedSchoolCode = demoSchoolObj?.code || selectedSchoolCode || (isTestSchool(resolvedSchoolId) ? 'GIS001' : 'SCH');
 
     const userPayload: any = {
       id: demo.id,
@@ -286,7 +356,7 @@ router.post('/login', async (req, res) => {
       userPayload.className = 'Class 10';
       userPayload.sectionName = 'Section A';
       userPayload.rollNumber = '25';
-      userPayload.schoolName = 'Greenwood International School';
+      userPayload.schoolName = resolvedSchoolName;
     }
 
     const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
@@ -295,6 +365,7 @@ router.post('/login', async (req, res) => {
 
   return res.status(401).json({ message: 'Invalid credentials or account not found' });
 });
+
 
 router.get('/me', requireAuth, (req: AuthRequest, res) => res.json({ user: req.user }));
 

@@ -1,7 +1,8 @@
 
 import { Router } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, getAllDemoUsers } from '../store/demoUsers';
 import { collections, isFirebaseConfigured } from '../firebase';
@@ -372,63 +373,132 @@ r.get('/plans', async (_req, res) => {
   }
 });
 
-r.get('/schools',async(_req,res)=>{
+r.get('/schools', async (_req, res) => {
+  let list: any[] = [];
+  const existingIds = new Set<string>();
+  const existingCodes = new Set<string>();
+
+  // 1. PRIMARY: Query Supabase PostgreSQL Database
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(`
+        SELECT s.id, s.name, s.code, s.status, s.enquiry_number, s.phone, s.email, s.address,
+          (SELECT u.email FROM users u WHERE u.school_id = s.id AND u.role = 'SCHOOL_ADMIN' ORDER BY u.created_at LIMIT 1) AS admin_email,
+          (SELECT u.name FROM users u WHERE u.school_id = s.id AND u.role = 'SCHOOL_ADMIN' ORDER BY u.created_at LIMIT 1) AS admin_name,
+          COALESCE(s.phone, s.enquiry_number, '') AS admin_phone,
+          (SELECT COUNT(*)::int FROM students st WHERE st.school_id = s.id AND st.is_active = true) AS student_count,
+          (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'TEACHER' AND u.is_active = true) AS teacher_count,
+          ss.start_date, ss.end_date, ss.status AS subscription_status,
+          COALESCE(sp.name, 'Standard') AS plan_name,
+          COALESCE(sp.price_monthly, 999) AS plan_price_monthly,
+          CASE WHEN s.status = 'SUSPENDED' THEN 'SUSPENDED'
+               WHEN ss.end_date IS NULL OR ss.end_date < CURRENT_DATE THEN 'EXPIRED'
+               ELSE 'ACTIVE' END AS computed_status,
+          s.created_at
+        FROM schools s
+        LEFT JOIN LATERAL (
+          SELECT * FROM school_subscriptions z 
+          WHERE z.school_id = s.id 
+          ORDER BY z.end_date DESC NULLS LAST, z.created_at DESC 
+          LIMIT 1
+        ) ss ON true
+        LEFT JOIN subscription_plans sp ON sp.id = ss.plan_id
+        ORDER BY s.created_at DESC
+      `);
+
+      if (q.rows && q.rows.length > 0) {
+        list = q.rows.map(r => {
+          const sid = String(r.id);
+          const scode = String(r.code || '').toUpperCase();
+          existingIds.add(sid);
+          if (scode) existingCodes.add(scode);
+          return {
+            id: sid,
+            name: r.name,
+            code: scode,
+            status: r.status || 'ACTIVE',
+            enquiry_number: r.enquiry_number || r.phone || '',
+            phone: r.phone || r.enquiry_number || '',
+            email: r.email || r.admin_email || '',
+            address: r.address || '',
+            admin_email: r.admin_email || '',
+            admin_name: r.admin_name || 'Administrator',
+            admin_phone: r.admin_phone || '',
+            student_count: Number(r.student_count || 0),
+            teacher_count: Number(r.teacher_count || 0),
+            start_date: r.start_date ? String(r.start_date).slice(0, 10) : '2025-01-01',
+            end_date: r.end_date ? String(r.end_date).slice(0, 10) : '2026-12-31',
+            subscription_status: r.subscription_status || 'ACTIVE',
+            plan_name: r.plan_name || 'Standard',
+            plan_price_monthly: Number(r.plan_price_monthly || 999),
+            computed_status: r.computed_status || r.status || 'ACTIVE',
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString()
+          };
+        });
+      }
+    } catch (err: any) {
+      console.error('[SuperAdmin] Error fetching schools from Supabase PostgreSQL:', err.message);
+    }
+  }
+
+  // 2. SECONDARY: Merge any non-duplicate schools from Firestore
   if (isFirebaseConfigured()) {
     try {
       const [schoolsSnap, studentsSnap] = await Promise.all([
         collections.schools().get(),
-        collections.students().get()
+        collections.students().get().catch(() => ({ docs: [] }))
       ]);
-      const list = schoolsSnap.docs.map(doc => {
+
+      schoolsSnap.docs.forEach(doc => {
         const d = doc.data();
-        const schoolStCount = studentsSnap.docs.filter(st => {
-          const sd = st.data();
-          return sd.schoolId === doc.id || sd.school_id === doc.id;
-        }).length;
-        return {
-          id: doc.id,
-          name: d.name,
-          code: d.code || 'GWIS',
-          status: d.status || 'ACTIVE',
-          enquiry_number: d.phone || d.enquiry_number || '9876543210',
-          phone: d.phone || d.enquiry_number || '',
-          email: d.email || '',
-          address: d.address || '',
-          city: d.city || '',
-          state: d.state || '',
-          pincode: d.pincode || '',
-          admin_email: d.email || 'admin@demo-school.local',
-          student_count: schoolStCount,
-          start_date: d.subscriptionStart?.slice(0, 10) || '2025-01-01',
-          end_date: d.subscriptionEnd?.slice(0, 10) || '2026-12-31',
-          subscription_status: d.status || 'ACTIVE',
-          plan_name: d.planName || d.plan_name || 'Enterprise',
-          plan_price_monthly: 1999,
-          computed_status: d.status || 'ACTIVE'
-        };
+        const docId = doc.id;
+        const docCode = String(d.code || '').toUpperCase();
+
+        if (!existingIds.has(docId) && (!docCode || !existingCodes.has(docCode))) {
+          const schoolStCount = (studentsSnap.docs || []).filter((st: any) => {
+            const sd = st.data();
+            return sd.schoolId === docId || sd.school_id === docId;
+          }).length;
+
+          list.push({
+            id: docId,
+            name: d.name,
+            code: docCode || 'SCH',
+            status: d.status || 'ACTIVE',
+            enquiry_number: d.phone || d.enquiry_number || '',
+            phone: d.phone || d.enquiry_number || '',
+            email: d.email || '',
+            address: d.address || '',
+            admin_email: d.email || '',
+            admin_name: d.adminName || 'Administrator',
+            admin_phone: d.phone || '',
+            student_count: schoolStCount,
+            teacher_count: 0,
+            start_date: d.subscriptionStart?.slice(0, 10) || '2025-01-01',
+            end_date: d.subscriptionEnd?.slice(0, 10) || '2026-12-31',
+            subscription_status: d.status || 'ACTIVE',
+            plan_name: d.planName || d.plan_name || 'Standard',
+            plan_price_monthly: 999,
+            computed_status: d.status || 'ACTIVE',
+            created_at: d.createdAt || new Date().toISOString()
+          });
+          existingIds.add(docId);
+          if (docCode) existingCodes.add(docCode);
+        }
       });
-      return res.json(list);
     } catch (err: any) {
-      console.error('[SuperAdmin] Error fetching schools from Firestore:', err.message);
+      console.warn('[SuperAdmin] Non-fatal Firestore fetch schools error:', err.message);
     }
   }
- try {
-  const q=await pool.query(`SELECT s.id,s.name,s.code,s.status,s.enquiry_number,
-    (SELECT u.email FROM users u WHERE u.school_id=s.id AND u.role='SCHOOL_ADMIN' ORDER BY u.created_at LIMIT 1) admin_email,
-    (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND st.is_active=true) student_count,
-    ss.start_date,ss.end_date,ss.status subscription_status,sp.name plan_name,sp.price_monthly plan_price_monthly,
-    CASE WHEN s.status='SUSPENDED' THEN 'SUSPENDED'
-         WHEN ss.end_date IS NULL OR ss.end_date<CURRENT_DATE THEN 'EXPIRED'
-         ELSE 'ACTIVE' END computed_status
-    FROM schools s
-    LEFT JOIN LATERAL (SELECT * FROM school_subscriptions z WHERE z.school_id=s.id ORDER BY z.end_date DESC NULLS LAST,z.created_at DESC LIMIT 1) ss ON true
-    LEFT JOIN subscription_plans sp ON sp.id=ss.plan_id
-    ORDER BY s.created_at DESC`);
-  res.json(q.rows);
- } catch {
-  res.json(demoSchools);
- }
+
+  // 3. In-memory demoSchools fallback if list is still completely empty
+  if (list.length === 0) {
+    return res.json(demoSchools);
+  }
+
+  return res.json(list);
 });
+
 
 r.get('/payments',async(_req,res)=>{
  try {
@@ -502,70 +572,207 @@ r.post('/schools', async (req: AuthRequest, res) => {
     return res.status(400).json({ message: 'name, code, and adminEmail are required' });
   }
 
-  // Pre-check duplicate school code across database and memory
-  try {
-    const codeChk = await pool.query('SELECT 1 FROM schools WHERE LOWER(code)=LOWER($1) LIMIT 1', [code]);
-    if (codeChk.rowCount && codeChk.rowCount > 0) {
-      return res.status(409).json({ message: 'A school with this code already exists' });
-    }
-  } catch {}
-  if (demoSchools.some(s => String(s.code).toUpperCase() === String(code).toUpperCase())) {
-    return res.status(409).json({ message: 'A school with this code already exists' });
-  }
+  const cleanCode = String(code).trim().toUpperCase();
+  const cleanEmail = String(adminEmail).trim().toLowerCase();
+  const cleanName = String(name).trim();
 
-  const schoolId = `sch-${Date.now()}`;
-  const userId = `user-${Date.now()}`;
-  const end = endDate(startDate, days);
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-  const planName = String(planId).replace(/^plan-/i, '').toUpperCase();
-  const planPrice = planName.includes('BASIC') ? 499 : planName.includes('ENTERPRISE') ? 1999 : 999;
-  const maxStudents = planName.includes('BASIC') ? 300 : planName.includes('ENTERPRISE') ? 5000 : 1000;
-
-  // 1. Firebase Firestore Save
-  if (isFirebaseConfigured()) {
+  // 1. Pre-check uniqueness across PostgreSQL
+  if (isPostgresConfigured) {
     try {
-      const existing = await collections.schools().where('code', '==', code.toUpperCase()).get();
-      if (!existing.empty) {
-        return res.status(409).json({ message: 'A school with this code already exists' });
+      const codeChk = await pool.query(
+        'SELECT 1 FROM schools WHERE LOWER(code)=LOWER($1) OR LOWER(name)=LOWER($2) LIMIT 1',
+        [cleanCode, cleanName]
+      );
+      if (codeChk.rowCount && codeChk.rowCount > 0) {
+        return res.status(409).json({ message: 'A school with this code or name already exists' });
       }
 
+      const emailChk = await pool.query(
+        'SELECT 1 FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1',
+        [cleanEmail]
+      );
+      if (emailChk.rowCount && emailChk.rowCount > 0) {
+        return res.status(409).json({ message: 'A user with this administrator email already exists' });
+      }
+    } catch (err: any) {
+      console.warn('[CreateSchool] Pre-check database warning:', err.message);
+    }
+  }
+
+  // Check demoSchools uniqueness
+  if (demoSchools.some(s => String(s.code).toUpperCase() === cleanCode || s.name.toLowerCase() === cleanName.toLowerCase())) {
+    return res.status(409).json({ message: 'A school with this code or name already exists' });
+  }
+
+  // 2. Canonical stable IDs
+  const schoolId = crypto.randomUUID();
+  const adminUserId = crypto.randomUUID();
+  const academicYearId = crypto.randomUUID();
+  const subscriptionId = crypto.randomUUID();
+  const paymentId = crypto.randomUUID();
+
+  const end = endDate(startDate, days);
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  const rawPlanName = String(planId).replace(/^plan-/i, '').toUpperCase();
+  const planName = rawPlanName.includes('BASIC') ? 'Basic' : rawPlanName.includes('ENTERPRISE') ? 'Enterprise' : 'Standard';
+  const planPrice = planName === 'Basic' ? 499 : planName === 'Enterprise' ? 1999 : 999;
+  const maxStudents = planName === 'Basic' ? 300 : planName === 'Enterprise' ? 5000 : 1000;
+  const fullAddress = address ? `${address}, ${city} ${state} ${pincode}`.trim() : (city ? `${city}, ${state}` : 'Main Campus');
+  const contactPhone = phone || enquiryNumber;
+
+  // 3. ATOMIC PRIMARY TRANSACTION: Supabase PostgreSQL
+  if (isPostgresConfigured) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Double-check uniqueness inside transaction lock
+      const exists = await client.query(
+        'SELECT 1 FROM schools WHERE LOWER(code)=LOWER($1) OR LOWER(name)=LOWER($2) LIMIT 1',
+        [cleanCode, cleanName]
+      );
+      if (exists.rowCount && exists.rowCount > 0) {
+        throw Object.assign(new Error('A school with this code or name already exists'), { status: 409 });
+      }
+
+      const emailExists = await client.query(
+        'SELECT 1 FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1',
+        [cleanEmail]
+      );
+      if (emailExists.rowCount && emailExists.rowCount > 0) {
+        throw Object.assign(new Error('A user with this administrator email already exists'), { status: 409 });
+      }
+
+      // Insert canonical School record
+      await client.query(
+        `INSERT INTO schools (id, name, code, enquiry_number, phone, email, address, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE', NOW(), NOW())`,
+        [schoolId, cleanName, cleanCode, enquiryNumber, contactPhone, cleanEmail, fullAddress]
+      );
+
+      // Insert canonical School Admin User record
+      await client.query(
+        `INSERT INTO users (id, school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, 'SCHOOL_ADMIN', true, NOW(), NOW())`,
+        [adminUserId, schoolId, adminName, cleanEmail, passwordHash]
+      );
+
+      // Insert canonical Active Academic Year
+      const academicYearName = `${new Date(startDate).getFullYear()}-${new Date(startDate).getFullYear() + 1}`;
+      await client.query(
+        `INSERT INTO academic_years (id, school_id, name, start_date, end_date, is_active, is_archived, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW())`,
+        [academicYearId, schoolId, academicYearName, startDate, end]
+      );
+
+      // Provision initial academic structure: Classes 1 to 12
+      const classRows = await client.query(
+        `INSERT INTO classes (id, school_id, class_number, academic_year_id)
+         SELECT gen_random_uuid(), $1, x, $2
+         FROM generate_series(1, 12) x
+         RETURNING id, class_number`,
+        [schoolId, academicYearId]
+      );
+
+      // Provision Section 'A' for every provisioned class
+      for (const cl of classRows.rows) {
+        await client.query(
+          `INSERT INTO sections (id, school_id, class_id, name, academic_year_id)
+           VALUES (gen_random_uuid(), $1, $2, 'A', $3)`,
+          [schoolId, cl.id, academicYearId]
+        );
+      }
+
+      // Resolve subscription plan ID
+      let selectedPlanId: string = '1dbc0d3d-db64-40cc-b5ea-958f902328c0'; // Default Standard Plan UUID
+      let actualPrice = planPrice;
+      const isPlanUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(planId));
+
+      const planLookup = isPlanUuid
+        ? await client.query('SELECT id, price_monthly FROM subscription_plans WHERE id = $1 LIMIT 1', [planId])
+        : await client.query('SELECT id, price_monthly FROM subscription_plans WHERE LOWER(name) = LOWER($1) LIMIT 1', [planName]);
+
+      if (planLookup.rowCount && planLookup.rows.length > 0) {
+        selectedPlanId = planLookup.rows[0].id;
+        actualPrice = Number(planLookup.rows[0].price_monthly || planPrice);
+      } else {
+        const anyPlan = await client.query('SELECT id, price_monthly FROM subscription_plans WHERE is_active=true LIMIT 1');
+        if (anyPlan.rowCount && anyPlan.rows.length > 0) {
+          selectedPlanId = anyPlan.rows[0].id;
+          actualPrice = Number(anyPlan.rows[0].price_monthly || planPrice);
+        }
+      }
+
+      // Insert canonical Subscription record
+      await client.query(
+        `INSERT INTO school_subscriptions (id, school_id, plan_id, start_date, end_date, status, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'ACTIVE', NOW())`,
+        [subscriptionId, schoolId, selectedPlanId, startDate, end]
+      );
+
+      // Insert canonical Payment record
+      await client.query(
+        `INSERT INTO payments (id, school_id, subscription_id, provider, amount, currency, status, created_at, paid_at)
+         VALUES ($1, $2, $3, 'MOCK', $4, 'INR', 'PAID', NOW(), NOW())`,
+        [paymentId, schoolId, subscriptionId, actualPrice]
+      );
+
+      await client.query('COMMIT');
+    } catch (txErr: any) {
+      await client.query('ROLLBACK');
+      if (txErr.status === 409 || txErr.code === '23505') {
+        return res.status(409).json({ message: txErr.detail || txErr.message || 'A school with this code or email already exists' });
+      }
+      console.error('[CreateSchool] PostgreSQL transaction failed:', txErr.message);
+      return res.status(500).json({ message: `Database transaction failed: ${txErr.message}` });
+    } finally {
+      client.release();
+    }
+  }
+
+  // 4. MIRROR SYNCHRONIZATION: Firebase Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
       await collections.schools().doc(schoolId).set({
         id: schoolId,
-        name,
-        code: code.toUpperCase(),
-        address: address ? `${address}, ${city} ${state} ${pincode}`.trim() : 'Campus Main',
+        name: cleanName,
+        code: cleanCode,
+        address: fullAddress,
         city: city || 'Bengaluru',
         state: state || 'Karnataka',
         pincode: pincode || '560001',
-        phone: phone || enquiryNumber,
-        email: adminEmail,
+        phone: contactPhone,
+        enquiry_number: enquiryNumber,
+        email: cleanEmail,
         status: 'ACTIVE',
         planId,
         planName,
         maxStudents,
         subscriptionStart: startDate,
         subscriptionEnd: end,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
 
-      await collections.users().doc(userId).set({
-        id: userId,
+      await collections.users().doc(adminUserId).set({
+        id: adminUserId,
         schoolId,
-        schoolName: name,
-        schoolCode: code.toUpperCase(),
+        schoolName: cleanName,
+        schoolCode: cleanCode,
         name: adminName,
-        email: adminEmail,
+        email: cleanEmail,
         passwordHash,
         role: 'SCHOOL_ADMIN',
-        phone: phone || enquiryNumber,
+        phone: contactPhone,
         status: 'ACTIVE',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
 
-      await collections.payments().doc(`pay-${Date.now()}`).set({
-        id: `pay-${Date.now()}`,
+      await collections.payments().doc(paymentId).set({
+        id: paymentId,
         schoolId,
-        schoolName: name,
+        schoolName: cleanName,
         planId,
         planName,
         amount: planPrice,
@@ -575,135 +782,49 @@ r.post('/schools', async (req: AuthRequest, res) => {
         createdAt: new Date().toISOString(),
         paidAt: new Date().toISOString()
       });
-
-      registerDemoUser({
-        id: userId,
-        schoolId,
-        name: adminName,
-        email: adminEmail,
-        role: 'SCHOOL_ADMIN',
-        password: adminPassword
-      });
-
-      await logSystemAudit(
-        req.user || { id: 'super-admin' },
-        'CREATE_SCHOOL',
-        'SCHOOL',
-        schoolId,
-        { name, code: code.toUpperCase(), adminEmail, planName, planPrice },
-        schoolId,
-        name
-      );
-
-      // Post-commit: Generate secure password setup link and queue School Creation Email
-      dispatchSchoolCreationEmail(schoolId, name, adminName, adminEmail, req).catch(() => {});
-
-      return res.status(201).json({ message: 'School created successfully', schoolId });
-    } catch (e: any) {
-      console.warn('[Firestore] Create school error, falling back:', e.message);
+    } catch (fsErr: any) {
+      console.warn('[CreateSchool] Mirror write to Firestore failed (non-fatal):', fsErr.message);
     }
   }
 
-  // 2. PostgreSQL Save
-  try {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const exists = await client.query('SELECT 1 FROM schools WHERE LOWER(code)=LOWER($1) OR LOWER(name)=LOWER($2) LIMIT 1', [code, name]);
-      if (exists.rowCount) throw Object.assign(new Error('School code or name already exists'), { status: 409 });
-      const emailExists = await client.query('SELECT 1 FROM users WHERE LOWER(email)=LOWER($1)', [adminEmail]);
-      if (emailExists.rowCount) throw Object.assign(new Error('Admin email already exists'), { status: 409 });
-      const s = await client.query(`INSERT INTO schools(name,code,enquiry_number,status) VALUES($1,$2,$3,'ACTIVE') RETURNING id`,
-        [name, code.toUpperCase(), enquiryNumber]);
-      const pgSchoolId = s.rows[0].id;
-      await client.query(`INSERT INTO users(school_id,name,email,password_hash,role,is_active) VALUES($1,$2,$3,$4,'SCHOOL_ADMIN',true)`,
-        [pgSchoolId, adminName, adminEmail, passwordHash]);
-      await client.query(`INSERT INTO classes(school_id,class_number) SELECT $1,x FROM generate_series(5,12) x ON CONFLICT DO NOTHING`, [pgSchoolId]);
-
-      let selectedPlanId: string | null = null;
-      let price = planPrice;
-      const isPlanUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(planId));
-      const plan = await client.query(
-        `SELECT id, price_monthly FROM subscription_plans WHERE (${isPlanUuid ? 'id = $1' : 'FALSE'} OR LOWER(name) = LOWER($2)) LIMIT 1`,
-        [isPlanUuid ? planId : '00000000-0000-0000-0000-000000000000', String(planId).replace(/^plan-/i, '')]
-      );
-      if (plan.rowCount && plan.rows.length > 0) {
-        selectedPlanId = plan.rows[0].id;
-        price = Number(plan.rows[0].price_monthly || 0);
-      } else {
-        const anyPlan = await client.query('SELECT id, price_monthly FROM subscription_plans WHERE is_active=true LIMIT 1');
-        if (anyPlan.rowCount && anyPlan.rows.length > 0) {
-          selectedPlanId = anyPlan.rows[0].id;
-          price = Number(anyPlan.rows[0].price_monthly || 0);
-        }
-      }
-      const sub = await client.query(
-        `INSERT INTO school_subscriptions(school_id,plan_id,start_date,end_date,status) VALUES($1,$2,$3,$4,'ACTIVE') RETURNING id`,
-        [pgSchoolId, selectedPlanId, startDate, end]
-      );
-      await client.query(
-        `INSERT INTO payments(school_id,subscription_id,provider,amount,currency,status,paid_at) VALUES($1,$2,'MOCK',$3,'INR','PAID',NOW())`,
-        [pgSchoolId, sub.rows[0].id, price]
-      );
-      await client.query('COMMIT');
-
-      await logSystemAudit(
-        req.user || { id: 'super-admin' },
-        'CREATE_SCHOOL',
-        'SCHOOL',
-        pgSchoolId,
-        { name, code: code.toUpperCase(), adminEmail },
-        pgSchoolId,
-        name
-      );
-
-      // Post-commit: Generate secure password setup link and queue School Creation Email
-      dispatchSchoolCreationEmail(pgSchoolId, name, adminName, adminEmail, req).catch(() => {});
-
-      return res.status(201).json({ message: 'School created successfully', schoolId: pgSchoolId });
-    } catch (e: any) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-  } catch (e: any) {
-    if (e.status === 409 || e.code === '23505') {
-      return res.status(409).json({ message: e.detail || e.message || 'A school with this code or email already exists' });
-    }
-    console.error('[CreateSchool] PostgreSQL creation failed:', e.message);
-  }
-
-  // 3. In-memory demo fallback
+  // 5. SYNCHRONIZE IN-MEMORY DEMO CACHE
   registerDemoUser({
-    id: userId,
+    id: adminUserId,
     schoolId,
     name: adminName,
-    email: adminEmail,
+    email: cleanEmail,
     role: 'SCHOOL_ADMIN',
     password: adminPassword
   });
 
-  const newSchool = {
+  const demoSchoolRecord = {
     id: schoolId,
-    name,
-    code: String(code).toUpperCase(),
+    name: cleanName,
+    code: cleanCode,
     status: 'ACTIVE',
     enquiry_number: enquiryNumber,
-    admin_email: adminEmail,
+    phone: contactPhone,
+    email: cleanEmail,
+    address: fullAddress,
+    admin_name: adminName,
+    admin_email: cleanEmail,
+    admin_phone: contactPhone,
     student_count: 0,
+    teacher_count: 0,
     start_date: startDate,
     end_date: end,
     subscription_status: 'ACTIVE',
     plan_name: planName,
     plan_price_monthly: planPrice,
-    computed_status: 'ACTIVE'
+    computed_status: 'ACTIVE',
+    created_at: new Date().toISOString()
   };
-  demoSchools.unshift(newSchool);
+  demoSchools.unshift(demoSchoolRecord);
+
   demoPayments.unshift({
-    id: `pay-${Date.now()}`,
+    id: paymentId,
     school_id: schoolId,
-    school_name: name,
+    school_name: cleanName,
     plan_name: planName,
     provider: 'MOCK',
     amount: planPrice,
@@ -712,25 +833,75 @@ r.post('/schools', async (req: AuthRequest, res) => {
     created_at: new Date().toISOString()
   });
 
+  // 6. SYSTEM AUDIT LOG
   await logSystemAudit(
     req.user || { id: 'super-admin' },
     'CREATE_SCHOOL',
     'SCHOOL',
     schoolId,
-    { name, code: code.toUpperCase(), adminEmail },
+    { name: cleanName, code: cleanCode, adminEmail: cleanEmail, planName, planPrice },
     schoolId,
-    name
+    cleanName
   );
 
-  // Post-commit: Generate secure password setup link and queue School Creation Email
-  dispatchSchoolCreationEmail(schoolId, name, adminName, adminEmail, req).catch(() => {});
+  // 7. POST-COMMIT: Welcome Email & Password Setup Link
+  dispatchSchoolCreationEmail(schoolId, cleanName, adminName, cleanEmail, req).catch(() => {});
 
-  res.status(201).json({ message: 'School created', schoolId });
+  // 8. RETURN RESPONSE WITH CANONICAL STABLE SCHOOL ID
+  return res.status(201).json({
+    message: 'School created successfully',
+    schoolId,
+    school: demoSchoolRecord
+  });
 });
+
 
 /* ────── School Management Detailed Endpoints ────── */
 r.get('/schools/:id', async (req, res) => {
   const id = String(req.params.id);
+
+  // 1. Primary: PostgreSQL
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT s.*, 
+          (SELECT u.name FROM users u WHERE u.school_id=s.id AND u.role='SCHOOL_ADMIN' ORDER BY u.created_at LIMIT 1) AS admin_name,
+          (SELECT u.email FROM users u WHERE u.school_id=s.id AND u.role='SCHOOL_ADMIN' ORDER BY u.created_at LIMIT 1) AS admin_email,
+          COALESCE(s.phone, s.enquiry_number, '') AS admin_phone,
+          (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND st.is_active=true) AS student_count,
+          (SELECT COUNT(*)::int FROM users u WHERE u.school_id=s.id AND u.role='TEACHER' AND u.is_active=true) AS teacher_count,
+          ss.start_date, ss.end_date, ss.status AS subscription_status,
+          COALESCE(sp.name, 'Standard') AS plan_name,
+          COALESCE(sp.price_monthly, 999) AS plan_price_monthly
+         FROM schools s
+         LEFT JOIN LATERAL (
+           SELECT * FROM school_subscriptions z 
+           WHERE z.school_id=s.id 
+           ORDER BY z.end_date DESC NULLS LAST, z.created_at DESC 
+           LIMIT 1
+         ) ss ON true
+         LEFT JOIN subscription_plans sp ON sp.id=ss.plan_id
+         WHERE s.id::text = $1 OR LOWER(s.code) = LOWER($1)
+         LIMIT 1`,
+        [id]
+      );
+      if (q.rowCount && q.rows.length > 0) {
+        const row = q.rows[0];
+        return res.json({
+          ...row,
+          adminName: row.admin_name || 'Administrator',
+          adminEmail: row.admin_email || row.email || '',
+          adminPhone: row.admin_phone || row.phone || '',
+          studentCount: Number(row.student_count || 0),
+          teacherCount: Number(row.teacher_count || 0)
+        });
+      }
+    } catch (err: any) {
+      console.warn('[SuperAdmin] Postgres get school failed:', err.message);
+    }
+  }
+
+  // 2. Firestore fallback
   if (isFirebaseConfigured()) {
     try {
       const doc = await collections.schools().doc(id).get();
@@ -753,27 +924,46 @@ r.get('/schools/:id', async (req, res) => {
     } catch {}
   }
 
-  try {
-    const q = await pool.query(
-      `SELECT s.*, 
-        (SELECT u.name FROM users u WHERE u.school_id=s.id AND u.role='SCHOOL_ADMIN' LIMIT 1) admin_name,
-        (SELECT u.email FROM users u WHERE u.school_id=s.id AND u.role='SCHOOL_ADMIN' LIMIT 1) admin_email,
-        (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND st.is_active=true) student_count
-       FROM schools s WHERE s.id=$1`,
-      [id]
-    );
-    if (q.rowCount) return res.json(q.rows[0]);
-  } catch {}
-
-  const demo = demoSchools.find(s => s.id === id);
+  // 3. Demo fallback
+  const demo = demoSchools.find(s => s.id === id || s.code === id);
   if (demo) return res.json(demo);
+
   return res.status(404).json({ message: 'School not found' });
 });
 
 r.put('/schools/:id', async (req: AuthRequest, res) => {
   const id = String(req.params.id);
   const { name, code, enquiryNumber, phone, email, address, city, state, pincode, status } = req.body || {};
+  const fullAddress = address ? `${address}${city ? ', ' + city : ''}${state ? ' ' + state : ''}${pincode ? ' ' + pincode : ''}`.trim() : undefined;
 
+  let pgResult: any = null;
+
+  // 1. Primary: PostgreSQL Update
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `UPDATE schools SET 
+          name = COALESCE($1, name), 
+          code = COALESCE($2, code), 
+          enquiry_number = COALESCE($3, enquiry_number), 
+          phone = COALESCE($4, phone),
+          email = COALESCE($5, email),
+          address = COALESCE($6, address),
+          status = COALESCE($7, status),
+          updated_at = NOW()
+         WHERE id::text = $8 OR LOWER(code) = LOWER($8)
+         RETURNING *`,
+        [name, code ? code.toUpperCase() : null, enquiryNumber, phone, email, fullAddress, status, id]
+      );
+      if (q.rowCount) {
+        pgResult = q.rows[0];
+      }
+    } catch (err: any) {
+      console.warn('[SuperAdmin] Postgres update school error:', err.message);
+    }
+  }
+
+  // 2. Secondary: Firestore Mirror Update
   if (isFirebaseConfigured()) {
     try {
       const updates: any = {};
@@ -781,7 +971,7 @@ r.put('/schools/:id', async (req: AuthRequest, res) => {
       if (code) updates.code = code.toUpperCase();
       if (enquiryNumber || phone) updates.phone = phone || enquiryNumber;
       if (email) updates.email = email;
-      if (address) updates.address = address;
+      if (fullAddress) updates.address = fullAddress;
       if (city) updates.city = city;
       if (state) updates.state = state;
       if (pincode) updates.pincode = pincode;
@@ -789,55 +979,37 @@ r.put('/schools/:id', async (req: AuthRequest, res) => {
       updates.updatedAt = new Date().toISOString();
 
       await collections.schools().doc(id).set(updates, { merge: true });
-      await logSystemAudit(
-        req.user || { id: 'super-admin' },
-        'UPDATE_SCHOOL',
-        'SCHOOL',
-        id,
-        updates,
-        id,
-        name || id
-      );
-      return res.json({ id, ...updates, message: 'School updated successfully' });
     } catch (e: any) {
       console.warn('[Firestore] Update school failed:', e.message);
     }
   }
 
-  try {
-    const q = await pool.query(
-      `UPDATE schools SET 
-        name=COALESCE($1, name), 
-        code=COALESCE($2, code), 
-        enquiry_number=COALESCE($3, enquiry_number), 
-        status=COALESCE($4, status) 
-       WHERE id=$5 RETURNING *`,
-      [name, code ? code.toUpperCase() : null, enquiryNumber || phone, status, id]
-    );
-    if (q.rowCount) {
-      await logSystemAudit(
-        req.user || { id: 'super-admin' },
-        'UPDATE_SCHOOL',
-        'SCHOOL',
-        id,
-        { name, code, status },
-        id,
-        name || id
-      );
-      return res.json(q.rows[0]);
-    }
-  } catch {}
-
-  const s = demoSchools.find(x => x.id === id);
+  // 3. In-memory demoSchools update
+  const s = demoSchools.find(x => x.id === id || x.code === id);
   if (s) {
     if (name) s.name = name;
     if (code) s.code = code.toUpperCase();
     if (enquiryNumber) s.enquiry_number = enquiryNumber;
-    if (status) s.status = status;
-    return res.json(s);
+    if (phone) s.phone = phone;
+    if (email) s.email = email;
+    if (fullAddress) s.address = fullAddress;
+    if (status) {
+      s.status = status;
+      s.computed_status = status;
+    }
   }
 
-  res.json({ id, message: 'School updated' });
+  await logSystemAudit(
+    req.user || { id: 'super-admin' },
+    'UPDATE_SCHOOL',
+    'SCHOOL',
+    id,
+    { name, code, status },
+    id,
+    name || id
+  );
+
+  return res.json(pgResult || s || { id, message: 'School updated successfully' });
 });
 
 async function handleSchoolStatus(req: AuthRequest, res: any) {
@@ -847,27 +1019,34 @@ async function handleSchoolStatus(req: AuthRequest, res: any) {
     return res.status(400).json({ message: 'Status must be ACTIVE or SUSPENDED' });
   }
 
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `UPDATE schools SET status = $1, updated_at = NOW() WHERE id::text = $2 OR LOWER(code) = LOWER($2) RETURNING id, status, name`,
+        [status, id]
+      );
+      if (q.rowCount) {
+        await logSystemAudit(req.user || { id: 'super-admin' }, 'UPDATE_SCHOOL_STATUS', 'SCHOOL', id, { status }, id, q.rows[0].name);
+      }
+    } catch (err: any) {
+      console.warn('[SuperAdmin] Postgres update status error:', err.message);
+    }
+  }
+
   if (isFirebaseConfigured()) {
     try {
       await collections.schools().doc(id).set({ status, updatedAt: new Date().toISOString() }, { merge: true });
     } catch {}
   }
 
-  try {
-    const q = await pool.query(`UPDATE schools SET status=$1 WHERE id=$2 RETURNING id, status`, [status, id]);
-    if (q.rowCount) {
-      await logSystemAudit(req.user || { id: 'super-admin' }, 'UPDATE_SCHOOL_STATUS', 'SCHOOL', id, { status }, id);
-      return res.json(q.rows[0]);
-    }
-  } catch {}
-
-  const s = demoSchools.find(x => x.id === id);
+  const s = demoSchools.find(x => x.id === id || x.code === id);
   if (s) {
     s.status = status;
     s.computed_status = status;
+    await logSystemAudit(req.user || { id: 'super-admin' }, 'UPDATE_SCHOOL_STATUS', 'SCHOOL', id, { status }, id, s.name);
   }
-  await logSystemAudit(req.user || { id: 'super-admin' }, 'UPDATE_SCHOOL_STATUS', 'SCHOOL', id, { status }, id, s?.name || 'School');
-  return res.json({ id, status });
+
+  return res.json({ id, status, message: `School status updated to ${status}` });
 }
 
 r.patch('/schools/:id/status', handleSchoolStatus);
@@ -926,24 +1105,24 @@ r.post('/schools/:id/renew', async (req: AuthRequest, res) => {
     client = await pool.connect();
     await client.query('BEGIN');
     const cur = await client.query(`SELECT ss.*,sp.price_monthly FROM school_subscriptions ss JOIN subscription_plans sp ON sp.id=ss.plan_id
-      WHERE ss.school_id=$1 ORDER BY ss.end_date DESC NULLS LAST LIMIT 1`, [id]);
+      WHERE ss.school_id::text=$1 ORDER BY ss.end_date DESC NULLS LAST LIMIT 1`, [id]);
     if (!cur.rowCount) throw Object.assign(new Error('No subscription found for school'), { status: 404 });
     const old = cur.rows[0];
     const base = new Date(Math.max(Date.now(), new Date(old.end_date).getTime()));
     base.setUTCDate(base.getUTCDate() + Math.max(1, Number(days)));
     const end = base.toISOString().slice(0, 10);
     const sub = await client.query(`INSERT INTO school_subscriptions(school_id,plan_id,start_date,end_date,status) VALUES($1,$2,GREATEST(CURRENT_DATE,$3::date),$4,'ACTIVE') RETURNING id`,
-      [id, old.plan_id, old.end_date, end]);
+      [old.school_id, old.plan_id, old.end_date, end]);
     await client.query(`INSERT INTO payments(school_id,subscription_id,provider,provider_order_id,amount,currency,status,paid_at)
       VALUES($1,$2,'MOCK',$3,$4,'INR','PAID',NOW())`,
-      [id, sub.rows[0].id, 'MOCK-' + Date.now(), Number(amount || old.price_monthly || 0)]);
-    await client.query(`UPDATE schools SET status='ACTIVE' WHERE id=$1`, [id]);
+      [old.school_id, sub.rows[0].id, 'MOCK-' + Date.now(), Number(amount || old.price_monthly || 0)]);
+    await client.query(`UPDATE schools SET status='ACTIVE' WHERE id=$1`, [old.school_id]);
     await client.query('COMMIT');
     await logSystemAudit(req.user || { id: 'super-admin' }, 'RENEW_SUBSCRIPTION', 'SUBSCRIPTION', id, { days, amount, end });
     return res.json({ message: 'Subscription renewed', endDate: end });
   } catch (_e: any) {
     if (client) { try { await client.query('ROLLBACK') } catch {} }
-    const s = demoSchools.find(x => x.id === id);
+    const s = demoSchools.find(x => x.id === id || x.code === id);
     const end = endDate(new Date().toISOString().slice(0, 10), days);
     if (s) {
       s.end_date = end;
@@ -973,8 +1152,24 @@ r.delete('/schools/:id', async (req: AuthRequest, res) => {
   const id = String(req.params.id);
   let schoolName = 'School';
   let schoolCode = '';
+  let resolvedId: string = id;
 
-  // 1. Resolve school metadata for logs and lookup
+  // 1. Resolve school metadata from PostgreSQL
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        'SELECT id, name, code FROM schools WHERE id::text = $1 OR LOWER(code) = LOWER($1) LIMIT 1',
+        [id]
+      );
+      if (q.rowCount && q.rows.length > 0) {
+        resolvedId = String(q.rows[0].id);
+        schoolName = q.rows[0].name;
+        schoolCode = q.rows[0].code;
+      }
+    } catch {}
+  }
+
+  // Fallback to Firestore / demo for metadata
   if (isFirebaseConfigured()) {
     try {
       const doc = await collections.schools().doc(id).get();
@@ -992,48 +1187,42 @@ r.delete('/schools/:id', async (req: AuthRequest, res) => {
     schoolCode = memMatch.code || schoolCode;
   }
 
-  try {
-    const q = await pool.query('SELECT name, code FROM schools WHERE id = $1 OR code = $2', [id.length === 36 ? id : null, id]);
-    if (q.rowCount) {
-      schoolName = q.rows[0].name || schoolName;
-      schoolCode = q.rows[0].code || schoolCode;
+  // 2. Cascade delete from PostgreSQL
+  if (isPostgresConfigured) {
+    try {
+      await pool.query(`DELETE FROM attendance_records WHERE attendance_session_id IN (SELECT id FROM attendance_sessions WHERE school_id = $1)`, [resolvedId]);
+      await pool.query(`DELETE FROM attendance_sessions WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM class_routines WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM teacher_profiles WHERE user_id IN (SELECT id FROM users WHERE school_id = $1)`, [resolvedId]);
+      await pool.query(`DELETE FROM sms_logs WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM payments WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM school_subscriptions WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM students WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM sections WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM classes WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM subjects WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM academic_years WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM users WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM audit_logs WHERE school_id = $1`, [resolvedId]);
+      await pool.query(`DELETE FROM schools WHERE id = $1`, [resolvedId]);
+    } catch (err: any) {
+      console.warn('[superAdmin] Postgres deletion non-fatal warning:', err.message);
     }
-  } catch {}
+  }
 
-  // 2. Cascade delete from Firebase Cloud Firestore
+  // 3. Cascade delete from Firebase Cloud Firestore
   try {
     await deleteSchoolFromFirestore(id, schoolCode);
+    if (resolvedId !== id) {
+      await deleteSchoolFromFirestore(resolvedId, schoolCode);
+    }
   } catch (err: any) {
     console.warn('[superAdmin] Error deleting from Firestore:', err.message);
   }
 
-  // 3. Cascade delete from PostgreSQL
-  try {
-    if (id.length === 36 && id.includes('-')) {
-      await pool.query(`DELETE FROM attendance_records WHERE attendance_session_id IN (SELECT id FROM attendance_sessions WHERE school_id = $1)`, [id]);
-      await pool.query(`DELETE FROM attendance_sessions WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM class_routines WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM teacher_profiles WHERE user_id IN (SELECT id FROM users WHERE school_id = $1)`, [id]);
-      await pool.query(`DELETE FROM sms_logs WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM payments WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM school_subscriptions WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM students WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM sections WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM classes WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM subjects WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM users WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM audit_logs WHERE school_id = $1`, [id]);
-      await pool.query(`DELETE FROM schools WHERE id = $1`, [id]);
-    } else if (schoolCode) {
-      await pool.query(`DELETE FROM schools WHERE code = $1`, [schoolCode]);
-    }
-  } catch (err: any) {
-    console.warn('[superAdmin] Postgres deletion non-fatal warning:', err.message);
-  }
-
   // 4. Remove from in-memory cache
   for (let i = demoSchools.length - 1; i >= 0; i--) {
-    if (demoSchools[i].id === id || (schoolCode && demoSchools[i].code === schoolCode)) {
+    if (demoSchools[i].id === id || demoSchools[i].id === resolvedId || (schoolCode && demoSchools[i].code === schoolCode)) {
       demoSchools.splice(i, 1);
     }
   }
@@ -1043,11 +1232,12 @@ r.delete('/schools/:id', async (req: AuthRequest, res) => {
     req.user || { id: 'super-admin' },
     'DELETE_SCHOOL',
     'SCHOOL',
-    id,
-    { id, name: schoolName, code: schoolCode },
-    id,
+    resolvedId,
+    { id: resolvedId, name: schoolName, code: schoolCode },
+    resolvedId,
     schoolName
   );
+
 
   return res.json({
     success: true,
