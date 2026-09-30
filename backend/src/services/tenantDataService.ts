@@ -30,8 +30,19 @@ async function countTenantCollection(
   extraFilter?: { field: string; op: WhereFilterOp; value: any },
   secondaryFallbackFn?: () => Promise<number>
 ): Promise<number> {
+  // 1. PRIMARY: Execute directly against Supabase PostgreSQL if available
+  if (secondaryFallbackFn && DualDatabaseService.isPrimaryAvailable() && schoolId) {
+    try {
+      const count = await secondaryFallbackFn();
+      if (count > 0 || !isFirebaseConfigured()) return count;
+    } catch (err: any) {
+      console.warn(`[TenantDataService] Supabase count query warning for school ${schoolId}:`, err.message);
+    }
+  }
+
+  // 2. SECONDARY: Fall back to Cloud Firestore
   if (!isFirebaseConfigured() || !schoolId) {
-    if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
+    if (secondaryFallbackFn && DualDatabaseService.isPrimaryAvailable()) {
       return await secondaryFallbackFn();
     }
     return 0;
@@ -53,23 +64,7 @@ async function countTenantCollection(
 
     return count;
   } catch (err: any) {
-    const isQuota = err?.message && (
-      err.message.includes('Quota exceeded') ||
-      err.message.includes('RESOURCE_EXHAUSTED') ||
-      err.code === 8
-    );
-
-    if (isQuota) {
-      if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
-        console.warn(`[DualDB Failover] Firestore quota exceeded during count for school ${schoolId}. Serving live data from Supabase...`);
-        return await secondaryFallbackFn();
-      }
-      console.error(`[TenantDataService] Firestore quota exceeded during count query for school ${schoolId}`);
-      throw err;
-    }
-
-    console.warn(`[TenantDataService] Count query warning for school ${schoolId}:`, err.message);
-    if (secondaryFallbackFn && DualDatabaseService.isSecondaryAvailable()) {
+    if (secondaryFallbackFn && DualDatabaseService.isPrimaryAvailable()) {
       return await secondaryFallbackFn();
     }
     return 0;
@@ -89,7 +84,22 @@ export async function getTenantTodayAttendance(schoolId: string, targetDate?: st
     classBreakdown: [] as any[]
   };
 
-  if (!isFirebaseConfigured() || !schoolId) return result;
+  if (!schoolId) return result;
+
+  // 1. PRIMARY: Query Supabase PostgreSQL attendance_sessions first
+  if (DualDatabaseService.isPrimaryAvailable()) {
+    try {
+      const sbAttendance = await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr);
+      if (sbAttendance && sbAttendance.total > 0) {
+        return sbAttendance;
+      }
+    } catch (err: any) {
+      console.warn(`[TenantDataService] Supabase attendance query warning:`, err.message);
+    }
+  }
+
+  // 2. SECONDARY: Fall back to Cloud Firestore
+  if (!isFirebaseConfigured()) return result;
 
   try {
     // 1. Query attendance_sessions scoped by school_id and attendance_date
@@ -237,21 +247,22 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     return cached.data;
   }
 
-  // 1. Resolve authentic school record from Firestore (or Supabase failover)
-  let fsSchool = await getFirestoreSchoolById(schoolId).catch(() => null);
+  // 1. Resolve authentic school record from Supabase (or Firestore fallback)
+  let sbSchool = await DualDatabaseService.getSchoolFromSupabase(schoolId);
+  let fsSchool = !sbSchool ? await getFirestoreSchoolById(schoolId).catch(() => null) : null;
   const schoolProfile = {
     id: schoolId,
-    name: fsSchool?.name || userSchoolName || 'Institutional Campus',
-    code: fsSchool?.code || userSchoolCode || 'SCH',
-    status: fsSchool?.status || 'ACTIVE',
-    enquiry_number: fsSchool?.enquiry_number || fsSchool?.phone || fsSchool?.enquiryNumber || 'Not configured',
-    address: fsSchool?.address || 'Institutional Campus',
+    name: sbSchool?.name || fsSchool?.name || userSchoolName || 'Institutional Campus',
+    code: sbSchool?.code || fsSchool?.code || userSchoolCode || 'SCH',
+    status: sbSchool?.status || fsSchool?.status || 'ACTIVE',
+    enquiry_number: sbSchool?.enquiry_number || fsSchool?.enquiry_number || fsSchool?.phone || fsSchool?.enquiryNumber || 'Not configured',
+    address: sbSchool?.address || fsSchool?.address || 'Institutional Campus',
     city: fsSchool?.city || '',
     state: fsSchool?.state || '',
-    affiliation: fsSchool?.affiliation || (fsSchool?.code ? `${fsSchool.code} · Affiliated` : 'Affiliated')
+    affiliation: sbSchool?.code ? `${sbSchool.code} · Affiliated` : (fsSchool?.affiliation || 'Affiliated')
   };
 
-  // 2. Perform tenant-scoped aggregation counts concurrently with Supabase failover
+  // 2. Perform tenant-scoped aggregation counts concurrently with Supabase primary
   const [
     studentCount,
     teacherCount,
@@ -259,7 +270,7 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     sectionCount,
     pendingCorrectionsCount,
     todayAttendance,
-    activeAcademicYearSnap,
+    activeAcademicYear,
     announcementsSnap
   ] = await Promise.all([
     countTenantCollection(
@@ -280,10 +291,15 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
       undefined,
       () => DualDatabaseService.getClassCountFromSupabase(schoolId)
     ),
-    countTenantCollection(collections.sections, schoolId),
+    countTenantCollection(
+      collections.sections,
+      schoolId,
+      undefined,
+      () => DualDatabaseService.getSectionCountFromSupabase(schoolId)
+    ),
     countTenantCollection(collections.attendanceCorrections, schoolId, { field: 'status', op: '==', value: 'PENDING' }),
     getTenantTodayAttendance(schoolId),
-    collections.academicYears().where('school_id', '==', schoolId).where('is_active', '==', true).limit(1).get().catch(() => null),
+    DualDatabaseService.getActiveAcademicYearFromSupabase(schoolId),
     collections.announcements().where('school_id', '==', schoolId).orderBy('created_at', 'desc').limit(4).get().catch(() => null)
   ]);
 
@@ -315,10 +331,14 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
   }
 
   // 4. Resolve Active Academic Year
-  let activeYear: any = null;
-  if (activeAcademicYearSnap && !activeAcademicYearSnap.empty) {
-    const d = activeAcademicYearSnap.docs[0];
-    activeYear = { id: d.id, ...d.data() };
+  let activeYear: any = activeAcademicYear || null;
+  if (!activeYear && isFirebaseConfigured()) {
+    try {
+      const snap = await collections.academicYears().where('school_id', '==', schoolId).where('is_active', '==', true).limit(1).get();
+      if (!snap.empty) {
+        activeYear = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      }
+    } catch {}
   }
 
   // 5. Resolve Announcements

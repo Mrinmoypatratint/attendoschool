@@ -11,6 +11,7 @@ import {
   deleteTimetableEntryFromFirestore,
   clearTimetableEntriesFromFirestore
 } from '../services/firestoreSync';
+import { pool, isPostgresConfigured } from '../db';
 
 const router = Router();
 const u = (r: Request) => (r as any).user;
@@ -274,6 +275,13 @@ router.post('/periods/template', requireAdmin, async (req, res) => {
 
 router.delete('/periods/clear', requireAdmin, async (req, res) => {
   const sid = u(req)?.schoolId;
+  if (isPostgresConfigured && sid) {
+    try {
+      await pool.query('DELETE FROM timetable_periods WHERE school_id = $1', [sid]);
+    } catch (err: any) {
+      console.warn('[Timetable] Error clearing periods in Supabase:', err.message);
+    }
+  }
   for (let i = memPeriods.length - 1; i >= 0; i--) {
     if (memPeriods[i].school_id && isSameSchool(memPeriods[i].school_id, sid)) {
       memPeriods.splice(i, 1);
@@ -285,6 +293,14 @@ router.delete('/periods/clear', requireAdmin, async (req, res) => {
 
 router.delete('/periods/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
+  const sid = u(req)?.schoolId;
+  if (isPostgresConfigured) {
+    try {
+      await pool.query('DELETE FROM timetable_periods WHERE id::text = $1', [id]);
+    } catch (err: any) {
+      console.warn('[Timetable] Error deleting period in Supabase:', err.message);
+    }
+  }
   const idx = memPeriods.findIndex(p => p.id === id);
   if (idx >= 0) memPeriods.splice(idx, 1);
   await deleteTimetablePeriodFromFirestore(id);
@@ -444,6 +460,13 @@ router.post('/entries', requireAdmin, async (req, res) => {
 
 router.delete('/entries/clear', requireAdmin, async (req, res) => {
   const sid = u(req)?.schoolId;
+  if (isPostgresConfigured && sid) {
+    try {
+      await pool.query('DELETE FROM timetable_entries WHERE school_id = $1', [sid]);
+    } catch (err: any) {
+      console.warn('[Timetable] Error clearing entries in Supabase:', err.message);
+    }
+  }
   for (let i = memEntries.length - 1; i >= 0; i--) {
     if (memEntries[i].school_id && isSameSchool(memEntries[i].school_id, sid)) {
       memEntries.splice(i, 1);
@@ -455,6 +478,14 @@ router.delete('/entries/clear', requireAdmin, async (req, res) => {
 
 router.delete('/entries/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
+  const sid = u(req)?.schoolId;
+  if (isPostgresConfigured) {
+    try {
+      await pool.query('DELETE FROM timetable_entries WHERE id::text = $1', [id]);
+    } catch (err: any) {
+      console.warn('[Timetable] Error deleting entry in Supabase:', err.message);
+    }
+  }
   const idx = memEntries.findIndex(e => e.id === id);
   if (idx >= 0) memEntries.splice(idx, 1);
   await deleteTimetableEntryFromFirestore(id);

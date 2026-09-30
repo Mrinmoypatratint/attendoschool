@@ -1,65 +1,89 @@
+import crypto from 'crypto';
 import { pool, isPostgresConfigured } from '../db';
 import { env } from '../config/env';
 
 /**
  * Dual Database Synchronization & Quota Failover Service
  * 
- * Architecture:
- * - PRIMARY: Firebase Cloud Firestore (Real-time updates, standard read/write)
- * - SECONDARY: Supabase / PostgreSQL (Automated continuous mirror, unlimited reads/writes, failover engine)
- * 
- * When Firebase Cloud Firestore encounters daily quota limits (RESOURCE_EXHAUSTED / 50k reads),
- * the failover methods execute queries against Supabase PostgreSQL so the school platform stays 100% online.
+ * Architecture (PRIMARY: Supabase / PostgreSQL):
+ * - PRIMARY: Supabase PostgreSQL (Relational integrity, ACID transactions, primary source of truth)
+ * - SECONDARY: Firebase Cloud Firestore (Optional mirror & real-time client sync)
  */
 
 export class DualDatabaseService {
   /**
-   * Check if Supabase / PostgreSQL secondary store is active
+   * Check if Supabase / PostgreSQL primary store is active
    */
-  static isSecondaryAvailable(): boolean {
-    return isPostgresConfigured && env.enableDualDbSync;
+  static isPrimaryAvailable(): boolean {
+    return isPostgresConfigured;
   }
 
   /**
-   * Safe execution wrapper: Tries Primary (Firebase), falls back to Secondary (Supabase) on quota error
+   * Check if Supabase / PostgreSQL store is active (backward compatible alias)
+   */
+  static isSecondaryAvailable(): boolean {
+    return isPostgresConfigured;
+  }
+
+  /**
+   * Safe execution wrapper: Tries Primary (Supabase), falls back to Secondary (Firebase) if needed
    */
   static async executeWithFailover<T>(
     primaryFn: () => Promise<T>,
     secondaryFn: () => Promise<T>,
     operationName: string
   ): Promise<T> {
-    try {
-      return await primaryFn();
-    } catch (primaryErr: any) {
-      const isQuotaError = primaryErr?.message && (
-        primaryErr.message.includes('Quota exceeded') ||
-        primaryErr.message.includes('RESOURCE_EXHAUSTED') ||
-        primaryErr.code === 8
-      );
-
-      if (isQuotaError && this.isSecondaryAvailable()) {
-        console.warn(`[DualDB Failover] Primary Firebase quota exceeded during "${operationName}". Seamlessly falling back to Supabase PostgreSQL...`);
+    if (this.isPrimaryAvailable()) {
+      try {
+        return await secondaryFn(); // Run Supabase function as primary
+      } catch (pgErr: any) {
+        console.warn(`[DualDB] Supabase primary query warning for "${operationName}":`, pgErr.message);
         try {
-          return await secondaryFn();
-        } catch (secondaryErr: any) {
-          console.error(`[DualDB Failover] Secondary Supabase execution failed for "${operationName}":`, secondaryErr.message);
-          throw primaryErr; // Re-throw primary if secondary also fails
+          return await primaryFn(); // Fall back to secondary
+        } catch (secErr: any) {
+          throw pgErr;
         }
       }
-
-      throw primaryErr;
     }
+
+    // Supabase not configured: run Firebase directly
+    return await primaryFn();
   }
 
   /**
    * Mirror student record to Supabase
    */
   static async syncStudentToSupabase(student: any): Promise<boolean> {
-    if (!this.isSecondaryAvailable()) return false;
+    if (!isPostgresConfigured) return false;
     try {
+      const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val));
+      let id = student.id || student._id;
+      if (!id || !isUuid(id)) {
+        id = crypto.randomUUID();
+      }
+      const schoolId = student.school_id || student.schoolId;
+      if (!schoolId || !isUuid(schoolId)) return false;
+
+      let classId = student.class_id || student.classId || null;
+      let sectionId = student.section_id || student.sectionId || null;
+
+      if (classId && !isUuid(classId)) {
+        const cNum = parseInt(String(classId).replace(/\D/g, ''), 10) || 10;
+        const cRes = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cNum]);
+        classId = cRes.rows[0]?.id || null;
+      }
+
+      if (sectionId && !isUuid(sectionId) && classId) {
+        const sName = String(student.section_name || student.sectionName || 'A').replace(/section\s*/i, '').trim() || 'A';
+        const sRes = await pool.query('SELECT id FROM sections WHERE school_id = $1 AND class_id = $2 AND LOWER(name) = LOWER($3) LIMIT 1', [schoolId, classId, sName]);
+        sectionId = sRes.rows[0]?.id || null;
+      }
+
       const query = `
-        INSERT INTO students (id, school_id, class_id, section_id, roll_number, admission_number, name, parent_name, parent_sms_number, is_active, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+        INSERT INTO students (
+          id, school_id, class_id, section_id, roll_number, admission_number,
+          name, parent_name, parent_sms_number, is_active, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
         ON CONFLICT (id) DO UPDATE SET
           roll_number = EXCLUDED.roll_number,
           admission_number = EXCLUDED.admission_number,
@@ -69,15 +93,12 @@ export class DualDatabaseService {
           is_active = EXCLUDED.is_active,
           updated_at = NOW();
       `;
-      const id = student.id || student._id;
-      const schoolId = student.school_id || student.schoolId;
-      if (!id || !schoolId) return false;
 
       await pool.query(query, [
         id,
         schoolId,
-        student.class_id || student.classId || null,
-        student.section_id || student.sectionId || null,
+        classId,
+        sectionId,
         String(student.roll_number || student.rollNumber || '0'),
         student.admission_number || student.admissionNumber || '',
         student.name || student.fullName || '',
@@ -96,8 +117,54 @@ export class DualDatabaseService {
    * Mirror attendance session & records to Supabase
    */
   static async syncAttendanceToSupabase(session: any, records: any[]): Promise<boolean> {
-    if (!this.isSecondaryAvailable()) return false;
+    if (!isPostgresConfigured) return false;
     try {
+      const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val));
+      
+      let sessionId = session.id;
+      if (!sessionId || !isUuid(sessionId)) {
+        sessionId = crypto.randomUUID();
+      }
+
+      const schoolId = session.school_id || session.schoolId;
+      if (!schoolId || !isUuid(schoolId)) return false;
+
+      let classId = session.class_id || session.classId;
+      let classNumber = Number(session.class_number ?? session.classNumber ?? 10);
+      if (!classId || !isUuid(classId)) {
+        const cRes = await pool.query('SELECT id, class_number FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, classNumber]);
+        if (cRes.rowCount) {
+          classId = cRes.rows[0].id;
+        } else {
+          const ins = await pool.query('INSERT INTO classes (school_id, class_number) VALUES ($1, $2) ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id', [schoolId, classNumber]);
+          classId = ins.rows[0]?.id;
+        }
+      }
+
+      let sectionId = session.section_id || session.sectionId;
+      let sectionName = String(session.section_name || session.sectionName || 'A').replace(/section\s*/i, '').trim() || 'A';
+      if (!sectionId || !isUuid(sectionId)) {
+        const sRes = await pool.query('SELECT id FROM sections WHERE school_id = $1 AND class_id = $2 AND LOWER(name) = LOWER($3) LIMIT 1', [schoolId, classId, sectionName]);
+        if (sRes.rowCount) {
+          sectionId = sRes.rows[0].id;
+        } else {
+          const ins = await pool.query('INSERT INTO sections (school_id, class_id, name) VALUES ($1, $2, $3) ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id', [schoolId, classId, sectionName]);
+          sectionId = ins.rows[0]?.id;
+        }
+      }
+
+      let teacherId = session.teacher_id || session.teacherId;
+      if (!teacherId || !isUuid(teacherId)) {
+        const tRes = await pool.query(`SELECT id FROM users WHERE school_id = $1 AND role = 'TEACHER' LIMIT 1`, [schoolId]);
+        teacherId = tRes.rows[0]?.id || '00000000-0000-0000-0000-000000000021';
+      }
+
+      let subjectId = session.subject_id || session.subjectId || null;
+      if (subjectId && !isUuid(subjectId)) {
+        const subRes = await pool.query('SELECT id FROM subjects WHERE school_id = $1 LIMIT 1', [schoolId]);
+        subjectId = subRes.rows[0]?.id || null;
+      }
+
       const sessQuery = `
         INSERT INTO attendance_sessions (
           id, school_id, class_id, section_id, subject_id, teacher_id,
@@ -112,17 +179,17 @@ export class DualDatabaseService {
       `;
 
       await pool.query(sessQuery, [
-        session.id,
-        session.school_id || session.schoolId,
-        session.class_id || session.classId,
-        session.section_id || session.sectionId,
-        session.subject_id || session.subjectId || null,
-        session.teacher_id || session.teacherId,
-        session.attendance_date || session.attendanceDate,
+        sessionId,
+        schoolId,
+        classId,
+        sectionId,
+        subjectId,
+        teacherId,
+        session.attendance_date || session.attendanceDate || new Date().toISOString().slice(0, 10),
         session.start_time || '09:00:00',
         session.end_time || '10:00:00',
-        session.class_number || session.classNumber || 10,
-        session.section_name || session.sectionName || 'A',
+        classNumber,
+        sectionName,
         session.present_count || 0,
         session.absent_count || 0,
         session.total_count || 0
@@ -130,20 +197,47 @@ export class DualDatabaseService {
 
       if (records && records.length > 0) {
         for (const r of records) {
+          const rawStudentId = r.student_id || r.studentId;
+          if (!rawStudentId) continue;
+
+          let studentId = rawStudentId;
+          if (!isUuid(studentId)) {
+            // Find student by roll number or name in postgres
+            const stRes = await pool.query(
+              'SELECT id FROM students WHERE school_id = $1 AND (roll_number = $2 OR name = $3) LIMIT 1',
+              [schoolId, String(r.rollNumber || r.roll_number || rawStudentId), String(r.studentName || r.name || '')]
+            );
+            if (stRes.rowCount) {
+              studentId = stRes.rows[0].id;
+            } else {
+              // Ensure student exists in students table
+              const newUuid = crypto.randomUUID();
+              await pool.query(`
+                INSERT INTO students (id, school_id, class_id, section_id, roll_number, name, parent_sms_number, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+                ON CONFLICT (id) DO NOTHING
+              `, [newUuid, schoolId, classId, sectionId, String(r.rollNumber || r.roll_number || '1'), String(r.studentName || r.name || 'Student'), '+919876543210']);
+              studentId = newUuid;
+            }
+          }
+
+          const isPres = r.is_present ?? (r.status === 'PRESENT' || r.status === 'LATE');
+          const status = r.status || (isPres ? 'PRESENT' : 'ABSENT');
+
           await pool.query(`
-            INSERT INTO attendance_records (id, attendance_session_id, student_id, is_present, status, remarks, marked_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            INSERT INTO attendance_records (
+              id, attendance_session_id, student_id, is_present, status, remarks, marked_at
+            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW())
             ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET
               is_present = EXCLUDED.is_present,
               status = EXCLUDED.status,
               remarks = EXCLUDED.remarks,
               marked_at = NOW();
           `, [
-            r.id || `${session.id}_${r.student_id || r.studentId}`,
-            session.id,
-            r.student_id || r.studentId,
-            r.is_present ?? (r.status === 'PRESENT'),
-            r.status || (r.is_present ? 'PRESENT' : 'ABSENT'),
+            sessionId,
+            studentId,
+            isPres,
+            status,
             r.remarks || ''
           ]);
         }
@@ -156,10 +250,10 @@ export class DualDatabaseService {
   }
 
   /**
-   * Supabase Fallback: Get Student Count
+   * Supabase: Get Student Count
    */
   static async getStudentCountFromSupabase(schoolId: string): Promise<number> {
-    if (!isPostgresConfigured) return 0;
+    if (!isPostgresConfigured || !schoolId) return 0;
     try {
       const res = await pool.query(
         'SELECT COUNT(*)::int as count FROM students WHERE school_id = $1 AND is_active = true',
@@ -167,16 +261,16 @@ export class DualDatabaseService {
       );
       return res.rows[0]?.count || 0;
     } catch (err: any) {
-      console.warn('[DualDB Fallback] Supabase student count failed:', err.message);
+      console.warn('[DualDB] Supabase student count query warning:', err.message);
       return 0;
     }
   }
 
   /**
-   * Supabase Fallback: Get Teacher Count
+   * Supabase: Get Teacher Count
    */
   static async getTeacherCountFromSupabase(schoolId: string): Promise<number> {
-    if (!isPostgresConfigured) return 0;
+    if (!isPostgresConfigured || !schoolId) return 0;
     try {
       const res = await pool.query(
         "SELECT COUNT(*)::int as count FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true",
@@ -184,16 +278,16 @@ export class DualDatabaseService {
       );
       return res.rows[0]?.count || 0;
     } catch (err: any) {
-      console.warn('[DualDB Fallback] Supabase teacher count failed:', err.message);
+      console.warn('[DualDB] Supabase teacher count query warning:', err.message);
       return 0;
     }
   }
 
   /**
-   * Supabase Fallback: Get Class Count
+   * Supabase: Get Class Count
    */
   static async getClassCountFromSupabase(schoolId: string): Promise<number> {
-    if (!isPostgresConfigured) return 0;
+    if (!isPostgresConfigured || !schoolId) return 0;
     try {
       const res = await pool.query(
         'SELECT COUNT(*)::int as count FROM classes WHERE school_id = $1',
@@ -201,15 +295,66 @@ export class DualDatabaseService {
       );
       return res.rows[0]?.count || 0;
     } catch (err: any) {
-      console.warn('[DualDB Fallback] Supabase class count failed:', err.message);
+      console.warn('[DualDB] Supabase class count query warning:', err.message);
       return 0;
     }
   }
 
   /**
-   * Supabase Fallback: Get Today's Attendance Breakdown
+   * Supabase: Get Section Count
    */
-  static async getTodayAttendanceFromSupabase(schoolId: string, dateStr: string) {
+  static async getSectionCountFromSupabase(schoolId: string): Promise<number> {
+    if (!isPostgresConfigured || !schoolId) return 0;
+    try {
+      const res = await pool.query(
+        'SELECT COUNT(*)::int as count FROM sections WHERE school_id = $1',
+        [schoolId]
+      );
+      return res.rows[0]?.count || 0;
+    } catch (err: any) {
+      console.warn('[DualDB] Supabase section count query warning:', err.message);
+      return 0;
+    }
+  }
+
+  /**
+   * Supabase: Get School Profile
+   */
+  static async getSchoolFromSupabase(schoolId: string) {
+    if (!isPostgresConfigured || !schoolId) return null;
+    try {
+      const res = await pool.query(
+        'SELECT id, name, code, status, enquiry_number, address, gstin, billing_address FROM schools WHERE id = $1',
+        [schoolId]
+      );
+      return res.rows[0] || null;
+    } catch (err: any) {
+      console.warn('[DualDB] Supabase school query warning:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Supabase: Get Active Academic Year
+   */
+  static async getActiveAcademicYearFromSupabase(schoolId: string) {
+    if (!isPostgresConfigured || !schoolId) return null;
+    try {
+      const res = await pool.query(
+        'SELECT id, name, start_date, end_date, is_active FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1',
+        [schoolId]
+      );
+      return res.rows[0] || null;
+    } catch (err: any) {
+      console.warn('[DualDB] Supabase academic year query warning:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Supabase: Get Today's Attendance Breakdown
+   */
+  static async getTodayAttendanceFromSupabase(schoolId: string, dateStr: string = new Date().toISOString().slice(0, 10)) {
     const result = {
       total: 0,
       present: 0,
@@ -217,7 +362,7 @@ export class DualDatabaseService {
       percentage: 0,
       classBreakdown: [] as any[]
     };
-    if (!isPostgresConfigured) return result;
+    if (!isPostgresConfigured || !schoolId) return result;
 
     try {
       const res = await pool.query(`
@@ -248,7 +393,7 @@ export class DualDatabaseService {
 
       return result;
     } catch (err: any) {
-      console.warn('[DualDB Fallback] Supabase today attendance query failed:', err.message);
+      console.warn('[DualDB] Supabase today attendance query warning:', err.message);
       return result;
     }
   }

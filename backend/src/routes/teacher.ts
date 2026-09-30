@@ -1,6 +1,7 @@
 import { queueAbsentNotifications } from '../services/notificationService';
 import { Router } from 'express';
-import { pool } from '../db';
+import crypto from 'crypto';
+import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms, sendSms } from '../services/smsService';
 import { demoStudents, demoClasses, demoSections, demoSubjects, demoTeachers } from './schoolData';
@@ -217,7 +218,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
     if (isTeacher) {
       q = await pool.query(
         `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
-                e.start_time, e.end_time, e.day_of_week, e.room_name AS room,
+                p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
          FROM timetable_entries e
@@ -228,13 +229,13 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
          WHERE e.school_id = $1 AND e.day_of_week = $2
            AND (e.teacher_id = $3 OR e.substitute_teacher_id = $3)
            AND e.status = 'PUBLISHED'
-         ORDER BY e.start_time, p.period_number`,
+         ORDER BY p.start_time, p.period_number`,
         [sid, targetDay, req.user!.id]
       );
     } else {
       q = await pool.query(
         `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
-                e.start_time, e.end_time, e.day_of_week, e.room_name AS room,
+                p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
          FROM timetable_entries e
@@ -244,7 +245,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
          LEFT JOIN subjects sub ON sub.id = e.subject_id
          WHERE e.school_id = $1 AND e.day_of_week = $2
            AND e.status = 'PUBLISHED'
-         ORDER BY e.start_time, p.period_number`,
+         ORDER BY p.start_time, p.period_number`,
         [sid, targetDay]
       );
     }
@@ -432,8 +433,8 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   const secId = String(req.params.sectionId || req.query.sectionId || req.query.section_id || req.query.section_name || '');
   const secParam = secId.toLowerCase();
 
-  // 1. Check PostgreSQL if enabled
-  if (process.env.USE_POSTGRES === 'true') {
+  // 1. PRIMARY: Check Supabase / PostgreSQL first
+  if (isPostgresConfigured) {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
@@ -592,10 +593,91 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
     return !cleanSecTarget || sSecId === cleanSecTarget || sSecName === cleanSecTarget || (cleanSecTarget && sSecName.includes(cleanSecTarget));
   };
 
-  // 1. Check in-memory first for latest live state
-  let session = memAttendanceSessions.find(matchSession);
+  let session: any = null;
 
-  // 2. If not found in memory, check Cloud Firestore
+  // 1. PRIMARY: Check Supabase / PostgreSQL first
+  if (isPostgresConfigured) {
+    try {
+      const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
+      const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secParam);
+      const classNum = parseInt(classParam.replace(/\D/g, ''), 10) || 10;
+      const cleanSec = secParam.replace(/section\s*/i, '').trim();
+
+      const q = await pool.query(
+        `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+         FROM attendance_sessions a
+         LEFT JOIN users u ON u.id = a.teacher_id
+         LEFT JOIN classes c ON c.id = a.class_id
+         LEFT JOIN sections s ON s.id = a.section_id
+         LEFT JOIN subjects sub ON sub.id = a.subject_id
+         WHERE a.school_id = $1 AND a.attendance_date = $2
+           AND (${isClassUuid ? 'a.class_id = $3' : 'FALSE'} OR c.class_number = $4)
+           AND (${isSecUuid ? 'a.section_id = $5' : 'TRUE'} OR LOWER(s.name) = LOWER($6) OR $6 = '')
+         ORDER BY a.submitted_at DESC NULLS LAST
+         LIMIT 1`,
+        [sid, dateParam, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000', cleanSec]
+      );
+      if (q.rowCount && q.rows[0]) {
+        const row = q.rows[0];
+        session = {
+          id: row.id,
+          school_id: row.school_id,
+          schoolId: row.school_id,
+          class_id: row.class_id,
+          classId: row.class_id,
+          class_number: row.class_number,
+          classNumber: row.class_number,
+          section_id: row.section_id,
+          sectionId: row.section_id,
+          section_name: row.section_name,
+          sectionName: row.section_name,
+          subject_id: row.subject_id,
+          subjectId: row.subject_id,
+          subject_name: row.subject_name || 'General',
+          subjectName: row.subject_name || 'General',
+          attendance_date: row.attendance_date,
+          attendanceDate: row.attendance_date,
+          start_time: row.start_time,
+          startTime: row.start_time,
+          end_time: row.end_time,
+          endTime: row.end_time,
+          teacher_id: row.teacher_id,
+          teacherId: row.teacher_id,
+          takenBy: row.teacher_id,
+          teacher_name: row.teacher_name || 'Faculty Member',
+          teacherName: row.teacher_name || 'Faculty Member',
+          total_count: row.total_count,
+          totalCount: row.total_count,
+          present_count: row.present_count,
+          presentCount: row.present_count,
+          absent_count: row.absent_count,
+          absentCount: row.absent_count,
+          left_early_count: row.left_early_count || 0,
+          leftEarlyCount: row.left_early_count || 0,
+          late_count: row.late_count || 0,
+          lateCount: row.late_count || 0,
+          is_reattendance: Boolean(row.is_reattendance),
+          isReattendance: Boolean(row.is_reattendance),
+          reattendance_count: row.reattendance_count || 0,
+          reattendanceCount: row.reattendance_count || 0,
+          last_modified_by: row.last_modified_by,
+          last_modified_name: row.last_modified_name,
+          last_modified_at: row.last_modified_at,
+          created_at: row.submitted_at || row.created_at,
+          createdAt: row.submitted_at || row.created_at
+        };
+      }
+    } catch (pgErr: any) {
+      console.warn('[TodayStatus] Supabase attendance session query warning:', pgErr.message);
+    }
+  }
+
+  // 2. Check in-memory store
+  if (!session) {
+    session = memAttendanceSessions.find(matchSession);
+  }
+
+  // 3. Fallback to Cloud Firestore
   if (!session && isFirebaseConfigured()) {
     try {
       const snap = await collections.attendanceSessions().get();
@@ -655,91 +737,14 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
     } catch {}
   }
 
-  // 3. Check PostgreSQL if enabled
-  if (!session && process.env.USE_POSTGRES === 'true') {
-    try {
-      const q = await pool.query(
-        `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
-         FROM attendance_sessions a
-         LEFT JOIN users u ON u.id = a.teacher_id
-         LEFT JOIN classes c ON c.id = a.class_id
-         LEFT JOIN sections s ON s.id = a.section_id
-         LEFT JOIN subjects sub ON sub.id = a.subject_id
-         WHERE a.school_id = $1 AND a.attendance_date = $2
-           AND (a.class_id::text = $3 OR c.class_number = $4)
-         LIMIT 1`,
-        [sid, dateParam, classParam, parseInt(classParam.replace(/\D/g, ''), 10) || 10]
-      );
-      if (q.rowCount && q.rows[0]) {
-        const row = q.rows[0];
-        session = {
-          id: row.id,
-          school_id: row.school_id,
-          schoolId: row.school_id,
-          class_id: row.class_id,
-          classId: row.class_id,
-          class_number: row.class_number,
-          classNumber: row.class_number,
-          section_id: row.section_id,
-          sectionId: row.section_id,
-          section_name: row.section_name,
-          sectionName: row.section_name,
-          subject_id: row.subject_id,
-          subjectId: row.subject_id,
-          subject_name: row.subject_name || 'General',
-          subjectName: row.subject_name || 'General',
-          attendance_date: row.attendance_date,
-          attendanceDate: row.attendance_date,
-          start_time: row.start_time,
-          startTime: row.start_time,
-          end_time: row.end_time,
-          endTime: row.end_time,
-          teacher_id: row.teacher_id,
-          teacherId: row.teacher_id,
-          takenBy: row.teacher_id,
-          teacher_name: row.teacher_name || 'Faculty Member',
-          teacherName: row.teacher_name || 'Faculty Member',
-          total_count: row.total_count,
-          totalCount: row.total_count,
-          present_count: row.present_count,
-          presentCount: row.present_count,
-          absent_count: row.absent_count,
-          absentCount: row.absent_count,
-          left_early_count: row.left_early_count || 0,
-          leftEarlyCount: row.left_early_count || 0,
-          late_count: row.late_count || 0,
-          lateCount: row.late_count || 0,
-          is_reattendance: Boolean(row.is_reattendance),
-          isReattendance: Boolean(row.is_reattendance),
-          reattendance_count: row.reattendance_count || 0,
-          reattendanceCount: row.reattendance_count || 0,
-          last_modified_by: row.last_modified_by,
-          last_modified_name: row.last_modified_name,
-          last_modified_at: row.last_modified_at,
-          created_at: row.submitted_at || row.created_at,
-          createdAt: row.submitted_at || row.created_at
-        };
-      }
-    } catch {}
-  }
-
   if (!session) {
     return res.json({ hasAttendance: false });
   }
 
-  // Find records for this session
-  let records: any[] = memAttendanceRecords.filter(r => r.sessionId === session.id);
-
-  if (records.length === 0 && isFirebaseConfigured()) {
-    try {
-      const snap = await collections.attendanceRecords().where('sessionId', '==', session.id).get();
-      if (!snap.empty) {
-        records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-    } catch {}
-  }
-
-  if (records.length === 0 && process.env.USE_POSTGRES === 'true') {
+  // Find records for this session:
+  // 1. PRIMARY: Query Supabase PostgreSQL first
+  let records: any[] = [];
+  if (isPostgresConfigured && session.id) {
     try {
       const q = await pool.query(
         `SELECT ar.*, st.name AS student_name, st.roll_number
@@ -749,7 +754,7 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
          ORDER BY st.roll_number`,
         [session.id]
       );
-      if (q.rowCount) {
+      if (q.rowCount && q.rows.length > 0) {
         records = q.rows.map(r => ({
           id: r.id,
           sessionId: session.id,
@@ -759,14 +764,29 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
           status: r.status,
           is_present: r.is_present,
           isPresent: r.is_present,
+          remarks: r.remarks,
           departurePeriod: r.departure_period,
           departureTime: r.departure_time,
           arrivalPeriod: r.arrival_period,
           arrivalTime: r.arrival_time,
           updatedByName: r.updated_by_name,
-          updatedAt: r.updated_at,
-          remarks: r.remarks
+          updatedAt: r.updated_at
         }));
+      }
+    } catch (pgErr: any) {
+      console.warn('[TodayStatus] Supabase attendance records query warning:', pgErr.message);
+    }
+  }
+
+  if (records.length === 0) {
+    records = memAttendanceRecords.filter(r => r.sessionId === session.id);
+  }
+
+  if (records.length === 0 && isFirebaseConfigured()) {
+    try {
+      const snap = await collections.attendanceRecords().where('sessionId', '==', session.id).get();
+      if (!snap.empty) {
+        records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       }
     } catch {}
   }
@@ -990,8 +1010,8 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
   syncAttendanceToFirestore(session, allSessionRecs).catch(() => {});
   syncAttendanceAuditLogToFirestore(auditLog).catch(() => {});
 
-  // 6. Sync to Postgres if enabled
-  if (process.env.USE_POSTGRES === 'true') {
+  // 6. Sync to Supabase PostgreSQL as PRIMARY
+  if (isPostgresConfigured) {
     pool.query(
       `UPDATE attendance_records
        SET status=$1, is_present=$2, remarks=$3, departure_period=$4, departure_time=$5,
@@ -1181,6 +1201,35 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
   };
   memAttendanceAuditLogs.unshift(auditLog);
 
+  // Sync to Supabase PostgreSQL as PRIMARY
+  if (isPostgresConfigured) {
+    try {
+      for (const r of records) {
+        const studentId = String(r.studentId || r.student_id || r.id);
+        const status = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
+        const isPres = status === 'PRESENT' || status === 'LATE';
+        await pool.query(
+          `UPDATE attendance_records
+           SET status=$1, is_present=$2, remarks=$3, departure_period=$4, departure_time=$5,
+               arrival_period=$6, arrival_time=$7, updated_by=$8, updated_by_name=$9, updated_at=NOW()
+           WHERE attendance_session_id=$10 AND student_id=$11`,
+          [status, isPres, r.remarks || '', r.departurePeriod || null, r.departureTime || null,
+           r.arrivalPeriod || null, r.arrivalTime || null, req.user!.id, userName, sessionId, studentId]
+        );
+      }
+      await pool.query(
+        `UPDATE attendance_sessions
+         SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
+             is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
+             last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
+         WHERE id=$7`,
+        [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+      );
+    } catch (pgErr: any) {
+      console.warn('[BatchReattendance] Supabase update warning:', pgErr.message);
+    }
+  }
+
   syncAttendanceToFirestore(session, allSessionRecs).catch(() => {});
   syncAttendanceAuditLogToFirestore(auditLog).catch(() => {});
 
@@ -1221,9 +1270,9 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   x.endTime = endTime;
 
   const presentSet = new Set<string>(Array.isArray(x.presentStudentIds) ? x.presentStudentIds.map(String) : []);
-  const usePostgres = process.env.USE_POSTGRES === 'true';
+  const usePostgres = isPostgresConfigured;
 
-  let sessionId = 'sess-' + Date.now();
+  let sessionId: string = crypto.randomUUID();
   let sessionSavedInDb = false;
   let isExistingSession = false;
   let finalRecords: any[] = [];
@@ -1231,7 +1280,7 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   let finalSecName = String(x.sectionName || x.section_name || 'A').replace(/section\s*/i, '').trim() || 'A';
   let finalSubName = String(x.subjectName || x.subject_name || 'General');
 
-  // 1. Try PostgreSQL if explicitly enabled
+  // 1. PRIMARY: Save directly into Supabase PostgreSQL
   if (usePostgres) {
     try {
       const client = await pool.connect();
@@ -1250,7 +1299,7 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
           const classNum = parseInt(String(classId).replace(/\D/g, ''), 10) || finalClassNum || 10;
           let cRes = await client.query('SELECT id, class_number FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, classNum]);
           if (!cRes.rowCount) {
-            cRes = await client.query('INSERT INTO classes(school_id, class_number) VALUES($1, $2) RETURNING id, class_number', [schoolId, classNum]).catch(() => ({ rowCount: 0, rows: [] } as any));
+            cRes = await client.query('INSERT INTO classes(school_id, class_number) VALUES($1, $2) ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id, class_number', [schoolId, classNum]).catch(() => ({ rowCount: 0, rows: [] } as any));
           }
           if (cRes.rows[0]?.id) {
             classId = cRes.rows[0].id;
@@ -1262,7 +1311,7 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId)) {
           let sRes = await client.query('SELECT id, name FROM sections WHERE school_id = $1 AND class_id = $2 AND LOWER(name) = LOWER($3) LIMIT 1', [schoolId, classId, finalSecName]);
           if (!sRes.rowCount) {
-            sRes = await client.query('INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3) RETURNING id, name', [schoolId, classId, finalSecName]).catch(() => ({ rowCount: 0, rows: [] } as any));
+            sRes = await client.query('INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3) ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id, name', [schoolId, classId, finalSecName]).catch(() => ({ rowCount: 0, rows: [] } as any));
           }
           if (sRes.rows[0]?.id) {
             sectionId = sRes.rows[0].id;
@@ -1290,26 +1339,64 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         } else {
           const session = (await client.query(
             `INSERT INTO attendance_sessions
-             (school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time,class_number,section_name,subject_name)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-            [schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime, finalClassNum, finalSecName, finalSubName]
+             (id,school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time,class_number,section_name,subject_name)
+             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+            [sessionId, schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime, finalClassNum, finalSecName, finalSubName]
           )).rows[0];
           sessionId = session.id;
         }
 
         // Fetch students enrolled in this section in Postgres
-        const students = (await client.query(
+        let students = (await client.query(
           `SELECT id, name, roll_number FROM students WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND is_active`,
           [schoolId, classId, sectionId]
         )).rows;
 
+        // If no students enrolled in Postgres yet but records were passed in request body, resolve or create them
+        if (students.length === 0 && Array.isArray(x.records) && x.records.length > 0) {
+          for (const r of x.records) {
+            let sId = r.student_id || r.studentId || r.id;
+            const sName = r.studentName || r.name || 'Student';
+            const sRoll = String(r.rollNumber || r.roll_number || '1');
+            const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sId);
+            if (!isStudentUuid) {
+              const findSt = await client.query('SELECT id, name, roll_number FROM students WHERE school_id=$1 AND (roll_number=$2 OR name=$3) LIMIT 1', [schoolId, sRoll, sName]);
+              if (findSt.rowCount) {
+                sId = findSt.rows[0].id;
+              } else {
+                const newId = crypto.randomUUID();
+                await client.query(`
+                  INSERT INTO students(id, school_id, class_id, section_id, roll_number, name, parent_sms_number, is_active)
+                  VALUES($1, $2, $3, $4, $5, $6, '+919876543210', true)
+                  ON CONFLICT (id) DO NOTHING
+                `, [newId, schoolId, classId, sectionId, sRoll, sName]);
+                sId = newId;
+              }
+            }
+            students.push({
+              id: sId,
+              name: sName,
+              roll_number: sRoll,
+              is_present: r.is_present ?? (r.status === 'PRESENT' || r.status === 'LATE'),
+              status: r.status
+            });
+          }
+        }
+
         if (students.length > 0) {
           for (const st of students) {
-            const isPres = presentSet.has(String(st.id)) || presentSet.has(String(st.roll_number));
-            const status = isPres ? 'PRESENT' : 'ABSENT';
+            const isPres = (st as any).is_present !== undefined
+              ? (st as any).is_present
+              : (presentSet.has(String(st.id)) || presentSet.has(String(st.roll_number)));
+            const status = (st as any).status || (isPres ? 'PRESENT' : 'ABSENT');
             await client.query(
-              `INSERT INTO attendance_records(attendance_session_id,student_id,is_present,status)
-               VALUES($1,$2,$3,$4)`, [sessionId, st.id, isPres, status]
+              `INSERT INTO attendance_records(id, attendance_session_id, student_id, is_present, status)
+               VALUES(gen_random_uuid(), $1, $2, $3, $4)
+               ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET
+                 is_present = EXCLUDED.is_present,
+                 status = EXCLUDED.status,
+                 marked_at = NOW()`,
+              [sessionId, st.id, isPres, status]
             );
             finalRecords.push({
               student_id: st.id,
@@ -1334,7 +1421,8 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
           queueAbsentSms(sessionId).catch(() => {});
           queueAbsentNotifications(sessionId).catch(() => {});
         } else {
-          await client.query('ROLLBACK');
+          await client.query('COMMIT');
+          sessionSavedInDb = true;
         }
       } catch (err) {
         await client.query('ROLLBACK');
@@ -1342,8 +1430,8 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
       } finally {
         client.release();
       }
-    } catch (_dbErr) {
-      // Proceed to Firestore fallback
+    } catch (pgErr: any) {
+      console.warn('[PostAttendance] Supabase execution warning:', pgErr.message);
     }
   }
 
@@ -1552,8 +1640,8 @@ r.post('/', ...teacher, postAttendanceHandler);
 const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
 
-  // 1. Try PostgreSQL if enabled
-  if (process.env.USE_POSTGRES === 'true') {
+  // 1. PRIMARY: Try Supabase PostgreSQL first
+  if (isPostgresConfigured) {
     try {
       const q = await pool.query(
         `SELECT a.id, a.attendance_date, a.start_time, a.end_time,

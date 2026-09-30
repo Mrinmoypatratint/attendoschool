@@ -17,7 +17,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id
-       WHERE st.school_id = $1 AND (st.user_id = $2 OR st.id = $2)
+       WHERE st.school_id = $1 AND (st.user_id::text = $2 OR st.id::text = $2)
        LIMIT 1`,
       [schoolId, userId]
     );
@@ -297,24 +297,32 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
 
   try {
     const timeQ = await pool.query(
-      `SELECT e.id, e.start_time, e.end_time, e.room_name AS room,
-              e.subject_name, e.teacher_name, e.period_number, p.name AS period_name
+      `SELECT e.id, p.start_time, p.end_time, e.room_name AS room,
+              sub.name AS subject_name,
+              COALESCE(u.name, CONCAT(u.first_name, ' ', u.last_name), 'Faculty') AS teacher_name,
+              p.period_number, p.name AS period_name
        FROM timetable_entries e
-       LEFT JOIN timetable_periods p ON p.id = e.period_id
-       WHERE e.school_id = $1 AND (e.class_id = $2 OR e.class_number = $3)
-         AND (e.section_id = $4 OR e.section_name = $5) AND e.day_of_week = $6
+       JOIN timetable_periods p ON p.id = e.period_id
+       LEFT JOIN classes c ON c.id = e.class_id
+       LEFT JOIN sections sec ON sec.id = e.section_id
+       LEFT JOIN subjects sub ON sub.id = e.subject_id
+       LEFT JOIN users u ON u.id = e.teacher_id
+       WHERE e.school_id = $1
+         AND (e.class_id::text = $2 OR c.class_number = $3)
+         AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
+         AND e.day_of_week = $6
          AND e.status = 'PUBLISHED'
-       ORDER BY e.start_time ASC`,
-      [schoolId, st.class_id, st.class_number, st.section_id, st.section_name, targetDay]
+       ORDER BY p.start_time ASC, p.period_number ASC`,
+      [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || ''), targetDay]
     );
     if (timeQ.rowCount && timeQ.rowCount > 0) {
       todayTimetable = timeQ.rows.map((row, idx) => ({
         periodNumber: row.period_number || idx + 1,
-        time: `${row.start_time.slice(0, 5)} - ${row.end_time.slice(0, 5)}`,
-        subject: row.subject_name,
-        teacher: row.teacher_name,
+        time: `${(row.start_time || '09:00').slice(0, 5)} - ${(row.end_time || '09:45').slice(0, 5)}`,
+        subject: row.subject_name || 'Subject',
+        teacher: row.teacher_name || 'Faculty',
         room: row.room || `Room ${st.class_number || 10}`,
-        status: computePeriodStatus(row.start_time, row.end_time)
+        status: computePeriodStatus(row.start_time || '09:00', row.end_time || '09:45')
       }));
     }
   } catch (_e) {}
@@ -365,13 +373,15 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
   let recentAttendance: any[] = [];
   try {
     const recQ = await pool.query(
-      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.subject_name
+      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status,
+              COALESCE(sub.name, 'General Session') AS subject_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
-       WHERE s.school_id = $1 AND ar.student_id = $2
+       LEFT JOIN subjects sub ON sub.id = s.subject_id
+       WHERE s.school_id = $1 AND ar.student_id::text = $2
        ORDER BY s.attendance_date DESC, s.start_time DESC
        LIMIT 5`,
-      [schoolId, st.id]
+      [schoolId, String(st.id)]
     );
     if (recQ.rowCount && recQ.rowCount > 0) {
       recentAttendance = recQ.rows.map((r) => {
@@ -714,14 +724,22 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
   // 1. Try PostgreSQL timetable_entries
   try {
     const q = await pool.query(
-      `SELECT e.id, e.day_of_week, e.start_time, e.end_time, e.room_name AS room,
-              e.subject_name, e.teacher_name, e.period_name, e.period_number
+      `SELECT e.id, e.day_of_week, p.start_time, p.end_time, e.room_name AS room,
+              sub.name AS subject_name,
+              COALESCE(u.name, CONCAT(u.first_name, ' ', u.last_name), 'Faculty') AS teacher_name,
+              p.name AS period_name, p.period_number
        FROM timetable_entries e
-       WHERE e.school_id = $1 AND (e.class_id = $2 OR e.class_number = $3)
-         AND (e.section_id = $4 OR e.section_name = $5)
+       JOIN timetable_periods p ON p.id = e.period_id
+       LEFT JOIN classes c ON c.id = e.class_id
+       LEFT JOIN sections sec ON sec.id = e.section_id
+       LEFT JOIN subjects sub ON sub.id = e.subject_id
+       LEFT JOIN users u ON u.id = e.teacher_id
+       WHERE e.school_id = $1
+         AND (e.class_id::text = $2 OR c.class_number = $3)
+         AND (e.section_id::text = $4 OR LOWER(sec.name) = LOWER($5))
          AND e.status = 'PUBLISHED'
-       ORDER BY e.day_of_week, e.start_time`,
-      [schoolId, st.class_id, st.class_number, st.section_id, st.section_name]
+       ORDER BY e.day_of_week ASC, p.start_time ASC, p.period_number ASC`,
+      [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || '')]
     );
     if (q.rowCount && q.rowCount > 0) {
       return q.rows;

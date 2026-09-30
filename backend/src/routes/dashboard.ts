@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { getSchoolDashboardStats } from '../services/tenantDataService';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
+import { DualDatabaseService } from '../services/dualDatabaseService';
 import { env } from '../config/env';
 
 const r = Router();
@@ -19,16 +20,16 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
 
   try {
     // Primary: Supabase PostgreSQL relational metrics
-    const isPostgresActive = Boolean(process.env.DATABASE_URL) || env.dbDriver === 'postgres' || process.env.USE_POSTGRES === 'true';
-    if (isPostgresActive) {
+    if (isPostgresConfigured) {
       try {
+        const todayStr = new Date().toISOString().slice(0, 10);
         const [
           schoolRes,
           studentsRes,
           teachersRes,
           classesRes,
           sectionsRes,
-          attendanceRes,
+          todayAtt,
           correctionsRes,
           academicYearRes
         ] = await Promise.all([
@@ -37,16 +38,8 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           pool.query(`SELECT COUNT(*)::int AS count FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true`, [sid]),
           pool.query('SELECT COUNT(*)::int AS count FROM classes WHERE school_id = $1', [sid]),
           pool.query('SELECT COUNT(*)::int AS count FROM sections WHERE school_id = $1', [sid]),
-          pool.query(`
-            SELECT 
-              COUNT(DISTINCT ar.student_id)::int AS total,
-              COUNT(DISTINCT CASE WHEN ar.is_present = true OR ar.status = 'PRESENT' THEN ar.student_id END)::int AS present,
-              COUNT(DISTINCT CASE WHEN ar.is_present = false OR ar.status = 'ABSENT' THEN ar.student_id END)::int AS absent
-            FROM attendance_records ar
-            JOIN attendance_sessions ass ON ass.id = ar.attendance_session_id
-            WHERE ass.school_id = $1 AND ass.attendance_date = CURRENT_DATE
-          `, [sid]),
-          pool.query(`SELECT COUNT(*)::int AS count FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]),
+          DualDatabaseService.getTodayAttendanceFromSupabase(sid, todayStr),
+          pool.query(`SELECT COUNT(*)::int AS count FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]).catch(() => ({ rows: [{ count: 0 }] })),
           pool.query(`SELECT id, name, start_date, end_date FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1`, [sid])
         ]);
 
@@ -57,10 +50,10 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           status: 'ACTIVE'
         };
 
-        const tot = Number(attendanceRes.rows[0]?.total) || 0;
-        const pres = Number(attendanceRes.rows[0]?.present) || 0;
-        const abs = Number(attendanceRes.rows[0]?.absent) || 0;
-        const pct = tot > 0 ? Number(((pres / tot) * 100).toFixed(1)) : 0;
+        const tot = todayAtt.total;
+        const pres = todayAtt.present;
+        const abs = todayAtt.absent;
+        const pct = todayAtt.percentage;
 
         return res.json({
           school: schoolData,
@@ -72,7 +65,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           present_today: pres,
           absent_today: abs,
           total_today: tot,
-          todayAttendance: { total: tot, present: pres, absent: abs, percentage: pct, classBreakdown: [] },
+          todayAttendance: todayAtt,
           weeklyTrend: [],
           pendingCorrectionsCount: Number(correctionsRes.rows[0]?.count) || 0,
           activeAcademicYear: academicYearRes.rows[0] || null,

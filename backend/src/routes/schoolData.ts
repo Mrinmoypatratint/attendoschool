@@ -614,8 +614,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const rawName = b.name;
   const rollNumber = b.rollNumber || b.roll_number;
   const admissionNumber = b.admissionNumber || b.admission_number;
-  const parentName = b.parentName || b.parent_name;
-  const parentSmsNumber = b.parentSmsNumber || b.parent_phone || b.parent_sms_number;
+  const parentName = b.parentName || b.parent_name || b.guardianName || b.guardian_name || '';
+  const parentSmsNumber = b.parentSmsNumber || b.parentPhone || b.parent_phone || b.parent_sms_number || b.phone || '';
+  const dob = b.dob || b.dateOfBirth || b.date_of_birth || null;
+  const gender = b.gender || null;
+  const address = b.address || null;
   const classId = b.classId || b.class_id;
   const sectionId = b.sectionId || b.section_id;
   const studentEmail = b.studentEmail || b.student_email || b.email;
@@ -782,6 +785,29 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       realClassId = valid.rows[0].class_id;
       clsNum = valid.rows[0].class_number;
       secName = valid.rows[0].section_name;
+    } else {
+      // Guarantee class and section exist in Supabase
+      let clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 AND class_number=$2 LIMIT 1`, [schoolId, clsNum]);
+      if (!clsQ.rowCount) {
+        clsQ = await pool.query(
+          `INSERT INTO classes(school_id, class_number, name) VALUES($1, $2, $3)
+           ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id, class_number`,
+          [schoolId, clsNum, clsNum === -1 ? 'L-KG' : clsNum === 0 ? 'U-KG' : `Class ${clsNum}`]
+        );
+      }
+      realClassId = clsQ.rows[0].id;
+      clsNum = clsQ.rows[0].class_number;
+
+      let secQ = await pool.query(`SELECT id, name FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=UPPER($3) LIMIT 1`, [schoolId, realClassId, secName]);
+      if (!secQ.rowCount) {
+        secQ = await pool.query(
+          `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+           ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id, name`,
+          [schoolId, realClassId, secName]
+        );
+      }
+      realSectionId = secQ.rows[0].id;
+      secName = secQ.rows[0].name;
     }
 
     let linkedUserId: string | null = null;
@@ -857,26 +883,50 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     const isRealSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(realSectionId));
 
     if (isRealClassUuid && isRealSecUuid) {
-      const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedSessionId));
-      let pgAyId: string | null = isAyUuid ? resolvedSessionId : null;
+      let pgAyId: string | null = null;
+      if (resolvedSessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedSessionId))) {
+        const ayChk = await pool.query('SELECT id, name FROM academic_years WHERE id=$1 AND school_id=$2', [resolvedSessionId, schoolId]);
+        if (ayChk.rowCount && ayChk.rows.length > 0) {
+          pgAyId = ayChk.rows[0].id;
+          if (!resolvedSessionName) resolvedSessionName = ayChk.rows[0].name;
+        }
+      }
       if (!pgAyId) {
-        try {
-          const ayRow = await pool.query('SELECT id, name FROM academic_years WHERE school_id=$1 AND is_active=true LIMIT 1', [schoolId]);
-          if (ayRow.rowCount && ayRow.rows.length > 0) {
-            pgAyId = ayRow.rows[0].id;
-            if (!resolvedSessionName) resolvedSessionName = ayRow.rows[0].name;
-          }
-        } catch {}
+        const ayRow = await pool.query('SELECT id, name FROM academic_years WHERE school_id=$1 AND is_active=true LIMIT 1', [schoolId]);
+        if (ayRow.rowCount && ayRow.rows.length > 0) {
+          pgAyId = ayRow.rows[0].id;
+          if (!resolvedSessionName) resolvedSessionName = ayRow.rows[0].name;
+        }
       }
 
-      const isUserUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(linkedUserId));
-      const pgUserId = isUserUuid ? linkedUserId : null;
+      let pgUserId: string | null = null;
+      if (linkedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(linkedUserId))) {
+        const uLinkChk = await pool.query('SELECT id FROM students WHERE user_id=$1 LIMIT 1', [linkedUserId]);
+        if (!uLinkChk.rowCount) {
+          pgUserId = linkedUserId;
+        }
+      }
 
+      const safeParentSms = parentSmsNumber ? String(parentSmsNumber).trim() : '';
       const q = await pool.query(
         `INSERT INTO students(
           school_id, academic_year_id, class_id, section_id, roll_number, 
-          admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+          admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
+          date_of_birth, gender, address
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+          name = EXCLUDED.name,
+          admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
+          parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
+          parent_sms_number = EXCLUDED.parent_sms_number,
+          email = COALESCE(EXCLUDED.email, students.email),
+          parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
+          date_of_birth = COALESCE(EXCLUDED.date_of_birth, students.date_of_birth),
+          gender = COALESCE(EXCLUDED.gender, students.gender),
+          address = COALESCE(EXCLUDED.address, students.address),
+          is_active = true,
+          updated_at = NOW()
+        RETURNING *`,
         [
           schoolId,
           pgAyId,
@@ -886,10 +936,13 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           cleanAdmissionNumber || null,
           name,
           parentName || null,
-          parentSmsNumber,
+          safeParentSms,
           cleanStudentEmail || null,
           cleanParentEmail || null,
-          pgUserId
+          pgUserId,
+          dob || null,
+          gender || null,
+          address || null
         ]
       );
       
@@ -910,6 +963,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
         student_email: cleanStudentEmail,
         parent_email: cleanParentEmail,
+        parent_phone: safeParentSms,
+        parentPhone: safeParentSms,
         login_email: targetLoginEmail,
         login_option: loginOpt,
         reset_url: resetInfo?.resetUrl,
@@ -921,7 +976,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       return res.status(201).json(created);
     }
   } catch (err: any) {
-    console.warn('[StudentEnrollment] Database insert fallback:', err.message);
+    console.error('[StudentEnrollment] Supabase student insert error:', err.message);
   }
 
  // Demo In-Memory Fallback
@@ -1068,7 +1123,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    const sectionName = rawSection || 'A';
     let sectionId = st.sectionId || st.section_id || `sec-${classId}-${sectionName.toLowerCase()}`;
     try {
-      const cQ = await pool.query(`SELECT id FROM classes WHERE school_id=$1 AND (class_number=$2 OR LOWER(label)=LOWER($3) OR id=$4) LIMIT 1`, [schoolId, classNumber, classLabel, classId]);
+      const cQ = await pool.query(`SELECT id FROM classes WHERE school_id=$1 AND (class_number=$2 OR LOWER(name)=LOWER($3) OR id::text=$4) LIMIT 1`, [schoolId, classNumber, classLabel, classId]);
       if (cQ.rowCount && cQ.rows.length > 0) {
         classId = cQ.rows[0].id;
         const sQ = await pool.query(`SELECT id FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=$3 LIMIT 1`, [schoolId, classId, sectionName]);
@@ -1368,7 +1423,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
       const q = await pool.query(
         `UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,academic_year_id=COALESCE($10, academic_year_id),updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId]
+        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId]
       );
       if (q.rowCount && q.rows.length > 0) {
         const result = {

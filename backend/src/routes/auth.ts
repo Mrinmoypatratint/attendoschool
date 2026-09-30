@@ -87,162 +87,165 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Email/Student ID and password are required' });
   }
 
-  // 1. Try Firebase Cloud Firestore
-  try {
-    const fUser = await findFirestoreUserByEmail(identifier);
-    if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
-      // Validate role if expectedRole provided
-      if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
-        return res.status(401).json({ message: 'Account is not authorized for the selected role' });
-      }
+  // 1. PRIMARY: Try Supabase PostgreSQL Database
+  if (isPostgresConfigured) {
+    try {
+      let selectedSchoolName = 'Greenwood International School';
 
-      // Validate tenant if instituteId provided and not super admin
-      if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId && !isSameSchool(fUser.schoolId, instituteId)) {
-        return res.status(401).json({ message: 'Account does not belong to the selected institute' });
-      }
+      const query = `
+        SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
+               st.id AS student_id, st.roll_number, st.admission_number,
+               c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
+               sch.name AS school_name, sch.code AS school_code
+        FROM users u
+        LEFT JOIN schools sch ON sch.id = u.school_id
+        LEFT JOIN students st ON (st.user_id = u.id OR (st.school_id = u.school_id AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
+        LEFT JOIN classes c ON c.id = st.class_id
+        LEFT JOIN sections sec ON sec.id = st.section_id
+        WHERE (LOWER(u.email) = LOWER($1) OR (st.id IS NOT NULL AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
+        ORDER BY (u.role = 'STUDENT') DESC
+        LIMIT 1
+      `;
+      const result = await pool.query(query, [identifier]);
+      const u = result.rows[0];
 
-      const role = fUser.role as Role;
-      let schoolName = fUser.schoolName;
-      let schoolCode = fUser.schoolCode;
-      if (fUser.schoolId) {
-        try {
-          const fsSch = await getFirestoreSchoolById(fUser.schoolId);
-          if (fsSch) {
-            schoolName = fsSch.name;
-            schoolCode = fsSch.code;
-          }
-        } catch {}
-      }
-
-      const userPayload: any = {
-        id: fUser.id,
-        schoolId: canonicalSchoolId(fUser.schoolId),
-        schoolName: schoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
-        schoolCode: schoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
-        name: fUser.name,
-        email: fUser.email,
-        role
-      };
-
-      if (role === 'STUDENT') {
-        let matchedStudent: any = null;
-        try {
-          const sSnap = await collections.students().get();
-          for (const sDoc of sSnap.docs) {
-            const sd = sDoc.data();
-            const docSid = sd.school_id || sd.schoolId;
-            if (docSid && !isSameSchool(docSid, fUser.schoolId)) continue;
-            const matches =
-              sDoc.id === fUser.id ||
-              sd.id === fUser.id ||
-              String(sd.user_id || sd.userId) === fUser.id ||
-              (sd.email && sd.email.toLowerCase() === fUser.email.toLowerCase()) ||
-              (sd.student_email && sd.student_email.toLowerCase() === fUser.email.toLowerCase());
-            if (matches) {
-              matchedStudent = { id: sDoc.id, ...sd };
-              break;
+      if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
+        if (instituteId) {
+          const schCheck = await pool.query(
+            `SELECT id, name, status FROM schools WHERE id = $1 LIMIT 1`,
+            [instituteId]
+          );
+          if (schCheck.rowCount && schCheck.rowCount > 0) {
+            if (schCheck.rows[0].status !== 'ACTIVE') {
+              return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+            }
+            selectedSchoolName = schCheck.rows[0].name;
+          } else {
+            const demoMatch = demoSchools.find(s => isSameSchool(s.id, instituteId) && s.status === 'ACTIVE');
+            if (!demoMatch) {
+              return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
+            } else {
+              selectedSchoolName = demoMatch.name;
             }
           }
-        } catch {}
+        }
 
-        const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? matchedStudent?.className ?? (fUser as any).classNumber ?? 10;
-        const sName = matchedStudent?.section_name || matchedStudent?.sectionName || matchedStudent?.section || (fUser as any).sectionName || 'A';
-        const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+        // Validate role if expectedRole provided
+        if (expectedRole && !roleMatches(u.role, expectedRole)) {
+          return res.status(401).json({ message: 'Account is not authorized for the selected role' });
+        }
 
-        userPayload.studentId = matchedStudent?.id || fUser.id;
-        userPayload.classId = matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`;
-        userPayload.sectionId = matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`;
-        userPayload.className = `Class ${cNum}`;
-        userPayload.sectionName = `Section ${cleanSName}`;
-        userPayload.rollNumber = String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1');
-        userPayload.schoolName = userPayload.schoolName;
+        if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id && !isSameSchool(u.school_id, instituteId)) {
+          return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        }
+
+        const role = u.role as Role;
+        const userPayload: any = {
+          id: u.id,
+          schoolId: u.school_id,
+          schoolName: u.school_name || selectedSchoolName,
+          schoolCode: u.school_code || 'GIS001',
+          name: u.name,
+          email: u.email,
+          role
+        };
+
+        if (role === 'STUDENT') {
+          userPayload.studentId = u.student_id;
+          userPayload.classId = u.class_id;
+          userPayload.sectionId = u.section_id;
+          userPayload.className = u.class_number ? `Class ${u.class_number}` : 'Class 10';
+          userPayload.sectionName = u.section_name || 'A';
+          userPayload.rollNumber = u.roll_number || '25';
+          userPayload.schoolName = u.school_name || selectedSchoolName;
+        }
+
+        const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+        return res.json({ token, user: userPayload, provider: 'supabase' });
       }
-
-      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
-      return res.json({ token, user: userPayload, provider: 'firestore' });
+    } catch (_e) {
+      // Continue to secondary fallback
     }
-  } catch (fsErr: any) {
-    // Continue to SQL fallback if Firestore is offline/uninitialized
   }
 
-  // 2. Try PostgreSQL Database
-  try {
-    let selectedSchoolName = 'Greenwood International School';
-
-    const query = `
-      SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
-             st.id AS student_id, st.roll_number, st.admission_number,
-             c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-             sch.name AS school_name, sch.code AS school_code
-      FROM users u
-      LEFT JOIN schools sch ON sch.id = u.school_id
-      LEFT JOIN students st ON (st.user_id = u.id OR (st.school_id = u.school_id AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
-      LEFT JOIN classes c ON c.id = st.class_id
-      LEFT JOIN sections sec ON sec.id = st.section_id
-      WHERE (LOWER(u.email) = LOWER($1) OR (st.id IS NOT NULL AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
-      ORDER BY (u.role = 'STUDENT') DESC
-      LIMIT 1
-    `;
-    const result = await pool.query(query, [identifier]);
-    const u = result.rows[0];
-
-    if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
-      if (instituteId) {
-        const schCheck = await pool.query(
-          `SELECT id, name, status FROM schools WHERE id = $1 LIMIT 1`,
-          [instituteId]
-        );
-        if (schCheck.rowCount && schCheck.rowCount > 0) {
-          if (schCheck.rows[0].status !== 'ACTIVE') {
-            return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-          }
-          selectedSchoolName = schCheck.rows[0].name;
-        } else {
-          // Check if instituteId is a valid demo school
-          const demoMatch = demoSchools.find(s => isSameSchool(s.id, instituteId) && s.status === 'ACTIVE');
-          if (!demoMatch) {
-            return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-          } else {
-            selectedSchoolName = demoMatch.name;
-          }
+  // 2. SECONDARY: Try Firebase Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const fUser = await findFirestoreUserByEmail(identifier);
+      if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
+        // Validate role if expectedRole provided
+        if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
+          return res.status(401).json({ message: 'Account is not authorized for the selected role' });
         }
+
+        // Validate tenant if instituteId provided and not super admin
+        if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId && !isSameSchool(fUser.schoolId, instituteId)) {
+          return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        }
+
+        const role = fUser.role as Role;
+        let schoolName = fUser.schoolName;
+        let schoolCode = fUser.schoolCode;
+        if (fUser.schoolId) {
+          try {
+            const fsSch = await getFirestoreSchoolById(fUser.schoolId);
+            if (fsSch) {
+              schoolName = fsSch.name;
+              schoolCode = fsSch.code;
+            }
+          } catch {}
+        }
+
+        const userPayload: any = {
+          id: fUser.id,
+          schoolId: canonicalSchoolId(fUser.schoolId),
+          schoolName: schoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
+          schoolCode: schoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
+          name: fUser.name,
+          email: fUser.email,
+          role
+        };
+
+        if (role === 'STUDENT') {
+          let matchedStudent: any = null;
+          try {
+            const sSnap = await collections.students().get();
+            for (const sDoc of sSnap.docs) {
+              const sd = sDoc.data();
+              const docSid = sd.school_id || sd.schoolId;
+              if (docSid && !isSameSchool(docSid, fUser.schoolId)) continue;
+              const matches =
+                sDoc.id === fUser.id ||
+                sd.id === fUser.id ||
+                String(sd.user_id || sd.userId) === fUser.id ||
+                (sd.email && sd.email.toLowerCase() === fUser.email.toLowerCase()) ||
+                (sd.student_email && sd.student_email.toLowerCase() === fUser.email.toLowerCase());
+              if (matches) {
+                matchedStudent = { id: sDoc.id, ...sd };
+                break;
+              }
+            }
+          } catch {}
+
+          const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? matchedStudent?.className ?? (fUser as any).classNumber ?? 10;
+          const sName = matchedStudent?.section_name || matchedStudent?.sectionName || matchedStudent?.section || (fUser as any).sectionName || 'A';
+          const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+
+          userPayload.studentId = matchedStudent?.id || fUser.id;
+          userPayload.classId = matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`;
+          userPayload.sectionId = matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`;
+          userPayload.className = `Class ${cNum}`;
+          userPayload.sectionName = `Section ${cleanSName}`;
+          userPayload.rollNumber = String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1');
+          userPayload.schoolName = userPayload.schoolName;
+        }
+
+        const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+        return res.json({ token, user: userPayload, provider: 'firestore' });
       }
-
-      // Validate role if expectedRole provided
-      if (expectedRole && !roleMatches(u.role, expectedRole)) {
-        return res.status(401).json({ message: 'Account is not authorized for the selected role' });
-      }
-
-      if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id && !isSameSchool(u.school_id, instituteId)) {
-        return res.status(401).json({ message: 'Account does not belong to the selected institute' });
-      }
-
-      const role = u.role as Role;
-      const userPayload: any = {
-        id: u.id,
-        schoolId: u.school_id,
-        schoolName: u.school_name || selectedSchoolName,
-        schoolCode: u.school_code || 'GIS001',
-        name: u.name,
-        email: u.email,
-        role
-      };
-
-      if (role === 'STUDENT') {
-        userPayload.studentId = u.student_id;
-        userPayload.classId = u.class_id;
-        userPayload.sectionId = u.section_id;
-        userPayload.className = u.class_number ? `Class ${u.class_number}` : 'Class 10';
-        userPayload.sectionName = u.section_name || 'A';
-        userPayload.rollNumber = u.roll_number || '25';
-        userPayload.schoolName = u.school_name || selectedSchoolName;
-      }
-
-      const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
-      return res.json({ token, user: userPayload, provider: 'postgres' });
+    } catch (fsErr: any) {
+      // Continue to demo fallback
     }
-  } catch (_e) {
-    // SQL query skipped or failed
   }
 
   // 3. In-memory demo fallback store

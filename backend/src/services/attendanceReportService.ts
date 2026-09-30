@@ -1,4 +1,4 @@
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { isFirebaseConfigured, collections } from '../firebase';
 import { isSameSchool, isTestSchool } from '../utils/tenant';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
@@ -10,7 +10,7 @@ export async function attendanceSummary(
   to: string
 ) {
   const isGlobal = !schoolId || schoolId === 'all';
-  const usePostgres = process.env.USE_POSTGRES === 'true';
+  const usePostgres = isPostgresConfigured;
 
   if (usePostgres) {
     try {
@@ -124,7 +124,7 @@ export async function studentAttendanceReport(
   studentId?: string
 ) {
   const isGlobal = !schoolId || schoolId === 'all';
-  const usePostgres = process.env.USE_POSTGRES === 'true';
+  const usePostgres = isPostgresConfigured;
 
   if (usePostgres) {
     try {
@@ -132,7 +132,7 @@ export async function studentAttendanceReport(
       let studentFilter = '';
       if (studentId) {
         params.push(studentId);
-        studentFilter = ` AND ar.student_id = $${params.length}`;
+        studentFilter = ` AND ar.student_id::text = $${params.length}`;
       }
 
       const whereClause = isGlobal
@@ -323,7 +323,7 @@ export async function dailyAttendanceReport(
   to: string
 ) {
   const isGlobal = !schoolId || schoolId === 'all';
-  const usePostgres = process.env.USE_POSTGRES === 'true';
+  const usePostgres = isPostgresConfigured;
 
   if (usePostgres) {
     try {
