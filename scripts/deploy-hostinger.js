@@ -42,11 +42,12 @@ async function deploy() {
     const lowerNames = names.map(n => n.toLowerCase());
     const candidateDirs = [];
 
-    if (process.env.HOSTINGER_SERVER_DIR && process.env.HOSTINGER_SERVER_DIR !== '.' && process.env.HOSTINGER_SERVER_DIR !== './') {
-      candidateDirs.push(process.env.HOSTINGER_SERVER_DIR);
-    } else if (lowerNames.includes('attendo-school-logo.png') || lowerNames.includes('index.html') || lowerNames.includes('assets')) {
-      console.log('🎯 Detected website root directory directly upon login.');
+    // Priority 1: If login directory is ALREADY the website root (contains index.html AND assets)
+    if (lowerNames.includes('index.html') && lowerNames.includes('assets')) {
+      console.log('🎯 Detected website root directory directly upon login! Deploying directly to .');
       candidateDirs.push('.');
+    } else if (process.env.HOSTINGER_SERVER_DIR && process.env.HOSTINGER_SERVER_DIR !== '.' && process.env.HOSTINGER_SERVER_DIR !== './') {
+      candidateDirs.push(process.env.HOSTINGER_SERVER_DIR);
     } else {
       // Primary domain subdomains in Hostinger live in public_html/attendoschool
       if (lowerNames.includes('public_html')) {
