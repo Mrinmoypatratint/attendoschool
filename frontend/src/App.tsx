@@ -3085,30 +3085,59 @@ const DEFAULT_SECTIONS = DEFAULT_CLASSES.flatMap(c => [
   { id: `sec-${c.id}-b`, class_id: c.id, class_number: c.class_number, name: 'B', section_name: 'B' }
 ]);
 
-function cleanSess(s?: string | null) {
-  return String(s || '').replace(/[\u2013\u2014]/g, '-').replace(/[^0-9-]/g, '').trim();
+export function toCanonicalSession(s?: string | null): string {
+  if (!s) return '';
+  const str = String(s).trim();
+  const m = str.match(/(\d{4})[^\d]+(\d{2,4})/);
+  if (m) {
+    const y1 = m[1];
+    const y2 = m[2].length === 2 ? y1.slice(0, 2) + m[2] : m[2];
+    return `${y1}-${y2}`;
+  }
+  const single = str.match(/(\d{4})/);
+  if (single) return single[1];
+  return str.toLowerCase().replace(/[\u2013\u2014]/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
-function studentMatchesSession(st: any, activeSess: string) {
-  if (!activeSess) return true;
+export function isSameSession(s1?: string | null, s2?: string | null): boolean {
+  if (!s1 || !s2) return false;
+  if (s1 === s2) return true;
+  const str1 = String(s1).trim();
+  const str2 = String(s2).trim();
+  if (!str1 || !str2) return false;
+  if (/^all(\s+sessions?)?$/i.test(str1) || /^all(\s+sessions?)?$/i.test(str2)) return true;
+  if (str1.toLowerCase() === str2.toLowerCase()) return true;
+
+  const c1 = toCanonicalSession(str1);
+  const c2 = toCanonicalSession(str2);
+  if (c1 && c2 && c1 === c2) return true;
+  if (c1 && c2 && (c1.includes(c2) || c2.includes(c1))) return true;
+  return str1.toLowerCase().includes(str2.toLowerCase()) || str2.toLowerCase().includes(str1.toLowerCase());
+}
+
+function cleanSess(s?: string | null) {
+  return toCanonicalSession(s);
+}
+
+function studentMatchesSession(st: any, activeSess: string): boolean {
+  if (!activeSess || /^all(\s+sessions?)?$/i.test(activeSess)) return true;
   const sName = st.session_name || st.session || '';
   const sId = st.academic_year_id || st.session_id || '';
   if (sName || sId) {
-    const cActive = cleanSess(activeSess);
-    const cStudent = cleanSess(sName || sId);
-    if (cActive && cStudent) {
-      return cActive === cStudent || cStudent.includes(cActive) || cActive.includes(cStudent);
-    }
-    return sId === activeSess || sName === activeSess;
+    if (sId && isSameSession(sId, activeSess)) return true;
+    if (sName && isSameSession(sName, activeSess)) return true;
+    return false;
   }
-  return cleanSess(activeSess).includes('2025-26');
+  return true;
 }
 
 /* ────── Students ────── */
 function Students(){
   const {user}=useAuth();
   const [activeSession, setActiveSession] = useState<string>(() => {
-    return localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
+    return localStorage.getItem('attendo_academic_session') || 
+           localStorage.getItem('attendo_active_academic_year') || 
+           '2026-2027';
   });
   const [rows,setRows]=useState<any[]>([]);
   const [classes,setClasses]=useState<any[]>(DEFAULT_CLASSES);
@@ -3216,7 +3245,8 @@ function Students(){
 
   async function load(sessionToLoad = activeSession){
     try {
-      const sessParam = encodeURIComponent(sessionToLoad || '');
+      const isAll = !sessionToLoad || /^all(\s+sessions?)?$/i.test(sessionToLoad);
+      const sessParam = isAll ? '' : encodeURIComponent(sessionToLoad || '');
       const [a,b,c,d]=await Promise.all([
         api.get(`/students${sessParam ? `?session=${sessParam}` : ''}`),
         api.get('/classes'),
@@ -3232,12 +3262,19 @@ function Students(){
       if (Array.isArray(c.data) && c.data.length > 0) {
         setSections(c.data);
       }
-      if (Array.isArray(d.data) && d.data.length > 0) setSessions(d.data);
-      else setSessions([
-        { id: 'ay-2024-25', name: '2024–25 Academic Session', code: '2024-25', label: '2024–25 Academic Session', is_active: false },
-        { id: 'ay-2025-26', name: '2025–26 Academic Session', code: '2025-26', label: '2025–26 Academic Session', is_active: true },
-        { id: 'ay-2026-27', name: '2026–27 Academic Session', code: '2026-27', label: '2026–27 Academic Session', is_active: false }
-      ]);
+      if (Array.isArray(d.data) && d.data.length > 0) {
+        setSessions(d.data);
+        const activeDbYear = d.data.find((y: any) => y.is_active);
+        if (activeDbYear && !localStorage.getItem('attendo_academic_session') && !localStorage.getItem('attendo_active_academic_year')) {
+          setActiveSession(activeDbYear.name || activeDbYear.code || activeDbYear.id);
+        }
+      } else {
+        setSessions([
+          { id: 'ay-2024-25', name: '2024–25 Academic Session', code: '2024-25', label: '2024–25 Academic Session', is_active: false },
+          { id: 'ay-2025-26', name: '2025–26 Academic Session', code: '2025-26', label: '2025–26 Academic Session', is_active: false },
+          { id: 'ay-2026-27', name: '2026–27 Academic Session', code: '2026-27', label: '2026–27 Academic Session', is_active: true }
+        ]);
+      }
     } catch(err) {
       console.error('Failed to load students:', err);
     }
@@ -3287,8 +3324,14 @@ function Students(){
       return;
     }
 
-    const selectedSessionStr = f.session || activeSession || '2025–26 Academic Session';
-    const matchedSession = sessions.find(s => s.id === selectedSessionStr || s.name === selectedSessionStr || s.code === selectedSessionStr || cleanSess(s.name) === cleanSess(selectedSessionStr));
+    const selectedSessionStr = f.session || activeSession || '2026-2027';
+    const matchedSession = sessions.find(s => 
+      s.id === selectedSessionStr || 
+      s.name === selectedSessionStr || 
+      s.code === selectedSessionStr || 
+      isSameSession(s.name, selectedSessionStr) || 
+      isSameSession(s.id, selectedSessionStr)
+    );
     let finalSectionId = f.sectionId;
     if (finalSectionId && f.classId) {
       const curName = sections.find(s => s.id === finalSectionId)?.name || (finalSectionId.endsWith('-b') || finalSectionId === 'B' ? 'B' : 'A');
@@ -3705,7 +3748,7 @@ function Students(){
           <button 
             onClick={() => {
               setEditingStudent(null);
-              const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2025–26 Academic Session';
+              const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2026-2027';
               setF({ session: curSess });
               setOpen(true);
             }}
@@ -3855,7 +3898,7 @@ function Students(){
                   { id: 'ay-2026-27', name: '2026–27 Academic Session', is_active: false }
                 ]).map((sess: any) => {
                   const sessName = sess.name || sess.label || sess.code || sess.id;
-                  const isSelected = activeSession === sessName || (cleanSess(activeSession) === cleanSess(sessName) && activeSession !== 'All Sessions');
+                  const isSelected = activeSession === sessName || (isSameSession(activeSession, sessName) && activeSession !== 'All Sessions');
                   return (
                     <button
                       type="button"

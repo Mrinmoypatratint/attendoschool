@@ -29,15 +29,43 @@ const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
 
+/**
+ * Normalizes academic session strings into a canonical format: "YYYY-YYYY"
+ * Examples:
+ * - "2026-2027" -> "2026-2027"
+ * - "2026-27" -> "2026-2027"
+ * - "2026–27 Academic Session" -> "2026-2027"
+ * - "2026-2027 Session" -> "2026-2027"
+ */
+export function toCanonicalSession(s?: string | null): string {
+  if (!s) return '';
+  const str = String(s).trim();
+  const m = str.match(/(\d{4})[^\d]+(\d{2,4})/);
+  if (m) {
+    const y1 = m[1];
+    const y2 = m[2].length === 2 ? y1.slice(0, 2) + m[2] : m[2];
+    return `${y1}-${y2}`;
+  }
+  const single = str.match(/(\d{4})/);
+  if (single) return single[1];
+  return str.toLowerCase().replace(/[\u2013\u2014]/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
 // Helper function for session matching across formats
 export function isSameSession(s1?: string | null, s2?: string | null): boolean {
   if (!s1 || !s2) return false;
   if (s1 === s2) return true;
-  const clean = (s: string) => String(s).replace(/[\u2013\u2014]/g, '-').replace(/[^0-9-]/g, '').trim();
-  const c1 = clean(s1);
-  const c2 = clean(s2);
-  if (c1 && c2 && (c1 === c2 || c1.includes(c2) || c2.includes(c1))) return true;
-  return s1.toLowerCase().includes(s2.toLowerCase()) || s2.toLowerCase().includes(s1.toLowerCase());
+  const str1 = String(s1).trim();
+  const str2 = String(s2).trim();
+  if (!str1 || !str2) return false;
+  if (/^all(\s+sessions?)?$/i.test(str1) || /^all(\s+sessions?)?$/i.test(str2)) return true;
+  if (str1.toLowerCase() === str2.toLowerCase()) return true;
+
+  const c1 = toCanonicalSession(str1);
+  const c2 = toCanonicalSession(str2);
+  if (c1 && c2 && c1 === c2) return true;
+  if (c1 && c2 && (c1.includes(c2) || c2.includes(c1))) return true;
+  return str1.toLowerCase().includes(str2.toLowerCase()) || str2.toLowerCase().includes(str1.toLowerCase());
 }
 
 // Class grades: L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
@@ -456,12 +484,12 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
   st.academic_year_id, ay.name AS session_name,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
-  JOIN classes c ON c.id=st.class_id 
-  JOIN sections sec ON sec.id=st.section_id
+  LEFT JOIN classes c ON c.id=st.class_id 
+  LEFT JOIN sections sec ON sec.id=st.section_id
   LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
   WHERE st.school_id=$1 AND st.is_active=true
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
-  ORDER BY c.class_number,sec.name,st.roll_number`,[userSchoolId,search]);
+  ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
   if (q.rowCount && q.rows.length > 0) {
     let rows = q.rows.map((st: any) => {
       const parts = String(st.name || '').trim().split(' ');
@@ -483,8 +511,16 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
         session_id: st.academic_year_id
       };
     });
-    if (sessionFilter) {
-      rows = rows.filter((st: any) => isSameSession(st.session_name || st.academic_year_id, sessionFilter));
+    const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
+    if (!isAllSessions) {
+      rows = rows.filter((st: any) => {
+        if (st.session_name || st.academic_year_id || st.session) {
+          return isSameSession(st.session_name, sessionFilter) ||
+                 isSameSession(st.academic_year_id, sessionFilter) ||
+                 isSameSession(st.session, sessionFilter);
+        }
+        return true;
+      });
     }
     return res.json(rows);
   }
@@ -553,7 +589,8 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
               (s.parent_email && s.parent_email.toLowerCase().includes(search))
             )
           : list;
-        if (sessionFilter) {
+        const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
+        if (!isAllSessions) {
           filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
         }
         return res.json(filtered);
@@ -577,7 +614,8 @@ r.get('/students',...admin,async(req:AuthRequest,res)=>{
        (s.admission_number && s.admission_number.toLowerCase().includes(search.toLowerCase()))
      );
    }
-   if (sessionFilter) {
+   const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
+   if (!isAllSessions) {
      list = list.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id, sessionFilter));
    }
    return res.json(list);
