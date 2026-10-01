@@ -40,27 +40,40 @@ async function deploy() {
     console.log(`📂 Initial directory contents (${names.length} items):`, names.slice(0, 15).join(', '));
 
     const lowerNames = names.map(n => n.toLowerCase());
-    let targetDir = '.';
+    const candidateDirs = [];
 
     if (process.env.HOSTINGER_SERVER_DIR && process.env.HOSTINGER_SERVER_DIR !== '.' && process.env.HOSTINGER_SERVER_DIR !== './') {
-      targetDir = process.env.HOSTINGER_SERVER_DIR;
-      console.log(`🎯 Using configured HOSTINGER_SERVER_DIR: ${targetDir}`);
-      await client.ensureDir(targetDir);
+      candidateDirs.push(process.env.HOSTINGER_SERVER_DIR);
     } else if (lowerNames.includes('attendo-school-logo.png') || lowerNames.includes('index.html') || lowerNames.includes('assets')) {
       console.log('🎯 Detected website root directory directly upon login.');
-    } else if (lowerNames.includes('domains')) {
-      targetDir = 'domains/optinetinnovations.in/public_html/attendoschool';
-      console.log(`🎯 Navigating into ${targetDir}...`);
-      await client.ensureDir(targetDir);
-    } else if (lowerNames.includes('public_html')) {
-      targetDir = 'public_html/attendoschool';
-      console.log(`🎯 Navigating into ${targetDir}...`);
-      await client.ensureDir(targetDir);
+      candidateDirs.push('.');
+    } else {
+      // Primary domain subdomains in Hostinger live in public_html/attendoschool
+      if (lowerNames.includes('public_html')) {
+        candidateDirs.push('public_html/attendoschool');
+      }
+      // Addon domain subdomains live in domains/optinetinnovations.in/public_html/attendoschool
+      if (lowerNames.includes('domains')) {
+        candidateDirs.push('domains/optinetinnovations.in/public_html/attendoschool');
+      }
     }
 
+    console.log(`📋 Target directories to sync (${candidateDirs.length}):`, candidateDirs.join(', '));
     const localDir = path.resolve(__dirname, '../frontend/dist');
-    console.log(`🚀 Uploading ${localDir} to ${targetDir}...`);
-    await client.uploadFromDir(localDir);
+
+    for (const dir of candidateDirs) {
+      console.log(`🚀 Uploading ${localDir} to ${dir}...`);
+      try {
+        if (dir !== '.') {
+          await client.ensureDir(dir);
+        }
+        await client.uploadFromDir(localDir);
+        console.log(`✅ Successfully uploaded to ${dir}!`);
+      } catch (uploadErr) {
+        console.warn(`⚠️ Error uploading to ${dir}:`, uploadErr.message);
+      }
+      await client.cd('/');
+    }
 
     console.log('✅ Deployment to Hostinger completed successfully!');
     console.log('🌐 Visit: https://attendoschool.optinetinnovations.in');
