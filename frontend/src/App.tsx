@@ -183,6 +183,29 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
   }
 };
 
+function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = 'SCHOOL_ADMIN'): string {
+  const norm = String(schoolIdOrCode || '').toLowerCase();
+  const isTint = norm.includes('tint') || norm === '00000000-0000-0000-0000-000000000002';
+  const isAbc = norm.includes('abc') || norm === '08c4960d-75d6-4a92-989b-48309500632e';
+
+  if (isTint) {
+    if (role === 'TEACHER') return 'teacher@tint.edu.in';
+    if (role === 'STUDENT') return 'dhardhuran689@gmail.com';
+    return 'admin@tint.edu.in';
+  }
+
+  if (isAbc) {
+    if (role === 'TEACHER') return 'mmrinmay76@gmail.com';
+    if (role === 'STUDENT') return 'ahana12@gmail.com';
+    return 'admin@abc155.edu.in';
+  }
+
+  if (role === 'TEACHER') return 'rahul@demo-school.local';
+  if (role === 'STUDENT') return 'student@greenwood.local';
+  if (role === 'ADMIN') return 'superadmin@attendance.local';
+  return 'admin@demo-school.local';
+}
+
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
@@ -275,6 +298,19 @@ function Login() {
   function selectInstitute(id: string) {
     setInstituteId(id);
     setInstituteOpen(false);
+    setError('');
+    const targetInst = institutes.find(i => i.id === id);
+    if (targetInst) {
+      const demoEmail = getDemoEmailForInstitute(targetInst.code || targetInst.id, loginRole);
+      setEmail(curr => {
+        const isDemo = [
+          'admin@demo-school.local', 'admin@tint.edu.in', 'admin@tint.local', 'admin@abc155.edu.in',
+          'rahul@demo-school.local', 'teacher@tint.edu.in', 'mmrinmay76@gmail.com',
+          'student@greenwood.local', 'dhardhuran689@gmail.com', 'ahana12@gmail.com'
+        ].includes(curr) || !curr;
+        return isDemo ? demoEmail : curr;
+      });
+    }
     try {
       localStorage.setItem('attendoschool_last_institute_id', id);
     } catch {}
@@ -525,15 +561,11 @@ function Login() {
                   type="button"
                   className="as-simple-demo-btn"
                   onClick={() => {
-                    const cfg = LOGIN_ROLES[loginRole];
-                    setEmail(cfg.defaultEmail);
+                    const activeInst = institutes.find(i => i.id === instituteId);
+                    const demoEmail = getDemoEmailForInstitute(activeInst?.code || activeInst?.id || instituteId, loginRole);
+                    setEmail(demoEmail);
                     setPassword('ChangeMe123!');
-                    if (cfg.needsSchool) {
-                      setInstituteId(prev => {
-                        if (prev && institutes.some(i => i.id === prev)) return prev;
-                        return institutes.length > 0 ? institutes[0].id : '';
-                      });
-                    }
+                    setError('');
                   }}
                 >
                   <Sparkles size={12} />
@@ -3146,6 +3178,29 @@ function Students(){
     error: null,
   });
 
+  const [sessionPickerOpen, setSessionPickerOpen] = useState(false);
+  const sessionPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sessionPickerRef.current && !sessionPickerRef.current.contains(event.target as Node)) {
+        setSessionPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleSelectSession(sessName: string) {
+    setActiveSession(sessName);
+    localStorage.setItem('attendo_academic_session', sessName);
+    localStorage.setItem('attendo_active_academic_year', sessName);
+    window.dispatchEvent(new CustomEvent('sessionChanged', { detail: sessName }));
+    window.dispatchEvent(new Event('storage'));
+    load(sessName);
+    setSessionPickerOpen(false);
+  }
+
   useEffect(() => {
     const onSessionChange = (e: any) => {
       const sess = e?.detail || localStorage.getItem('attendo_academic_session') || '2025–26 Academic Session';
@@ -3712,9 +3767,156 @@ function Students(){
     {/* Search & Filter Bar */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 'var(--radius-sm)', fontSize: 13, color: '#1d4ed8' }}>
-          <CalendarDays size={14} />
-          <span><b>Session:</b> {activeSession}</span>
+        {/* Interactive Session Switcher Dropdown */}
+        <div style={{ position: 'relative' }} ref={sessionPickerRef}>
+          <button 
+            type="button"
+            onClick={() => setSessionPickerOpen(prev => !prev)}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              padding: '7px 14px', 
+              background: sessionPickerOpen ? '#dbeafe' : '#eff6ff', 
+              border: `1px solid ${sessionPickerOpen ? '#2563eb' : '#bfdbfe'}`, 
+              borderRadius: 'var(--radius-sm)', 
+              fontSize: 13, 
+              color: '#1d4ed8',
+              cursor: 'pointer',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'all 0.15s ease',
+              outline: 'none'
+            }}
+            onMouseEnter={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#dbeafe'; }}
+            onMouseLeave={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#eff6ff'; }}
+            title="Click to change academic session"
+            id="students-session-picker-btn"
+          >
+            <CalendarDays size={14} style={{ color: '#2563eb' }} />
+            <span><b>Session:</b> {activeSession}</span>
+            <ChevronDown size={14} style={{ transform: sessionPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: '#2563eb' }} />
+          </button>
+
+          {sessionPickerOpen && (
+            <div 
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 6px)',
+                left: 0,
+                zIndex: 1000,
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                minWidth: 260,
+                overflow: 'hidden',
+                animation: 'fadeIn 0.15s ease-out'
+              }}
+            >
+              <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Switch Academic Session</span>
+                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
+              </div>
+
+              <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
+                {/* All Sessions Option */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectSession('All Sessions')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: activeSession === 'All Sessions' ? '#eff6ff' : 'transparent',
+                    color: activeSession === 'All Sessions' ? '#1d4ed8' : '#334155',
+                    fontSize: 13,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontWeight: activeSession === 'All Sessions' ? 600 : 400
+                  }}
+                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={14} style={{ opacity: 0.6 }} />
+                    <span>All Sessions (View All)</span>
+                  </div>
+                  {activeSession === 'All Sessions' && <Check size={14} style={{ color: '#2563eb' }} />}
+                </button>
+
+                {/* Individual Sessions List */}
+                {(sessions.length > 0 ? sessions : [
+                  { id: 'ay-2024-25', name: '2024–25 Academic Session', is_active: false },
+                  { id: 'ay-2025-26', name: '2025–26 Academic Session', is_active: true },
+                  { id: 'ay-2026-27', name: '2026–27 Academic Session', is_active: false }
+                ]).map((sess: any) => {
+                  const sessName = sess.name || sess.label || sess.code || sess.id;
+                  const isSelected = activeSession === sessName || (cleanSess(activeSession) === cleanSess(sessName) && activeSession !== 'All Sessions');
+                  return (
+                    <button
+                      type="button"
+                      key={sess.id}
+                      onClick={() => handleSelectSession(sessName)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        background: isSelected ? '#eff6ff' : 'transparent',
+                        color: isSelected ? '#1d4ed8' : '#334155',
+                        fontSize: 13,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontWeight: isSelected ? 600 : 400
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CalendarDays size={14} style={{ opacity: 0.6 }} />
+                        <span>{sessName}</span>
+                        {sess.is_active && (
+                          <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
+                        )}
+                      </div>
+                      {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                <div style={{ borderTop: '1px solid #e2e8f0', padding: '6px 8px', background: '#f8fafc' }}>
+                  <a
+                    href="#/academic-years"
+                    onClick={() => setSessionPickerOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      color: '#2563eb',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: 4
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                    onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                  >
+                    Manage Academic Sessions →
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <input 
           placeholder="🔍 Search name, roll number, admission number, email..."
@@ -6523,7 +6725,7 @@ function Attendance(){
           <button className="secondary" onClick={() => nav('/dashboard')}>
             ← Back to Dashboard
           </button>
-          <button className="secondary" onClick={() => nav('/attendance-history')}>
+          <button className="secondary" onClick={() => nav('/teacher-history')}>
             Session History →
           </button>
         </div>
@@ -9146,6 +9348,8 @@ function App(){return <Routes>
   <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
+  <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
+  <Route path="/history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
   <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
   <Route path="/people" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PeopleManagement/></Layout></RoleGuard>}/>

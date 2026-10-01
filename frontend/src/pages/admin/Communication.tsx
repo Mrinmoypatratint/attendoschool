@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api';
 import {
   MessageSquare,
@@ -8,7 +8,8 @@ import {
   X,
   Clock,
   MessageCircle,
-  Eye
+  Eye,
+  Filter
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 
@@ -21,6 +22,8 @@ interface AnnouncementItem {
   status: string;
   class_id?: string;
   section_id?: string;
+  class_number?: number;
+  section_name?: string;
   recipient_count: number;
   read_count: number;
   reply_count: number;
@@ -43,6 +46,30 @@ interface ReplyItem {
   created_at: string;
 }
 
+export const STANDARD_CLASS_LIST = [
+  { classNumber: -1, label: 'L-KG' },
+  { classNumber: 0, label: 'U-KG' },
+  { classNumber: 1, label: 'Class 1' },
+  { classNumber: 2, label: 'Class 2' },
+  { classNumber: 3, label: 'Class 3' },
+  { classNumber: 4, label: 'Class 4' },
+  { classNumber: 5, label: 'Class 5' },
+  { classNumber: 6, label: 'Class 6' },
+  { classNumber: 7, label: 'Class 7' },
+  { classNumber: 8, label: 'Class 8' },
+  { classNumber: 9, label: 'Class 9' },
+  { classNumber: 10, label: 'Class 10' },
+  { classNumber: 11, label: 'Class 11' },
+  { classNumber: 12, label: 'Class 12' }
+];
+
+export function formatClassGrade(num?: number | null): string {
+  if (num === -1) return 'L-KG';
+  if (num === 0) return 'U-KG';
+  if (num !== null && num !== undefined && !isNaN(Number(num))) return `Class ${num}`;
+  return '';
+}
+
 export default function Communication() {
   const [items, setItems] = useState<AnnouncementItem[]>([]);
   const [activeTab, setActiveTab] = useState<'announcements' | 'all-replies'>('announcements');
@@ -57,6 +84,7 @@ export default function Communication() {
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
+  const [tableFilter, setTableFilter] = useState<string>('ALL');
   const [selectedNoticeForReplies, setSelectedNoticeForReplies] = useState<AnnouncementItem | null>(null);
   const [noticeReplies, setNoticeReplies] = useState<ReplyItem[]>([]);
   const [allReplies, setAllReplies] = useState<ReplyItem[]>([]);
@@ -94,6 +122,127 @@ export default function Communication() {
     api.get('/sections').then(r => setSections(r.data || [])).catch(() => {});
   }, []);
 
+  // Map standard grade list L-KG → Class 12 to live DB class records
+  const resolvedClasses = useMemo(() => {
+    return STANDARD_CLASS_LIST.map(opt => {
+      const found = classes.find(c => Number(c.class_number) === opt.classNumber || c.label === opt.label);
+      return {
+        id: found ? found.id : `cls-${opt.classNumber}`,
+        classNumber: opt.classNumber,
+        label: opt.label,
+        realId: found?.id
+      };
+    });
+  }, [classes]);
+
+  const selectedClass = useMemo(() => {
+    if (!form.classId) return null;
+    return resolvedClasses.find(c => c.id === form.classId || String(c.classNumber) === String(form.classId)) || null;
+  }, [form.classId, resolvedClasses]);
+
+  // Find all sections belonging to the selected class
+  const classSections = useMemo(() => {
+    if (!selectedClass) return [];
+    return sections.filter(s => {
+      if (s.class_id && s.class_id === selectedClass.id) return true;
+      if (s.classId && s.classId === selectedClass.id) return true;
+      if (s.class_number !== undefined && Number(s.class_number) === selectedClass.classNumber) return true;
+      return false;
+    });
+  }, [selectedClass, sections]);
+
+  const secA = useMemo(() => {
+    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
+  }, [classSections]);
+
+  const secB = useMemo(() => {
+    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
+  }, [classSections]);
+
+  // Determine currently selected section letter ('A' | 'B' | '')
+  const selectedSectionLetter = useMemo(() => {
+    if (!form.sectionId) return '';
+    if (secA && (form.sectionId === secA.id || form.sectionId === 'sec-a')) return 'A';
+    if (secB && (form.sectionId === secB.id || form.sectionId === 'sec-b')) return 'B';
+    const found = classSections.find(s => s.id === form.sectionId);
+    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
+    return '';
+  }, [form.sectionId, secA, secB, classSections]);
+
+  // Change Handlers with synchronized targeting logic
+  function handleAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value;
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+      setForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
+    } else if (val === 'CLASS') {
+      setForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
+    } else if (val === 'SECTION') {
+      setForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+    }
+  }
+
+  function handleClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const chosenClassId = e.target.value;
+    if (!chosenClassId) {
+      setForm(prev => ({
+        ...prev,
+        classId: '',
+        sectionId: '',
+        audienceType: (prev.audienceType === 'CLASS' || prev.audienceType === 'SECTION') ? 'SCHOOL' : prev.audienceType
+      }));
+      return;
+    }
+
+    const targetClass = resolvedClasses.find(c => c.id === chosenClassId);
+    const newClassSections = sections.filter(s => {
+      if (s.class_id && s.class_id === chosenClassId) return true;
+      if (s.classId && s.classId === chosenClassId) return true;
+      if (targetClass && s.class_number !== undefined && Number(s.class_number) === targetClass.classNumber) return true;
+      return false;
+    });
+
+    let newSectionId = '';
+    if (selectedSectionLetter === 'A') {
+      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
+      newSectionId = a?.id || 'sec-a';
+    } else if (selectedSectionLetter === 'B') {
+      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
+      newSectionId = b?.id || 'sec-b';
+    }
+
+    setForm(prev => ({
+      ...prev,
+      classId: chosenClassId,
+      sectionId: newSectionId,
+      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+    }));
+  }
+
+  function handleSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const letter = e.target.value;
+    if (!letter) {
+      setForm(prev => ({
+        ...prev,
+        sectionId: '',
+        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+      }));
+      return;
+    }
+
+    let targetSecId = '';
+    if (letter === 'A') {
+      targetSecId = secA?.id || (selectedClass ? `${selectedClass.id}-sec-a` : 'sec-a');
+    } else if (letter === 'B') {
+      targetSecId = secB?.id || (selectedClass ? `${selectedClass.id}-sec-b` : 'sec-b');
+    }
+
+    setForm(prev => ({
+      ...prev,
+      sectionId: targetSecId,
+      audienceType: 'SECTION'
+    }));
+  }
+
   // Stage 1 Validation & Preview Trigger
   function handleInitiateCreate() {
     if (!form.title.trim()) {
@@ -104,12 +253,12 @@ export default function Communication() {
       alert('Message content is required.');
       return;
     }
-    if ((form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId) {
-      alert('Please select a target class for class-scoped announcements.');
+    if (form.audienceType === 'CLASS' && !form.classId) {
+      alert('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (form.audienceType === 'SECTION' && !form.sectionId) {
-      alert('Please select a target section.');
+    if (form.audienceType === 'SECTION' && (!form.classId || !form.sectionId)) {
+      alert('Please select both Class (L-KG to 12) and Section (Section A or B).');
       return;
     }
     setPreviewError(null);
@@ -174,20 +323,31 @@ export default function Communication() {
     }
   }
 
-  const selectedClassName = classes.find(c => c.id === form.classId)?.label || form.classId;
-  const selectedSectionName = sections.find(s => s.id === form.sectionId)?.name || form.sectionId;
+  const selectedClassName = selectedClass?.label || 'Not Selected';
+  const selectedSectionDisplay = selectedSectionLetter ? `Section ${selectedSectionLetter}` : 'All Sections (A & B)';
 
   const previewSections: PreviewSectionData[] = [
     {
-      title: 'Broadcast Scope & Urgency',
+      title: 'Broadcast Scope & Delivery Target',
       fields: [
         { label: 'Audience Target', value: form.audienceType, type: 'badge', color: 'blue' },
         ...(form.audienceType === 'CLASS' || form.audienceType === 'SECTION'
-          ? [{ label: 'Target Class', value: selectedClassName || 'Not Selected' }]
+          ? [{ label: 'Target Class', value: selectedClassName }]
           : []),
         ...(form.audienceType === 'SECTION'
-          ? [{ label: 'Target Section', value: selectedSectionName || 'Not Selected' }]
-          : []),
+          ? [
+              { label: 'Target Section', value: selectedSectionDisplay },
+              { label: 'Delivery Scope', value: `Strictly delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber}-${selectedSectionLetter} only (students & parents)` }
+            ]
+          : form.audienceType === 'CLASS'
+          ? [{ label: 'Delivery Scope', value: `Delivered to all students & parents of ${selectedClassName}` }]
+          : form.audienceType === 'TEACHER'
+          ? [{ label: 'Delivery Scope', value: 'Delivered to all teachers and faculty' }]
+          : form.audienceType === 'STUDENT'
+          ? [{ label: 'Delivery Scope', value: 'Delivered to all students portal accounts' }]
+          : form.audienceType === 'PARENTS'
+          ? [{ label: 'Delivery Scope', value: 'Delivered to all parents portal accounts' }]
+          : [{ label: 'Delivery Scope', value: 'Delivered school-wide to students, parents, and teachers' }]),
         {
           label: 'Priority Level',
           value: form.priority,
@@ -327,51 +487,72 @@ export default function Communication() {
                   <label style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>AUDIENCE TYPE</label>
                   <select
                     value={form.audienceType}
-                    onChange={e => setForm({ ...form, audienceType: e.target.value })}
-                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, minWidth: 140 }}
+                    onChange={handleAudienceChange}
+                    style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, minWidth: 155 }}
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
+                    <option value="CLASS">CLASS (Specific Class)</option>
+                    <option value="SECTION">SECTION (Class + Section)</option>
                     <option value="TEACHER">TEACHER (Faculty only)</option>
                     <option value="STUDENT">STUDENT (Student portal)</option>
                     <option value="PARENTS">PARENTS</option>
-                    <option value="CLASS">CLASS</option>
-                    <option value="SECTION">SECTION</option>
                   </select>
                 </div>
 
-                {/* Class selector if CLASS or SECTION */}
-                {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>CLASS</label>
-                    <select
-                      value={form.classId}
-                      onChange={e => setForm({ ...form, classId: e.target.value })}
-                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, minWidth: 120 }}
-                    >
-                      <option value="">Select Class</option>
-                      {classes.map(c => (
-                        <option key={c.id} value={c.id}>{c.label || c.name || `Class ${c.class_number}`}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Class selector: L-KG to Class 12 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#2563eb' : '#64748b'
+                  }}>
+                    CLASS {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <select
+                    value={form.classId}
+                    onChange={handleClassChange}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? '1px solid #f87171' : '1px solid #cbd5e1',
+                      fontSize: 13,
+                      minWidth: 140,
+                      backgroundColor: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#ffffff' : '#f8fafc'
+                    }}
+                  >
+                    <option value="">{form.audienceType === 'CLASS' || form.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
+                    {resolvedClasses.map(c => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
 
-                {/* Section selector if SECTION */}
-                {form.audienceType === 'SECTION' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>SECTION</label>
-                    <select
-                      value={form.sectionId}
-                      onChange={e => setForm({ ...form, sectionId: e.target.value })}
-                      style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, minWidth: 110 }}
-                    >
-                      <option value="">Select Section</option>
-                      {sections.map(s => (
-                        <option key={s.id} value={s.id}>{s.name || s.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Section selector: Section A or B */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: form.audienceType === 'SECTION' ? '#2563eb' : '#64748b'
+                  }}>
+                    SECTION {form.audienceType === 'SECTION' && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <select
+                    value={selectedSectionLetter}
+                    onChange={handleSectionChange}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid #cbd5e1',
+                      fontSize: 13,
+                      minWidth: 130,
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <option value="">{form.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                  </select>
+                </div>
 
                 {/* Priority Selector with Emergency Multi-channel Callout */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -418,11 +599,87 @@ export default function Communication() {
                 </div>
               </div>
 
+              {/* Informative Real-time Target Audience Indicator */}
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 6,
+                backgroundColor: form.audienceType === 'SECTION' ? '#f5f3ff' : form.audienceType === 'CLASS' ? '#f0f9ff' : '#f8fafc',
+                border: form.audienceType === 'SECTION' ? '1px solid #ddd6fe' : form.audienceType === 'CLASS' ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                color: form.audienceType === 'SECTION' ? '#5b21b6' : form.audienceType === 'CLASS' ? '#0369a1' : '#334155',
+                fontSize: 12.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 2
+              }}>
+                <span style={{ fontWeight: 700 }}>🎯 Target Audience:</span>
+                {form.audienceType === 'SECTION' && selectedClass && selectedSectionLetter ? (
+                  <span>
+                    <b>{selectedClass.label} · Section {selectedSectionLetter}</b> — The message will go <b>ONLY to {selectedClass.label}-{selectedSectionLetter}</b> (students and linked parents).
+                  </span>
+                ) : form.audienceType === 'SECTION' && selectedClass ? (
+                  <span style={{ color: '#d97706' }}>
+                    <b>{selectedClass.label}</b> selected. Please choose <b>Section A or Section B</b> to target that specific section.
+                  </span>
+                ) : form.audienceType === 'SECTION' ? (
+                  <span style={{ color: '#d97706' }}>
+                    Please select a <b>Class (L-KG to 12)</b> and <b>Section (A or B)</b>.
+                  </span>
+                ) : form.audienceType === 'CLASS' && selectedClass ? (
+                  <span>
+                    <b>{selectedClass.label} (All Sections)</b> — The message will go to all students and parents in {selectedClass.label}.
+                  </span>
+                ) : form.audienceType === 'CLASS' ? (
+                  <span style={{ color: '#d97706' }}>
+                    Please select a target <b>Class (L-KG to Class 12)</b>.
+                  </span>
+                ) : form.audienceType === 'TEACHER' ? (
+                  <span><b>Faculty Only</b> — Visible exclusively to verified teachers.</span>
+                ) : form.audienceType === 'STUDENT' ? (
+                  <span><b>Student Portal</b> — Broadcast to all registered students across all classes.</span>
+                ) : form.audienceType === 'PARENTS' ? (
+                  <span><b>Parents Portal</b> — Broadcast to all parent accounts.</span>
+                ) : (
+                  <span><b>Entire School (All)</b> — Broadcast to all students, parents, and faculty school-wide.</span>
+                )}
+              </div>
+
               {form.priority === 'EMERGENCY' && (
                 <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                   <AlertTriangle size={14} /> Emergency announcements automatically dispatch priority emails to all target audience accounts upon publication.
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Announcements Filter Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+              Published & Draft Notices ({items.length})
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Filter size={13} /> Filter:
+              </span>
+              {(['ALL', 'SCHOOL', 'CLASS', 'SECTION', 'TEACHER', 'STUDENT'] as const).map(f => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setTableFilter(f)}
+                  style={{
+                    padding: '3px 9px',
+                    borderRadius: 4,
+                    fontSize: 11.5,
+                    fontWeight: tableFilter === f ? 700 : 500,
+                    backgroundColor: tableFilter === f ? '#2563eb' : '#f1f5f9',
+                    color: tableFilter === f ? '#ffffff' : '#475569',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {f === 'ALL' ? 'All' : f}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -442,33 +699,67 @@ export default function Communication() {
                 </tr>
               </thead>
               <tbody>
-                {items.map(x => (
-                  <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 600, fontSize: 13.5, color: '#0f172a' }}>{x.title}</div>
-                      <div style={{ fontSize: 12, color: '#64748b', maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {x.message}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '3px 8px',
-                        borderRadius: 4,
-                        fontSize: 11.5,
-                        fontWeight: 600,
-                        backgroundColor:
-                          x.audience_type === 'TEACHER' ? '#f0fdf4' :
-                          x.audience_type === 'STUDENT' ? '#eff6ff' :
-                          x.audience_type === 'PARENTS' ? '#fef3c7' : '#f1f5f9',
-                        color:
-                          x.audience_type === 'TEACHER' ? '#166534' :
-                          x.audience_type === 'STUDENT' ? '#1e40af' :
-                          x.audience_type === 'PARENTS' ? '#92400e' : '#334155'
-                      }}>
-                        {x.audience_type}
-                      </span>
-                    </td>
+                {items
+                  .filter(x => {
+                    if (tableFilter === 'ALL') return true;
+                    return x.audience_type === tableFilter;
+                  })
+                  .map(x => {
+                    // Resolve class and section names for audience badge
+                    let clsLabel = '';
+                    if (x.class_number !== undefined && x.class_number !== null) {
+                      clsLabel = formatClassGrade(x.class_number);
+                    } else if (x.class_id) {
+                      const c = resolvedClasses.find(rc => rc.id === x.class_id);
+                      if (c) clsLabel = c.label;
+                    }
+
+                    let secName = x.section_name || '';
+                    if (!secName && x.section_id) {
+                      const s = sections.find(rs => rs.id === x.section_id);
+                      if (s) secName = s.name || s.section_name || '';
+                    }
+
+                    let audienceBadgeText = x.audience_type;
+                    if (x.audience_type === 'SECTION') {
+                      audienceBadgeText = `${clsLabel || 'Class'} · Sec ${secName || 'A'}`;
+                    } else if (x.audience_type === 'CLASS') {
+                      audienceBadgeText = `${clsLabel || 'Class'}`;
+                    }
+
+                    return (
+                      <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#0f172a' }}>{x.title}</div>
+                          <div style={{ fontSize: 12, color: '#64748b', maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {x.message}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            backgroundColor:
+                              x.audience_type === 'TEACHER' ? '#f0fdf4' :
+                              x.audience_type === 'STUDENT' ? '#eff6ff' :
+                              x.audience_type === 'PARENTS' ? '#fef3c7' :
+                              x.audience_type === 'SECTION' ? '#f5f3ff' :
+                              x.audience_type === 'CLASS' ? '#f0f9ff' : '#f1f5f9',
+                            color:
+                              x.audience_type === 'TEACHER' ? '#166534' :
+                              x.audience_type === 'STUDENT' ? '#1e40af' :
+                              x.audience_type === 'PARENTS' ? '#92400e' :
+                              x.audience_type === 'SECTION' ? '#6b21a8' :
+                              x.audience_type === 'CLASS' ? '#0369a1' : '#334155',
+                            border: x.audience_type === 'SECTION' ? '1px solid #ddd6fe' : x.audience_type === 'CLASS' ? '1px solid #bae6fd' : 'none'
+                          }}>
+                            {audienceBadgeText}
+                          </span>
+                        </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{
                         display: 'inline-flex',
@@ -550,7 +841,8 @@ export default function Communication() {
                       )}
                     </td>
                   </tr>
-                ))}
+                );
+              })}
                 {!items.length && (
                   <tr>
                     <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>

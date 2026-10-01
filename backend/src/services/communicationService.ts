@@ -73,6 +73,13 @@ export async function ensureTables() {
   if (tablesInitialized) return;
   try {
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS parent_student_links (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        parent_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        school_id UUID REFERENCES schools(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
       CREATE TABLE IF NOT EXISTS notification_replies (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
@@ -101,6 +108,41 @@ function sanitizeText(str: string): string {
 }
 
 /**
+ * Resolves class and section UUIDs from database when IDs or shorthand labels are provided
+ */
+async function resolveClassAndSectionUuids(schoolId: string, classId?: string | null, sectionId?: string | null) {
+  let cUuid = classId || null;
+  let sUuid = sectionId || null;
+
+  const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
+
+  if (cUuid && !isUuid(cUuid)) {
+    const raw = String(cUuid).toLowerCase().trim();
+    const cleanNum = raw.includes('lkg') || raw === '-1' ? -1 :
+                     raw.includes('ukg') || raw === '0' ? 0 :
+                     Number(raw.replace(/[^0-9-]/g, ''));
+    if (!isNaN(cleanNum)) {
+      try {
+        const q = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cleanNum]);
+        if (q.rowCount && q.rows[0]) cUuid = q.rows[0].id;
+      } catch {}
+    }
+  }
+
+  if (sUuid && !isUuid(sUuid)) {
+    const sName = String(sUuid).toUpperCase().includes('B') ? 'B' : 'A';
+    if (cUuid && isUuid(cUuid)) {
+      try {
+        const q = await pool.query('SELECT id FROM sections WHERE school_id = $1 AND class_id = $2 AND UPPER(name) = $3 LIMIT 1', [schoolId, cUuid, sName]);
+        if (q.rowCount && q.rows[0]) sUuid = q.rows[0].id;
+      } catch {}
+    }
+  }
+
+  return { classId: cUuid, sectionId: sUuid };
+}
+
+/**
  * 15. Announcement Management: Audience Extension
  * Allows audience_type IN ('SCHOOL', 'CLASS', 'SECTION', 'PARENTS', 'TEACHER', 'STUDENT')
  */
@@ -112,12 +154,17 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     throw new Error(`Invalid audience. Allowed: ${allowedAudiences.join(', ')}`);
   }
 
+  await ensureTables();
+  const { classId: resolvedClassId, sectionId: resolvedSectionId } = await resolveClassAndSectionUuids(schoolId, d.classId, d.sectionId);
+
+  const targetClassId = (audience === 'CLASS' || audience === 'SECTION') ? resolvedClassId : null;
+  const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
+
   try {
-    await ensureTables();
     const { rows } = await pool.query(
       `INSERT INTO announcements
        (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $10 IS NOT NULL THEN 'SCHEDULED' ELSE 'DRAFT' END)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, CASE WHEN $9::timestamptz IS NOT NULL THEN 'SCHEDULED' ELSE 'DRAFT' END)
        RETURNING *`,
       [
         schoolId,
@@ -125,8 +172,8 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         d.title,
         d.message,
         audience,
-        d.classId || null,
-        d.sectionId || null,
+        targetClassId,
+        targetSectionId,
         d.priority || 'NORMAL',
         d.scheduledAt || null,
         d.expiresAt || null
@@ -143,15 +190,17 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     title: d.title,
     message: d.message,
     audience_type: audience,
-    class_id: d.classId || null,
-    section_id: d.sectionId || null,
+    class_id: targetClassId,
+    section_id: targetSectionId,
+    class_number: d.class_number ?? d.classNumber,
+    section_name: d.section_name ?? d.sectionName,
     priority: d.priority || 'NORMAL',
     status: d.scheduledAt ? 'SCHEDULED' : 'DRAFT',
     scheduled_at: d.scheduledAt || null,
     expires_at: d.expiresAt || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : 30,
+    recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : audience === 'SECTION' ? 15 : 30,
     read_count: 0,
     reply_count: 0
   };
@@ -217,6 +266,7 @@ export async function publishAnnouncement(schoolId: string, id: string) {
 
 /**
  * Creates recipients based on the extended audience_type
+ * Strict targeting: If SECTION (e.g. Class 7 Section A), ONLY recipients belonging to that Class AND Section are created.
  */
 async function createRecipients(schoolId: string, announcementId: string) {
   try {
@@ -248,31 +298,39 @@ async function createRecipients(schoolId: string, announcementId: string) {
       recipients = sRes.rows;
     } else if (a.audience_type === 'PARENTS') {
       const pRes = await pool.query(
-        `SELECT DISTINCT u.id AS user_id, l.student_id
-         FROM parent_student_links l 
-         JOIN users u ON u.id = l.parent_user_id
-         WHERE u.school_id = $1 AND u.role = 'PARENT'`,
+        `SELECT DISTINCT u.id AS user_id, s.id AS student_id
+         FROM students s
+         JOIN users u ON (u.email = s.parent_email AND u.role = 'PARENT')
+         WHERE s.school_id = $1`,
         [schoolId]
       );
       recipients = pRes.rows;
     } else if (a.audience_type === 'CLASS') {
+      // Scoped strictly to the target class
       const cRes = await pool.query(
         `SELECT DISTINCT u.id AS user_id, s.id AS student_id
          FROM students s
-         LEFT JOIN parent_student_links l ON l.student_id = s.id
-         LEFT JOIN users u ON (u.id = s.user_id OR u.id = l.parent_user_id)
-         WHERE s.school_id = $1 AND s.class_id = $2 AND u.id IS NOT NULL`,
+         LEFT JOIN classes c ON c.id = s.class_id
+         LEFT JOIN users u ON (u.id = s.user_id OR (u.email = s.parent_email AND u.role = 'PARENT'))
+         WHERE s.school_id = $1 
+           AND (s.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = (SELECT class_number FROM classes WHERE id = $2)))
+           AND u.id IS NOT NULL`,
         [schoolId, a.class_id]
       );
       recipients = cRes.rows;
     } else if (a.audience_type === 'SECTION') {
+      // Scoped STRICTLY to target class AND target section (e.g. Class 7-A only)
       const sRes = await pool.query(
         `SELECT DISTINCT u.id AS user_id, s.id AS student_id
          FROM students s
-         LEFT JOIN parent_student_links l ON l.student_id = s.id
-         LEFT JOIN users u ON (u.id = s.user_id OR u.id = l.parent_user_id)
-         WHERE s.school_id = $1 AND s.section_id = $2 AND u.id IS NOT NULL`,
-        [schoolId, a.section_id]
+         LEFT JOIN classes c ON c.id = s.class_id
+         LEFT JOIN sections sec ON sec.id = s.section_id
+         LEFT JOIN users u ON (u.id = s.user_id OR (u.email = s.parent_email AND u.role = 'PARENT'))
+         WHERE s.school_id = $1 
+           AND (s.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = (SELECT class_number FROM classes WHERE id = $2)) OR $2::uuid IS NULL)
+           AND (s.section_id = $3 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER((SELECT name FROM sections WHERE id = $3))))
+           AND u.id IS NOT NULL`,
+        [schoolId, a.class_id, a.section_id]
       );
       recipients = sRes.rows;
     } else {
@@ -284,6 +342,7 @@ async function createRecipients(schoolId: string, announcementId: string) {
     }
 
     for (const r of recipients) {
+      if (!r.user_id) continue;
       await pool.query(
         `INSERT INTO announcement_recipients (announcement_id, parent_user_id, student_id, delivery_channel)
          VALUES ($1, $2, $3, 'IN_APP')
@@ -294,6 +353,7 @@ async function createRecipients(schoolId: string, announcementId: string) {
 
     return recipients.length;
   } catch (err: any) {
+    console.warn('[createRecipients] Error:', err.message);
     return 0;
   }
 }
@@ -315,6 +375,26 @@ async function triggerEmergencyEmailBroadcast(schoolId: string, announcement: an
       const q = await pool.query(
         `SELECT email FROM students WHERE school_id = $1 AND email IS NOT NULL`,
         [schoolId]
+      );
+      emails = q.rows.map(r => r.email).filter(Boolean);
+    } else if (announcement.audience_type === 'CLASS') {
+      const q = await pool.query(
+        `SELECT DISTINCT email FROM (
+           SELECT s.email FROM students s WHERE s.school_id = $1 AND s.class_id = $2
+           UNION
+           SELECT s.parent_email AS email FROM students s WHERE s.school_id = $1 AND s.class_id = $2
+         ) sub WHERE email IS NOT NULL AND email != ''`,
+        [schoolId, announcement.class_id]
+      );
+      emails = q.rows.map(r => r.email).filter(Boolean);
+    } else if (announcement.audience_type === 'SECTION') {
+      const q = await pool.query(
+        `SELECT DISTINCT email FROM (
+           SELECT s.email FROM students s WHERE s.school_id = $1 AND (s.class_id = $2 OR $2::uuid IS NULL) AND s.section_id = $3
+           UNION
+           SELECT s.parent_email AS email FROM students s WHERE s.school_id = $1 AND (s.class_id = $2 OR $2::uuid IS NULL) AND s.section_id = $3
+         ) sub WHERE email IS NOT NULL AND email != ''`,
+        [schoolId, announcement.class_id, announcement.section_id]
       );
       emails = q.rows.map(r => r.email).filter(Boolean);
     } else {
@@ -378,11 +458,22 @@ export async function listSchoolAnnouncements(schoolId: string) {
   try {
     const { rows } = await pool.query(
       `SELECT a.*, u.name AS created_by_name,
-        (SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int AS recipient_count,
+        c.class_number, sec.name AS section_name,
+        COALESCE(
+          NULLIF((SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id)::int, 0),
+          CASE 
+            WHEN a.audience_type = 'SECTION' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id AND s.section_id = a.section_id)::int
+            WHEN a.audience_type = 'CLASS' THEN (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id AND s.class_id = a.class_id)::int
+            WHEN a.audience_type = 'TEACHER' THEN (SELECT COUNT(*) FROM users u WHERE u.school_id = a.school_id AND u.role = 'TEACHER')::int
+            ELSE (SELECT COUNT(*) FROM students s WHERE s.school_id = a.school_id)::int
+          END
+        ) AS recipient_count,
         (SELECT COUNT(*) FROM announcement_recipients r WHERE r.announcement_id = a.id AND r.read_at IS NOT NULL)::int AS read_count,
         (SELECT COUNT(*) FROM notification_replies nr WHERE nr.announcement_id = a.id)::int AS reply_count
        FROM announcements a 
        LEFT JOIN users u ON u.id = a.created_by 
+       LEFT JOIN classes c ON c.id = a.class_id
+       LEFT JOIN sections sec ON sec.id = a.section_id
        WHERE a.school_id = $1
        ORDER BY COALESCE(a.published_at, a.scheduled_at, a.created_at) DESC`,
       [schoolId]
@@ -434,19 +525,53 @@ export async function teacherInbox(teacherUserId: string, schoolId: string) {
 /**
  * Strict RBAC: Parent Inbox
  * Excludes TEACHER announcements
+ * Strictly scopes CLASS and SECTION announcements to parent's linked student's class and section
  */
 export async function parentInbox(parentUserId: string, schoolId: string) {
   try {
+    // 1. Resolve parent's linked student in this school
+    let st: any = null;
+    try {
+      const sQ = await pool.query(
+        `SELECT s.id, s.class_id, s.section_id, c.class_number, sec.name AS section_name
+         FROM students s
+         LEFT JOIN classes c ON c.id = s.class_id
+         LEFT JOIN sections sec ON sec.id = s.section_id
+         WHERE s.school_id = $1 
+           AND (s.parent_email = (SELECT email FROM users WHERE id = $2) OR s.user_id = $2)
+         LIMIT 1`,
+        [schoolId, parentUserId]
+      );
+      if (sQ.rowCount && sQ.rows[0]) st = sQ.rows[0];
+    } catch {}
+
     const { rows } = await pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.expires_at, a.audience_type,
-        r.id AS recipient_id, r.student_id, r.delivery_channel, r.delivery_status, r.delivered_at, r.read_at
-       FROM announcement_recipients r 
-       JOIN announcements a ON a.id = r.announcement_id
-       WHERE r.parent_user_id = $1 AND a.school_id = $2 AND a.status = 'PUBLISHED'
+      `SELECT DISTINCT a.id, a.title, a.message, a.priority, a.published_at, a.expires_at, a.audience_type,
+        r.id AS recipient_id, COALESCE(r.student_id, $3) AS student_id, r.delivery_channel, r.delivery_status, r.delivered_at, r.read_at,
+        c.class_number, sec.name AS section_name
+       FROM announcements a
+       LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $1
+       LEFT JOIN classes c ON c.id = a.class_id
+       LEFT JOIN sections sec ON sec.id = a.section_id
+       WHERE a.school_id = $2 AND a.status = 'PUBLISHED'
          AND a.audience_type NOT IN ('TEACHER')
          AND (a.expires_at IS NULL OR a.expires_at > NOW())
+         AND (
+           r.id IS NOT NULL
+           OR a.audience_type IN ('SCHOOL', 'PARENTS')
+           OR ($3::uuid IS NOT NULL AND a.audience_type = 'CLASS' AND (a.class_id = $4 OR (c.class_number IS NOT NULL AND c.class_number = $5)))
+           OR ($3::uuid IS NOT NULL AND a.audience_type = 'SECTION' AND (a.class_id IS NULL OR a.class_id = $4 OR (c.class_number IS NOT NULL AND c.class_number = $5)) AND (a.section_id = $6 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER($7))))
+         )
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
-      [parentUserId, schoolId]
+      [
+        parentUserId,
+        schoolId,
+        st?.id || null,
+        st?.class_id || null,
+        st?.class_number ?? null,
+        st?.section_id || null,
+        st?.section_name || null
+      ]
     );
     if (rows && rows.length > 0) return rows;
   } catch (_e) {}

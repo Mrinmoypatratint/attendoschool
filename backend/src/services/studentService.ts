@@ -458,13 +458,26 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
   let announcements: any[] = [];
   try {
     const annQ = await pool.query(
-      `SELECT id, title, message, priority, published_at, created_at
-       FROM announcements
-       WHERE school_id = $1 AND status = 'PUBLISHED'
-         AND (audience_type = 'SCHOOL' OR (audience_type = 'CLASS' AND class_id = $2) OR (audience_type = 'SECTION' AND section_id = $3))
-       ORDER BY priority = 'EMERGENCY' DESC, published_at DESC
+      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
+       FROM announcements a
+       LEFT JOIN classes c ON c.id = a.class_id
+       LEFT JOIN sections sec ON sec.id = a.section_id
+       WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
+         AND (
+           a.audience_type IN ('SCHOOL', 'STUDENT')
+           OR (
+             a.audience_type = 'CLASS'
+             AND (a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+           )
+           OR (
+             a.audience_type = 'SECTION'
+             AND (a.class_id IS NULL OR a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+             AND (a.section_id = $3 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER($5)))
+           )
+         )
+       ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC
        LIMIT 3`,
-      [schoolId, st.class_id, st.section_id]
+      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name]
     );
     if (annQ.rowCount && annQ.rowCount > 0) {
       announcements = annQ.rows.map((a) => ({
@@ -803,16 +816,53 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
   try {
     const q = await pool.query(
       `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-              u.name AS author_name
+              u.name AS author_name,
+              c.class_number, sec.name AS section_name
        FROM announcements a
        LEFT JOIN users u ON u.id = a.created_by
+       LEFT JOIN classes c ON c.id = a.class_id
+       LEFT JOIN sections sec ON sec.id = a.section_id
        WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
-         AND (a.audience_type IN ('SCHOOL', 'STUDENT') OR (a.audience_type = 'CLASS' AND a.class_id = $2) OR (a.audience_type = 'SECTION' AND a.section_id = $3))
+         AND (
+           a.audience_type IN ('SCHOOL', 'STUDENT')
+           OR (
+             a.audience_type = 'CLASS'
+             AND (a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+           )
+           OR (
+             a.audience_type = 'SECTION'
+             AND (a.class_id IS NULL OR a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+             AND (a.section_id = $3 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER($5)))
+           )
+         )
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
-      [schoolId, st.class_id, st.section_id]
+      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name]
     );
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}
+
+  // Filter in-memory announcements strictly for students
+  try {
+    const { memAnnouncements } = await import('./communicationService');
+    const filteredMem = memAnnouncements.filter((a: any) => {
+      if (a.status !== 'PUBLISHED') return false;
+      if (a.school_id !== schoolId) return false;
+      if (['SCHOOL', 'STUDENT'].includes(a.audience_type)) return true;
+      if (a.audience_type === 'CLASS') {
+        return (a.class_id && a.class_id === st.class_id) || 
+               (a.class_number !== undefined && Number(a.class_number) === Number(st.class_number));
+      }
+      if (a.audience_type === 'SECTION') {
+        const matchClass = !a.class_id || a.class_id === st.class_id || 
+                           (a.class_number !== undefined && Number(a.class_number) === Number(st.class_number));
+        const matchSec = (a.section_id && a.section_id === st.section_id) || 
+                         (a.section_name && String(a.section_name).toUpperCase() === String(st.section_name).toUpperCase());
+        return matchClass && matchSec;
+      }
+      return false;
+    });
+    if (filteredMem.length > 0) return filteredMem;
+  } catch {}
 
   return [
     { id: 'ann-1', title: 'Half Yearly Exam Schedule Released', message: 'The half yearly examination schedule for Class 10 is published. Please review your subject syllabus and room assignments.', priority: 'HIGH', published_at: '2025-09-16T10:00:00Z', author_name: 'Principal Office' },
