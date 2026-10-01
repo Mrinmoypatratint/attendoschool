@@ -40,29 +40,54 @@ async function deploy() {
     console.log(`📂 Initial directory contents (${names.length} items):`, names.slice(0, 15).join(', '));
 
     const lowerNames = names.map(n => n.toLowerCase());
-    const candidateDirs = [];
+    const candidateDirs = new Set();
 
-    // Priority 1: If login directory is ALREADY the website root (contains index.html AND assets)
+    // Check if initial directory had index.html & assets
     if (lowerNames.includes('index.html') && lowerNames.includes('assets')) {
-      console.log('🎯 Detected website root directory directly upon login! Deploying directly to .');
-      candidateDirs.push('.');
-    } else if (process.env.HOSTINGER_SERVER_DIR && process.env.HOSTINGER_SERVER_DIR !== '.' && process.env.HOSTINGER_SERVER_DIR !== './') {
-      candidateDirs.push(process.env.HOSTINGER_SERVER_DIR);
-    } else {
-      // Primary domain subdomains in Hostinger live in public_html/attendoschool
-      if (lowerNames.includes('public_html')) {
-        candidateDirs.push('public_html/attendoschool');
-      }
-      // Addon domain subdomains live in domains/optinetinnovations.in/public_html/attendoschool
-      if (lowerNames.includes('domains')) {
-        candidateDirs.push('domains/optinetinnovations.in/public_html/attendoschool');
-      }
+      console.log('🎯 Login directory contains website files (.): Adding . to targets.');
+      candidateDirs.add('.');
     }
 
-    console.log(`📋 Target directories to sync (${candidateDirs.length}):`, candidateDirs.join(', '));
+    // Inspect /domains
+    try {
+      const domainsList = await client.list('/domains');
+      const dNames = domainsList.map(f => f.name);
+      console.log(`🌐 /domains items (${dNames.length}):`, dNames.join(', '));
+      for (const d of dNames) {
+        if (d.toLowerCase().includes('attendoschool')) {
+          candidateDirs.add(`/domains/${d}/public_html`);
+          candidateDirs.add(`/domains/${d}`);
+        }
+        if (d.toLowerCase().includes('optinetinnovations')) {
+          candidateDirs.add(`/domains/${d}/public_html/attendoschool`);
+        }
+      }
+    } catch (e) {
+      console.log('ℹ️ /domains check note:', e.message);
+    }
+
+    // Inspect /public_html
+    try {
+      const publicHtmlList = await client.list('/public_html');
+      const pNames = publicHtmlList.map(f => f.name);
+      console.log(`📂 /public_html items (${pNames.length}):`, pNames.slice(0, 15).join(', '));
+      if (pNames.map(x => x.toLowerCase()).includes('attendoschool')) {
+        candidateDirs.add('/public_html/attendoschool');
+      }
+    } catch (e) {
+      console.log('ℹ️ /public_html check note:', e.message);
+    }
+
+    // Add explicit configured directory if provided
+    if (process.env.HOSTINGER_SERVER_DIR && process.env.HOSTINGER_SERVER_DIR !== '.' && process.env.HOSTINGER_SERVER_DIR !== './') {
+      candidateDirs.add(process.env.HOSTINGER_SERVER_DIR);
+    }
+
+    const targets = Array.from(candidateDirs);
+    console.log(`📋 Total target directories to sync (${targets.length}):`, targets.join(' | '));
     const localDir = path.resolve(__dirname, '../frontend/dist');
 
-    for (const dir of candidateDirs) {
+    for (const dir of targets) {
       console.log(`🚀 Uploading ${localDir} to ${dir}...`);
       try {
         if (dir !== '.') {
