@@ -9,6 +9,15 @@
 [![Secondary DB](https://img.shields.io/badge/failover%20store-Cloud%20Firestore-FFCA28.svg)](file:///d:/Project_Abir/attendoschool/backend/src/firebase.ts)
 [![Tests](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](file:///d:/Project_Abir/attendoschool/backend/tests)
 
+## Live Deployments & Endpoints
+
+| Environment / Service | Provider | Status | URL |
+|---|---|---|---|
+| **Frontend Production App** | Hostinger Web Hosting (LiteSpeed / FTPS) | [![Deploy](https://img.shields.io/badge/status-Live-brightgreen.svg)](#) | **[https://attendoschool.optinetinnovations.in](https://attendoschool.optinetinnovations.in)** |
+| **Backend REST API** | Render Cloud (Node.js 20 LTS) | [![API](https://img.shields.io/badge/status-Active-blue.svg)](#) | **[https://attendoschool-backend.onrender.com](https://attendoschool-backend.onrender.com)** |
+| **Backend Health Check** | Render Cloud Endpoint | [![Health](https://img.shields.io/badge/probe-200%20OK-emerald.svg)](#) | **[https://attendoschool-backend.onrender.com/api/health](https://attendoschool-backend.onrender.com/api/health)** |
+| **CI/CD Pipeline** | GitHub Actions | [![CI/CD](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci-cd.yml) | **[GitHub Actions Runs](https://github.com/Mrinmoypatratint/attendoschool/actions)** |
+
 ---
 
 ## Quick Navigation
@@ -312,6 +321,20 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 
 ## Production Deployment
 
+### Live Production Architecture
+The platform runs a decoupled cloud architecture designed for high availability, automatic SSL, and zero-maintenance operations:
+
+- **Frontend Client**: Hosted on **Hostinger Web Hosting (LiteSpeed / Apache)** at **[https://attendoschool.optinetinnovations.in](https://attendoschool.optinetinnovations.in)** with automatic SPA client-side routing (`.htaccess`) and free Let's Encrypt SSL.
+- **Backend API**: Hosted on **Render Cloud (Node.js 20 LTS Web Service)** at **[https://attendoschool-backend.onrender.com](https://attendoschool-backend.onrender.com)**.
+- **Primary Database**: Hosted on **Supabase PostgreSQL 16 Cloud** with transactional pooling and Supabase Realtime synchronization.
+- **Failover / Historical Store**: **Google Cloud Firestore** (multi-tenant isolated document collections).
+
+### Automated CI/CD (GitHub Actions)
+Every `git push` to the `main` branch automatically triggers the AttendoSchool CI/CD pipeline (`.github/workflows/ci-cd.yml`):
+1. **`backend-ci`**: Node 20 dependency caching, linting, and TypeScript compilation (`npm run build`).
+2. **`frontend-ci`**: Typecheck (`tsc --noEmit`) and Vite production bundle compilation.
+3. **`deploy-hostinger`**: Automated deployment to Hostinger via FTPS (`SamKirkland/FTP-Deploy-Action@v4.3.5`).
+
 ### Docker Production Stack
 A multi-container setup with Nginx reverse proxy, PostgreSQL, and Node.js backend is provided in `docker-compose.production.yml`:
 
@@ -326,7 +349,10 @@ docker compose -f docker-compose.production.yml up -d --build
 curl http://localhost/api/production/health
 ```
 
-Refer to **[CLOUD-DEPLOYMENT-GUIDE.md](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** for detailed cloud deployment guides on Render, Railway, AWS, and Vercel.
+Refer to:
+- **[HOSTINGER-DEPLOYMENT-GUIDE.md](file:///d:/Project_Abir/attendoschool/HOSTINGER-DEPLOYMENT-GUIDE.md)** for Hostinger hPanel automated deployment setup.
+- **[HOSTINGER-VPS-DEPLOYMENT.md](file:///d:/Project_Abir/attendoschool/HOSTINGER-VPS-DEPLOYMENT.md)** for Hostinger VPS with Nginx and PM2.
+- **[CLOUD-DEPLOYMENT-GUIDE.md](file:///d:/Project_Abir/attendoschool/CLOUD-DEPLOYMENT-GUIDE.md)** for Cloud deployment on Render, Railway, AWS, and Vercel.
 
 ---
 
