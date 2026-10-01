@@ -127,13 +127,13 @@ export function StudentProfile() {
           <div className="student-card-header" style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--edu-border, #E2E8F0)' }}>
             <div className="student-card-title-wrap">
               <Users size={18} />
-              <h3 className="student-card-title">Parent & Guardian Contact</h3>
+              <h3 className="student-card-title">Parent Contact</h3>
             </div>
           </div>
 
           <div className="student-details-grid">
             <div className="detail-item">
-              <span className="detail-label">Parent / Guardian Name</span>
+              <span className="detail-label">Parent Name</span>
               <span className="detail-val">{profile?.parentName}</span>
             </div>
             <div className="detail-item">
@@ -141,7 +141,7 @@ export function StudentProfile() {
               <span className="detail-val">{profile?.parentPhone}</span>
             </div>
             <div className="detail-item">
-              <span className="detail-label">Registered Guardian Email</span>
+              <span className="detail-label">Registered Parent Email</span>
               <span className="detail-val">{profile?.parentEmail}</span>
             </div>
           </div>

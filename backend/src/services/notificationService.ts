@@ -768,7 +768,7 @@ AttendoSchool Institutional Attendance Service`;
             Notice of Student Absence
           </div>
           <div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #334155; line-height: 1.5;">
-            Dear Parent / Guardian, this is an official notice to inform you that <strong>${studentName}</strong> has been marked as <strong>ABSENT</strong> from class sessions on <strong>${attendanceDate}</strong>.
+            Dear Parent, this is an official notice to inform you that <strong>${studentName}</strong> has been marked as <strong>ABSENT</strong> from class sessions on <strong>${attendanceDate}</strong>.
           </div>
         </div>
 
@@ -1281,7 +1281,7 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
     const stName = stProfile.name || stProfile.fullName || r.studentName || 'Student';
     const studentEmail = (stProfile.student_email || stProfile.studentEmail || stProfile.email || '').trim().toLowerCase();
     const parentEmail = (stProfile.parent_email || stProfile.parentEmail || '').trim().toLowerCase();
-    const parentName = stProfile.parent_name || stProfile.parentName || 'Parent / Guardian';
+    const parentName = stProfile.parent_name || stProfile.parentName || 'Parent';
 
     const templateData = {
       student_name: stName,

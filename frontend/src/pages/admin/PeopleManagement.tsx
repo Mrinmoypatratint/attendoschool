@@ -224,7 +224,7 @@ export default function PeopleManagement() {
         <div>
           <p className="eyebrow">INSTITUTIONAL DIRECTORY</p>
           <h1>People Management</h1>
-          <p className="muted">Centralized directory of enrolled students, guardians, and school faculty staff.</p>
+          <p className="muted">Centralized directory of enrolled students, parents, and school faculty staff.</p>
         </div>
 
         {tab === 'teachers' && (
@@ -330,7 +330,7 @@ export default function PeopleManagement() {
                   <th>Roll / Adm No</th>
                   <th>Student Name</th>
                   <th>Class & Section</th>
-                  <th>Parent / Guardian</th>
+                  <th>Parent</th>
                   <th>SMS Mobile</th>
                   <th>Status</th>
                 </tr>
@@ -356,7 +356,7 @@ export default function PeopleManagement() {
                         {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : `Class ${r.class_number || r.class_name || '1'}`} — Section {r.section_name || 'A'}
                       </span>
                     </td>
-                    <td>{r.parent_name || 'Guardian'}</td>
+                    <td>{r.parent_name || 'Parent'}</td>
                     <td>{r.parent_sms_number || r.parent_phone || r.email || '—'}</td>
                     <td>
                       <span className={`badge ${r.active === false ? 'failed' : 'active'}`}>

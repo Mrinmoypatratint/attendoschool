@@ -297,7 +297,7 @@ export default function Analytics() {
                       <th>Class & Section</th>
                       <th>Attendance Rate</th>
                       <th>Days Absent</th>
-                      <th>Parent / Guardian</th>
+                      <th>Parent</th>
                       <th>Action</th>
                     </tr>
                   </thead>

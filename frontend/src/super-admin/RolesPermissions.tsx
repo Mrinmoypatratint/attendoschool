@@ -82,7 +82,7 @@ export const RolesPermissions: React.FC = () => {
     },
     {
       module: 'Parent Communication & Broadcast Alerts',
-      description: 'Dispatch SMS, WhatsApp, and email announcements to guardian contacts',
+      description: 'Dispatch SMS, WhatsApp, and email announcements to parent contacts',
       superAdmin: true,
       schoolAdmin: true,
       teacher: true,
@@ -300,10 +300,10 @@ export const RolesPermissions: React.FC = () => {
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge" style={{ background: '#f8fafc', color: '#475569' }}>PARENT</span>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Parent / Legal Guardian</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Parent</h3>
             </div>
             <p style={{ fontSize: '13px', color: '#64748b' }}>
-              Guardian access to live attendance check-ins, leave applications, daily notifications, and academic notices.
+              Parent access to live attendance check-ins, leave applications, daily notifications, and academic notices.
             </p>
             <div style={{ fontSize: '12px', color: '#334155', marginTop: '12px', lineHeight: 1.5 }}>
               <strong>Scope:</strong> Enrolled wards only

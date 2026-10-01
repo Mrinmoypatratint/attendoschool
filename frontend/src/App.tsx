@@ -522,7 +522,7 @@ function Login() {
                   </div>
                   <div className="as-simple-role-info">
                     <span className="as-simple-role-title">Student</span>
-                    <span className="as-simple-role-sub">Student & Guardian Portal</span>
+                    <span className="as-simple-role-sub">Student & Parent Portal</span>
                   </div>
                 </button>
               </div>
@@ -1517,7 +1517,7 @@ function SuperAdminHeader({
                     </span>
                   </div>
                   <div className="super-detail-cell">
-                    <span className="super-detail-label">Parent / Guardian</span>
+                    <span className="super-detail-label">Parent</span>
                     <span className="super-detail-value">{detailItem.meta?.parentName || '—'}</span>
                   </div>
                   <div className="super-detail-cell">
@@ -3491,9 +3491,9 @@ function Students(){
         ]
       },
       {
-        title: 'Guardian & Contact Coordinates',
+        title: 'Parent & Contact Coordinates',
         fields: [
-          { label: 'Guardian / Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
+          { label: 'Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
           { label: 'Contact Phone Number', value: f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
           { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
         ]
@@ -3531,7 +3531,7 @@ function Students(){
         name: 'Student Name',
         roll_number: 'Roll Number',
         admission_number: 'Admission Number',
-        parent_name: 'Guardian Name',
+        parent_name: 'Parent Name',
         parent_phone: 'Contact Phone',
         address: 'Residential Address',
         student_email: 'Student Email',
@@ -3620,7 +3620,7 @@ function Students(){
       details: [
         { label: 'Roll Number', value: student.roll_number || '—' },
         { label: 'Class & Section', value: `${classLabel} - ${student.section_name || 'A'}` },
-        { label: 'Guardian', value: student.parent_name || '—' },
+        { label: 'Parent', value: student.parent_name || '—' },
       ],
       warningMessage: 'Deleting this student will permanently erase all associated academic records, historical attendance sessions, and disable their portal account. This action cannot be reversed.',
       confirmText: 'Delete Student Record',
@@ -4145,7 +4145,7 @@ function Students(){
             <th>Student Name</th>
             <th>Class</th>
             <th>Student Email</th>
-            <th>Guardian & Contact</th>
+            <th>Parent & Contact</th>
             <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
@@ -4189,7 +4189,7 @@ function Students(){
                 </span>
               </td>
               <td>
-                <div><b>{x.parent_name || 'Guardian'}</b></div>
+                <div><b>{x.parent_name || 'Parent'}</b></div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
@@ -4409,8 +4409,8 @@ function Students(){
         </label>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>Parent / Guardian Name
-            <input placeholder="Guardian Name" value={f.parentName||''} onChange={e=>setF({...f,parentName:e.target.value})}/>
+          <label>Parent Name
+            <input placeholder="Parent Name" value={f.parentName||''} onChange={e=>setF({...f,parentName:e.target.value})}/>
           </label>
           <label>Parent SMS Mobile Number
             <input required placeholder="Mobile (e.g. 9876543210)" value={f.parentSmsNumber||''} onChange={e=>setF({...f,parentSmsNumber:e.target.value})}/>
@@ -6290,7 +6290,7 @@ function Attendance(){
   // Early departure form state
   const [depPeriod, setDepPeriod] = useState<string>('After 1st Period');
   const [depTime, setDepTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  const [depReason, setDepReason] = useState<string>('Parent / Guardian Picked Up Early');
+  const [depReason, setDepReason] = useState<string>('Parent Picked Up Early');
   const [depRemarks, setDepRemarks] = useState<string>('');
   const [depNotify, setDepNotify] = useState<boolean>(true);
 
@@ -6602,7 +6602,7 @@ function Attendance(){
     const existing = studentStatusMap[student.id];
     setDepPeriod(existing?.departurePeriod || 'After 1st Period');
     setDepTime(existing?.departureTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    setDepReason('Parent / Guardian Picked Up Early');
+    setDepReason('Parent Picked Up Early');
     setDepRemarks(existing?.remarks || '');
     setDepNotify(true);
     setActiveModal('EARLY_DEPARTURE');
@@ -7221,7 +7221,7 @@ function Attendance(){
                     checked={emailToParents}
                     onChange={e => setEmailToParents(e.target.checked)}
                   />
-                  <span>Send to Parent / Guardian Email (Primary)</span>
+                  <span>Send to Parent Email (Primary)</span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', fontWeight: emailToStudents ? 600 : 400 }}>
                   <input
@@ -7319,7 +7319,7 @@ function Attendance(){
         <span>
           {existingSession
             ? 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.'
-            : 'Check only students who are physically present. Unchecked students are marked absent and their guardians will be notified.'}
+            : 'Check only students who are physically present. Unchecked students are marked absent and their parents will be notified.'}
         </span>
       </div>
 
@@ -7395,7 +7395,7 @@ function Attendance(){
                   <div>
                     <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
                     <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {s.parent_name ? `Parent: ${s.parent_name}` : 'Guardian registered'} · {s.parent_sms_number || 'Mobile on file'}
+                      {s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}
                     </div>
                     {/* Status Annotations for Re-attendance */}
                     {isLeftEarly && (
@@ -7605,7 +7605,7 @@ function Attendance(){
             <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Guardian'} ({selectedStudent.parent_sms_number || 'Mobile on record'})
+                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'} ({selectedStudent.parent_sms_number || 'Mobile on record'})
               </div>
             </div>
 
@@ -7654,7 +7654,7 @@ function Attendance(){
                   onChange={(e) => setDepReason(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
                 >
-                  <option value="Parent / Guardian Picked Up Early">Parent / Guardian Picked Up Early</option>
+                  <option value="Parent Picked Up Early">Parent Picked Up Early</option>
                   <option value="Medical Emergency / Illness (Sick Bay)">Medical Emergency / Illness (Sick Bay)</option>
                   <option value="Doctor / Hospital Appointment">Doctor / Hospital Appointment</option>
                   <option value="Official School Representation (Sports / Olympiad)">Official School Representation (Sports / Olympiad)</option>
@@ -7685,7 +7685,7 @@ function Attendance(){
                   checked={depNotify}
                   onChange={(e) => setDepNotify(e.target.checked)}
                 />
-                <span style={{ fontWeight: 600 }}>Dispatch early departure alert to Parent / Guardian (SMS & Portal)</span>
+                <span style={{ fontWeight: 600 }}>Dispatch early departure alert to Parent (SMS & Portal)</span>
               </label>
             </div>
 
@@ -7743,7 +7743,7 @@ function Attendance(){
             <div style={{ background: 'var(--bg-subtle, #f8fafc)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 18 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{selectedStudent.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Guardian'}
+                Roll: {selectedStudent.roll_number || '—'} · Parent: {selectedStudent.parent_name || 'Parent'}
               </div>
             </div>
 
@@ -7814,7 +7814,7 @@ function Attendance(){
                   checked={arrNotify}
                   onChange={(e) => setArrNotify(e.target.checked)}
                 />
-                <span style={{ fontWeight: 600 }}>Notify Parent / Guardian of Late Arrival</span>
+                <span style={{ fontWeight: 600 }}>Notify Parent of Late Arrival</span>
               </label>
             </div>
 

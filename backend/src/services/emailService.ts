@@ -190,7 +190,7 @@ export async function sendPasswordResetEmail(options: PasswordResetEmailOptions)
 
   const roleTitleMap: Record<string, string> = {
     STUDENT: 'Student Portal',
-    PARENT: 'Parent & Guardian Portal',
+    PARENT: 'Parent Portal',
     TEACHER: 'Faculty & Teacher Portal',
     SCHOOL_ADMIN: 'School Administration Portal'
   };

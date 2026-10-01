@@ -895,7 +895,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
             queueEmailNotification({
               schoolId: req.user?.schoolId || 'school-default',
               recipientEmail: targetLoginEmail,
-              recipientName: isParent ? (parentName || 'Parent/Guardian') : name,
+              recipientName: isParent ? (parentName || 'Parent') : name,
               recipientType: isParent ? 'PARENT' : 'STUDENT',
               templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
               templateData: {
@@ -1042,7 +1042,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
        queueEmailNotification({
          schoolId: req.user?.schoolId || 'school-default',
          recipientEmail: targetLoginEmail,
-         recipientName: isParent ? (parentName || 'Parent/Guardian') : name,
+         recipientName: isParent ? (parentName || 'Parent') : name,
          recipientType: isParent ? 'PARENT' : 'STUDENT',
          templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
          templateData: {
@@ -1278,7 +1278,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                 queueEmailNotification({
                   schoolId: schoolId || 'school-default',
                   recipientEmail: targetLoginEmail,
-                  recipientName: isParent ? (st.parent_name || 'Parent/Guardian') : (st.name || st.full_name),
+                  recipientName: isParent ? (st.parent_name || 'Parent') : (st.name || st.full_name),
                   recipientType: isParent ? 'PARENT' : 'STUDENT',
                   templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
                   templateData: {
