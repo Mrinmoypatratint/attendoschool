@@ -17,7 +17,11 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id
-       WHERE st.school_id = $1 AND (st.user_id::text = $2 OR st.id::text = $2)
+       WHERE st.school_id = $1 AND (
+         st.user_id::text = $2 
+         OR st.id::text = $2
+         OR (st.email IS NOT NULL AND LOWER(st.email) = (SELECT LOWER(email) FROM users WHERE id::text = $2))
+       )
        LIMIT 1`,
       [schoolId, userId]
     );
@@ -121,23 +125,46 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
  */
 export async function getStudentProfile(schoolId: string, userId: string) {
   const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) throw new Error('Student record not found');
+
+  let academicSessionName = '';
+  try {
+    const ayQ = await pool.query(
+      `SELECT name FROM academic_years 
+       WHERE (id = $1 OR (school_id = $2 AND is_active = true)) 
+       ORDER BY is_active DESC LIMIT 1`,
+      [st.academic_year_id || '00000000-0000-0000-0000-000000000000', schoolId]
+    );
+    if (ayQ.rowCount && ayQ.rows.length > 0) {
+      academicSessionName = ayQ.rows[0].name;
+    }
+  } catch {}
+
+  let userEmail = '';
+  try {
+    const uQ = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
+    if (uQ.rowCount && uQ.rows.length > 0) userEmail = uQ.rows[0].email;
+  } catch {}
+
   return {
     id: st.id,
-    userId: st.user_id,
-    schoolId: st.school_id,
-    name: st.name,
-    email: 'student@greenwood.local',
-    rollNumber: st.roll_number || '25',
-    admissionNumber: st.admission_number || 'ADM-2025-089',
-    className: st.class_number ? `Class ${st.class_number}` : 'Class 10',
-    classNumber: st.class_number || 10,
-    sectionName: st.section_name || 'A',
-    schoolName: st.school_name || 'Greenwood International School',
-    parentName: st.parent_name || 'Vikram Sharma',
-    parentPhone: st.parent_sms_number || '+91 98765 43210',
-    parentEmail: st.parent_email || 'vikram.sharma@example.com',
-    dateOfBirth: st.date_of_birth || '2009-07-15',
-    academicSession: '2025–26 Academic Session',
+    userId: st.user_id || userId,
+    schoolId: st.school_id || schoolId,
+    name: st.name || '',
+    email: st.email || st.student_email || userEmail || '',
+    rollNumber: st.roll_number || '',
+    admissionNumber: st.admission_number || '',
+    className: st.class_number !== undefined && st.class_number !== null 
+      ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`) 
+      : '',
+    classNumber: st.class_number ?? 0,
+    sectionName: st.section_name || '',
+    schoolName: st.school_name || '',
+    parentName: st.parent_name || '',
+    parentPhone: st.parent_sms_number || '',
+    parentEmail: st.parent_email || '',
+    dateOfBirth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
+    academicSession: academicSessionName || st.session_name || '',
     photoUrl: st.photo_url || ''
   };
 }
@@ -490,15 +517,7 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     }
   } catch (_e) {}
 
-  if (announcements.length === 0) {
-    announcements = [
-      { id: 'ann-1', title: 'Half Yearly Exam Schedule Released', date: '16 Sep 2025', description: 'The half yearly examination schedule is now available in the exam section.', priority: 'HIGH' },
-      { id: 'ann-2', title: 'Science Exhibition Registration', date: '14 Sep 2025', description: 'All students are invited to register projects for the Annual Science Fair.', priority: 'NORMAL' },
-      { id: 'ann-3', title: 'Holiday Notice', date: '10 Sep 2025', description: 'School will remain closed on 28th September on account of regional holiday.', priority: 'NORMAL' }
-    ];
-  }
-
-  // 5. Pending Tasks / Assignments
+  // 5. Pending Tasks / Assignments from Database
   let pendingAssignments: any[] = [];
   try {
     const assignQ = await pool.query(
@@ -507,11 +526,12 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        FROM student_assignments a
        LEFT JOIN subjects sub ON sub.id = a.subject_id
        LEFT JOIN student_assignment_submissions s ON s.assignment_id = a.id AND s.student_id = $3
-       WHERE a.school_id = $1 AND a.class_id = $2
+       WHERE a.school_id = $1 
+         AND (a.class_id = $2 OR a.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4))
          AND COALESCE(s.status, 'PENDING') = 'PENDING'
        ORDER BY a.due_date ASC
        LIMIT 3`,
-      [schoolId, st.class_id, st.id]
+      [schoolId, st.class_id, st.id, Number(st.class_number || 0)]
     );
     if (assignQ.rowCount && assignQ.rowCount > 0) {
       pendingAssignments = assignQ.rows.map((row) => {
@@ -528,31 +548,44 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     }
   } catch (_e) {}
 
-  if (pendingAssignments.length === 0) {
-    pendingAssignments = [
-      { id: 'asg-1', title: 'Maths Assignment - Chapter 5', subject: 'Mathematics', dueDate: '20 Sep 2025', daysLeft: '3 days left', status: 'PENDING' },
-      { id: 'asg-2', title: 'English Project Submission', subject: 'English', dueDate: '22 Sep 2025', daysLeft: '5 days left', status: 'PENDING' },
-      { id: 'asg-3', title: 'Science Lab Report', subject: 'Science', dueDate: '25 Sep 2025', daysLeft: '8 days left', status: 'PENDING' }
-    ];
-  }
-
-  // 6. Upcoming Exam
-  const upcomingExam = {
-    subject: 'Mathematics',
-    title: 'Half Yearly Assessment',
-    date: '22 Sep 2025',
-    time: '09:00 AM - 12:00 PM',
-    room: 'Hall B'
-  };
+  // 6. Upcoming Exam from Database
+  let upcomingExam: any = null;
+  try {
+    const nextExamQ = await pool.query(
+      `SELECT e.id, e.title, e.exam_date, e.start_time, e.end_time, e.room,
+              COALESCE(sub.name, 'Academics') AS subject_name
+       FROM student_exams e
+       LEFT JOIN subjects sub ON sub.id = e.subject_id
+       WHERE e.school_id = $1 
+         AND (e.class_id = $2 OR e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $3))
+         AND e.exam_date >= CURRENT_DATE
+       ORDER BY e.exam_date ASC, e.start_time ASC
+       LIMIT 1`,
+      [schoolId, st.class_id, Number(st.class_number || 0)]
+    );
+    if (nextExamQ.rowCount && nextExamQ.rows.length > 0) {
+      const ex = nextExamQ.rows[0];
+      const examD = new Date(ex.exam_date);
+      upcomingExam = {
+        subject: ex.subject_name,
+        title: ex.title,
+        date: examD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        time: `${(ex.start_time || '09:00').slice(0, 5)} - ${(ex.end_time || '12:00').slice(0, 5)}`,
+        room: ex.room || 'Exam Hall'
+      };
+    }
+  } catch {}
 
   return {
     student: {
       id: st.id,
-      name: st.name,
-      className: st.class_number ? `Class ${st.class_number}` : 'Class 10',
-      sectionName: st.section_name || 'A',
-      rollNumber: st.roll_number || '25',
-      schoolName: st.school_name || 'Greenwood International School',
+      name: st.name || '',
+      className: st.class_number !== undefined && st.class_number !== null 
+        ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`) 
+        : '',
+      sectionName: st.section_name || '',
+      rollNumber: st.roll_number || '',
+      schoolName: st.school_name || '',
       avatarUrl: st.photo_url || ''
     },
     kpis: {
@@ -566,7 +599,7 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       total_classes: attendanceSummary.totalWorkingDays,
       attendanceText: `Present: ${attendanceSummary.presentDays} / ${attendanceSummary.totalWorkingDays} days`,
       pendingAssignmentsCount: pendingAssignments.length,
-      upcomingExamTitle: `${upcomingExam.subject} - ${upcomingExam.date}`,
+      upcomingExamTitle: upcomingExam ? `${upcomingExam.subject} - ${upcomingExam.date}` : 'No upcoming exam scheduled',
       announcementsCount: announcements.length,
       summary: attendanceSummary
     },
@@ -864,11 +897,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
     if (filteredMem.length > 0) return filteredMem;
   } catch {}
 
-  return [
-    { id: 'ann-1', title: 'Half Yearly Exam Schedule Released', message: 'The half yearly examination schedule for Class 10 is published. Please review your subject syllabus and room assignments.', priority: 'HIGH', published_at: '2025-09-16T10:00:00Z', author_name: 'Principal Office' },
-    { id: 'ann-2', title: 'Annual Science Exhibition 2025', message: 'All students are invited to submit models for the Science Exhibition. Registration closes on 25th September.', priority: 'NORMAL', published_at: '2025-09-14T11:30:00Z', author_name: 'Science Dept' },
-    { id: 'ann-3', title: 'Holiday Notice — Regional Holiday', message: 'The school will remain closed on 28th September on account of regional holiday. Classes resume on Monday.', priority: 'NORMAL', published_at: '2025-09-10T09:00:00Z', author_name: 'Admin Office' }
-  ];
+  return [];
 }
 
 /**
@@ -893,12 +922,7 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}
 
-  return [
-    { id: 'asg-1', title: 'Maths Assignment - Quadratic Equations', description: 'Solve exercise 5.1 to 5.4 from the textbook. Show all working steps clearly.', subject_name: 'Mathematics', teacher_name: 'Mr. S. Verma', due_date: '2025-09-20', max_marks: 25, submission_status: 'PENDING' },
-    { id: 'asg-2', title: 'English Project Submission - Poetry Analysis', description: 'Prepare a 500-word critical appreciation of Robert Frost poems covered in class.', subject_name: 'English', teacher_name: 'Ms. R. Khan', due_date: '2025-09-22', max_marks: 20, submission_status: 'PENDING' },
-    { id: 'asg-3', title: 'Science Lab Report - Acid & Bases Reactions', description: 'Document the laboratory titration observations with chemical reactions.', subject_name: 'Science', teacher_name: 'Mrs. P. Das', due_date: '2025-09-25', max_marks: 30, submission_status: 'PENDING' },
-    { id: 'asg-4', title: 'Social Science Case Study - Industrial Revolution', description: 'Historical impact assessment of 19th-century industrial advancements.', subject_name: 'Social Science', teacher_name: 'Mr. A. Singh', due_date: '2025-09-10', max_marks: 20, submission_status: 'SUBMITTED', marks_obtained: 18, feedback: 'Well-researched project.' }
-  ];
+  return [];
 }
 
 /**
@@ -932,28 +956,24 @@ export async function submitStudentAssignment(schoolId: string, userId: string, 
  */
 export async function getStudentExams(schoolId: string, userId: string) {
   const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) return [];
   try {
     const examsQ = await pool.query(
       `SELECT e.id, e.title, e.exam_date, e.start_time, e.end_time, e.room,
-              e.total_marks, e.passing_marks, sub.name AS subject_name,
+              e.total_marks, e.passing_marks, COALESCE(sub.name, 'General') AS subject_name,
               r.marks_obtained, r.grade, r.remarks
        FROM student_exams e
        LEFT JOIN subjects sub ON sub.id = e.subject_id
        LEFT JOIN student_exam_results r ON r.exam_id = e.id AND r.student_id = $3
-       WHERE e.school_id = $1 AND e.class_id = $2
+       WHERE e.school_id = $1 
+         AND (e.class_id = $2 OR e.class_id IN (SELECT id FROM classes WHERE school_id = $1 AND class_number = $4))
        ORDER BY e.exam_date ASC`,
-      [schoolId, st.class_id, st.id]
+      [schoolId, st.class_id, st.id, Number(st.class_number || 0)]
     );
     if (examsQ.rowCount && examsQ.rowCount > 0) return examsQ.rows;
   } catch (_e) {}
 
-  return [
-    { id: 'ex-1', title: 'Mathematics Half Yearly Exam', subject_name: 'Mathematics', exam_date: '2025-09-22', start_time: '09:00', end_time: '12:00', room: 'Hall B', total_marks: 100, passing_marks: 35 },
-    { id: 'ex-2', title: 'Science Half Yearly Exam', subject_name: 'Science', exam_date: '2025-09-24', start_time: '09:00', end_time: '12:00', room: 'Hall B', total_marks: 100, passing_marks: 35 },
-    { id: 'ex-3', title: 'English Half Yearly Exam', subject_name: 'English', exam_date: '2025-09-26', start_time: '09:00', end_time: '12:00', room: 'Hall A', total_marks: 100, passing_marks: 35 },
-    { id: 'ex-4', title: 'First Unit Test - Mathematics', subject_name: 'Mathematics', exam_date: '2025-07-15', start_time: '09:00', end_time: '10:30', room: 'A-101', total_marks: 50, passing_marks: 18, marks_obtained: 46, grade: 'A+' },
-    { id: 'ex-5', title: 'First Unit Test - Science', subject_name: 'Science', exam_date: '2025-07-18', start_time: '09:00', end_time: '10:30', room: 'A-101', total_marks: 50, passing_marks: 18, marks_obtained: 44, grade: 'A' }
-  ];
+  return [];
 }
 
 /**
@@ -973,9 +993,7 @@ export async function getStudentLeaveRequests(schoolId: string, userId: string) 
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}
 
-  return [
-    { id: 'lv-1', start_date: '2025-09-12', end_date: '2025-09-12', reason: 'Medical appointment', status: 'APPROVED', review_notes: 'Approved by Class Teacher' }
-  ];
+  return [];
 }
 
 /**
