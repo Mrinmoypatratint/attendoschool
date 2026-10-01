@@ -100,14 +100,17 @@ export default function AttendanceReports() {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const [dashRes, clsRes, secRes, stRes] = await Promise.all([
+        const [dashRes, clsRes, secRes, stRes, ayRes] = await Promise.all([
           api.get('/dashboard/school').catch(() => ({ data: {} })),
           api.get('/classes').catch(() => ({ data: [] })),
           api.get('/sections').catch(() => ({ data: [] })),
-          api.get('/students').catch(() => ({ data: [] }))
+          api.get('/students').catch(() => ({ data: [] })),
+          api.get('/academic-years').catch(() => ({ data: [] }))
         ]);
 
-        if (dashRes.data?.academicYears && Array.isArray(dashRes.data.academicYears)) {
+        if (Array.isArray(ayRes.data) && ayRes.data.length > 0) {
+          setSessions(ayRes.data);
+        } else if (dashRes.data?.academicYears && Array.isArray(dashRes.data.academicYears)) {
           setSessions(dashRes.data.academicYears);
         } else {
           setSessions([

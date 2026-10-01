@@ -1690,9 +1690,11 @@ function Layout({children}:{children:React.ReactNode}){
   }, [user?.role]);
 
   useEffect(() => {
-    if (user?.role === 'SCHOOL_ADMIN') {
-      api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+    if (user) {
       loadAcademicYears();
+      if (user.role === 'SCHOOL_ADMIN') {
+        api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+      }
     }
   }, [user?.role]);
 
@@ -1762,13 +1764,18 @@ function Layout({children}:{children:React.ReactNode}){
       const res = await api.get('/academic-years');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setAcademicYears(res.data);
-        const active = res.data.find((ay: any) => ay.is_active);
+        const active = res.data.find((ay: any) => ay.is_active) || res.data[0];
         if (active) {
+          const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+          const matched = stored ? res.data.find((ay: any) => ay.name === stored || stored.includes(ay.name) || ay.name.includes(stored)) : null;
+          const current = matched || active;
+
           setSchoolInfo((prev: any) => ({
             ...(prev || {}),
-            activeAcademicYear: active
+            activeAcademicYear: current
           }));
-          localStorage.setItem('attendo_active_academic_year', active.name);
+          localStorage.setItem('attendo_active_academic_year', current.name);
+          localStorage.setItem('attendo_academic_session', current.name);
         }
       }
     } catch {
@@ -1798,16 +1805,20 @@ function Layout({children}:{children:React.ReactNode}){
       }));
       localStorage.setItem('attendo_active_academic_year', target.name);
       localStorage.setItem('attendo_academic_session', target.name);
+      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target.name }));
+      window.dispatchEvent(new Event('storage'));
     }
 
     try {
-      // 3. Post to backend activation endpoint
-      await api.post(`/academic-years/${yearId}/activate`);
+      if (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') {
+        // 3. Post to backend activation endpoint for admins
+        await api.post(`/academic-years/${yearId}/activate`);
 
-      // 4. Re-fetch school dashboard and academic years
-      const res = await api.get('/dashboard/school');
-      if (res.data) {
-        setSchoolInfo(res.data);
+        // 4. Re-fetch school dashboard and academic years
+        const res = await api.get('/dashboard/school');
+        if (res.data) {
+          setSchoolInfo(res.data);
+        }
       }
       const refreshedYears = await api.get('/academic-years');
       if (Array.isArray(refreshedYears.data) && refreshedYears.data.length > 0) {
@@ -1898,8 +1909,9 @@ function Layout({children}:{children:React.ReactNode}){
 
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
+  const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
-  const rawSessionName = schoolInfo?.activeAcademicYear?.name || storedSession || '2025–26';
+  const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
   const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
 
   return <div className="app-shell">
@@ -2001,10 +2013,61 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
           </div>
           <div className="header-right">
-            <div className="session-pill" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-              <Calendar size={14} />
-              <span>2025–26 Session</span>
-              <ChevronDown size={14} style={{ opacity: 0.7 }} />
+            <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
+              <div
+                className="session-pill"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
+                title="Switch Academic Session"
+              >
+                <Calendar size={14} color="#10b981" />
+                <span>{activeSessionName ? `${activeSessionName} Session` : 'Academic Session'}</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+              {ayDropdownOpen && (
+                <div className="ay-dropdown">
+                  <div className="ay-dropdown-header">
+                    <span>Academic Sessions</span>
+                    <button className="ay-manage-btn" onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Manage</button>
+                  </div>
+                  {ayLoading ? (
+                    <div className="ay-dropdown-loading"><RefreshCw size={14} className="spin" /> Loading sessions...</div>
+                  ) : academicYears.length === 0 ? (
+                    <div className="ay-dropdown-empty">No academic sessions found in database.</div>
+                  ) : (
+                    <div className="ay-dropdown-list">
+                      {academicYears.map((ay: any) => {
+                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        return (
+                          <div
+                            key={ay.id}
+                            className={`ay-dropdown-item ${isActive ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
+                            onClick={() => { if (!isActive && !ay.is_archived) switchAcademicYear(ay.id); }}
+                          >
+                            <div className="ay-item-info">
+                              <span className="ay-item-name">{ay.name}</span>
+                              <span className="ay-item-dates">
+                                {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
+                              </span>
+                            </div>
+                            <div className="ay-item-status">
+                              {aySwitching === ay.id ? (
+                                <RefreshCw size={12} className="spin" />
+                              ) : isActive ? (
+                                <span className="ay-active-badge"><Check size={10} /> Active</span>
+                              ) : ay.is_archived ? (
+                                <span className="ay-archived-badge">Archived</span>
+                              ) : (
+                                <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <button className="header-icon-btn" title="Notifications" onClick={()=>nav('/notifications')}>
               <Bell size={16}/>
@@ -2169,9 +2232,64 @@ function Layout({children}:{children:React.ReactNode}){
             <span className="header-kbd">⌘K</span>
           </div>
           <div className="header-right">
-            <div className="session-pill">
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-              2025–26 ACADEMIC SESSION
+            {/* Connected Academic Session Selector Dropdown */}
+            <div className="ay-switcher-wrap" ref={ayDropdownRef} style={{ position: 'relative' }}>
+              <div
+                className="session-pill"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
+                title="Switch Academic Session"
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+              {ayDropdownOpen && (
+                <div className="ay-dropdown">
+                  <div className="ay-dropdown-header">
+                    <span>Academic Sessions</span>
+                    {(user as any).role === 'SCHOOL_ADMIN' && (
+                      <button className="ay-manage-btn" onClick={() => { setAyDropdownOpen(false); nav('/academic-years'); }}>Manage</button>
+                    )}
+                  </div>
+                  {ayLoading ? (
+                    <div className="ay-dropdown-loading"><RefreshCw size={14} className="spin" /> Loading sessions...</div>
+                  ) : academicYears.length === 0 ? (
+                    <div className="ay-dropdown-empty">No academic sessions found in database.</div>
+                  ) : (
+                    <div className="ay-dropdown-list">
+                      {academicYears.map((ay: any) => {
+                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        return (
+                          <div
+                            key={ay.id}
+                            className={`ay-dropdown-item ${isActive ? 'active' : ''} ${ay.is_archived ? 'archived' : ''}`}
+                            onClick={() => { if (!isActive && !ay.is_archived) switchAcademicYear(ay.id); }}
+                          >
+                            <div className="ay-item-info">
+                              <span className="ay-item-name">{ay.name}</span>
+                              <span className="ay-item-dates">
+                                {String(ay.start_date).slice(0, 10)} → {String(ay.end_date).slice(0, 10)}
+                              </span>
+                            </div>
+                            <div className="ay-item-status">
+                              {aySwitching === ay.id ? (
+                                <RefreshCw size={12} className="spin" />
+                              ) : isActive ? (
+                                <span className="ay-active-badge"><Check size={10} /> Active</span>
+                              ) : ay.is_archived ? (
+                                <span className="ay-archived-badge">Archived</span>
+                              ) : (
+                                <button className="ay-switch-btn" onClick={(e) => { e.stopPropagation(); switchAcademicYear(ay.id); }}>Switch</button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <button
               className="header-icon-btn"
@@ -6321,7 +6439,13 @@ function Attendance(){
           setSelectedSectionId(matched.section_id);
           setSelectedSubjectId(matched.subject_id);
         } else {
-          const targetClassId = classIdParam || (cRes.data?.length > 0 ? cRes.data[0].id : '');
+          const sortedClasses = (cRes.data || []).slice().sort((a: any, b: any) => {
+            const aN = Number(a.class_number ?? a.classNumber ?? 0);
+            const bN = Number(b.class_number ?? b.classNumber ?? 0);
+            return aN - bN;
+          });
+          const targetClass = sortedClasses.find((c: any) => Number(c.class_number ?? c.classNumber) >= 1) || sortedClasses[0];
+          const targetClassId = classIdParam || targetClass?.id || (cRes.data?.length > 0 ? cRes.data[0].id : '');
           setSelectedClassId(targetClassId);
           const availableSecs = (sRes.data || []).filter((s:any)=>
             !targetClassId || s.class_id === targetClassId || s.classId === targetClassId || String(s.class_number) === String(targetClassId)
@@ -6898,9 +7022,23 @@ function Attendance(){
               }}
               style={{ marginLeft: 6 }}
             >
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>Class {c.class_number ?? c.classNumber ?? c.name}</option>
-              ))}
+              {classes
+                .slice()
+                .sort((a, b) => {
+                  const aN = Number(a.class_number ?? a.classNumber ?? 0);
+                  const bN = Number(b.class_number ?? b.classNumber ?? 0);
+                  return aN - bN;
+                })
+                .map(c => {
+                  const num = c.class_number ?? c.classNumber;
+                  const label = num === -1 || num === '-1' ? 'Nursery / Pre-KG' :
+                    num === 0 || num === '0' ? 'Kindergarten (KG)' :
+                    num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
+                    c.name || `Class ${c.id}`;
+                  return (
+                    <option key={c.id} value={c.id}>{label}</option>
+                  );
+                })}
             </select>
           </label>
 

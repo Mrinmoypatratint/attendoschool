@@ -136,10 +136,11 @@ import { requireRoles } from '../middleware/auth';
 
 const router = Router();
 const schoolId = (req: Request) => (req as any).user?.schoolId;
+const staffOrAdmin = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
 const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
 
-// GET /api/academic-years - Query real database records (Admin only)
-router.get('/', adminOnly, async (req, res) => {
+// GET /api/academic-years - Query real database records (Staff and Admin)
+router.get('/', staffOrAdmin, async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
