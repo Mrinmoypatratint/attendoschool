@@ -29,7 +29,7 @@ import {
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
-  History as HistoryIcon, DoorOpen, UserCheck, UserX, Info
+  History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { StudentLayout } from './components/student/StudentLayout';
@@ -2623,7 +2623,69 @@ function Stat({label,value,trend,sub}:{label:string;value:any;trend?:string;sub?
   </div>
 }
 function PageHead({title,sub,button,onClick}:{title:string;sub:string;button?:string;onClick?:()=>void}){return <div className="page-head"><div><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><img src="/attendo-school-logo.png" alt="AttendoSchool" style={{width:18,height:18,borderRadius:4,objectFit:'contain'}}/><p className="eyebrow" style={{margin:0}}>{title.includes('Admin')?'ATTENDOSCHOOL SUPER ADMIN':'ATTENDOSCHOOL ADMIN'}</p></div><h1>{title}</h1><p className="muted">{sub}</p></div>{button&&<button onClick={onClick}><Plus size={16}/>{button}</button>}</div>}
-function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="overlay"><div className="modal"><div className="modal-head"><h3>{title}</h3><button className="close" onClick={close}>×</button></div>{children}</div></div>}
+function Modal({
+  title,
+  close,
+  children,
+  size,
+  fullWindow = false,
+  maxWidth,
+  style,
+  bodyStyle
+}: {
+  title: string;
+  close: () => void;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  fullWindow?: boolean;
+  maxWidth?: string | number;
+  style?: React.CSSProperties;
+  bodyStyle?: React.CSSProperties;
+}) {
+  const [isFull, setIsFull] = useState<boolean>(fullWindow || size === 'full');
+
+  return (
+    <div className="overlay" style={isFull ? { padding: 12 } : undefined}>
+      <div 
+        className={`modal ${isFull ? 'modal-fullwindow' : ''}`}
+        style={{
+          ...(!isFull && maxWidth ? { width: maxWidth, maxWidth } : {}),
+          ...(!isFull && size === 'xl' ? { width: 'min(1200px, 95vw)', maxWidth: '95vw' } : {}),
+          ...(!isFull && size === 'lg' ? { width: 'min(900px, 95vw)', maxWidth: '95vw' } : {}),
+          ...style
+        }}
+      >
+        <div className="modal-head">
+          <h3>{title}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="modal-toggle-btn"
+              onClick={() => setIsFull(!isFull)}
+              title={isFull ? "Restore standard size" : "Maximize to full window"}
+            >
+              {isFull ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            </button>
+            <button className="close" onClick={close}>×</button>
+          </div>
+        </div>
+        <div 
+          className={isFull ? "modal-body-full" : undefined}
+          style={{ 
+            flex: isFull ? 1 : undefined,
+            display: isFull ? 'flex' : undefined,
+            flexDirection: isFull ? 'column' : undefined,
+            minHeight: 0,
+            overflowY: isFull ? 'auto' : undefined,
+            ...bodyStyle
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ────── Dashboard ────── */
 function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role==='STUDENT')return <Navigate to="/student/dashboard" replace/>;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
@@ -4635,189 +4697,203 @@ function Students(){
     </Modal>}
 
     {/* EXCEL / CSV BULK IMPORT MODAL — Multi-Step Wizard */}
-    {importOpen && <Modal title="Bulk Import Students (Excel / CSV)" close={()=>{setImportOpen(false); setPreviewRows([]); setImportStep(1); setImportSession(''); setImportClass(''); setImportSection('');}}>
-      <div style={{ padding: '0 4px' }}>
+    {importOpen && (
+      <Modal 
+        title="Bulk Import Students (Excel / CSV)" 
+        fullWindow={true}
+        close={() => {
+          setImportOpen(false); 
+          setPreviewRows([]); 
+          setImportStep(1); 
+          setImportSession(''); 
+          setImportClass(''); 
+          setImportSection('');
+        }}
+      >
+        <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* Step indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 20, fontSize: 12 }}>
-          {['Select Session', 'Upload File', 'Preview & Confirm'].map((label, idx) => {
-            const step = idx + 1;
-            const active = importStep === step;
-            const done = importStep > step;
-            return (
-              <div key={step} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700, flexShrink: 0,
-                    background: done ? '#10b981' : active ? '#2563eb' : '#e2e8f0',
-                    color: (done || active) ? '#fff' : '#94a3b8'
-                  }}>{done ? '✓' : step}</div>
-                  <span style={{ color: active ? '#1e293b' : done ? '#10b981' : '#94a3b8', fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' }}>{label}</span>
+          {/* Step indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 18, fontSize: 12.5, flexShrink: 0 }}>
+            {['Select Session', 'Upload File', 'Preview & Confirm'].map((label, idx) => {
+              const step = idx + 1;
+              const active = importStep === step;
+              const done = importStep > step;
+              return (
+                <div key={step} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700, flexShrink: 0,
+                      background: done ? '#10b981' : active ? '#2563eb' : '#e2e8f0',
+                      color: (done || active) ? '#fff' : '#94a3b8'
+                    }}>{done ? '✓' : step}</div>
+                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : '#94a3b8', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
+                  </div>
+                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : '#e2e8f0', flex: 1, margin: '0 8px' }} />}
                 </div>
-                {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : '#e2e8f0', flex: 1, margin: '0 6px' }} />}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── STEP 1: Select Session ── */}
-        {importStep === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label>Academic Session <span style={{ color: '#ef4444', fontSize: 11 }}>*</span>
-              <select value={importSession} onChange={e => setImportSession(e.target.value)}>
-                <option value="">Select Session</option>
-                {(sessions.length > 0 ? sessions : [
-                  { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
-                  { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
-                  { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
-                ]).map(s => (
-                  <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
-                ))}
-              </select>
-            </label>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-              <button
-                type="button"
-                className="template-download-btn"
-                onClick={downloadTemplate}
-              >
-                <Download size={13} /> Download Sample Template (.xlsx)
-              </button>
-              <button
-                type="button"
-                disabled={!importSession}
-                onClick={() => setImportStep(2)}
-                style={{ background: '#2563eb', color: '#fff', opacity: importSession ? 1 : 0.5 }}
-              >
-                Next: Upload File →
-              </button>
-            </div>
-            {!importSession && <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>Please select a session to continue.</p>}
+              );
+            })}
           </div>
-        )}
 
-        {/* ── STEP 2: Upload File ── */}
-        {importStep === 2 && (
-          <div>
-            <div style={{ marginBottom: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
-              📋 Session: <b>{importSession}</b>
-            </div>
-            <label className="dropzone">
-              <input
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFile}
-                style={{ display: 'none' }}
-              />
-              <div className="dropzone-icon">
-                <UploadCloud size={24} />
-              </div>
-              <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
-              <span className="muted" style={{ fontSize: 12 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-              <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Parent Phone, Student Email</span>
-            </label>
-            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between' }}>
-              <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STEP 3: Preview & Confirm ── */}
-        {importStep === 3 && previewRows.length > 0 && (
-          <div>
-            <div style={{ marginBottom: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
-              ✅ <b>{previewRows.length} students</b> ready to import · Session: <b>{importSession}</b>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <strong style={{ fontSize: 14 }}>Preview Data</strong>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {importErrors.length > 0 && (
-                  <span style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:6, padding:'3px 10px', fontSize:12 }}>
-                    ⚠ {importErrors.length} error{importErrors.length>1?'s':''} — highlighted in red
-                  </span>
-                )}
-                <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => { setPreviewRows([]); setImportErrors([]); setImportStep(2); }}>Re-upload</button>
-              </div>
-            </div>
-            <div className="preview-table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Full Name</th>
-                    <th>Adm. No.</th>
-                    <th>Roll No</th>
-                    <th>Session</th>
-                    <th>Class</th>
-                    <th>Section</th>
-                    <th>Parent Phone</th>
-                    <th>Student Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewRows.map((r, i) => (
-                    <tr key={i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
-                      <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11 }}>
-                        {r._errors?.length ? '⚠' : i+1}
-                      </td>
-                      <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
-                        {r.firstName || r.name?.split(' ')[0] || '—'}
-                        {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
-                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                        )}
-                      </td>
-                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
-                        {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
-                        {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
-                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                        )}
-                      </td>
-                      <td><b>{r.name}</b></td>
-                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
-                        {r.admissionNumber||'—'}
-                        {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
-                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                        )}
-                      </td>
-                      <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
-                        <span className="roll">{r.rollNumber}</span>
-                      </td>
-                      <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
-                      <td>{r.classLabel || r.classNumber}</td>
-                      <td>{r.sectionName}</td>
-                      <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
-                        {r.parentPhone || r.parentSmsNumber || '—'}
-                        {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
-                          <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                        )}
-                      </td>
-                      <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
-                    </tr>
+          {/* ── STEP 1: Select Session ── */}
+          {importStep === 1 && (
+            <div style={{ maxWidth: 640, width: '100%', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--bg-card, #ffffff)', padding: '24px 28px', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', boxShadow: 'var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))' }}>
+              <label style={{ fontSize: 13.5, fontWeight: 600 }}>Academic Session <span style={{ color: '#ef4444', fontSize: 11 }}>*</span>
+                <select value={importSession} onChange={e => setImportSession(e.target.value)} style={{ marginTop: 6, width: '100%', padding: '9px 12px', fontSize: 14 }}>
+                  <option value="">Select Session</option>
+                  {(sessions.length > 0 ? sessions : [
+                    { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
+                    { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
+                    { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
+                  ]).map(s => (
+                    <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-              <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); }}>← Back</button>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportStep(1); }}>Cancel</button>
+                </select>
+              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={submitBulkImport}
-                  disabled={importing}
-                  style={{ background: '#10b981', color: '#ffffff' }}
+                  className="template-download-btn"
+                  onClick={downloadTemplate}
                 >
-                  {importing ? 'Importing Students...' : `Confirm & Import ${previewRows.filter(r=>!r._errors?.length).length} Valid Students`}
+                  <Download size={13} /> Download Sample Template (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  disabled={!importSession}
+                  onClick={() => setImportStep(2)}
+                  style={{ background: '#2563eb', color: '#fff', opacity: importSession ? 1 : 0.5, padding: '8px 20px', fontWeight: 600 }}
+                >
+                  Next: Upload File →
                 </button>
               </div>
+              {!importSession && <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>Please select a session to continue.</p>}
             </div>
-          </div>
-        )}
-      </div>
-    </Modal>}
+          )}
+
+          {/* ── STEP 2: Upload File ── */}
+          {importStep === 2 && (
+            <div style={{ maxWidth: 760, width: '100%', margin: '16px auto', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ marginBottom: 14, padding: '12px 18px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13.5, color: '#166534' }}>
+                📋 Session: <b>{importSession}</b>
+              </div>
+              <label className="dropzone" style={{ padding: '36px 24px' }}>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFile}
+                  style={{ display: 'none' }}
+                />
+                <div className="dropzone-icon">
+                  <UploadCloud size={32} />
+                </div>
+                <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
+                <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
+                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Parent Phone, Student Email</span>
+              </label>
+              <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between' }}>
+                <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: Preview & Confirm ── */}
+          {importStep === 3 && previewRows.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div style={{ marginBottom: 12, padding: '12px 18px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13.5, color: '#166534', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <span>✅ <b>{previewRows.length} students</b> ready to import · Session: <b>{importSession}</b></span>
+                <span style={{ fontSize: 12, color: '#15803d' }}>Review all columns below before proceeding</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+                <strong style={{ fontSize: 15 }}>Preview Data</strong>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {importErrors.length > 0 && (
+                    <span style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:6, padding:'4px 12px', fontSize:12, fontWeight: 600 }}>
+                      ⚠ {importErrors.length} error{importErrors.length>1?'s':''} — highlighted in red
+                    </span>
+                  )}
+                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => { setPreviewRows([]); setImportErrors([]); setImportStep(2); }}>Re-upload</button>
+                </div>
+              </div>
+              <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 330px)', minHeight: 380, overflow: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                      <th style={{ minWidth: 120 }}>First Name</th>
+                      <th style={{ minWidth: 120 }}>Last Name</th>
+                      <th style={{ minWidth: 150 }}>Full Name</th>
+                      <th style={{ minWidth: 120 }}>Adm. No.</th>
+                      <th style={{ minWidth: 90 }}>Roll No</th>
+                      <th style={{ minWidth: 110 }}>Session</th>
+                      <th style={{ minWidth: 90 }}>Class</th>
+                      <th style={{ minWidth: 80 }}>Section</th>
+                      <th style={{ minWidth: 130 }}>Parent Phone</th>
+                      <th style={{ minWidth: 160 }}>Student Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((r, i) => (
+                      <tr key={i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
+                        <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center' }}>
+                          {r._errors?.length ? '⚠' : i+1}
+                        </td>
+                        <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
+                          {r.firstName || r.name?.split(' ')[0] || '—'}
+                          {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
+                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                          )}
+                        </td>
+                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
+                          {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
+                          {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
+                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                          )}
+                        </td>
+                        <td><b>{r.name}</b></td>
+                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
+                          {r.admissionNumber||'—'}
+                          {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
+                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                          )}
+                        </td>
+                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
+                          <span className="roll">{r.rollNumber}</span>
+                        </td>
+                        <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                        <td>{r.classLabel || r.classNumber}</td>
+                        <td>{r.sectionName}</td>
+                        <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
+                          {r.parentPhone || r.parentSmsNumber || '—'}
+                          {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
+                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                          )}
+                        </td>
+                        <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); }}>← Back</button>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportStep(1); }}>Cancel</button>
+                  <button
+                    type="button"
+                    onClick={submitBulkImport}
+                    disabled={importing}
+                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
+                  >
+                    {importing ? 'Importing Students...' : `Confirm & Import ${previewRows.filter(r=>!r._errors?.length).length} Valid Students`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    )}
 
     {/* Universal Student Preview & Edit Modal */}
     <UniversalPreviewModal
@@ -5850,88 +5926,93 @@ function Teachers(){
     </Modal>}
 
     {/* EXCEL / CSV BULK IMPORT MODAL */}
-    {importOpen && <Modal title="Bulk Import Teachers (Excel / CSV)" close={()=>{setImportOpen(false); setPreviewRows([]);}}>
-      <div style={{ padding: '0 4px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
-          </p>
-          <button 
-            type="button" 
-            className="template-download-btn"
-            onClick={downloadTemplate}
-          >
-            <Download size={13} /> Download Sample Template (.xlsx)
-          </button>
-        </div>
-
-        <label className="dropzone">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls, .csv" 
-            onChange={handleFile}
-            style={{ display: 'none' }}
-          />
-          <div className="dropzone-icon">
-            <UploadCloud size={24} />
+    {importOpen && (
+      <Modal 
+        title="Bulk Import Teachers (Excel / CSV)" 
+        fullWindow={true}
+        close={() => { setImportOpen(false); setPreviewRows([]); }}
+      >
+        <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexShrink: 0 }}>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+              Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
+            </p>
+            <button 
+              type="button" 
+              className="template-download-btn"
+              onClick={downloadTemplate}
+            >
+              <Download size={13} /> Download Sample Template (.xlsx)
+            </button>
           </div>
-          <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
-          <span className="muted" style={{ fontSize: 12 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-        </label>
 
-        {previewRows.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: 14 }}>Preview Data ({previewRows.length} faculty ready to import)</strong>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                style={{ fontSize: 12, padding: '4px 10px' }}
-                onClick={() => setPreviewRows([])}
-              >
-                Clear
-              </button>
+          <label className="dropzone" style={{ flexShrink: 0, padding: '30px 20px', maxWidth: 760, width: '100%', margin: '0 auto 16px' }}>
+            <input 
+              type="file" 
+              accept=".xlsx, .xls, .csv" 
+              onChange={handleFile}
+              style={{ display: 'none' }}
+            />
+            <div className="dropzone-icon">
+              <UploadCloud size={28} />
             </div>
-            <div className="preview-table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Savior_No</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Full Name</th>
-                    <th>Email ID</th>
-                    <th>Designation</th>
-                    <th>Class & Section</th>
-                    <th>Status</th>
-                    <th>Email Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewRows.map((r, i) => (
-                    <tr key={i}>
-                      <td><code>{r.saviorNo || r.employeeId}</code></td>
-                      <td>{r.firstName || '—'}</td>
-                      <td>{r.lastName || '—'}</td>
-                      <td><b>{r.name}</b></td>
-                      <td>{r.email}</td>
-                      <td>{r.designation || 'Teacher'}</td>
-                      <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
-                      <td><span className="badge active">{r.status || 'Active'}</span></td>
-                      <td><span className="badge pending">Pending Dispatch</span></td>
+            <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
+            <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
+          </label>
+
+          {previewRows.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+                <strong style={{ fontSize: 15 }}>Preview Data ({previewRows.length} faculty ready to import)</strong>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  style={{ fontSize: 12, padding: '5px 12px' }}
+                  onClick={() => setPreviewRows([])}
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 360, overflow: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth: 110 }}>Savior_No</th>
+                      <th style={{ minWidth: 120 }}>First Name</th>
+                      <th style={{ minWidth: 120 }}>Last Name</th>
+                      <th style={{ minWidth: 150 }}>Full Name</th>
+                      <th style={{ minWidth: 180 }}>Email ID</th>
+                      <th style={{ minWidth: 130 }}>Designation</th>
+                      <th style={{ minWidth: 140 }}>Class & Section</th>
+                      <th style={{ minWidth: 100 }}>Status</th>
+                      <th style={{ minWidth: 140 }}>Email Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={() => { setImportOpen(false); setPreviewRows([]); }}
-              >
-                Cancel
-              </button>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((r, i) => (
+                      <tr key={i}>
+                        <td><code>{r.saviorNo || r.employeeId}</code></td>
+                        <td>{r.firstName || '—'}</td>
+                        <td>{r.lastName || '—'}</td>
+                        <td><b>{r.name}</b></td>
+                        <td>{r.email}</td>
+                        <td>{r.designation || 'Teacher'}</td>
+                        <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
+                        <td><span className="badge active">{r.status || 'Active'}</span></td>
+                        <td><span className="badge pending">Pending Dispatch</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => { setImportOpen(false); setPreviewRows([]); }}
+                >
+                  Cancel
+                </button>
               <button 
                 type="button" 
                 onClick={submitBulkImport}
@@ -5944,7 +6025,7 @@ function Teachers(){
           </div>
         )}
       </div>
-    </Modal>}
+    </Modal>)}
 
     {/* Universal Teacher Preview & Edit Modal */}
     <UniversalPreviewModal

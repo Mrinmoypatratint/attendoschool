@@ -673,8 +673,8 @@ export default function PeopleManagement() {
 
       {/* ─── BULK TEACHER IMPORT MODAL ─── */}
       {importOpen && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 840 }}>
+        <div className="modal-backdrop" style={{ padding: 12 }}>
+          <div className="modal modal-fullwindow" style={{ width: 'calc(100vw - 28px)', maxWidth: 'calc(100vw - 28px)', height: 'calc(100vh - 28px)', maxHeight: 'calc(100vh - 28px)', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18 }}>Bulk Teacher Import</h2>
@@ -732,8 +732,8 @@ export default function PeopleManagement() {
                     Clear
                   </button>
                 </div>
-                <div className="preview-table-container" style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-                  <table>
+                <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 340px)', minHeight: 360, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                  <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <th>Savior_No</th>
