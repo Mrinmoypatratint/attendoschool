@@ -249,19 +249,60 @@ export default function AttendanceReports() {
   }, [totalPresent, totalMarked]);
 
   // Combined Export Handlers
+  function getRowsForExport() {
+    if (filteredRows.length > 0) return filteredRows;
+    if (enrolledStudents.length > 0) {
+      return enrolledStudents
+        .filter(st => {
+          if (selectedClass !== 'ALL') {
+            const cMatch = String(st.class_name || st.className || '').toLowerCase();
+            const selectedClsObj = classes.find(c => c.id === selectedClass);
+            const targetLabel = (selectedClsObj?.label || selectedClsObj?.class_number?.toString() || selectedClass).toLowerCase();
+            if (!cMatch.includes(targetLabel) && st.class_id !== selectedClass && String(st.class_number) !== String(selectedClass)) return false;
+          }
+          if (selectedSection !== 'ALL') {
+            const sMatch = String(st.section_name || st.section || '').toUpperCase();
+            if (sMatch !== selectedSection.toUpperCase() && st.section_id !== selectedSection) return false;
+          }
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            const nameMatch = (st.name || st.fullName || '').toLowerCase().includes(q);
+            const rollMatch = String(st.roll_number || st.roll || '').toLowerCase().includes(q);
+            if (!nameMatch && !rollMatch) return false;
+          }
+          return true;
+        })
+        .map(st => ({
+          student_name: st.name || st.fullName || 'Student',
+          roll: st.roll_number || st.roll || '—',
+          class_name: st.className || st.class_name || (st.class_number ? `Class ${st.class_number}` : '—'),
+          section_name: st.section_name || st.section || '—',
+          present_days: 0,
+          absent_days: 0,
+          marked_days: 0,
+          attendance_percentage: 0
+        }));
+    }
+    return [];
+  }
+
   function downloadCsv() {
     setExportDropdownOpen(false);
     const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Marked', 'Attendance Rate (%)'];
-    const body = filteredRows.map(r => [
-      r.student_name,
-      r.roll,
-      r.class_name || '—',
-      r.section_name || '—',
-      r.present_days,
-      r.absent_days,
-      r.marked_days,
-      `${r.attendance_percentage}%`
-    ]);
+    const exportData = getRowsForExport();
+
+    const body = exportData.length > 0
+      ? exportData.map(r => [
+          r.student_name,
+          r.roll,
+          r.class_name || '—',
+          r.section_name || '—',
+          r.present_days || 0,
+          r.absent_days || 0,
+          r.marked_days || 0,
+          `${r.attendance_percentage || 0}%`
+        ])
+      : [['No attendance records found matching this criteria', '', '', '', 0, 0, 0, '0%']];
 
     const totalRow = [
       'Total / Average',
@@ -286,16 +327,29 @@ export default function AttendanceReports() {
 
   function downloadExcel() {
     setExportDropdownOpen(false);
-    const data = filteredRows.map(r => ({
-      'Student Name': r.student_name,
-      'Roll Number': r.roll,
-      'Class': r.class_name || '—',
-      'Section': r.section_name || '—',
-      'Present Days': r.present_days,
-      'Absent Days': r.absent_days,
-      'Total Marked': r.marked_days,
-      'Attendance Rate (%)': `${r.attendance_percentage}%`
-    }));
+    const exportData = getRowsForExport();
+
+    const data = exportData.length > 0
+      ? exportData.map(r => ({
+          'Student Name': r.student_name,
+          'Roll Number': r.roll,
+          'Class': r.class_name || '—',
+          'Section': r.section_name || '—',
+          'Present Days': r.present_days || 0,
+          'Absent Days': r.absent_days || 0,
+          'Total Marked': r.marked_days || 0,
+          'Attendance Rate (%)': `${r.attendance_percentage || 0}%`
+        }))
+      : [{
+          'Student Name': 'No attendance records found matching this criteria',
+          'Roll Number': '',
+          'Class': '',
+          'Section': '',
+          'Present Days': 0,
+          'Absent Days': 0,
+          'Total Marked': 0,
+          'Attendance Rate (%)': '0%'
+        }];
 
     data.push({
       'Student Name': 'TOTAL / INSTITUTIONAL AVERAGE',
@@ -499,9 +553,8 @@ export default function AttendanceReports() {
           <div ref={exportDropdownRef} style={{ position: 'relative' }}>
             <button
               type="button"
+              id="export-report-btn"
               onClick={() => setExportDropdownOpen(prev => !prev)}
-              className="btn-secondary"
-              disabled={!filteredRows.length}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -509,7 +562,23 @@ export default function AttendanceReports() {
                 fontSize: 13,
                 padding: '7px 14px',
                 fontWeight: 600,
-                cursor: filteredRows.length ? 'pointer' : 'not-allowed'
+                cursor: 'pointer',
+                backgroundColor: exportDropdownOpen ? '#eff6ff' : '#ffffff',
+                border: '1px solid #2563eb',
+                color: '#2563eb',
+                borderRadius: 6,
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#eff6ff';
+                e.currentTarget.style.borderColor = '#1d4ed8';
+              }}
+              onMouseLeave={e => {
+                if (!exportDropdownOpen) {
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.borderColor = '#2563eb';
+                }
               }}
               title="Export report in Excel (.xlsx) or CSV (.csv) format"
             >

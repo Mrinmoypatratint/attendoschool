@@ -12,6 +12,12 @@ const DAYS = [
   { num: 6, name: 'Saturday', short: 'Sat' }
 ];
 
+const STANDARD_FALLBACK_CLASSES = [
+  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
+  { id: 'cls-ukg', class_number: 0, label: 'U-KG' },
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` }))
+];
+
 export default function Timetable() {
   const { user } = useAuth();
   const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -20,7 +26,7 @@ export default function Timetable() {
   // ── State ──
   const [periods, setPeriods] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>(STANDARD_FALLBACK_CLASSES);
   const [sections, setSections] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -30,8 +36,8 @@ export default function Timetable() {
 
   // Filters
   const [selDay, setSelDay] = useState(() => { const d = new Date().getDay(); return d === 0 || d > 6 ? 1 : d; });
-  const [selClassId, setSelClassId] = useState('');
-  const [selSectionId, setSelSectionId] = useState('');
+  const [selClassId, setSelClassId] = useState<string>(STANDARD_FALLBACK_CLASSES[0].id);
+  const [selSectionId, setSelSectionId] = useState<string>('');
 
   // Add entry modal
   const [addOpen, setAddOpen] = useState(false);
@@ -49,17 +55,20 @@ export default function Timetable() {
     if (initial) setLoading(true);
     try {
       const [pRes, eRes, cRes, sRes, subRes, tRes] = await Promise.all([
-        api.get('/timetable/periods'),
-        api.get('/timetable/entries'),
-        api.get('/classes'),
-        api.get('/sections'),
-        api.get('/subjects'),
-        api.get('/teachers')
+        api.get('/timetable/periods').catch(() => ({ data: [] })),
+        api.get('/timetable/entries').catch(() => ({ data: [] })),
+        api.get('/classes').catch(() => ({ data: [] })),
+        api.get('/sections').catch(() => ({ data: [] })),
+        api.get('/subjects').catch(() => ({ data: [] })),
+        api.get('/teachers').catch(() => ({ data: [] }))
       ]);
-      if (Array.isArray(pRes.data)) setPeriods(pRes.data);
+      if (Array.isArray(pRes.data) && pRes.data.length > 0) setPeriods(pRes.data);
       if (Array.isArray(eRes.data)) setEntries(eRes.data);
-      if (Array.isArray(cRes.data)) setClasses(cRes.data);
-      if (Array.isArray(sRes.data)) setSections(sRes.data);
+      if (Array.isArray(cRes.data) && cRes.data.length > 0) {
+        setClasses(cRes.data);
+        setSelClassId(prev => (prev && cRes.data.some((c: any) => c.id === prev) ? prev : cRes.data[0].id));
+      }
+      if (Array.isArray(sRes.data) && sRes.data.length > 0) setSections(sRes.data);
       if (Array.isArray(subRes.data)) setSubjects(subRes.data);
       if (Array.isArray(tRes.data)) setTeachers(tRes.data);
     } catch (err) {
@@ -70,14 +79,12 @@ export default function Timetable() {
   }
   useEffect(() => { loadAll(true); }, []);
 
-  // Set default class/section when data loads
+  // Ensure default class if not set
   useEffect(() => {
-    if (classes.length > 0 && !selClassId) setSelClassId(classes[0].id);
+    if (classes.length > 0 && (!selClassId || !classes.some(c => c.id === selClassId))) {
+      setSelClassId(classes[0].id);
+    }
   }, [classes, selClassId]);
-  useEffect(() => {
-    const avail = sections.filter(s => s.class_id === selClassId || String(s.class_number) === String(classes.find(c=>c.id===selClassId)?.class_number));
-    if (avail.length > 0 && !avail.find(s => s.id === selSectionId)) setSelSectionId(avail[0].id);
-  }, [selClassId, sections, selSectionId, classes]);
 
   // Teacher identity helper
   const isMyEntry = (entry: any) => {
@@ -125,9 +132,45 @@ export default function Timetable() {
   }, [entries, isTeacher]);
 
   // ── Derived ──
-  const selClassName = classes.find(c => c.id === selClassId)?.class_number || '';
-  const selSectionName = sections.find(s => s.id === selSectionId)?.name || '';
-  const filteredSections = sections.filter(s => s.class_id === selClassId || String(s.class_number) === String(selClassName));
+  const selClassObj = classes.find(c => c.id === selClassId);
+  const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber;
+  const selClassName = selClassObj?.label || (selClassNum !== undefined && selClassNum !== null
+    ? (selClassNum === -1 ? 'L-KG' : selClassNum === 0 ? 'U-KG' : `Class ${selClassNum}`)
+    : (selClassObj?.name || 'Class'));
+
+  const filteredSections = useMemo(() => {
+    let list = sections.filter(s =>
+      (s.class_id && s.class_id === selClassId) ||
+      (s.classId && s.classId === selClassId) ||
+      (selClassNum !== undefined && selClassNum !== null && String(s.class_number ?? s.classNumber) === String(selClassNum))
+    );
+
+    // If no sections in DB yet for this class, or only Section A exists, ensure Section A & Section B are available
+    if (list.length === 0) {
+      return [
+        { id: `${selClassId}-sec-a`, name: 'A', section_name: 'A' },
+        { id: `${selClassId}-sec-b`, name: 'B', section_name: 'B' }
+      ];
+    }
+    const hasA = list.some(s => (s.name || s.section_name || '').toUpperCase() === 'A');
+    const hasB = list.some(s => (s.name || s.section_name || '').toUpperCase() === 'B');
+    if (hasA && !hasB) {
+      list = [...list, { id: `${selClassId}-sec-b`, name: 'B', section_name: 'B' }];
+    } else if (!hasA && hasB) {
+      list = [{ id: `${selClassId}-sec-a`, name: 'A', section_name: 'A' }, ...list];
+    }
+    return list;
+  }, [sections, selClassId, selClassNum]);
+
+  // Keep selSectionId in sync with filteredSections
+  useEffect(() => {
+    if (filteredSections.length > 0 && (!selSectionId || !filteredSections.some(s => s.id === selSectionId))) {
+      setSelSectionId(filteredSections[0].id);
+    }
+  }, [filteredSections, selSectionId]);
+
+  const currentSection = filteredSections.find(s => s.id === selSectionId) || filteredSections[0];
+  const selSectionName = currentSection?.name || currentSection?.section_name || 'A';
   const teachingPeriods = useMemo(() => periods.filter(p => !(p.is_break ?? p.isBreak)), [periods]);
 
   const dayEntries = useMemo(() => {
@@ -474,20 +517,120 @@ export default function Timetable() {
       </div>
     ) : (
       <>
-        {/* ── Filters: Class, Section, Day ── */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-            <Layers size={14} /> Class:
-            <select value={selClassId} onChange={e => setSelClassId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
-              {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+        {/* ── Filters: Class & Section Aligned on Same Level ── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+            marginBottom: 20,
+            padding: '12px 18px',
+            backgroundColor: 'var(--card, #ffffff)',
+            borderRadius: 10,
+            border: '1px solid var(--border, #e2e8f0)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
+          }}
+        >
+          {/* Class Field */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13.5,
+                fontWeight: 600,
+                color: 'var(--text, #1e293b)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Layers size={16} color="#2563eb" /> Class:
+            </span>
+            <select
+              id="timetable-class-select"
+              value={selClassId}
+              onChange={e => setSelClassId(e.target.value)}
+              style={{
+                minWidth: 160,
+                height: 38,
+                padding: '6px 34px 6px 12px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                fontSize: 13.5,
+                fontWeight: 500,
+                cursor: 'pointer',
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 10px center',
+                backgroundSize: '14px 14px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              }}
+            >
+              {classes.map(c => {
+                const cNum = c.class_number ?? c.classNumber;
+                const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                return (
+                  <option key={c.id} value={c.id} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-            Section:
-            <select value={selSectionId} onChange={e => setSelSectionId(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
-              {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </div>
+
+          {/* Vertical Divider */}
+          <div style={{ width: 1, height: 24, backgroundColor: '#e2e8f0' }} />
+
+          {/* Section Field */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                fontSize: 13.5,
+                fontWeight: 600,
+                color: 'var(--text, #1e293b)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Section:
+            </span>
+            <select
+              id="timetable-section-select"
+              value={selSectionId}
+              onChange={e => setSelSectionId(e.target.value)}
+              style={{
+                minWidth: 140,
+                height: 38,
+                padding: '6px 34px 6px 12px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
+                fontSize: 13.5,
+                fontWeight: 500,
+                cursor: 'pointer',
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 10px center',
+                backgroundSize: '14px 14px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              }}
+            >
+              {filteredSections.map(s => (
+                <option key={s.id} value={s.id} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                  Section {s.name || s.section_name || 'A'}
+                </option>
+              ))}
             </select>
-          </label>
+          </div>
         </div>
 
         {/* ── Day Tabs ── */}
@@ -511,7 +654,7 @@ export default function Timetable() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16 }}>
               <Calendar size={16} style={{ marginRight: 6 }} />
-              {DAYS.find(d => d.num === selDay)?.name} — Class {selClassName} Section {selSectionName}
+              {DAYS.find(d => d.num === selDay)?.name} — {selClassName || 'Class'} {selSectionName ? `· Section ${selSectionName}` : ''}
             </h3>
             <span className="muted" style={{ fontSize: 12 }}>{dayEntries.length} of {teachingPeriods.length} periods assigned</span>
           </div>

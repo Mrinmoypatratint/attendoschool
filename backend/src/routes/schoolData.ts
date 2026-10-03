@@ -474,7 +474,7 @@ r.put('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
   res.json(created);
 });
 
-r.get('/students',...admin,async(req:AuthRequest,res)=>{
+r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
  const sessionFilter=String(req.query.session||req.query.sessionId||req.query.academic_year_id||'').trim();
  const userSchoolId = req.user?.schoolId;
@@ -1689,7 +1689,7 @@ r.get('/teachers/template', ...reader, (_req, res) => {
   res.send(buf);
 });
 
-r.get('/teachers',...admin,async(req:AuthRequest,res)=>{
+r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
  try {
   const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,u.is_active

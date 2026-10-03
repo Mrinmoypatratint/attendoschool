@@ -176,5 +176,7 @@ export const studentApi = {
   createLeaveRequest: (data: { startDate: string; endDate: string; reason: string }) =>
     api.post('/student/leave-requests', data).then((r) => r.data),
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data)
+    api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data),
+  updatePhoto: (photoUrl: string) =>
+    api.put<{ success: boolean; photoUrl: string; message: string }>('/student/photo', { photoUrl }).then((r) => r.data)
 };

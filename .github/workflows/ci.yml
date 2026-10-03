@@ -283,16 +283,17 @@ jobs:
             MIGRATION_NOTE="🚫 **DESTRUCTIVE database migration detected** — manual approval required."
           fi
 
-          PR_BODY="## Auto-Generated Pull Request
-
-**Branch:** \`${BRANCH}\` → \`main\`
-**CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)
-**Conflicts:** ✅ None detected
-
-${MIGRATION_NOTE}
-
----
-*This PR was automatically created by the CI pipeline after all checks passed.*"
+          PR_BODY=$(printf '%s\n' \
+            "## Auto-Generated Pull Request" \
+            "" \
+            "**Branch:** \`${BRANCH}\` → \`main\`" \
+            "**CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)" \
+            "**Conflicts:** ✅ None detected" \
+            "" \
+            "${MIGRATION_NOTE}" \
+            "" \
+            "---" \
+            "*This PR was automatically created by the CI pipeline after all checks passed.*")
 
           if [ -n "$PR_NUM" ]; then
             echo "Updating existing PR #${PR_NUM} for ${BRANCH}..."
