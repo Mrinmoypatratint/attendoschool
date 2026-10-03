@@ -26,6 +26,7 @@
     "release:check": "npm run build && npm run test:api-smoke"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
