@@ -3343,6 +3343,8 @@ function Students(){
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
   const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'errors' | 'valid'>('all');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   // Universal Preview & Edit State
@@ -3792,11 +3794,31 @@ function Students(){
     return matchesSearch && matchesClass && matchesSection && matchesSession;
   });
 
+  useEffect(() => {
+    setDirectoryPage(1);
+  }, [search, classFilter, sectionFilter, activeSession]);
+
+  const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
+  const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
+  const directoryStartIdx = filtered.length === 0 ? 0 : (currentDirectoryPage - 1) * (directoryPageSize || 25);
+  const directoryEndIdx = Math.min(directoryStartIdx + (directoryPageSize || 25), filtered.length);
+  const displayedStudents = filtered.slice(directoryStartIdx, directoryEndIdx);
+
   function toggleSelectAll() {
-    if (selectedIds.size === filtered.length && filtered.length > 0) {
-      setSelectedIds(new Set());
+    const displayedIds = displayedStudents.map(r => r.id);
+    const allDisplayedSelected = displayedIds.length > 0 && displayedIds.every(id => selectedIds.has(id));
+    if (allDisplayedSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        displayedIds.forEach(id => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filtered.map(r => r.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        displayedIds.forEach(id => next.add(id));
+        return next;
+      });
     }
   }
 
@@ -4252,8 +4274,44 @@ function Students(){
           </button>
         )}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-        Showing <b>{filtered.length}</b> of <b>{rows.length}</b> students
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+          <span>Rows per page:</span>
+          <select
+            value={directoryPageSize}
+            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+            style={{
+              padding: '4px 8px',
+              fontSize: 12.5,
+              borderRadius: 6,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              cursor: 'pointer'
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25 (Default)</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={250}>250</option>
+            <option value={500}>500</option>
+            <option value={100000}>All ({filtered.length})</option>
+          </select>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {filtered.length === 0 ? (
+            'Showing 0 students'
+          ) : (
+            <>
+              Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> students
+              {filtered.length !== rows.length && (
+                <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
 
@@ -4264,9 +4322,9 @@ function Students(){
             <th style={{ width: 40, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
-                checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
                 onChange={toggleSelectAll}
-                title="Select all"
+                title="Select all on this page"
               />
             </th>
             <th>Roll No</th>
@@ -4280,9 +4338,9 @@ function Students(){
           </tr>
         </thead>
         <tbody>
-          {filtered.length === 0 ? (
+          {displayedStudents.length === 0 ? (
             <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
-          ) : filtered.map(x => (
+          ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
                 <input 
@@ -4391,6 +4449,90 @@ function Students(){
           ))}
         </tbody>
       </table>
+    </div>
+
+    {/* ── STUDENT DIRECTORY PAGINATION BAR ── */}
+    <div className="directory-pagination-bar">
+      <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+        {filtered.length === 0 ? (
+          'Showing 0 students'
+        ) : (
+          <>
+            Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> students
+            {filtered.length !== rows.length && (
+              <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+            )}
+          </>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage <= 1}
+          onClick={() => setDirectoryPage(1)}
+          title="First Page"
+        >
+          <ChevronsLeft size={14} /> First
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage <= 1}
+          onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+          title="Previous Page"
+        >
+          <ChevronLeft size={14} /> Previous
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+          <span>Page</span>
+          <select
+            value={currentDirectoryPage}
+            onChange={(e) => setDirectoryPage(Number(e.target.value))}
+            style={{
+              padding: '3px 6px',
+              fontSize: 12,
+              borderRadius: 4,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              cursor: 'pointer'
+            }}
+          >
+            {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+              <option key={idx + 1} value={idx + 1}>
+                {idx + 1}
+              </option>
+            ))}
+          </select>
+          <span>of <b>{totalDirectoryPages}</b></span>
+        </div>
+
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage >= totalDirectoryPages}
+          onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+          title="Next Page"
+        >
+          Next <ChevronRight size={14} />
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage >= totalDirectoryPages}
+          onClick={() => setDirectoryPage(totalDirectoryPages)}
+          title="Last Page"
+        >
+          Last <ChevronsRight size={14} />
+        </button>
+      </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}
@@ -5213,6 +5355,8 @@ function Teachers(){
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
   const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
 
@@ -5693,11 +5837,31 @@ function Teachers(){
     String(r.employee_id).toLowerCase().includes(search.toLowerCase())
   );
 
+  useEffect(() => {
+    setDirectoryPage(1);
+  }, [search]);
+
+  const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
+  const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
+  const directoryStartIdx = filtered.length === 0 ? 0 : (currentDirectoryPage - 1) * (directoryPageSize || 25);
+  const directoryEndIdx = Math.min(directoryStartIdx + (directoryPageSize || 25), filtered.length);
+  const displayedTeachers = filtered.slice(directoryStartIdx, directoryEndIdx);
+
   function toggleSelectAll() {
-    if (selectedIds.size === filtered.length && filtered.length > 0) {
-      setSelectedIds(new Set());
+    const displayedIds = displayedTeachers.map(r => r.id);
+    const allDisplayedSelected = displayedIds.length > 0 && displayedIds.every(id => selectedIds.has(id));
+    if (allDisplayedSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        displayedIds.forEach(id => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filtered.map(r => r.id)));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        displayedIds.forEach(id => next.add(id));
+        return next;
+      });
     }
   }
 
@@ -5897,15 +6061,51 @@ function Teachers(){
     )}
 
     {/* Search & Filter Bar */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
       <input 
         placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 380, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+        style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
       />
-      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-        Showing <b>{filtered.length}</b> of <b>{rows.length}</b> faculty members
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+          <span>Rows per page:</span>
+          <select
+            value={directoryPageSize}
+            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+            style={{
+              padding: '4px 8px',
+              fontSize: 12.5,
+              borderRadius: 6,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              cursor: 'pointer'
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25 (Default)</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={250}>250</option>
+            <option value={500}>500</option>
+            <option value={100000}>All ({filtered.length})</option>
+          </select>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {filtered.length === 0 ? (
+            'Showing 0 faculty members'
+          ) : (
+            <>
+              Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> faculty members
+              {filtered.length !== rows.length && (
+                <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
 
@@ -5916,9 +6116,9 @@ function Teachers(){
             <th style={{ width: 40, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
-                checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
                 onChange={toggleSelectAll}
-                title="Select all"
+                title="Select all on this page"
               />
             </th>
             <th>Employee Id/Savior_NO</th>
@@ -5933,9 +6133,9 @@ function Teachers(){
           </tr>
         </thead>
         <tbody>
-          {filtered.length === 0 ? (
+          {displayedTeachers.length === 0 ? (
             <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
-          ) : filtered.map(x => (
+          ) : displayedTeachers.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
                 <input 
@@ -5971,8 +6171,8 @@ function Teachers(){
                 >
                   <BookOpen size={14} />
                 </button>
-                <button
-                  className="table-action-btn"
+                <button 
+                  className="table-action-btn" 
                   onClick={() => {
                     setEditingTeacher(x);
                     setF({
@@ -5989,8 +6189,8 @@ function Teachers(){
                 >
                   <Pencil size={14} />
                 </button>
-                <button
-                  className="table-action-btn"
+                <button 
+                  className="table-action-btn" 
                   onClick={() => sendTeacherResetEmail(x)}
                   title="Send password setup / reset email"
                   style={{ marginRight: 6, color: '#2563eb' }}
@@ -6009,6 +6209,90 @@ function Teachers(){
           ))}
         </tbody>
       </table>
+    </div>
+
+    {/* ── TEACHER DIRECTORY PAGINATION BAR ── */}
+    <div className="directory-pagination-bar">
+      <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+        {filtered.length === 0 ? (
+          'Showing 0 faculty members'
+        ) : (
+          <>
+            Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> faculty members
+            {filtered.length !== rows.length && (
+              <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+            )}
+          </>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage <= 1}
+          onClick={() => setDirectoryPage(1)}
+          title="First Page"
+        >
+          <ChevronsLeft size={14} /> First
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage <= 1}
+          onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+          title="Previous Page"
+        >
+          <ChevronLeft size={14} /> Previous
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+          <span>Page</span>
+          <select
+            value={currentDirectoryPage}
+            onChange={(e) => setDirectoryPage(Number(e.target.value))}
+            style={{
+              padding: '3px 6px',
+              fontSize: 12,
+              borderRadius: 4,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              cursor: 'pointer'
+            }}
+          >
+            {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+              <option key={idx + 1} value={idx + 1}>
+                {idx + 1}
+              </option>
+            ))}
+          </select>
+          <span>of <b>{totalDirectoryPages}</b></span>
+        </div>
+
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage >= totalDirectoryPages}
+          onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+          title="Next Page"
+        >
+          Next <ChevronRight size={14} />
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+          disabled={currentDirectoryPage >= totalDirectoryPages}
+          onClick={() => setDirectoryPage(totalDirectoryPages)}
+          title="Last Page"
+        >
+          Last <ChevronsRight size={14} />
+        </button>
+      </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}

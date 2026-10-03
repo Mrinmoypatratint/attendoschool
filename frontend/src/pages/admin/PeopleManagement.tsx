@@ -22,6 +22,8 @@ export default function PeopleManagement() {
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   function prepareExportData() {
@@ -251,6 +253,16 @@ export default function PeopleManagement() {
   const teacherEndIdx = Math.min(teacherStartIdx + (importPreviewPageSize || 25), filteredTeacherPreviewRows.length);
   const displayedTeacherPreviewRows = filteredTeacherPreviewRows.slice(teacherStartIdx, teacherEndIdx);
 
+  useEffect(() => {
+    setDirectoryPage(1);
+  }, [tab, search]);
+
+  const totalDirectoryPages = Math.max(1, Math.ceil(rows.length / (directoryPageSize || 25)));
+  const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
+  const directoryStartIdx = rows.length === 0 ? 0 : (currentDirectoryPage - 1) * (directoryPageSize || 25);
+  const directoryEndIdx = Math.min(directoryStartIdx + (directoryPageSize || 25), rows.length);
+  const displayedDirectoryRows = rows.slice(directoryStartIdx, directoryEndIdx);
+
   return (
     <div className="feature-page">
       <div className="page-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
@@ -327,29 +339,66 @@ export default function PeopleManagement() {
         </div>
 
         {/* Search Controls */}
-        <form onSubmit={handleSearchSubmit} className="filter-row" style={{ margin: 0 }}>
-          <input
-            placeholder={tab === 'students' ? 'Search by name, roll, or parent…' : 'Search by name, employee ID/Savior_NO, or email…'}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ width: 320, background: '#ffffff' }}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-          {search && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                setSearch('');
-                setTimeout(load, 10);
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <form onSubmit={handleSearchSubmit} className="filter-row" style={{ margin: 0 }}>
+            <input
+              placeholder={tab === 'students' ? 'Search by name, roll, or parent…' : 'Search by name, employee ID/Savior_NO, or email…'}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: 300, background: '#ffffff' }}
+            />
+            <button type="submit" disabled={loading}>
+              {loading ? 'Searching…' : 'Search'}
+            </button>
+            {search && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setSearch('');
+                  setTimeout(load, 10);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+            <span>Rows per page:</span>
+            <select
+              value={directoryPageSize}
+              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+              style={{
+                padding: '4px 8px',
+                fontSize: 12.5,
+                borderRadius: 6,
+                border: '1px solid var(--border, #cbd5e1)',
+                background: 'var(--card-bg, #ffffff)',
+                color: 'var(--text, #1e293b)',
+                cursor: 'pointer'
               }}
             >
-              Clear
-            </button>
-          )}
-        </form>
+              <option value={10}>10</option>
+              <option value={25}>25 (Default)</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
+              <option value={100000}>All ({rows.length})</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {rows.length === 0 ? (
+              `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
+            ) : (
+              <>
+                Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{rows.length}</b> {tab === 'students' ? 'students' : 'faculty members'}
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {message && <div className="error" style={{ marginBottom: 16 }}>{message}</div>}
@@ -370,7 +419,7 @@ export default function PeopleManagement() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r: any) => (
+                {displayedDirectoryRows.map((r: any) => (
                   <tr key={r.id}>
                     <td>
                       <span className="roll" style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -426,7 +475,7 @@ export default function PeopleManagement() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r: any) => (
+                {displayedDirectoryRows.map((r: any) => (
                   <tr key={r.id}>
                     <td>
                       <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-700)' }}>
@@ -462,6 +511,87 @@ export default function PeopleManagement() {
             </>
           )}
         </table>
+      </div>
+
+      {/* ── PEOPLE MANAGEMENT DIRECTORY PAGINATION BAR ── */}
+      <div className="directory-pagination-bar">
+        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+          {rows.length === 0 ? (
+            `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
+          ) : (
+            <>
+              Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{rows.length}</b> {tab === 'students' ? 'students' : 'faculty members'}
+            </>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => setDirectoryPage(1)}
+            title="First Page"
+          >
+            <ChevronsLeft size={14} /> First
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+            title="Previous Page"
+          >
+            <ChevronLeft size={14} /> Previous
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+            <span>Page</span>
+            <select
+              value={currentDirectoryPage}
+              onChange={(e) => setDirectoryPage(Number(e.target.value))}
+              style={{
+                padding: '3px 6px',
+                fontSize: 12,
+                borderRadius: 4,
+                border: '1px solid var(--border, #cbd5e1)',
+                background: 'var(--card-bg, #ffffff)',
+                color: 'var(--text, #1e293b)',
+                cursor: 'pointer'
+              }}
+            >
+              {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {idx + 1}
+                </option>
+              ))}
+            </select>
+            <span>of <b>{totalDirectoryPages}</b></span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+            title="Next Page"
+          >
+            Next <ChevronRight size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => setDirectoryPage(totalDirectoryPages)}
+            title="Last Page"
+          >
+            Last <ChevronsRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* ─── ADD TEACHER MODAL WITH PREVIEW ─── */}
