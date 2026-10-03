@@ -21,6 +21,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { studentApi } from '../../services/studentApi';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -34,11 +35,51 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const [dark, setDark] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
+
+  // Dynamic notification count from School Admin announcements
+  useEffect(() => {
+    let isMounted = true;
+    studentApi
+      .getAnnouncements()
+      .then((list) => {
+        if (!isMounted) return;
+        if (!Array.isArray(list)) {
+          setUnreadCount(0);
+          return;
+        }
+
+        let readIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(`read_announcements_${user?.id || 'guest'}`);
+          if (stored) readIds = JSON.parse(stored);
+        } catch {}
+
+        if (location.pathname === '/student/announcements') {
+          // If student is on announcements page, mark all as read
+          const allIds = list.map((a) => a.id);
+          try {
+            localStorage.setItem(`read_announcements_${user?.id || 'guest'}`, JSON.stringify(allIds));
+          } catch {}
+          setUnreadCount(0);
+        } else {
+          const unread = list.filter((a) => !readIds.includes(a.id));
+          setUnreadCount(unread.length);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setUnreadCount(0);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname, user?.id]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -49,7 +90,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     { to: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/student/attendance', label: 'My Attendance', icon: CalendarCheck },
     { to: '/student/timetable', label: 'Timetable', icon: Calendar },
-    { to: '/student/homework', label: 'Homework', icon: BookOpen },
+    // { to: '/student/homework', label: 'Homework', icon: BookOpen }, // Merged with Assignments
     { to: '/student/assignments', label: 'Assignments', icon: FileCheck },
     { to: '/student/exams', label: 'Exams & Results', icon: GraduationCap },
     { to: '/student/announcements', label: 'Announcements', icon: Megaphone },
@@ -166,9 +207,16 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             </div>
 
             {/* Notification Bell */}
-            <NavLink to="/student/announcements" className="student-topbar-icon-btn" aria-label="Notifications">
+            <NavLink
+              to="/student/announcements"
+              className="student-topbar-icon-btn"
+              aria-label="Notifications"
+              title={unreadCount > 0 ? `${unreadCount} new notifications` : 'Notifications'}
+            >
               <Bell size={18} />
-              <span className="student-notification-badge">3</span>
+              {unreadCount > 0 && (
+                <span className="student-notification-badge">{unreadCount}</span>
+              )}
             </NavLink>
 
             {/* Dark Mode Toggle */}

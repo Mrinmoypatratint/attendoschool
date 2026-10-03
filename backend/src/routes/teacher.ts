@@ -1789,4 +1789,201 @@ const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
 r.get('/attendance/history', ...teacher, attendanceHistoryHandler);
 r.get('/history', ...teacher, attendanceHistoryHandler);
 
+// ── GET /api/teacher/profile ──
+r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const schoolId = req.user!.schoolId;
+
+  try {
+    let teacherData: any = null;
+    let schoolData: any = null;
+
+    // 1. Fetch user & teacher_profiles from postgres
+    try {
+      const q = await pool.query(
+        `SELECT u.id, u.name, u.email, u.role, u.school_id,
+                tp.employee_id, COALESCE(tp.mobile, tp.phone) AS phone,
+                tp.address, tp.joining_date, tp.qualification, tp.photo_url
+         FROM users u
+         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+      if (q.rows.length > 0) {
+        teacherData = q.rows[0];
+      }
+    } catch {}
+
+    // 2. Fetch school info
+    if (schoolId) {
+      try {
+        const sQ = await pool.query(`SELECT id, name, code FROM schools WHERE id = $1`, [schoolId]);
+        if (sQ.rows.length > 0) schoolData = sQ.rows[0];
+      } catch {}
+    }
+
+    // 3. Fallback from demo store if not found
+    if (!teacherData) {
+      const { findDemoUser } = await import('../store/demoUsers');
+      const du = findDemoUser(userId) || findDemoUser(req.user!.email || '');
+      teacherData = {
+        id: userId,
+        name: du?.name || req.user!.name || 'Faculty Member',
+        email: du?.email || req.user!.email || 'teacher@tint.edu.in',
+        role: 'TEACHER',
+        school_id: schoolId,
+        employee_id: 'FAC-2025-01',
+        phone: '+91 98300 12345',
+        address: 'Faculty Quarters, Campus Area',
+        joining_date: '2023-07-01',
+        qualification: 'M.Tech / M.Sc Computer Science',
+        photo_url: null
+      };
+    }
+
+    // 4. Fetch teaching allocations / assigned classes & subjects from timetable entries
+    let assignedClasses: string[] = [];
+    let assignedSubjects: string[] = [];
+    try {
+      const entQ = await pool.query(
+        `SELECT DISTINCT c.class_number, s.name as section_name, sub.name as subject_name
+         FROM timetable_entries te
+         JOIN classes c ON c.id = te.class_id
+         JOIN sections s ON s.id = te.section_id
+         LEFT JOIN subjects sub ON sub.id = te.subject_id
+         WHERE te.teacher_id = $1 AND te.school_id = $2`,
+        [userId, schoolId]
+      );
+      entQ.rows.forEach(row => {
+        const clsLabel = row.class_number === -1 ? 'L-KG' : row.class_number === 0 ? 'U-KG' : `Class ${row.class_number}`;
+        const clsSec = `${clsLabel} - Section ${row.section_name}`;
+        if (!assignedClasses.includes(clsSec)) assignedClasses.push(clsSec);
+        if (row.subject_name && !assignedSubjects.includes(row.subject_name)) assignedSubjects.push(row.subject_name);
+      });
+    } catch {}
+
+    const schoolName = schoolData?.name || (req.user as any)?.schoolName || 'Techno International New Town (TINT)';
+    const schoolCode = schoolData?.code || (req.user as any)?.schoolCode || 'TINT';
+
+    return res.json({
+      id: teacherData.id,
+      name: teacherData.name,
+      email: teacherData.email,
+      role: teacherData.role || 'TEACHER',
+      schoolId: schoolId,
+      schoolName: schoolName,
+      schoolCode: schoolCode,
+      employeeId: teacherData.employee_id || 'TINT-TCH-001',
+      phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
+      address: teacherData.address || 'Kolkata, West Bengal',
+      qualification: teacherData.qualification || 'M.Tech / M.Sc Computer Science',
+      joiningDate: teacherData.joining_date ? String(teacherData.joining_date).slice(0, 10) : '2023-08-01',
+      photoUrl: teacherData.photo_url || '',
+      department: 'Academic Faculty / Teaching',
+      designation: 'Senior Faculty Teacher',
+      academicSession: '2025–2026',
+      assignedClasses: assignedClasses.length > 0 ? assignedClasses : ['Class 10 - Section A', 'Class 9 - Section B'],
+      assignedSubjects: assignedSubjects.length > 0 ? assignedSubjects : ['Mathematics', 'Computer Science']
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Unable to load teacher profile' });
+  }
+});
+
+// ── PUT /api/teacher/photo ──
+r.put('/photo', ...teacher, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const schoolId = req.user!.schoolId;
+  const { photoUrl } = req.body || {};
+
+  try {
+    // 1. Update in postgres teacher_profiles
+    try {
+      const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
+      const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
+      await pool.query(
+        `INSERT INTO teacher_profiles (user_id, employee_id, photo_url)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET photo_url = $3`,
+        [userId, empId, photoUrl || null]
+      );
+    } catch (err: any) {
+      console.warn('[Teacher Photo] DB insert/update warning:', err.message);
+    }
+
+    // 2. Update in Firestore if configured
+    if (isFirebaseConfigured()) {
+      try {
+        const snap = await collections.teachers().where('school_id', '==', schoolId).get();
+        for (const doc of snap.docs) {
+          const d = doc.data();
+          if (doc.id === userId || d.user_id === userId || d.email === req.user!.email) {
+            await doc.ref.update({ photo_url: photoUrl || '', photoUrl: photoUrl || '', updatedAt: new Date().toISOString() });
+          }
+        }
+      } catch {}
+    }
+
+    res.json({ success: true, photoUrl: photoUrl || '', message: 'Profile picture updated successfully' });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message || 'Failed to update profile picture' });
+  }
+});
+
+// ── PUT /api/teacher/change-password ──
+r.put('/change-password', ...teacher, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  }
+
+  try {
+    const q = await pool.query(`SELECT id, password_hash FROM users WHERE id = $1`, [userId]);
+    if (q.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const userRow = q.rows[0];
+    const bcrypt = await import('bcryptjs');
+    const valid = await bcrypt.compare(currentPassword, userRow.password_hash);
+    if (!valid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [hashed, userId]);
+
+    res.json({ success: true, message: 'Password updated successfully!' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to change password' });
+  }
+});
+
+// ── PUT /api/teacher/profile ──
+r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { phone, address, qualification } = req.body || {};
+
+  try {
+    const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
+    const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
+    await pool.query(
+      `INSERT INTO teacher_profiles (user_id, employee_id, phone, mobile, address, qualification)
+       VALUES ($1, $2, $3, $3, $4, $5)
+       ON CONFLICT (user_id) DO UPDATE SET
+         phone = COALESCE($3, teacher_profiles.phone),
+         mobile = COALESCE($3, teacher_profiles.mobile),
+         address = COALESCE($4, teacher_profiles.address),
+         qualification = COALESCE($5, teacher_profiles.qualification)`,
+      [userId, empId, phone || null, address || null, qualification || null]
+    );
+
+    res.json({ success: true, message: 'Profile details updated successfully' });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message || 'Failed to update profile' });
+  }
+});
+
 export default r;

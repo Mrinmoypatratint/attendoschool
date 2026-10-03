@@ -20,21 +20,39 @@ import {
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
 
 export function StudentDashboard() {
-  const [data, setData] = useState<StudentDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<StudentDashboardData | null>(() => {
+    try {
+      const cached = sessionStorage.getItem('cached_student_dashboard');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState(() => !data);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
     studentApi
       .getDashboard()
       .then((res) => {
+        if (!isMounted) return;
         setData(res);
+        try {
+          sessionStorage.setItem('cached_student_dashboard', JSON.stringify(res));
+        } catch {}
         setLoading(false);
       })
       .catch((err) => {
-        setError(err?.response?.data?.message || 'Failed to load dashboard data');
+        if (!isMounted) return;
+        if (!data) {
+          setError(err?.response?.data?.message || 'Failed to load dashboard data');
+        }
         setLoading(false);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {

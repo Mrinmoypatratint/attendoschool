@@ -149,4 +149,15 @@ router.put('/change-password', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// PUT /api/student/photo - Upload or update student profile picture
+router.put('/photo', async (req: AuthRequest, res: Response) => {
+  try {
+    const { photoUrl } = req.body || {};
+    const data = await svc.updateStudentPhoto(req.user!.schoolId!, req.user!.id, String(photoUrl || ''));
+    res.json(data);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message || 'Failed to update profile picture' });
+  }
+});
+
 export default router;

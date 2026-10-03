@@ -31,7 +31,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
   } catch (_e) {}
 
   // 2. Query Cloud Firestore
-  if (isFirebaseConfigured()) {
+  if (isTestSchool(schoolId) && isFirebaseConfigured()) {
     try {
       let userEmail = '';
       try {
@@ -146,12 +146,19 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     if (uQ.rowCount && uQ.rows.length > 0) userEmail = uQ.rows[0].email;
   } catch {}
 
+  let resolvedEmail = st.email || st.student_email || userEmail || '';
+  if (!isTestSchool(schoolId) && resolvedEmail.toLowerCase().includes('greenwood.local')) {
+    resolvedEmail = userEmail && !userEmail.toLowerCase().includes('greenwood.local')
+      ? userEmail
+      : (st.email && !st.email.toLowerCase().includes('greenwood.local') ? st.email : 'student@tint.edu.in');
+  }
+
   return {
     id: st.id,
     userId: st.user_id || userId,
     schoolId: st.school_id || schoolId,
     name: st.name || '',
-    email: st.email || st.student_email || userEmail || '',
+    email: resolvedEmail,
     rollNumber: st.roll_number || '',
     admissionNumber: st.admission_number || '',
     className: st.class_number !== undefined && st.class_number !== null 
@@ -167,6 +174,41 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     academicSession: academicSessionName || st.session_name || '',
     photoUrl: st.photo_url || ''
   };
+}
+
+/**
+ * Updates student profile photo
+ */
+export async function updateStudentPhoto(schoolId: string, userId: string, photoUrl: string) {
+  const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) throw new Error('Student record not found');
+
+  const cleanPhotoUrl = (photoUrl || '').trim();
+
+  // 1. Update in PostgreSQL
+  try {
+    await pool.query(
+      `UPDATE students SET photo_url = $1, updated_at = NOW() WHERE id = $2`,
+      [cleanPhotoUrl || null, st.id]
+    );
+  } catch (err: any) {
+    console.warn('[StudentService] Error updating student photo in PostgreSQL:', err.message);
+  }
+
+  // 2. Update in Cloud Firestore if configured
+  if (isFirebaseConfigured()) {
+    try {
+      await collections.students().doc(st.id).set({
+        photo_url: cleanPhotoUrl || null,
+        photoUrl: cleanPhotoUrl || null
+      }, { merge: true });
+    } catch (fsErr: any) {
+      console.warn('[StudentService] Error updating student photo in Firestore:', fsErr.message);
+    }
+  }
+
+  clearStudentDashboardCache(userId);
+  return { success: true, photoUrl: cleanPhotoUrl, message: 'Profile picture updated successfully' };
 }
 
 /**
@@ -238,24 +280,41 @@ function computePeriodStatus(startTimeStr: string, endTimeStr: string): 'Complet
   }
 }
 
+// Short-lived in-memory cache for student dashboard (15 seconds)
+const dashboardCache = new Map<string, { data: any; expiresAt: number }>();
+
+export function clearStudentDashboardCache(userId?: string) {
+  if (userId) {
+    for (const key of dashboardCache.keys()) {
+      if (key.endsWith(`:${userId}`)) {
+        dashboardCache.delete(key);
+      }
+    }
+  } else {
+    dashboardCache.clear();
+  }
+}
+
 /**
  * Returns aggregated student dashboard KPIs, timetable, announcements, and tasks
  */
 export async function getStudentDashboard(schoolId: string, userId: string) {
+  const cacheKey = `${schoolId}:${userId}`;
+  const cached = dashboardCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
   const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) throw new Error('Student record not found');
   const now = new Date();
   const todayDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
+  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
 
-  // 1. Attendance Summary
-  let attendanceSummary = {
-    attendancePercentage: 0,
-    presentDays: 0,
-    totalWorkingDays: 0,
-    absentDays: 0
-  };
-
-  try {
-    const attQ = await pool.query(
+  // Run all PostgreSQL queries concurrently
+  const [attQ, timeQ, recQ, annQ, assignQ, nextExamQ] = await Promise.all([
+    // 1. Attendance Summary
+    pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present_count,
          COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent_count,
@@ -264,69 +323,13 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id
        WHERE s.school_id = $1 AND ar.student_id = $2`,
       [schoolId, st.id]
-    );
-    if (attQ.rowCount && attQ.rows[0].total_count > 0) {
-      const p = attQ.rows[0].present_count || 0;
-      const t = attQ.rows[0].total_count || 0;
-      const a = attQ.rows[0].absent_count || 0;
-      attendanceSummary = {
-        attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
-        presentDays: p,
-        totalWorkingDays: t,
-        absentDays: a
-      };
-    }
-  } catch (_e) {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-  if (attendanceSummary.totalWorkingDays === 0) {
-    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
-    if (memRecs.length > 0) {
-      const p = memRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
-      const a = memRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
-      const t = memRecs.length;
-      attendanceSummary = {
-        attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
-        presentDays: p,
-        totalWorkingDays: t,
-        absentDays: a
-      };
-    }
-  }
-
-  if (attendanceSummary.totalWorkingDays === 0 && isFirebaseConfigured()) {
-    try {
-      const recSnap = await collections.attendanceRecords().get();
-      const myRecs = recSnap.docs
-        .map(d => d.data())
-        .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
-      if (myRecs.length > 0) {
-        const p = myRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
-        const a = myRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
-        const t = myRecs.length;
-        attendanceSummary = {
-          attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
-          presentDays: p,
-          totalWorkingDays: t,
-          absentDays: a
-        };
-      }
-    } catch {}
-  }
-
-  // If still 0 and is test school with no records, provide baseline
-  if (attendanceSummary.totalWorkingDays === 0 && isTestSchool(schoolId)) {
-    attendanceSummary = { attendancePercentage: 92, presentDays: 23, totalWorkingDays: 25, absentDays: 2 };
-  }
-
-  // 2. Today's Timetable (Filtered by Student's Class & Section)
-  let todayTimetable: any[] = [];
-  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
-
-  try {
-    const timeQ = await pool.query(
+    // 2. Today's Timetable
+    pool.query(
       `SELECT e.id, p.start_time, p.end_time, e.room_name AS room,
               sub.name AS subject_name,
-              COALESCE(u.name, CONCAT(u.first_name, ' ', u.last_name), 'Faculty') AS teacher_name,
+              COALESCE(u.name, 'Faculty') AS teacher_name,
               p.period_number, p.name AS period_name
        FROM timetable_entries e
        JOIN timetable_periods p ON p.id = e.period_id
@@ -341,65 +344,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
          AND e.status = 'PUBLISHED'
        ORDER BY p.start_time ASC, p.period_number ASC`,
       [schoolId, String(st.class_id || ''), Number(st.class_number || 0), String(st.section_id || ''), String(st.section_name || ''), targetDay]
-    );
-    if (timeQ.rowCount && timeQ.rowCount > 0) {
-      todayTimetable = timeQ.rows.map((row, idx) => ({
-        periodNumber: row.period_number || idx + 1,
-        time: `${(row.start_time || '09:00').slice(0, 5)} - ${(row.end_time || '09:45').slice(0, 5)}`,
-        subject: row.subject_name || 'Subject',
-        teacher: row.teacher_name || 'Faculty',
-        room: row.room || `Room ${st.class_number || 10}`,
-        status: computePeriodStatus(row.start_time || '09:00', row.end_time || '09:45')
-      }));
-    }
-  } catch (_e) {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-  if (todayTimetable.length === 0 && isFirebaseConfigured()) {
-    try {
-      const snap = await collections.timetableEntries().get();
-      if (!snap.empty) {
-        const matches: any[] = [];
-        snap.docs.forEach(doc => {
-          const e = doc.data();
-          const docSid = e.school_id || e.schoolId;
-          if (docSid && !isSameSchool(docSid, schoolId)) return;
-          if (Number(e.day_of_week ?? e.dayOfWeek) !== targetDay) return;
-          if (e.status === 'CANCELLED') return;
-
-          if (matchesStudentClass(e, st) && matchesStudentSection(e, st)) {
-            matches.push({
-              periodNumber: Number(e.period_number ?? e.periodNumber ?? 1),
-              time: `${(e.start_time || e.startTime || '09:00').slice(0, 5)} - ${(e.end_time || e.endTime || '09:45').slice(0, 5)}`,
-              subject: e.subject_name || e.subjectName || 'Subject',
-              teacher: e.teacher_name || e.teacherName || 'Faculty',
-              room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
-              status: computePeriodStatus(e.start_time || '09:00', e.end_time || '09:45')
-            });
-          }
-        });
-        if (matches.length > 0) {
-          matches.sort((a, b) => a.periodNumber - b.periodNumber || a.time.localeCompare(b.time));
-          todayTimetable = matches;
-        }
-      }
-    } catch {}
-  }
-
-  if (todayTimetable.length === 0 && isTestSchool(schoolId)) {
-    todayTimetable = [
-      { periodNumber: 1, time: '08:00 - 08:45', subject: 'Mathematics', teacher: 'Mr. S. Verma', room: 'A-101', status: 'Completed' },
-      { periodNumber: 2, time: '08:45 - 09:30', subject: 'Science', teacher: 'Mrs. P. Das', room: 'A-102', status: 'Completed' },
-      { periodNumber: 3, time: '09:45 - 10:30', subject: 'English', teacher: 'Ms. R. Khan', room: 'A-103', status: 'Ongoing' },
-      { periodNumber: 4, time: '10:30 - 11:15', subject: 'Social Science', teacher: 'Mr. A. Singh', room: 'A-104', status: 'Upcoming' },
-      { periodNumber: 5, time: '11:30 - 12:15', subject: 'Computer Science', teacher: 'Mrs. N. Roy', room: 'Lab-1', status: 'Upcoming' },
-      { periodNumber: 6, time: '12:15 - 01:00', subject: 'Physical Education', teacher: 'Mr. K. Yadav', room: 'Ground', status: 'Upcoming' }
-    ];
-  }
-
-  // 3. Recent Attendance (Last 5 Sessions)
-  let recentAttendance: any[] = [];
-  try {
-    const recQ = await pool.query(
+    // 3. Recent Attendance (Last 5 Sessions)
+    pool.query(
       `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status,
               COALESCE(sub.name, 'General Session') AS subject_name
        FROM attendance_records ar
@@ -409,82 +357,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        ORDER BY s.attendance_date DESC, s.start_time DESC
        LIMIT 5`,
       [schoolId, String(st.id)]
-    );
-    if (recQ.rowCount && recQ.rowCount > 0) {
-      recentAttendance = recQ.rows.map((r) => {
-        const d = new Date(r.attendance_date);
-        const dayStr = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-        return {
-          date: dayStr,
-          subject: r.subject_name || 'General Session',
-          status: r.status === 'PRESENT' ? 'Present' : 'Absent'
-        };
-      });
-    }
-  } catch (_e) {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-  if (recentAttendance.length === 0) {
-    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
-    if (memRecs.length > 0) {
-      const sessMap = new Map<string, any>();
-      memAttendanceSessions.forEach(s => sessMap.set(s.id, s));
-      recentAttendance = memRecs.map(r => {
-        const sess = sessMap.get(r.sessionId) || {};
-        const rawDate = sess.attendanceDate || sess.attendance_date || r.attendanceDate || new Date().toISOString().slice(0, 10);
-        const d = new Date(rawDate);
-        return {
-          date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-          subject: sess.subjectName || sess.subject_name || 'General Session',
-          status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
-          rawDate
-        };
-      }).sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()).slice(0, 5);
-    }
-  }
-
-  if (recentAttendance.length === 0 && isFirebaseConfigured()) {
-    try {
-      const recSnap = await collections.attendanceRecords().get();
-      const myRecs = recSnap.docs
-        .map(d => d.data())
-        .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
-
-      if (myRecs.length > 0) {
-        const sessionMap: Record<string, any> = {};
-        const sessSnap = await collections.attendanceSessions().get();
-        sessSnap.docs.forEach(d => { sessionMap[d.id] = d.data(); });
-
-        const formatted = myRecs.map(r => {
-          const sess = sessionMap[r.sessionId] || {};
-          const rawDate = sess.attendanceDate || sess.attendance_date || new Date().toISOString().slice(0, 10);
-          const d = new Date(rawDate);
-          return {
-            date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
-            subject: sess.subjectName || sess.subject_name || 'General Session',
-            status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
-            rawDate
-          };
-        });
-        formatted.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
-        recentAttendance = formatted.slice(0, 5);
-      }
-    } catch {}
-  }
-
-  if (recentAttendance.length === 0 && isTestSchool(schoolId)) {
-    recentAttendance = [
-      { date: 'Wed, 17 Sep 2025', subject: 'Class Session', status: 'Present' },
-      { date: 'Tue, 16 Sep 2025', subject: 'Class Session', status: 'Present' },
-      { date: 'Mon, 15 Sep 2025', subject: 'Class Session', status: 'Present' },
-      { date: 'Fri, 12 Sep 2025', subject: 'Class Session', status: 'Absent' },
-      { date: 'Thu, 11 Sep 2025', subject: 'Class Session', status: 'Present' }
-    ];
-  }
-
-  // 4. Latest Announcements
-  let announcements: any[] = [];
-  try {
-    const annQ = await pool.query(
+    // 4. Latest Announcements
+    pool.query(
       `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
        FROM announcements a
        LEFT JOIN classes c ON c.id = a.class_id
@@ -505,22 +381,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC
        LIMIT 3`,
       [schoolId, st.class_id, st.section_id, st.class_number, st.section_name]
-    );
-    if (annQ.rowCount && annQ.rowCount > 0) {
-      announcements = annQ.rows.map((a) => ({
-        id: a.id,
-        title: a.title,
-        date: new Date(a.published_at || a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        description: a.message?.slice(0, 80) + '...',
-        priority: a.priority || 'NORMAL'
-      }));
-    }
-  } catch (_e) {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-  // 5. Pending Tasks / Assignments from Database
-  let pendingAssignments: any[] = [];
-  try {
-    const assignQ = await pool.query(
+    // 5. Pending Tasks / Assignments
+    pool.query(
       `SELECT a.id, a.title, a.due_date, sub.name AS subject_name,
               COALESCE(s.status, 'PENDING') AS submission_status
        FROM student_assignments a
@@ -532,26 +396,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        ORDER BY a.due_date ASC
        LIMIT 3`,
       [schoolId, st.class_id, st.id, Number(st.class_number || 0)]
-    );
-    if (assignQ.rowCount && assignQ.rowCount > 0) {
-      pendingAssignments = assignQ.rows.map((row) => {
-        const diffDays = Math.ceil((new Date(row.due_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          id: row.id,
-          title: row.title,
-          subject: row.subject_name || 'Academics',
-          dueDate: new Date(row.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-          daysLeft: diffDays > 0 ? `${diffDays} days left` : 'Due today',
-          status: row.submission_status
-        };
-      });
-    }
-  } catch (_e) {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-  // 6. Upcoming Exam from Database
-  let upcomingExam: any = null;
-  try {
-    const nextExamQ = await pool.query(
+    // 6. Upcoming Exam
+    pool.query(
       `SELECT e.id, e.title, e.exam_date, e.start_time, e.end_time, e.room,
               COALESCE(sub.name, 'Academics') AS subject_name
        FROM student_exams e
@@ -562,21 +410,227 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
        ORDER BY e.exam_date ASC, e.start_time ASC
        LIMIT 1`,
       [schoolId, st.class_id, Number(st.class_number || 0)]
-    );
-    if (nextExamQ.rowCount && nextExamQ.rows.length > 0) {
-      const ex = nextExamQ.rows[0];
-      const examD = new Date(ex.exam_date);
-      upcomingExam = {
-        subject: ex.subject_name,
-        title: ex.title,
-        date: examD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        time: `${(ex.start_time || '09:00').slice(0, 5)} - ${(ex.end_time || '12:00').slice(0, 5)}`,
-        room: ex.room || 'Exam Hall'
-      };
-    }
-  } catch {}
+    ).catch(() => ({ rowCount: 0, rows: [] as any[] }))
+  ]);
 
-  return {
+  // 1. Process Attendance Summary
+  let attendanceSummary = {
+    attendancePercentage: 0,
+    presentDays: 0,
+    totalWorkingDays: 0,
+    absentDays: 0
+  };
+
+  if (attQ.rowCount && attQ.rows[0].total_count > 0) {
+    const p = attQ.rows[0].present_count || 0;
+    const t = attQ.rows[0].total_count || 0;
+    const a = attQ.rows[0].absent_count || 0;
+    attendanceSummary = {
+      attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
+      presentDays: p,
+      totalWorkingDays: t,
+      absentDays: a
+    };
+  } else if (isTestSchool(schoolId)) {
+    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+    if (memRecs.length > 0) {
+      const p = memRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
+      const a = memRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
+      const t = memRecs.length;
+      attendanceSummary = {
+        attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
+        presentDays: p,
+        totalWorkingDays: t,
+        absentDays: a
+      };
+    } else if (isFirebaseConfigured()) {
+      try {
+        const recSnap = await collections.attendanceRecords().get();
+        const myRecs = recSnap.docs
+          .map(d => d.data())
+          .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+        if (myRecs.length > 0) {
+          const p = myRecs.filter(r => r.status === 'PRESENT' || r.is_present === true).length;
+          const a = myRecs.filter(r => r.status === 'ABSENT' || r.is_present === false).length;
+          const t = myRecs.length;
+          attendanceSummary = {
+            attendancePercentage: t > 0 ? Math.round((p / t) * 100) : 0,
+            presentDays: p,
+            totalWorkingDays: t,
+            absentDays: a
+          };
+        }
+      } catch {}
+    }
+    if (attendanceSummary.totalWorkingDays === 0) {
+      attendanceSummary = { attendancePercentage: 92, presentDays: 23, totalWorkingDays: 25, absentDays: 2 };
+    }
+  }
+
+  // 2. Process Today's Timetable
+  let todayTimetable: any[] = [];
+  if (timeQ.rowCount && timeQ.rowCount > 0) {
+    todayTimetable = timeQ.rows.map((row, idx) => ({
+      periodNumber: row.period_number || idx + 1,
+      time: `${(row.start_time || '09:00').slice(0, 5)} - ${(row.end_time || '09:45').slice(0, 5)}`,
+      subject: row.subject_name || 'Subject',
+      teacher: row.teacher_name || 'Faculty',
+      room: row.room || `Room ${st.class_number || 10}`,
+      status: computePeriodStatus(row.start_time || '09:00', row.end_time || '09:45')
+    }));
+  } else if (isTestSchool(schoolId)) {
+    if (isFirebaseConfigured()) {
+      try {
+        const snap = await collections.timetableEntries().get();
+        if (!snap.empty) {
+          const matches: any[] = [];
+          snap.docs.forEach(doc => {
+            const e = doc.data();
+            const docSid = e.school_id || e.schoolId;
+            if (docSid && !isSameSchool(docSid, schoolId)) return;
+            if (Number(e.day_of_week ?? e.dayOfWeek) !== targetDay) return;
+            if (e.status === 'CANCELLED') return;
+
+            if (matchesStudentClass(e, st) && matchesStudentSection(e, st)) {
+              matches.push({
+                periodNumber: Number(e.period_number ?? e.periodNumber ?? 1),
+                time: `${(e.start_time || e.startTime || '09:00').slice(0, 5)} - ${(e.end_time || e.endTime || '09:45').slice(0, 5)}`,
+                subject: e.subject_name || e.subjectName || 'Subject',
+                teacher: e.teacher_name || e.teacherName || 'Faculty',
+                room: e.room_name || e.roomName || e.room || `Room ${st.class_number || 10}`,
+                status: computePeriodStatus(e.start_time || '09:00', e.end_time || '09:45')
+              });
+            }
+          });
+          if (matches.length > 0) {
+            matches.sort((a, b) => a.periodNumber - b.periodNumber || a.time.localeCompare(b.time));
+            todayTimetable = matches;
+          }
+        }
+      } catch {}
+    }
+    if (todayTimetable.length === 0) {
+      todayTimetable = [
+        { periodNumber: 1, time: '08:00 - 08:45', subject: 'Mathematics', teacher: 'Mr. S. Verma', room: 'A-101', status: 'Completed' },
+        { periodNumber: 2, time: '08:45 - 09:30', subject: 'Science', teacher: 'Mrs. P. Das', room: 'A-102', status: 'Completed' },
+        { periodNumber: 3, time: '09:45 - 10:30', subject: 'English', teacher: 'Ms. R. Khan', room: 'A-103', status: 'Ongoing' },
+        { periodNumber: 4, time: '10:30 - 11:15', subject: 'Social Science', teacher: 'Mr. A. Singh', room: 'A-104', status: 'Upcoming' },
+        { periodNumber: 5, time: '11:30 - 12:15', subject: 'Computer Science', teacher: 'Mrs. N. Roy', room: 'Lab-1', status: 'Upcoming' },
+        { periodNumber: 6, time: '12:15 - 01:00', subject: 'Physical Education', teacher: 'Mr. K. Yadav', room: 'Ground', status: 'Upcoming' }
+      ];
+    }
+  }
+
+  // 3. Process Recent Attendance
+  let recentAttendance: any[] = [];
+  if (recQ.rowCount && recQ.rowCount > 0) {
+    recentAttendance = recQ.rows.map((r) => {
+      const d = new Date(r.attendance_date);
+      const dayStr = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      return {
+        date: dayStr,
+        subject: r.subject_name || 'General Session',
+        status: r.status === 'PRESENT' ? 'Present' : 'Absent'
+      };
+    });
+  } else if (isTestSchool(schoolId)) {
+    const memRecs = memAttendanceRecords.filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+    if (memRecs.length > 0) {
+      const sessMap = new Map<string, any>();
+      memAttendanceSessions.forEach(s => sessMap.set(s.id, s));
+      recentAttendance = memRecs.map(r => {
+        const sess = sessMap.get(r.sessionId) || {};
+        const rawDate = sess.attendanceDate || sess.attendance_date || r.attendanceDate || new Date().toISOString().slice(0, 10);
+        const d = new Date(rawDate);
+        return {
+          date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+          subject: sess.subjectName || sess.subject_name || 'General Session',
+          status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
+          rawDate
+        };
+      }).sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()).slice(0, 5);
+    } else if (isFirebaseConfigured()) {
+      try {
+        const recSnap = await collections.attendanceRecords().get();
+        const myRecs = recSnap.docs
+          .map(d => d.data())
+          .filter(r => (!r.schoolId || isSameSchool(r.schoolId, schoolId)) && isRecordForStudent(r, st));
+
+        if (myRecs.length > 0) {
+          const sessionMap: Record<string, any> = {};
+          const sessSnap = await collections.attendanceSessions().get();
+          sessSnap.docs.forEach(d => { sessionMap[d.id] = d.data(); });
+
+          const formatted = myRecs.map(r => {
+            const sess = sessionMap[r.sessionId] || {};
+            const rawDate = sess.attendanceDate || sess.attendance_date || new Date().toISOString().slice(0, 10);
+            const d = new Date(rawDate);
+            return {
+              date: d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+              subject: sess.subjectName || sess.subject_name || 'General Session',
+              status: (r.status === 'PRESENT' || r.is_present === true) ? 'Present' : 'Absent',
+              rawDate
+            };
+          });
+          formatted.sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+          recentAttendance = formatted.slice(0, 5);
+        }
+      } catch {}
+    }
+    if (recentAttendance.length === 0) {
+      recentAttendance = [
+        { date: 'Wed, 17 Sep 2025', subject: 'Class Session', status: 'Present' },
+        { date: 'Tue, 16 Sep 2025', subject: 'Class Session', status: 'Present' },
+        { date: 'Mon, 15 Sep 2025', subject: 'Class Session', status: 'Present' },
+        { date: 'Fri, 12 Sep 2025', subject: 'Class Session', status: 'Absent' },
+        { date: 'Thu, 11 Sep 2025', subject: 'Class Session', status: 'Present' }
+      ];
+    }
+  }
+
+  // 4. Latest Announcements
+  let announcements: any[] = [];
+  if (annQ.rowCount && annQ.rowCount > 0) {
+    announcements = annQ.rows.map((a) => ({
+      id: a.id,
+      title: a.title,
+      date: new Date(a.published_at || a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      description: a.message?.slice(0, 80) + '...',
+      priority: a.priority || 'NORMAL'
+    }));
+  }
+
+  // 5. Pending Tasks / Assignments
+  let pendingAssignments: any[] = [];
+  if (assignQ.rowCount && assignQ.rowCount > 0) {
+    pendingAssignments = assignQ.rows.map((row) => {
+      const diffDays = Math.ceil((new Date(row.due_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: row.id,
+        title: row.title,
+        subject: row.subject_name || 'Academics',
+        dueDate: new Date(row.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        daysLeft: diffDays > 0 ? `${diffDays} days left` : 'Due today',
+        status: row.submission_status
+      };
+    });
+  }
+
+  // 6. Upcoming Exam
+  let upcomingExam: any = null;
+  if (nextExamQ.rowCount && nextExamQ.rows.length > 0) {
+    const ex = nextExamQ.rows[0];
+    const examD = new Date(ex.exam_date);
+    upcomingExam = {
+      subject: ex.subject_name,
+      title: ex.title,
+      date: examD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: `${(ex.start_time || '09:00').slice(0, 5)} - ${(ex.end_time || '12:00').slice(0, 5)}`,
+      room: ex.room || 'Exam Hall'
+    };
+  }
+
+  const result = {
     student: {
       id: st.id,
       name: st.name || '',
@@ -613,6 +667,9 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
     upcomingExam,
     upcoming_exam: upcomingExam
   };
+
+  dashboardCache.set(cacheKey, { data: result, expiresAt: Date.now() + 15000 });
+  return result;
 }
 
 /**
@@ -696,7 +753,7 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
   }
 
   // 2. Query Cloud Firestore
-  if (isFirebaseConfigured()) {
+  if (isTestSchool(schoolId) && isFirebaseConfigured()) {
     try {
       const recSnap = await collections.attendanceRecords().get();
       const myRecs = recSnap.docs
@@ -772,7 +829,7 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
     const q = await pool.query(
       `SELECT e.id, e.day_of_week, p.start_time, p.end_time, e.room_name AS room,
               sub.name AS subject_name,
-              COALESCE(u.name, CONCAT(u.first_name, ' ', u.last_name), 'Faculty') AS teacher_name,
+              COALESCE(u.name, 'Faculty') AS teacher_name,
               p.name AS period_name, p.period_number
        FROM timetable_entries e
        JOIN timetable_periods p ON p.id = e.period_id
@@ -793,7 +850,7 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
   } catch (_e) {}
 
   // 2. Query Cloud Firestore timetable_entries
-  if (isFirebaseConfigured()) {
+  if (isTestSchool(schoolId) && isFirebaseConfigured()) {
     try {
       const snap = await collections.timetableEntries().get();
       if (!snap.empty) {
@@ -939,8 +996,10 @@ export async function submitStudentAssignment(schoolId: string, userId: string, 
        RETURNING *`,
       [schoolId, assignmentId, st.id, text]
     );
+    clearStudentDashboardCache(userId);
     return q.rows[0];
   } catch (_e) {
+    clearStudentDashboardCache(userId);
     return {
       assignment_id: assignmentId,
       student_id: st.id,

@@ -18,11 +18,13 @@ import Analytics from './pages/admin/Analytics';
 import Communication from './pages/admin/Communication';
 import ParentCommunication from './pages/admin/ParentCommunication';
 import ParentPortal from './pages/parent/ParentPortal';
+import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
+import TeacherProfile from './pages/teacher/TeacherProfile';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
 import * as XLSX from 'xlsx';
 import {
-  LayoutDashboard, Users, GraduationCap, BookOpen, Layers, LogOut, Plus,
+  LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
   CalendarDays, ClipboardCheck, School, CheckCircle2, MessageSquare, BarChart3,
   FileText, Shield, Database, Clock, Wifi, UserPlus, Settings, Moon, Sun,
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
@@ -1880,11 +1882,14 @@ function Layout({children}:{children:React.ReactNode}){
     ['/dashboard','Dashboard',LayoutDashboard],
     ['/take-attendance','Take Attendance',ClipboardCheck],
     ['/teacher-history','History',CalendarDays],
+    ['—','COMMUNICATION'],
+    ['/announcements','Announcements',Megaphone],
     ['—','ATTENDANCE'],
     ['/attendance-reports','Reports',FileText],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
     ['/offline-attendance','Offline Mode',Wifi],
+    ['/teacher/profile','Profile',User],
   ];
 
   const superAdminLinks:any[]=[
@@ -2293,12 +2298,11 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
             <button
               className="header-icon-btn"
-              title={user.role === 'TEACHER' ? 'Faculty In-App Inbox' : 'Notifications'}
+              title={user.role === 'TEACHER' ? 'Faculty Announcements' : 'Notifications'}
               style={{ position: 'relative' }}
               onClick={() => {
                 if (user.role === 'TEACHER') {
-                  setTeacherDrawerOpen(true);
-                  loadTeacherNotices();
+                  nav('/announcements');
                 } else {
                   nav('/notifications');
                 }
@@ -2333,7 +2337,7 @@ function Layout({children}:{children:React.ReactNode}){
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
-            <div className="profile-pill">
+            <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/teacher/profile')} title="View My Profile">
               <div className="user-avatar">
                 {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
               </div>
@@ -9671,9 +9675,19 @@ function SuperAdminHome(){
   return <SuperAdminModule />;
 }
 
+/* ────── Profile Redirect ────── */
+function ProfileRedirect() {
+  const { user } = useAuth();
+  if (user?.role === 'STUDENT') return <Navigate to="/student/profile" replace />;
+  if (user?.role === 'TEACHER') return <Layout><TeacherProfile /></Layout>;
+  return <Navigate to="/school-profile" replace />;
+}
+
 /* ────── Routes ────── */
 function App(){return <Routes>
   <Route path="/login" element={<Login/>}/>
+  <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
+  <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
   <Route path="/reset-password" element={<ResetPassword/>}/>
   <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
   <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
@@ -9696,6 +9710,9 @@ function App(){return <Routes>
   <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
   <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
   <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
+  <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
+  <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
+  <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/offline-attendance" element={<RoleGuard roles={['TEACHER']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
@@ -9713,7 +9730,7 @@ function App(){return <Routes>
   <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
   <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
   <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/homework" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+  <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
   <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
   <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
   <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>

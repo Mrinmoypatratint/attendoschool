@@ -650,6 +650,14 @@ export async function createReply(
       }
     }
 
+    let authorName = userRole === 'TEACHER' ? 'Faculty Teacher' : userRole === 'PARENT' ? 'Parent User' : 'Student Author';
+    try {
+      const uRes = await pool.query(`SELECT name FROM users WHERE id = $1`, [userId]);
+      if (uRes.rows.length > 0 && uRes.rows[0].name) {
+        authorName = uRes.rows[0].name;
+      }
+    } catch {}
+
     const { rows } = await pool.query(
       `INSERT INTO notification_replies 
        (school_id, announcement_id, user_id, student_id, class_id, section_id, reply_text, created_at)
@@ -658,24 +666,31 @@ export async function createReply(
       [schoolId, announcementId, userId, studentId, classId, sectionId, sanitized]
     );
 
-    if (rows && rows.length > 0) return rows[0];
+    if (rows && rows.length > 0) return { ...rows[0], author_name: authorName, author_role: userRole };
   } catch (_e) {}
 
   // Fallback memory store
+  let authorName = userRole === 'TEACHER' ? 'Faculty Teacher' : userRole === 'PARENT' ? 'Parent User' : 'Student Author';
+  try {
+    const { findDemoUser } = await import('../store/demoUsers');
+    const du = findDemoUser(userId);
+    if (du && du.name) authorName = du.name;
+  } catch {}
+
   const item = {
     id: `reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     school_id: schoolId,
     announcement_id: announcementId,
     user_id: userId,
-    student_id: studentId || 'st-01',
-    class_id: classId || 'cls-10',
-    section_id: sectionId || 'sec-a',
-    author_name: userRole === 'PARENT' ? 'Parent User' : 'Student Author',
+    student_id: userRole === 'TEACHER' ? null : (studentId || 'st-01'),
+    class_id: userRole === 'TEACHER' ? null : (classId || 'cls-10'),
+    section_id: userRole === 'TEACHER' ? null : (sectionId || 'sec-a'),
+    author_name: authorName,
     author_role: userRole,
-    student_name: 'Rohan Sharma',
-    class_name: 'Class 10',
-    section_name: 'A',
-    student_roll: '25',
+    student_name: userRole === 'TEACHER' ? null : 'Rohan Sharma',
+    class_name: userRole === 'TEACHER' ? null : 'Class 10',
+    section_name: userRole === 'TEACHER' ? null : 'A',
+    student_roll: userRole === 'TEACHER' ? null : '25',
     reply_text: sanitized,
     created_at: new Date().toISOString()
   };
