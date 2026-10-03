@@ -28,7 +28,7 @@ import {
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
-  Menu, ChevronDown, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
+  Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
@@ -3339,6 +3339,10 @@ function Students(){
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
   const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
+  const [importPreviewPage, setImportPreviewPage] = useState(1);
+  const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
+  const [importPreviewSearch, setImportPreviewSearch] = useState('');
+  const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'errors' | 'valid'>('all');
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   // Universal Preview & Edit State
@@ -3883,11 +3887,14 @@ function Students(){
           if (admissionNumber) seenAdm.add(admissionNumber);
 
           rowErrors.push(...rowErrs);
-          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _errors: rowErrs };
+          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
         });
 
         setImportErrors(rowErrors);
         setPreviewRows(mapped);
+        setImportPreviewPage(1);
+        setImportPreviewSearch('');
+        setImportPreviewErrorFilter('all');
         setImportStep(3);
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
@@ -3921,6 +3928,8 @@ function Students(){
       setImportOpen(false);
       setPreviewRows([]);
       setImportErrors([]);
+      setImportPreviewPage(1);
+      setImportPreviewSearch('');
       setImportStep(1);
       setImportSession(''); setImportClass(''); setImportSection('');
       load();
@@ -3936,6 +3945,36 @@ function Students(){
       setImporting(false);
     }
   }
+
+  // Student Bulk Import Preview Pagination & Filtering
+  const studentValidCount = previewRows.filter(r => !r._errors?.length).length;
+  const studentErrorCount = previewRows.filter(r => r._errors?.length).length;
+
+  const filteredStudentPreviewRows = previewRows.filter((r) => {
+    if (importPreviewErrorFilter === 'errors' && (!r._errors || r._errors.length === 0)) return false;
+    if (importPreviewErrorFilter === 'valid' && (r._errors && r._errors.length > 0)) return false;
+    if (!importPreviewSearch.trim()) return true;
+    const q = importPreviewSearch.toLowerCase();
+    const searchTarget = [
+      r.firstName,
+      r.lastName,
+      r.name,
+      r.admissionNumber,
+      r.rollNumber,
+      r.session,
+      r.classLabel || r.classNumber,
+      r.sectionName,
+      r.parentPhone || r.parentSmsNumber,
+      r.studentEmail
+    ].filter(Boolean).join(' ').toLowerCase();
+    return searchTarget.includes(q);
+  });
+
+  const totalStudentImportPages = Math.max(1, Math.ceil(filteredStudentPreviewRows.length / (importPreviewPageSize || 25)));
+  const currentStudentImportPage = Math.min(Math.max(1, importPreviewPage), totalStudentImportPages);
+  const studentStartIdx = filteredStudentPreviewRows.length === 0 ? 0 : (currentStudentImportPage - 1) * (importPreviewPageSize || 25);
+  const studentEndIdx = Math.min(studentStartIdx + (importPreviewPageSize || 25), filteredStudentPreviewRows.length);
+  const displayedStudentPreviewRows = filteredStudentPreviewRows.slice(studentStartIdx, studentEndIdx);
 
   return <Layout>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
@@ -4800,22 +4839,152 @@ function Students(){
           {/* ── STEP 3: Preview & Confirm ── */}
           {importStep === 3 && previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: 12, padding: '12px 18px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13.5, color: '#166534', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <span>✅ <b>{previewRows.length} students</b> ready to import · Session: <b>{importSession}</b></span>
-                <span style={{ fontSize: 12, color: '#15803d' }}>Review all columns below before proceeding</span>
+              <div style={{ marginBottom: 10, padding: '10px 16px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <span>✅ <b>{previewRows.length} students</b> parsed · Session: <b>{importSession}</b> · <b>{studentValidCount} valid</b></span>
+                <span style={{ fontSize: 12, color: '#15803d' }}>Review parsed records below before finalizing import</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
-                <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {importErrors.length > 0 && (
-                    <span style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', borderRadius:6, padding:'4px 12px', fontSize:12, fontWeight: 600 }}>
-                      ⚠ {importErrors.length} error{importErrors.length>1?'s':''} — highlighted in red
-                    </span>
+
+              {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Re-upload ── */}
+              <div className="preview-toolbar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 15 }}>Preview Data</strong>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                    {previewRows.length} records
+                  </span>
+
+                  {/* Filter tabs if validation errors exist */}
+                  {studentErrorCount > 0 && (
+                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
+                        }}
+                      >
+                        All ({previewRows.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('valid'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
+                        }}
+                      >
+                        Valid ({studentValidCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('errors'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
+                        }}
+                      >
+                        ⚠ Errors ({studentErrorCount})
+                      </button>
+                    </div>
                   )}
-                  <button type="button" className="btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => { setPreviewRows([]); setImportErrors([]); setImportStep(2); }}>Re-upload</button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Search inside preview */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                    <input
+                      type="text"
+                      placeholder="Search preview..."
+                      value={importPreviewSearch}
+                      onChange={(e) => { setImportPreviewSearch(e.target.value); setImportPreviewPage(1); }}
+                      style={{
+                        padding: '5px 26px 5px 28px',
+                        fontSize: 12.5,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 6,
+                        width: 180,
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #0f172a)'
+                      }}
+                    />
+                    {importPreviewSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewSearch(''); setImportPreviewPage(1); }}
+                        style={{
+                          position: 'absolute',
+                          right: 6,
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 2,
+                          color: '#94a3b8'
+                        }}
+                        title="Clear search"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Rows per page selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                    <span>Rows per page:</span>
+                    <select
+                      value={importPreviewPageSize}
+                      onChange={(e) => { setImportPreviewPageSize(Number(e.target.value)); setImportPreviewPage(1); }}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: 12.5,
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #1e293b)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25 (Default)</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={250}>250</option>
+                      <option value={500}>500</option>
+                      <option value={100000}>All ({previewRows.length})</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ fontSize: 12, padding: '5px 12px' }}
+                    onClick={() => { setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportPreviewSearch(''); setImportStep(2); }}
+                  >
+                    Re-upload
+                  </button>
                 </div>
               </div>
-              <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 330px)', minHeight: 380, overflow: 'auto' }}>
+
+              {/* ── PREVIEW TABLE ── */}
+              <div className="preview-table-container" style={{ flex: 1, minHeight: 320, overflow: 'auto' }}>
                 <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -4833,59 +5002,156 @@ function Students(){
                     </tr>
                   </thead>
                   <tbody>
-                    {previewRows.map((r, i) => (
-                      <tr key={i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
-                        <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center' }}>
-                          {r._errors?.length ? '⚠' : i+1}
+                    {displayedStudentPreviewRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          No students match the current search or error filter.
                         </td>
-                        <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
-                          {r.firstName || r.name?.split(' ')[0] || '—'}
-                          {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
-                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                          )}
-                        </td>
-                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
-                          {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
-                          {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
-                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                          )}
-                        </td>
-                        <td><b>{r.name}</b></td>
-                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
-                          {r.admissionNumber||'—'}
-                          {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
-                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                          )}
-                        </td>
-                        <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
-                          <span className="roll">{r.rollNumber}</span>
-                        </td>
-                        <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
-                        <td>{r.classLabel || r.classNumber}</td>
-                        <td>{r.sectionName}</td>
-                        <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
-                          {r.parentPhone || r.parentSmsNumber || '—'}
-                          {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
-                            <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
-                          )}
-                        </td>
-                        <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      displayedStudentPreviewRows.map((r, i) => {
+                        const rowNum = r._origRowIndex || (studentStartIdx + i + 1);
+                        return (
+                          <tr key={studentStartIdx + i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
+                            <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: r._errors?.length ? 700 : 500 }}>
+                              {r._errors?.length ? `⚠ ${rowNum}` : rowNum}
+                            </td>
+                            <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
+                              {r.firstName || r.name?.split(' ')[0] || '—'}
+                              {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
+                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              )}
+                            </td>
+                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
+                              {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
+                              {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
+                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              )}
+                            </td>
+                            <td><b>{r.name}</b></td>
+                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
+                              {r.admissionNumber||'—'}
+                              {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
+                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              )}
+                            </td>
+                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
+                              <span className="roll">{r.rollNumber}</span>
+                            </td>
+                            <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                            <td>{r.classLabel || r.classNumber}</td>
+                            <td>{r.sectionName}</td>
+                            <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
+                              {r.parentPhone || r.parentSmsNumber || '—'}
+                              {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
+                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              )}
+                            </td>
+                            <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
-              <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); }}>← Back</button>
+
+              {/* ── PAGINATION BAR ── */}
+              <div className="preview-pagination-bar">
+                <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                  {filteredStudentPreviewRows.length === 0 ? (
+                    'Showing 0 records'
+                  ) : (
+                    <>
+                      Showing <b>{studentStartIdx + 1}</b> to <b>{studentEndIdx}</b> of <b>{filteredStudentPreviewRows.length}</b> records
+                      {filteredStudentPreviewRows.length !== previewRows.length && (
+                        <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {previewRows.length} total)</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentStudentImportPage <= 1}
+                    onClick={() => setImportPreviewPage(1)}
+                    title="First Page"
+                  >
+                    <ChevronsLeft size={14} /> First
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentStudentImportPage <= 1}
+                    onClick={() => setImportPreviewPage(p => Math.max(1, p - 1))}
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+                    <span>Page</span>
+                    <select
+                      value={currentStudentImportPage}
+                      onChange={(e) => setImportPreviewPage(Number(e.target.value))}
+                      style={{
+                        padding: '3px 6px',
+                        fontSize: 12,
+                        borderRadius: 4,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #1e293b)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {Array.from({ length: totalStudentImportPages }, (_, idx) => (
+                        <option key={idx + 1} value={idx + 1}>
+                          {idx + 1}
+                        </option>
+                      ))}
+                    </select>
+                    <span>of <b>{totalStudentImportPages}</b></span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentStudentImportPage >= totalStudentImportPages}
+                    onClick={() => setImportPreviewPage(p => Math.min(totalStudentImportPages, p + 1))}
+                    title="Next Page"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentStudentImportPage >= totalStudentImportPages}
+                    onClick={() => setImportPreviewPage(totalStudentImportPages)}
+                    title="Last Page"
+                  >
+                    Last <ChevronsRight size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* ── MODAL FOOTER ── */}
+              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}>← Back</button>
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportStep(1); }}>Cancel</button>
+                  <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportStep(1); }}>Cancel</button>
                   <button
                     type="button"
                     onClick={submitBulkImport}
                     disabled={importing}
                     style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
                   >
-                    {importing ? 'Importing Students...' : `Confirm & Import ${previewRows.filter(r=>!r._errors?.length).length} Valid Students`}
+                    {importing ? 'Importing Students...' : `Confirm & Import ${studentValidCount} Valid Students`}
                   </button>
                 </div>
               </div>
@@ -4944,6 +5210,9 @@ function Teachers(){
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
+  const [importPreviewPage, setImportPreviewPage] = useState(1);
+  const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
+  const [importPreviewSearch, setImportPreviewSearch] = useState('');
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
   const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
 
@@ -5495,10 +5764,13 @@ function Teachers(){
             status,
             class: className,
             section: sectionName,
-            emailStatus: 'Pending'
+            emailStatus: 'Pending',
+            _origRowIndex: idx + 1
           };
         }).filter(x => x.name && x.email);
         setPreviewRows(mapped);
+        setImportPreviewPage(1);
+        setImportPreviewSearch('');
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
       }
@@ -5514,6 +5786,8 @@ function Teachers(){
       alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
       setPreviewRows([]);
+      setImportPreviewPage(1);
+      setImportPreviewSearch('');
       load();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to import teachers');
@@ -5521,6 +5795,31 @@ function Teachers(){
       setImporting(false);
     }
   }
+
+  // Teacher Bulk Import Preview Pagination & Filtering
+  const filteredTeacherPreviewRows = previewRows.filter((r) => {
+    if (!importPreviewSearch.trim()) return true;
+    const q = importPreviewSearch.toLowerCase();
+    const target = [
+      r.saviorNo,
+      r.employeeId,
+      r.firstName,
+      r.lastName,
+      r.name,
+      r.email,
+      r.mobile,
+      r.designation,
+      r.class,
+      r.section
+    ].filter(Boolean).join(' ').toLowerCase();
+    return target.includes(q);
+  });
+
+  const totalTeacherImportPages = Math.max(1, Math.ceil(filteredTeacherPreviewRows.length / (importPreviewPageSize || 25)));
+  const currentTeacherImportPage = Math.min(Math.max(1, importPreviewPage), totalTeacherImportPages);
+  const teacherStartIdx = filteredTeacherPreviewRows.length === 0 ? 0 : (currentTeacherImportPage - 1) * (importPreviewPageSize || 25);
+  const teacherEndIdx = Math.min(teacherStartIdx + (importPreviewPageSize || 25), filteredTeacherPreviewRows.length);
+  const displayedTeacherPreviewRows = filteredTeacherPreviewRows.slice(teacherStartIdx, teacherEndIdx);
 
   return <Layout>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
@@ -5962,21 +6261,97 @@ function Teachers(){
 
           {previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginTop: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
-                <strong style={{ fontSize: 15 }}>Preview Data ({previewRows.length} faculty ready to import)</strong>
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  style={{ fontSize: 12, padding: '5px 12px' }}
-                  onClick={() => setPreviewRows([])}
-                >
-                  Clear
-                </button>
+              {/* ── TOP TOOLBAR: Search, Page Size & Clear ── */}
+              <div className="preview-toolbar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 15 }}>Preview Data</strong>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                    {previewRows.length} faculty ready to import
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Search inside preview */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                    <input
+                      type="text"
+                      placeholder="Search preview..."
+                      value={importPreviewSearch}
+                      onChange={(e) => { setImportPreviewSearch(e.target.value); setImportPreviewPage(1); }}
+                      style={{
+                        padding: '5px 26px 5px 28px',
+                        fontSize: 12.5,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        borderRadius: 6,
+                        width: 180,
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #0f172a)'
+                      }}
+                    />
+                    {importPreviewSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewSearch(''); setImportPreviewPage(1); }}
+                        style={{
+                          position: 'absolute',
+                          right: 6,
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 2,
+                          color: '#94a3b8'
+                        }}
+                        title="Clear search"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Rows per page selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                    <span>Rows per page:</span>
+                    <select
+                      value={importPreviewPageSize}
+                      onChange={(e) => { setImportPreviewPageSize(Number(e.target.value)); setImportPreviewPage(1); }}
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: 12.5,
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #1e293b)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25 (Default)</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={250}>250</option>
+                      <option value={500}>500</option>
+                      <option value={100000}>All ({previewRows.length})</option>
+                    </select>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    style={{ fontSize: 12, padding: '5px 12px' }}
+                    onClick={() => { setPreviewRows([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
-              <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 360, overflow: 'auto' }}>
+
+              {/* ── PREVIEW TABLE ── */}
+              <div className="preview-table-container" style={{ flex: 1, minHeight: 320, overflow: 'auto' }}>
                 <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
+                      <th style={{ width: 44, textAlign: 'center' }}>#</th>
                       <th style={{ minWidth: 110 }}>Savior_No</th>
                       <th style={{ minWidth: 120 }}>First Name</th>
                       <th style={{ minWidth: 120 }}>Last Name</th>
@@ -5989,41 +6364,139 @@ function Teachers(){
                     </tr>
                   </thead>
                   <tbody>
-                    {previewRows.map((r, i) => (
-                      <tr key={i}>
-                        <td><code>{r.saviorNo || r.employeeId}</code></td>
-                        <td>{r.firstName || '—'}</td>
-                        <td>{r.lastName || '—'}</td>
-                        <td><b>{r.name}</b></td>
-                        <td>{r.email}</td>
-                        <td>{r.designation || 'Teacher'}</td>
-                        <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
-                        <td><span className="badge active">{r.status || 'Active'}</span></td>
-                        <td><span className="badge pending">Pending Dispatch</span></td>
+                    {displayedTeacherPreviewRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          No teachers match the current search filter.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      displayedTeacherPreviewRows.map((r, i) => {
+                        const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
+                        return (
+                          <tr key={teacherStartIdx + i}>
+                            <td style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center' }}>{rowNum}</td>
+                            <td><code>{r.saviorNo || r.employeeId}</code></td>
+                            <td>{r.firstName || '—'}</td>
+                            <td>{r.lastName || '—'}</td>
+                            <td><b>{r.name}</b></td>
+                            <td>{r.email}</td>
+                            <td>{r.designation || 'Teacher'}</td>
+                            <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
+                            <td><span className="badge active">{r.status || 'Active'}</span></td>
+                            <td><span className="badge pending">Pending Dispatch</span></td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
-              <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
+
+              {/* ── PAGINATION BAR ── */}
+              <div className="preview-pagination-bar">
+                <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                  {filteredTeacherPreviewRows.length === 0 ? (
+                    'Showing 0 records'
+                  ) : (
+                    <>
+                      Showing <b>{teacherStartIdx + 1}</b> to <b>{teacherEndIdx}</b> of <b>{filteredTeacherPreviewRows.length}</b> records
+                      {filteredTeacherPreviewRows.length !== previewRows.length && (
+                        <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {previewRows.length} total)</span>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentTeacherImportPage <= 1}
+                    onClick={() => setImportPreviewPage(1)}
+                    title="First Page"
+                  >
+                    <ChevronsLeft size={14} /> First
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentTeacherImportPage <= 1}
+                    onClick={() => setImportPreviewPage(p => Math.max(1, p - 1))}
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+                    <span>Page</span>
+                    <select
+                      value={currentTeacherImportPage}
+                      onChange={(e) => setImportPreviewPage(Number(e.target.value))}
+                      style={{
+                        padding: '3px 6px',
+                        fontSize: 12,
+                        borderRadius: 4,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        background: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #1e293b)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {Array.from({ length: totalTeacherImportPages }, (_, idx) => (
+                        <option key={idx + 1} value={idx + 1}>
+                          {idx + 1}
+                        </option>
+                      ))}
+                    </select>
+                    <span>of <b>{totalTeacherImportPages}</b></span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentTeacherImportPage >= totalTeacherImportPages}
+                    onClick={() => setImportPreviewPage(p => Math.min(totalTeacherImportPages, p + 1))}
+                    title="Next Page"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                    disabled={currentTeacherImportPage >= totalTeacherImportPages}
+                    onClick={() => setImportPreviewPage(totalTeacherImportPages)}
+                    title="Last Page"
+                  >
+                    Last <ChevronsRight size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* ── MODAL FOOTER ── */}
+              <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
                 <button 
                   type="button" 
                   className="btn-secondary" 
-                  onClick={() => { setImportOpen(false); setPreviewRows([]); }}
+                  onClick={() => { setImportOpen(false); setPreviewRows([]); setImportPreviewPage(1); }}
                 >
                   Cancel
                 </button>
-              <button 
-                type="button" 
-                onClick={submitBulkImport}
-                disabled={importing}
-                style={{ background: '#10b981', color: '#ffffff' }}
-              >
-                {importing ? 'Importing Teachers...' : `Confirm & Import ${previewRows.length} Teachers`}
-              </button>
+                <button 
+                  type="button" 
+                  onClick={submitBulkImport}
+                  disabled={importing}
+                  style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
+                >
+                  {importing ? 'Importing Teachers...' : `Confirm & Import ${previewRows.length} Teachers`}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </Modal>)}
 
