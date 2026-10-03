@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
+import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 export default function PeopleManagement() {
   const [tab, setTab] = useState<'students' | 'teachers'>('students');
@@ -19,6 +19,9 @@ export default function PeopleManagement() {
   const [savingTeacher, setSavingTeacher] = useState(false);
   const [importing, setImporting] = useState(false);
   const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [importPreviewPage, setImportPreviewPage] = useState(1);
+  const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
+  const [importPreviewSearch, setImportPreviewSearch] = useState('');
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   function prepareExportData() {
@@ -187,10 +190,13 @@ export default function PeopleManagement() {
             status,
             class: className,
             section: sectionName,
-            emailStatus: 'Pending'
+            emailStatus: 'Pending',
+            _origRowIndex: idx + 1
           };
         }).filter(x => x.name && x.email);
         setPreviewRows(mapped);
+        setImportPreviewPage(1);
+        setImportPreviewSearch('');
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
       }
@@ -210,6 +216,8 @@ export default function PeopleManagement() {
       });
       setImportOpen(false);
       setPreviewRows([]);
+      setImportPreviewPage(1);
+      setImportPreviewSearch('');
       load();
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to import teachers');
@@ -217,6 +225,31 @@ export default function PeopleManagement() {
       setImporting(false);
     }
   }
+
+  // Teacher Bulk Import Preview Pagination & Filtering
+  const filteredTeacherPreviewRows = previewRows.filter((r) => {
+    if (!importPreviewSearch.trim()) return true;
+    const q = importPreviewSearch.toLowerCase();
+    const target = [
+      r.saviorNo,
+      r.employeeId,
+      r.firstName,
+      r.lastName,
+      r.name,
+      r.email,
+      r.mobile,
+      r.designation,
+      r.class,
+      r.section
+    ].filter(Boolean).join(' ').toLowerCase();
+    return target.includes(q);
+  });
+
+  const totalTeacherImportPages = Math.max(1, Math.ceil(filteredTeacherPreviewRows.length / (importPreviewPageSize || 25)));
+  const currentTeacherImportPage = Math.min(Math.max(1, importPreviewPage), totalTeacherImportPages);
+  const teacherStartIdx = filteredTeacherPreviewRows.length === 0 ? 0 : (currentTeacherImportPage - 1) * (importPreviewPageSize || 25);
+  const teacherEndIdx = Math.min(teacherStartIdx + (importPreviewPageSize || 25), filteredTeacherPreviewRows.length);
+  const displayedTeacherPreviewRows = filteredTeacherPreviewRows.slice(teacherStartIdx, teacherEndIdx);
 
   return (
     <div className="feature-page">
@@ -673,8 +706,8 @@ export default function PeopleManagement() {
 
       {/* ─── BULK TEACHER IMPORT MODAL ─── */}
       {importOpen && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 840 }}>
+        <div className="modal-backdrop" style={{ padding: 12 }}>
+          <div className="modal modal-fullwindow" style={{ width: 'calc(100vw - 28px)', maxWidth: 'calc(100vw - 28px)', height: 'calc(100vh - 28px)', maxHeight: 'calc(100vh - 28px)', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18 }}>Bulk Teacher Import</h2>
@@ -720,22 +753,98 @@ export default function PeopleManagement() {
             </label>
 
             {previewRows.length > 0 && (
-              <div style={{ marginTop: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <strong style={{ fontSize: 14 }}>Preview Data ({previewRows.length} faculty ready to import)</strong>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                    onClick={() => setPreviewRows([])}
-                  >
-                    Clear
-                  </button>
+              <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                {/* ── TOP TOOLBAR: Search, Page Size & Clear ── */}
+                <div className="preview-toolbar">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 14 }}>Preview Data</strong>
+                    <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                      {previewRows.length} faculty ready to import
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    {/* Search inside preview */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8', pointerEvents: 'none' }} />
+                      <input
+                        type="text"
+                        placeholder="Search preview..."
+                        value={importPreviewSearch}
+                        onChange={(e) => { setImportPreviewSearch(e.target.value); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '5px 26px 5px 28px',
+                          fontSize: 12.5,
+                          border: '1px solid var(--border, #cbd5e1)',
+                          borderRadius: 6,
+                          width: 180,
+                          background: 'var(--card-bg, #ffffff)',
+                          color: 'var(--text, #0f172a)'
+                        }}
+                      />
+                      {importPreviewSearch && (
+                        <button
+                          type="button"
+                          onClick={() => { setImportPreviewSearch(''); setImportPreviewPage(1); }}
+                          style={{
+                            position: 'absolute',
+                            right: 6,
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 2,
+                            color: '#94a3b8'
+                          }}
+                          title="Clear search"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Rows per page selector */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                      <span>Rows per page:</span>
+                      <select
+                        value={importPreviewPageSize}
+                        onChange={(e) => { setImportPreviewPageSize(Number(e.target.value)); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 12.5,
+                          borderRadius: 6,
+                          border: '1px solid var(--border, #cbd5e1)',
+                          background: 'var(--card-bg, #ffffff)',
+                          color: 'var(--text, #1e293b)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value={10}>10</option>
+                        <option value={25}>25 (Default)</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={250}>250</option>
+                        <option value={500}>500</option>
+                        <option value={100000}>All ({previewRows.length})</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ fontSize: 12, padding: '4px 10px' }}
+                      onClick={() => { setPreviewRows([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
-                <div className="preview-table-container" style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-                  <table>
+
+                {/* ── PREVIEW TABLE ── */}
+                <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 340, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                  <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
+                        <th style={{ width: 44, textAlign: 'center' }}>#</th>
                         <th>Savior_No</th>
                         <th>First Name</th>
                         <th>Last Name</th>
@@ -748,27 +857,125 @@ export default function PeopleManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {previewRows.map((r, i) => (
-                        <tr key={i}>
-                          <td><code>{r.saviorNo || r.employeeId}</code></td>
-                          <td>{r.firstName || '—'}</td>
-                          <td>{r.lastName || '—'}</td>
-                          <td><b>{r.name}</b></td>
-                          <td>{r.email}</td>
-                          <td>{r.designation || 'Teacher'}</td>
-                          <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
-                          <td><span className="badge active">{r.status || 'Active'}</span></td>
-                          <td><span className="badge pending">Pending Dispatch</span></td>
+                      {displayedTeacherPreviewRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                            No teachers match the current search filter.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        displayedTeacherPreviewRows.map((r, i) => {
+                          const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
+                          return (
+                            <tr key={teacherStartIdx + i}>
+                              <td style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center' }}>{rowNum}</td>
+                              <td><code>{r.saviorNo || r.employeeId}</code></td>
+                              <td>{r.firstName || '—'}</td>
+                              <td>{r.lastName || '—'}</td>
+                              <td><b>{r.name}</b></td>
+                              <td>{r.email}</td>
+                              <td>{r.designation || 'Teacher'}</td>
+                              <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
+                              <td><span className="badge active">{r.status || 'Active'}</span></td>
+                              <td><span className="badge pending">Pending Dispatch</span></td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
-                <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+
+                {/* ── PAGINATION BAR ── */}
+                <div className="preview-pagination-bar">
+                  <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
+                    {filteredTeacherPreviewRows.length === 0 ? (
+                      'Showing 0 records'
+                    ) : (
+                      <>
+                        Showing <b>{teacherStartIdx + 1}</b> to <b>{teacherEndIdx}</b> of <b>{filteredTeacherPreviewRows.length}</b> records
+                        {filteredTeacherPreviewRows.length !== previewRows.length && (
+                          <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {previewRows.length} total)</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                      disabled={currentTeacherImportPage <= 1}
+                      onClick={() => setImportPreviewPage(1)}
+                      title="First Page"
+                    >
+                      <ChevronsLeft size={14} /> First
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                      disabled={currentTeacherImportPage <= 1}
+                      onClick={() => setImportPreviewPage(p => Math.max(1, p - 1))}
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={14} /> Previous
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+                      <span>Page</span>
+                      <select
+                        value={currentTeacherImportPage}
+                        onChange={(e) => setImportPreviewPage(Number(e.target.value))}
+                        style={{
+                          padding: '3px 6px',
+                          fontSize: 12,
+                          borderRadius: 4,
+                          border: '1px solid var(--border, #cbd5e1)',
+                          background: 'var(--card-bg, #ffffff)',
+                          color: 'var(--text, #1e293b)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {Array.from({ length: totalTeacherImportPages }, (_, idx) => (
+                          <option key={idx + 1} value={idx + 1}>
+                            {idx + 1}
+                          </option>
+                        ))}
+                      </select>
+                      <span>of <b>{totalTeacherImportPages}</b></span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                      disabled={currentTeacherImportPage >= totalTeacherImportPages}
+                      onClick={() => setImportPreviewPage(p => Math.min(totalTeacherImportPages, p + 1))}
+                      title="Next Page"
+                    >
+                      Next <ChevronRight size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+                      disabled={currentTeacherImportPage >= totalTeacherImportPages}
+                      onClick={() => setImportPreviewPage(totalTeacherImportPages)}
+                      title="Last Page"
+                    >
+                      Last <ChevronsRight size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── MODAL FOOTER ── */}
+                <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => { setImportOpen(false); setPreviewRows([]); }}
+                    onClick={() => { setImportOpen(false); setPreviewRows([]); setImportPreviewPage(1); }}
                   >
                     Cancel
                   </button>
@@ -776,7 +983,7 @@ export default function PeopleManagement() {
                     type="button"
                     onClick={submitBulkImport}
                     disabled={importing}
-                    style={{ background: '#10b981', color: '#ffffff' }}
+                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
                   >
                     {importing ? 'Importing Teachers…' : `Confirm & Import ${previewRows.length} Teachers`}
                   </button>
