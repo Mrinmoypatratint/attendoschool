@@ -327,7 +327,8 @@ export default function PeopleManagement() {
             <>
               <thead>
                 <tr>
-                  <th>Roll / Adm No</th>
+                  <th>Roll No</th>
+                  <th>Adm No</th>
                   <th>Student Name</th>
                   <th>Class & Section</th>
                   <th>Parent</th>
@@ -342,10 +343,14 @@ export default function PeopleManagement() {
                       <span className="roll" style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
                         {r.roll_number || r.roll || '—'}
                       </span>
-                      {(r.admission_number || r.admissionNumber) && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
+                    </td>
+                    <td>
+                      {(r.admission_number || r.admissionNumber) ? (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                           {r.admission_number || r.admissionNumber}
-                        </div>
+                        </span>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 11 }}>—</span>
                       )}
                     </td>
                     <td>
@@ -367,7 +372,7 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={6} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                    <td colSpan={7} className="muted" style={{ padding: 28, textAlign: 'center' }}>
                       {loading ? 'Searching directory…' : 'No student records found matching this criteria.'}
                     </td>
                   </tr>
@@ -449,23 +454,41 @@ export default function PeopleManagement() {
                       required
                       placeholder="e.g. Rahul"
                       value={teacherForm.firstName || ''}
+                      style={{
+                        borderColor: /\d/.test(teacherForm.firstName || '') ? '#ef4444' : undefined,
+                        boxShadow: /\d/.test(teacherForm.firstName || '') ? '0 0 0 1px #ef4444' : undefined
+                      }}
                       onChange={e => {
                         const fn = e.target.value;
                         const ln = teacherForm.lastName || '';
                         setTeacherForm({ ...teacherForm, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
                       }}
                     />
+                    {/\d/.test(teacherForm.firstName || '') && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Enter a string not a number
+                      </span>
+                    )}
                   </label>
                   <label>Last Name
                     <input
                       placeholder="e.g. Sharma"
                       value={teacherForm.lastName || ''}
+                      style={{
+                        borderColor: /\d/.test(teacherForm.lastName || '') ? '#ef4444' : undefined,
+                        boxShadow: /\d/.test(teacherForm.lastName || '') ? '0 0 0 1px #ef4444' : undefined
+                      }}
                       onChange={e => {
                         const ln = e.target.value;
                         const fn = teacherForm.firstName || '';
                         setTeacherForm({ ...teacherForm, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
                       }}
                     />
+                    {/\d/.test(teacherForm.lastName || '') && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Enter a string not a number
+                      </span>
+                    )}
                   </label>
                 </div>
 
@@ -542,6 +565,10 @@ export default function PeopleManagement() {
                     className="btn-secondary" 
                     onClick={() => {
                       if (!teacherForm.firstName && !teacherForm.name) { alert('Please enter First Name.'); return; }
+                      if (/\d/.test(teacherForm.firstName || '') || /\d/.test(teacherForm.lastName || '')) {
+                        alert('Validation Error: Enter a string not a number in name fields.');
+                        return;
+                      }
                       if (!teacherForm.email) { alert('Please enter Email Address.'); return; }
                       if (!(teacherForm.employeeId || teacherForm.saviorNo)) { alert('Please enter Employee Id/Savior_NO.'); return; }
                       setAddTeacherPreview(true);

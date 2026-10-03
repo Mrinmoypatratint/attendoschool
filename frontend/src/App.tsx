@@ -3402,7 +3402,7 @@ function Students(){
     load(activeSession);
     if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
       setEditingStudent(null);
-      setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: activeSession });
+      setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: activeSession, countryCode: '+91' });
       setOpen(true);
     }
   },[activeSession]);
@@ -3433,6 +3433,28 @@ function Students(){
       alert('Validation Error: Please enter student first name or full name.');
       return;
     }
+    if (/\d/.test(firstName) || /\d/.test(lastName)) {
+      alert('Validation Error: Enter a string not a number in name fields.');
+      return;
+    }
+    if (f.parentName && /\d/.test(f.parentName)) {
+      alert('Validation Error: Enter a string not a number in parent name.');
+      return;
+    }
+
+    const code = f.countryCode || '+91';
+    const rawMobile = String(f.parentSmsNumber || '').trim();
+    const phoneDigits = rawMobile.replace(/\D/g, '');
+    if (!rawMobile || phoneDigits.length === 0) {
+      alert('Validation Error: Please enter parent mobile number.');
+      return;
+    }
+    if (phoneDigits.length < 10) {
+      alert('pls check your number.... Phone number must be at least 10 digits.');
+      return;
+    }
+    const fullParentPhone = rawMobile.startsWith('+') ? rawMobile : `${code} ${rawMobile}`;
+
     if (!f.classId) {
       alert('Validation Error: Please select an enrolled class.');
       return;
@@ -3458,6 +3480,11 @@ function Students(){
     }
     const payload = {
       ...f,
+      parentSmsNumber: fullParentPhone,
+      parent_sms_number: fullParentPhone,
+      parentPhone: fullParentPhone,
+      parent_phone: fullParentPhone,
+      countryCode: code,
       sectionId: finalSectionId,
       name: fullName,
       firstName,
@@ -3867,7 +3894,7 @@ function Students(){
             onClick={() => {
               setEditingStudent(null);
               const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2026-2027';
-              setF({ session: curSess });
+              setF({ session: curSess, countryCode: '+91' });
               setOpen(true);
             }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -4141,7 +4168,8 @@ function Students(){
                 title="Select all"
               />
             </th>
-            <th>Roll / Adm No</th>
+            <th>Roll No</th>
+            <th>Adm No</th>
             <th>Student Name</th>
             <th>Class</th>
             <th>Student Email</th>
@@ -4152,7 +4180,7 @@ function Students(){
         </thead>
         <tbody>
           {filtered.length === 0 ? (
-            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : filtered.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -4164,10 +4192,14 @@ function Students(){
               </td>
               <td>
                 <span className="roll">{x.roll_number}</span>
-                {(x.admission_number || x.admissionNumber) && (
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'monospace' }}>
+              </td>
+              <td>
+                {(x.admission_number || x.admissionNumber) ? (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                     {x.admission_number || x.admissionNumber}
-                  </div>
+                  </span>
+                ) : (
+                  <span className="muted" style={{ fontSize: 11 }}>—</span>
                 )}
               </td>
               <td><b>{x.name}</b></td>
@@ -4217,13 +4249,22 @@ function Students(){
                   className="table-action-btn" 
                   onClick={() => {
                     setEditingStudent(x);
+                    const rawPhone = x.parent_sms_number || x.parentPhone || '';
+                    let cCode = '+91';
+                    let pNum = rawPhone;
+                    const cMatch = rawPhone.match(/^(\+\d{1,4})\s*(.*)$/);
+                    if (cMatch) {
+                      cCode = cMatch[1];
+                      pNum = cMatch[2];
+                    }
                     setF({
                       name: x.name,
                       rollNumber: x.roll_number,
                       admissionNumber: x.admission_number || x.admissionNumber || '',
                       studentEmail: x.student_email || x.email || '',
                       parentName: x.parent_name || '',
-                      parentSmsNumber: x.parent_sms_number || '',
+                      countryCode: cCode,
+                      parentSmsNumber: pNum,
                       parentEmail: x.parent_email || '',
                       classId: x.class_id,
                       sectionId: x.section_id,
@@ -4275,23 +4316,41 @@ function Students(){
               required
               placeholder="e.g. Aarav"
               value={f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || ''}
+              style={{
+                borderColor: /\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') ? '#ef4444' : undefined,
+                boxShadow: /\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') ? '0 0 0 1px #ef4444' : undefined
+              }}
               onChange={e => {
                 const fn = e.target.value;
                 const ln = f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '';
                 setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
               }}
             />
+            {/\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Enter a string not a number
+              </span>
+            )}
           </label>
           <label>Last Name
             <input
               placeholder="e.g. Sharma"
               value={f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || ''}
+              style={{
+                borderColor: /\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') ? '#ef4444' : undefined,
+                boxShadow: /\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') ? '0 0 0 1px #ef4444' : undefined
+              }}
               onChange={e => {
                 const ln = e.target.value;
                 const fn = f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '';
                 setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
               }}
             />
+            {/\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Enter a string not a number
+              </span>
+            )}
           </label>
         </div>
 
@@ -4410,10 +4469,97 @@ function Students(){
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>Parent Name
-            <input placeholder="Parent Name" value={f.parentName||''} onChange={e=>setF({...f,parentName:e.target.value})}/>
+            <input 
+              placeholder="Parent Name" 
+              value={f.parentName||''} 
+              style={{
+                borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
+                boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
+              }}
+              onChange={e=>setF({...f,parentName:e.target.value})}
+            />
+            {/\d/.test(f.parentName || '') && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Enter a string not a number
+              </span>
+            )}
           </label>
           <label>Parent SMS Mobile Number
-            <input required placeholder="Mobile (e.g. 9876543210)" value={f.parentSmsNumber||''} onChange={e=>setF({...f,parentSmsNumber:e.target.value})}/>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 4 }}>
+              <select
+                value={f.countryCode || '+91'}
+                onChange={e => setF({ ...f, countryCode: e.target.value })}
+                style={{
+                  width: 125,
+                  flexShrink: 0,
+                  padding: '0 6px',
+                  fontSize: 12,
+                  height: 38,
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  backgroundColor: '#fff',
+                  cursor: 'pointer'
+                }}
+                title="Select Country Code"
+              >
+                <option value="+91">🇮🇳 +91 (IN)</option>
+                <option value="+1">🇺🇸 +1 (US)</option>
+                <option value="+44">🇬🇧 +44 (UK)</option>
+                <option value="+971">🇦🇪 +971 (UAE)</option>
+                <option value="+966">🇸🇦 +966 (KSA)</option>
+                <option value="+65">🇸🇬 +65 (SG)</option>
+                <option value="+61">🇦🇺 +61 (AU)</option>
+                <option value="+880">🇧🇩 +880 (BD)</option>
+                <option value="+977">🇳🇵 +977 (NP)</option>
+                <option value="+94">🇱🇰 +94 (LK)</option>
+                <option value="+92">🇵🇰 +92 (PK)</option>
+                <option value="+974">🇶🇦 +974 (QA)</option>
+                <option value="+965">🇰🇼 +965 (KW)</option>
+                <option value="+968">🇴🇲 +968 (OM)</option>
+                <option value="+49">🇩🇪 +49 (DE)</option>
+                <option value="+33">🇫🇷 +33 (FR)</option>
+                <option value="+81">🇯🇵 +81 (JP)</option>
+                <option value="+86">🇨🇳 +86 (CN)</option>
+                <option value="+7">🇷🇺 +7 (RU)</option>
+                <option value="+27">🇿🇦 +27 (ZA)</option>
+                <option value="+234">🇳🇬 +234 (NG)</option>
+                <option value="+254">🇰🇪 +254 (KE)</option>
+                <option value="+55">🇧🇷 +55 (BR)</option>
+                <option value="+52">🇲🇽 +52 (MX)</option>
+                <option value="+39">🇮🇹 +39 (IT)</option>
+                <option value="+34">🇪🇸 +34 (ES)</option>
+                <option value="+31">🇳🇱 +31 (NL)</option>
+                <option value="+41">🇨🇭 +41 (CH)</option>
+                <option value="+46">🇸🇪 +46 (SE)</option>
+                <option value="+64">🇳🇿 +64 (NZ)</option>
+                <option value="+60">🇲🇾 +60 (MY)</option>
+                <option value="+62">🇮🇩 +62 (ID)</option>
+                <option value="+63">🇵🇭 +63 (PH)</option>
+                <option value="+84">🇻🇳 +84 (VN)</option>
+                <option value="+66">🇹🇭 +66 (TH)</option>
+                <option value="+20">🇪🇬 +20 (EG)</option>
+              </select>
+              <input
+                required
+                placeholder="Mobile (e.g. 9876543210)"
+                value={f.parentSmsNumber || ''}
+                style={{
+                  flex: 1,
+                  height: 38,
+                  borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                  boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^\d\s-]/g, '');
+                  setF({ ...f, parentSmsNumber: val });
+                }}
+              />
+            </div>
+            {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                pls check your number....
+              </span>
+            )}
           </label>
         </div>
 
@@ -4515,7 +4661,7 @@ function Students(){
           })}
         </div>
 
-        {/* ── STEP 1: Select Session / Class / Section ── */}
+        {/* ── STEP 1: Select Session ── */}
         {importStep === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>Academic Session <span style={{ color: '#ef4444', fontSize: 11 }}>*</span>
@@ -4528,19 +4674,6 @@ function Students(){
                 ]).map(s => (
                   <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
                 ))}
-              </select>
-            </label>
-            <label>Class (default for import) <span style={{ fontSize: 11, color: '#64748b' }}>— overridden by Excel column</span>
-              <select value={importClass} onChange={e => setImportClass(e.target.value)}>
-                <option value="">Select Class</option>
-                {classes.map(c => <option key={c.id} value={c.class_number}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
-              </select>
-            </label>
-            <label>Section (default for import) <span style={{ fontSize: 11, color: '#64748b' }}>— overridden by Excel column</span>
-              <select value={importSection} onChange={e => setImportSection(e.target.value)}>
-                <option value="">Select Section</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
               </select>
             </label>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
@@ -4568,7 +4701,7 @@ function Students(){
         {importStep === 2 && (
           <div>
             <div style={{ marginBottom: 12, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
-              📋 Session: <b>{importSession}</b>{importClass ? ` · Class ${importClass}` : ''}{importSection ? ` · Section ${importSection}` : ''}
+              📋 Session: <b>{importSession}</b>
             </div>
             <label className="dropzone">
               <input
@@ -4992,6 +5125,10 @@ function Teachers(){
 
     if (!name) {
       alert('Validation Error: Please enter faculty member name.');
+      return;
+    }
+    if (/\d/.test(firstName) || /\d/.test(lastName)) {
+      alert('Validation Error: Enter a string not a number in name fields.');
       return;
     }
     if (!email) {
@@ -5522,23 +5659,41 @@ function Teachers(){
               required
               placeholder="First Name (e.g. Rahul)"
               value={f.firstName || ''}
+              style={{
+                borderColor: /\d/.test(f.firstName || '') ? '#ef4444' : undefined,
+                boxShadow: /\d/.test(f.firstName || '') ? '0 0 0 1px #ef4444' : undefined
+              }}
               onChange={e => {
                 const fn = e.target.value;
                 const ln = f.lastName || '';
                 setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
               }}
             />
+            {/\d/.test(f.firstName || '') && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Enter a string not a number
+              </span>
+            )}
           </label>
           <label>Last Name
             <input
               placeholder="Last Name (e.g. Sharma)"
               value={f.lastName || ''}
+              style={{
+                borderColor: /\d/.test(f.lastName || '') ? '#ef4444' : undefined,
+                boxShadow: /\d/.test(f.lastName || '') ? '0 0 0 1px #ef4444' : undefined
+              }}
               onChange={e => {
                 const ln = e.target.value;
                 const fn = f.firstName || '';
                 setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
               }}
             />
+            {/\d/.test(f.lastName || '') && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Enter a string not a number
+              </span>
+            )}
           </label>
         </div>
 
