@@ -21,7 +21,7 @@ permissions:
   checks: write
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -325,6 +325,25 @@ jobs:
           fi
 
           if [ -n "$PR_NUM" ]; then
+            # Verify if already merged
+            PR_STATE=$(gh pr view "$PR_NUM" --json state -q '.state' 2>/dev/null || echo "")
+            if [ "$PR_STATE" = "MERGED" ]; then
+              echo "✅ PR #${PR_NUM} is already merged into main."
+              echo "- **Auto-Merge:** ✅ PR #${PR_NUM} already merged" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+
+            # Check if PR or commit is marked WIP / Draft
+            PR_DATA=$(gh pr view "$PR_NUM" --json isDraft,title 2>/dev/null || echo "{}")
+            IS_DRAFT=$(echo "$PR_DATA" | jq -r '.isDraft // false')
+            PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // ""')
+
+            if [ "$IS_DRAFT" = "true" ] || echo "$PR_TITLE" | grep -qiE '\[(wip|draft)\]'; then
+              echo "ℹ️ PR #${PR_NUM} is marked as Draft/WIP. Skipping auto-merge."
+              echo "- **Auto-Merge:** ⏸️ Paused (Draft/WIP PR)" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+
             echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
             if gh pr merge "$PR_NUM" --merge --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
               echo "✅ Successfully merged PR #${PR_NUM} into main!"
