@@ -39,10 +39,15 @@ const serviceAccountFilePath = resolveServiceAccountPath();
 
 try {
   const existingApps = getApps();
+  const hasLiveCreds = Boolean(
+    (env.firebaseClientEmail && env.firebasePrivateKey) ||
+    env.firebaseServiceAccount ||
+    serviceAccountFilePath
+  );
   if (existingApps.length > 0) {
     firebaseApp = existingApps[0]!;
-    connectionMode = 'live_cloud';
-    credentialSource = 'Existing App Instance';
+    connectionMode = hasLiveCreds ? 'live_cloud' : (env.firestoreEmulatorHost ? 'emulator' : 'local_unconfigured');
+    credentialSource = hasLiveCreds ? 'Existing App Instance' : 'Default Development ID';
   } else if (env.firebaseClientEmail && env.firebasePrivateKey) {
     // 1. Live Google Cloud credentials via Direct Environment Variables in .env
     resolvedProjectId = env.firebaseProjectId || 'attendoschool';
