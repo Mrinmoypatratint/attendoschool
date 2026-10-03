@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -25,6 +25,31 @@ export default function PeopleManagement() {
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
+
+  const directoryTopRef = useRef<HTMLDivElement>(null);
+  const isInitialDirectoryMount = useRef(true);
+
+  const scrollToDirectoryTop = useCallback(() => {
+    setTimeout(() => {
+      if (directoryTopRef.current) {
+        try {
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 10);
+  }, []);
+
+  useEffect(() => {
+    if (isInitialDirectoryMount.current) {
+      isInitialDirectoryMount.current = false;
+      return;
+    }
+    scrollToDirectoryTop();
+  }, [directoryPage, scrollToDirectoryTop]);
 
   function prepareExportData() {
     return rows.map(r => {
@@ -319,7 +344,18 @@ export default function PeopleManagement() {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+      <div 
+        ref={directoryTopRef}
+        style={{ 
+          scrollMarginTop: '20px',
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: 16, 
+          marginBottom: 20 
+        }}
+      >
         {/* Segmented Tab Switcher */}
         <div className="tabs" style={{ margin: 0 }}>
           <button
@@ -368,7 +404,7 @@ export default function PeopleManagement() {
             <span>Rows per page:</span>
             <select
               value={directoryPageSize}
-              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
               style={{
                 padding: '4px 8px',
                 fontSize: 12.5,
@@ -531,7 +567,7 @@ export default function PeopleManagement() {
             className="btn-secondary"
             style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
             disabled={currentDirectoryPage <= 1}
-            onClick={() => setDirectoryPage(1)}
+            onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
             title="First Page"
           >
             <ChevronsLeft size={14} /> First
@@ -541,7 +577,7 @@ export default function PeopleManagement() {
             className="btn-secondary"
             style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
             disabled={currentDirectoryPage <= 1}
-            onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+            onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
             title="Previous Page"
           >
             <ChevronLeft size={14} /> Previous
@@ -551,7 +587,7 @@ export default function PeopleManagement() {
             <span>Page</span>
             <select
               value={currentDirectoryPage}
-              onChange={(e) => setDirectoryPage(Number(e.target.value))}
+              onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
               style={{
                 padding: '3px 6px',
                 fontSize: 12,
@@ -576,7 +612,7 @@ export default function PeopleManagement() {
             className="btn-secondary"
             style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
             disabled={currentDirectoryPage >= totalDirectoryPages}
-            onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+            onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
             title="Next Page"
           >
             Next <ChevronRight size={14} />
@@ -586,7 +622,7 @@ export default function PeopleManagement() {
             className="btn-secondary"
             style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
             disabled={currentDirectoryPage >= totalDirectoryPages}
-            onClick={() => setDirectoryPage(totalDirectoryPages)}
+            onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
             title="Last Page"
           >
             Last <ChevronsRight size={14} />

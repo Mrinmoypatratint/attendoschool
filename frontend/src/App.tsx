@@ -3349,6 +3349,31 @@ function Students(){
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  const directoryTopRef = useRef<HTMLDivElement>(null);
+  const isInitialDirectoryMount = useRef(true);
+
+  const scrollToDirectoryTop = useCallback(() => {
+    setTimeout(() => {
+      if (directoryTopRef.current) {
+        try {
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 10);
+  }, []);
+
+  useEffect(() => {
+    if (isInitialDirectoryMount.current) {
+      isInitialDirectoryMount.current = false;
+      return;
+    }
+    scrollToDirectoryTop();
+  }, [directoryPage, scrollToDirectoryTop]);
+
   // Universal Preview & Edit State
   const [studentPreview, setStudentPreview] = useState<{
     isOpen: boolean;
@@ -4078,7 +4103,18 @@ function Students(){
     )}
 
     {/* Search & Filter Bar */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+    <div 
+      ref={directoryTopRef}
+      style={{ 
+        scrollMarginTop: '20px',
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 14, 
+        gap: 12, 
+        flexWrap: 'wrap' 
+      }}
+    >
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         {/* Interactive Session Switcher Dropdown */}
         <div style={{ position: 'relative' }} ref={sessionPickerRef}>
@@ -4282,7 +4318,7 @@ function Students(){
           <span>Rows per page:</span>
           <select
             value={directoryPageSize}
-            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
             style={{
               padding: '4px 8px',
               fontSize: 12.5,
@@ -4474,7 +4510,7 @@ function Students(){
           className="btn-secondary"
           style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage <= 1}
-          onClick={() => setDirectoryPage(1)}
+          onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
           title="First Page"
         >
           <ChevronsLeft size={14} /> First
@@ -4484,7 +4520,7 @@ function Students(){
           className="btn-secondary"
           style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage <= 1}
-          onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+          onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
           title="Previous Page"
         >
           <ChevronLeft size={14} /> Previous
@@ -4494,7 +4530,7 @@ function Students(){
           <span>Page</span>
           <select
             value={currentDirectoryPage}
-            onChange={(e) => setDirectoryPage(Number(e.target.value))}
+            onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
             style={{
               padding: '3px 6px',
               fontSize: 12,
@@ -4519,7 +4555,7 @@ function Students(){
           className="btn-secondary"
           style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+          onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
           title="Next Page"
         >
           Next <ChevronRight size={14} />
@@ -4529,7 +4565,7 @@ function Students(){
           className="btn-secondary"
           style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => setDirectoryPage(totalDirectoryPages)}
+          onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
           title="Last Page"
         >
           Last <ChevronsRight size={14} />
@@ -5360,6 +5396,31 @@ function Teachers(){
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
+
+  const directoryTopRef = useRef<HTMLDivElement>(null);
+  const isInitialDirectoryMount = useRef(true);
+
+  const scrollToDirectoryTop = useCallback(() => {
+    setTimeout(() => {
+      if (directoryTopRef.current) {
+        try {
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 10);
+  }, []);
+
+  useEffect(() => {
+    if (isInitialDirectoryMount.current) {
+      isInitialDirectoryMount.current = false;
+      return;
+    }
+    scrollToDirectoryTop();
+  }, [directoryPage, scrollToDirectoryTop]);
   const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
 
   // Universal Preview State for Teacher Add/Edit
@@ -6063,7 +6124,18 @@ function Teachers(){
     )}
 
     {/* Search & Filter Bar */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+    <div 
+      ref={directoryTopRef}
+      style={{ 
+        scrollMarginTop: '20px',
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 14, 
+        gap: 12, 
+        flexWrap: 'wrap' 
+      }}
+    >
       <input 
         placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
@@ -6076,7 +6148,7 @@ function Teachers(){
           <span>Rows per page:</span>
           <select
             value={directoryPageSize}
-            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); }}
+            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
             style={{
               padding: '4px 8px',
               fontSize: 12.5,
@@ -6234,7 +6306,7 @@ function Teachers(){
           className="btn-secondary"
           style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage <= 1}
-          onClick={() => setDirectoryPage(1)}
+          onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
           title="First Page"
         >
           <ChevronsLeft size={14} /> First
@@ -6244,7 +6316,7 @@ function Teachers(){
           className="btn-secondary"
           style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage <= 1}
-          onClick={() => setDirectoryPage(p => Math.max(1, p - 1))}
+          onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
           title="Previous Page"
         >
           <ChevronLeft size={14} /> Previous
@@ -6254,7 +6326,7 @@ function Teachers(){
           <span>Page</span>
           <select
             value={currentDirectoryPage}
-            onChange={(e) => setDirectoryPage(Number(e.target.value))}
+            onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
             style={{
               padding: '3px 6px',
               fontSize: 12,
@@ -6279,7 +6351,7 @@ function Teachers(){
           className="btn-secondary"
           style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1))}
+          onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
           title="Next Page"
         >
           Next <ChevronRight size={14} />
@@ -6289,7 +6361,7 @@ function Teachers(){
           className="btn-secondary"
           style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
           disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => setDirectoryPage(totalDirectoryPages)}
+          onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
           title="Last Page"
         >
           Last <ChevronsRight size={14} />
