@@ -3350,18 +3350,24 @@ function Students(){
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
+  const tableBodyRef = useRef<HTMLDivElement>(null);
   const isInitialDirectoryMount = useRef(true);
 
   const scrollToDirectoryTop = useCallback(() => {
     setTimeout(() => {
+      if (tableBodyRef.current) {
+        try {
+          tableBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {
+          tableBodyRef.current.scrollTop = 0;
+        }
+      }
       if (directoryTopRef.current) {
         try {
-          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // ignore
         }
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 10);
   }, []);
@@ -4102,19 +4108,10 @@ function Students(){
       </div>
     )}
 
-    {/* Search & Filter Bar */}
-    <div 
-      ref={directoryTopRef}
-      style={{ 
-        scrollMarginTop: '20px',
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: 14, 
-        gap: 12, 
-        flexWrap: 'wrap' 
-      }}
-    >
+    {/* ── UNIFIED STUDENT DIRECTORY BOX WITH INNER SCROLLBAR ── */}
+    <div className="directory-box" ref={directoryTopRef}>
+      {/* Box Header Toolbar */}
+      <div className="directory-box-header">
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         {/* Interactive Session Switcher Dropdown */}
         <div style={{ position: 'relative' }} ref={sessionPickerRef}>
@@ -4353,7 +4350,8 @@ function Students(){
       </div>
     </div>
 
-    <div className="table-wrap">
+    {/* Box Body (Scrollable Table Area) */}
+    <div className="directory-box-body" ref={tableBodyRef}>
       <table>
         <thead>
           <tr>
@@ -4489,8 +4487,8 @@ function Students(){
       </table>
     </div>
 
-    {/* ── STUDENT DIRECTORY PAGINATION BAR ── */}
-    <div className="directory-pagination-bar">
+    {/* Box Footer (Pagination Bar) */}
+    <div className="directory-box-footer">
       <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
         {filtered.length === 0 ? (
           'Showing 0 students'
@@ -4571,6 +4569,7 @@ function Students(){
           Last <ChevronsRight size={14} />
         </button>
       </div>
+    </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}
@@ -5398,18 +5397,24 @@ function Teachers(){
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
+  const tableBodyRef = useRef<HTMLDivElement>(null);
   const isInitialDirectoryMount = useRef(true);
 
   const scrollToDirectoryTop = useCallback(() => {
     setTimeout(() => {
+      if (tableBodyRef.current) {
+        try {
+          tableBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {
+          tableBodyRef.current.scrollTop = 0;
+        }
+      }
       if (directoryTopRef.current) {
         try {
-          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // ignore
         }
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 10);
   }, []);
@@ -6123,19 +6128,10 @@ function Teachers(){
       </div>
     )}
 
-    {/* Search & Filter Bar */}
-    <div 
-      ref={directoryTopRef}
-      style={{ 
-        scrollMarginTop: '20px',
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: 14, 
-        gap: 12, 
-        flexWrap: 'wrap' 
-      }}
-    >
+    {/* ── UNIFIED TEACHER DIRECTORY BOX WITH INNER SCROLLBAR ── */}
+    <div className="directory-box" ref={directoryTopRef}>
+      {/* Box Header Toolbar */}
+      <div className="directory-box-header">
       <input 
         placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
@@ -6183,7 +6179,8 @@ function Teachers(){
       </div>
     </div>
 
-    <div className="table-wrap">
+    {/* Box Body (Scrollable Table Area) */}
+    <div className="directory-box-body" ref={tableBodyRef}>
       <table>
         <thead>
           <tr>
@@ -6285,8 +6282,8 @@ function Teachers(){
       </table>
     </div>
 
-    {/* ── TEACHER DIRECTORY PAGINATION BAR ── */}
-    <div className="directory-pagination-bar">
+    {/* Box Footer (Pagination Bar) */}
+    <div className="directory-box-footer">
       <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
         {filtered.length === 0 ? (
           'Showing 0 faculty members'
@@ -6367,6 +6364,7 @@ function Teachers(){
           Last <ChevronsRight size={14} />
         </button>
       </div>
+    </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}

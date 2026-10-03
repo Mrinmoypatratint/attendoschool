@@ -27,18 +27,24 @@ export default function PeopleManagement() {
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
+  const tableBodyRef = useRef<HTMLDivElement>(null);
   const isInitialDirectoryMount = useRef(true);
 
   const scrollToDirectoryTop = useCallback(() => {
     setTimeout(() => {
+      if (tableBodyRef.current) {
+        try {
+          tableBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {
+          tableBodyRef.current.scrollTop = 0;
+        }
+      }
       if (directoryTopRef.current) {
         try {
-          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          directoryTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // ignore
         }
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 10);
   }, []);
@@ -344,18 +350,10 @@ export default function PeopleManagement() {
         </div>
       )}
 
-      <div 
-        ref={directoryTopRef}
-        style={{ 
-          scrollMarginTop: '20px',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: 16, 
-          marginBottom: 20 
-        }}
-      >
+      {/* ── UNIFIED PEOPLE DIRECTORY BOX WITH INNER SCROLLBAR ── */}
+      <div className="directory-box" ref={directoryTopRef}>
+        {/* Box Header (Tabs & Search Controls) */}
+        <div className="directory-box-header">
         {/* Segmented Tab Switcher */}
         <div className="tabs" style={{ margin: 0 }}>
           <button
@@ -437,9 +435,10 @@ export default function PeopleManagement() {
         </div>
       </div>
 
-      {message && <div className="error" style={{ marginBottom: 16 }}>{message}</div>}
+      {message && <div className="error" style={{ margin: '8px 16px 0' }}>{message}</div>}
 
-      <div className="table-wrap">
+      {/* Box Body (Scrollable Table Area) */}
+      <div className="directory-box-body" ref={tableBodyRef}>
         <table>
           {tab === 'students' ? (
             <>
@@ -549,8 +548,8 @@ export default function PeopleManagement() {
         </table>
       </div>
 
-      {/* ── PEOPLE MANAGEMENT DIRECTORY PAGINATION BAR ── */}
-      <div className="directory-pagination-bar">
+      {/* Box Footer (Pagination Bar) */}
+      <div className="directory-box-footer">
         <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
           {rows.length === 0 ? (
             `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
@@ -628,6 +627,7 @@ export default function PeopleManagement() {
             Last <ChevronsRight size={14} />
           </button>
         </div>
+      </div>
       </div>
 
       {/* ─── ADD TEACHER MODAL WITH PREVIEW ─── */}

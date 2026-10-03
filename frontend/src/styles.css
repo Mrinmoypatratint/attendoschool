@@ -1075,6 +1075,151 @@ header {
   border-bottom: 0;
 }
 
+/* ─── Unified Directory Box (Self-Contained Table Box with Inner Scrollbar) ─── */
+.directory-box {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+}
+
+[data-theme="dark"] .directory-box {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.directory-box-header {
+  padding: 12px 18px;
+  background: var(--bg-card, #ffffff);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+[data-theme="dark"] .directory-box-header {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+.directory-box-body {
+  overflow-y: auto;
+  overflow-x: auto;
+  max-height: min(65vh, 600px);
+  min-height: 280px;
+  position: relative;
+  background: var(--bg-card, #ffffff);
+}
+
+[data-theme="dark"] .directory-box-body {
+  background: #1e293b;
+}
+
+/* Sleek inner scrollbar inside the directory box */
+.directory-box-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.directory-box-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.directory-box-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 4px;
+}
+
+.directory-box-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.85);
+}
+
+[data-theme="dark"] .directory-box-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.directory-box-body table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.directory-box-body th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--gray-50, #f8fafc);
+  color: var(--text-secondary, #475569);
+  padding: 13px 18px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 1px 0 var(--border, #e2e8f0);
+  text-align: left;
+}
+
+[data-theme="dark"] .directory-box-body th {
+  background: #0f172a;
+  color: #94a3b8;
+  border-bottom-color: #334155;
+  box-shadow: 0 1px 0 #334155;
+}
+
+.directory-box-body td {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  font-size: 13.5px;
+  color: var(--text, #1e293b);
+  vertical-align: middle;
+}
+
+[data-theme="dark"] .directory-box-body td {
+  border-bottom-color: #334155;
+  color: #f1f5f9;
+}
+
+.directory-box-body tbody tr {
+  transition: background 0.12s ease;
+}
+
+.directory-box-body tbody tr:hover {
+  background: rgba(59, 130, 246, 0.035);
+}
+
+[data-theme="dark"] .directory-box-body tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.directory-box-body tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.directory-box-footer {
+  padding: 11px 18px;
+  background: var(--bg-card, #ffffff);
+  border-top: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+[data-theme="dark"] .directory-box-footer {
+  background: #1e293b;
+  border-top-color: #334155;
+}
+
 /* ─── Badges & Status Chips ─── */
 .badge {
   font-size: 11px;
