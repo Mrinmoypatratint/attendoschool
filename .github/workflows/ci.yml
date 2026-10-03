@@ -182,7 +182,6 @@ jobs:
   conflict-check-and-pr:
     name: "Merge Safety: Conflict Detection & Auto-PR"
     needs: [backend-ci, frontend-ci]
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -197,13 +196,14 @@ jobs:
       - name: Compare Branch vs Main
         id: compare
         run: |
-          BRANCH="${GITHUB_REF_NAME}"
+          BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           git fetch origin main
+          git fetch origin "${BRANCH}"
 
-          LOCAL_HEAD=$(git rev-parse HEAD)
+          LOCAL_HEAD=$(git rev-parse "origin/${BRANCH}" 2>/dev/null || git rev-parse HEAD)
           REMOTE_HEAD=$(git rev-parse origin/main)
-          AHEAD=$(git rev-list --count origin/main..HEAD)
-          BEHIND=$(git rev-list --count HEAD..origin/main)
+          AHEAD=$(git rev-list --count origin/main.."origin/${BRANCH}" 2>/dev/null || echo "0")
+          BEHIND=$(git rev-list --count "origin/${BRANCH}"..origin/main 2>/dev/null || echo "0")
 
           echo "### 📊 Branch Comparison Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -235,7 +235,7 @@ jobs:
         id: conflict
         if: steps.compare.outputs.already_merged != 'true'
         run: |
-          BRANCH="${GITHUB_REF_NAME}"
+          BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           git config user.name "ci-conflict-checker"
           git config user.email "ci@attendoschool.local"
 
@@ -268,11 +268,11 @@ jobs:
           steps.conflict.outputs.conflict != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="${GITHUB_REF_NAME}"
-
-          # Check if PR already exists
-          EXISTING_PR=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+          BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+          if [ -z "$PR_NUM" ]; then
+            PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+          fi
 
           MIGRATION_NOTE=""
           if [ "${{ needs.pre-checks.outputs.has_migration }}" = "true" ]; then
@@ -284,19 +284,19 @@ jobs:
 
           PR_BODY="## Auto-Generated Pull Request
 
-          **Branch:** \`${BRANCH}\` → \`main\`
-          **CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)
-          **Conflicts:** ✅ None detected
+**Branch:** \`${BRANCH}\` → \`main\`
+**CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)
+**Conflicts:** ✅ None detected
 
-          ${MIGRATION_NOTE}
+${MIGRATION_NOTE}
 
-          ---
-          *This PR was automatically created by the CI pipeline after all checks passed.*"
+---
+*This PR was automatically created by the CI pipeline after all checks passed.*"
 
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR #${EXISTING_PR} already exists for ${BRANCH}. Updating..."
-            gh pr edit "$EXISTING_PR" --body "$PR_BODY"
-            echo "- **Pull Request:** Updated [#${EXISTING_PR}](https://github.com/${{ github.repository }}/pull/${EXISTING_PR})" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$PR_NUM" ]; then
+            echo "Updating existing PR #${PR_NUM} for ${BRANCH}..."
+            gh pr edit "$PR_NUM" --body "$PR_BODY" 2>/dev/null || true
+            echo "- **Pull Request:** Updated [#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM})" >> $GITHUB_STEP_SUMMARY
           else
             echo "Creating new PR for ${BRANCH} → main..."
             NEW_PR=$(gh pr create \
@@ -308,7 +308,7 @@ jobs:
             echo "- **Pull Request:** Created ${NEW_PR}" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Enable GitHub Auto-Merge (if no destructive migrations)
+      - name: Auto-Merge Pull Request into main
         if: |
           steps.compare.outputs.already_merged != 'true' &&
           steps.conflict.outputs.conflict != 'true' &&
@@ -316,17 +316,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${GITHUB_REF_NAME}"
-          PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+          BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+          if [ -z "$PR_NUM" ]; then
+            PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+          fi
 
           if [ -n "$PR_NUM" ]; then
-            echo "Enabling auto-merge for PR #${PR_NUM}..."
-            gh pr merge "$PR_NUM" --auto --merge 2>/dev/null || echo "Auto-merge not available (branch protection may not be configured)."
-
-            # If auto-merge isn't available (no branch protection), merge directly
-            if [ $? -ne 0 ]; then
-              echo "Attempting direct merge since auto-merge is not available..."
-              gh pr merge "$PR_NUM" --merge --delete-branch=false 2>/dev/null || echo "Direct merge also unavailable — PR ready for manual review."
+            echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
+            if gh pr merge "$PR_NUM" --merge --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
+              echo "✅ Successfully merged PR #${PR_NUM} into main!"
+              echo "- **Auto-Merge:** ✅ Successfully merged PR #${PR_NUM} into main" >> $GITHUB_STEP_SUMMARY
+            elif gh pr merge "$PR_NUM" --auto --merge 2>&1; then
+              echo "✅ GitHub Auto-Merge queued for PR #${PR_NUM}"
+              echo "- **Auto-Merge:** ⏳ GitHub Auto-Merge queued for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "::warning::Direct merge and auto-merge failed. PR ready for manual review."
+              echo "- **Auto-Merge:** ⚠️ Manual review required" >> $GITHUB_STEP_SUMMARY
             fi
-            echo "- **Auto-Merge:** Enabled for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ No open PR found for branch ${BRANCH}."
           fi
