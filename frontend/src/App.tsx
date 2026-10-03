@@ -5,7 +5,6 @@ import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
 import AttendanceReports from './pages/admin/AttendanceReports';
 import AttendanceCorrections from './pages/admin/AttendanceCorrections';
-import PeopleManagement from './pages/admin/PeopleManagement';
 import AcademicYears from './pages/admin/AcademicYears';
 import StudentPromotion from './pages/admin/StudentPromotion';
 import Permissions from './pages/admin/Permissions';
@@ -1611,7 +1610,7 @@ function SuperAdminHeader({
                   const cat = detailItem.category;
                   setDetailItem(null);
                   if (cat === 'School') nav('/super-admin');
-                  else if (cat === 'Student') nav('/people');
+                  else if (cat === 'Student') nav('/students');
                   else nav('/payments');
                 }}
               >
@@ -1866,7 +1865,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
-    ['/people', 'People Directory', UserPlus],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
@@ -10540,7 +10538,7 @@ function App(){return <Routes>
   <Route path="/history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
   <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
-  <Route path="/people" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PeopleManagement/></Layout></RoleGuard>}/>
+  <Route path="/people" element={<Navigate to="/students" replace />}/>
   <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
   <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
   <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
