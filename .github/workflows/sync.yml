@@ -1,0 +1,113 @@
+# ===========================================================================
+# AttendoSchool — Branch Sync & Conflict Detection
+# Manual trigger or scheduled — fetches, compares, detects conflicts
+# Does NOT auto-merge. Does NOT deploy. Safe read-only analysis.
+# ===========================================================================
+name: Sync — Branch Comparison & Conflict Detection
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Source branch to analyze (leave empty = all remote branches)'
+        required: false
+        type: string
+      target_branch:
+        description: 'Target branch to compare against'
+        required: false
+        type: string
+        default: 'main'
+  schedule:
+    # Run every 6 hours — read-only comparison, no merging
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sync-analysis:
+    name: "Sync: Fetch, Compare & Report"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch All Remote State
+        run: |
+          echo "### 🔄 Remote Sync Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          git fetch origin --prune
+          echo "All remote branches fetched."
+
+      - name: Analyze All Branches
+        run: |
+          TARGET="${{ inputs.target_branch || 'main' }}"
+          SOURCE="${{ inputs.source_branch }}"
+
+          echo "| Branch | Ahead | Behind | Conflicts | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :---: | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+
+          # Get list of remote branches to analyze
+          if [ -n "$SOURCE" ]; then
+            BRANCHES="origin/${SOURCE}"
+          else
+            BRANCHES=$(git branch -r | grep -v '\->' | grep -v "origin/${TARGET}" | grep -v 'origin/gh-pages' | sed 's/^ *//')
+          fi
+
+          for REMOTE_BRANCH in $BRANCHES; do
+            BRANCH_NAME=$(echo "$REMOTE_BRANCH" | sed 's#origin/##')
+
+            # Skip if same as target
+            if [ "$BRANCH_NAME" = "$TARGET" ]; then
+              continue
+            fi
+
+            # Calculate ahead/behind
+            AHEAD=$(git rev-list --count "origin/${TARGET}..${REMOTE_BRANCH}" 2>/dev/null || echo "?")
+            BEHIND=$(git rev-list --count "${REMOTE_BRANCH}..origin/${TARGET}" 2>/dev/null || echo "?")
+
+            # Skip branches with no new commits
+            if [ "$AHEAD" = "0" ] || [ "$AHEAD" = "?" ]; then
+              echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | — | ⏭️ Up-to-date |" >> $GITHUB_STEP_SUMMARY
+              continue
+            fi
+
+            # Safe conflict detection using merge-tree
+            git config user.name "sync-checker"
+            git config user.email "sync@attendoschool.local"
+
+            MERGE_BASE=$(git merge-base "origin/${TARGET}" "${REMOTE_BRANCH}" 2>/dev/null || echo "")
+            if [ -z "$MERGE_BASE" ]; then
+              echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | ❓ | No common ancestor |" >> $GITHUB_STEP_SUMMARY
+              continue
+            fi
+
+            # Test merge on detached HEAD (completely safe)
+            git checkout -q --detach "origin/${TARGET}" 2>/dev/null
+            if git merge --no-commit --no-ff "${REMOTE_BRANCH}" >/dev/null 2>&1; then
+              CONFLICT_STATUS="✅ None"
+              STATUS="✅ Ready to merge"
+              git merge --abort 2>/dev/null || git reset --hard "origin/${TARGET}" 2>/dev/null
+            else
+              CONFLICT_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null | wc -l)
+              CONFLICT_STATUS="❌ ${CONFLICT_FILES} file(s)"
+              STATUS="⚠️ Conflicts"
+              git merge --abort 2>/dev/null || git reset --hard "origin/${TARGET}" 2>/dev/null
+            fi
+
+            echo "| \`${BRANCH_NAME}\` | ${AHEAD} | ${BEHIND} | ${CONFLICT_STATUS} | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
+          done
+
+          git checkout -q main 2>/dev/null || true
+
+      - name: Sync Summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*This is a read-only analysis. No branches were modified.*" >> $GITHUB_STEP_SUMMARY
+          echo "*To merge a branch, create a Pull Request or push changes to trigger CI.*" >> $GITHUB_STEP_SUMMARY

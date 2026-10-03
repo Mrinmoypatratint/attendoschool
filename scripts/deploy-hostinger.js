@@ -1,9 +1,5 @@
-import * as ftp from 'basic-ftp';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const ftp = require('basic-ftp');
+const path = require('path');
 
 async function deploy() {
   const host = process.env.HOSTINGER_FTP_SERVER || process.argv[2];

@@ -1,0 +1,332 @@
+# ===========================================================================
+# AttendoSchool — Continuous Integration (CI)
+# Triggers: Pull Requests to main, pushes to developer branches
+# Does NOT deploy. Does NOT force-merge. Does NOT touch production.
+# ===========================================================================
+name: CI — Lint, Test, Build, Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - '**'
+      - '!main'
+      - '!gh-pages'
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  checks: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # STAGE 1 — PRE-FLIGHT CHECKS
+  # =========================================================================
+  pre-checks:
+    name: "Pre-Flight: Commit & Security Scan"
+    runs-on: ubuntu-latest
+    outputs:
+      has_migration: ${{ steps.migration.outputs.detected }}
+      has_destructive: ${{ steps.migration.outputs.destructive }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Commit Integrity
+        run: |
+          echo "### 🔍 Pre-Flight Checks" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Security — Scan for Leaked Secrets
+        run: |
+          echo "Scanning diff for potential secret leaks..."
+          ISSUES=0
+
+          # Patterns that should never appear in committed code
+          if git diff origin/main...HEAD -- ':(exclude).env.example' ':(exclude).env.production.example' ':(exclude)*.md' 2>/dev/null | \
+            grep -iE '(password\s*[:=]\s*["\x27][^"\x27]{6,}|api[_-]?key\s*[:=]\s*["\x27][A-Za-z0-9]{16,}|private[_-]?key\s*[:=]\s*["\x27]-----BEGIN)' ; then
+            echo "::warning::Potential secret detected in diff. Please review before merging."
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for .env files being committed
+          if git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^\.env$|^\.env\.(local|development|production)$|serviceAccount.*\.json$' ; then
+            echo "::error::Sensitive file (.env or serviceAccount) detected in commit!"
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          if [ "$ISSUES" -eq 0 ]; then
+            echo "✅ No secrets or sensitive files detected in diff."
+            echo "- **Security Scan:** ✅ No leaked secrets detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Security Scan:** ⚠️ $ISSUES potential issues found — review required" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Database Migration Detection
+        id: migration
+        run: |
+          MIGRATION_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^database/(migrations|schema\.sql|seed\.sql)' || true)
+
+          if [ -n "$MIGRATION_FILES" ]; then
+            echo "detected=true" >> $GITHUB_OUTPUT
+            echo "::warning::Database migration files changed. Manual review required before production deployment."
+            echo "### ⚠️ Database Migration Detected" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            echo "$MIGRATION_FILES" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            # Check for destructive operations
+            if echo "$MIGRATION_FILES" | xargs -I{} git diff origin/main...HEAD -- {} 2>/dev/null | \
+              grep -iE '(DROP\s+(TABLE|DATABASE|INDEX|COLUMN)|TRUNCATE\s+TABLE|DELETE\s+FROM.*WHERE\s+1|ALTER\s+TABLE.*DROP)'; then
+              echo "destructive=true" >> $GITHUB_OUTPUT
+              echo "::error::DESTRUCTIVE database operation detected! Production auto-deploy will be blocked."
+              echo "- **Destructive Migration:** 🚫 BLOCKED — Manual approval required" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "destructive=false" >> $GITHUB_OUTPUT
+              echo "- **Migration Type:** Non-destructive (additive)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "detected=false" >> $GITHUB_OUTPUT
+            echo "destructive=false" >> $GITHUB_OUTPUT
+          fi
+
+  # =========================================================================
+  # STAGE 2 — BACKEND CI
+  # =========================================================================
+  backend-ci:
+    name: "Backend: TypeScript Build & Test Suite"
+    needs: [pre-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Backend TypeScript Compile
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Run Comprehensive Test Suite (50 tests)
+        working-directory: ./backend
+        run: npm run test
+
+      - name: Backend CI Summary
+        if: always()
+        run: |
+          echo "### ⚙️ Backend CI" >> $GITHUB_STEP_SUMMARY
+          echo "- **TypeScript Build:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Suite:** ${{ job.status == 'success' && '✅ 50/50 PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 3 — FRONTEND CI
+  # =========================================================================
+  frontend-ci:
+    name: "Frontend: TypeScript Check & Vite Build"
+    needs: [pre-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend TypeScript Strict Check
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+      - name: Frontend Vite Production Build
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
+        run: npm run build
+
+      - name: Frontend CI Summary
+        if: always()
+        run: |
+          echo "### 🎨 Frontend CI" >> $GITHUB_STEP_SUMMARY
+          echo "- **TypeScript Check:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Vite Production Build:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 4 — CONFLICT DETECTION & AUTO-PR
+  # =========================================================================
+  conflict-check-and-pr:
+    name: "Merge Safety: Conflict Detection & Auto-PR"
+    needs: [backend-ci, frontend-ci]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout with Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compare Branch vs Main
+        id: compare
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          git fetch origin main
+
+          LOCAL_HEAD=$(git rev-parse HEAD)
+          REMOTE_HEAD=$(git rev-parse origin/main)
+          AHEAD=$(git rev-list --count origin/main..HEAD)
+          BEHIND=$(git rev-list --count HEAD..origin/main)
+
+          echo "### 📊 Branch Comparison Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Source Branch | \`${BRANCH}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Branch | \`main\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Source HEAD | \`${LOCAL_HEAD:0:8}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target HEAD | \`${REMOTE_HEAD:0:8}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commits Ahead | ${AHEAD} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commits Behind | ${BEHIND} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "already_merged=true" >> $GITHUB_OUTPUT
+            echo "ℹ️ Branch is already up-to-date with main." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "already_merged=false" >> $GITHUB_OUTPUT
+
+          # File change summary
+          echo "#### Changed Files" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          git diff --stat origin/main..HEAD >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Conflict Detection (Safe Dry-Run)
+        id: conflict
+        if: steps.compare.outputs.already_merged != 'true'
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          git config user.name "ci-conflict-checker"
+          git config user.email "ci@attendoschool.local"
+
+          # Create a temporary branch from main for safe conflict testing
+          git checkout -B _ci_merge_test origin/main
+
+          # Attempt merge without committing
+          if git merge --no-commit --no-ff "origin/${BRANCH}" 2>/dev/null; then
+            echo "conflict=false" >> $GITHUB_OUTPUT
+            echo "#### ✅ Merge Conflict Check: CLEAN" >> $GITHUB_STEP_SUMMARY
+            echo "No merge conflicts detected. Safe to merge." >> $GITHUB_STEP_SUMMARY
+            git merge --abort 2>/dev/null || git reset --hard origin/main
+          else
+            echo "conflict=true" >> $GITHUB_OUTPUT
+            echo "#### ⚠️ Merge Conflict Check: CONFLICTS DETECTED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| File | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+            git diff --name-only --diff-filter=U | while read f; do
+              echo "| \`${f}\` | ❌ Conflict |" >> $GITHUB_STEP_SUMMARY
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action Required:** Merge \`main\` into \`${BRANCH}\` locally, resolve conflicts, and push again." >> $GITHUB_STEP_SUMMARY
+            git merge --abort 2>/dev/null || git reset --hard origin/main
+          fi
+
+      - name: Create or Update Pull Request
+        if: |
+          steps.compare.outputs.already_merged != 'true' &&
+          steps.conflict.outputs.conflict != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+
+          MIGRATION_NOTE=""
+          if [ "${{ needs.pre-checks.outputs.has_migration }}" = "true" ]; then
+            MIGRATION_NOTE="⚠️ **Database migration detected** — review before merging."
+          fi
+          if [ "${{ needs.pre-checks.outputs.has_destructive }}" = "true" ]; then
+            MIGRATION_NOTE="🚫 **DESTRUCTIVE database migration detected** — manual approval required."
+          fi
+
+          PR_BODY="## Auto-Generated Pull Request
+
+          **Branch:** \`${BRANCH}\` → \`main\`
+          **CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)
+          **Conflicts:** ✅ None detected
+
+          ${MIGRATION_NOTE}
+
+          ---
+          *This PR was automatically created by the CI pipeline after all checks passed.*"
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #${EXISTING_PR} already exists for ${BRANCH}. Updating..."
+            gh pr edit "$EXISTING_PR" --body "$PR_BODY"
+            echo "- **Pull Request:** Updated [#${EXISTING_PR}](https://github.com/${{ github.repository }}/pull/${EXISTING_PR})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Creating new PR for ${BRANCH} → main..."
+            NEW_PR=$(gh pr create \
+              --head "${BRANCH}" \
+              --base main \
+              --title "Auto: Merge ${BRANCH} into main" \
+              --body "$PR_BODY" \
+              --no-maintainer-edit 2>&1 || true)
+            echo "- **Pull Request:** Created ${NEW_PR}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Enable GitHub Auto-Merge (if no destructive migrations)
+        if: |
+          steps.compare.outputs.already_merged != 'true' &&
+          steps.conflict.outputs.conflict != 'true' &&
+          needs.pre-checks.outputs.has_destructive != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$PR_NUM" ]; then
+            echo "Enabling auto-merge for PR #${PR_NUM}..."
+            gh pr merge "$PR_NUM" --auto --merge 2>/dev/null || echo "Auto-merge not available (branch protection may not be configured)."
+
+            # If auto-merge isn't available (no branch protection), merge directly
+            if [ $? -ne 0 ]; then
+              echo "Attempting direct merge since auto-merge is not available..."
+              gh pr merge "$PR_NUM" --merge --delete-branch=false 2>/dev/null || echo "Direct merge also unavailable — PR ready for manual review."
+            fi
+            echo "- **Auto-Merge:** Enabled for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
+          fi

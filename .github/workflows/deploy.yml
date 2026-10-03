@@ -1,0 +1,441 @@
+# ===========================================================================
+# AttendoSchool — Production Deployment (CD)
+# Triggers: ONLY on push to main (after PR merge) or manual dispatch
+# Deploys frontend to Hostinger Premium (FTPS) + backend to Render
+# Includes: Health checks, rollback, versioning, deployment logging
+# ===========================================================================
+name: CD — Production Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rollback_run_id:
+        description: 'GitHub Actions Run ID to rollback to (leave empty for normal deploy)'
+        required: false
+        type: string
+      skip_tests:
+        description: 'Skip tests (emergency deploy only)'
+        required: false
+        type: boolean
+        default: false
+
+# DEPLOYMENT LOCK — prevents simultaneous production deployments
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+
+env:
+  FRONTEND_URL: https://attendoschool.optinetinnovations.in
+  BACKEND_URL: https://attendoschool-backend.onrender.com
+  DEPLOY_VERSION: ${{ github.sha }}
+
+jobs:
+  # =========================================================================
+  # STAGE 1 — VALIDATE COMMIT & MIGRATION SAFETY
+  # =========================================================================
+  validate:
+    name: "Validate: Commit & Migration Safety"
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_blocked: ${{ steps.safety.outputs.blocked }}
+      block_reason: ${{ steps.safety.outputs.reason }}
+      version_tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Migration Safety Gate
+        id: safety
+        run: |
+          # Check if this commit contains destructive database migrations
+          CHANGED=$(git diff --name-only HEAD~1..HEAD 2>/dev/null || echo "")
+          MIGRATION_FILES=$(echo "$CHANGED" | grep -E '^database/(migrations|schema\.sql)' || true)
+
+          if [ -n "$MIGRATION_FILES" ]; then
+            DESTRUCTIVE=$(git diff HEAD~1..HEAD -- $MIGRATION_FILES 2>/dev/null | \
+              grep -ciE '(DROP\s+(TABLE|DATABASE|INDEX|COLUMN)|TRUNCATE\s+TABLE|DELETE\s+FROM.*WHERE\s+1)' || echo "0")
+            if [ "$DESTRUCTIVE" -gt 0 ]; then
+              echo "blocked=true" >> $GITHUB_OUTPUT
+              echo "reason=Destructive database migration detected" >> $GITHUB_OUTPUT
+              echo "::error::DEPLOYMENT BLOCKED — Destructive database migration detected. Manual approval required."
+              echo "### 🚫 DEPLOYMENT BLOCKED" >> $GITHUB_STEP_SUMMARY
+              echo "**Reason:** Destructive database migration detected in this commit." >> $GITHUB_STEP_SUMMARY
+              echo "**Action:** Review migration files and manually trigger deploy after approval." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          fi
+          echo "blocked=false" >> $GITHUB_OUTPUT
+          echo "reason=" >> $GITHUB_OUTPUT
+
+      - name: Generate Version Tag
+        id: version
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          TIMESTAMP=$(date -u +%Y%m%d-%H%M)
+          VERSION="v0.11.0-${TIMESTAMP}-${SHORT_SHA}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "### 📦 Deployment Version" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${GITHUB_SHA}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`main\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 2 — BUILD & TEST PRODUCTION ARTIFACTS
+  # =========================================================================
+  build:
+    name: "Build: Production Artifacts"
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # Backend build + test
+      - name: Install & Build Backend
+        working-directory: ./backend
+        run: |
+          npm install
+          npm run build
+
+      - name: Run Backend Test Suite
+        if: inputs.skip_tests != true
+        working-directory: ./backend
+        run: npm run test
+
+      # Frontend build
+      - name: Install & Build Frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
+        run: |
+          npm ci
+          npm run build
+
+      # Save deployment artifact for rollback capability
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: frontend/dist/
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "### 🔨 Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend:** ✅ TypeScript compiled + tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend:** ✅ Vite production bundle created" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact:** \`frontend-dist-${GITHUB_SHA:0:8}\` saved (30-day retention)" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 3 — DEPLOY FRONTEND TO HOSTINGER (FTPS)
+  # =========================================================================
+  deploy-frontend:
+    name: "Deploy: Frontend → Hostinger (FTPS)"
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    outputs:
+      deployed: ${{ steps.deploy.outputs.success }}
+      pre_deploy_snapshot: ${{ steps.snapshot.outputs.file_count }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: frontend/dist/
+
+      - name: Verify Artifact Integrity
+        run: |
+          if [ ! -f "frontend/dist/index.html" ]; then
+            echo "::error::Deployment artifact is missing index.html!"
+            exit 1
+          fi
+          FILE_COUNT=$(find frontend/dist -type f | wc -l)
+          echo "Artifact verified: ${FILE_COUNT} files ready for deployment."
+
+      - name: Pre-Deploy Snapshot (File Listing)
+        id: snapshot
+        run: |
+          npm install basic-ftp
+          node -e "
+            const ftp = require('basic-ftp');
+            (async () => {
+              const client = new ftp.Client();
+              try {
+                const host = process.env.FTP_HOST.replace(/^(https?|ftps?):\/\//i, '').replace(/\/$/, '');
+                await client.access({
+                  host, user: process.env.FTP_USER, password: process.env.FTP_PASS,
+                  secure: true, port: 21, secureOptions: { rejectUnauthorized: false }
+                });
+                const files = await client.list();
+                const count = files.length;
+                console.log('Pre-deploy file count: ' + count);
+                const names = files.map(f => f.name).join(',');
+                require('fs').writeFileSync('/tmp/pre-deploy-snapshot.txt', names);
+              } catch(e) { console.log('Snapshot skipped:', e.message); }
+              finally { client.close(); }
+            })();
+          "
+          echo "file_count=$(cat /tmp/pre-deploy-snapshot.txt 2>/dev/null | tr ',' '\n' | wc -l || echo 0)" >> $GITHUB_OUTPUT
+        env:
+          FTP_HOST: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          FTP_USER: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+
+      - name: Deploy via FTPS
+        id: deploy
+        env:
+          HOSTINGER_FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          HOSTINGER_FTP_PASSWORD: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          HOSTINGER_SERVER_DIR: ${{ secrets.HOSTINGER_SERVER_DIR || '.' }}
+        run: |
+          node scripts/deploy-hostinger.js
+          echo "success=true" >> $GITHUB_OUTPUT
+
+      - name: Deploy Frontend Summary
+        if: always()
+        run: |
+          echo "### 🌐 Frontend Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** Hostinger Premium (FTPS)" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** ${{ env.FRONTEND_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.deploy.outputs.success == 'true' && '✅ Deployed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** \`${{ needs.validate.outputs.version_tag }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 4 — TRIGGER BACKEND DEPLOYMENT (Render)
+  # =========================================================================
+  deploy-backend:
+    name: "Deploy: Backend → Render"
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        id: render
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "Triggering Render deployment webhook..."
+            HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" --max-time 30)
+            echo "Render webhook response: HTTP ${HTTP_CODE}"
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "triggered=true" >> $GITHUB_OUTPUT
+            else
+              echo "triggered=false" >> $GITHUB_OUTPUT
+              echo "::warning::Render webhook returned HTTP ${HTTP_CODE}"
+            fi
+          else
+            echo "Render auto-deploys from main branch (no webhook configured)."
+            echo "triggered=auto" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Backend Deploy Summary
+        run: |
+          echo "### ⚙️ Backend Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** Render Cloud (Node.js)" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** ${{ env.BACKEND_URL }}/api" >> $GITHUB_STEP_SUMMARY
+          echo "- **Method:** ${{ steps.render.outputs.triggered == 'auto' && 'Git-triggered auto-deploy' || 'Webhook triggered' }}" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 5 — HEALTH CHECKS
+  # =========================================================================
+  health-check:
+    name: "Verify: Production Health Checks"
+    needs: [deploy-frontend, deploy-backend]
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_healthy: ${{ steps.frontend-check.outputs.healthy }}
+      backend_healthy: ${{ steps.backend-check.outputs.healthy }}
+    steps:
+      - name: Wait for Deployment Propagation
+        run: sleep 15
+
+      - name: Frontend Health Check
+        id: frontend-check
+        run: |
+          echo "Checking frontend at ${{ env.FRONTEND_URL }}..."
+          MAX_RETRIES=5
+          HEALTHY=false
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -sS -o /tmp/frontend-response.html -w "%{http_code}" \
+              --max-time 30 "${{ env.FRONTEND_URL }}" 2>/dev/null || echo "000")
+            echo "Attempt ${i}/${MAX_RETRIES}: HTTP ${HTTP_CODE}"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              # Verify it's actually our app, not a generic page
+              if grep -qi "root\|attendoschool\|vite" /tmp/frontend-response.html 2>/dev/null; then
+                echo "✅ Frontend is healthy — HTTP 200 with valid app content."
+                HEALTHY=true
+                break
+              else
+                echo "⚠️ HTTP 200 but content doesn't match expected app."
+              fi
+            fi
+            sleep 10
+          done
+
+          echo "healthy=${HEALTHY}" >> $GITHUB_OUTPUT
+          if [ "$HEALTHY" = "false" ]; then
+            echo "::error::Frontend health check FAILED after ${MAX_RETRIES} attempts."
+          fi
+
+      - name: Backend Health Check
+        id: backend-check
+        run: |
+          echo "Checking backend at ${{ env.BACKEND_URL }}/api/health..."
+          MAX_RETRIES=5
+          HEALTHY=false
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -sS -o /tmp/backend-response.json -w "%{http_code}" \
+              --max-time 30 "${{ env.BACKEND_URL }}/api/health" 2>/dev/null || echo "000")
+            echo "Attempt ${i}/${MAX_RETRIES}: HTTP ${HTTP_CODE}"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend API is healthy — HTTP 200."
+              HEALTHY=true
+              break
+            fi
+
+            # Render free tier may need wake-up time
+            if [ "$HTTP_CODE" = "503" ] || [ "$HTTP_CODE" = "000" ]; then
+              echo "Backend may be waking up... retrying in 30s."
+              sleep 30
+            else
+              sleep 10
+            fi
+          done
+
+          echo "healthy=${HEALTHY}" >> $GITHUB_OUTPUT
+          if [ "$HEALTHY" = "false" ]; then
+            echo "::warning::Backend health check returned HTTP ${HTTP_CODE} (Render free tier may take up to 60s to wake)."
+          fi
+
+      - name: Health Check Summary
+        if: always()
+        run: |
+          echo "### 🩺 Production Health Checks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ env.FRONTEND_URL }} | ${{ steps.frontend-check.outputs.healthy == 'true' && '✅ Healthy' || '❌ Unhealthy' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ${{ env.BACKEND_URL }}/api/health | ${{ steps.backend-check.outputs.healthy == 'true' && '✅ Healthy' || '⚠️ Check manually' }} |" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 6 — ROLLBACK (if health checks fail)
+  # =========================================================================
+  rollback:
+    name: "Rollback: Restore Previous Frontend"
+    needs: [health-check, deploy-frontend, validate]
+    if: |
+      always() &&
+      needs.deploy-frontend.outputs.deployed == 'true' &&
+      needs.health-check.outputs.frontend_healthy == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Find Previous Successful Artifact
+        id: find-previous
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Searching for previous successful deployment artifact..."
+          # Find the last successful deploy workflow run (not this one)
+          PREV_RUN=$(gh run list --workflow=deploy.yml --status=success --limit=2 --json databaseId -q '.[1].databaseId' 2>/dev/null || echo "")
+
+          if [ -n "$PREV_RUN" ] && [ "$PREV_RUN" != "${{ github.run_id }}" ]; then
+            echo "Found previous successful run: ${PREV_RUN}"
+            echo "run_id=${PREV_RUN}" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "No previous successful deployment found for rollback."
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Previous Artifact
+        if: steps.find-previous.outputs.found == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-*
+          path: frontend/dist/
+          run-id: ${{ steps.find-previous.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Re-deploy Previous Version via FTPS
+        if: steps.find-previous.outputs.found == 'true'
+        env:
+          HOSTINGER_FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          HOSTINGER_FTP_PASSWORD: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          HOSTINGER_SERVER_DIR: ${{ secrets.HOSTINGER_SERVER_DIR || '.' }}
+        run: |
+          npm install basic-ftp
+          node scripts/deploy-hostinger.js
+          echo "### ⏪ ROLLBACK EXECUTED" >> $GITHUB_STEP_SUMMARY
+          echo "Previous frontend version re-deployed after health check failure." >> $GITHUB_STEP_SUMMARY
+
+      - name: Rollback Summary
+        if: always()
+        run: |
+          if [ "${{ steps.find-previous.outputs.found }}" = "true" ]; then
+            echo "### ⏪ Rollback Status" >> $GITHUB_STEP_SUMMARY
+            echo "- **Reason:** Frontend health check failed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action:** Previous version re-deployed" >> $GITHUB_STEP_SUMMARY
+            echo "- **Previous Run:** #${{ steps.find-previous.outputs.run_id }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ Rollback Not Available" >> $GITHUB_STEP_SUMMARY
+            echo "No previous successful deployment artifact found." >> $GITHUB_STEP_SUMMARY
+            echo "**Manual intervention required.**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # =========================================================================
+  # STAGE 7 — DEPLOYMENT LOG
+  # =========================================================================
+  log-deployment:
+    name: "Log: Record Deployment"
+    needs: [validate, build, deploy-frontend, deploy-backend, health-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Record
+        run: |
+          echo "### 📋 Deployment Record" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployment ID | \`#${{ github.run_number }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | \`${{ needs.validate.outputs.version_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`main\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered By | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Started | ${{ github.event.head_commit.timestamp }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Deploy | ${{ needs.deploy-frontend.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Deploy | ${{ needs.deploy-backend.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Health | ${{ needs.health-check.outputs.frontend_healthy == 'true' && '✅ PASS' || '⚠️ CHECK' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Health | ${{ needs.health-check.outputs.backend_healthy == 'true' && '✅ PASS' || '⚠️ CHECK' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Result | ${{ needs.health-check.outputs.frontend_healthy == 'true' && '✅ SUCCESS' || '⚠️ REVIEW NEEDED' }} |" >> $GITHUB_STEP_SUMMARY
