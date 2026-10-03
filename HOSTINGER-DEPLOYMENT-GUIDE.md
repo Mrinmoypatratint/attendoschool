@@ -30,10 +30,22 @@ This guide walks you through automatically deploying the **AttendoSchool** front
 
 ---
 
-## 3. Add Secrets to Your GitHub Repository
+---
 
+## 3. GitHub Configuration
+
+### 3.1 Enable Auto-Merge Permissions
+To allow GitHub Actions to automatically compare and merge remote developer branches (e.g., `Indranil`, `sweta-mondal`, `feature/*`) into `main`:
+1. Open your GitHub repository:
+   **[Settings > Actions > General](https://github.com/Mrinmoypatratint/attendoschool/settings/actions)**
+2. Scroll to **Workflow permissions**:
+   - Select **Read and write permissions**
+   - Check **Allow GitHub Actions to create and approve pull requests**
+3. Click **Save**.
+
+### 3.2 Add Secrets to Your GitHub Repository
 1. Open your GitHub repository in your browser:
-   **[https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions](https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions)**
+   **[Settings > Secrets and variables > Actions](https://github.com/Mrinmoypatratint/attendoschool/settings/secrets/actions)**
 2. Click the green **New repository secret** button and add these secrets:
 
 | Secret Name | Value | Description |
@@ -41,22 +53,31 @@ This guide walks you through automatically deploying the **AttendoSchool** front
 | `HOSTINGER_FTP_SERVER` | `ftp.optinetinnovations.in` *(or Hostinger FTP IP)* | Hostinger FTP hostname |
 | `HOSTINGER_FTP_USERNAME` | `u123456789` | Your Hostinger FTP username |
 | `HOSTINGER_FTP_PASSWORD` | `your_ftp_password` | Your Hostinger FTP password |
-| `HOSTINGER_SERVER_DIR` | `public_html/attendoschool/` | Subdomain folder on Hostinger *(defaults to `public_html/attendoschool/`)* |
+| `HOSTINGER_SERVER_DIR` | `public_html/attendoschool` | Subdomain folder on Hostinger *(defaults to `public_html/attendoschool`)* |
 | `VITE_API_URL` | `https://attendoschool-backend.onrender.com/api` | Production backend API endpoint |
+| `RENDER_DEPLOY_HOOK_URL` | *(Optional Render Deploy Hook URL)* | Automatically triggers backend deployment on Render |
 
 > **Note on Multi-Domain Accounts**: If `optinetinnovations.in` is an addon domain in Hostinger, your directory might be `domains/optinetinnovations.in/public_html/attendoschool/`. You can verify the exact path in Hostinger **File Manager**.
 
 ---
 
-## 4. How the Automated CI/CD Pipeline Works
+## 4. How the Multi-Branch CI/CD Pipeline Works
 
-Whenever you push to `main` (`git push origin main`):
-1. **GitHub Actions Workflow** (`.github/workflows/ci-cd.yml`) automatically triggers.
-2. It typechecks and compiles both backend and frontend.
-3. It bundles the production frontend with:
-   - Dynamic API routing configured for `attendoschool.optinetinnovations.in`.
-   - Hostinger Apache/LiteSpeed `.htaccess` with client-side SPA routing, HTTPS redirect, asset caching, and security headers.
-4. It connects securely over **FTPS** to Hostinger and deploys directly to `public_html/attendoschool/`.
+Whenever any developer pushes to **any** remote branch (e.g. `Indranil`, `sweta-mondal`, `main`):
+1. **Continuous Testing & Typecheck**:
+   - Backend compile & comprehensive 50-test suite runs.
+   - Frontend TypeScript check & Vite production build runs.
+2. **Compare & Auto-Merge**:
+   - Compares the remote branch against `main`.
+   - Simulates merge to check for conflicts without altering code.
+   - If clean: commits and pushes to `origin/main`.
+   - If conflict exists: aborts safely and logs conflicting files in the GitHub Actions summary.
+3. **Automated Frontend Deployment to Hostinger Premium**:
+   - Bundles the production frontend with Hostinger `.htaccess` for SPA routing & caching.
+   - Securely uploads via **FTPS** to `public_html/attendoschool` on your Hostinger Premium plan.
+4. **Backend API Deployment**:
+   - Hosted on Render (tracks `main` branch automatically) or triggered via `RENDER_DEPLOY_HOOK_URL`.
+
 
 ---
 

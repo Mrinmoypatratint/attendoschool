@@ -1,15 +1,26 @@
-name: AttendoSchool CI/CD Pipeline
+name: AttendoSchool CI/CD & Auto-Merge Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '**' # Triggers on all remote branches (Indranil, sweta-mondal, feature/*, main)
+    tags-ignore:
+      - '**'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+
 jobs:
-  backend-ci:
-    name: Backend Build & Typecheck
+  # =========================================================================
+  # 1. CONTINUOUS TESTING & TYPECHECKING (Runs on every pushed branch)
+  # =========================================================================
+  verify-and-test:
+    name: Continuous Testing & Build Verification
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -20,30 +31,24 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
+      # Backend Verification
       - name: Install Backend Dependencies
         working-directory: ./backend
         run: npm ci
 
-      - name: Backend Build & Compile
+      - name: Backend Typecheck & Compile
         working-directory: ./backend
         run: npm run build
 
-  frontend-ci:
-    name: Frontend Build & Typecheck
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Run Backend Test Suite
+        working-directory: ./backend
+        run: npm run test
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
+      # Frontend Verification
       - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci
@@ -56,10 +61,108 @@ jobs:
           npx tsc --noEmit
           npm run build
 
-  deploy-hostinger:
-    name: Deploy to Hostinger Web Hosting (FTP/FTPS)
-    needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main'
+      - name: Record Verification Success
+        run: |
+          echo "### 🚀 CI Verification Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend:** TypeScript build & comprehensive 50-test suite passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend:** TypeScript verification & Vite production bundle created" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # 2. AUTOMATIC COMPARE & MERGE INTO MAIN
+  # =========================================================================
+  compare-and-automerge:
+    name: Compare & Auto-Merge to Main
+    needs: [verify-and-test]
+    if: |
+      github.event_name == 'push' &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/gh-pages'
+    runs-on: ubuntu-latest
+    outputs:
+      merged: ${{ steps.automerge.outputs.merged }}
+      reason: ${{ steps.automerge.outputs.reason }}
+    steps:
+      - name: Checkout Repository with Full Git History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git Bot Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compare & Merge Branch into Main
+        id: automerge
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME}"
+          echo "Evaluating branch '${BRANCH_NAME}' for auto-merge into main..."
+
+          # Fetch remote main
+          git fetch origin main:refs/remotes/origin/main
+
+          # Check how many commits ahead the branch is compared to main
+          COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD)
+          echo "Commits ahead of main: ${COMMITS_AHEAD}"
+
+          if [ "$COMMITS_AHEAD" -eq 0 ]; then
+            echo "Branch '${BRANCH_NAME}' is already fully incorporated into main."
+            echo "merged=false" >> $GITHUB_OUTPUT
+            echo "reason=already_up_to_date" >> $GITHUB_OUTPUT
+            echo "### ℹ️ Auto-Merge Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "Branch \`${BRANCH_NAME}\` is already up-to-date with \`main\`." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Switch to main branch
+          git checkout -B main origin/main
+
+          # Check for merge conflicts by doing a test merge without committing
+          echo "Attempting test merge of 'origin/${BRANCH_NAME}' into 'main'..."
+          if ! git merge --no-commit --no-ff "origin/${BRANCH_NAME}"; then
+            echo "❌ Conflict detected!"
+            echo "### ⚠️ Auto-Merge Blocked: Conflict Detected" >> $GITHUB_STEP_SUMMARY
+            echo "Branch \`${BRANCH_NAME}\` could not be automatically merged into \`main\` because of file conflicts:" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            git diff --name-only --diff-filter=U >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "Please merge \`main\` into \`${BRANCH_NAME}\` locally, resolve conflicts, and push again." >> $GITHUB_STEP_SUMMARY
+
+            git merge --abort || true
+            echo "merged=false" >> $GITHUB_OUTPUT
+            echo "reason=conflict" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          # Commit clean merge
+          echo "✅ Merge is clean. Committing merge into main..."
+          git commit -m "chore(ci): auto-merge branch '${BRANCH_NAME}' into main"
+
+          # Push changes to origin main
+          git push origin main
+
+          echo "merged=true" >> $GITHUB_OUTPUT
+          echo "reason=merged_successfully" >> $GITHUB_OUTPUT
+          echo "### ✅ Auto-Merge Succeeded" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully merged branch \`${BRANCH_NAME}\` into \`main\` and pushed to remote." >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # 3. DEPLOY FRONTEND TO HOSTINGER PREMIUM PLAN (FTPS)
+  # =========================================================================
+  deploy-frontend-hostinger:
+    name: Deploy Frontend to Hostinger Premium (FTPS)
+    needs: [verify-and-test, compare-and-automerge]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      needs.verify-and-test.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        needs.compare-and-automerge.outputs.merged == 'true'
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -72,15 +175,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Build Frontend for Hostinger
+      - name: Install Frontend Dependencies & Build
         working-directory: ./frontend
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
-        run: npm run build
+        run: |
+          npm ci
+          npm run build
 
       - name: Sanitize Hostinger FTP Server
         id: ftp-config
@@ -89,12 +190,53 @@ jobs:
           CLEAN_SERVER=$(echo "$RAW_SERVER" | sed -E 's#^https?://##; s#^ftps?://##; s#/$##')
           echo "host=$CLEAN_SERVER" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Hostinger via FTPS Node Script
+      - name: Deploy Frontend to Hostinger via FTPS
+        if: steps.ftp-config.outputs.host != ''
         env:
           HOSTINGER_FTP_SERVER: ${{ steps.ftp-config.outputs.host }}
           HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           HOSTINGER_FTP_PASSWORD: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          HOSTINGER_SERVER_DIR: ${{ secrets.HOSTINGER_SERVER_DIR || '' }}
+          HOSTINGER_SERVER_DIR: ${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/attendoschool' }}
         run: |
           npm install basic-ftp
           node scripts/deploy-hostinger.js
+
+      - name: Post Frontend Deployment Summary
+        if: steps.ftp-config.outputs.host != ''
+        run: |
+          echo "### 🌐 Frontend Deployed to Hostinger Premium" >> $GITHUB_STEP_SUMMARY
+          echo "- **Subdomain:** https://attendoschool.optinetinnovations.in" >> $GITHUB_STEP_SUMMARY
+          echo "- **Transport:** FTPS (TLS Secure Upload)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Folder:** \`${{ secrets.HOSTINGER_SERVER_DIR || 'public_html/attendoschool' }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # 4. DEPLOY BACKEND API (Render Cloud / Webhook)
+  # =========================================================================
+  deploy-backend-cloud:
+    name: Deploy Backend API
+    needs: [verify-and-test, compare-and-automerge]
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      needs.verify-and-test.result == 'success' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        needs.compare-and-automerge.outputs.merged == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook (if configured)
+        if: env.RENDER_HOOK != ''
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering automated backend deploy hook on Render..."
+          curl -sS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          echo "Backend deployment triggered successfully!"
+
+      - name: Backend Status Summary
+        run: |
+          echo "### ⚙️ Backend Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** Node.js Express Container (Render / Cloud)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git Tracking:** Render automatically deploys new commits pushed to \`main\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Endpoint:** \`${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}/health\`" >> $GITHUB_STEP_SUMMARY
