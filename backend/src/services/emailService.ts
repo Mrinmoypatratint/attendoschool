@@ -412,3 +412,255 @@ AttendoSchool Enterprise Campus Management
     message: 'Password setup link generated and logged successfully'
   };
 }
+
+/**
+ * Sends a transactional email when a student's profile photo is approved or rejected by the admin.
+ */
+export async function sendPhotoReviewEmail(options: {
+  to: string;
+  studentName: string;
+  status: 'APPROVED' | 'REJECTED';
+  reason?: string;
+  schoolName?: string;
+  schoolId?: string;
+  photoUrl?: string;
+}) {
+  const { to, studentName, status, reason, schoolName, schoolId, photoUrl } = options;
+  if (!to || !to.includes('@')) {
+    console.warn('[EmailService] Invalid or missing recipient email for photo review notification:', to);
+    return { success: false, message: 'Invalid recipient email' };
+  }
+
+  const isApproved = status === 'APPROVED';
+  const logo = getLogoAttachment();
+  const baseUrl = env.appBaseUrl || 'http://localhost:5173';
+  const logoUrl = `${baseUrl}/attendo-school-logo.png`;
+  const portalUrl = `${baseUrl}/#/student/profile`;
+  const institutionName = schoolName || 'School Administration';
+
+  const emailSubject = isApproved
+    ? `Profile Photo Approved — ${institutionName}`
+    : `Profile Photo Update Request Declined — ${institutionName}`;
+
+  let logoImgSrc = logoUrl;
+  const attachments: any[] = [];
+  if (logo.hasLogo) {
+    attachments.push({
+      filename: 'attendo-school-logo.png',
+      path: logo.path,
+      cid: 'attendoschool-logo'
+    });
+    logoImgSrc = 'cid:attendoschool-logo';
+  }
+
+  const textContent = isApproved
+    ? `Hello ${studentName},\n\n` +
+      `Great news! Your recent profile photograph has been approved by the School Administration of ${institutionName}.\n\n` +
+      `Your updated photo is now active across your Student Portal, Attendance Register, and Official Identity Records.\n\n` +
+      `View your profile: ${portalUrl}\n\n` +
+      `Best regards,\n${institutionName} & AttendoSchool Platform`
+    : `Hello ${studentName},\n\n` +
+      `Your recent profile photograph submission was reviewed by the School Administration of ${institutionName} and was NOT approved.\n\n` +
+      `Reason: ${reason || 'Photo does not meet administrative standards.'}\n\n` +
+      `Photo Guidelines:\n` +
+      `- Use a clear, well-lit, front-facing passport-style photograph.\n` +
+      `- Avoid casual selfies, heavy filters, sunglasses, and hats.\n` +
+      `- Ensure a plain or neutral background.\n\n` +
+      `Please upload a new photo here: ${portalUrl}\n\n` +
+      `Best regards,\n${institutionName} & AttendoSchool Platform`;
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(emailSubject)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; line-height: 1.6;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 590px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+          <!-- Top Accent Bar -->
+          <tr>
+            <td style="height: 4px; background-color: ${isApproved ? '#10b981' : '#ef4444'}; line-height: 4px; font-size: 4px;">&nbsp;</td>
+          </tr>
+
+          <!-- Header -->
+          <tr>
+            <td style="padding: 24px 28px 20px; border-bottom: 1px solid #f1f5f9; background-color: #ffffff;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="vertical-align: middle;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="vertical-align: middle; padding-right: 12px;">
+                          <img src="${logoImgSrc}" alt="AttendoSchool" width="40" height="40" style="display: block; border-radius: 8px;" />
+                        </td>
+                        <td style="vertical-align: middle;">
+                          <div style="font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.2;">
+                            Attendo<span style="color: #2563eb;">School</span>
+                          </div>
+                          <div style="font-size: 12px; color: #64748b; font-weight: 500; margin-top: 2px;">
+                            ${escapeHtml(institutionName)}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <span style="display: inline-block; font-size: 11px; font-weight: 700; color: ${isApproved ? '#047857' : '#b91c1c'}; background-color: ${isApproved ? '#ecfdf5' : '#fef2f2'}; border: 1px solid ${isApproved ? '#a7f3d0' : '#fecaca'}; padding: 4px 10px; border-radius: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+                      ${isApproved ? '✓ Photo Approved' : '✕ Action Required'}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding: 28px 28px 24px;">
+              <h2 style="margin: 0 0 14px; font-size: 19px; font-weight: 700; color: #0f172a;">
+                ${isApproved ? 'Your Profile Photo is Now Approved' : 'Profile Photo Update Declined'}
+              </h2>
+
+              <p style="margin: 0 0 16px; font-size: 14px; color: #334155; line-height: 1.6;">
+                Dear <strong>${escapeHtml(studentName)}</strong>,
+              </p>
+
+              ${isApproved ? `
+                <p style="margin: 0 0 18px; font-size: 14px; color: #334155; line-height: 1.6;">
+                  We are pleased to inform you that your profile photograph submission has been reviewed and approved by the <strong>${escapeHtml(institutionName)}</strong> administration.
+                </p>
+                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 22px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td style="vertical-align: top; width: 24px; padding-right: 10px;">
+                        <span style="font-size: 18px;">✅</span>
+                      </td>
+                      <td style="vertical-align: top;">
+                        <strong style="color: #166534; font-size: 13.5px; display: block; margin-bottom: 3px;">Active Across System</strong>
+                        <span style="color: #15803d; font-size: 12.5px; line-height: 1.5; display: block;">
+                          Your updated photograph is now displayed on your Student Portal, Attendance Registers, Class Rosters, and Official Digital Student ID Card.
+                        </span>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              ` : `
+                <p style="margin: 0 0 16px; font-size: 14px; color: #334155; line-height: 1.6;">
+                  Your recent profile photograph submission was reviewed by the school administration and <strong>could not be approved</strong> at this time.
+                </p>
+                <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                  <strong style="color: #991b1b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 4px;">
+                    Reason for Rejection:
+                  </strong>
+                  <div style="color: #7f1d1d; font-size: 13.5px; font-style: italic; background-color: #ffffff; border: 1px solid #fee2e2; padding: 10px 14px; border-radius: 6px; margin-top: 6px;">
+                    "${escapeHtml(reason || 'The photograph does not meet institutional passport-photo standards.')}"
+                  </div>
+                </div>
+
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 22px;">
+                  <strong style="color: #334155; font-size: 13px; display: block; margin-bottom: 8px;">
+                    Photo Upload Guidelines:
+                  </strong>
+                  <ul style="margin: 0; padding-left: 20px; color: #475569; font-size: 13px; line-height: 1.6;">
+                    <li>Clear, well-lit, front-facing portrait with head & shoulders centered.</li>
+                    <li>Neutral or plain white/light background.</li>
+                    <li>No casual selfies, group photos, hats, sunglasses, or filters.</li>
+                    <li>Formal school uniform or modest attire recommended.</li>
+                  </ul>
+                </div>
+              `}
+
+              <!-- Action Button -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 24px 0 16px;">
+                <tr>
+                  <td align="center" style="border-radius: 6px; background-color: #2563eb;">
+                    <a href="${portalUrl}" target="_blank" style="font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; padding: 12px 26px; border-radius: 6px; display: inline-block;">
+                      ${isApproved ? 'Open Student Profile →' : 'Upload New Photo →'}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 20px 0 0; font-size: 12.5px; color: #64748b;">
+                If you have questions regarding this decision, please speak directly with your Class Teacher or the School Administration office.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 16px 28px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0 0 4px; font-size: 12px; color: #64748b;">
+                Official Institutional Communication · <strong>${escapeHtml(institutionName)}</strong>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                Powered by AttendoSchool Enterprise Education Platform
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const fromEmail = extractEmailAddress(env.smtpFrom) || 'notifications@attendoschool.com';
+  const fromSender = `"${institutionName} via AttendoSchool" <${fromEmail}>`;
+
+  // If SMTP is properly configured, dispatch
+  if (configured()) {
+    try {
+      const sendResult = await sendMailWithDualPortFallback(
+        {
+          from: fromSender,
+          to,
+          subject: emailSubject,
+          text: textContent,
+          html: htmlContent,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          messageId: `<photo-review-${Date.now()}-${crypto.randomBytes(4).toString('hex')}@attendoschool.local>`,
+          headers: {
+            'X-Entity-Ref-ID': `attendoschool-photo-${status.toLowerCase()}`,
+            'X-Priority': '3',
+            'Precedence': 'bulk',
+            'Auto-Submitted': 'auto-generated'
+          }
+        },
+        {
+          host: env.smtpHost,
+          port: env.smtpPort,
+          username: env.smtpUser,
+          password: env.smtpPass
+        }
+      );
+
+      console.log(`[EmailService] Photo review email sent to ${to} (Status: ${status}, MessageID: ${sendResult.messageId})`);
+      return { success: true, messageId: sendResult.messageId, to };
+    } catch (err: any) {
+      console.warn(`[EmailService] SMTP send failed for photo review (${err.message}). Logging to console.`);
+    }
+  }
+
+  // Graceful Local / Demo Logger
+  console.log('\n' + '='.repeat(70));
+  console.log(`[TRANSACTIONAL EMAIL - PHOTO REVIEW]`);
+  console.log(`To: ${to} (${studentName})`);
+  console.log(`Status: ${status}`);
+  console.log(`Subject: ${emailSubject}`);
+  if (reason) console.log(`Reason: ${reason}`);
+  console.log(`Student Portal Link: ${portalUrl}`);
+  console.log('='.repeat(70) + '\n');
+
+  return {
+    success: true,
+    simulated: true,
+    to,
+    status,
+    message: `Photo review email dispatched (${status})`
+  };
+}

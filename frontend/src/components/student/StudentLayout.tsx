@@ -230,24 +230,41 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             </button>
 
             {/* Student Profile preview */}
-            <NavLink to="/student/profile" className="student-topbar-profile">
-              <div className="student-avatar-wrap">
-                <img 
-                  src={user?.avatarUrl || '/educational_student_campus.jpg'} 
-                  alt={studentName}
-                  className="student-avatar-img"
-                  onError={(e) => {
-                    // Fallback to initials
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
-                />
-                <span className="student-avatar-fallback">{studentName.charAt(0)}</span>
+            <div 
+              className="profile-pill" 
+              style={{ cursor: 'pointer' }} 
+              onClick={() => nav('/student/profile')} 
+              title="View My Profile"
+            >
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+                <span style={{ position: 'absolute' }}>
+                  {studentName ? studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
+                </span>
+                {user?.avatarUrl && (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={studentName}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative', zIndex: 1 }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
-              <div className="student-profile-info">
-                <span className="student-profile-name">{studentName}</span>
-                <span className="student-profile-meta">{studentClass}</span>
+              <div className="profile-info">
+                <span className="profile-name">{studentName}</span>
+                <span className="profile-role">{studentClass || 'Student'}</span>
               </div>
-            </NavLink>
+              <button 
+                type="button"
+                className="header-icon-btn" 
+                title="Sign out" 
+                style={{ width: 28, height: 28, marginLeft: 4 }}
+                onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
           </div>
         </header>
 

@@ -40,6 +40,7 @@ export interface ITeacherProfile {
   qualification: string;
   joiningDate: string;
   photoUrl: string;
+  gender: string;
   department: string;
   designation: string;
   academicSession: string;
@@ -58,6 +59,7 @@ export function TeacherProfile() {
   // Edit details state
   const [editing, setEditing] = useState(false);
   const [editPhone, setEditPhone] = useState('');
+  const [editGender, setEditGender] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editQualification, setEditQualification] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
@@ -76,6 +78,7 @@ export function TeacherProfile() {
       if (res.data) {
         setProfile(res.data);
         setEditPhone(res.data.phone || '');
+        setEditGender(res.data.gender || '');
         setEditAddress(res.data.address || '');
         setEditQualification(res.data.qualification || '');
       }
@@ -176,7 +179,8 @@ export function TeacherProfile() {
       await api.put('/teacher/profile', {
         phone: editPhone.trim(),
         address: editAddress.trim(),
-        qualification: editQualification.trim()
+        qualification: editQualification.trim(),
+        gender: editGender
       });
       setProfile((prev) =>
         prev
@@ -184,7 +188,8 @@ export function TeacherProfile() {
               ...prev,
               phone: editPhone.trim(),
               address: editAddress.trim(),
-              qualification: editQualification.trim()
+              qualification: editQualification.trim(),
+              gender: editGender
             }
           : null
       );
@@ -399,24 +404,49 @@ export function TeacherProfile() {
 
           {editing ? (
             <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
-                  Contact Mobile Number:
-                </span>
-                <input
-                  type="text"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+91 98300 12345"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    outline: 'none'
-                  }}
-                />
-              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    Contact Mobile Number:
+                  </span>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="+91 98300 12345"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    Gender:
+                  </span>
+                  <select
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 13,
+                      outline: 'none',
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+              </div>
 
               <label style={{ display: 'grid', gap: 4 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
@@ -518,6 +548,10 @@ export function TeacherProfile() {
               <div className="detail-item">
                 <span className="detail-label">Qualification</span>
                 <span className="detail-val">{profile?.qualification || '—'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Gender</span>
+                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
               </div>
               <div className="detail-item" style={{ gridColumn: 'span 2' }}>
                 <span className="detail-label">Address</span>

@@ -31,7 +31,9 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           sectionsRes,
           todayAtt,
           correctionsRes,
-          academicYearRes
+          academicYearRes,
+          photosRes,
+          leavesRes
         ] = await Promise.all([
           pool.query('SELECT id, name, code, status, enquiry_number, address FROM schools WHERE id = $1', [sid]),
           pool.query('SELECT COUNT(*)::int AS count FROM students WHERE school_id = $1 AND is_active = true', [sid]),
@@ -40,7 +42,9 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           pool.query('SELECT COUNT(*)::int AS count FROM sections WHERE school_id = $1', [sid]),
           DualDatabaseService.getTodayAttendanceFromSupabase(sid, todayStr),
           pool.query(`SELECT COUNT(*)::int AS count FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]).catch(() => ({ rows: [{ count: 0 }] })),
-          pool.query(`SELECT id, name, start_date, end_date FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1`, [sid])
+          pool.query(`SELECT id, name, start_date, end_date FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1`, [sid]),
+          pool.query(`SELECT COUNT(*)::int AS count FROM photo_approval_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]).catch(() => ({ rows: [{ count: 0 }] })),
+          pool.query(`SELECT COUNT(*)::int AS count FROM student_leave_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]).catch(() => ({ rows: [{ count: 0 }] }))
         ]);
 
         const schoolData = schoolRes.rows[0] || {
@@ -68,6 +72,8 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           todayAttendance: todayAtt,
           weeklyTrend: [],
           pendingCorrectionsCount: Number(correctionsRes.rows[0]?.count) || 0,
+          pendingPhotosCount: Number(photosRes.rows[0]?.count) || 0,
+          pendingLeavesCount: Number(leavesRes.rows[0]?.count) || 0,
           activeAcademicYear: academicYearRes.rows[0] || null,
           announcements: [],
           subscription: { plan_name: 'Standard', max_students: 1000, status: 'ACTIVE', days_remaining: 365 },

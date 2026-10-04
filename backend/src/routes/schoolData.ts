@@ -480,7 +480,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
 
  try {
-  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
+  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,
   st.academic_year_id, ay.name AS session_name,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
@@ -507,6 +507,12 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         parent_email: st.parent_email,
         parent_phone: st.parent_sms_number,
         parentPhone: st.parent_sms_number,
+        gender: st.gender || 'Not Specified',
+        date_of_birth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
+        dob: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
+        address: st.address || '',
+        photo_url: st.photo_url || '',
+        photoUrl: st.photo_url || '',
         session: st.session_name || st.academic_year_id,
         session_id: st.academic_year_id
       };
@@ -629,14 +635,14 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
 r.get('/students/template', ...reader, (_req, res) => {
   const XLSX = require('xlsx');
   const sample = [
-    { 'First Name': 'Aarav',  'Last Name': 'Sharma',  'Full Name': 'Aarav Sharma',  'Admission Number': 'ADM-2025-001', 'Roll Number': '101', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Parent Name': 'Rajesh Sharma', 'Parent Phone': '9876543210', 'Parent Email': 'rajesh@example.com', 'Student Email': 'aarav@school.edu' },
-    { 'First Name': 'Diya',   'Last Name': 'Patel',   'Full Name': 'Diya Patel',    'Admission Number': 'ADM-2025-002', 'Roll Number': '102', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Parent Name': 'Kirit Patel',   'Parent Phone': '9876543211', 'Parent Email': 'kirit@example.com',  'Student Email': 'diya@school.edu' },
-    { 'First Name': 'Rohan',  'Last Name': 'Gupta',   'Full Name': 'Rohan Gupta',   'Admission Number': 'ADM-2025-003', 'Roll Number': '103', 'Session': '2025-26', 'Class': 'Class 2', 'Section': 'B', 'Parent Name': 'Manoj Gupta',   'Parent Phone': '9876543212', 'Parent Email': 'manoj@example.com', 'Student Email': 'rohan@school.edu' },
-    { 'First Name': 'L-KG',   'Last Name': 'Example', 'Full Name': 'L-KG Example',  'Admission Number': 'ADM-2025-004', 'Roll Number': '104', 'Session': '2025-26', 'Class': 'L-KG',    'Section': 'A', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543213', 'Parent Email': 'p@example.com',    'Student Email': '' },
-    { 'First Name': 'U-KG',   'Last Name': 'Example', 'Full Name': 'U-KG Example',  'Admission Number': 'ADM-2025-005', 'Roll Number': '105', 'Session': '2025-26', 'Class': 'U-KG',    'Section': 'B', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543214', 'Parent Email': 'p2@example.com',   'Student Email': '' },
+    { 'First Name': 'Aarav',  'Last Name': 'Sharma',  'Full Name': 'Aarav Sharma',  'Admission Number': 'ADM-2025-001', 'Roll Number': '101', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Gender': 'Male', 'Parent Name': 'Rajesh Sharma', 'Parent Phone': '9876543210', 'Parent Email': 'rajesh@example.com', 'Student Email': 'aarav@school.edu' },
+    { 'First Name': 'Diya',   'Last Name': 'Patel',   'Full Name': 'Diya Patel',    'Admission Number': 'ADM-2025-002', 'Roll Number': '102', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Gender': 'Female', 'Parent Name': 'Kirit Patel',   'Parent Phone': '9876543211', 'Parent Email': 'kirit@example.com',  'Student Email': 'diya@school.edu' },
+    { 'First Name': 'Rohan',  'Last Name': 'Gupta',   'Full Name': 'Rohan Gupta',   'Admission Number': 'ADM-2025-003', 'Roll Number': '103', 'Session': '2025-26', 'Class': 'Class 2', 'Section': 'B', 'Gender': 'Male', 'Parent Name': 'Manoj Gupta',   'Parent Phone': '9876543212', 'Parent Email': 'manoj@example.com', 'Student Email': 'rohan@school.edu' },
+    { 'First Name': 'L-KG',   'Last Name': 'Example', 'Full Name': 'L-KG Example',  'Admission Number': 'ADM-2025-004', 'Roll Number': '104', 'Session': '2025-26', 'Class': 'L-KG',    'Section': 'A', 'Gender': 'Female', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543213', 'Parent Email': 'p@example.com',    'Student Email': '' },
+    { 'First Name': 'U-KG',   'Last Name': 'Example', 'Full Name': 'U-KG Example',  'Admission Number': 'ADM-2025-005', 'Roll Number': '105', 'Session': '2025-26', 'Class': 'U-KG',    'Section': 'B', 'Gender': 'Male', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543214', 'Parent Email': 'p2@example.com',   'Student Email': '' },
   ];
   const ws = XLSX.utils.json_to_sheet(sample);
-  ws['!cols'] = [14,14,20,18,14,12,12,10,20,16,24,26].map(wch => ({ wch }));
+  ws['!cols'] = [14,14,20,18,14,12,12,10,12,20,16,24,26].map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -1100,21 +1106,55 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  if(!Array.isArray(students)||students.length===0) return res.status(400).json({message:'Array of student records is required'});
 
  const schoolId = req.user!.schoolId;
+ await ensureSchoolClassesAndSections(schoolId);
 
  // Resolve session for bulk import
  const { getInMemoryAcademicYears } = await import('./academicYears');
+ const rawSession = String(reqSessionId || req.body?.session || students[0]?.session || '').trim();
  let bulkSessionId: string | null = null;
  let bulkSessionName: string | null = null;
  try {
-   const ayQ = reqSessionId
-     ? await pool.query(`SELECT id,name FROM academic_years WHERE id=$1 AND school_id=$2 AND is_archived=false LIMIT 1`,[reqSessionId,schoolId])
-     : await pool.query(`SELECT id,name FROM academic_years WHERE school_id=$1 AND is_active=true AND is_archived=false LIMIT 1`,[schoolId]);
-   if (ayQ.rowCount && ayQ.rows.length>0){ bulkSessionId=ayQ.rows[0].id; bulkSessionName=ayQ.rows[0].name; }
- } catch {}
+   const ayQ = await pool.query(
+     `SELECT id, name, is_active FROM academic_years WHERE school_id=$1 AND is_archived=false`,
+     [schoolId]
+   );
+   if (ayQ.rowCount && ayQ.rows.length > 0) {
+     if (rawSession) {
+       const found = ayQ.rows.find((r: any) => r.id === rawSession || isSameSession(r.name, rawSession));
+       if (found) {
+         bulkSessionId = found.id;
+         bulkSessionName = found.name;
+       }
+     }
+     if (!bulkSessionId) {
+       const active = ayQ.rows.find((r: any) => r.is_active) || ayQ.rows[0];
+       bulkSessionId = active.id;
+       bulkSessionName = active.name;
+     }
+   }
+ } catch (ayErr) {
+   console.warn('[bulk-import] Error resolving academic year from DB:', ayErr);
+ }
+
+ // If not found in DB but rawSession provided, insert academic year into DB so it has a valid UUID
+ if (!bulkSessionId && rawSession) {
+   try {
+     const canonical = toCanonicalSession(rawSession);
+     const sessionDisplayName = canonical ? `${canonical} Academic Session` : rawSession;
+     const newAy = await pool.query(
+       `INSERT INTO academic_years(school_id, name, is_active) VALUES($1, $2, false) RETURNING id, name`,
+       [schoolId, sessionDisplayName]
+     );
+     if (newAy.rowCount && newAy.rows.length > 0) {
+       bulkSessionId = newAy.rows[0].id;
+       bulkSessionName = newAy.rows[0].name;
+     }
+   } catch {}
+ }
+
  if (!bulkSessionId) {
    const memYears = getInMemoryAcademicYears(schoolId);
-   const target = reqSessionId ? memYears.find(y=>y.id===reqSessionId&&!y.is_archived) : memYears.find(y=>y.is_active&&!y.is_archived);
-   if (reqSessionId && !target) return res.status(400).json({ message: 'Invalid sessionId for bulk import.' });
+   const target = rawSession ? memYears.find(y=>(y.id===rawSession||isSameSession(y.name,rawSession))&&!y.is_archived) : memYears.find(y=>y.is_active&&!y.is_archived);
    bulkSessionId = target?.id || null;
    bulkSessionName = target?.name || null;
  }
@@ -1144,30 +1184,47 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    const parentPhone = String(st.parentPhone||st['Parent Phone']||st.parentSmsNumber||st.parent_sms_number||'').trim();
    const parentEmail = String(st.parentEmail||st['Parent Email']||st.parent_email||'').trim();
    const studentEmail = String(st.studentEmail||st['Student Email']||st.email||'').trim();
+   const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
 
    // Class/section resolution — support label names like 'L-KG','U-KG','Class 1' etc.
    const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
    const rawSection = String(st.sectionName||st['Section']||st.section_name||'A').trim().toUpperCase();
-   let classId = st.classId || st.class_id || '';
    let classNumber: number;
    let classLabel = rawClass;
-   if (!classId) {
-     if (/l.?kg/i.test(rawClass)) { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
-     else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
-     else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
-   } else {
-     classNumber = Number(String(classId).replace(/[^0-9]/g,'')) || 1;
+   if (/l.?kg/i.test(rawClass)) { classNumber=-1; classLabel='L-KG'; }
+   else if (/u.?kg/i.test(rawClass)) { classNumber=0; classLabel='U-KG'; }
+   else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||1; classLabel=`Class ${classNumber}`; }
+
+   let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
+   if (!['A','B','C','D','E','F'].includes(sectionName)) sectionName = 'A';
+
+   let classId = '';
+   let sectionId = '';
+   try {
+     let clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 AND class_number=$2 LIMIT 1`, [schoolId, classNumber]);
+     if (!clsQ.rowCount) {
+       clsQ = await pool.query(
+         `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+          ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id, class_number`,
+         [schoolId, classNumber]
+       );
+     }
+     classId = clsQ.rows[0].id;
+
+     let secQ = await pool.query(`SELECT id, name FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=UPPER($3) LIMIT 1`, [schoolId, classId, sectionName]);
+     if (!secQ.rowCount) {
+       secQ = await pool.query(
+         `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+          ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id, name`,
+         [schoolId, classId, sectionName]
+       );
+     }
+     sectionId = secQ.rows[0].id;
+   } catch (csErr) {
+     console.warn('[bulk-import] Failed to resolve class/section:', csErr);
    }
-   const sectionName = rawSection || 'A';
-    let sectionId = st.sectionId || st.section_id || `sec-${classId}-${sectionName.toLowerCase()}`;
-    try {
-      const cQ = await pool.query(`SELECT id FROM classes WHERE school_id=$1 AND (class_number=$2 OR LOWER(name)=LOWER($3) OR id::text=$4) LIMIT 1`, [schoolId, classNumber, classLabel, classId]);
-      if (cQ.rowCount && cQ.rows.length > 0) {
-        classId = cQ.rows[0].id;
-        const sQ = await pool.query(`SELECT id FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=$3 LIMIT 1`, [schoolId, classId, sectionName]);
-        if (sQ.rowCount && sQ.rows.length > 0) sectionId = sQ.rows[0].id;
-      }
-    } catch {}
+   if (!classId) classId = `cls-${classNumber}`;
+   if (!sectionId) sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
    // Validation
    if (!firstName) errors.push({row:rowNum,field:'First Name',message:'First Name is required'});
@@ -1179,24 +1236,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    if (admissionNumber) seenAdmNums.add(admissionNumber);
 
    if (errors.filter(e=>e.row===rowNum).length===0) {
-     validRows.push({ firstName,lastName,name,rollNumber,admissionNumber,parentName,parentPhone,parentEmail,studentEmail,classId,classNumber,classLabel,sectionId,sectionName });
+     validRows.push({ firstName,lastName,name,rollNumber,admissionNumber,gender,parentName,parentPhone,parentEmail,studentEmail,classId,classNumber,classLabel,sectionId,sectionName });
    }
  }
 
  if (errors.length>0) {
    return res.status(422).json({ success:false, errors, message:`${errors.length} validation error(s) found. Fix and re-import.` });
- }
-
- // Check existing admission numbers in DB
- const admNums = validRows.map(r=>r.admissionNumber).filter(Boolean);
- if (admNums.length>0) {
-   try {
-     const dupChk = await pool.query(`SELECT admission_number FROM students WHERE school_id=$1 AND admission_number=ANY($2) AND is_active=true`,[schoolId,admNums]);
-     if (dupChk.rows.length>0) {
-       const dups = dupChk.rows.map((r:any)=>r.admission_number);
-       return res.status(400).json({ success:false, message:`Duplicate admission numbers already exist: ${dups.join(', ')}` });
-     }
-   } catch {}
  }
 
  const createdList: any[] = [];
@@ -1206,30 +1251,65 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    const client = await pool.connect();
    try {
      await client.query('BEGIN');
-     for (const st of validRows) {
-        try {
-          const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
-          const q = await client.query(
-            `INSERT INTO students(
-               school_id, academic_year_id, class_id, section_id, roll_number, 
-               admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id
-             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-             ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
-               name = EXCLUDED.name,
-               admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
-               parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
-               parent_sms_number = EXCLUDED.parent_sms_number,
-               email = COALESCE(EXCLUDED.email, students.email),
-               parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
-               is_active = true,
-               updated_at = NOW()
-             RETURNING *`,
-            [schoolId, isAyUuid ? bulkSessionId : null, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, null]
-          );
+     for (let i = 0; i < validRows.length; i++) {
+       const st = validRows[i];
+       const spName = `sp_row_${i}`;
+       await client.query(`SAVEPOINT ${spName}`);
+       try {
+         const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
+         let q: any = null;
+         if (st.admissionNumber) {
+           const existQ = await client.query(
+             `SELECT id FROM students WHERE school_id=$1 AND admission_number=$2 LIMIT 1`,
+             [schoolId, st.admissionNumber]
+           );
+           if (existQ.rowCount && existQ.rows.length > 0) {
+             q = await client.query(
+               `UPDATE students SET
+                  name = $1,
+                  gender = COALESCE($2, gender),
+                  class_id = $3,
+                  section_id = $4,
+                  roll_number = $5,
+                  parent_name = COALESCE($6, parent_name),
+                  parent_sms_number = $7,
+                  email = COALESCE($8, email),
+                  parent_email = COALESCE($9, parent_email),
+                  academic_year_id = COALESCE($10, academic_year_id),
+                  is_active = true,
+                  updated_at = NOW()
+                WHERE id = $11
+                RETURNING *`,
+               [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, isAyUuid ? bulkSessionId : null, existQ.rows[0].id]
+             );
+           }
+         }
+         if (!q || !q.rowCount) {
+           q = await client.query(
+             `INSERT INTO students(
+                school_id, academic_year_id, class_id, section_id, roll_number, 
+                admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+                name = EXCLUDED.name,
+                admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
+                gender = COALESCE(EXCLUDED.gender, students.gender),
+                parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
+                parent_sms_number = EXCLUDED.parent_sms_number,
+                email = COALESCE(EXCLUDED.email, students.email),
+                parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
+                academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
+                is_active = true,
+                updated_at = NOW()
+              RETURNING *`,
+             [schoolId, isAyUuid ? bulkSessionId : null, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.gender || null, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, null]
+           );
+         }
          if (q.rowCount && q.rows.length>0) {
            const created = {
               ...q.rows[0],
+              gender: q.rows[0].gender || st.gender || null,
               academic_year_id: bulkSessionId,
               session_id: bulkSessionId,
               session_name: bulkSessionName,
@@ -1243,8 +1323,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
            createdList.push(created);
            demoStudents.unshift(created);
            syncStudentToFirestore(created).catch(()=>{});
+           await client.query(`RELEASE SAVEPOINT ${spName}`);
          }
-       } catch { /* skip individual row insert errors inside tx */ }
+       } catch (rowErr: any) {
+         await client.query(`ROLLBACK TO SAVEPOINT ${spName}`);
+         console.warn(`[bulk-import] Row ${i+1} insert skipped:`, rowErr.message);
+       }
      }
      if (createdList.length === 0 && validRows.length > 0) {
         await client.query('ROLLBACK');
@@ -1317,6 +1401,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
      roll_number: st.rollNumber,
      admission_number: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
      admissionNumber: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
+     gender: st.gender || null,
      parent_name: st.parentName||'—', parent_sms_number: st.parentPhone,
      parent_email: st.parentEmail, email: st.studentEmail,
      class_id: st.classId, class_number: st.classNumber, class_label: st.classLabel,
@@ -1393,7 +1478,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     studentEmail, email, parentEmail, parent_email,
     classId, class_id,
     sectionId, section_id,
-    sessionId, session, academic_year_id
+    sessionId, session, academic_year_id,
+    gender, dob, dateOfBirth, date_of_birth, address
   } = req.body || {};
 
   const studentId = String(req.params.id);
@@ -1457,11 +1543,29 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
     const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
 
+    const cleanGender = gender !== undefined ? (gender || null) : null;
+    const cleanDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
+    const cleanAddress = address !== undefined ? (address || null) : null;
+
     if (isStudentUuid) {
       const q = await pool.query(
-        `UPDATE students SET name=$1,roll_number=$2,admission_number=$3,parent_name=$4,parent_sms_number=$5,email=$6,parent_email=$7,class_id=$8,section_id=$9,academic_year_id=COALESCE($10, academic_year_id),updated_at=NOW()
+        `UPDATE students SET
+           name=$1,
+           roll_number=$2,
+           admission_number=$3,
+           parent_name=$4,
+           parent_sms_number=$5,
+           email=$6,
+           parent_email=$7,
+           class_id=$8,
+           section_id=$9,
+           academic_year_id=COALESCE($10, academic_year_id),
+           gender=COALESCE($13, gender),
+           date_of_birth=COALESCE($14, date_of_birth),
+           address=COALESCE($15, address),
+           updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId]
+        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress]
       );
       if (q.rowCount && q.rows.length > 0) {
         const result = {
@@ -1481,6 +1585,10 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           parentName: cleanParentName || q.rows[0].parent_name,
           parent_sms_number: cleanParentPhone || q.rows[0].parent_sms_number,
           parentPhone: cleanParentPhone || q.rows[0].parent_sms_number,
+          gender: cleanGender !== null ? cleanGender : (q.rows[0].gender || null),
+          date_of_birth: cleanDob !== null ? cleanDob : (q.rows[0].date_of_birth || null),
+          dob: cleanDob !== null ? cleanDob : (q.rows[0].date_of_birth || null),
+          address: cleanAddress !== null ? cleanAddress : (q.rows[0].address || null),
           class_id: realPutClassId || q.rows[0].class_id,
           classId: realPutClassId || q.rows[0].class_id,
           class_number: putClsNum,
@@ -1755,6 +1863,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     firstName: rawFirst, lastName: rawLast, fullName: rawFull, name: rawName,
     email, password, employeeId: rawEmp, saviorNo, Savior_No,
     mobile: rawMobile, designation: rawDesig,
+    gender: rawGender, qualification: rawQual,
     classId, sectionId, sendInviteEmail=true
   } = req.body;
 
@@ -1765,6 +1874,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const cleanEmail = String(email || '').trim().toLowerCase();
   const mobile = String(rawMobile || '').trim();
   const designation = String(rawDesig || 'Teacher').trim();
+  const gender = String(rawGender || req.body?.gender || '').trim() || null;
+  const qualification = String(rawQual || req.body?.qualification || '').trim() || null;
 
   if (!name || !cleanEmail || !employeeId) {
     return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
@@ -1800,8 +1911,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, name, cleanEmail, hash]
       );
       await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)`,
-        [u.rows[0].id, employeeId, mobile || null]
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification) VALUES($1,$2,$3,$4,$5)`,
+        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null]
       );
       await client.query('COMMIT');
       
@@ -1916,6 +2027,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     employee_id: employeeId,
     savior_no: employeeId,
     designation,
+    gender: gender || null,
     mobile: mobile || '—',
     email_status: emailDeliveryStatus,
     is_active: true,

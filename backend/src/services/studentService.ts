@@ -153,6 +153,32 @@ export async function getStudentProfile(schoolId: string, userId: string) {
       : (st.email && !st.email.toLowerCase().includes('greenwood.local') ? st.email : 'student@tint.edu.in');
   }
 
+  let pendingPhotoUrl: string | null = null;
+  let photoApprovalStatus = 'NONE';
+  let photoRejectionReason: string | null = null;
+
+  try {
+    const photoReq = await pool.query(
+      `SELECT photo_url, status, rejection_reason, created_at 
+       FROM photo_approval_requests 
+       WHERE applicant_id = $1 AND school_id = $2 
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [st.id, schoolId]
+    );
+    if (photoReq.rows.length > 0) {
+      const pr = photoReq.rows[0];
+      photoApprovalStatus = pr.status;
+      if (pr.status === 'PENDING') {
+        pendingPhotoUrl = pr.photo_url;
+      } else if (pr.status === 'REJECTED') {
+        photoRejectionReason = pr.rejection_reason;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[StudentService] Error checking photo approval status:', err.message);
+  }
+
   return {
     id: st.id,
     userId: st.user_id || userId,
@@ -171,13 +197,53 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
     dateOfBirth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
+    gender: st.gender || '',
     academicSession: academicSessionName || st.session_name || '',
-    photoUrl: st.photo_url || ''
+    photoUrl: st.photo_url || '',
+    pendingPhotoUrl,
+    hasPendingPhotoApproval: photoApprovalStatus === 'PENDING',
+    photoApprovalStatus,
+    photoRejectionReason
   };
 }
 
 /**
- * Updates student profile photo
+ * Updates student profile details (gender, date of birth, address)
+ */
+export async function updateStudentProfile(schoolId: string, userId: string, data: { gender?: string; dateOfBirth?: string; address?: string }) {
+  const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) throw new Error('Student record not found');
+
+  const updates: string[] = [];
+  const params: any[] = [];
+  let idx = 1;
+
+  if (data.gender !== undefined) {
+    updates.push(`gender = $${idx++}`);
+    params.push(data.gender);
+  }
+  if (data.dateOfBirth !== undefined) {
+    updates.push(`date_of_birth = $${idx++}`);
+    params.push(data.dateOfBirth || null);
+  }
+  if (data.address !== undefined) {
+    updates.push(`address = $${idx++}`);
+    params.push(data.address || null);
+  }
+
+  if (updates.length > 0) {
+    params.push(st.id);
+    await pool.query(
+      `UPDATE students SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
+      params
+    );
+  }
+
+  return { success: true, message: 'Student profile updated successfully' };
+}
+
+/**
+ * Submits student profile photo for admin approval
  */
 export async function updateStudentPhoto(schoolId: string, userId: string, photoUrl: string) {
   const st = await resolveStudentRecord(schoolId, userId);
@@ -185,30 +251,103 @@ export async function updateStudentPhoto(schoolId: string, userId: string, photo
 
   const cleanPhotoUrl = (photoUrl || '').trim();
 
-  // 1. Update in PostgreSQL
-  try {
-    await pool.query(
-      `UPDATE students SET photo_url = $1, updated_at = NOW() WHERE id = $2`,
-      [cleanPhotoUrl || null, st.id]
-    );
-  } catch (err: any) {
-    console.warn('[StudentService] Error updating student photo in PostgreSQL:', err.message);
+  // If student removes their photo
+  if (!cleanPhotoUrl) {
+    try {
+      await pool.query(
+        `UPDATE students SET photo_url = NULL, updated_at = NOW() WHERE id = $1`,
+        [st.id]
+      );
+      await pool.query(
+        `DELETE FROM photo_approval_requests WHERE applicant_id = $1 AND school_id = $2 AND status = 'PENDING'`,
+        [st.id, schoolId]
+      );
+    } catch (err: any) {
+      console.warn('[StudentService] Error removing student photo:', err.message);
+    }
+
+    if (isFirebaseConfigured()) {
+      try {
+        await collections.students().doc(st.id).set({
+          photo_url: null,
+          photoUrl: null
+        }, { merge: true });
+      } catch (fsErr: any) {
+        console.warn('[StudentService] Error clearing photo in Firestore:', fsErr.message);
+      }
+    }
+
+    clearStudentDashboardCache(userId);
+    return { success: true, photoUrl: '', message: 'Profile picture removed.' };
   }
 
-  // 2. Update in Cloud Firestore if configured
-  if (isFirebaseConfigured()) {
-    try {
-      await collections.students().doc(st.id).set({
-        photo_url: cleanPhotoUrl || null,
-        photoUrl: cleanPhotoUrl || null
-      }, { merge: true });
-    } catch (fsErr: any) {
-      console.warn('[StudentService] Error updating student photo in Firestore:', fsErr.message);
+  // Formatting student details for reviewer
+  const classStr = st.class_number !== undefined && st.class_number !== null
+    ? (st.class_number === -1 ? 'L-KG' : st.class_number === 0 ? 'U-KG' : `Class ${st.class_number}`)
+    : 'Class';
+  const detail = `${classStr}${st.section_name ? ` - ${st.section_name}` : ''}`.trim();
+  const identifier = `Roll: ${st.roll_number || '—'} · Adm: ${st.admission_number || '—'}`;
+
+  // Ensure photo_approval_requests table exists
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS photo_approval_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        school_id UUID NOT NULL,
+        applicant_type VARCHAR(20) NOT NULL DEFAULT 'STUDENT',
+        applicant_id UUID NOT NULL,
+        applicant_name VARCHAR(255) NOT NULL,
+        identifier VARCHAR(100),
+        detail VARCHAR(255),
+        current_photo_url TEXT,
+        photo_url TEXT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        rejection_reason TEXT,
+        reviewed_by UUID,
+        reviewed_by_name VARCHAR(255),
+        reviewed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+  } catch {}
+
+  // Check if there is an existing PENDING request from this student
+  try {
+    const existing = await pool.query(
+      `SELECT id FROM photo_approval_requests WHERE applicant_id = $1 AND school_id = $2 AND status = 'PENDING'`,
+      [st.id, schoolId]
+    );
+
+    if (existing.rowCount && existing.rowCount > 0) {
+      await pool.query(
+        `UPDATE photo_approval_requests 
+         SET photo_url = $1, current_photo_url = $2, applicant_name = $3, identifier = $4, detail = $5,
+             rejection_reason = NULL, updated_at = NOW(), created_at = NOW()
+         WHERE id = $6`,
+        [cleanPhotoUrl, st.photo_url || null, st.name, identifier, detail, existing.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO photo_approval_requests (
+          school_id, applicant_type, applicant_id, applicant_name, identifier, detail, current_photo_url, photo_url, status
+        ) VALUES ($1, 'STUDENT', $2, $3, $4, $5, $6, $7, 'PENDING')`,
+        [schoolId, st.id, st.name, identifier, detail, st.photo_url || null, cleanPhotoUrl]
+      );
     }
+  } catch (err: any) {
+    console.error('[StudentService] Error submitting photo approval request:', err.message);
+    throw new Error('Failed to submit photo for administrative approval: ' + err.message);
   }
 
   clearStudentDashboardCache(userId);
-  return { success: true, photoUrl: cleanPhotoUrl, message: 'Profile picture updated successfully' };
+  return {
+    success: true,
+    pendingApproval: true,
+    photoUrl: st.photo_url || '',
+    pendingPhotoUrl: cleanPhotoUrl,
+    message: 'Profile photo submitted for review! It will appear on your profile once approved by the administrator.'
+  };
 }
 
 /**
