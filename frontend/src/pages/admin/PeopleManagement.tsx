@@ -3,6 +3,7 @@ import { api } from '../../api';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
+import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 
 export default function PeopleManagement() {
   const [tab, setTab] = useState<'students' | 'teachers'>('students');
@@ -547,7 +548,9 @@ export default function PeopleManagement() {
                       </span>
                     </td>
                     <td>
-                      <b>{r.name || r.fullName}</b>
+                      <TeacherProfileHoverCard teacher={r}>
+                        <b>{r.name || r.fullName}</b>
+                      </TeacherProfileHoverCard>
                     </td>
                     <td>
                       {r.gender ? (

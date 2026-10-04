@@ -173,69 +173,196 @@ r.get('/preview/:templateKey', ...adminOnly, async (req: AuthRequest, res) => {
   }
 });
 
-// ── GET /logs - Delivery logs & audit tracking ──
-r.get('/logs', ...adminOrTeacher, async (req: AuthRequest, res) => {
-  const schoolId = req.user!.schoolId;
+// ── GET /logs & GET /smtp-logs - School-isolated SMTP delivery logs & student mapping ──
+const handleGetLogs = async (req: AuthRequest, res: any) => {
   const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+  // Strict multi-tenant isolation: non-superadmin users are locked to their own schoolId
+  const schoolId = (isSuperAdmin && req.query.schoolId)
+    ? String(req.query.schoolId).trim()
+    : req.user!.schoolId;
 
-  // 1. Fetch from PostgreSQL if available
+  const searchQuery = String(req.query.search || '').trim();
+  const statusFilter = String(req.query.status || '').trim().toUpperCase();
+  const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+  const limit = Math.min(500, Math.max(1, parseInt(String(req.query.limit || '100'), 10) || 100));
+  const offset = (page - 1) * limit;
+  const wantPaginatedObject = req.query.paginate === 'true' || req.query.format === 'object';
+
+  // 1. Fetch from PostgreSQL database if available
+  try {
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
+    let pIdx = 1;
+
+    // School isolation condition
+    if (!isSuperAdmin || req.query.schoolId) {
+      whereConditions.push(`n.school_id = $${pIdx++}`);
+      queryParams.push(schoolId);
+    }
+
+    // Status filter
+    if (statusFilter && ['SENT', 'FAILED', 'QUEUED', 'PROCESSING', 'RETRYING', 'SKIPPED'].includes(statusFilter)) {
+      whereConditions.push(`n.status = $${pIdx++}`);
+      queryParams.push(statusFilter);
+    }
+
+    // Search query: search across admission number, recipient name, student name, recipient email, subject
+    if (searchQuery) {
+      whereConditions.push(`(
+        COALESCE(st.admission_number, '') ILIKE $${pIdx} OR
+        COALESCE(st.name, '') ILIKE $${pIdx} OR
+        COALESCE(u.name, '') ILIKE $${pIdx} OR
+        n.recipient ILIKE $${pIdx} OR
+        COALESCE(n.subject, '') ILIKE $${pIdx}
+      )`);
+      queryParams.push(`%${searchQuery}%`);
+      pIdx++;
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Total count query for pagination
+    const countSql = `
+      SELECT COUNT(*)::int AS total
+      FROM notification_logs n
+      LEFT JOIN students st ON (
+        (st.id = n.student_id AND st.school_id = n.school_id)
+        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
+      )
+      LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
+      ${whereClause}
+    `;
+    const countRes = await pool.query(countSql, queryParams);
+    const totalCount = countRes.rows[0]?.total || 0;
+
+    // Main records query with student admission_number and recipient details mapping
+    const dataSql = `
+      SELECT 
+        n.id,
+        n.school_id,
+        n.attendance_session_id,
+        n.student_id,
+        n.channel,
+        n.recipient,
+        n.recipient_type,
+        n.template_key,
+        n.subject,
+        n.message,
+        n.status,
+        n.attempts,
+        n.max_attempts,
+        n.last_error,
+        n.provider_message_id,
+        n.created_at,
+        n.sent_at,
+        n.failed_at,
+        n.scheduled_at,
+        COALESCE(st.admission_number, '') AS admission_number,
+        COALESCE(st.name, u.name, '—') AS recipient_name,
+        COALESCE(st.name, '—') AS student_name,
+        st.roll_number
+      FROM notification_logs n
+      LEFT JOIN students st ON (
+        (st.id = n.student_id AND st.school_id = n.school_id)
+        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
+      )
+      LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
+      ${whereClause}
+      ORDER BY n.created_at DESC
+      LIMIT $${pIdx++} OFFSET $${pIdx++}
+    `;
+    queryParams.push(limit, offset);
+
+    const q = await pool.query(dataSql, queryParams);
+
+    // Set pagination headers for all responses
+    res.setHeader('X-Total-Count', totalCount.toString());
+    res.setHeader('X-Page', page.toString());
+    res.setHeader('X-Limit', limit.toString());
+
+    if (wantPaginatedObject) {
+      return res.json({
+        success: true,
+        logs: q.rows,
+        data: q.rows,
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit) || 1
+      });
+    }
+
+    return res.json(q.rows);
+  } catch (err: any) {
+    console.warn('[NotificationLogs] Database query notice:', err.message);
+  }
+
+  // 2. Fetch from shared in-memory queue if database returned nothing or error
+  const matched = memNotificationLogs
+    .filter(l => {
+      const matchSchool = isSuperAdmin || isSameSchool(l.school_id || l.schoolId, schoolId);
+      if (!matchSchool) return false;
+      if (statusFilter && l.status !== statusFilter) return false;
+      if (searchQuery) {
+        const sq = searchQuery.toLowerCase();
+        const matchesRec = (l.recipient || '').toLowerCase().includes(sq);
+        const matchesSub = (l.subject || '').toLowerCase().includes(sq);
+        const matchesName = (l.student_name || '').toLowerCase().includes(sq);
+        if (!matchesRec && !matchesSub && !matchesName) return false;
+      }
+      return true;
+    })
+    .slice(offset, offset + limit)
+    .map(l => ({
+      ...l,
+      admission_number: (l as any).admission_number || '',
+      recipient_name: (l as any).recipient_name || l.student_name || '—'
+    }));
+
+  if (wantPaginatedObject) {
+    return res.json({
+      success: true,
+      logs: matched,
+      data: matched,
+      total: matched.length,
+      page,
+      limit,
+      totalPages: Math.ceil(matched.length / limit) || 1
+    });
+  }
+
+  return res.json(matched);
+};
+
+r.get('/logs', ...adminOrTeacher, handleGetLogs);
+r.get('/smtp-logs', ...adminOrTeacher, handleGetLogs);
+
+// ── POST /logs/:id/retry - Retry specific failed/retrying notification ──
+r.post('/logs/:id/retry', ...adminOnly, async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+  const schoolId = req.user!.schoolId;
+
   try {
     const q = await pool.query(
-      `SELECT n.*, st.name student_name 
-       FROM notification_logs n
-       LEFT JOIN students st ON st.id = n.student_id 
-       WHERE ${isSuperAdmin ? '1=1' : 'n.school_id=$1'} 
-       ORDER BY n.created_at DESC 
-       LIMIT 300`,
-      isSuperAdmin ? [] : [schoolId]
+      `UPDATE notification_logs 
+       SET status='QUEUED', attempts=0, scheduled_at=NOW(), last_error=NULL 
+       WHERE id=$1 ${isSuperAdmin ? '' : 'AND school_id=$2'} 
+       RETURNING *`,
+      isSuperAdmin ? [id] : [id, schoolId]
     );
-    if (q.rowCount && q.rowCount > 0) {
-      return res.json(q.rows);
+
+    if (!q.rowCount) {
+      return res.status(404).json({ success: false, message: 'Email log not found or unauthorized.' });
     }
-  } catch {}
 
-  // 2. Fetch from shared in-memory queue
-  const matched = memNotificationLogs
-    .filter(l => isSuperAdmin || isSameSchool(l.school_id || l.schoolId, schoolId))
-    .slice(0, 300);
+    // Trigger queue processing asynchronously
+    processNotificationQueue(20).catch(() => {});
 
-  if (matched.length > 0) {
-    return res.json(matched);
+    res.json({ success: true, message: 'Email dispatch requeued successfully for immediate delivery.', log: q.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message || 'Failed to retry email transmission' });
   }
-
-  // 3. Fallback demo data for tests
-  if (isTestSchool(schoolId)) {
-    return res.json([
-      {
-        id: 'notif-demo-1',
-        student_name: 'Rahul Das',
-        channel: 'EMAIL',
-        recipient: 'parent.rahul@example.com',
-        recipient_type: 'PARENT',
-        template_key: 'ATTENDANCE_ABSENT',
-        subject: 'Attendance Alert — Rahul Das was marked ABSENT today',
-        status: 'SENT',
-        attempts: 1,
-        created_at: new Date().toISOString(),
-        sent_at: new Date().toISOString()
-      },
-      {
-        id: 'notif-demo-2',
-        student_name: 'Sneha Roy',
-        channel: 'EMAIL',
-        recipient: 'parent.sneha@example.com',
-        recipient_type: 'PARENT',
-        template_key: 'ATTENDANCE_PRESENT',
-        subject: 'Attendance Confirmation — Sneha Roy marked PRESENT today',
-        status: 'SENT',
-        attempts: 1,
-        created_at: new Date().toISOString(),
-        sent_at: new Date().toISOString()
-      }
-    ]);
-  }
-
-  res.json([]);
 });
 
 // ── GET /analytics - Aggregated delivery metrics ──
@@ -291,10 +418,10 @@ r.get('/analytics', ...adminOnly, async (req: AuthRequest, res) => {
     });
   }
 
-  // Demo fallback
+  // No logs present - return real zero metrics
   res.json({
-    byChannel: [{ channel: 'EMAIL', status: 'SENT', count: 12 }],
-    totals: { total: 12, sent: 12, failed: 0, queued: 0, retrying: 0, skipped: 0 }
+    byChannel: [],
+    totals: { total: 0, sent: 0, failed: 0, queued: 0, retrying: 0, skipped: 0 }
   });
 });
 
