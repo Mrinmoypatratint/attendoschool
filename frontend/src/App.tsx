@@ -1906,7 +1906,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/promotion', 'Student Promotions', ArrowUpDown],
     ['—', 'COMMUNICATION'],
     ['/communication', 'Announcements', MessageSquare],
-    ['/notifications', 'Parent Communication', Bell],
+    ...(user.role !== 'SCHOOL_ADMIN' ? [['/notifications', 'Parent Communication', Bell]] : []),
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
@@ -1955,9 +1955,16 @@ function Layout({children}:{children:React.ReactNode}){
     ['/super-admin/backups','Backups',Database],
   ];
 
-  const links=user.role==='SUPER_ADMIN'?superAdminLinks:
-    user.role==='TEACHER'?teacherLinks:
+  const rawLinks = user.role === 'SUPER_ADMIN' ? superAdminLinks :
+    user.role === 'TEACHER' ? teacherLinks :
     adminLinks;
+
+  const links = rawLinks.filter(item => {
+    if (user.role === 'SCHOOL_ADMIN') {
+      if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
+    }
+    return true;
+  });
 
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
@@ -2385,13 +2392,24 @@ function Layout({children}:{children:React.ReactNode}){
                       <CheckCircle2 size={13} />
                       <span>Review Center</span>
                     </button>
-                    <button
-                      type="button"
-                      className="super-notif-footer-link"
-                      onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
-                    >
-                      <span>Settings & All Alerts →</span>
-                    </button>
+                    {user?.role !== 'SCHOOL_ADMIN' ? (
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
+                      >
+                        <span>Settings & All Alerts →</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
+                      >
+                        <CalendarCheck size={13} />
+                        <span>Review Leaves</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -2509,6 +2527,10 @@ function Layout({children}:{children:React.ReactNode}){
               onClick={() => {
                 if (user.role === 'TEACHER') {
                   nav('/announcements');
+                } else if (user.role === 'SUPER_ADMIN') {
+                  nav('/notifications');
+                } else if (user.role === 'SCHOOL_ADMIN') {
+                  nav('/dashboard');
                 } else {
                   nav('/notifications');
                 }
@@ -9709,6 +9731,9 @@ function History(){
 /* ────── Notifications V11 & SMTP ────── */
 function NotificationCenter(){
   const {user}=useAuth();
+  if (user?.role === 'SCHOOL_ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [channels,setChannels]=useState<any>(null);
   const [smtp,setSmtp]=useState<any>({
@@ -11014,7 +11039,7 @@ function App(){return <Routes>
   <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
   <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
   <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
-  <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+  <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-history" element={<Guard><History/></Guard>}/>

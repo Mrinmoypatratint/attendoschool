@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, Send, CheckCircle2, CornerDownRight, Clock, AlertTriangle } from 'lucide-react';
 
 export default function ParentCommunication() {
+  const { user } = useAuth();
+
+  if (user?.role === 'SCHOOL_ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const [items, setItems] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);

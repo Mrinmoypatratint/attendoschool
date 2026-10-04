@@ -84,7 +84,7 @@ export const RolesPermissions: React.FC = () => {
       module: 'Parent Communication & Broadcast Alerts',
       description: 'Dispatch SMS, WhatsApp, and email announcements to parent contacts',
       superAdmin: true,
-      schoolAdmin: true,
+      schoolAdmin: false,
       teacher: true,
       student: false,
       parent: false
