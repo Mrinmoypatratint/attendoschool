@@ -6,7 +6,7 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
   if (activeOnly) where += ' AND st.is_active=TRUE';
   if (search.trim()) {
     params.push(`%${search.trim()}%`);
-    where += ` AND (st.name ILIKE $2 OR CAST(st.roll AS TEXT) ILIKE $2 OR COALESCE(st.admission_number,'') ILIKE $2)`;
+    where += ` AND (st.name ILIKE $2 OR CAST(st.roll AS TEXT) ILIKE $2 OR COALESCE(st.admission_number,'') ILIKE $2 OR COALESCE(st.gender,'') ILIKE $2)`;
   }
   const { rows } = await pool.query(
     `SELECT st.*, c.name AS class_name, sec.name AS section_name
@@ -62,11 +62,11 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
   if (activeOnly) where += ` AND COALESCE(tp.is_active, TRUE)=TRUE AND u.is_active=TRUE`;
   if (search.trim()) {
     params.push(`%${search.trim()}%`);
-    where += ` AND (u.name ILIKE $2 OR u.email ILIKE $2 OR COALESCE(tp.employee_id,'') ILIKE $2)`;
+    where += ` AND (u.name ILIKE $2 OR u.email ILIKE $2 OR COALESCE(tp.employee_id,'') ILIKE $2 OR COALESCE(tp.gender,'') ILIKE $2)`;
   }
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.is_active AS user_active,
-            tp.employee_id, tp.phone, tp.address, tp.joining_date,
+            tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
             tp.qualification, tp.photo_url, COALESCE(tp.is_active, TRUE) AS is_active
      FROM users u
      LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
@@ -100,7 +100,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       );
     }
 
-    const allowed = ['employee_id','phone','address','joining_date','qualification','photo_url'];
+    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','photo_url'];
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {
