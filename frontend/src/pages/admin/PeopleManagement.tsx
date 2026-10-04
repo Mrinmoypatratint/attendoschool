@@ -514,7 +514,6 @@ export default function PeopleManagement() {
                   <th>Designation</th>
                   <th>Official Email</th>
                   <th>Mobile Contact</th>
-                  <th>Email Delivery Status</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -533,11 +532,6 @@ export default function PeopleManagement() {
                     <td>{r.email}</td>
                     <td>{r.mobile || r.phone || '—'}</td>
                     <td>
-                      <span className={`badge ${r.email_status === 'Sent' ? 'active' : r.email_status === 'Failed' ? 'failed' : 'pending'}`}>
-                        {r.email_status === 'Sent' ? '✓ Sent' : r.email_status === 'Failed' ? '✕ Failed' : '● Pending'}
-                      </span>
-                    </td>
-                    <td>
                       <span className={`badge ${r.is_active === false || r.active === false ? 'failed' : 'active'}`}>
                         {r.is_active === false || r.active === false ? 'Inactive' : 'Active'}
                       </span>
@@ -546,7 +540,7 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={7} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                    <td colSpan={6} className="muted" style={{ padding: 28, textAlign: 'center' }}>
                       {loading ? 'Searching directory…' : 'No faculty records found matching this criteria.'}
                     </td>
                   </tr>

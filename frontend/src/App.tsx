@@ -6543,14 +6543,13 @@ function Teachers(){
             <th>Assigned Classes</th>
             <th>Email</th>
             <th>Mobile</th>
-            <th>Email Delivery Status</th>
             <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {displayedTeachers.length === 0 ? (
-            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : displayedTeachers.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -6572,11 +6571,6 @@ function Teachers(){
               </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
-              <td>
-                <span className={`badge ${x.email_status === 'Sent' ? 'active' : x.email_status === 'Failed' ? 'failed' : 'pending'}`} style={{ fontSize: 11 }}>
-                  {x.email_status === 'Sent' ? '✓ Sent' : x.email_status === 'Failed' ? '✕ Failed' : '● Pending'}
-                </span>
-              </td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
