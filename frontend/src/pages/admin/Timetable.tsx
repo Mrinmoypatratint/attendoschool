@@ -77,7 +77,13 @@ export default function Timetable() {
       if (initial) setLoading(false);
     }
   }
-  useEffect(() => { loadAll(true); }, []);
+
+  useEffect(() => {
+    loadAll(true);
+    const onFocus = () => { loadAll(false); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   // Ensure default class if not set
   useEffect(() => {
@@ -170,14 +176,28 @@ export default function Timetable() {
   }, [filteredSections, selSectionId]);
 
   const currentSection = filteredSections.find(s => s.id === selSectionId) || filteredSections[0];
+  const selSection = currentSection;
   const selSectionName = currentSection?.name || currentSection?.section_name || 'A';
   const teachingPeriods = useMemo(() => periods.filter(p => !(p.is_break ?? p.isBreak)), [periods]);
 
   const dayEntries = useMemo(() => {
     return entries
-      .filter(e => (Number(e.day_of_week ?? e.dayOfWeek) === selDay) && (e.class_id || e.classId) === selClassId && (e.section_id || e.sectionId) === selSectionId)
+      .filter(e => {
+        if (Number(e.day_of_week ?? e.dayOfWeek) !== selDay) return false;
+        const entryClassId = e.class_id || e.classId;
+        const entryClassNum = e.class_number ?? e.classNumber;
+        const matchClass = entryClassId === selClassId || (selClassName && String(entryClassNum) === String(selClassName));
+        if (!matchClass) return false;
+
+        const entrySecId = e.section_id || e.sectionId;
+        const entrySecName = e.section_name || e.sectionName;
+        if (selSectionId) {
+          return entrySecId === selSectionId || (selSection?.name && entrySecName === selSection.name);
+        }
+        return true;
+      })
       .sort((a: any, b: any) => (a.period_number ?? a.periodNumber ?? 0) - (b.period_number ?? b.periodNumber ?? 0));
-  }, [entries, selDay, selClassId, selSectionId]);
+  }, [entries, selDay, selClassId, selSectionId, selClassName, selSection]);
 
   // Map period_id to entry for grid display
   const periodEntryMap = useMemo(() => {
@@ -398,7 +418,7 @@ export default function Timetable() {
 
     {/* ── Teacher View Switcher (Class View vs My Schedule) ── */}
     {isTeacher && (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
           <button
             onClick={() => setViewMode('class')}
@@ -422,6 +442,13 @@ export default function Timetable() {
             <Sparkles size={14} /> My Teaching Schedule ({myWeeklyEntries.length})
           </button>
         </div>
+        <button
+          onClick={() => loadAll(false)}
+          type="button"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+        >
+          <RefreshCw size={12} className={loading ? 'spin' : ''} /> Sync Timetable
+        </button>
       </div>
     )}
 
@@ -631,6 +658,28 @@ export default function Timetable() {
               ))}
             </select>
           </div>
+
+          <button
+            onClick={() => loadAll(false)}
+            type="button"
+            title="Refresh classes and timetable routines"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              color: 'var(--text)',
+              fontSize: 13,
+              cursor: 'pointer',
+              marginLeft: 'auto',
+              fontWeight: 600
+            }}
+          >
+            <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh Classes
+          </button>
         </div>
 
         {/* ── Day Tabs ── */}
@@ -898,18 +947,32 @@ export default function Timetable() {
                 </select>
               </label>
 
-              {/* Class & Section (read-only context) */}
+              {/* Class & Section */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label style={{ fontSize: 13, fontWeight: 600 }}>Class
-                  <select value={entryForm.classId} onChange={e => { const c = classes.find(x=>x.id===e.target.value); setEntryForm({ ...entryForm, classId: e.target.value, classNumber: c?.class_number }); }}
+                  <select value={entryForm.classId} onChange={e => {
+                    const targetCid = e.target.value;
+                    const c = classes.find(x => x.id === targetCid);
+                    const availSec = sections.filter(s => s.class_id === targetCid || String(s.class_number) === String(c?.class_number));
+                    setEntryForm({
+                      ...entryForm,
+                      classId: targetCid,
+                      classNumber: c?.class_number,
+                      sectionId: availSec[0]?.id || '',
+                      sectionName: availSec[0]?.name || 'A'
+                    });
+                  }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
                     {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
                   </select>
                 </label>
                 <label style={{ fontSize: 13, fontWeight: 600 }}>Section
-                  <select value={entryForm.sectionId} onChange={e => { const s = sections.find(x=>x.id===e.target.value); setEntryForm({ ...entryForm, sectionId: e.target.value, sectionName: s?.name }); }}
+                  <select value={entryForm.sectionId} onChange={e => { const s = sections.find(x => x.id === e.target.value); setEntryForm({ ...entryForm, sectionId: e.target.value, sectionName: s?.name }); }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
-                    {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {(() => {
+                      const avail = sections.filter(s => s.class_id === entryForm.classId || String(s.class_number) === String(classes.find(c => c.id === entryForm.classId)?.class_number));
+                      return avail.length === 0 ? <option value="">Section A (Default)</option> : avail.map(s => <option key={s.id} value={s.id}>{s.name}</option>);
+                    })()}
                   </select>
                 </label>
               </div>
