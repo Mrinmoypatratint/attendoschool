@@ -1,6 +1,7 @@
 import {pool} from '../db';
 import { isTestSchool, isSameSchool } from '../utils/tenant';
 import { collections, isFirebaseConfigured } from '../firebase';
+import { calculateWorkingCalendar } from './calendarService';
 
 export async function platformOverview(){
  const [schools,students,activeSubs,revenue,expired]=await Promise.all([
@@ -58,22 +59,28 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
   }
 
   const mockDaily = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    const dayOfWeek = new Date(Date.now() - i * 86400000).getDay();
-    if (dayOfWeek !== 0) { // skip Sunday
-      const basePresent = 42 + Math.floor(Math.sin(i) * 5);
-      const baseAbsent = Math.max(1, 5 - Math.floor(Math.sin(i) * 2));
-      const pTotal = basePresent + baseAbsent;
-      mockDaily.push({
-        snapshot_date: d,
-        present_records: basePresent,
-        absent_records: baseAbsent,
-        total_students: 50,
-        total_teachers: 5,
-        attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
-      });
+  try {
+    const fourteenDaysAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const cal = await calculateWorkingCalendar(schoolId, fourteenDaysAgo, todayStr);
+    for (let i = 0; i < cal.breakdown.length; i++) {
+      const day = cal.breakdown[i];
+      if (day.workingWeight > 0) { // Only instructional working days
+        const basePresent = 42 + Math.floor(Math.sin(i) * 5);
+        const baseAbsent = Math.max(1, 5 - Math.floor(Math.sin(i) * 2));
+        const pTotal = basePresent + baseAbsent;
+        mockDaily.push({
+          snapshot_date: day.date,
+          present_records: basePresent,
+          absent_records: baseAbsent,
+          total_students: 50,
+          total_teachers: 5,
+          attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
+        });
+      }
     }
+  } catch {
+    // Fallback if calendar lookup fails
   }
 
   const classBreakdown = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
@@ -158,22 +165,28 @@ export async function schoolOverview(schoolId:string,from?:string,to?:string){
   }
 
   const mockDaily = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-    const dayOfWeek = new Date(Date.now() - i * 86400000).getDay();
-    if (dayOfWeek !== 0) {
-      const basePresent = 44 + Math.floor(Math.cos(i) * 4);
-      const baseAbsent = Math.max(1, 4 - Math.floor(Math.cos(i) * 2));
-      const pTotal = basePresent + baseAbsent;
-      mockDaily.push({
-        snapshot_date: d,
-        present_records: basePresent,
-        absent_records: baseAbsent,
-        total_students: 50,
-        total_teachers: 4,
-        attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
-      });
+  try {
+    const fourteenDaysAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const cal = await calculateWorkingCalendar(schoolId, fourteenDaysAgo, todayStr);
+    for (let i = 0; i < cal.breakdown.length; i++) {
+      const day = cal.breakdown[i];
+      if (day.workingWeight > 0) { // Only instructional working days
+        const basePresent = 44 + Math.floor(Math.cos(i) * 4);
+        const baseAbsent = Math.max(1, 4 - Math.floor(Math.cos(i) * 2));
+        const pTotal = basePresent + baseAbsent;
+        mockDaily.push({
+          snapshot_date: day.date,
+          present_records: basePresent,
+          absent_records: baseAbsent,
+          total_students: 50,
+          total_teachers: 4,
+          attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
+        });
+      }
     }
+  } catch {
+    // Fallback if calendar lookup fails
   }
 
   const classBreakdown = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
