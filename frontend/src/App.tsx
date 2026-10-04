@@ -1971,7 +1971,8 @@ function Layout({children}:{children:React.ReactNode}){
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
-  const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
+  const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+  const activeSessionName = cleanSessionName || '2026–27';
 
   return <div className="app-shell">
     {/* ── Mobile Sidebar Backdrop ── */}
@@ -4575,7 +4576,7 @@ function Students(){
           placeholder="🔍 Search name, roll number, admission number, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: 340, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+          style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
         />
         <select 
           value={classFilter} 
@@ -4617,7 +4618,7 @@ function Students(){
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
           <span>Rows per page:</span>
           <select
@@ -4674,9 +4675,9 @@ function Students(){
             <th>Adm No</th>
             <th>Student Name</th>
             <th>Class</th>
-            <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
+            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -4713,23 +4714,22 @@ function Students(){
                 {(() => {
                   const cNum = Number(x.class_number);
                   const cId = String(x.class_id || '');
-                  if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
-                  if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
-                  if (!isNaN(cNum) && cNum > 0) return cNum;
-                  const m = cId.match(/cls-(\d+)/);
-                  if (m) return m[1];
-                  const label = String(x.class_label || x.class_name || '');
-                  if (label) {
-                    const cleaned = label.replace(/^class\s*/i, '').trim();
-                    if (cleaned) return cleaned;
+                  let classTxt = '';
+                  if (cNum === -1 || /l.?kg/i.test(cId)) classTxt = 'L-KG';
+                  else if (cNum === 0 || /u.?kg/i.test(cId)) classTxt = 'U-KG';
+                  else if (!isNaN(cNum) && cNum > 0) classTxt = `Class ${cNum}`;
+                  else {
+                    const m = cId.match(/cls-(\d+)/);
+                    if (m) classTxt = `Class ${m[1]}`;
+                    else classTxt = 'Class ' + (cNum || 1);
                   }
-                  return cNum || 1;
-                })()}
-              </td>
-              <td>
-                {(() => {
-                  const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
-                  return raw.replace(/^section\s*/i, '').trim() || 'A';
+                  const secTxt = String(x.section_name || x.sectionName || x.section || 'A').trim().replace(/^section\s*/i, '') || 'A';
+                  return (
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{classTxt}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Section {secTxt}</div>
+                    </div>
+                  );
                 })()}
               </td>
               <td>
@@ -4743,6 +4743,15 @@ function Students(){
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
+              </td>
+              <td>
+                {x.student_email || x.email || x.parent_email ? (
+                  <span className="badge active" title={`Student portal login: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>
+                    🎓 Student Portal
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Offline Only</span>
+                )}
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button

@@ -65,84 +65,26 @@ export function StudentProfileHoverCard({
   children
 }: StudentProfileHoverCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number; placeAbove: boolean }>({
-    top: 0,
-    left: 0,
-    placeAbove: false
-  });
-
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  const calculatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const CARD_WIDTH = 324;
-    const CARD_HEIGHT = 380;
-    const PADDING = 12;
-
-    let left = rect.left;
-    if (left + CARD_WIDTH > window.innerWidth - PADDING) {
-      left = Math.max(PADDING, window.innerWidth - CARD_WIDTH - PADDING);
-    }
-    if (left < PADDING) {
-      left = PADDING;
-    }
-
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const placeAbove = spaceBelow < CARD_HEIGHT + 16 && rect.top > CARD_HEIGHT;
-    const top = placeAbove ? rect.top - 8 : rect.bottom + 8;
-
-    setCoords({ top, left, placeAbove });
-  }, []);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isOpen) {
-      setIsOpen(false);
-    } else {
-      calculatePosition();
-      setIsOpen(true);
-    }
+    setIsOpen(prev => !prev);
   };
 
-  // Close when clicking outside, pressing Escape, or on parent scroll/resize
+  // Close when pressing Escape key
   useEffect(() => {
     if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        cardRef.current &&
-        !cardRef.current.contains(target) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
-
-    const handleScrollOrResize = () => {
-      setIsOpen(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
-
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
     };
   }, [isOpen]);
 
@@ -209,7 +151,7 @@ export function StudentProfileHoverCard({
         }}
         role="button"
         tabIndex={0}
-        title="Click to view student profile"
+        title="Click to view student quick profile"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -217,12 +159,16 @@ export function StudentProfileHoverCard({
           borderRadius: 4,
           padding: '2px 4px',
           margin: '-2px -4px',
-          color: '#1d4ed8',
-          textDecoration: 'underline',
-          textUnderlineOffset: '3px',
-          textDecorationColor: 'rgba(29, 78, 216, 0.4)',
+          color: 'var(--text, #1e293b)',
+          textDecoration: 'none',
           transition: 'all 0.15s ease',
           userSelect: 'none'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = '#2563eb';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--text, #1e293b)';
         }}
         className="student-name-click-trigger"
       >
@@ -232,26 +178,41 @@ export function StudentProfileHoverCard({
       {isOpen &&
         createPortal(
           <div
-            ref={cardRef}
-            onClick={(e) => e.stopPropagation()}
+            className="student-profile-backdrop"
+            onClick={() => setIsOpen(false)}
             style={{
               position: 'fixed',
-              top: coords.placeAbove ? 'auto' : coords.top,
-              bottom: coords.placeAbove ? `${window.innerHeight - coords.top}px` : 'auto',
-              left: coords.left,
-              width: 324,
-              backgroundColor: '#ffffff',
-              borderRadius: 12,
-              boxShadow:
-                '0 20px 30px -6px rgba(15, 23, 42, 0.18), 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(203, 213, 225, 0.9)',
-              border: '1px solid #e2e8f0',
-              overflow: 'hidden',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 99999,
-              fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-              animation: 'studentProfileCardPop 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-              pointerEvents: 'auto'
+              backgroundColor: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16
             }}
           >
+            <div
+              ref={cardRef}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 420,
+                backgroundColor: '#ffffff',
+                borderRadius: 16,
+                boxShadow:
+                  '0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(203, 213, 225, 0.9)',
+                border: '1px solid #e2e8f0',
+                overflow: 'hidden',
+                zIndex: 100000,
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                animation: 'studentProfileCardPop 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: 'auto'
+              }}
+            >
             {/* Header Gradient Banner */}
             <div
               style={{
@@ -602,9 +563,10 @@ export function StudentProfileHoverCard({
                 <span>Verified Record</span>
               </div>
             </div>
-          </div>,
-          document.body
-        )}
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
