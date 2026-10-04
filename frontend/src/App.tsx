@@ -2020,7 +2020,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
-    ['/leave-applications', 'Leave Applications', CalendarCheck],
     ['/photo-approvals', 'Photo Approvals', Camera],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
@@ -2037,6 +2036,8 @@ function Layout({children}:{children:React.ReactNode}){
     ['/dashboard','Dashboard',LayoutDashboard],
     ['/take-attendance','Take Attendance',ClipboardCheck],
     ['/teacher-history','History',CalendarDays],
+    ['—','REVIEW'],
+    ['/leave-applications','Leave Review',CalendarCheck],
     ['—','COMMUNICATION'],
     ['/announcements','Announcements',Megaphone],
     ['—','ATTENDANCE'],
@@ -2069,6 +2070,8 @@ function Layout({children}:{children:React.ReactNode}){
   const links = rawLinks.filter(item => {
     if (user.role === 'SCHOOL_ADMIN') {
       if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
+      if (item[0] === '/leave-applications' || item[1] === 'Leave Applications' || item[1] === 'Leave Review') return false;
+      if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
     }
     if (user.role === 'TEACHER') {
       if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
@@ -11729,13 +11732,18 @@ function App(){return <Routes>
   <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-  <Route path="/leave-applications" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+  <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
   <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
   <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
   <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
   <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>

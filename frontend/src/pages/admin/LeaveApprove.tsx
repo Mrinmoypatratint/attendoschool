@@ -17,6 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LeaveRequest {
   id: string;
@@ -38,6 +39,7 @@ interface LeaveRequest {
 }
 
 export default function LeaveApprove() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
@@ -77,7 +79,7 @@ export default function LeaveApprove() {
     try {
       setActionLoading(leave.id);
       const res = await api.put(`/reviews/leaves/${leave.id}/approve`, {
-        notes: 'Approved by School Administration'
+        notes: user?.role === 'TEACHER' ? 'Approved by Class Teacher' : 'Approved by School Administration'
       });
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Leave request for ${leave.applicant_name} has been approved.` });
@@ -96,7 +98,7 @@ export default function LeaveApprove() {
     try {
       setActionLoading(rejectingLeave.id);
       const res = await api.put(`/reviews/leaves/${rejectingLeave.id}/reject`, {
-        reason: rejectReason.trim() || 'Leave request declined by School Administration.'
+        reason: rejectReason.trim() || (user?.role === 'TEACHER' ? 'Leave request declined by Class Teacher.' : 'Leave request declined by School Administration.')
       });
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Leave request for ${rejectingLeave.applicant_name} has been rejected.` });
@@ -161,10 +163,10 @@ export default function LeaveApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Leave Applications
+            Leave Review
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
-            Review, evaluate, and approve submitted student and staff leave applications.
+            Review, evaluate, and approve submitted student leave applications.
           </p>
         </div>
 

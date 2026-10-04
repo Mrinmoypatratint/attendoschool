@@ -97,7 +97,7 @@ const demoUsers: DemoUser[] = [
     id: 'ce8082a9-4280-47a1-90aa-0feaa5f42234',
     schoolId: '00000000-0000-0000-0000-000000000002',
     name: 'Sweta Mondal',
-    email: 'dhardhuran689@gmail.com',
+    email: 'sweta@gmail.com',
     role: 'STUDENT',
     password: 'ChangeMe123!',
     admissionNumber: 'ADM-2025-105',
