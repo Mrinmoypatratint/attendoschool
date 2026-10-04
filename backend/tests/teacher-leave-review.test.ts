@@ -254,10 +254,68 @@ async function runTestSuite() {
       headers: { Authorization: `Bearer ${teacherToken}` }
     });
 
-    const ok = res.status === 200 && res.data.success === true && res.data.totalPendingCount !== undefined;
-    report('12. Review notifications endpoint (/api/reviews/notifications) serves Teacher portal', ok);
+    const ok = res.status === 200 && res.data.success === true && res.data.pendingPhotosCount === 0;
+    report('12. Review notifications endpoint (/api/reviews/notifications) serves Teacher portal without admin photos', ok);
   } catch (err: any) {
     report('12. Review notifications error', false, err.message);
+  }
+
+  // -------------------------------------------------------------------------
+  // Test 13: Student submits leave and Teacher Bell notification shows Leave Request
+  // -------------------------------------------------------------------------
+  try {
+    // Submit a fresh leave request
+    const postRes = await apiReq('/reviews/leaves', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${studentToken}` },
+      body: JSON.stringify({
+        startDate: '2026-10-15',
+        endDate: '2026-10-18',
+        reason: 'National Science Olympiad competition'
+      })
+    });
+
+    const notifRes = await apiReq('/reviews/notifications', {
+      headers: { Authorization: `Bearer ${teacherToken}` }
+    });
+
+    const leaveNotif = notifRes.data.notifications?.find((n: any) => n.type === 'LEAVE_REQUEST');
+    const ok = notifRes.status === 200 &&
+      notifRes.data.pendingLeavesCount > 0 &&
+      leaveNotif &&
+      leaveNotif.link === '/leave-applications' &&
+      leaveNotif.message?.includes('leave application');
+
+    report('13. Student leave application appears in Teacher Bell notification with link to /leave-applications', Boolean(ok));
+  } catch (err: any) {
+    report('13. Teacher bell notification error', false, err.message);
+  }
+
+  // -------------------------------------------------------------------------
+  // Test 14: School Admin does NOT receive leave notifications in their Bell icon
+  // -------------------------------------------------------------------------
+  try {
+    const adminLoginRes = await apiReq('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'admin@demo-school.local',
+        password: 'ChangeMe123!'
+      })
+    });
+    const adminToken = adminLoginRes.data.token;
+
+    const adminNotifRes = await apiReq('/reviews/notifications', {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+
+    const hasLeaveNotifs = adminNotifRes.data.notifications?.some((n: any) => n.type === 'LEAVE_REQUEST');
+    const ok = adminNotifRes.status === 200 &&
+      adminNotifRes.data.pendingLeavesCount === 0 &&
+      !hasLeaveNotifs;
+
+    report('14. Leave applications are REMOVED from School Admin bell icon (pendingLeavesCount = 0, no leave notifications)', Boolean(ok));
+  } catch (err: any) {
+    report('14. Admin leave exclusion check error', false, err.message);
   }
 
   console.log('\n------------------------------------------------------------------------');

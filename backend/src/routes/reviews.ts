@@ -637,17 +637,25 @@ router.post('/leaves', async (req: AuthRequest, res: Response) => {
   }
 });
 
+function formatLeaveDate(d: any) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d).slice(0, 10);
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
+}
+
 // GET /api/reviews/notifications - Pending reviews for notification center and bell popup
 router.get('/notifications', async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
+    const userRole = req.user?.role;
     if (!schoolId) {
       return res.json({ success: true, pendingPhotosCount: 0, pendingLeavesCount: 0, totalPendingCount: 0, notifications: [] });
     }
 
     if (isPostgresConfigured) {
-      const photosRes = await pool.query(`
+      const photosRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
         SELECT id, applicant_name, applicant_type, identifier, detail, photo_url, created_at
         FROM photo_approval_requests
         WHERE school_id = $1 AND status = 'PENDING'
@@ -655,11 +663,11 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         LIMIT 10
       `, [schoolId]);
 
-      const leavesRes = await pool.query(`
-        SELECT l.id, 'STUDENT' as applicant_type, s.name as applicant_name,
+      const leavesRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
+        SELECT l.id, 'STUDENT' as applicant_type, COALESCE(s.name, 'Student') as applicant_name,
                s.admission_number as identifier, l.start_date, l.end_date, l.reason, l.created_at
         FROM student_leave_requests l
-        JOIN students s ON s.id = l.student_id
+        LEFT JOIN students s ON s.id = l.student_id
         WHERE l.school_id = $1 AND l.status = 'PENDING'
         ORDER BY l.created_at DESC
         LIMIT 10
@@ -671,8 +679,11 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           (SELECT COUNT(*) FROM student_leave_requests WHERE school_id = $1 AND status = 'PENDING') as pending_leaves
       `, [schoolId]);
 
-      const pendingPhotosCount = parseInt(countRes.rows[0]?.pending_photos || '0', 10);
-      const pendingLeavesCount = parseInt(countRes.rows[0]?.pending_leaves || '0', 10);
+      const rawPhotosCount = parseInt(countRes.rows[0]?.pending_photos || '0', 10);
+      const rawLeavesCount = parseInt(countRes.rows[0]?.pending_leaves || '0', 10);
+
+      const pendingPhotosCount = (userRole === 'TEACHER') ? 0 : rawPhotosCount;
+      const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? 0 : rawLeavesCount;
 
       const notifications = [
         ...photosRes.rows.map(p => ({
@@ -682,7 +693,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           category: 'REVIEW',
           title: 'Photo Approval Request',
           message: `${p.applicant_name} (${p.identifier || p.detail || 'Student'}) uploaded a new profile photo for approval.`,
-          link: '/review/photos',
+          link: '/photo-approvals',
           createdAt: p.created_at,
           avatar: p.photo_url,
           applicantName: p.applicant_name,
@@ -694,11 +705,14 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           type: 'LEAVE_REQUEST',
           category: 'REVIEW',
           title: 'Leave Request',
-          message: `${l.applicant_name} submitted a leave application (${String(l.start_date).slice(0, 10)} to ${String(l.end_date).slice(0, 10)}).`,
-          link: '/review/leaves',
+          message: `${l.applicant_name} submitted a leave application (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
+          link: '/leave-applications',
           createdAt: l.created_at,
           applicantName: l.applicant_name,
-          applicantType: l.applicant_type
+          applicantType: l.applicant_type,
+          reason: l.reason,
+          startDate: l.start_date,
+          endDate: l.end_date
         }))
       ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -711,12 +725,43 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const memLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => l.school_id === schoolId && l.status === 'PENDING');
+    const memPhotos = (userRole === 'TEACHER') ? [] : inMemoryPhotos.filter(p => p.school_id === schoolId && p.status === 'PENDING');
+
+    const notifications = [
+      ...memPhotos.map(p => ({
+        id: `photo-${p.id}`,
+        rawId: p.id,
+        type: 'PHOTO_APPROVAL',
+        category: 'REVIEW',
+        title: 'Photo Approval Request',
+        message: `${p.applicant_name} uploaded a new profile photo for approval.`,
+        link: '/photo-approvals',
+        createdAt: p.created_at,
+        avatar: p.photo_url,
+        applicantName: p.applicant_name,
+        applicantType: p.applicant_type
+      })),
+      ...memLeaves.map(l => ({
+        id: `leave-${l.id}`,
+        rawId: l.id,
+        type: 'LEAVE_REQUEST',
+        category: 'REVIEW',
+        title: 'Leave Request',
+        message: `${l.applicant_name} submitted a leave application (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
+        link: '/leave-applications',
+        createdAt: l.created_at,
+        applicantName: l.applicant_name,
+        applicantType: l.applicant_type
+      }))
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
     return res.json({
       success: true,
-      pendingPhotosCount: 0,
-      pendingLeavesCount: 0,
-      totalPendingCount: 0,
-      notifications: []
+      pendingPhotosCount: memPhotos.length,
+      pendingLeavesCount: memLeaves.length,
+      totalPendingCount: memPhotos.length + memLeaves.length,
+      notifications
     });
   } catch (error: any) {
     console.error('Error fetching review notifications:', error);

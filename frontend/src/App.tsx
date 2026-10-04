@@ -1807,10 +1807,12 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }, [user?.role]);
 
-  // ── Admin Review Notifications ──
+  // ── Review Notifications (Admin Photos & Teacher Leaves) ──
   const [adminNotifs, setAdminNotifs] = useState<any[]>([]);
   const [adminNotifOpen, setAdminNotifOpen] = useState(false);
   const adminNotifRef = useRef<HTMLDivElement>(null);
+  const [teacherNotifOpen, setTeacherNotifOpen] = useState(false);
+  const teacherNotifRef = useRef<HTMLDivElement>(null);
   const [pendingPhotoCount, setPendingPhotoCount] = useState(0);
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
@@ -1826,7 +1828,7 @@ function Layout({children}:{children:React.ReactNode}){
   }, []);
 
   useEffect(() => {
-    if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN')) {
+    if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'TEACHER')) {
       loadAdminNotifications();
       const interval = setInterval(loadAdminNotifications, 10000);
       return () => clearInterval(interval);
@@ -1838,10 +1840,13 @@ function Layout({children}:{children:React.ReactNode}){
       if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
         setAdminNotifOpen(false);
       }
+      if (teacherNotifRef.current && !teacherNotifRef.current.contains(e.target as Node)) {
+        setTeacherNotifOpen(false);
+      }
     }
-    if (adminNotifOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (adminNotifOpen || teacherNotifOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [adminNotifOpen]);
+  }, [adminNotifOpen, teacherNotifOpen]);
 
   useEffect(() => {
     if (user) {
@@ -1863,6 +1868,7 @@ function Layout({children}:{children:React.ReactNode}){
         setSearchOpen(false);
         setAyDropdownOpen(false);
         setAdminNotifOpen(false);
+        setTeacherNotifOpen(false);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -2398,19 +2404,19 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            {/* Connected Review Notifications Bell & Popover */}
+            {/* Connected Review Notifications Bell & Popover (Admin Photo Approvals) */}
             <div className="super-notif-wrap" ref={adminNotifRef} style={{ position: 'relative' }}>
               <button
                 type="button"
                 className="header-icon-btn"
-                title="Photo & Leave Approval Requests"
+                title="Photo Approval Requests"
                 onClick={() => { setAdminNotifOpen(prev => !prev); if (!adminNotifOpen) loadAdminNotifications(); }}
                 style={{ position: 'relative' }}
               >
                 <Bell size={16} />
-                {(pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
+                {(pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
                   <span className="header-badge-num" style={{ background: '#ef4444' }}>
-                    {pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
+                    {pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0)}
                   </span>
                 )}
               </button>
@@ -2420,9 +2426,9 @@ function Layout({children}:{children:React.ReactNode}){
                   <div className="super-notif-header">
                     <div className="super-notif-title-row">
                       <h4 className="super-notif-title">Notifications</h4>
-                      {(pendingPhotoCount + pendingLeaveCount > 0) && (
+                      {pendingPhotoCount > 0 && (
                         <span className="super-notif-count-pill">
-                          {pendingPhotoCount + pendingLeaveCount} pending
+                          {pendingPhotoCount} pending
                         </span>
                       )}
                     </div>
@@ -2431,41 +2437,31 @@ function Layout({children}:{children:React.ReactNode}){
                         type="button"
                         className="super-notif-readall-btn"
                         title="Review Submitted Photos"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                        onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
                       >
                         <Camera size={12} />
                         <span>Photos</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="super-notif-readall-btn"
-                        style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0' }}
-                        title="Review Leave Requests"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
-                      >
-                        <Calendar size={12} />
-                        <span>Leaves</span>
                       </button>
                     </div>
                   </div>
 
                   <div className="super-notif-list">
-                    {adminNotifs.length === 0 ? (
+                    {adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo or leave approval requests.</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo approval requests.</div>
                       </div>
                     ) : (
-                      adminNotifs.map((n: any) => (
+                      adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').map((n: any) => (
                         <div
                           key={n.id}
                           className="super-notif-item unread"
                           onClick={() => {
                             setAdminNotifOpen(false);
-                            nav(n.link || '/review/photos');
+                            nav(n.link || '/photo-approvals');
                           }}
                         >
                           {n.avatar ? (
@@ -2475,8 +2471,8 @@ function Layout({children}:{children:React.ReactNode}){
                               style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid #bfdbfe', flexShrink: 0 }}
                             />
                           ) : (
-                            <div className={`super-notif-icon-wrap ${n.type === 'PHOTO_APPROVAL' ? 'notif-photo' : 'notif-leave'}`}>
-                              {n.type === 'PHOTO_APPROVAL' ? <Camera size={17} /> : <Calendar size={17} />}
+                            <div className="super-notif-icon-wrap notif-photo">
+                              <Camera size={17} />
                             </div>
                           )}
 
@@ -2501,27 +2497,18 @@ function Layout({children}:{children:React.ReactNode}){
                     <button
                       type="button"
                       className="super-notif-footer-link"
-                      onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                      onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
                     >
                       <CheckCircle2 size={13} />
                       <span>Review Center</span>
                     </button>
-                    {user?.role !== 'SCHOOL_ADMIN' ? (
+                    {user?.role !== 'SCHOOL_ADMIN' && (
                       <button
                         type="button"
                         className="super-notif-footer-link"
                         onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
                       >
                         <span>Settings & All Alerts →</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="super-notif-footer-link"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
-                      >
-                        <CalendarCheck size={13} />
-                        <span>Review Leaves</span>
                       </button>
                     )}
                   </div>
@@ -2634,48 +2621,119 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            <button
-              className="header-icon-btn"
-              title={user.role === 'TEACHER' ? 'Faculty Announcements' : 'Notifications'}
-              style={{ position: 'relative' }}
-              onClick={() => {
-                if (user.role === 'TEACHER') {
-                  nav('/announcements');
-                } else if (user.role === 'SUPER_ADMIN') {
-                  nav('/notifications');
-                } else if (user.role === 'SCHOOL_ADMIN') {
-                  nav('/dashboard');
-                } else {
-                  nav('/notifications');
-                }
-              }}
-            >
-              <Bell size={16}/>
-              {user.role === 'TEACHER' ? (
-                teacherUnreadCount > 0 ? (
-                  <span style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    backgroundColor: '#ef4444',
-                    color: '#ffffff',
-                    borderRadius: '50%',
-                    minWidth: 16,
-                    height: 16,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 2px'
-                  }}>
-                    {teacherUnreadCount}
-                  </span>
-                ) : null
-              ) : (
-                <span className="header-badge-dot"></span>
-              )}
-            </button>
+            {user.role === 'TEACHER' ? (
+              <div className="super-notif-wrap" ref={teacherNotifRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="Student Leave Review Requests"
+                  onClick={() => { setTeacherNotifOpen(prev => !prev); if (!teacherNotifOpen) loadAdminNotifications(); }}
+                  style={{ position: 'relative' }}
+                >
+                  <Bell size={16} />
+                  {pendingLeaveCount > 0 && (
+                    <span className="header-badge-num" style={{ background: '#ef4444' }}>
+                      {pendingLeaveCount}
+                    </span>
+                  )}
+                </button>
+
+                {teacherNotifOpen && (
+                  <div className="super-notif-dropdown">
+                    <div className="super-notif-header">
+                      <div className="super-notif-title-row">
+                        <h4 className="super-notif-title">Notifications</h4>
+                        {pendingLeaveCount > 0 && (
+                          <span className="super-notif-count-pill">
+                            {pendingLeaveCount} pending
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="super-notif-readall-btn"
+                          style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0' }}
+                          title="Review Leave Requests"
+                          onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                        >
+                          <Calendar size={12} />
+                          <span>Leaves</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="super-notif-list">
+                      {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST').length === 0 ? (
+                        <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                            <CheckCircle2 size={24} />
+                          </div>
+                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student leave applications.</div>
+                        </div>
+                      ) : (
+                        adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST').map((n: any) => (
+                          <div
+                            key={n.id}
+                            className="super-notif-item unread"
+                            onClick={() => {
+                              setTeacherNotifOpen(false);
+                              nav('/leave-applications');
+                            }}
+                          >
+                            <div className="super-notif-icon-wrap notif-leave">
+                              <Calendar size={17} />
+                            </div>
+
+                            <div className="super-notif-body">
+                              <div className="super-notif-item-title">
+                                <span className="super-notif-item-title-text">{n.title}</span>
+                                <span className="super-notif-time">
+                                  {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                              <p className="super-notif-msg">{n.message}</p>
+                              <span className="super-notif-action-tag">
+                                Review & Verify →
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="super-notif-footer">
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Review Center</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                      >
+                        <CalendarCheck size={13} />
+                        <span>Review Leaves</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                className="header-icon-btn"
+                title="Notifications"
+                style={{ position: 'relative' }}
+                onClick={() => nav('/notifications')}
+              >
+                <Bell size={16}/>
+              </button>
+            )}
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
