@@ -76,27 +76,28 @@ export default function LeaveApprove() {
   }, []);
 
   const handleViewLeave = async (leave: LeaveRequest) => {
-    setViewingLeave(leave);
-    if (leave.status === 'PENDING') {
+    const isPending = leave.status === 'PENDING';
+    const updatedLeave: LeaveRequest = isPending
+      ? { ...leave, status: 'SEEN', review_notes: 'Seen by Faculty' }
+      : leave;
+
+    setViewingLeave(updatedLeave);
+
+    if (isPending) {
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l.id === leave.id ? { ...l, status: 'SEEN', review_notes: 'Seen by Faculty' } : l
+        )
+      );
+      setCounts((prev) => ({
+        ...prev,
+        pending: Math.max(0, prev.pending - 1),
+        seen: (prev.seen || 0) + 1
+      }));
       try {
-        const res = await api.put(`/reviews/leaves/${leave.id}/seen`);
-        if (res.data?.success) {
-          setLeaves((prev) =>
-            prev.map((l) =>
-              l.id === leave.id ? { ...l, status: 'SEEN', review_notes: 'Seen by Faculty' } : l
-            )
-          );
-          setViewingLeave((prev) =>
-            prev && prev.id === leave.id ? { ...prev, status: 'SEEN', review_notes: 'Seen by Faculty' } : prev
-          );
-          setCounts((prev) => ({
-            ...prev,
-            pending: Math.max(0, prev.pending - 1),
-            seen: (prev.seen || 0) + 1
-          }));
-        }
+        await api.put(`/reviews/leaves/${leave.id}/seen`);
       } catch (err) {
-        console.error('Failed to mark leave as seen:', err);
+        console.error('Failed to mark leave as seen on server:', err);
       }
     }
   };
