@@ -143,6 +143,7 @@ export default function Timetable() {
   const selClassName = selClassObj?.label || (selClassNum !== undefined && selClassNum !== null
     ? (selClassNum === -1 ? 'L-KG' : selClassNum === 0 ? 'U-KG' : `Class ${selClassNum}`)
     : (selClassObj?.name || 'Class'));
+  const displayClassLabel = selClassName.toLowerCase().startsWith('class') ? selClassName : `Class ${selClassName}`;
 
   const filteredSections = useMemo(() => {
     let list = sections.filter(s =>
@@ -505,7 +506,7 @@ export default function Timetable() {
                       <td><b>{dayName}</b></td>
                       <td>{e.period_name || `Period ${e.period_number || 1}`}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.start_time} – {e.end_time}</td>
-                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 700 }}>Class {e.class_number}-{e.section_name}</span></td>
+                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 700 }}>{String(e.class_number || '').toLowerCase().startsWith('class') ? e.class_number : `Class ${e.class_number}`}-{e.section_name}</span></td>
                       <td><b>{e.subject_name || '—'}</b></td>
                       <td>{e.room_name || '—'}</td>
                       <td>
@@ -703,7 +704,7 @@ export default function Timetable() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: 16 }}>
               <Calendar size={16} style={{ marginRight: 6 }} />
-              {DAYS.find(d => d.num === selDay)?.name} — {selClassName || 'Class'} {selSectionName ? `· Section ${selSectionName}` : ''}
+              {DAYS.find(d => d.num === selDay)?.name} — {displayClassLabel} {selSectionName ? `(Section ${selSectionName})` : ''}
             </h3>
             <span className="muted" style={{ fontSize: 12 }}>{dayEntries.length} of {teachingPeriods.length} periods assigned</span>
           </div>
@@ -835,7 +836,7 @@ export default function Timetable() {
         {/* ── All Entries Overview ── */}
         <div className="panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries (Class {selClassName}-{selSectionName})</h3>
+            <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries ({displayClassLabel}-{selSectionName})</h3>
             {isSchoolAdmin && entries.length > 0 && (
               <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Trash2 size={12} /> Clear All Entries
@@ -891,8 +892,8 @@ export default function Timetable() {
                   <tr>
                     <td colSpan={isSchoolAdmin || isTeacher ? 9 : 8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
                       {isSchoolAdmin
-                        ? `No routine entries for Class ${selClassName}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
-                        : `No routine entries for Class ${selClassName}-${selSectionName} scheduled yet.`}
+                        ? `No routine entries for ${displayClassLabel}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
+                        : `No routine entries for ${displayClassLabel}-${selSectionName} scheduled yet.`}
                     </td>
                   </tr>
                 )}
