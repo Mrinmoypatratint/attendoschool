@@ -10919,6 +10919,46 @@ function SchoolProfile() {
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
+    if (!currentPassword) {
+      setPwMsg({ type: 'error', text: 'Please enter your current password.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+
+    setChangingPw(true);
+    try {
+      const res = await api.put('/school-profile/change-password', {
+        currentPassword,
+        newPassword
+      });
+      setPwMsg({ type: 'success', text: res.data?.message || 'Administrator password updated successfully!' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update administrator password' });
+    } finally {
+      setChangingPw(false);
+    }
+  }
+
   // Universal Preview State for School Profile
   const [profilePreview, setProfilePreview] = useState<{
     isOpen: boolean;
@@ -11019,7 +11059,8 @@ function SchoolProfile() {
       {loading ? (
         <p className="muted">Loading institutional profile...</p>
       ) : (
-        <div className="two-col">
+        <>
+          <div className="two-col">
           <div className="panel">
             <h3>Institution Identity</h3>
             <div className="list">
@@ -11086,7 +11127,141 @@ function SchoolProfile() {
             </form>
           </div>
         </div>
-      )}
+
+        {/* ── Email & Password Management Section ── */}
+        <div className="panel" style={{ marginTop: 24 }} id="email-password-section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Lock size={18} style={{ color: '#2563eb' }} />
+                Email &amp; Password
+              </h3>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                Official administrator credentials, affiliated school verification, and account security.
+              </p>
+            </div>
+            <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <ShieldCheck size={14} /> BCrypt Protected
+            </span>
+          </div>
+
+          {pwMsg && (
+            <div className={pwMsg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
+              {pwMsg.text}
+            </div>
+          )}
+
+          <div className="two-col" style={{ gap: 20 }}>
+            {/* Associated School Identity & Login Credentials */}
+            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <School size={15} style={{ color: '#2563eb' }} />
+                Associated School Identity
+              </h4>
+
+              <div className="modal-form" style={{ gap: 14 }}>
+                <label>
+                  Associated School Name
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
+                    style={{
+                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                      color: 'var(--text-color, #0f172a)',
+                      cursor: 'not-allowed',
+                      fontWeight: 600
+                    }}
+                    id="admin-school-name"
+                    title="Associated school name is automatically bound and cannot be edited manually"
+                  />
+                </label>
+
+                <label>
+                  Administrator Login Email
+                  <input
+                    type="email"
+                    readOnly
+                    disabled
+                    value={user?.email || profile?.adminEmail || profile?.email || '—'}
+                    style={{
+                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                      color: 'var(--text-color, #0f172a)',
+                      cursor: 'not-allowed'
+                    }}
+                    id="admin-email-input"
+                    title="Administrator login email"
+                  />
+                </label>
+
+                <div className="list" style={{ marginTop: 6 }}>
+                  <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                    <b>Affiliated School Code</b>
+                    <span><code>{profile?.code || (user as any)?.schoolCode || 'SCH'}</code></span>
+                  </div>
+                  <div className="list-row" style={{ padding: '8px 0' }}>
+                    <b>Admin Profile Access</b>
+                    <span><span className="badge active">Authorized School Admin</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Change Password Form */}
+            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <KeyRound size={15} style={{ color: '#2563eb' }} />
+                Change Administrator Password
+              </h4>
+
+              <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
+                <label>
+                  Current Password
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  New Password (min 8 characters)
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter new strong password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Confirm New Password
+                  <input
+                    type="password"
+                    required
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={changingPw}
+                  style={{ alignSelf: 'flex-start', marginTop: 6 }}
+                >
+                  {changingPw ? 'Updating Password...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
 
       {/* Universal School Profile Preview Modal */}
       <UniversalPreviewModal

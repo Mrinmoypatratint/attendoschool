@@ -2548,7 +2548,15 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
  try {
   const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, created_at FROM schools WHERE id = $1', [sid]);
-  if (q.rowCount) return res.json(q.rows[0]);
+  if (q.rowCount) {
+    const s = q.rows[0];
+    return res.json({
+      ...s,
+      schoolName: s.name,
+      adminEmail: req.user?.email || '',
+      adminName: req.user?.name || ''
+    });
+  }
  } catch {}
 
  // Check Firestore
@@ -2558,12 +2566,15 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
    return res.json({
     id: fsSchool.id,
     name: fsSchool.name,
+    schoolName: fsSchool.name,
     code: fsSchool.code || 'SCH001',
     status: fsSchool.status || 'ACTIVE',
     enquiry_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
     contact_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
     address: fsSchool.address || 'Main Campus',
     website: fsSchool.website || '',
+    adminEmail: req.user?.email || '',
+    adminName: req.user?.name || '',
     created_at: fsSchool.createdAt || new Date().toISOString()
    });
   }
@@ -2572,10 +2583,13 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  res.json({
   id: sid,
   name: req.user?.schoolName || 'Institutional Campus',
+  schoolName: req.user?.schoolName || 'Institutional Campus',
   code: (req.user as any)?.schoolCode || 'SCH001',
   status: 'ACTIVE',
   enquiry_number: '1800123456',
-  address: 'Main Campus'
+  address: 'Main Campus',
+  adminEmail: req.user?.email || '',
+  adminName: req.user?.name || ''
  });
 });
 
@@ -2611,6 +2625,36 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const updatedSchool = { id: sid, enquiry_number: phone, address, website };
  syncSchoolToFirestore(updatedSchool).catch(() => {});
  res.json(updatedSchool);
+});
+
+r.put('/school-profile/change-password', ...admin, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  }
+
+  try {
+    const q = await pool.query(`SELECT id, password_hash FROM users WHERE id = $1`, [userId]);
+    if (q.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const userRow = q.rows[0];
+    const bcryptModule = await import('bcryptjs');
+    const valid = await bcryptModule.compare(currentPassword, userRow.password_hash);
+    if (!valid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const hashed = await bcryptModule.hash(newPassword, 10);
+    await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [hashed, userId]);
+
+    res.json({ success: true, message: 'Administrator password updated successfully!' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to change administrator password' });
+  }
 });
 
 /* ── Global Search ── */
