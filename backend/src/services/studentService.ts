@@ -778,6 +778,7 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
         : '',
       sectionName: st.section_name || '',
       rollNumber: st.roll_number || '',
+      admissionNumber: st.admission_number || '',
       schoolName: st.school_name || '',
       avatarUrl: st.photo_url || ''
     },

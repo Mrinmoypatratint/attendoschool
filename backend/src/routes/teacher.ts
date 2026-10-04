@@ -1,6 +1,7 @@
 import { queueAbsentNotifications } from '../services/notificationService';
 import { Router } from 'express';
 import crypto from 'crypto';
+import * as XLSX from 'xlsx';
 import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms, sendSms } from '../services/smsService';
@@ -561,8 +562,8 @@ async function dispatchStudentReattendanceAlert(params: {
 // ── GET /api/teacher/attendance/today-status & GET /api/attendance/today-status ──
 const todayStatusHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
-  const classParam = String(req.query.classId || req.query.class_id || req.query.class_number || '');
-  const secParam = String(req.query.sectionId || req.query.section_id || req.query.section_name || '');
+  const classParam = String(req.query.classId || req.query.class_id || req.query.class_number || req.query.class || '');
+  const secParam = String(req.query.sectionId || req.query.section_id || req.query.section_name || req.query.section || '');
   const dateParam = String(req.query.date || req.query.attendance_date || new Date().toISOString().slice(0, 10));
 
   if (!classParam) {
@@ -596,7 +597,8 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
   let session: any = null;
 
   // 1. PRIMARY: Check Supabase / PostgreSQL first
-  if (isPostgresConfigured) {
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
+  if (isPostgresConfigured && isSchoolUuid) {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secParam);
@@ -611,8 +613,8 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
          LEFT JOIN sections s ON s.id = a.section_id
          LEFT JOIN subjects sub ON sub.id = a.subject_id
          WHERE a.school_id = $1 AND a.attendance_date = $2
-           AND (${isClassUuid ? 'a.class_id = $3' : 'FALSE'} OR c.class_number = $4)
-           AND (${isSecUuid ? 'a.section_id = $5' : 'TRUE'} OR LOWER(s.name) = LOWER($6) OR $6 = '')
+           AND (${isClassUuid ? 'a.class_id = $3::uuid' : 'FALSE'} OR c.class_number = $4)
+           AND (${isSecUuid ? 'a.section_id = $5::uuid' : 'TRUE'} OR LOWER(s.name) = LOWER($6) OR $6 = '')
          ORDER BY a.submitted_at DESC NULLS LAST
          LIMIT 1`,
         [sid, dateParam, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000', cleanSec]
@@ -792,7 +794,29 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
   }
 
   // Find audit logs
-  let auditLogs: any[] = memAttendanceAuditLogs.filter(a => a.sessionId === session.id);
+  let auditLogs: any[] = [];
+  const isSessUuid = session?.id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session.id) : false;
+  if (isPostgresConfigured && isSchoolUuid && isSessUuid) {
+    try {
+      const aQ = await pool.query(
+        `SELECT aal.*, aal.changed_by_name AS modified_by_name, aal.created_at AS "createdAt"
+         FROM attendance_audit_logs aal
+         WHERE aal.session_id = $1 AND aal.school_id = $2
+         ORDER BY aal.created_at DESC`,
+        [session.id, sid]
+      );
+      if (aQ.rowCount && aQ.rowCount > 0) {
+        auditLogs = aQ.rows;
+      }
+    } catch (err: any) {
+      console.warn('[TodayStatus] Postgres audit fetch error:', err.message);
+    }
+  }
+
+  if (auditLogs.length === 0) {
+    auditLogs = memAttendanceAuditLogs.filter(a => (a.sessionId === session.id || a.session_id === session.id) && isSameSchool(a.schoolId || a.school_id, sid));
+  }
+
   if (auditLogs.length === 0 && isFirebaseConfigured()) {
     try {
       const aSnap = await collections.auditLogs().where('entity_id', '==', session.id).get();
@@ -817,8 +841,80 @@ r.get('/today-status', ...teacher, todayStatusHandler);
 const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
+  const isSessionUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
 
-  let session = memAttendanceSessions.find(s => s.id === sessionId && isSameSchool(s.schoolId, sid));
+  let session: any = memAttendanceSessions.find(s => s.id === sessionId && isSameSchool(s.schoolId, sid));
+  if (!session && isPostgresConfigured && isSchoolUuid && isSessionUuid) {
+    try {
+      const q = await pool.query(
+        `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+         FROM attendance_sessions a
+         LEFT JOIN users u ON u.id = a.teacher_id
+         LEFT JOIN classes c ON c.id = a.class_id
+         LEFT JOIN sections s ON s.id = a.section_id
+         LEFT JOIN subjects sub ON sub.id = a.subject_id
+         WHERE a.id = $1 AND a.school_id = $2`,
+        [sessionId, sid]
+      );
+      if (q.rowCount && q.rows[0]) {
+        const row = q.rows[0];
+        session = {
+          id: row.id,
+          school_id: row.school_id,
+          schoolId: row.school_id,
+          class_id: row.class_id,
+          classId: row.class_id,
+          class_number: row.class_number,
+          classNumber: row.class_number,
+          section_id: row.section_id,
+          sectionId: row.section_id,
+          section_name: row.section_name,
+          sectionName: row.section_name,
+          subject_id: row.subject_id,
+          subjectId: row.subject_id,
+          subject_name: row.subject_name || 'General',
+          subjectName: row.subject_name || 'General',
+          attendance_date: row.attendance_date,
+          attendanceDate: row.attendance_date,
+          start_time: row.start_time,
+          startTime: row.start_time,
+          end_time: row.end_time,
+          endTime: row.end_time,
+          teacher_id: row.teacher_id,
+          teacherId: row.teacher_id,
+          takenBy: row.teacher_id,
+          teacher_name: row.teacher_name || 'Faculty Member',
+          teacherName: row.teacher_name || 'Faculty Member',
+          total_count: row.total_count,
+          totalCount: row.total_count,
+          present_count: row.present_count,
+          presentCount: row.present_count,
+          absent_count: row.absent_count,
+          absentCount: row.absent_count,
+          left_early_count: row.left_early_count,
+          leftEarlyCount: row.left_early_count,
+          late_count: row.late_count,
+          lateCount: row.late_count,
+          is_reattendance: row.is_reattendance,
+          isReattendance: row.is_reattendance,
+          reattendance_count: row.reattendance_count,
+          reattendanceCount: row.reattendance_count,
+          last_modified_by: row.last_modified_by,
+          lastModifiedBy: row.last_modified_by,
+          last_modified_name: row.last_modified_name,
+          lastModifiedName: row.last_modified_name,
+          last_modified_at: row.last_modified_at,
+          lastModifiedAt: row.last_modified_at,
+          created_at: row.created_at,
+          createdAt: row.created_at
+        };
+      }
+    } catch (err: any) {
+      console.warn('[SessionRecords] Postgres session lookup error:', err.message);
+    }
+  }
+
   if (!session && isFirebaseConfigured()) {
     try {
       const doc = await collections.attendanceSessions().doc(sessionId).get();
@@ -828,7 +924,44 @@ const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
     } catch {}
   }
 
-  let records: any[] = memAttendanceRecords.filter(r => r.sessionId === sessionId);
+  let records: any[] = [];
+  if (isPostgresConfigured && isSessionUuid) {
+    try {
+      const rq = await pool.query(
+        `SELECT ar.*, st.name AS student_name, st.roll_number, st.admission_number
+         FROM attendance_records ar
+         LEFT JOIN students st ON st.id = ar.student_id
+         WHERE ar.attendance_session_id = $1`,
+        [sessionId]
+      );
+      if (rq.rowCount && rq.rowCount > 0) {
+        records = rq.rows.map(r => ({
+          id: r.id,
+          sessionId: r.attendance_session_id,
+          studentId: r.student_id,
+          studentName: r.student_name,
+          rollNumber: r.roll_number,
+          admissionNumber: r.admission_number,
+          status: r.status,
+          isPresent: r.is_present,
+          is_present: r.is_present,
+          departurePeriod: r.departure_period,
+          departureTime: r.departure_time,
+          arrivalPeriod: r.arrival_period,
+          arrivalTime: r.arrival_time,
+          remarks: r.remarks,
+          updatedByName: r.updated_by_name
+        }));
+      }
+    } catch (err: any) {
+      console.warn('[SessionRecords] Postgres records lookup error:', err.message);
+    }
+  }
+
+  if (records.length === 0) {
+    records = memAttendanceRecords.filter(r => r.sessionId === sessionId);
+  }
+
   if (records.length === 0 && isFirebaseConfigured()) {
     try {
       const snap = await collections.attendanceRecords().where('sessionId', '==', sessionId).get();
@@ -838,7 +971,28 @@ const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
     } catch {}
   }
 
-  let auditLogs: any[] = memAttendanceAuditLogs.filter(a => a.sessionId === sessionId);
+  let auditLogs: any[] = [];
+  if (isPostgresConfigured && isSchoolUuid && isSessionUuid) {
+    try {
+      const aQ = await pool.query(
+        `SELECT aal.*, aal.changed_by_name AS modified_by_name, aal.created_at AS "createdAt"
+         FROM attendance_audit_logs aal
+         WHERE aal.session_id = $1 AND aal.school_id = $2
+         ORDER BY aal.created_at DESC`,
+        [sessionId, sid]
+      );
+      if (aQ.rowCount && aQ.rowCount > 0) {
+        auditLogs = aQ.rows;
+      }
+    } catch (err: any) {
+      console.warn('[SessionRecords] Postgres audit fetch error:', err.message);
+    }
+  }
+
+  if (auditLogs.length === 0) {
+    auditLogs = memAttendanceAuditLogs.filter(a => (a.sessionId === sessionId || a.session_id === sessionId) && isSameSchool(a.schoolId || a.school_id, sid));
+  }
+
   if (auditLogs.length === 0 && isFirebaseConfigured()) {
     try {
       const aSnap = await collections.auditLogs().where('entity_id', '==', sessionId).get();
@@ -1225,6 +1379,21 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
          WHERE id=$7`,
         [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
       );
+      const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
+      const isSessUuid2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+      if (isSidUuid && isSessUuid2) {
+        await pool.query(
+          `INSERT INTO attendance_audit_logs(
+             school_id, session_id, student_id, student_name, roll_number, action,
+             previous_status, new_status, departure_period, departure_time,
+             arrival_period, arrival_time, reason, changed_by, changed_by_name, notification_sent
+           ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+          [sid, sessionId, null, 'Whole Class Batch Update', '',
+           'REATTENDANCE_BATCH', 'VARIOUS', 'BATCH_UPDATED', null, null,
+           null, null, reason || `Batch re-attendance processed by ${userName}`,
+           req.user!.id, userName, Boolean(notifyParents)]
+        );
+      }
     } catch (pgErr: any) {
       console.warn('[BatchReattendance] Supabase update warning:', pgErr.message);
     }
@@ -1247,6 +1416,414 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
 
 r.post('/attendance/:sessionId/reattendance', ...teacher, batchReattendanceHandler);
 r.post('/:sessionId/reattendance', ...teacher, batchReattendanceHandler);
+
+// ── GET /api/teacher/attendance/:sessionId/audit-trail/export & /api/teacher/attendance/audit-trail/export ──
+export const auditTrailExportHandler = async (req: AuthRequest, res: any) => {
+  try {
+    const user = req.user!;
+    const sid = user.schoolId!;
+    const sessionIdParam = String(req.params.sessionId || req.query.sessionId || req.query.session_id || '').trim();
+    const format = String(req.query.format || 'csv').toLowerCase().trim();
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const statusFilter = String(req.query.status || '').trim().toUpperCase();
+    const actionFilter = String(req.query.action || '').trim().toUpperCase();
+    const dateParam = String(req.query.date || '').trim();
+    const fromDate = String(req.query.from || '').trim();
+    const toDate = String(req.query.to || '').trim();
+    const classParam = String(req.query.classId || req.query.class_id || req.query.class_number || req.query.class || '').trim();
+    const sectionParam = String(req.query.sectionId || req.query.section_id || req.query.section_name || req.query.section || '').trim();
+
+    const isSessionUuid = sessionIdParam ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionIdParam) : false;
+    const isSchoolUuid = sid ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid) : false;
+
+    // 1. Strict Tenant Isolation & Session Access Validation
+    let sessionMetadata: any = null;
+    if (sessionIdParam) {
+      if (isPostgresConfigured && isSessionUuid) {
+        try {
+          const sessQ = await pool.query(
+            `SELECT s.*, c.class_number, s2.name as section_name, sub.name as subject_name
+             FROM attendance_sessions s
+             LEFT JOIN classes c ON c.id = s.class_id
+             LEFT JOIN sections s2 ON s2.id = s.section_id
+             LEFT JOIN subjects sub ON sub.id = s.subject_id
+             WHERE s.id = $1`,
+            [sessionIdParam]
+          );
+          if (sessQ.rowCount && sessQ.rowCount > 0) {
+            sessionMetadata = sessQ.rows[0];
+          }
+        } catch (err: any) {
+          console.warn('[AuditExport] Postgres session check error:', err.message);
+        }
+      }
+      if (!sessionMetadata) {
+        sessionMetadata = memAttendanceSessions.find(s => s.id === sessionIdParam);
+      }
+
+      if (sessionMetadata) {
+        // Enforce strict school isolation: reject if session belongs to another school
+        const sessSchoolId = sessionMetadata.school_id || sessionMetadata.schoolId;
+        if (user.role !== 'SUPER_ADMIN' && !isSameSchool(sessSchoolId, sid)) {
+          return res.status(403).json({
+            message: 'Forbidden: You are not authorized to export audit trail data belonging to another institution.'
+          });
+        }
+      } else if (isPostgresConfigured && isSessionUuid) {
+        return res.status(404).json({ message: 'Attendance session not found.' });
+      }
+    }
+
+    // 2. Fetch Audit Logs with Strict Tenant Isolation
+    let rawLogs: any[] = [];
+    if (isPostgresConfigured && isSchoolUuid) {
+      try {
+        const conditions: string[] = ['aal.school_id = $1'];
+        const params: any[] = [sid];
+
+        if (sessionIdParam) {
+          if (isSessionUuid) {
+            params.push(sessionIdParam);
+            conditions.push('aal.session_id = $' + params.length);
+          } else {
+            conditions.push('FALSE');
+          }
+        }
+
+        if (statusFilter && statusFilter !== 'ALL') {
+          params.push(statusFilter);
+          const pNum = params.length;
+          conditions.push('(UPPER(aal.new_status) = $' + pNum + ' OR UPPER(COALESCE(aal.previous_status, \'\')) = $' + pNum + ')');
+        }
+
+        if (actionFilter && actionFilter !== 'ALL') {
+          params.push(actionFilter);
+          conditions.push('UPPER(aal.action) = $' + params.length);
+        }
+
+        if (dateParam) {
+          params.push(dateParam);
+          conditions.push('s.attendance_date = $' + params.length);
+        } else {
+          if (fromDate) {
+            params.push(fromDate);
+            conditions.push('s.attendance_date >= $' + params.length);
+          }
+          if (toDate) {
+            params.push(toDate);
+            conditions.push('s.attendance_date <= $' + params.length);
+          }
+        }
+
+        if (classParam) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
+          const classNum = parseInt(classParam.replace(/\D/g, ''), 10);
+          if (isUuid) {
+            params.push(classParam);
+            conditions.push('s.class_id = $' + params.length);
+          } else if (!isNaN(classNum)) {
+            params.push(classNum);
+            conditions.push('c.class_number = $' + params.length);
+          }
+        }
+
+        if (sectionParam) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionParam);
+          if (isUuid) {
+            params.push(sectionParam);
+            conditions.push('s.section_id = $' + params.length);
+          } else {
+            params.push(sectionParam);
+            conditions.push('LOWER(sec.name) = LOWER($' + params.length + ')');
+          }
+        }
+
+        if (search) {
+          params.push('%' + search + '%');
+          const pIdx = params.length;
+          conditions.push('( ' +
+            'LOWER(aal.student_name) LIKE $' + pIdx + ' OR ' +
+            'LOWER(COALESCE(aal.roll_number, \'\')) LIKE $' + pIdx + ' OR ' +
+            'LOWER(COALESCE(st.admission_number, \'\')) LIKE $' + pIdx + ' OR ' +
+            'LOWER(COALESCE(aal.reason, \'\')) LIKE $' + pIdx + ' OR ' +
+            'LOWER(COALESCE(aal.changed_by_name, \'\')) LIKE $' + pIdx + ' ' +
+          ')');
+        }
+
+        const queryText = `
+          SELECT 
+            aal.id,
+            aal.school_id,
+            aal.session_id,
+            aal.student_id,
+            aal.student_name,
+            aal.roll_number,
+            aal.action,
+            aal.previous_status,
+            aal.new_status,
+            aal.departure_period,
+            aal.departure_time,
+            aal.arrival_period,
+            aal.arrival_time,
+            aal.reason,
+            aal.changed_by,
+            aal.changed_by_name,
+            aal.notification_sent,
+            aal.created_at,
+            s.attendance_date,
+            s.start_time,
+            s.end_time,
+            c.class_number,
+            CONCAT('Class ', c.class_number) AS class_name,
+            sec.name AS section_name,
+            COALESCE(sub.name, 'General') AS subject_name,
+            st.admission_number,
+            st.roll_number AS student_roll
+          FROM attendance_audit_logs aal
+          JOIN attendance_sessions s ON s.id = aal.session_id
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN sections sec ON sec.id = s.section_id
+          LEFT JOIN subjects sub ON sub.id = s.subject_id
+          LEFT JOIN students st ON st.id = aal.student_id
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY aal.created_at DESC
+          LIMIT 5000
+        `;
+
+        const qRes = await pool.query(queryText, params);
+        if (qRes.rows && qRes.rows.length > 0) {
+          rawLogs = qRes.rows;
+        }
+      } catch (dbErr: any) {
+        console.warn('[AuditExport] Postgres query fallback:', dbErr.message);
+      }
+    }
+
+    // In-memory fallback
+    if (rawLogs.length === 0) {
+      let filtered = memAttendanceAuditLogs.filter(log => {
+        if (!isSameSchool(log.schoolId || log.school_id, sid)) return false;
+        if (sessionIdParam && log.sessionId !== sessionIdParam && log.session_id !== sessionIdParam) return false;
+        if (statusFilter && statusFilter !== 'ALL') {
+          const ns = (log.newStatus || log.new_status || '').toUpperCase();
+          const ps = (log.previousStatus || log.previous_status || '').toUpperCase();
+          if (ns !== statusFilter && ps !== statusFilter) return false;
+        }
+        if (actionFilter && actionFilter !== 'ALL') {
+          if ((log.action || '').toUpperCase() !== actionFilter) return false;
+        }
+        if (search) {
+          const sName = (log.studentName || log.student_name || '').toLowerCase();
+          const rNum = (log.rollNumber || log.roll_number || '').toLowerCase();
+          const rsn = (log.reason || '').toLowerCase();
+          const cBy = (log.changedByName || log.changed_by_name || log.modifiedByName || log.modified_by_name || '').toLowerCase();
+          if (!sName.includes(search) && !rNum.includes(search) && !rsn.includes(search) && !cBy.includes(search)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      rawLogs = filtered.map(log => {
+        const sess = memAttendanceSessions.find(s => s.id === (log.sessionId || log.session_id)) || sessionMetadata;
+        const stud = demoStudents.find(st => st.id === (log.studentId || log.student_id));
+        return {
+          id: log.id,
+          school_id: log.schoolId || log.school_id || sid,
+          session_id: log.sessionId || log.session_id || sessionIdParam || '',
+          student_id: log.studentId || log.student_id || '',
+          student_name: log.studentName || log.student_name || stud?.name || 'Student Record',
+          roll_number: log.rollNumber || log.roll_number || stud?.roll_number || '—',
+          admission_number: stud?.admission_number || '—',
+          action: log.action || 'STATUS_UPDATE',
+          previous_status: log.previousStatus || log.previous_status || '—',
+          new_status: log.newStatus || log.new_status || '—',
+          departure_period: log.departurePeriod || log.departure_period || '—',
+          departure_time: log.departureTime || log.departure_time || '—',
+          arrival_period: log.arrivalPeriod || log.arrival_period || '—',
+          arrival_time: log.arrivalTime || log.arrival_time || '—',
+          reason: log.reason || '—',
+          changed_by: log.changedBy || log.changed_by || '',
+          changed_by_name: log.changedByName || log.changed_by_name || log.modifiedByName || log.modified_by_name || 'Faculty Member',
+          notification_sent: Boolean(log.notificationSent || log.notification_sent),
+          created_at: log.createdAt || log.created_at || new Date().toISOString(),
+          attendance_date: sess?.attendanceDate || sess?.attendance_date || dateParam || new Date().toISOString().slice(0, 10),
+          class_number: sess?.classNumber || sess?.class_number || 10,
+          class_name: sess?.classNumber ? `Class ${sess.classNumber}` : (sess?.class_number ? `Class ${sess.class_number}` : 'Class 10'),
+          section_name: sess?.sectionName || sess?.section_name || 'A',
+          subject_name: sess?.subjectName || sess?.subject_name || 'General'
+        };
+      });
+    }
+
+    // 3. Format rows for export
+    const exportData = rawLogs.map(r => {
+      const createdAt = r.created_at ? new Date(r.created_at).toISOString().replace('T', ' ').slice(0, 19) : '—';
+      return {
+        'Timestamp': createdAt,
+        'Event ID': String(r.id || '—'),
+        'Session ID': String(r.session_id || '—'),
+        'Date': String(r.attendance_date || '—').slice(0, 10),
+        'Class': String(r.class_name || (r.class_number ? `Class ${r.class_number}` : '—')),
+        'Section': String(r.section_name || '—'),
+        'Subject': String(r.subject_name || 'General'),
+        'Student Name': String(r.student_name || '—'),
+        'Admission No.': String(r.admission_number || '—'),
+        'Roll No.': String(r.roll_number || r.student_roll || '—'),
+        'Event Type': String(r.action || '—'),
+        'Previous Status': String(r.previous_status || '—'),
+        'New Status': String(r.new_status || '—'),
+        'Departure Period': String(r.departure_period || '—'),
+        'Departure Time': String(r.departure_time || '—'),
+        'Arrival Period': String(r.arrival_period || '—'),
+        'Arrival Time': String(r.arrival_time || '—'),
+        'Performed By': String(r.changed_by_name || 'Faculty Member'),
+        'Parent Alert Sent': r.notification_sent ? 'Yes' : 'No',
+        'Reason / Details': String(r.reason || '—')
+      };
+    });
+
+    const timestampStr = new Date().toISOString().slice(0, 10);
+    const baseFileName = sessionIdParam
+      ? `attendance-audit-trail-session-${sessionIdParam.slice(0, 8)}-${timestampStr}`
+      : `attendance-audit-trail-${timestampStr}`;
+
+    if (format === 'xlsx') {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData.length > 0 ? exportData : [{
+        'Timestamp': '—',
+        'Event ID': '—',
+        'Session ID': sessionIdParam || '—',
+        'Date': timestampStr,
+        'Class': '—',
+        'Section': '—',
+        'Subject': '—',
+        'Student Name': 'No audit records match the criteria',
+        'Admission No.': '—',
+        'Roll No.': '—',
+        'Event Type': '—',
+        'Previous Status': '—',
+        'New Status': '—',
+        'Departure Period': '—',
+        'Departure Time': '—',
+        'Arrival Period': '—',
+        'Arrival Time': '—',
+        'Performed By': '—',
+        'Parent Alert Sent': '—',
+        'Reason / Details': '—'
+      }]);
+
+      ws['!cols'] = [
+        { wch: 20 }, // Timestamp
+        { wch: 18 }, // Event ID
+        { wch: 18 }, // Session ID
+        { wch: 12 }, // Date
+        { wch: 12 }, // Class
+        { wch: 10 }, // Section
+        { wch: 16 }, // Subject
+        { wch: 24 }, // Student Name
+        { wch: 16 }, // Admission No.
+        { wch: 10 }, // Roll No.
+        { wch: 18 }, // Event Type
+        { wch: 15 }, // Previous Status
+        { wch: 15 }, // New Status
+        { wch: 18 }, // Departure Period
+        { wch: 15 }, // Departure Time
+        { wch: 16 }, // Arrival Period
+        { wch: 14 }, // Arrival Time
+        { wch: 22 }, // Performed By
+        { wch: 16 }, // Parent Alert Sent
+        { wch: 32 }  // Reason / Details
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Audit Trail');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${baseFileName}.xlsx"`);
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+      return res.send(buf);
+    }
+
+    // CSV format
+    const headers = [
+      'Timestamp',
+      'Event ID',
+      'Session ID',
+      'Date',
+      'Class',
+      'Section',
+      'Subject',
+      'Student Name',
+      'Admission No.',
+      'Roll No.',
+      'Event Type',
+      'Previous Status',
+      'New Status',
+      'Departure Period',
+      'Departure Time',
+      'Arrival Period',
+      'Arrival Time',
+      'Performed By',
+      'Parent Alert Sent',
+      'Reason / Details'
+    ];
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const lines: string[] = [];
+    lines.push(headers.map(escapeCsv).join(','));
+
+    for (const row of exportData) {
+      lines.push([
+        row['Timestamp'],
+        row['Event ID'],
+        row['Session ID'],
+        row['Date'],
+        row['Class'],
+        row['Section'],
+        row['Subject'],
+        row['Student Name'],
+        row['Admission No.'],
+        row['Roll No.'],
+        row['Event Type'],
+        row['Previous Status'],
+        row['New Status'],
+        row['Departure Period'],
+        row['Departure Time'],
+        row['Arrival Period'],
+        row['Arrival Time'],
+        row['Performed By'],
+        row['Parent Alert Sent'],
+        row['Reason / Details']
+      ].map(escapeCsv).join(','));
+    }
+
+    // Prepend UTF-8 BOM for Microsoft Excel compatibility
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseFileName}.csv"`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+    return res.send(csvContent);
+  } catch (err: any) {
+    console.error('[AuditExport] Error generating export:', err);
+    return res.status(500).json({ message: err.message || 'Failed to export attendance audit trail' });
+  }
+};
+
+r.get('/attendance/:sessionId/audit-trail/export', ...teacher, auditTrailExportHandler);
+r.get('/attendance/audit-trail/export', ...teacher, auditTrailExportHandler);
+r.get('/:sessionId/audit-trail/export', ...teacher, auditTrailExportHandler);
+r.get('/audit-trail/export', ...teacher, auditTrailExportHandler);
+
 
 // ── POST /api/teacher/attendance & POST /api/attendance ──
 const postAttendanceHandler = async (req: AuthRequest, res: any) => {

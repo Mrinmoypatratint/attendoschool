@@ -178,11 +178,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Student',
     roleSub: 'Learning portal',
     bannerTitle: 'Student Portal',
-    bannerText: 'Select your institute and enter your student ID or email to access timetable, assignments, and attendance.',
+    bannerText: 'Select your institute and enter your Admission No. and password to access timetable, assignments, and attendance.',
     needsSchool: true,
-    emailLabel: 'Student ID / Email',
-    emailPlaceholder: 'student@attendance.local or Roll No. 25',
-    defaultEmail: 'student@greenwood.local',
+    emailLabel: 'Admission No.',
+    emailPlaceholder: 'e.g. ADM-2025-105 or ADM-2026-001',
+    defaultEmail: 'ADM-2026-001',
     icon: BookOpen,
     color: '#7c3aed'
   }
@@ -195,18 +195,18 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
 
   if (isTint) {
     if (role === 'TEACHER') return 'teacher@tint.edu.in';
-    if (role === 'STUDENT') return 'dhardhuran689@gmail.com';
+    if (role === 'STUDENT') return 'ADM-2025-105';
     return 'admin@tint.edu.in';
   }
 
   if (isAbc) {
     if (role === 'TEACHER') return 'mmrinmay76@gmail.com';
-    if (role === 'STUDENT') return 'ahana12@gmail.com';
+    if (role === 'STUDENT') return 'ADM1';
     return 'admin@abc155.edu.in';
   }
 
   if (role === 'TEACHER') return 'rahul@demo-school.local';
-  if (role === 'STUDENT') return 'student@greenwood.local';
+  if (role === 'STUDENT') return 'ADM-2026-001';
   if (role === 'ADMIN') return 'superadmin@attendance.local';
   return 'admin@demo-school.local';
 }
@@ -311,7 +311,8 @@ function Login() {
         const isDemo = [
           'admin@demo-school.local', 'admin@tint.edu.in', 'admin@tint.local', 'admin@abc155.edu.in',
           'rahul@demo-school.local', 'teacher@tint.edu.in', 'mmrinmay76@gmail.com',
-          'student@greenwood.local', 'dhardhuran689@gmail.com', 'ahana12@gmail.com'
+          'student@greenwood.local', 'dhardhuran689@gmail.com', 'ahana12@gmail.com',
+          'ADM-2026-001', 'ADM-2025-105', 'ADM1'
         ].includes(curr) || !curr;
         return isDemo ? demoEmail : curr;
       });
@@ -370,6 +371,7 @@ function Login() {
     try {
       const payload: any = {
         email: email.trim(),
+        admissionNumber: email.trim(),
         password,
         role: loginRole
       };
@@ -701,16 +703,16 @@ function Login() {
                 </div>
               )}
 
-              {/* Email Address Input */}
+              {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
               <div className="as-simple-field">
                 <label className="as-simple-label">
-                  Email Address <span style={{ color: '#fb923c' }}>*</span>
+                  {currentConfig.emailLabel} <span style={{ color: '#fb923c' }}>*</span>
                 </label>
                 <div className="as-simple-input-wrap">
                   <input
                     required
                     type="text"
-                    placeholder="name@school.edu"
+                    placeholder={currentConfig.emailPlaceholder}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     id="identifier-input"
@@ -7635,6 +7637,52 @@ function Attendance(){
   // Existing session & Re-attendance state
   const [existingSession, setExistingSession] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditSearch, setAuditSearch] = useState<string>('');
+  const [auditStatusFilter, setAuditStatusFilter] = useState<string>('ALL');
+  const [exportingAudit, setExportingAudit] = useState<boolean>(false);
+
+  const canExportAudit = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(user?.role || '');
+
+  const handleExportAudit = async (format: 'csv' | 'xlsx') => {
+    if (!existingSession?.id) return;
+    setExportingAudit(true);
+    try {
+      const params: any = { format };
+      if (auditSearch.trim()) params.search = auditSearch.trim();
+      if (auditStatusFilter !== 'ALL') params.status = auditStatusFilter;
+
+      const res = await api.get(`/teacher/attendance/${existingSession.id}/audit-trail/export`, {
+        params,
+        responseType: 'blob'
+      });
+
+      let filename = `attendance-audit-session-${existingSession.id.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.${format}`;
+      const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = new Blob([res.data], {
+        type: format === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv;charset=utf-8;'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Audit export error:', err);
+      alert(err?.response?.data?.message || 'Failed to export audit trail');
+    } finally {
+      setExportingAudit(false);
+    }
+  };
   const [studentStatusMap, setStudentStatusMap] = useState<Record<string, {
     status: 'PRESENT' | 'ABSENT' | 'LEFT_EARLY' | 'LATE';
     departurePeriod?: string;
@@ -9199,7 +9247,25 @@ function Attendance(){
       )}
 
       {/* ────── MODAL: Re-attendance Audit Trail ────── */}
-      {activeModal === 'AUDIT_LOGS' && (
+      {activeModal === 'AUDIT_LOGS' && (() => {
+        const filteredAuditLogs = auditLogs.filter((log: any) => {
+          if (auditStatusFilter !== 'ALL') {
+            const ns = (log.new_status || log.newStatus || '').toUpperCase();
+            const ps = (log.previous_status || log.previousStatus || '').toUpperCase();
+            if (ns !== auditStatusFilter && ps !== auditStatusFilter) return false;
+          }
+          if (auditSearch.trim()) {
+            const q = auditSearch.toLowerCase();
+            const name = (log.student_name || log.studentName || '').toLowerCase();
+            const roll = (log.roll_number || log.rollNumber || '').toLowerCase();
+            const reason = (log.reason || '').toLowerCase();
+            const by = (log.modified_by_name || log.modifiedByName || log.changed_by_name || '').toLowerCase();
+            if (!name.includes(q) && !roll.includes(q) && !reason.includes(q) && !by.includes(q)) return false;
+          }
+          return true;
+        });
+
+        return (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -9216,7 +9282,7 @@ function Attendance(){
             border: '1px solid var(--border)',
             borderRadius: 16,
             width: '100%',
-            maxWidth: 700,
+            maxWidth: 750,
             maxHeight: '85vh',
             display: 'flex',
             flexDirection: 'column',
@@ -9233,20 +9299,104 @@ function Attendance(){
               <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
             </div>
 
+            {/* Filter & Export Toolbar */}
+            <div style={{
+              padding: '12px 24px',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-subtle, #f8fafc)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search student, roll, faculty, reason..."
+                    value={auditSearch}
+                    onChange={e => setAuditSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px 6px 30px',
+                      fontSize: 12.5,
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-card)'
+                    }}
+                  />
+                  {auditSearch && (
+                    <button
+                      onClick={() => setAuditSearch('')}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)' }}
+                    >✕</button>
+                  )}
+                </div>
+                <select
+                  value={auditStatusFilter}
+                  onChange={e => setAuditStatusFilter(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 12.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-card)'
+                  }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="LEFT_EARLY">Left Early</option>
+                  <option value="LATE">Late Arrival</option>
+                  <option value="PRESENT">Present</option>
+                  <option value="ABSENT">Absent</option>
+                </select>
+              </div>
+
+              {canExportAudit && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    className="secondary"
+                    onClick={() => handleExportAudit('csv')}
+                    disabled={exportingAudit || !existingSession?.id}
+                    title="Export filtered audit logs as CSV spreadsheet"
+                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <Download size={13} />
+                    {exportingAudit ? 'Exporting...' : 'Export CSV'}
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => handleExportAudit('xlsx')}
+                    disabled={exportingAudit || !existingSession?.id}
+                    title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
+                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                  >
+                    <FileSpreadsheet size={13} />
+                    {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
               <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
                 Immutable historical record of all attendance submissions, re-roll calls, early departure adjustments, and late arrivals for this session.
               </p>
 
-              {auditLogs.length === 0 ? (
+              {filteredAuditLogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
                   <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontWeight: 600 }}>No re-attendance events recorded yet</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>Initial roll-call was submitted with no subsequent adjustments.</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>
+                    {auditLogs.length === 0 ? 'No re-attendance events recorded yet' : 'No matching audit records found'}
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>
+                    {auditLogs.length === 0 ? 'Initial roll-call was submitted with no subsequent adjustments.' : 'Try adjusting your search criteria or status filter.'}
+                  </p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {auditLogs.map((log: any, idx: number) => {
+                  {filteredAuditLogs.map((log: any, idx: number) => {
                     const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
                     const prevSt = log.previous_status || log.previousStatus || '—';
                     const newSt = log.new_status || log.newStatus || '—';
@@ -9294,12 +9444,16 @@ function Attendance(){
               )}
             </div>
 
-            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Showing <strong>{filteredAuditLogs.length}</strong> of <strong>{auditLogs.length}</strong> records
+              </div>
               <button className="secondary" onClick={() => setActiveModal(null)}>Close</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Universal Attendance Roster Preview Modal */}
       <UniversalPreviewModal
@@ -9333,6 +9487,41 @@ function History(){
   const [inspectedAuditLogs, setInspectedAuditLogs] = useState<any[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [activeTab, setActiveTab] = useState<'ROSTER' | 'AUDIT'>('ROSTER');
+  const canExportAudit = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(user?.role || '');
+
+  const handleExportInspectedAudit = async (format: 'csv' | 'xlsx') => {
+    if (!inspectedSession?.id) return;
+    try {
+      const res = await api.get(`/teacher/attendance/${inspectedSession.id}/audit-trail/export`, {
+        params: { format },
+        responseType: 'blob'
+      });
+
+      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${inspectedSession.attendance_date || new Date().toISOString().slice(0, 10)}.${format}`;
+      const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = new Blob([res.data], {
+        type: format === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv;charset=utf-8;'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Audit export error in History:', err);
+      alert(err?.response?.data?.message || 'Failed to export audit trail');
+    }
+  };
 
   useEffect(()=>{
     api.get('/teacher/attendance/history')
@@ -9636,6 +9825,29 @@ function History(){
                 </div>
               ) : (
                 <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '4px 0' }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      Total re-attendance events: <strong>{inspectedAuditLogs.length}</strong>
+                    </span>
+                    {canExportAudit && inspectedSession?.id && inspectedAuditLogs.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="secondary"
+                          onClick={() => handleExportInspectedAudit('csv')}
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Download size={13} /> Export CSV
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => handleExportInspectedAudit('xlsx')}
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                        >
+                          <FileSpreadsheet size={13} /> Export Excel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {inspectedAuditLogs.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '30px 16px', color: 'var(--text-muted)' }}>
                       <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />

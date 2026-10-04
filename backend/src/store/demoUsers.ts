@@ -4,6 +4,8 @@
  * All school admins and teachers are registered dynamically when created.
  */
 
+import { isSameSchool } from '../utils/tenant';
+
 export interface DemoUser {
   id: string;
   schoolId: string | null;
@@ -11,6 +13,8 @@ export interface DemoUser {
   email: string;
   role: string;
   password: string;
+  admissionNumber?: string;
+  isActive?: boolean;
 }
 
 const demoUsers: DemoUser[] = [
@@ -20,7 +24,8 @@ const demoUsers: DemoUser[] = [
     name: 'Company Super Admin',
     email: 'superadmin@attendance.local',
     role: 'SUPER_ADMIN',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   // Greenwood School Admin & Faculty
   {
@@ -29,7 +34,8 @@ const demoUsers: DemoUser[] = [
     name: 'School Administrator',
     email: 'admin@demo-school.local',
     role: 'SCHOOL_ADMIN',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000022',
@@ -37,7 +43,8 @@ const demoUsers: DemoUser[] = [
     name: 'Rahul Sharma',
     email: 'rahul@demo-school.local',
     role: 'TEACHER',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000023',
@@ -45,7 +52,8 @@ const demoUsers: DemoUser[] = [
     name: 'Priya Patel',
     email: 'priya@demo-school.local',
     role: 'TEACHER',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000025',
@@ -53,7 +61,9 @@ const demoUsers: DemoUser[] = [
     name: 'Rohan Sharma',
     email: 'student@greenwood.local',
     role: 'STUDENT',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-001',
+    isActive: true
   },
   // Techno International New Town (TINT) School Admin, Faculty & Student
   {
@@ -62,7 +72,8 @@ const demoUsers: DemoUser[] = [
     name: 'TINT School Administrator',
     email: 'admin@tint.edu.in',
     role: 'SCHOOL_ADMIN',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000032',
@@ -70,7 +81,8 @@ const demoUsers: DemoUser[] = [
     name: 'TINT Administrator',
     email: 'admin@tint.local',
     role: 'SCHOOL_ADMIN',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000035',
@@ -78,7 +90,8 @@ const demoUsers: DemoUser[] = [
     name: 'TINT Faculty Teacher',
     email: 'teacher@tint.edu.in',
     role: 'TEACHER',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    isActive: true
   },
   {
     id: 'ce8082a9-4280-47a1-90aa-0feaa5f42234',
@@ -86,7 +99,9 @@ const demoUsers: DemoUser[] = [
     name: 'Sweta Mondal',
     email: 'dhardhuran689@gmail.com',
     role: 'STUDENT',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2025-105',
+    isActive: true
   },
   {
     id: '00000000-0000-0000-0000-000000000037',
@@ -94,17 +109,38 @@ const demoUsers: DemoUser[] = [
     name: 'TINT Demo Student',
     email: 'student@tint.edu.in',
     role: 'STUDENT',
-    password: 'ChangeMe123!'
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2025-001',
+    isActive: true
   }
 ];
 
-/** Find a demo user by email or student identifier (case-insensitive) */
-export function findDemoUser(identifier: string): DemoUser | undefined {
+/** Find a demo user by email, student admission number, or id (case-insensitive with school isolation) */
+export function findDemoUser(identifier: string, schoolId?: string | null, role?: string): DemoUser | undefined {
   const norm = identifier.toLowerCase().trim();
-  return demoUsers.find(u =>
-    u.email.toLowerCase() === norm ||
-    u.id.toLowerCase() === norm
-  );
+  return demoUsers.find(u => {
+    if (u.isActive === false) return false;
+
+    // Check admission number match
+    if (u.admissionNumber && u.admissionNumber.toLowerCase() === norm) {
+      if (schoolId && u.schoolId && !isSameSchool(u.schoolId, schoolId)) {
+        return false;
+      }
+      return true;
+    }
+
+    // Check email or ID match
+    const emailMatches = u.email.toLowerCase() === norm;
+    const idMatches = u.id.toLowerCase() === norm;
+    if (emailMatches || idMatches) {
+      if (schoolId && u.schoolId && role && role !== 'SUPER_ADMIN' && !isSameSchool(u.schoolId, schoolId)) {
+        return false;
+      }
+      return true;
+    }
+
+    return false;
+  });
 }
 
 /** Register a user in the fallback demo store */

@@ -100,11 +100,18 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
 
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
 router.post('/login', async (req, res) => {
-  const { instituteId, email, studentId, password, role: expectedRole } = req.body ?? {};
-  const identifier = String(email || studentId || '').trim();
+  const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
+  const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
 
-  if (!identifier || !password) {
-    return res.status(400).json({ message: 'Email/Student ID and password are required' });
+  if (!rawIdentifier || !password || typeof password !== 'string' || !password.trim()) {
+    return res.status(400).json({ message: 'Admission No./Email and password are required' });
+  }
+
+  const isStudentLogin = expectedRole === 'STUDENT';
+
+  // Student login strictly requires selecting an institution
+  if (isStudentLogin && !instituteId) {
+    return res.status(400).json({ message: 'Please select your institute before signing in' });
   }
 
   let resolvedInstituteId = instituteId ? String(instituteId).trim() : '';
@@ -158,67 +165,119 @@ router.post('/login', async (req, res) => {
   // 1. PRIMARY: Try Supabase PostgreSQL Database
   if (isPostgresConfigured) {
     try {
-      const query = `
-        SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
-               st.id AS student_id, st.roll_number, st.admission_number,
-               c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-               sch.name AS school_name, sch.code AS school_code
-        FROM users u
-        LEFT JOIN schools sch ON sch.id = u.school_id
-        LEFT JOIN students st ON (st.user_id = u.id OR (st.school_id = u.school_id AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
-        LEFT JOIN classes c ON c.id = st.class_id
-        LEFT JOIN sections sec ON sec.id = st.section_id
-        WHERE (LOWER(u.email) = LOWER($1) OR (st.id IS NOT NULL AND (LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))))
-        ORDER BY (u.role = 'STUDENT') DESC, (u.school_id::text = $2) DESC
-        LIMIT 1
-      `;
-      const result = await pool.query(query, [identifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
-      const u = result.rows[0];
+      if (isStudentLogin) {
+        // Dedicated student login scoped strictly to the selected school/tenant
+        const studentQuery = `
+          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+                 st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
+                 c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
+                 sch.name AS school_name, sch.code AS school_code
+          FROM students st
+          JOIN schools sch ON sch.id = st.school_id
+          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email) AND u.school_id = st.school_id))
+          LEFT JOIN classes c ON c.id = st.class_id
+          LEFT JOIN sections sec ON sec.id = st.section_id
+          WHERE (
+            st.school_id::text = $2 
+            OR LOWER(sch.code) = LOWER($2)
+            OR sch.code = (SELECT code FROM schools WHERE id::text = $2 OR LOWER(code) = LOWER($2) LIMIT 1)
+          )
+            AND (
+              LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))
+              OR LOWER(TRIM(u.email)) = LOWER(TRIM($1))
+              OR LOWER(TRIM(st.roll_number)) = LOWER(TRIM($1))
+            )
+            AND u.role = 'STUDENT'
+          ORDER BY (LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))) DESC, st.is_active DESC, u.is_active DESC
+          LIMIT 1
+        `;
 
-      if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
-        // Validate role if expectedRole provided
-        if (expectedRole && !roleMatches(u.role, expectedRole)) {
-          return res.status(401).json({ message: 'Account is not authorized for the selected role' });
-        }
+        const studentRes = await pool.query(studentQuery, [rawIdentifier, resolvedInstituteId || instituteId]);
+        const stu = studentRes.rows[0];
 
-        // Validate tenant isolation
-        if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id) {
-          const userSid = String(u.school_id);
-          const matches =
-            userSid === resolvedInstituteId ||
-            userSid === String(instituteId) ||
-            isSameSchool(userSid, resolvedInstituteId) ||
-            isSameSchool(userSid, String(instituteId)) ||
-            (selectedSchoolCode && isSameSchool(u.school_code, selectedSchoolCode));
-
-          if (!matches) {
-            return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        if (stu) {
+          // Check active status
+          if (!stu.user_is_active || !stu.student_is_active) {
+            return res.status(401).json({ message: 'Invalid credentials or account not found' });
           }
+
+          // Verify password securely using bcrypt
+          const passwordMatch = await bcrypt.compare(password, stu.password_hash);
+          if (!passwordMatch) {
+            return res.status(401).json({ message: 'Invalid credentials or account not found' });
+          }
+
+          const userPayload: any = {
+            id: stu.id,
+            schoolId: stu.school_id || resolvedInstituteId,
+            schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            name: stu.name,
+            email: stu.email,
+            role: 'STUDENT' as Role,
+            studentId: stu.student_id,
+            admissionNumber: stu.admission_number,
+            classId: stu.class_id,
+            sectionId: stu.section_id,
+            className: stu.class_number !== undefined && stu.class_number !== null
+              ? (stu.class_number === -1 ? 'L-KG' : stu.class_number === 0 ? 'U-KG' : `Class ${stu.class_number}`)
+              : 'Class 10',
+            sectionName: stu.section_name || 'A',
+            rollNumber: stu.roll_number || '25'
+          };
+
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'supabase' });
         }
+      } else {
+        // School Admin, Teacher, Super Admin, or unspecified role login
+        const facultyQuery = `
+          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
+                 sch.name AS school_name, sch.code AS school_code
+          FROM users u
+          LEFT JOIN schools sch ON sch.id = u.school_id
+          WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
+          ORDER BY (u.school_id::text = $2) DESC
+          LIMIT 1
+        `;
 
-        const role = u.role as Role;
-        const userPayload: any = {
-          id: u.id,
-          schoolId: u.school_id || resolvedInstituteId,
-          schoolName: u.school_name || selectedSchoolName || 'Institutional Campus',
-          schoolCode: u.school_code || selectedSchoolCode || 'SCH',
-          name: u.name,
-          email: u.email,
-          role
-        };
+        const facultyRes = await pool.query(facultyQuery, [rawIdentifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
+        const u = facultyRes.rows[0];
 
-        if (role === 'STUDENT') {
-          userPayload.studentId = u.student_id;
-          userPayload.classId = u.class_id;
-          userPayload.sectionId = u.section_id;
-          userPayload.className = u.class_number ? `Class ${u.class_number}` : 'Class 10';
-          userPayload.sectionName = u.section_name || 'A';
-          userPayload.rollNumber = u.roll_number || '25';
-          userPayload.schoolName = u.school_name || selectedSchoolName;
+        if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
+          if (expectedRole && !roleMatches(u.role, expectedRole)) {
+            return res.status(401).json({ message: 'Account is not authorized for the selected role' });
+          }
+
+          // Validate tenant isolation
+          if (instituteId && u.role !== 'SUPER_ADMIN' && u.school_id) {
+            const userSid = String(u.school_id);
+            const matches =
+              userSid === resolvedInstituteId ||
+              userSid === String(instituteId) ||
+              isSameSchool(userSid, resolvedInstituteId) ||
+              isSameSchool(userSid, String(instituteId)) ||
+              (selectedSchoolCode && isSameSchool(u.school_code, selectedSchoolCode));
+
+            if (!matches) {
+              return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+            }
+          }
+
+          const role = u.role as Role;
+          const userPayload: any = {
+            id: u.id,
+            schoolId: u.school_id || resolvedInstituteId,
+            schoolName: u.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: u.school_code || selectedSchoolCode || 'SCH',
+            name: u.name,
+            email: u.email,
+            role
+          };
+
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'supabase' });
         }
-
-        const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
-        return res.json({ token, user: userPayload, provider: 'supabase' });
       }
     } catch (_e) {
       // Continue to secondary fallback
@@ -228,87 +287,108 @@ router.post('/login', async (req, res) => {
   // 2. SECONDARY: Try Firebase Cloud Firestore
   if (isFirebaseConfigured()) {
     try {
-      const fUser = await findFirestoreUserByEmail(identifier);
-      if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
-        // Validate role if expectedRole provided
-        if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
-          return res.status(401).json({ message: 'Account is not authorized for the selected role' });
-        }
+      if (isStudentLogin) {
+        let matchedStudent: any = null;
+        let fUser: any = null;
 
-        // Validate tenant isolation
-        if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId) {
-          const fsUserSid = String(fUser.schoolId);
-          const matches =
-            fsUserSid === resolvedInstituteId ||
-            fsUserSid === String(instituteId) ||
-            isSameSchool(fsUserSid, resolvedInstituteId) ||
-            isSameSchool(fsUserSid, String(instituteId)) ||
-            (selectedSchoolCode && String(fUser.schoolCode || '').toUpperCase() === selectedSchoolCode.toUpperCase());
-
-          if (!matches) {
-            return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+        const sSnap = await collections.students().get();
+        for (const sDoc of sSnap.docs) {
+          const sd = sDoc.data();
+          const docSid = sd.school_id || sd.schoolId;
+          if (resolvedInstituteId && docSid && !isSameSchool(docSid, resolvedInstituteId)) continue;
+          const admMatch = (sd.admission_number && sd.admission_number.toLowerCase() === rawIdentifier.toLowerCase()) ||
+                           (sd.admissionNumber && sd.admissionNumber.toLowerCase() === rawIdentifier.toLowerCase());
+          const emailMatch = (sd.email && sd.email.toLowerCase() === rawIdentifier.toLowerCase()) ||
+                             (sd.student_email && sd.student_email.toLowerCase() === rawIdentifier.toLowerCase());
+          if (admMatch || emailMatch) {
+            matchedStudent = { id: sDoc.id, ...sd };
+            break;
           }
         }
 
-        const role = fUser.role as Role;
-        let schoolName = fUser.schoolName;
-        let schoolCode = fUser.schoolCode;
-        if (fUser.schoolId) {
-          try {
-            const fsSch = await getFirestoreSchoolById(fUser.schoolId);
-            if (fsSch) {
-              schoolName = fsSch.name;
-              schoolCode = fsSch.code;
-            }
-          } catch {}
+        if (matchedStudent) {
+          const targetUserId = matchedStudent.user_id || matchedStudent.userId;
+          if (targetUserId) {
+            const uDoc = await collections.users().doc(targetUserId).get();
+            if (uDoc.exists) fUser = { id: uDoc.id, ...uDoc.data() };
+          }
+          if (!fUser && (matchedStudent.email || matchedStudent.student_email)) {
+            fUser = await findFirestoreUserByEmail(matchedStudent.email || matchedStudent.student_email);
+          }
         }
 
-        const userPayload: any = {
-          id: fUser.id,
-          schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
-          schoolName: schoolName || selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
-          schoolCode: schoolCode || selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
-          name: fUser.name,
-          email: fUser.email,
-          role
-        };
-
-        if (role === 'STUDENT') {
-          let matchedStudent: any = null;
-          try {
-            const sSnap = await collections.students().get();
-            for (const sDoc of sSnap.docs) {
-              const sd = sDoc.data();
-              const docSid = sd.school_id || sd.schoolId;
-              if (docSid && !isSameSchool(docSid, fUser.schoolId)) continue;
-              const matches =
-                sDoc.id === fUser.id ||
-                sd.id === fUser.id ||
-                String(sd.user_id || sd.userId) === fUser.id ||
-                (sd.email && sd.email.toLowerCase() === fUser.email.toLowerCase()) ||
-                (sd.student_email && sd.student_email.toLowerCase() === fUser.email.toLowerCase());
-              if (matches) {
-                matchedStudent = { id: sDoc.id, ...sd };
-                break;
-              }
-            }
-          } catch {}
-
+        if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
           const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? matchedStudent?.className ?? (fUser as any).classNumber ?? 10;
           const sName = matchedStudent?.section_name || matchedStudent?.sectionName || matchedStudent?.section || (fUser as any).sectionName || 'A';
           const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
 
-          userPayload.studentId = matchedStudent?.id || fUser.id;
-          userPayload.classId = matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`;
-          userPayload.sectionId = matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`;
-          userPayload.className = `Class ${cNum}`;
-          userPayload.sectionName = `Section ${cleanSName}`;
-          userPayload.rollNumber = String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1');
-          userPayload.schoolName = userPayload.schoolName;
-        }
+          const userPayload: any = {
+            id: fUser.id,
+            schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
+            schoolName: selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
+            schoolCode: selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
+            name: fUser.name,
+            email: fUser.email,
+            role: 'STUDENT' as Role,
+            studentId: matchedStudent?.id || fUser.id,
+            admissionNumber: matchedStudent?.admission_number || matchedStudent?.admissionNumber || rawIdentifier,
+            classId: matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`,
+            sectionId: matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
+            className: `Class ${cNum}`,
+            sectionName: `Section ${cleanSName}`,
+            rollNumber: String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1')
+          };
 
-        const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
-        return res.json({ token, user: userPayload, provider: 'firestore' });
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'firestore' });
+        }
+      } else {
+        const fUser = await findFirestoreUserByEmail(rawIdentifier);
+        if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
+          if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
+            return res.status(401).json({ message: 'Account is not authorized for the selected role' });
+          }
+
+          if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId) {
+            const fsUserSid = String(fUser.schoolId);
+            const matches =
+              fsUserSid === resolvedInstituteId ||
+              fsUserSid === String(instituteId) ||
+              isSameSchool(fsUserSid, resolvedInstituteId) ||
+              isSameSchool(fsUserSid, String(instituteId)) ||
+              (selectedSchoolCode && String(fUser.schoolCode || '').toUpperCase() === selectedSchoolCode.toUpperCase());
+
+            if (!matches) {
+              return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+            }
+          }
+
+          const role = fUser.role as Role;
+          let schoolName = fUser.schoolName;
+          let schoolCode = fUser.schoolCode;
+          if (fUser.schoolId) {
+            try {
+              const fsSch = await getFirestoreSchoolById(fUser.schoolId);
+              if (fsSch) {
+                schoolName = fsSch.name;
+                schoolCode = fsSch.code;
+              }
+            } catch {}
+          }
+
+          const userPayload: any = {
+            id: fUser.id,
+            schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
+            schoolName: schoolName || selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
+            schoolCode: schoolCode || selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
+            name: fUser.name,
+            email: fUser.email,
+            role
+          };
+
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'firestore' });
+        }
       }
     } catch (fsErr: any) {
       // Continue to demo fallback
@@ -316,7 +396,7 @@ router.post('/login', async (req, res) => {
   }
 
   // 3. In-memory demo fallback store
-  const demo = findDemoUser(identifier);
+  const demo = findDemoUser(rawIdentifier, resolvedInstituteId || instituteId, expectedRole);
   if (demo && (password === demo.password || (await bcrypt.compare(password, demo.password).catch(() => false)))) {
     // Validate role if expectedRole provided
     if (expectedRole && !roleMatches(demo.role, expectedRole)) {
@@ -351,6 +431,7 @@ router.post('/login', async (req, res) => {
 
     if (demo.role === 'STUDENT') {
       userPayload.studentId = '00000000-0000-0000-0000-000000000099';
+      userPayload.admissionNumber = demo.admissionNumber || 'ADM-2026-001';
       userPayload.classId = 'cls-10';
       userPayload.sectionId = 'sec-10-a';
       userPayload.className = 'Class 10';
@@ -641,11 +722,12 @@ router.post('/reset-password', async (req, res) => {
 
 // POST /api/auth/request-password-reset - Public forgot password request (Anti-Enumeration Hardened)
 router.post('/request-password-reset', async (req, res) => {
-  const { email } = req.body || {};
-  if (!email || !String(email).trim()) {
-    return res.status(400).json({ message: 'Email address is required' });
+  const { email, admissionNumber, instituteId } = req.body || {};
+  const rawId = String(admissionNumber || email || '').trim();
+  if (!rawId) {
+    return res.status(400).json({ message: 'Email address or Admission No. is required' });
   }
-  const cleanEmail = String(email).trim().toLowerCase();
+  let cleanEmail = rawId.toLowerCase();
 
   let userFound = false;
   let userName = 'User';
@@ -654,19 +736,35 @@ router.post('/request-password-reset', async (req, res) => {
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
 
-  // 1. Check PostgreSQL
+  // 1. Check PostgreSQL (by email or student admission_number)
   try {
-    const q = await pool.query(
-      `SELECT u.id, u.name, u.role, u.school_id, sch.name AS school_name
+    let q = await pool.query(
+      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
        WHERE LOWER(u.email) = LOWER($1)
        LIMIT 1`,
       [cleanEmail]
     );
+
+    if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
+      // Try resolving student by admission number
+      q = await pool.query(
+        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
+         FROM students st
+         JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
+         LEFT JOIN schools sch ON sch.id = st.school_id
+         WHERE LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))
+           AND ($2::text IS NULL OR st.school_id::text = $2::text OR sch.code = $2)
+         LIMIT 1`,
+        [cleanEmail, instituteId || null]
+      );
+    }
+
     if (q.rowCount && q.rowCount > 0) {
       userFound = true;
       const u = q.rows[0];
+      cleanEmail = u.email;
       userName = u.name;
       userRole = u.role;
       userId = u.id;

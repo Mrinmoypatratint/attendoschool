@@ -39,6 +39,7 @@ export interface StudentDashboardData {
     className: string;
     sectionName: string;
     rollNumber: string;
+    admissionNumber?: string;
     schoolName: string;
     avatarUrl?: string;
   };
