@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
+import { useAuth } from '../../hooks/useAuth';
 
 export function StudentAnnouncements() {
+  const { user } = useAuth();
+  const isStudent = !user || user.role === 'STUDENT';
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
@@ -83,103 +86,107 @@ export function StudentAnnouncements() {
               <h3 className="notice-title" style={{ marginTop: 8 }}>{a.title}</h3>
               <p className="notice-body" style={{ whiteSpace: 'pre-wrap' }}>{a.message}</p>
 
-              {/* Reply Action Row */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveReplyId(activeReplyId === a.id ? null : a.id);
-                    setReplyText('');
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 14px',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: activeReplyId === a.id ? '#2563eb' : '#ffffff',
-                    color: activeReplyId === a.id ? '#ffffff' : '#1e293b',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <MessageSquare size={13} />
-                  {activeReplyId === a.id ? 'Cancel' : 'Reply'}
-                </button>
-              </div>
-
-              {/* Success Notification */}
-              {replySuccessId === a.id && (
-                <div style={{
-                  marginTop: 10,
-                  padding: '8px 12px',
-                  backgroundColor: '#ecfdf5',
-                  border: '1px solid #a7f3d0',
-                  borderRadius: 6,
-                  color: '#065f46',
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                  <CheckCircle2 size={14} /> Your response was submitted to school administration.
-                </div>
-              )}
-
-              {/* Inline Interactive Reply Box */}
-              {activeReplyId === a.id && (
-                <div style={{ marginTop: 12, backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <CornerDownRight size={13} color="#2563eb" /> Send reply to school administrator:
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your response or question regarding this notice..."
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: 5,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      boxSizing: 'border-box',
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              {/* Reply Action Row — Hidden for Student profile, available only for School Admin / Teacher */}
+              {!isStudent && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
                     <button
                       type="button"
-                      onClick={() => setActiveReplyId(null)}
-                      style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={submittingReply || !replyText.trim()}
-                      onClick={() => handleReplySubmit(a.id)}
+                      onClick={() => {
+                        setActiveReplyId(activeReplyId === a.id ? null : a.id);
+                        setReplyText('');
+                      }}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        padding: '5px 14px',
-                        fontSize: 12,
+                        gap: 6,
+                        padding: '6px 14px',
+                        fontSize: 12.5,
                         fontWeight: 600,
-                        borderRadius: 5,
-                        border: 'none',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        cursor: replyText.trim() ? 'pointer' : 'not-allowed',
-                        opacity: replyText.trim() ? 1 : 0.6
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: activeReplyId === a.id ? '#2563eb' : '#ffffff',
+                        color: activeReplyId === a.id ? '#ffffff' : '#1e293b',
+                        cursor: 'pointer'
                       }}
                     >
-                      <Send size={12} /> {submittingReply ? 'Sending...' : 'Send'}
+                      <MessageSquare size={13} />
+                      {activeReplyId === a.id ? 'Cancel' : 'Reply'}
                     </button>
                   </div>
-                </div>
+
+                  {/* Success Notification */}
+                  {replySuccessId === a.id && (
+                    <div style={{
+                      marginTop: 10,
+                      padding: '8px 12px',
+                      backgroundColor: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: 6,
+                      color: '#065f46',
+                      fontSize: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <CheckCircle2 size={14} /> Your response was submitted to school administration.
+                    </div>
+                  )}
+
+                  {/* Inline Interactive Reply Box */}
+                  {activeReplyId === a.id && (
+                    <div style={{ marginTop: 12, backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <CornerDownRight size={13} color="#2563eb" /> Send reply to school administrator:
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Type your response or question regarding this notice..."
+                        style={{
+                          width: '100%',
+                          padding: '8px 10px',
+                          borderRadius: 5,
+                          border: '1px solid #cbd5e1',
+                          fontSize: 13,
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit'
+                        }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveReplyId(null)}
+                          style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={submittingReply || !replyText.trim()}
+                          onClick={() => handleReplySubmit(a.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '5px 14px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderRadius: 5,
+                            border: 'none',
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            cursor: replyText.trim() ? 'pointer' : 'not-allowed',
+                            opacity: replyText.trim() ? 1 : 0.6
+                          }}
+                        >
+                          <Send size={12} /> {submittingReply ? 'Sending...' : 'Send'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}
