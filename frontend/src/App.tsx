@@ -30,7 +30,7 @@ import {
   FileText, Shield, Database, Clock, Wifi, UserPlus, Settings, Moon, Sun,
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
-  Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
+  Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
   Camera, CalendarCheck
@@ -559,24 +559,6 @@ function Login() {
                 </div>
               </div>
 
-              {/* Quick Demo Auto-Fill Button */}
-              <div className="as-simple-demo-row">
-                <span className="as-simple-demo-label">⚡ Test Mode</span>
-                <button
-                  type="button"
-                  className="as-simple-demo-btn"
-                  onClick={() => {
-                    const activeInst = institutes.find(i => i.id === instituteId);
-                    const demoEmail = getDemoEmailForInstitute(activeInst?.code || activeInst?.id || instituteId, loginRole);
-                    setEmail(demoEmail);
-                    setPassword('ChangeMe123!');
-                    setError('');
-                  }}
-                >
-                  <Sparkles size={12} />
-                  Auto-fill {currentConfig.roleName}
-                </button>
-              </div>
 
               {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
               {currentConfig.needsSchool && (
