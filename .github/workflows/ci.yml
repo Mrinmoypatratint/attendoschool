@@ -19,6 +19,7 @@ permissions:
   pull-requests: write
   statuses: write
   checks: write
+  actions: write
 
 concurrency:
   group: ci-${{ github.head_ref || github.ref_name }}
@@ -186,6 +187,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - name: Checkout with Full History
         uses: actions/checkout@v4
@@ -345,15 +347,30 @@ jobs:
             fi
 
             echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
+            MERGED=false
             if gh pr merge "$PR_NUM" --merge --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
               echo "✅ Successfully merged PR #${PR_NUM} into main!"
               echo "- **Auto-Merge:** ✅ Successfully merged PR #${PR_NUM} into main" >> $GITHUB_STEP_SUMMARY
+              MERGED=true
             elif gh pr merge "$PR_NUM" --auto --merge 2>&1; then
               echo "✅ GitHub Auto-Merge queued for PR #${PR_NUM}"
               echo "- **Auto-Merge:** ⏳ GitHub Auto-Merge queued for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
+              sleep 5
+              MERGED=true
             else
               echo "::warning::Direct merge and auto-merge failed. PR ready for manual review."
               echo "- **Auto-Merge:** ⚠️ Manual review required" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            if [ "$MERGED" = "true" ]; then
+              echo "🚀 Triggering CD — Production Deployment for main branch..."
+              if gh workflow run deploy.yml --ref main 2>&1; then
+                echo "✅ Successfully triggered production deployment for main!"
+                echo "- **CD Deployment:** 🚀 Triggered automatically for \`main\`" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "::warning::Could not trigger deploy.yml workflow automatically."
+                echo "- **CD Deployment:** ⚠️ Failed to trigger automatically — check Actions tab" >> $GITHUB_STEP_SUMMARY
+              fi
             fi
           else
             echo "ℹ️ No open PR found for branch ${BRANCH}."
