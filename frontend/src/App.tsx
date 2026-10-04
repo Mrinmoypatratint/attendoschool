@@ -28,7 +28,7 @@ import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
   CalendarDays, ClipboardCheck, School, CheckCircle2, MessageSquare, BarChart3,
-  FileText, Shield, Database, Clock, Wifi, UserPlus, Settings, Moon, Sun,
+  FileText, Shield, Database, Clock, UserPlus, Settings, Moon, Sun,
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
@@ -1918,7 +1918,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['/attendance-reports','Reports',FileText],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
-    ['/offline-attendance','Offline Mode',Wifi],
     ['/teacher/profile','Profile',User],
   ];
 
@@ -1945,6 +1944,9 @@ function Layout({children}:{children:React.ReactNode}){
   const links = rawLinks.filter(item => {
     if (user.role === 'SCHOOL_ADMIN') {
       if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
+    }
+    if (user.role === 'TEACHER') {
+      if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
     }
     return true;
   });
@@ -11324,7 +11326,7 @@ function App(){return <Routes>
   <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
   <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/offline-attendance" element={<RoleGuard roles={['TEACHER']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
+  <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/leave-applications" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
   <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
