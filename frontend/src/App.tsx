@@ -2799,9 +2799,24 @@ function Layout({children}:{children:React.ReactNode}){
                         <div key={s.id} className="search-result-item" onClick={() => handleSearchResultClick(s)}>
                           <div className="search-result-avatar student">{s.name?.[0]?.toUpperCase() || 'S'}</div>
                           <div className="search-result-info">
-                            <span className="search-result-name">{s.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="search-result-name">{s.name}</span>
+                              {s.gender && (
+                                <span style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: 999,
+                                  background: /^f/i.test(s.gender) ? '#fdf2f8' : /^m/i.test(s.gender) ? '#f0f9ff' : '#f8fafc',
+                                  color: /^f/i.test(s.gender) ? '#db2777' : /^m/i.test(s.gender) ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${/^f/i.test(s.gender) ? '#fbcfe8' : /^m/i.test(s.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {s.gender}
+                                </span>
+                              )}
+                            </div>
                             <span className="search-result-meta">
-                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''} · {s.email}
+                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${s.gender}` : ''} · {s.email}
                             </span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
@@ -2816,8 +2831,23 @@ function Layout({children}:{children:React.ReactNode}){
                         <div key={t.id} className="search-result-item" onClick={() => handleSearchResultClick(t)}>
                           <div className="search-result-avatar teacher">{t.name?.[0]?.toUpperCase() || 'T'}</div>
                           <div className="search-result-info">
-                            <span className="search-result-name">{t.name}</span>
-                            <span className="search-result-meta">{t.email}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="search-result-name">{t.name}</span>
+                              {t.gender && (
+                                <span style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: 999,
+                                  background: /^f/i.test(t.gender) ? '#fdf2f8' : /^m/i.test(t.gender) ? '#f0f9ff' : '#f8fafc',
+                                  color: /^f/i.test(t.gender) ? '#db2777' : /^m/i.test(t.gender) ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${/^f/i.test(t.gender) ? '#fbcfe8' : /^m/i.test(t.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {t.gender}
+                                </span>
+                              )}
+                            </div>
+                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${t.gender} · ` : ''}{t.email}</span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
@@ -4103,6 +4133,7 @@ function Students(){
       String(r.class_number).toLowerCase().includes(q) ||
       (r.admission_number && r.admission_number.toLowerCase().includes(q)) ||
       (r.admissionNumber && r.admissionNumber.toLowerCase().includes(q)) ||
+      (r.gender && String(r.gender).toLowerCase().includes(q)) ||
       (r.student_email && r.student_email.toLowerCase().includes(q)) ||
       (r.parent_email && r.parent_email.toLowerCase().includes(q));
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
@@ -4571,7 +4602,7 @@ function Students(){
           )}
         </div>
         <input 
-          placeholder="🔍 Search name, roll number, admission number, email..."
+          placeholder="🔍 Search name, roll number, admission number, gender, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
@@ -4672,7 +4703,9 @@ function Students(){
             <th>Roll No</th>
             <th>Adm No</th>
             <th>Student Name</th>
+            <th>Gender</th>
             <th>Class</th>
+            <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
             <th>Portal Access</th>
@@ -4681,7 +4714,7 @@ function Students(){
         </thead>
         <tbody>
           {displayedStudents.length === 0 ? (
-            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -4709,26 +4742,45 @@ function Students(){
                 </StudentProfileHoverCard>
               </td>
               <td>
+                {x.gender ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
+                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
+                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                  }}>
+                    {x.gender}
+                  </span>
+                ) : (
+                  <span className="muted" style={{ fontSize: 12 }}>—</span>
+                )}
+              </td>
+              <td>
                 {(() => {
                   const cNum = Number(x.class_number);
                   const cId = String(x.class_id || '');
-                  let classTxt = '';
-                  if (cNum === -1 || /l.?kg/i.test(cId)) classTxt = 'L-KG';
-                  else if (cNum === 0 || /u.?kg/i.test(cId)) classTxt = 'U-KG';
-                  else if (!isNaN(cNum) && cNum > 0) classTxt = `Class ${cNum}`;
-                  else {
-                    const m = cId.match(/cls-(\d+)/);
-                    if (m) classTxt = `Class ${m[1]}`;
-                    else classTxt = 'Class ' + (cNum || 1);
-                  }
-                  const secTxt = String(x.section_name || x.sectionName || x.section || 'A').trim().replace(/^section\s*/i, '') || 'A';
-                  return (
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{classTxt}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Section {secTxt}</div>
-                    </div>
-                  );
+                  if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
+                  if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
+                  if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
+                  const m = cId.match(/cls-(\d+)/);
+                  if (m) return `Class ${m[1]}`;
+                  const label = String(x.class_label || x.class_name || '');
+                  if (label) return label.replace(/^class\s*/i, '').trim() || label;
+                  return 'Class ' + (cNum || 1);
                 })()}
+              </td>
+              <td>
+                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {(() => {
+                    const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
+                    return raw.replace(/^section\s*/i, '').trim() || 'A';
+                  })()}
+                </span>
               </td>
               <td>
                 <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
@@ -6066,6 +6118,7 @@ function Teachers(){
         fields: [
           { label: 'Full Name', value: name, color: 'blue' },
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
+          { label: 'Gender', value: f.gender || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
@@ -6092,6 +6145,7 @@ function Teachers(){
         name,
         email,
         employee_id: employeeId,
+        gender: f.gender || '',
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
@@ -6100,6 +6154,7 @@ function Teachers(){
         name: 'Faculty Name',
         email: 'Email Address',
         employee_id: 'Employee ID',
+        gender: 'Gender',
         mobile: 'Mobile Number',
         designation: 'Designation',
         is_active: 'Status'
@@ -6136,7 +6191,7 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -6244,11 +6299,15 @@ function Teachers(){
     });
   }
 
-  const filtered = rows.filter(r => 
-    r.name.toLowerCase().includes(search.toLowerCase()) || 
-    r.email.toLowerCase().includes(search.toLowerCase()) ||
-    String(r.employee_id).toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = rows.filter(r => {
+    const q = search.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) || 
+      r.email.toLowerCase().includes(q) ||
+      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q) ||
+      (r.gender && String(r.gender).toLowerCase().includes(q))
+    );
+  });
 
   useEffect(() => {
     setDirectoryPage(1);
@@ -6478,7 +6537,7 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
-        placeholder="🔍 Search teacher name, email, or employee ID..."
+        placeholder="🔍 Search teacher name, email, employee ID, or gender..."
         value={search}
         onChange={e => setSearch(e.target.value)}
         style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
@@ -6539,6 +6598,7 @@ function Teachers(){
             </th>
             <th>Employee Id/Savior_NO</th>
             <th>Teacher Name</th>
+            <th>Gender</th>
             <th>Designation</th>
             <th>Assigned Classes</th>
             <th>Email</th>
@@ -6549,7 +6609,7 @@ function Teachers(){
         </thead>
         <tbody>
           {displayedTeachers.length === 0 ? (
-            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : displayedTeachers.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -6562,6 +6622,25 @@ function Teachers(){
               <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
                 <b>{x.name}</b>
+              </td>
+              <td>
+                {x.gender ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
+                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
+                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                  }}>
+                    {x.gender}
+                  </span>
+                ) : (
+                  <span className="muted" style={{ fontSize: 12 }}>—</span>
+                )}
               </td>
               <td>
                 <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
@@ -6590,6 +6669,8 @@ function Teachers(){
                       email: x.email,
                       employeeId: x.employee_id || x.employeeId || '',
                       mobile: x.mobile || x.phone || '',
+                      gender: x.gender || '',
+                      designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
                     });
                     setOpen(true);
@@ -6785,7 +6866,19 @@ function Teachers(){
         <label>Employee Id / Savior_NO
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <label>Gender
+            <select
+              value={f.gender || ''}
+              onChange={e => setF({ ...f, gender: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
           <label>Designation
             <input placeholder="e.g. Senior Teacher, TGT Mathematics" value={f.designation||''} onChange={e=>setF({...f,designation:e.target.value})}/>
           </label>

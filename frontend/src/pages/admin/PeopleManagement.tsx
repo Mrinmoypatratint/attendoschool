@@ -448,6 +448,7 @@ export default function PeopleManagement() {
                   <th>Roll No</th>
                   <th>Adm No</th>
                   <th>Student Name</th>
+                  <th>Gender</th>
                   <th>Class</th>
                   <th>Section</th>
                   <th>Parent</th>
@@ -478,6 +479,25 @@ export default function PeopleManagement() {
                       </StudentProfileHoverCard>
                     </td>
                     <td>
+                      {r.gender ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          fontSize: 11.5,
+                          fontWeight: 500,
+                          background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
+                          color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
+                          border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                        }}>
+                          {r.gender}
+                        </span>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 12 }}>—</span>
+                      )}
+                    </td>
+                    <td>
                       <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                         {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
                       </span>
@@ -498,7 +518,7 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={8} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                    <td colSpan={9} className="muted" style={{ padding: 28, textAlign: 'center' }}>
                       {loading ? 'Searching directory…' : 'No student records found matching this criteria.'}
                     </td>
                   </tr>
@@ -511,6 +531,7 @@ export default function PeopleManagement() {
                 <tr>
                   <th>Employee Id/Savior_NO</th>
                   <th>Faculty Name</th>
+                  <th>Gender</th>
                   <th>Designation</th>
                   <th>Official Email</th>
                   <th>Mobile Contact</th>
@@ -528,6 +549,25 @@ export default function PeopleManagement() {
                     <td>
                       <b>{r.name || r.fullName}</b>
                     </td>
+                    <td>
+                      {r.gender ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          fontSize: 11.5,
+                          fontWeight: 500,
+                          background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
+                          color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
+                          border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                        }}>
+                          {r.gender}
+                        </span>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 12 }}>—</span>
+                      )}
+                    </td>
                     <td>{r.designation || 'Teacher'}</td>
                     <td>{r.email}</td>
                     <td>{r.mobile || r.phone || '—'}</td>
@@ -540,7 +580,7 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={6} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                    <td colSpan={7} className="muted" style={{ padding: 28, textAlign: 'center' }}>
                       {loading ? 'Searching directory…' : 'No faculty records found matching this criteria.'}
                     </td>
                   </tr>
@@ -725,7 +765,19 @@ export default function PeopleManagement() {
                   />
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <label>Gender
+                    <select
+                      value={teacherForm.gender || ''}
+                      onChange={e => setTeacherForm({ ...teacherForm, gender: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
                   <label>Designation
                     <input
                       placeholder="e.g. Senior Teacher, TGT Science"
