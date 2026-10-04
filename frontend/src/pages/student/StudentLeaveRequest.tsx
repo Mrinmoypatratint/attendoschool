@@ -49,6 +49,13 @@ export function StudentLeaveRequest() {
     }
   };
 
+  const formatDate = (val: string) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   return (
     <div className="student-subpage">
       <div className="student-subpage-header">
@@ -106,8 +113,8 @@ export function StudentLeaveRequest() {
               <tbody>
                 {requests.map((r) => (
                   <tr key={r.id}>
-                    <td className="font-semibold">{r.start_date}</td>
-                    <td>{r.end_date}</td>
+                    <td className="font-semibold">{formatDate(r.start_date)}</td>
+                    <td>{formatDate(r.end_date)}</td>
                     <td>{r.reason}</td>
                     <td>
                       <span className={`student-status-badge status-${r.status.toLowerCase()}`}>

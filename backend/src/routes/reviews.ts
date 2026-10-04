@@ -59,6 +59,9 @@ async function ensureReviewTables() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+
+      ALTER TABLE student_leave_requests DROP CONSTRAINT IF EXISTS student_leave_requests_status_check;
+      ALTER TABLE student_leave_requests ADD CONSTRAINT student_leave_requests_status_check CHECK (status IN ('PENDING', 'SEEN', 'APPROVED', 'REJECTED', 'CANCELLED'));
     `);
     tablesInitialized = true;
   } catch (err) {
@@ -632,6 +635,45 @@ router.put('/leaves/:id/seen', async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Error marking leave as seen:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to mark leave as seen' });
+  }
+});
+
+// PUT /api/reviews/leaves/mark-all-seen - Mark all pending leaves in the school as seen
+router.put('/leaves/mark-all-seen', async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = req.user?.schoolId;
+    const reviewerId = req.user?.id;
+    const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+
+    if (isPostgresConfigured && isUuid(schoolId)) {
+      try {
+        await pool.query(`
+          UPDATE student_leave_requests
+          SET status = 'SEEN',
+              reviewed_by = $1,
+              review_notes = COALESCE(review_notes, 'Seen by Faculty'),
+              updated_at = NOW()
+          WHERE school_id = $2 AND status = 'PENDING'
+        `, [safeReviewerId, schoolId]);
+      } catch (err: any) {
+        console.warn('[Reviews] DB mark-all-seen error:', err.message);
+      }
+    }
+
+    inMemoryLeaves.forEach(l => {
+      if ((!schoolId || l.school_id === schoolId) && l.status === 'PENDING') {
+        l.status = 'SEEN';
+        l.reviewed_by = reviewerId;
+        l.review_notes = l.review_notes || 'Seen by Faculty';
+        l.updated_at = new Date().toISOString();
+      }
+    });
+
+    return res.json({ success: true, message: 'All pending leave requests marked as seen' });
+  } catch (error: any) {
+    console.error('Error marking all leaves as seen:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to mark all leaves as seen' });
   }
 });
 

@@ -98,6 +98,8 @@ export default function LeaveApprove() {
         await api.put(`/reviews/leaves/${leave.id}/seen`);
       } catch (err) {
         console.error('Failed to mark leave as seen on server:', err);
+      } finally {
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
       }
     }
   };

@@ -1836,6 +1836,14 @@ function Layout({children}:{children:React.ReactNode}){
   }, [user?.role, loadAdminNotifications]);
 
   useEffect(() => {
+    const handleReviewsUpdated = () => {
+      loadAdminNotifications();
+    };
+    window.addEventListener('reviews-updated', handleReviewsUpdated);
+    return () => window.removeEventListener('reviews-updated', handleReviewsUpdated);
+  }, [loadAdminNotifications]);
+
+  useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
         setAdminNotifOpen(false);
@@ -2650,10 +2658,29 @@ function Layout({children}:{children:React.ReactNode}){
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {pendingLeaveCount > 0 && (
+                          <button
+                            type="button"
+                            className="super-notif-readall-btn"
+                            style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0', cursor: 'pointer' }}
+                            title="Mark all pending leave requests as seen"
+                            onClick={async () => {
+                              try {
+                                await api.put('/reviews/leaves/mark-all-seen');
+                                setPendingLeaveCount(0);
+                                setAdminNotifs(prev => prev.filter((n: any) => n.type !== 'LEAVE_REQUEST'));
+                                window.dispatchEvent(new CustomEvent('reviews-updated'));
+                              } catch {}
+                            }}
+                          >
+                            <Check size={12} />
+                            <span>Mark all seen</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="super-notif-readall-btn"
-                          style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0' }}
+                          style={{ color: '#2563eb', background: '#eff6ff', borderColor: '#bfdbfe', cursor: 'pointer' }}
                           title="Review Leave Requests"
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
@@ -2677,27 +2704,70 @@ function Layout({children}:{children:React.ReactNode}){
                           <div
                             key={n.id}
                             className="super-notif-item unread"
-                            onClick={() => {
+                            style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', cursor: 'pointer' }}
+                            onClick={async () => {
                               setTeacherNotifOpen(false);
+                              if (n.rawId) {
+                                api.put(`/reviews/leaves/${n.rawId}/seen`).catch(() => {});
+                                setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                setPendingLeaveCount(p => Math.max(0, p - 1));
+                                window.dispatchEvent(new CustomEvent('reviews-updated'));
+                              }
                               nav('/leave-applications');
                             }}
                           >
-                            <div className="super-notif-icon-wrap notif-leave">
-                              <Calendar size={17} />
-                            </div>
+                            <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
+                              <div className="super-notif-icon-wrap notif-leave">
+                                <Calendar size={17} />
+                              </div>
 
-                            <div className="super-notif-body">
-                              <div className="super-notif-item-title">
-                                <span className="super-notif-item-title-text">{n.title}</span>
-                                <span className="super-notif-time">
-                                  {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              <div className="super-notif-body">
+                                <div className="super-notif-item-title">
+                                  <span className="super-notif-item-title-text">{n.title}</span>
+                                  <span className="super-notif-time">
+                                    {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                                <p className="super-notif-msg">{n.message}</p>
+                                <span className="super-notif-action-tag">
+                                  Review & Verify →
                                 </span>
                               </div>
-                              <p className="super-notif-msg">{n.message}</p>
-                              <span className="super-notif-action-tag">
-                                Review & Verify →
-                              </span>
                             </div>
+
+                            <button
+                              type="button"
+                              title="Mark as Seen"
+                              style={{
+                                background: '#ecfdf5',
+                                border: '1px solid #a7f3d0',
+                                color: '#059669',
+                                borderRadius: 6,
+                                padding: '4px 7px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                cursor: 'pointer',
+                                marginLeft: 8,
+                                flexShrink: 0
+                              }}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (n.rawId) {
+                                  try {
+                                    await api.put(`/reviews/leaves/${n.rawId}/seen`);
+                                    setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                    setPendingLeaveCount(p => Math.max(0, p - 1));
+                                    window.dispatchEvent(new CustomEvent('reviews-updated'));
+                                  } catch {}
+                                }
+                              }}
+                            >
+                              <Check size={12} />
+                              <span>Seen</span>
+                            </button>
                           </div>
                         ))
                       )}
