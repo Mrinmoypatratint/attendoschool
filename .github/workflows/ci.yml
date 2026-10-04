@@ -1,28 +1,26 @@
 # ===========================================================================
 # AttendoSchool — Continuous Integration (CI)
-# Triggers: Pull Requests to main, pushes to developer branches
-# Does NOT deploy. Does NOT force-merge. Does NOT touch production.
+# Triggers: Pushes to developer branches (auto-test, auto-PR, auto-merge, auto-deploy)
 # ===========================================================================
 name: CI — Lint, Test, Build, Security
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches:
       - '**'
       - '!main'
       - '!gh-pages'
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   statuses: write
   checks: write
   actions: write
 
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}
+  group: ci-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -265,6 +263,7 @@ jobs:
           fi
 
       - name: Create or Update Pull Request
+        id: create_pr
         if: |
           steps.compare.outputs.already_merged != 'true' &&
           steps.conflict.outputs.conflict != 'true'
@@ -272,10 +271,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          PR_NUM="${{ github.event.pull_request.number }}"
-          if [ -z "$PR_NUM" ]; then
-            PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
-          fi
+          PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
 
           MIGRATION_NOTE=""
           if [ "${{ needs.pre-checks.outputs.has_migration }}" = "true" ]; then
@@ -300,6 +296,7 @@ jobs:
           if [ -n "$PR_NUM" ]; then
             echo "Updating existing PR #${PR_NUM} for ${BRANCH}..."
             gh pr edit "$PR_NUM" --body "$PR_BODY" 2>/dev/null || true
+            echo "pr_number=${PR_NUM}" >> $GITHUB_OUTPUT
             echo "- **Pull Request:** Updated [#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM})" >> $GITHUB_STEP_SUMMARY
           else
             echo "Creating new PR for ${BRANCH} → main..."
@@ -310,6 +307,8 @@ jobs:
               --body "$PR_BODY" \
               --no-maintainer-edit 2>&1 || true)
             echo "- **Pull Request:** Created ${NEW_PR}" >> $GITHUB_STEP_SUMMARY
+            PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+            echo "pr_number=${PR_NUM}" >> $GITHUB_OUTPUT
           fi
 
       - name: Auto-Merge Pull Request into main
@@ -321,7 +320,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          PR_NUM="${{ github.event.pull_request.number }}"
+          PR_NUM="${{ steps.create_pr.outputs.pr_number }}"
           if [ -z "$PR_NUM" ]; then
             PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
           fi
