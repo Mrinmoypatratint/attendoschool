@@ -39,6 +39,7 @@ export interface StudentDashboardData {
     className: string;
     sectionName: string;
     rollNumber: string;
+    admissionNumber?: string;
     schoolName: string;
     avatarUrl?: string;
   };
@@ -158,7 +159,7 @@ export interface LeaveRequest {
   start_date: string;
   end_date: string;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  status: 'PENDING' | 'SEEN' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   reviewer_name?: string;
   review_notes?: string;
   created_at?: string;

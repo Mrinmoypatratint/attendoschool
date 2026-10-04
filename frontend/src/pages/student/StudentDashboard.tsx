@@ -101,6 +101,9 @@ export function StudentDashboard() {
           <div className="student-greeting-meta">
             <span className="student-meta-pill">{student?.className || 'Class 10'} · Section {student?.sectionName || 'A'}</span>
             <span className="student-meta-pill">Roll #{student?.rollNumber || '25'}</span>
+            {student?.admissionNumber && (
+              <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
+            )}
             <span className="student-meta-pill student-meta-school">{student?.schoolName || 'AttendoSchool'}</span>
           </div>
         </div>

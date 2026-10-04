@@ -14,9 +14,11 @@ import {
   User,
   GraduationCap,
   AlertTriangle,
-  FileText
+  FileText,
+  Eye
 } from 'lucide-react';
 import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LeaveRequest {
   id: string;
@@ -30,7 +32,7 @@ interface LeaveRequest {
   start_date: string;
   end_date: string;
   reason: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'SEEN' | 'APPROVED' | 'REJECTED';
   reviewed_by?: string;
   reviewer_name?: string;
   review_notes?: string;
@@ -38,18 +40,18 @@ interface LeaveRequest {
 }
 
 export default function LeaveApprove() {
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'SEEN' | 'APPROVED'>('PENDING');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
-  const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
+  const [counts, setCounts] = useState({ all: 0, pending: 0, seen: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Reject Modal State
-  const [rejectingLeave, setRejectingLeave] = useState<LeaveRequest | null>(null);
-  const [rejectReason, setRejectReason] = useState<string>('');
+  // View Details Modal State
+  const [viewingLeave, setViewingLeave] = useState<LeaveRequest | null>(null);
 
   const loadLeaves = async () => {
     try {
@@ -73,42 +75,32 @@ export default function LeaveApprove() {
     loadLeaves();
   }, []);
 
-  const handleApprove = async (leave: LeaveRequest) => {
-    try {
-      setActionLoading(leave.id);
-      const res = await api.put(`/reviews/leaves/${leave.id}/approve`, {
-        notes: 'Approved by School Administration'
-      });
-      if (res.data?.success) {
-        setFeedback({ type: 'success', message: `Leave request for ${leave.applicant_name} has been approved.` });
-        await loadLeaves();
-      }
-    } catch (err: any) {
-      console.error('Failed to approve leave:', err);
-      setFeedback({ type: 'error', message: err?.response?.data?.message || 'Failed to approve leave request.' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const handleViewLeave = async (leave: LeaveRequest) => {
+    const isPending = leave.status === 'PENDING';
+    const updatedLeave: LeaveRequest = isPending
+      ? { ...leave, status: 'SEEN', review_notes: 'Seen by Faculty' }
+      : leave;
 
-  const handleRejectConfirm = async () => {
-    if (!rejectingLeave) return;
-    try {
-      setActionLoading(rejectingLeave.id);
-      const res = await api.put(`/reviews/leaves/${rejectingLeave.id}/reject`, {
-        reason: rejectReason.trim() || 'Leave request declined by School Administration.'
-      });
-      if (res.data?.success) {
-        setFeedback({ type: 'success', message: `Leave request for ${rejectingLeave.applicant_name} has been rejected.` });
-        setRejectingLeave(null);
-        setRejectReason('');
-        await loadLeaves();
+    setViewingLeave(updatedLeave);
+
+    if (isPending) {
+      setLeaves((prev) =>
+        prev.map((l) =>
+          l.id === leave.id ? { ...l, status: 'SEEN', review_notes: 'Seen by Faculty' } : l
+        )
+      );
+      setCounts((prev) => ({
+        ...prev,
+        pending: Math.max(0, prev.pending - 1),
+        seen: (prev.seen || 0) + 1
+      }));
+      try {
+        await api.put(`/reviews/leaves/${leave.id}/seen`);
+      } catch (err) {
+        console.error('Failed to mark leave as seen on server:', err);
+      } finally {
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
       }
-    } catch (err: any) {
-      console.error('Failed to reject leave:', err);
-      setFeedback({ type: 'error', message: err?.response?.data?.message || 'Failed to reject leave.' });
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -134,6 +126,7 @@ export default function LeaveApprove() {
     return leaves.filter((l) => {
       // Tab filter
       if (activeTab === 'PENDING' && l.status !== 'PENDING') return false;
+      if (activeTab === 'SEEN' && l.status !== 'SEEN') return false;
       if (activeTab === 'APPROVED' && l.status !== 'APPROVED') return false;
 
       // Role filter
@@ -161,10 +154,10 @@ export default function LeaveApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Leave Applications
+            Leave Review
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
-            Review, evaluate, and approve submitted student and staff leave applications.
+            Review, evaluate, and approve submitted student leave applications.
           </p>
         </div>
 
@@ -208,7 +201,7 @@ export default function LeaveApprove() {
         </div>
       )}
 
-      {/* ── 3 Tabs (Exactly matching user screenshot) ── */}
+      {/* ── Tabs ── */}
       <div className="student-tab-bar" style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border, #E2E8F0)', marginBottom: 20 }}>
         <button
           type="button"
@@ -245,6 +238,24 @@ export default function LeaveApprove() {
           }}
         >
           Pending ({counts.pending})
+        </button>
+        <button
+          type="button"
+          className={`student-tab-btn ${activeTab === 'SEEN' ? 'active' : ''}`}
+          onClick={() => setActiveTab('SEEN')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '8px 16px',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderBottom: activeTab === 'SEEN' ? '2px solid #2563EB' : '2px solid transparent',
+            color: activeTab === 'SEEN' ? '#2563EB' : 'var(--text-secondary, #64748B)',
+            transition: 'all 0.15s'
+          }}
+        >
+          Seen ({counts.seen || 0})
         </button>
         <button
           type="button"
@@ -376,6 +387,10 @@ export default function LeaveApprove() {
                     {leave.status === 'PENDING' ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#92400E', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <Clock size={12} /> Pending Review
+                      </span>
+                    ) : leave.status === 'SEEN' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EEF2FF', color: '#4338CA', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                        <Eye size={12} /> Seen
                       </span>
                     ) : leave.status === 'APPROVED' ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
@@ -523,189 +538,252 @@ export default function LeaveApprove() {
                   )}
                 </div>
 
-                {/* Actions for PENDING */}
-                {leave.status === 'PENDING' && (
-                  <div
+                {/* Single View Button replacing Approve and Reject buttons */}
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderTop: '1px solid var(--border, #E2E8F0)',
+                    background: 'var(--bg-card-footer, #FAFAFA)'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleViewLeave(leave)}
                     style={{
-                      display: 'flex',
-                      gap: 10,
-                      padding: '12px 16px',
-                      borderTop: '1px solid var(--border, #E2E8F0)',
-                      background: 'var(--bg-card-footer, #FAFAFA)'
+                      width: '100%',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 7,
+                      background: '#2563EB',
+                      color: '#FFF',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleApprove(leave)}
-                      disabled={actionLoading === leave.id}
-                      style={{
-                        flex: 1,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        background: '#16A34A',
-                        color: '#FFF',
-                        border: 'none',
-                        borderRadius: 8,
-                        padding: '8px 12px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        opacity: actionLoading === leave.id ? 0.7 : 1,
-                        transition: 'background 0.15s'
-                      }}
-                    >
-                      <Check size={15} />
-                      <span>{actionLoading === leave.id ? 'Approving...' : 'Approve'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRejectingLeave(leave);
-                        setRejectReason('');
-                      }}
-                      disabled={actionLoading === leave.id}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        background: 'transparent',
-                        color: '#DC2626',
-                        border: '1px solid #FCA5A5',
-                        borderRadius: 8,
-                        padding: '8px 14px',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <X size={15} />
-                      <span>Reject</span>
-                    </button>
-                  </div>
-                )}
+                    <Eye size={15} />
+                    <span>View</span>
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* ── Reject Reason Dialog Modal ── */}
-      {rejectingLeave && (
+      {/* ── View Application Details Modal ── */}
+      {viewingLeave && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10000,
             padding: 20
           }}
-          onClick={() => setRejectingLeave(null)}
+          onClick={() => setViewingLeave(null)}
         >
           <div
             style={{
               background: 'var(--surface, #FFF)',
               borderRadius: 16,
-              maxWidth: 440,
+              maxWidth: 520,
               width: '100%',
-              padding: 22,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+              padding: 24,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--border, #E2E8F0)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#991B1B' }}>
-              Decline Leave Request
-            </h3>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#64748B' }}>
-              Please specify the reason for declining leave for <strong>{rejectingLeave.applicant_name}</strong>.
-            </p>
-
-            {/* Quick Reason Chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {[
-                'Medical Certificate Required',
-                'Examinations in Progress',
-                'Exceeded Allowed Leave Days',
-                'Insufficient Notice Given'
-              ].map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => setRejectReason(chip)}
-                  style={{
-                    background: rejectReason === chip ? '#FEE2E2' : '#F1F5F9',
-                    color: rejectReason === chip ? '#991B1B' : '#475569',
-                    border: '1px solid transparent',
-                    borderRadius: 6,
-                    padding: '4px 8px',
-                    fontSize: 11.5,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-
-            <textarea
-              rows={3}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Enter rejection explanation or instructions..."
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border, #E2E8F0)',
-                background: 'var(--surface, #FFF)',
-                color: 'var(--text, #0F172A)',
-                fontSize: 13,
-                resize: 'none',
-                marginBottom: 16
-              }}
-            />
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, borderBottom: '1px solid var(--border, #E2E8F0)', paddingBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                    Leave Application Details
+                  </h3>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                    Submitted {viewingLeave.created_at ? new Date(viewingLeave.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                  </span>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setRejectingLeave(null)}
+                onClick={() => setViewingLeave(null)}
                 style={{
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border, #E2E8F0)',
                   background: 'transparent',
-                  color: '#64748B',
+                  border: 'none',
+                  fontSize: 22,
+                  lineHeight: 1,
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: 4
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Applicant Profile */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: 'var(--gray-50, #F8FAFC)', borderRadius: 12, marginBottom: 18, border: '1px solid var(--border, #E2E8F0)' }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: '#EFF6FF',
+                  color: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  border: '2px solid #DBEAFE',
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}
+              >
+                {viewingLeave.photo_url ? (
+                  <img src={viewingLeave.photo_url} alt={viewingLeave.applicant_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  viewingLeave.applicant_name.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                    {viewingLeave.applicant_name}
+                  </h4>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: viewingLeave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
+                      color: viewingLeave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
+                    }}
+                  >
+                    {viewingLeave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+                  {viewingLeave.detail || `Admission No: ${viewingLeave.identifier || 'N/A'}`}
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div>
+                {viewingLeave.status === 'SEEN' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#EEF2FF', color: '#4338CA', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                    <Eye size={13} /> Seen
+                  </span>
+                ) : viewingLeave.status === 'PENDING' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEF3C7', color: '#92400E', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                    <Clock size={13} /> Pending Review
+                  </span>
+                ) : viewingLeave.status === 'APPROVED' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#DCFCE7', color: '#166534', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                    <CheckCircle2 size={13} /> Approved
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEE2E2', color: '#991B1B', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                    <XCircle size={13} /> Rejected
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Leave Details Box */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+              <div
+                style={{
+                  background: 'var(--gray-50, #F8FAFC)',
+                  border: '1px solid var(--border, #E2E8F0)',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Calendar size={18} style={{ color: '#2563EB' }} />
+                  <div>
+                    <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>REQUESTED DURATION</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
+                      {formatDate(viewingLeave.start_date)} → {formatDate(viewingLeave.end_date)}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    background: '#DBEAFE',
+                    color: '#1E40AF',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: 8
+                  }}
+                >
+                  {calculateDays(viewingLeave.start_date, viewingLeave.end_date)} {calculateDays(viewingLeave.start_date, viewingLeave.end_date) === 1 ? 'Day' : 'Days'}
+                </span>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>
+                  <FileText size={13} /> REASON FOR LEAVE
+                </div>
+                <div
+                  style={{
+                    fontSize: 13.5,
+                    color: 'var(--text, #334155)',
+                    background: 'var(--surface, #FFF)',
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border, #E2E8F0)',
+                    lineHeight: 1.5,
+                    minHeight: 60
+                  }}
+                >
+                  {viewingLeave.reason}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, borderTop: '1px solid var(--border, #E2E8F0)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#16A34A', fontWeight: 600 }}>
+                <CheckCircle2 size={16} />
+                <span>Marked as Seen in Student Portal</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingLeave(null)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#2563EB',
+                  color: '#FFF',
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'
                 }}
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleRejectConfirm}
-                disabled={actionLoading === rejectingLeave.id}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: '#DC2626',
-                  color: '#FFF',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  opacity: actionLoading === rejectingLeave.id ? 0.7 : 1
-                }}
-              >
-                Confirm Decline
+                Close
               </button>
             </div>
           </div>

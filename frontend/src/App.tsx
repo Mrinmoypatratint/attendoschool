@@ -154,11 +154,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'School Admin',
     roleSub: 'Manage school',
     bannerTitle: 'School Administrator',
-    bannerText: 'Select your affiliated institution and enter your administrative credentials.',
+    bannerText: 'Enter your administrative credentials to automatically identify your institution.',
     needsSchool: true,
     emailLabel: 'Email Address',
-    emailPlaceholder: 'admin@demo-school.local',
-    defaultEmail: 'admin@demo-school.local',
+    emailPlaceholder: 'e.g. admin@school.edu.in',
+    defaultEmail: '',
     icon: School,
     color: '#059669'
   },
@@ -167,11 +167,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Teacher',
     roleSub: 'Manage classes',
     bannerTitle: 'Teacher Portal',
-    bannerText: 'Select your school to access class attendance, routines, and marks.',
+    bannerText: 'Enter your teacher email or employee ID to automatically identify your school.',
     needsSchool: true,
     emailLabel: 'Teacher Email / Employee ID',
-    emailPlaceholder: 'rahul@demo-school.local or EMP001',
-    defaultEmail: 'rahul@demo-school.local',
+    emailPlaceholder: 'e.g. teacher@tint.edu.in or EMP001',
+    defaultEmail: '',
     icon: GraduationCap,
     color: '#d97706'
   },
@@ -180,11 +180,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Student',
     roleSub: 'Learning portal',
     bannerTitle: 'Student Portal',
-    bannerText: 'Select your institute and enter your student ID or email to access timetable, assignments, and attendance.',
+    bannerText: 'Enter your Admission No. or student email to automatically identify your school.',
     needsSchool: true,
-    emailLabel: 'Student ID / Email',
-    emailPlaceholder: 'student@attendance.local or Roll No. 25',
-    defaultEmail: 'student@greenwood.local',
+    emailLabel: 'Admission No. / Student Email',
+    emailPlaceholder: 'e.g. ADM-2025-105 or sweta@gmail.com',
+    defaultEmail: '',
     icon: BookOpen,
     color: '#7c3aed'
   }
@@ -197,18 +197,18 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
 
   if (isTint) {
     if (role === 'TEACHER') return 'teacher@tint.edu.in';
-    if (role === 'STUDENT') return 'dhardhuran689@gmail.com';
+    if (role === 'STUDENT') return 'ADM-2025-105';
     return 'admin@tint.edu.in';
   }
 
   if (isAbc) {
     if (role === 'TEACHER') return 'mmrinmay76@gmail.com';
-    if (role === 'STUDENT') return 'ahana12@gmail.com';
+    if (role === 'STUDENT') return 'ADM1';
     return 'admin@abc155.edu.in';
   }
 
   if (role === 'TEACHER') return 'rahul@demo-school.local';
-  if (role === 'STUDENT') return 'student@greenwood.local';
+  if (role === 'STUDENT') return 'ADM-2026-001';
   if (role === 'ADMIN') return 'superadmin@attendance.local';
   return 'admin@demo-school.local';
 }
@@ -217,8 +217,20 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   if (!inputEmail || !inputEmail.trim() || !list || list.length === 0) return undefined;
   const norm = inputEmail.trim().toLowerCase();
 
-  // 1. Explicit TINT matches
-  if (norm.includes('tint.edu.in') || norm.includes('tint.local') || norm.includes('@tint') || norm.includes('tint')) {
+  // 1. Explicit TINT matches (Faculty, Student, School Admin)
+  if (
+    norm.includes('tint.edu.in') || 
+    norm.includes('tint.local') || 
+    norm.includes('@tint') || 
+    norm.includes('tint') ||
+    norm === 'adm-2025-105' ||
+    norm === 'adm-2025-001' ||
+    norm === 'sweta@gmail.com' ||
+    norm === 'teacher@tint.edu.in' ||
+    norm === 'student@tint.edu.in' ||
+    norm === 'admin@tint.edu.in' ||
+    norm === 'admin@tint.local'
+  ) {
     const found = list.find(i => 
       (i.code && i.code.toUpperCase() === 'TINT') || 
       i.id === '00000000-0000-0000-0000-000000000002' || 
@@ -229,7 +241,16 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   }
 
   // 2. Explicit Greenwood matches
-  if (norm.includes('demo-school.local') || norm.includes('greenwood') || norm.includes('greenwood.local')) {
+  if (
+    norm.includes('demo-school.local') || 
+    norm.includes('greenwood') || 
+    norm.includes('greenwood.local') ||
+    norm === 'adm-2026-001' ||
+    norm === 'rahul@demo-school.local' ||
+    norm === 'priya@demo-school.local' ||
+    norm === 'student@greenwood.local' ||
+    norm === 'admin@demo-school.local'
+  ) {
     const found = list.find(i => 
       (i.code && i.code.toUpperCase() === 'GIS001') || 
       i.id === '00000000-0000-0000-0000-000000000001' || 
@@ -239,8 +260,17 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   }
 
   // 3. Explicit ABC Public School matches
-  if (norm.includes('abc155') || norm.includes('abc')) {
+  if (
+    norm.includes('abc155') || 
+    norm.includes('abc') ||
+    norm === 'adm1' ||
+    norm === 'mmrinmay76@gmail.com' ||
+    norm === 'admin@abc155.edu.in' ||
+    norm === 'ahana12@gmail.com' ||
+    norm === 'dhardhuran689@gmail.com'
+  ) {
     const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'ABC') ||
       i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
       i.name.toLowerCase().includes('abc')
     );
@@ -277,17 +307,12 @@ function Login() {
   const [institutesError, setInstitutesError] = useState(false);
   const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
-  const [instituteId, setInstituteId] = useState<string>(() => {
-    try {
-      const cached = localStorage.getItem('attendoschool_last_institute_id');
-      if (cached && cached !== 'sch-1789773642845') return cached;
-    } catch {}
-    return '';
-  });
-  const [instituteSearch, setInstituteSearch] = useState('');
-  const [instituteOpen, setInstituteOpen] = useState(false);
-  const [email, setEmail] = useState('admin@demo-school.local');
-  const [password, setPassword] = useState('ChangeMe123!');
+  const [instituteId, setInstituteId] = useState<string>('');
+  const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupNotFound, setLookupNotFound] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -301,63 +326,107 @@ function Login() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
-  const instituteDropdownRef = useRef<HTMLDivElement>(null);
   const lookupAbortRef = useRef<AbortController | null>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Automatically select the institute/school based on the entered email address
-  useEffect(() => {
-    if (!email || !email.trim()) return;
-    const cleanEmail = email.trim();
+  const currentConfig = LOGIN_ROLES[loginRole];
 
-    // 1. Immediate client-side auto-selection
-    const clientMatch = detectInstituteFromEmail(cleanEmail, institutes);
-    if (clientMatch) {
-      if (instituteId !== clientMatch.id) {
-        setInstituteId(clientMatch.id);
-        try {
-          localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
-        } catch {}
+  // Automatically select the institute/school based on the entered login ID (email or admission number)
+  useEffect(() => {
+    if (!currentConfig.needsSchool) {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
+      return;
+    }
+
+    const cleanInput = email.trim();
+    if (!cleanInput) {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
+      if (lookupAbortRef.current) {
+        lookupAbortRef.current.abort();
       }
       return;
     }
 
-    // 2. Server-side database lookup for arbitrary database accounts
-    if (cleanEmail.length >= 4 && cleanEmail.includes('@')) {
+    // 1. Immediate client-side auto-selection
+    const clientMatch = detectInstituteFromEmail(cleanInput, institutes);
+    if (clientMatch) {
+      setInstituteId(clientMatch.id);
+      setDetectedInstitute(clientMatch);
+      setLookupNotFound(false);
+      setLookupLoading(false);
+      try {
+        localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
+      } catch {}
+      return;
+    }
+
+    // 2. Server-side database lookup for arbitrary database accounts / admission numbers
+    if (cleanInput.length >= 3) {
       if (lookupAbortRef.current) {
         lookupAbortRef.current.abort();
       }
       const controller = new AbortController();
       lookupAbortRef.current = controller;
+      setLookupLoading(true);
+      setLookupNotFound(false);
 
       const timer = setTimeout(async () => {
         try {
-          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanEmail)}`, {
+          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanInput)}`, {
             signal: controller.signal
           });
           if (res.data?.found && res.data.instituteId) {
             const serverId = String(res.data.instituteId);
-            setInstituteId(prev => {
-              if (prev !== serverId) {
-                try {
-                  localStorage.setItem('attendoschool_last_institute_id', serverId);
-                } catch {}
-                return serverId;
+            setInstituteId(serverId);
+            setLookupNotFound(false);
+            const instObj: Institute = {
+              id: serverId,
+              name: res.data.instituteName || 'Affiliated Institution',
+              code: res.data.instituteCode || 'SCH'
+            };
+            setDetectedInstitute(instObj);
+            setInstitutes(prev => {
+              if (!prev.some(i => i.id === serverId)) {
+                return [...prev, instObj];
               }
               return prev;
             });
+            try {
+              localStorage.setItem('attendoschool_last_institute_id', serverId);
+            } catch {}
+          } else {
+            setInstituteId('');
+            setDetectedInstitute(null);
+            setLookupNotFound(true);
           }
         } catch (e: any) {
-          // ignore canceled error
+          if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+            setInstituteId('');
+            setDetectedInstitute(null);
+            setLookupNotFound(true);
+          }
+        } finally {
+          setLookupLoading(false);
         }
-      }, 200);
+      }, 250);
 
       return () => {
         clearTimeout(timer);
         controller.abort();
       };
+    } else {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
     }
-  }, [email, institutes, instituteId]);
+  }, [email, institutes, currentConfig.needsSchool]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
@@ -386,13 +455,14 @@ function Login() {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Automatically select the institute matching the current email if available
-        setInstituteId(prev => {
+        // Automatically match the institute only if an identifier is already entered
+        if (email.trim()) {
           const match = detectInstituteFromEmail(email, cleanList);
-          if (match) return match.id;
-          if (prev && cleanList.some(i => i.id === prev)) return prev;
-          return cleanList.length > 0 ? cleanList[0].id : '';
-        });
+          if (match) {
+            setInstituteId(match.id);
+            setDetectedInstitute(match);
+          }
+        }
       }
     } catch (err) {
       console.warn('Institute fetch failed:', err);
@@ -403,7 +473,7 @@ function Login() {
     } finally {
       setInstitutesLoading(false);
     }
-  }, []);
+  }, [email]);
 
   useEffect(() => {
     try {
@@ -412,66 +482,27 @@ function Login() {
     fetchInstitutes();
   }, [fetchInstitutes]);
 
-  function selectInstitute(id: string) {
-    setInstituteId(id);
-    setInstituteOpen(false);
-    setError('');
-    const targetInst = institutes.find(i => i.id === id);
-    if (targetInst) {
-      const demoEmail = getDemoEmailForInstitute(targetInst.code || targetInst.id, loginRole);
-      setEmail(curr => {
-        const isDemo = [
-          'admin@demo-school.local', 'admin@tint.edu.in', 'admin@tint.local', 'admin@abc155.edu.in',
-          'rahul@demo-school.local', 'teacher@tint.edu.in', 'mmrinmay76@gmail.com',
-          'student@greenwood.local', 'dhardhuran689@gmail.com', 'ahana12@gmail.com'
-        ].includes(curr) || !curr;
-        return isDemo ? demoEmail : curr;
-      });
-    }
-    try {
-      localStorage.setItem('attendoschool_last_institute_id', id);
-    } catch {}
-  }
-
-  // Close institute dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (instituteDropdownRef.current && !instituteDropdownRef.current.contains(event.target as Node)) {
-        setInstituteOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const currentConfig = LOGIN_ROLES[loginRole];
-  const selectedInstitute = institutes.find(i => i.id === instituteId);
-  const filteredInstitutes = institutes.filter(i => 
-    i.name.toLowerCase().includes(instituteSearch.toLowerCase()) ||
-    (i.code && i.code.toLowerCase().includes(instituteSearch.toLowerCase())) ||
-    (i.address && i.address.toLowerCase().includes(instituteSearch.toLowerCase()))
-  );
+  const selectedInstitute = detectedInstitute || institutes.find(i => i.id === instituteId);
 
   function handleSelectRole(role: LoginOption) {
     setSelectedRole(role);
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
-    const defaultEmail = cfg.defaultEmail;
-    setEmail(defaultEmail);
-    setPassword('ChangeMe123!');
     if (cfg.needsSchool) {
-      const match = detectInstituteFromEmail(defaultEmail, institutes);
-      if (match) {
-        setInstituteId(match.id);
-        try {
-          localStorage.setItem('attendoschool_last_institute_id', match.id);
-        } catch {}
-      } else {
-        setInstituteId(prev => (prev && institutes.some(i => i.id === prev)) ? prev : (institutes[0]?.id || ''));
-      }
-    } else {
+      setEmail('');
+      setPassword('');
       setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupNotFound(false);
+      setLookupLoading(false);
+    } else {
+      setEmail(cfg.defaultEmail || '');
+      setPassword('ChangeMe123!');
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupNotFound(false);
+      setLookupLoading(false);
     }
   }
 
@@ -480,7 +511,11 @@ function Login() {
     setError('');
 
     if (currentConfig.needsSchool && !instituteId) {
-      setError('Please select your institute before signing in.');
+      setError(
+        loginRole === 'STUDENT'
+          ? 'Please enter your Admission Number or Student Email to detect your school.'
+          : 'Please enter your Login ID / Email to detect your school.'
+      );
       return;
     }
 
@@ -488,6 +523,7 @@ function Login() {
     try {
       const payload: any = {
         email: email.trim(),
+        admissionNumber: email.trim(),
         password,
         role: loginRole
       };
@@ -678,146 +714,158 @@ function Login() {
               </div>
 
 
-              {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
+              {/* Affiliated School / Institute (Auto-detected from Login ID) */}
               {currentConfig.needsSchool && (
-                <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
+                <div className="as-simple-field" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label className="as-simple-label" style={{ margin: 0 }}>
-                        Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
-                      </label>
-                      {selectedInstitute && (
-                        <span style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
-                          Auto-selected
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {institutesLoading ? (
-                        <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <RefreshCw size={11} className="spin" /> Syncing...
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
-                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px' }}
-                          title="Refresh schools from server"
-                        >
-                          <RefreshCw size={10} />
-                          <span>Refresh list</span>
-                        </button>
-                      )}
-                    </div>
+                    <label className="as-simple-label" style={{ margin: 0 }}>
+                      School / Institute <span style={{ color: '#fb923c' }}>*</span>
+                    </label>
+                    {selectedInstitute && (
+                      <span style={{ 
+                        fontSize: 10.5, 
+                        color: '#34d399', 
+                        background: 'rgba(16, 185, 129, 0.12)', 
+                        border: '1px solid rgba(16, 185, 129, 0.3)', 
+                        padding: '2px 8px', 
+                        borderRadius: 9999, 
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <Check size={11} strokeWidth={3} /> Auto-detected
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
-                    onClick={() => setInstituteOpen(o => !o)}
-                    id="institute-trigger-btn"
-                    aria-haspopup="listbox"
-                    aria-expanded={instituteOpen}
-                    title="Click to toggle institute selection"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', pointerEvents: 'none' }}>
-                      <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
-                      <div className="as-simple-inst-summary">
-                        <span className="as-simple-inst-name">
-                          {selectedInstitute?.name || (institutesLoading ? 'Connecting to Cloud Firestore...' : 'Choose your school...')}
-                        </span>
-                        {selectedInstitute && (
-                          <span className="as-simple-inst-code">
-                            Code: {selectedInstitute.code || 'SCH'} · {selectedInstitute.address || 'Main Campus'}
+
+                  {selectedInstitute ? (
+                    <div 
+                      id="detected-institute-display"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.25))',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <School size={18} style={{ color: '#38bdf8' }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f8fafc)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {selectedInstitute.name}
                           </span>
-                        )}
+                          <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Code: <strong style={{ color: '#38bdf8' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        color: '#38bdf8',
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        flexShrink: 0
+                      }}>
+                        {selectedInstitute.code || 'ACTIVE'}
                       </div>
                     </div>
-                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} style={{ pointerEvents: 'none' }} />
-                  </button>
-
-                  {/* Searchable Dropdown Popover */}
-                  {instituteOpen && (
-                    <div className="as-inst-popover-menu">
-                      <div className="as-popover-search-wrap">
-                        <div className="as-popover-search-box">
-                          <Search size={14} className="as-popover-search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search institute name or code..."
-                            value={instituteSearch}
-                            onChange={e => setInstituteSearch(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Escape') setInstituteOpen(false);
-                            }}
-                            autoFocus
-                            className="as-popover-search-input"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="as-popover-reload-btn"
-                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
-                          title="Reload schools from server"
-                        >
-                          <RefreshCw size={11} className={institutesLoading ? 'spin' : ''} />
-                          <span>Reload</span>
-                        </button>
-                      </div>
-                      <div className="as-inst-popover-list" role="listbox">
-                        {institutesLoading && institutes.length === 0 ? (
-                          <div className="as-inst-empty">
-                            <RefreshCw size={14} className="spin" style={{ margin: '0 auto 6px', display: 'block', color: '#60a5fa' }} />
-                            <div>Connecting to Cloud Firestore...</div>
-                          </div>
-                        ) : filteredInstitutes.length === 0 ? (
-                          <div className="as-inst-empty">
-                            <div>{institutes.length === 0 ? 'No active schools found in database' : 'No institutes match your search'}</div>
-                            <button
-                              type="button"
-                              onClick={() => { setInstituteSearch(''); fetchInstitutes(); }}
-                              style={{ marginTop: 8, display: 'inline-block', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', fontWeight: 600 }}
-                            >
-                              {institutes.length === 0 ? 'Reload from Firestore' : 'Reset search'}
-                            </button>
-                          </div>
-                        ) : (
-                          filteredInstitutes.map(inst => (
-                            <button
-                              key={inst.id}
-                              type="button"
-                              role="option"
-                              aria-selected={inst.id === instituteId}
-                              className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
-                              onClick={() => selectInstitute(inst.id)}
-                            >
-                              <School size={15} className="as-inst-opt-icon" />
-                              <div className="as-inst-option-text">
-                                <div className="as-inst-option-title">{inst.name}</div>
-                                <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                <span className="as-inst-option-code">{inst.code || 'SCH'}</span>
-                                {inst.id === instituteId && <Check size={14} style={{ color: '#2563eb' }} />}
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
+                  ) : lookupLoading ? (
+                    <div 
+                      id="detecting-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(56, 189, 248, 0.04)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        color: '#38bdf8',
+                        fontSize: 12.5,
+                        minHeight: 46
+                      }}
+                    >
+                      <RefreshCw size={14} className="spin" style={{ flexShrink: 0 }} />
+                      <span>Detecting affiliated school from Login ID...</span>
+                    </div>
+                  ) : lookupNotFound && email.trim().length >= 3 ? (
+                    <div 
+                      id="not-found-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px dashed rgba(239, 68, 68, 0.35)',
+                        color: '#f87171',
+                        fontSize: 12,
+                        minHeight: 46
+                      }}
+                    >
+                      <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                      <span>No school found for this Login ID. Please verify your credentials.</span>
+                    </div>
+                  ) : (
+                    <div 
+                      id="empty-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px dashed rgba(255, 255, 255, 0.14)',
+                        color: '#94a3b8',
+                        fontSize: 12.5,
+                        minHeight: 46
+                      }}
+                    >
+                      <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
+                      <span style={{ opacity: 0.75 }}>
+                        {loginRole === 'STUDENT'
+                          ? 'School will appear automatically when you enter your Admission No.'
+                          : 'School will appear automatically when you enter your Login ID / Email'}
+                      </span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Email Address Input */}
+              {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
               <div className="as-simple-field">
                 <label className="as-simple-label">
-                  Email Address <span style={{ color: '#fb923c' }}>*</span>
+                  {currentConfig.emailLabel} <span style={{ color: '#fb923c' }}>*</span>
                 </label>
                 <div className="as-simple-input-wrap">
                   <input
                     required
                     type="text"
-                    placeholder="name@school.edu"
+                    placeholder={currentConfig.emailPlaceholder}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     id="identifier-input"
@@ -1805,10 +1853,12 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }, [user?.role]);
 
-  // ── Admin Review Notifications ──
+  // ── Review Notifications (Admin Photos & Teacher Leaves) ──
   const [adminNotifs, setAdminNotifs] = useState<any[]>([]);
   const [adminNotifOpen, setAdminNotifOpen] = useState(false);
   const adminNotifRef = useRef<HTMLDivElement>(null);
+  const [teacherNotifOpen, setTeacherNotifOpen] = useState(false);
+  const teacherNotifRef = useRef<HTMLDivElement>(null);
   const [pendingPhotoCount, setPendingPhotoCount] = useState(0);
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
@@ -1824,7 +1874,7 @@ function Layout({children}:{children:React.ReactNode}){
   }, []);
 
   useEffect(() => {
-    if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN')) {
+    if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'TEACHER')) {
       loadAdminNotifications();
       const interval = setInterval(loadAdminNotifications, 10000);
       return () => clearInterval(interval);
@@ -1832,14 +1882,25 @@ function Layout({children}:{children:React.ReactNode}){
   }, [user?.role, loadAdminNotifications]);
 
   useEffect(() => {
+    const handleReviewsUpdated = () => {
+      loadAdminNotifications();
+    };
+    window.addEventListener('reviews-updated', handleReviewsUpdated);
+    return () => window.removeEventListener('reviews-updated', handleReviewsUpdated);
+  }, [loadAdminNotifications]);
+
+  useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
         setAdminNotifOpen(false);
       }
+      if (teacherNotifRef.current && !teacherNotifRef.current.contains(e.target as Node)) {
+        setTeacherNotifOpen(false);
+      }
     }
-    if (adminNotifOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (adminNotifOpen || teacherNotifOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [adminNotifOpen]);
+  }, [adminNotifOpen, teacherNotifOpen]);
 
   useEffect(() => {
     if (user) {
@@ -1861,6 +1922,7 @@ function Layout({children}:{children:React.ReactNode}){
         setSearchOpen(false);
         setAyDropdownOpen(false);
         setAdminNotifOpen(false);
+        setTeacherNotifOpen(false);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -2018,7 +2080,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
-    ['/leave-applications', 'Leave Applications', CalendarCheck],
     ['/photo-approvals', 'Photo Approvals', Camera],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
@@ -2035,6 +2096,8 @@ function Layout({children}:{children:React.ReactNode}){
     ['/dashboard','Dashboard',LayoutDashboard],
     ['/take-attendance','Take Attendance',ClipboardCheck],
     ['/teacher-history','History',CalendarDays],
+    ['—','REVIEW'],
+    ['/leave-applications','Leave Review',CalendarCheck],
     ['—','COMMUNICATION'],
     ['/announcements','Announcements',Megaphone],
     ['—','ATTENDANCE'],
@@ -2067,6 +2130,8 @@ function Layout({children}:{children:React.ReactNode}){
   const links = rawLinks.filter(item => {
     if (user.role === 'SCHOOL_ADMIN') {
       if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
+      if (item[0] === '/leave-applications' || item[1] === 'Leave Applications' || item[1] === 'Leave Review') return false;
+      if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
     }
     if (user.role === 'TEACHER') {
       if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
@@ -2393,19 +2458,19 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            {/* Connected Review Notifications Bell & Popover */}
+            {/* Connected Review Notifications Bell & Popover (Admin Photo Approvals) */}
             <div className="super-notif-wrap" ref={adminNotifRef} style={{ position: 'relative' }}>
               <button
                 type="button"
                 className="header-icon-btn"
-                title="Photo & Leave Approval Requests"
+                title="Photo Approval Requests"
                 onClick={() => { setAdminNotifOpen(prev => !prev); if (!adminNotifOpen) loadAdminNotifications(); }}
                 style={{ position: 'relative' }}
               >
                 <Bell size={16} />
-                {(pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
+                {(pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
                   <span className="header-badge-num" style={{ background: '#ef4444' }}>
-                    {pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
+                    {pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0)}
                   </span>
                 )}
               </button>
@@ -2415,9 +2480,9 @@ function Layout({children}:{children:React.ReactNode}){
                   <div className="super-notif-header">
                     <div className="super-notif-title-row">
                       <h4 className="super-notif-title">Notifications</h4>
-                      {(pendingPhotoCount + pendingLeaveCount > 0) && (
+                      {pendingPhotoCount > 0 && (
                         <span className="super-notif-count-pill">
-                          {pendingPhotoCount + pendingLeaveCount} pending
+                          {pendingPhotoCount} pending
                         </span>
                       )}
                     </div>
@@ -2426,41 +2491,31 @@ function Layout({children}:{children:React.ReactNode}){
                         type="button"
                         className="super-notif-readall-btn"
                         title="Review Submitted Photos"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                        onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
                       >
                         <Camera size={12} />
                         <span>Photos</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="super-notif-readall-btn"
-                        style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0' }}
-                        title="Review Leave Requests"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
-                      >
-                        <Calendar size={12} />
-                        <span>Leaves</span>
                       </button>
                     </div>
                   </div>
 
                   <div className="super-notif-list">
-                    {adminNotifs.length === 0 ? (
+                    {adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo or leave approval requests.</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo approval requests.</div>
                       </div>
                     ) : (
-                      adminNotifs.map((n: any) => (
+                      adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').map((n: any) => (
                         <div
                           key={n.id}
                           className="super-notif-item unread"
                           onClick={() => {
                             setAdminNotifOpen(false);
-                            nav(n.link || '/review/photos');
+                            nav(n.link || '/photo-approvals');
                           }}
                         >
                           {n.avatar ? (
@@ -2470,8 +2525,8 @@ function Layout({children}:{children:React.ReactNode}){
                               style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid #bfdbfe', flexShrink: 0 }}
                             />
                           ) : (
-                            <div className={`super-notif-icon-wrap ${n.type === 'PHOTO_APPROVAL' ? 'notif-photo' : 'notif-leave'}`}>
-                              {n.type === 'PHOTO_APPROVAL' ? <Camera size={17} /> : <Calendar size={17} />}
+                            <div className="super-notif-icon-wrap notif-photo">
+                              <Camera size={17} />
                             </div>
                           )}
 
@@ -2496,27 +2551,18 @@ function Layout({children}:{children:React.ReactNode}){
                     <button
                       type="button"
                       className="super-notif-footer-link"
-                      onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                      onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
                     >
                       <CheckCircle2 size={13} />
                       <span>Review Center</span>
                     </button>
-                    {user?.role !== 'SCHOOL_ADMIN' ? (
+                    {user?.role !== 'SCHOOL_ADMIN' && (
                       <button
                         type="button"
                         className="super-notif-footer-link"
                         onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
                       >
                         <span>Settings & All Alerts →</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="super-notif-footer-link"
-                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
-                      >
-                        <CalendarCheck size={13} />
-                        <span>Review Leaves</span>
                       </button>
                     )}
                   </div>
@@ -2629,48 +2675,181 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            <button
-              className="header-icon-btn"
-              title={user.role === 'TEACHER' ? 'Faculty Announcements' : 'Notifications'}
-              style={{ position: 'relative' }}
-              onClick={() => {
-                if (user.role === 'TEACHER') {
-                  nav('/announcements');
-                } else if (user.role === 'SUPER_ADMIN') {
-                  nav('/notifications');
-                } else if (user.role === 'SCHOOL_ADMIN') {
-                  nav('/dashboard');
-                } else {
-                  nav('/notifications');
-                }
-              }}
-            >
-              <Bell size={16}/>
-              {user.role === 'TEACHER' ? (
-                teacherUnreadCount > 0 ? (
-                  <span style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    backgroundColor: '#ef4444',
-                    color: '#ffffff',
-                    borderRadius: '50%',
-                    minWidth: 16,
-                    height: 16,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 2px'
-                  }}>
-                    {teacherUnreadCount}
-                  </span>
-                ) : null
-              ) : (
-                <span className="header-badge-dot"></span>
-              )}
-            </button>
+            {user.role === 'TEACHER' ? (
+              <div className="super-notif-wrap" ref={teacherNotifRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="Student Leave Review Requests"
+                  onClick={() => { setTeacherNotifOpen(prev => !prev); if (!teacherNotifOpen) loadAdminNotifications(); }}
+                  style={{ position: 'relative' }}
+                >
+                  <Bell size={16} />
+                  {pendingLeaveCount > 0 && (
+                    <span className="header-badge-num" style={{ background: '#ef4444' }}>
+                      {pendingLeaveCount}
+                    </span>
+                  )}
+                </button>
+
+                {teacherNotifOpen && (
+                  <div className="super-notif-dropdown">
+                    <div className="super-notif-header">
+                      <div className="super-notif-title-row">
+                        <h4 className="super-notif-title">Notifications</h4>
+                        {pendingLeaveCount > 0 && (
+                          <span className="super-notif-count-pill">
+                            {pendingLeaveCount} pending
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {pendingLeaveCount > 0 && (
+                          <button
+                            type="button"
+                            className="super-notif-readall-btn"
+                            style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0', cursor: 'pointer' }}
+                            title="Mark all pending leave requests as seen"
+                            onClick={async () => {
+                              try {
+                                await api.put('/reviews/leaves/mark-all-seen');
+                                setPendingLeaveCount(0);
+                                setAdminNotifs(prev => prev.filter((n: any) => n.type !== 'LEAVE_REQUEST'));
+                                window.dispatchEvent(new CustomEvent('reviews-updated'));
+                              } catch {}
+                            }}
+                          >
+                            <Check size={12} />
+                            <span>Mark all seen</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="super-notif-readall-btn"
+                          style={{ color: '#2563eb', background: '#eff6ff', borderColor: '#bfdbfe', cursor: 'pointer' }}
+                          title="Review Leave Requests"
+                          onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                        >
+                          <Calendar size={12} />
+                          <span>Leaves</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="super-notif-list">
+                      {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST').length === 0 ? (
+                        <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                            <CheckCircle2 size={24} />
+                          </div>
+                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student leave applications.</div>
+                        </div>
+                      ) : (
+                        adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST').map((n: any) => (
+                          <div
+                            key={n.id}
+                            className="super-notif-item unread"
+                            style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', cursor: 'pointer' }}
+                            onClick={async () => {
+                              setTeacherNotifOpen(false);
+                              if (n.rawId) {
+                                api.put(`/reviews/leaves/${n.rawId}/seen`).catch(() => {});
+                                setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                setPendingLeaveCount(p => Math.max(0, p - 1));
+                                window.dispatchEvent(new CustomEvent('reviews-updated'));
+                              }
+                              nav('/leave-applications');
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
+                              <div className="super-notif-icon-wrap notif-leave">
+                                <Calendar size={17} />
+                              </div>
+
+                              <div className="super-notif-body">
+                                <div className="super-notif-item-title">
+                                  <span className="super-notif-item-title-text">{n.title}</span>
+                                  <span className="super-notif-time">
+                                    {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                                <p className="super-notif-msg">{n.message}</p>
+                                <span className="super-notif-action-tag">
+                                  Review & Verify →
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              title="Mark as Seen"
+                              style={{
+                                background: '#ecfdf5',
+                                border: '1px solid #a7f3d0',
+                                color: '#059669',
+                                borderRadius: 6,
+                                padding: '4px 7px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                cursor: 'pointer',
+                                marginLeft: 8,
+                                flexShrink: 0
+                              }}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (n.rawId) {
+                                  try {
+                                    await api.put(`/reviews/leaves/${n.rawId}/seen`);
+                                    setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                    setPendingLeaveCount(p => Math.max(0, p - 1));
+                                    window.dispatchEvent(new CustomEvent('reviews-updated'));
+                                  } catch {}
+                                }
+                              }}
+                            >
+                              <Check size={12} />
+                              <span>Seen</span>
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="super-notif-footer">
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Review Center</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
+                      >
+                        <CalendarCheck size={13} />
+                        <span>Review Leaves</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                className="header-icon-btn"
+                title="Notifications"
+                style={{ position: 'relative' }}
+                onClick={() => nav('/notifications')}
+              >
+                <Bell size={16}/>
+              </button>
+            )}
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
@@ -7880,6 +8059,52 @@ function Attendance(){
   // Existing session & Re-attendance state
   const [existingSession, setExistingSession] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditSearch, setAuditSearch] = useState<string>('');
+  const [auditStatusFilter, setAuditStatusFilter] = useState<string>('ALL');
+  const [exportingAudit, setExportingAudit] = useState<boolean>(false);
+
+  const canExportAudit = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(user?.role || '');
+
+  const handleExportAudit = async (format: 'csv' | 'xlsx') => {
+    if (!existingSession?.id) return;
+    setExportingAudit(true);
+    try {
+      const params: any = { format };
+      if (auditSearch.trim()) params.search = auditSearch.trim();
+      if (auditStatusFilter !== 'ALL') params.status = auditStatusFilter;
+
+      const res = await api.get(`/teacher/attendance/${existingSession.id}/audit-trail/export`, {
+        params,
+        responseType: 'blob'
+      });
+
+      let filename = `attendance-audit-session-${existingSession.id.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.${format}`;
+      const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = new Blob([res.data], {
+        type: format === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv;charset=utf-8;'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Audit export error:', err);
+      alert(err?.response?.data?.message || 'Failed to export audit trail');
+    } finally {
+      setExportingAudit(false);
+    }
+  };
   const [studentStatusMap, setStudentStatusMap] = useState<Record<string, {
     status: 'PRESENT' | 'ABSENT' | 'LEFT_EARLY' | 'LATE';
     departurePeriod?: string;
@@ -9506,7 +9731,25 @@ function Attendance(){
       )}
 
       {/* ────── MODAL: Re-attendance Audit Trail ────── */}
-      {activeModal === 'AUDIT_LOGS' && (
+      {activeModal === 'AUDIT_LOGS' && (() => {
+        const filteredAuditLogs = auditLogs.filter((log: any) => {
+          if (auditStatusFilter !== 'ALL') {
+            const ns = (log.new_status || log.newStatus || '').toUpperCase();
+            const ps = (log.previous_status || log.previousStatus || '').toUpperCase();
+            if (ns !== auditStatusFilter && ps !== auditStatusFilter) return false;
+          }
+          if (auditSearch.trim()) {
+            const q = auditSearch.toLowerCase();
+            const name = (log.student_name || log.studentName || '').toLowerCase();
+            const roll = (log.roll_number || log.rollNumber || '').toLowerCase();
+            const reason = (log.reason || '').toLowerCase();
+            const by = (log.modified_by_name || log.modifiedByName || log.changed_by_name || '').toLowerCase();
+            if (!name.includes(q) && !roll.includes(q) && !reason.includes(q) && !by.includes(q)) return false;
+          }
+          return true;
+        });
+
+        return (
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -9523,7 +9766,7 @@ function Attendance(){
             border: '1px solid var(--border)',
             borderRadius: 16,
             width: '100%',
-            maxWidth: 700,
+            maxWidth: 750,
             maxHeight: '85vh',
             display: 'flex',
             flexDirection: 'column',
@@ -9540,20 +9783,104 @@ function Attendance(){
               <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
             </div>
 
+            {/* Filter & Export Toolbar */}
+            <div style={{
+              padding: '12px 24px',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-subtle, #f8fafc)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search student, roll, faculty, reason..."
+                    value={auditSearch}
+                    onChange={e => setAuditSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px 6px 30px',
+                      fontSize: 12.5,
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-card)'
+                    }}
+                  />
+                  {auditSearch && (
+                    <button
+                      onClick={() => setAuditSearch('')}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)' }}
+                    >✕</button>
+                  )}
+                </div>
+                <select
+                  value={auditStatusFilter}
+                  onChange={e => setAuditStatusFilter(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 12.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-card)'
+                  }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="LEFT_EARLY">Left Early</option>
+                  <option value="LATE">Late Arrival</option>
+                  <option value="PRESENT">Present</option>
+                  <option value="ABSENT">Absent</option>
+                </select>
+              </div>
+
+              {canExportAudit && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    className="secondary"
+                    onClick={() => handleExportAudit('csv')}
+                    disabled={exportingAudit || !existingSession?.id}
+                    title="Export filtered audit logs as CSV spreadsheet"
+                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <Download size={13} />
+                    {exportingAudit ? 'Exporting...' : 'Export CSV'}
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => handleExportAudit('xlsx')}
+                    disabled={exportingAudit || !existingSession?.id}
+                    title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
+                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                  >
+                    <FileSpreadsheet size={13} />
+                    {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
               <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
                 Immutable historical record of all attendance submissions, re-roll calls, early departure adjustments, and late arrivals for this session.
               </p>
 
-              {auditLogs.length === 0 ? (
+              {filteredAuditLogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
                   <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontWeight: 600 }}>No re-attendance events recorded yet</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>Initial roll-call was submitted with no subsequent adjustments.</p>
+                  <p style={{ margin: 0, fontWeight: 600 }}>
+                    {auditLogs.length === 0 ? 'No re-attendance events recorded yet' : 'No matching audit records found'}
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>
+                    {auditLogs.length === 0 ? 'Initial roll-call was submitted with no subsequent adjustments.' : 'Try adjusting your search criteria or status filter.'}
+                  </p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {auditLogs.map((log: any, idx: number) => {
+                  {filteredAuditLogs.map((log: any, idx: number) => {
                     const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
                     const prevSt = log.previous_status || log.previousStatus || '—';
                     const newSt = log.new_status || log.newStatus || '—';
@@ -9601,12 +9928,16 @@ function Attendance(){
               )}
             </div>
 
-            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Showing <strong>{filteredAuditLogs.length}</strong> of <strong>{auditLogs.length}</strong> records
+              </div>
               <button className="secondary" onClick={() => setActiveModal(null)}>Close</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Universal Attendance Roster Preview Modal */}
       <UniversalPreviewModal
@@ -9640,6 +9971,41 @@ function History(){
   const [inspectedAuditLogs, setInspectedAuditLogs] = useState<any[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [activeTab, setActiveTab] = useState<'ROSTER' | 'AUDIT'>('ROSTER');
+  const canExportAudit = ['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(user?.role || '');
+
+  const handleExportInspectedAudit = async (format: 'csv' | 'xlsx') => {
+    if (!inspectedSession?.id) return;
+    try {
+      const res = await api.get(`/teacher/attendance/${inspectedSession.id}/audit-trail/export`, {
+        params: { format },
+        responseType: 'blob'
+      });
+
+      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${inspectedSession.attendance_date || new Date().toISOString().slice(0, 10)}.${format}`;
+      const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = new Blob([res.data], {
+        type: format === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv;charset=utf-8;'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Audit export error in History:', err);
+      alert(err?.response?.data?.message || 'Failed to export audit trail');
+    }
+  };
 
   useEffect(()=>{
     api.get('/teacher/attendance/history')
@@ -9943,6 +10309,29 @@ function History(){
                 </div>
               ) : (
                 <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '4px 0' }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      Total re-attendance events: <strong>{inspectedAuditLogs.length}</strong>
+                    </span>
+                    {canExportAudit && inspectedSession?.id && inspectedAuditLogs.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="secondary"
+                          onClick={() => handleExportInspectedAudit('csv')}
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Download size={13} /> Export CSV
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => handleExportInspectedAudit('xlsx')}
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                        >
+                          <FileSpreadsheet size={13} /> Export Excel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {inspectedAuditLogs.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '30px 16px', color: 'var(--text-muted)' }}>
                       <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
@@ -11517,13 +11906,18 @@ function App(){return <Routes>
   <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-  <Route path="/leave-applications" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+  <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
   <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
   <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
   <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
   <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
