@@ -318,6 +318,53 @@ async function runTestSuite() {
     report('14. Admin leave exclusion check error', false, err.message);
   }
 
+  // 15. Student submits leave request & Teacher clicks "View", marking it as SEEN
+  let seenLeaveId = '';
+  try {
+    const studentSubmit = await apiReq('/student/leave-requests', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${studentToken}` },
+      body: JSON.stringify({
+        startDate: '2026-11-01',
+        endDate: '2026-11-03',
+        reason: 'Attending Science Exhibition Competition'
+      })
+    });
+    seenLeaveId = studentSubmit.data?.data?.id || studentSubmit.data?.id;
+
+    const teacherSeenRes = await apiReq(`/reviews/leaves/${seenLeaveId}/seen`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${teacherToken}` }
+    });
+
+    const isSeenOk = teacherSeenRes.status === 200 &&
+      teacherSeenRes.data?.success === true &&
+      teacherSeenRes.data?.data?.status === 'SEEN';
+
+    report('15. Teacher clicks "View", successfully marking leave status as SEEN', Boolean(isSeenOk));
+  } catch (err: any) {
+    report('15. Teacher view mark seen check error', false, err.message);
+  }
+
+  // 16. Student portal retrieves leave request showing status as SEEN, and reviews list includes seen count
+  try {
+    const studentLeavesRes = await apiReq('/student/leave-requests', {
+      headers: { Authorization: `Bearer ${studentToken}` }
+    });
+
+    const seenItem = studentLeavesRes.data?.find((l: any) => l.id === seenLeaveId);
+    const isStudentSeen = seenItem && seenItem.status === 'SEEN';
+
+    const teacherLeavesRes = await apiReq('/reviews/leaves', {
+      headers: { Authorization: `Bearer ${teacherToken}` }
+    });
+    const hasSeenCount = typeof teacherLeavesRes.data?.counts?.seen === 'number' && teacherLeavesRes.data.counts.seen >= 1;
+
+    report('16. Student portal leave request status is SEEN and Teacher review counts include seen count', Boolean(isStudentSeen && hasSeenCount));
+  } catch (err: any) {
+    report('16. Student seen status verification error', false, err.message);
+  }
+
   console.log('\n------------------------------------------------------------------------');
   console.log(`  SUMMARY: ${passed} PASSED, ${failed} FAILED (Total: ${passed + failed})`);
   console.log('------------------------------------------------------------------------\n');

@@ -101,7 +101,6 @@ export function StudentLeaveRequest() {
                   <th>TO DATE</th>
                   <th>REASON</th>
                   <th>STATUS</th>
-                  <th>REVIEW REMARKS</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,10 +111,9 @@ export function StudentLeaveRequest() {
                     <td>{r.reason}</td>
                     <td>
                       <span className={`student-status-badge status-${r.status.toLowerCase()}`}>
-                        {r.status}
+                        {r.status === 'SEEN' ? 'Seen' : r.status === 'PENDING' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : r.status === 'REJECTED' ? 'Rejected' : r.status}
                       </span>
                     </td>
-                    <td>{r.review_notes || 'Pending faculty review'}</td>
                   </tr>
                 ))}
               </tbody>

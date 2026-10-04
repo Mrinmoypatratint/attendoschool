@@ -66,9 +66,10 @@ async function ensureReviewTables() {
   }
 }
 
+import { inMemoryLeaves } from '../store/leavesStore';
+
 // In-memory fallback if Postgres is not configured
 const inMemoryPhotos: any[] = [];
-const inMemoryLeaves: any[] = [];
 
 /* =========================================================================
    PHOTO APPROVAL ENDPOINTS
@@ -434,7 +435,7 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
         paramIdx++;
       }
 
-      studentLeaveQuery += ` ORDER BY CASE WHEN l.status = 'PENDING' THEN 1 WHEN l.status = 'APPROVED' THEN 2 ELSE 3 END, l.created_at DESC`;
+      studentLeaveQuery += ` ORDER BY CASE WHEN l.status = 'PENDING' THEN 1 WHEN l.status = 'SEEN' THEN 2 WHEN l.status = 'APPROVED' THEN 3 ELSE 4 END, l.created_at DESC`;
 
       const result = await pool.query(studentLeaveQuery, params);
 
@@ -443,22 +444,34 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
         SELECT 
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+          COUNT(*) FILTER (WHERE status = 'SEEN') as seen,
           COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
           COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
         FROM student_leave_requests
         WHERE school_id = $1
       `, [schoolId]);
 
+      const memLeaves = inMemoryLeaves.filter(l => l.school_id === schoolId || !l.school_id);
+      let combinedRows = [...result.rows];
+      for (const m of memLeaves) {
+        if (!combinedRows.some(r => r.id === m.id)) {
+          if (!status || status === 'ALL' || m.status === status) {
+            combinedRows.push(m);
+          }
+        }
+      }
+
       const counts = {
-        all: parseInt(countRes.rows[0]?.total || '0', 10),
-        pending: parseInt(countRes.rows[0]?.pending || '0', 10),
-        approved: parseInt(countRes.rows[0]?.approved || '0', 10),
-        rejected: parseInt(countRes.rows[0]?.rejected || '0', 10),
+        all: parseInt(countRes.rows[0]?.total || '0', 10) + memLeaves.length,
+        pending: parseInt(countRes.rows[0]?.pending || '0', 10) + memLeaves.filter(l => l.status === 'PENDING').length,
+        seen: parseInt(countRes.rows[0]?.seen || '0', 10) + memLeaves.filter(l => l.status === 'SEEN').length,
+        approved: parseInt(countRes.rows[0]?.approved || '0', 10) + memLeaves.filter(l => l.status === 'APPROVED').length,
+        rejected: parseInt(countRes.rows[0]?.rejected || '0', 10) + memLeaves.filter(l => l.status === 'REJECTED').length,
       };
 
       return res.json({
         success: true,
-        data: result.rows,
+        data: combinedRows,
         counts
       });
     }
@@ -467,6 +480,7 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
     const counts = {
       all: filtered.length,
       pending: filtered.filter(l => l.status === 'PENDING').length,
+      seen: filtered.filter(l => l.status === 'SEEN').length,
       approved: filtered.filter(l => l.status === 'APPROVED').length,
       rejected: filtered.filter(l => l.status === 'REJECTED').length,
     };
@@ -568,6 +582,56 @@ router.put('/leaves/:id/reject', async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Error rejecting leave:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to reject leave' });
+  }
+});
+
+// PUT /api/reviews/leaves/:id/seen - Mark leave request as seen by faculty
+router.put('/leaves/:id/seen', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const schoolId = req.user?.schoolId;
+    const reviewerId = req.user?.id;
+
+    const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+
+    if (isPostgresConfigured && isUuid(id) && isUuid(schoolId)) {
+      try {
+        const updateRes = await pool.query(`
+          UPDATE student_leave_requests
+          SET status = 'SEEN',
+              reviewed_by = $1,
+              review_notes = COALESCE(review_notes, 'Seen by Faculty'),
+              updated_at = NOW()
+          WHERE id = $2 AND school_id = $3
+          RETURNING *
+        `, [safeReviewerId, id, schoolId]);
+
+        if (updateRes.rowCount && updateRes.rowCount > 0) {
+          return res.json({
+            success: true,
+            message: 'Leave application marked as seen',
+            data: updateRes.rows[0]
+          });
+        }
+      } catch (dbErr: any) {
+        console.warn('[Reviews] DB update error on mark seen:', dbErr.message);
+      }
+    }
+
+    const item = inMemoryLeaves.find(l => (l.id === id || String(l.id) === String(id)) && (!schoolId || l.school_id === schoolId));
+    if (item) {
+      item.status = 'SEEN';
+      item.reviewed_by = reviewerId;
+      item.review_notes = item.review_notes || 'Seen by Faculty';
+      item.updated_at = new Date().toISOString();
+      return res.json({ success: true, message: 'Leave application marked as seen', data: item });
+    }
+
+    return res.status(404).json({ success: false, message: 'Leave request not found' });
+  } catch (error: any) {
+    console.error('Error marking leave as seen:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to mark leave as seen' });
   }
 });
 

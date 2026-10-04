@@ -5,6 +5,7 @@ import { isSameSchool, isTestSchool } from '../utils/tenant';
 import { demoStudents } from '../routes/schoolData';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
+import { inMemoryLeaves } from '../store/leavesStore';
 
 /**
  * Resolves student record by authenticated user ID and school ID
@@ -1200,12 +1201,18 @@ export async function getStudentLeaveRequests(schoolId: string, userId: string) 
       `SELECT l.*, u.name AS reviewer_name
        FROM student_leave_requests l
        LEFT JOIN users u ON u.id = l.reviewed_by
-       WHERE l.school_id = $1 AND l.student_id = $2
+       WHERE l.school_id = $1 AND (l.student_id::text = $2::text OR l.student_id::text = $3::text)
        ORDER BY l.created_at DESC`,
-      [schoolId, st.id]
+      [schoolId, st.id, userId]
     );
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}
+
+  const mem = inMemoryLeaves.filter(
+    (l) => (l.school_id === schoolId || !schoolId) &&
+           (l.student_id === st.id || l.applicant_id === st.id || l.student_id === userId || l.applicant_id === userId)
+  );
+  if (mem.length > 0) return mem;
 
   return [];
 }
@@ -1218,26 +1225,34 @@ export async function createStudentLeaveRequest(schoolId: string, userId: string
     throw new Error('Start date, end date, and reason are required');
   }
   const st = await resolveStudentRecord(schoolId, userId);
-  try {
-    const q = await pool.query(
-      `INSERT INTO student_leave_requests (school_id, student_id, start_date, end_date, reason, status)
-       VALUES ($1, $2, $3, $4, $5, 'PENDING')
-       RETURNING *`,
-      [schoolId, st.id, data.startDate, data.endDate, data.reason]
-    );
-    return q.rows[0];
-  } catch (_e) {
-    return {
-      id: `lv-${Date.now()}`,
-      school_id: schoolId,
-      student_id: st.id,
-      start_date: data.startDate,
-      end_date: data.endDate,
-      reason: data.reason,
-      status: 'PENDING',
-      created_at: new Date().toISOString()
-    };
+  const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+  
+  if (isUuid(schoolId) && isUuid(st.id)) {
+    try {
+      const q = await pool.query(
+        `INSERT INTO student_leave_requests (school_id, student_id, start_date, end_date, reason, status)
+         VALUES ($1, $2, $3, $4, $5, 'PENDING')
+         RETURNING *`,
+        [schoolId, st.id, data.startDate, data.endDate, data.reason]
+      );
+      if (q.rowCount && q.rowCount > 0) return q.rows[0];
+    } catch (_e) {}
   }
+
+  const memItem = {
+    id: `lv-${Date.now()}`,
+    school_id: schoolId,
+    student_id: st.id,
+    applicant_id: st.id,
+    applicant_name: st.name || 'Student',
+    start_date: data.startDate,
+    end_date: data.endDate,
+    reason: data.reason,
+    status: 'PENDING' as const,
+    created_at: new Date().toISOString()
+  };
+  inMemoryLeaves.unshift(memItem);
+  return memItem;
 }
 
 /**

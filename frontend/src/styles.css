@@ -5885,12 +5885,14 @@ header {
 .status-submitted { background: #DBEAFE; color: #2563EB; }
 .status-approved { background: #DCFCE7; color: #16A34A; }
 .status-rejected { background: #FEE2E2; color: #DC2626; }
+.status-seen { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
 
 [data-theme="dark"] .status-completed { background: rgba(22, 163, 74, 0.2); color: #4ADE80; }
 [data-theme="dark"] .status-ongoing { background: rgba(37, 99, 235, 0.2); color: #60A5FA; }
 [data-theme="dark"] .status-upcoming { background: rgba(100, 116, 139, 0.2); color: #94A3B8; }
 [data-theme="dark"] .status-present { background: rgba(22, 163, 74, 0.2); color: #4ADE80; }
 [data-theme="dark"] .status-absent { background: rgba(220, 38, 38, 0.2); color: #F87171; }
+[data-theme="dark"] .status-seen { background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(129, 140, 248, 0.3); }
 
 /* ─── Dual Widget Row ─── */
 .student-dual-widget-row {
