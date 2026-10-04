@@ -161,7 +161,7 @@ export default function LeaveApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Leave Approve
+            Leave Applications
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
             Review, evaluate, and approve submitted student and staff leave applications.
