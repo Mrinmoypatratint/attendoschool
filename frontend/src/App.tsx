@@ -154,11 +154,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'School Admin',
     roleSub: 'Manage school',
     bannerTitle: 'School Administrator',
-    bannerText: 'Select your affiliated institution and enter your administrative credentials.',
+    bannerText: 'Enter your administrative credentials to automatically identify your institution.',
     needsSchool: true,
     emailLabel: 'Email Address',
-    emailPlaceholder: 'admin@demo-school.local',
-    defaultEmail: 'admin@demo-school.local',
+    emailPlaceholder: 'e.g. admin@school.edu.in',
+    defaultEmail: '',
     icon: School,
     color: '#059669'
   },
@@ -167,11 +167,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Teacher',
     roleSub: 'Manage classes',
     bannerTitle: 'Teacher Portal',
-    bannerText: 'Select your school to access class attendance, routines, and marks.',
+    bannerText: 'Enter your teacher email or employee ID to automatically identify your school.',
     needsSchool: true,
     emailLabel: 'Teacher Email / Employee ID',
-    emailPlaceholder: 'rahul@demo-school.local or EMP001',
-    defaultEmail: 'rahul@demo-school.local',
+    emailPlaceholder: 'e.g. teacher@tint.edu.in or EMP001',
+    defaultEmail: '',
     icon: GraduationCap,
     color: '#d97706'
   },
@@ -180,11 +180,11 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Student',
     roleSub: 'Learning portal',
     bannerTitle: 'Student Portal',
-    bannerText: 'Select your institute and enter your Admission No. and password to access timetable, assignments, and attendance.',
+    bannerText: 'Enter your Admission No. or student email to automatically identify your school.',
     needsSchool: true,
-    emailLabel: 'Admission No.',
-    emailPlaceholder: 'e.g. ADM-2025-105 or ADM-2026-001',
-    defaultEmail: 'ADM-2026-001',
+    emailLabel: 'Admission No. / Student Email',
+    emailPlaceholder: 'e.g. ADM-2025-105 or sweta@gmail.com',
+    defaultEmail: '',
     icon: BookOpen,
     color: '#7c3aed'
   }
@@ -217,8 +217,20 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   if (!inputEmail || !inputEmail.trim() || !list || list.length === 0) return undefined;
   const norm = inputEmail.trim().toLowerCase();
 
-  // 1. Explicit TINT matches
-  if (norm.includes('tint.edu.in') || norm.includes('tint.local') || norm.includes('@tint') || norm.includes('tint')) {
+  // 1. Explicit TINT matches (Faculty, Student, School Admin)
+  if (
+    norm.includes('tint.edu.in') || 
+    norm.includes('tint.local') || 
+    norm.includes('@tint') || 
+    norm.includes('tint') ||
+    norm === 'adm-2025-105' ||
+    norm === 'adm-2025-001' ||
+    norm === 'sweta@gmail.com' ||
+    norm === 'teacher@tint.edu.in' ||
+    norm === 'student@tint.edu.in' ||
+    norm === 'admin@tint.edu.in' ||
+    norm === 'admin@tint.local'
+  ) {
     const found = list.find(i => 
       (i.code && i.code.toUpperCase() === 'TINT') || 
       i.id === '00000000-0000-0000-0000-000000000002' || 
@@ -229,7 +241,16 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   }
 
   // 2. Explicit Greenwood matches
-  if (norm.includes('demo-school.local') || norm.includes('greenwood') || norm.includes('greenwood.local')) {
+  if (
+    norm.includes('demo-school.local') || 
+    norm.includes('greenwood') || 
+    norm.includes('greenwood.local') ||
+    norm === 'adm-2026-001' ||
+    norm === 'rahul@demo-school.local' ||
+    norm === 'priya@demo-school.local' ||
+    norm === 'student@greenwood.local' ||
+    norm === 'admin@demo-school.local'
+  ) {
     const found = list.find(i => 
       (i.code && i.code.toUpperCase() === 'GIS001') || 
       i.id === '00000000-0000-0000-0000-000000000001' || 
@@ -239,8 +260,17 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
   }
 
   // 3. Explicit ABC Public School matches
-  if (norm.includes('abc155') || norm.includes('abc')) {
+  if (
+    norm.includes('abc155') || 
+    norm.includes('abc') ||
+    norm === 'adm1' ||
+    norm === 'mmrinmay76@gmail.com' ||
+    norm === 'admin@abc155.edu.in' ||
+    norm === 'ahana12@gmail.com' ||
+    norm === 'dhardhuran689@gmail.com'
+  ) {
     const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'ABC') ||
       i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
       i.name.toLowerCase().includes('abc')
     );
@@ -277,17 +307,12 @@ function Login() {
   const [institutesError, setInstitutesError] = useState(false);
   const [selectedRole, setSelectedRole] = useState<LoginOption | null>(null);
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
-  const [instituteId, setInstituteId] = useState<string>(() => {
-    try {
-      const cached = localStorage.getItem('attendoschool_last_institute_id');
-      if (cached && cached !== 'sch-1789773642845') return cached;
-    } catch {}
-    return '';
-  });
-  const [instituteSearch, setInstituteSearch] = useState('');
-  const [instituteOpen, setInstituteOpen] = useState(false);
-  const [email, setEmail] = useState('admin@demo-school.local');
-  const [password, setPassword] = useState('ChangeMe123!');
+  const [instituteId, setInstituteId] = useState<string>('');
+  const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupNotFound, setLookupNotFound] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -301,63 +326,107 @@ function Login() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
-  const instituteDropdownRef = useRef<HTMLDivElement>(null);
   const lookupAbortRef = useRef<AbortController | null>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Automatically select the institute/school based on the entered email address
-  useEffect(() => {
-    if (!email || !email.trim()) return;
-    const cleanEmail = email.trim();
+  const currentConfig = LOGIN_ROLES[loginRole];
 
-    // 1. Immediate client-side auto-selection
-    const clientMatch = detectInstituteFromEmail(cleanEmail, institutes);
-    if (clientMatch) {
-      if (instituteId !== clientMatch.id) {
-        setInstituteId(clientMatch.id);
-        try {
-          localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
-        } catch {}
+  // Automatically select the institute/school based on the entered login ID (email or admission number)
+  useEffect(() => {
+    if (!currentConfig.needsSchool) {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
+      return;
+    }
+
+    const cleanInput = email.trim();
+    if (!cleanInput) {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
+      if (lookupAbortRef.current) {
+        lookupAbortRef.current.abort();
       }
       return;
     }
 
-    // 2. Server-side database lookup for arbitrary database accounts
-    if (cleanEmail.length >= 4 && cleanEmail.includes('@')) {
+    // 1. Immediate client-side auto-selection
+    const clientMatch = detectInstituteFromEmail(cleanInput, institutes);
+    if (clientMatch) {
+      setInstituteId(clientMatch.id);
+      setDetectedInstitute(clientMatch);
+      setLookupNotFound(false);
+      setLookupLoading(false);
+      try {
+        localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
+      } catch {}
+      return;
+    }
+
+    // 2. Server-side database lookup for arbitrary database accounts / admission numbers
+    if (cleanInput.length >= 3) {
       if (lookupAbortRef.current) {
         lookupAbortRef.current.abort();
       }
       const controller = new AbortController();
       lookupAbortRef.current = controller;
+      setLookupLoading(true);
+      setLookupNotFound(false);
 
       const timer = setTimeout(async () => {
         try {
-          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanEmail)}`, {
+          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanInput)}`, {
             signal: controller.signal
           });
           if (res.data?.found && res.data.instituteId) {
             const serverId = String(res.data.instituteId);
-            setInstituteId(prev => {
-              if (prev !== serverId) {
-                try {
-                  localStorage.setItem('attendoschool_last_institute_id', serverId);
-                } catch {}
-                return serverId;
+            setInstituteId(serverId);
+            setLookupNotFound(false);
+            const instObj: Institute = {
+              id: serverId,
+              name: res.data.instituteName || 'Affiliated Institution',
+              code: res.data.instituteCode || 'SCH'
+            };
+            setDetectedInstitute(instObj);
+            setInstitutes(prev => {
+              if (!prev.some(i => i.id === serverId)) {
+                return [...prev, instObj];
               }
               return prev;
             });
+            try {
+              localStorage.setItem('attendoschool_last_institute_id', serverId);
+            } catch {}
+          } else {
+            setInstituteId('');
+            setDetectedInstitute(null);
+            setLookupNotFound(true);
           }
         } catch (e: any) {
-          // ignore canceled error
+          if (e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
+            setInstituteId('');
+            setDetectedInstitute(null);
+            setLookupNotFound(true);
+          }
+        } finally {
+          setLookupLoading(false);
         }
-      }, 200);
+      }, 250);
 
       return () => {
         clearTimeout(timer);
         controller.abort();
       };
+    } else {
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupLoading(false);
+      setLookupNotFound(false);
     }
-  }, [email, institutes, instituteId]);
+  }, [email, institutes, currentConfig.needsSchool]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
@@ -386,13 +455,14 @@ function Login() {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Automatically select the institute matching the current email if available
-        setInstituteId(prev => {
+        // Automatically match the institute only if an identifier is already entered
+        if (email.trim()) {
           const match = detectInstituteFromEmail(email, cleanList);
-          if (match) return match.id;
-          if (prev && cleanList.some(i => i.id === prev)) return prev;
-          return cleanList.length > 0 ? cleanList[0].id : '';
-        });
+          if (match) {
+            setInstituteId(match.id);
+            setDetectedInstitute(match);
+          }
+        }
       }
     } catch (err) {
       console.warn('Institute fetch failed:', err);
@@ -403,7 +473,7 @@ function Login() {
     } finally {
       setInstitutesLoading(false);
     }
-  }, []);
+  }, [email]);
 
   useEffect(() => {
     try {
@@ -412,67 +482,27 @@ function Login() {
     fetchInstitutes();
   }, [fetchInstitutes]);
 
-  function selectInstitute(id: string) {
-    setInstituteId(id);
-    setInstituteOpen(false);
-    setError('');
-    const targetInst = institutes.find(i => i.id === id);
-    if (targetInst) {
-      const demoEmail = getDemoEmailForInstitute(targetInst.code || targetInst.id, loginRole);
-      setEmail(curr => {
-        const isDemo = [
-          'admin@demo-school.local', 'admin@tint.edu.in', 'admin@tint.local', 'admin@abc155.edu.in',
-          'rahul@demo-school.local', 'teacher@tint.edu.in', 'mmrinmay76@gmail.com',
-          'student@greenwood.local', 'dhardhuran689@gmail.com', 'ahana12@gmail.com',
-          'ADM-2026-001', 'ADM-2025-105', 'ADM1'
-        ].includes(curr) || !curr;
-        return isDemo ? demoEmail : curr;
-      });
-    }
-    try {
-      localStorage.setItem('attendoschool_last_institute_id', id);
-    } catch {}
-  }
-
-  // Close institute dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (instituteDropdownRef.current && !instituteDropdownRef.current.contains(event.target as Node)) {
-        setInstituteOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const currentConfig = LOGIN_ROLES[loginRole];
-  const selectedInstitute = institutes.find(i => i.id === instituteId);
-  const filteredInstitutes = institutes.filter(i => 
-    i.name.toLowerCase().includes(instituteSearch.toLowerCase()) ||
-    (i.code && i.code.toLowerCase().includes(instituteSearch.toLowerCase())) ||
-    (i.address && i.address.toLowerCase().includes(instituteSearch.toLowerCase()))
-  );
+  const selectedInstitute = detectedInstitute || institutes.find(i => i.id === instituteId);
 
   function handleSelectRole(role: LoginOption) {
     setSelectedRole(role);
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
-    const defaultEmail = cfg.defaultEmail;
-    setEmail(defaultEmail);
-    setPassword('ChangeMe123!');
     if (cfg.needsSchool) {
-      const match = detectInstituteFromEmail(defaultEmail, institutes);
-      if (match) {
-        setInstituteId(match.id);
-        try {
-          localStorage.setItem('attendoschool_last_institute_id', match.id);
-        } catch {}
-      } else {
-        setInstituteId(prev => (prev && institutes.some(i => i.id === prev)) ? prev : (institutes[0]?.id || ''));
-      }
-    } else {
+      setEmail('');
+      setPassword('');
       setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupNotFound(false);
+      setLookupLoading(false);
+    } else {
+      setEmail(cfg.defaultEmail || '');
+      setPassword('ChangeMe123!');
+      setInstituteId('');
+      setDetectedInstitute(null);
+      setLookupNotFound(false);
+      setLookupLoading(false);
     }
   }
 
@@ -481,7 +511,11 @@ function Login() {
     setError('');
 
     if (currentConfig.needsSchool && !instituteId) {
-      setError('Please select your institute before signing in.');
+      setError(
+        loginRole === 'STUDENT'
+          ? 'Please enter your Admission Number or Student Email to detect your school.'
+          : 'Please enter your Login ID / Email to detect your school.'
+      );
       return;
     }
 
@@ -680,131 +714,143 @@ function Login() {
               </div>
 
 
-              {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
+              {/* Affiliated School / Institute (Auto-detected from Login ID) */}
               {currentConfig.needsSchool && (
-                <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
+                <div className="as-simple-field" style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label className="as-simple-label" style={{ margin: 0 }}>
-                        Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
-                      </label>
-                      {selectedInstitute && (
-                        <span style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
-                          Auto-selected
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {institutesLoading ? (
-                        <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <RefreshCw size={11} className="spin" /> Syncing...
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
-                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px' }}
-                          title="Refresh schools from server"
-                        >
-                          <RefreshCw size={10} />
-                          <span>Refresh list</span>
-                        </button>
-                      )}
-                    </div>
+                    <label className="as-simple-label" style={{ margin: 0 }}>
+                      School / Institute <span style={{ color: '#fb923c' }}>*</span>
+                    </label>
+                    {selectedInstitute && (
+                      <span style={{ 
+                        fontSize: 10.5, 
+                        color: '#34d399', 
+                        background: 'rgba(16, 185, 129, 0.12)', 
+                        border: '1px solid rgba(16, 185, 129, 0.3)', 
+                        padding: '2px 8px', 
+                        borderRadius: 9999, 
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <Check size={11} strokeWidth={3} /> Auto-detected
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className={`as-simple-select-trigger ${instituteOpen ? 'focused' : ''}`}
-                    onClick={() => setInstituteOpen(o => !o)}
-                    id="institute-trigger-btn"
-                    aria-haspopup="listbox"
-                    aria-expanded={instituteOpen}
-                    title="Click to toggle institute selection"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', pointerEvents: 'none' }}>
-                      <School size={16} style={{ color: '#fed7aa', flexShrink: 0 }} />
-                      <div className="as-simple-inst-summary">
-                        <span className="as-simple-inst-name">
-                          {selectedInstitute?.name || (institutesLoading ? 'Connecting to Cloud Firestore...' : 'Choose your school...')}
-                        </span>
-                        {selectedInstitute && (
-                          <span className="as-simple-inst-code">
-                            Code: {selectedInstitute.code || 'SCH'} · {selectedInstitute.address || 'Main Campus'}
+
+                  {selectedInstitute ? (
+                    <div 
+                      id="detected-institute-display"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.25))',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <School size={18} style={{ color: '#38bdf8' }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f8fafc)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {selectedInstitute.name}
                           </span>
-                        )}
+                          <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Code: <strong style={{ color: '#38bdf8' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        color: '#38bdf8',
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        flexShrink: 0
+                      }}>
+                        {selectedInstitute.code || 'ACTIVE'}
                       </div>
                     </div>
-                    <ChevronDown size={14} className={`as-chevron ${instituteOpen ? 'rotated' : ''}`} style={{ pointerEvents: 'none' }} />
-                  </button>
-
-                  {/* Searchable Dropdown Popover */}
-                  {instituteOpen && (
-                    <div className="as-inst-popover-menu">
-                      <div className="as-popover-search-wrap">
-                        <div className="as-popover-search-box">
-                          <Search size={14} className="as-popover-search-icon" />
-                          <input
-                            type="text"
-                            placeholder="Search institute name or code..."
-                            value={instituteSearch}
-                            onChange={e => setInstituteSearch(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Escape') setInstituteOpen(false);
-                            }}
-                            autoFocus
-                            className="as-popover-search-input"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="as-popover-reload-btn"
-                          onClick={(e) => { e.stopPropagation(); fetchInstitutes(); }}
-                          title="Reload schools from server"
-                        >
-                          <RefreshCw size={11} className={institutesLoading ? 'spin' : ''} />
-                          <span>Reload</span>
-                        </button>
-                      </div>
-                      <div className="as-inst-popover-list" role="listbox">
-                        {institutesLoading && institutes.length === 0 ? (
-                          <div className="as-inst-empty">
-                            <RefreshCw size={14} className="spin" style={{ margin: '0 auto 6px', display: 'block', color: '#60a5fa' }} />
-                            <div>Connecting to Cloud Firestore...</div>
-                          </div>
-                        ) : filteredInstitutes.length === 0 ? (
-                          <div className="as-inst-empty">
-                            <div>{institutes.length === 0 ? 'No active schools found in database' : 'No institutes match your search'}</div>
-                            <button
-                              type="button"
-                              onClick={() => { setInstituteSearch(''); fetchInstitutes(); }}
-                              style={{ marginTop: 8, display: 'inline-block', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', fontWeight: 600 }}
-                            >
-                              {institutes.length === 0 ? 'Reload from Firestore' : 'Reset search'}
-                            </button>
-                          </div>
-                        ) : (
-                          filteredInstitutes.map(inst => (
-                            <button
-                              key={inst.id}
-                              type="button"
-                              role="option"
-                              aria-selected={inst.id === instituteId}
-                              className={`as-inst-option ${inst.id === instituteId ? 'selected' : ''}`}
-                              onClick={() => selectInstitute(inst.id)}
-                            >
-                              <School size={15} className="as-inst-opt-icon" />
-                              <div className="as-inst-option-text">
-                                <div className="as-inst-option-title">{inst.name}</div>
-                                <div className="as-inst-option-sub">{inst.address || 'Main Campus'}</div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                <span className="as-inst-option-code">{inst.code || 'SCH'}</span>
-                                {inst.id === instituteId && <Check size={14} style={{ color: '#2563eb' }} />}
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
+                  ) : lookupLoading ? (
+                    <div 
+                      id="detecting-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(56, 189, 248, 0.04)',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        color: '#38bdf8',
+                        fontSize: 12.5,
+                        minHeight: 46
+                      }}
+                    >
+                      <RefreshCw size={14} className="spin" style={{ flexShrink: 0 }} />
+                      <span>Detecting affiliated school from Login ID...</span>
+                    </div>
+                  ) : lookupNotFound && email.trim().length >= 3 ? (
+                    <div 
+                      id="not-found-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        border: '1px dashed rgba(239, 68, 68, 0.35)',
+                        color: '#f87171',
+                        fontSize: 12,
+                        minHeight: 46
+                      }}
+                    >
+                      <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                      <span>No school found for this Login ID. Please verify your credentials.</span>
+                    </div>
+                  ) : (
+                    <div 
+                      id="empty-institute-placeholder"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '11px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px dashed rgba(255, 255, 255, 0.14)',
+                        color: '#94a3b8',
+                        fontSize: 12.5,
+                        minHeight: 46
+                      }}
+                    >
+                      <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
+                      <span style={{ opacity: 0.75 }}>
+                        {loginRole === 'STUDENT'
+                          ? 'School will appear automatically when you enter your Admission No.'
+                          : 'School will appear automatically when you enter your Login ID / Email'}
+                      </span>
                     </div>
                   )}
                 </div>

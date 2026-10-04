@@ -156,6 +156,32 @@ router.get('/lookup-institute', async (req, res) => {
           });
         }
       }
+
+      // Check students collection in Firestore
+      const sSnap = await collections.students().get();
+      for (const sDoc of sSnap.docs) {
+        const sd = sDoc.data();
+        const admMatch = (sd.admission_number && sd.admission_number.toLowerCase() === email) ||
+                         (sd.admissionNumber && sd.admissionNumber.toLowerCase() === email);
+        const emailMatch = (sd.email && sd.email.toLowerCase() === email) ||
+                           (sd.student_email && sd.student_email.toLowerCase() === email) ||
+                           (sd.roll_number && sd.roll_number.toLowerCase() === email) ||
+                           (sd.rollNumber && sd.rollNumber.toLowerCase() === email);
+        if (admMatch || emailMatch) {
+          const docSid = sd.school_id || sd.schoolId;
+          if (docSid) {
+            const fsSchool = await getFirestoreSchoolById(docSid);
+            if (fsSchool && fsSchool.status !== 'SUSPENDED') {
+              return res.json({
+                found: true,
+                instituteId: String(fsSchool.id),
+                instituteName: fsSchool.name,
+                instituteCode: fsSchool.code || 'SCH'
+              });
+            }
+          }
+        }
+      }
     } catch (err: any) {
       console.warn('[Auth] Firestore user lookup error:', err.message);
     }
