@@ -89,6 +89,132 @@ router.get('/institutes', async (_req, res) => {
   return res.json(list);
 });
 
+// GET /api/auth/lookup-institute - Auto-detect and resolve associated school/institute by email or identifier
+router.get('/lookup-institute', async (req, res) => {
+  const email = String(req.query.email || req.query.identifier || '').trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ found: false, message: 'Email or identifier is required' });
+  }
+
+  // 1. Primary: PostgreSQL / Supabase
+  if (isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.status
+         FROM users u
+         JOIN schools s ON u.school_id = s.id
+         WHERE LOWER(u.email) = LOWER($1) AND s.status = 'ACTIVE'
+         LIMIT 1`,
+        [email]
+      );
+      if (q.rowCount && q.rowCount > 0) {
+        const row = q.rows[0];
+        return res.json({
+          found: true,
+          instituteId: String(row.school_id),
+          instituteName: row.school_name,
+          instituteCode: row.school_code
+        });
+      }
+
+      // Check students table if not found in users
+      const sq = await pool.query(
+        `SELECT st.school_id, s.name as school_name, s.code as school_code, s.status
+         FROM students st
+         JOIN schools s ON st.school_id = s.id
+         WHERE (LOWER(st.email) = LOWER($1) OR LOWER(st.roll_number) = LOWER($1) OR LOWER(st.admission_number) = LOWER($1))
+           AND s.status = 'ACTIVE'
+         LIMIT 1`,
+        [email]
+      );
+      if (sq.rowCount && sq.rowCount > 0) {
+        const row = sq.rows[0];
+        return res.json({
+          found: true,
+          instituteId: String(row.school_id),
+          instituteName: row.school_name,
+          instituteCode: row.school_code
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Auth] Database lookup error in PostgreSQL:', err.message);
+    }
+  }
+
+  // 2. Secondary: Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const fsUser = await findFirestoreUserByEmail(email);
+      if (fsUser && fsUser.schoolId) {
+        const fsSchool = await getFirestoreSchoolById(fsUser.schoolId);
+        if (fsSchool && fsSchool.status !== 'SUSPENDED') {
+          return res.json({
+            found: true,
+            instituteId: String(fsSchool.id),
+            instituteName: fsSchool.name,
+            instituteCode: fsSchool.code || 'SCH'
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Auth] Firestore user lookup error:', err.message);
+    }
+  }
+
+  // 3. Fallback: In-memory demo users
+  const demoMatch = findDemoUser(email);
+  if (demoMatch && demoMatch.schoolId) {
+    const demoSchool = demoSchools.find(s => s.id === demoMatch.schoolId || isSameSchool(s.id, demoMatch.schoolId!));
+    if (demoSchool) {
+      return res.json({
+        found: true,
+        instituteId: String(demoSchool.id),
+        instituteName: demoSchool.name,
+        instituteCode: demoSchool.code || 'SCH'
+      });
+    }
+  }
+
+  // 4. Domain & email pattern heuristics
+  if (email.includes('tint.edu.in') || email.includes('tint.local') || email.includes('tint')) {
+    const tint = demoSchools.find(s => isTintSchool(s.id) || (s.code && s.code.toUpperCase() === 'TINT'));
+    if (tint) {
+      return res.json({
+        found: true,
+        instituteId: String(tint.id),
+        instituteName: tint.name,
+        instituteCode: tint.code || 'TINT'
+      });
+    }
+  }
+
+  if (email.includes('demo-school.local') || email.includes('greenwood')) {
+    const gw = demoSchools.find(s => isSameSchool(s.id, '00000000-0000-0000-0000-000000000001'));
+    if (gw) {
+      return res.json({
+        found: true,
+        instituteId: String(gw.id),
+        instituteName: gw.name,
+        instituteCode: gw.code || 'GIS001'
+      });
+    }
+  }
+
+  if (email.includes('abc155') || email.includes('abc')) {
+    const abc = demoSchools.find(s => isSameSchool(s.id, '08c4960d-75d6-4a92-989b-48309500632e'));
+    if (abc) {
+      return res.json({
+        found: true,
+        instituteId: String(abc.id),
+        instituteName: abc.name,
+        instituteCode: abc.code || 'SCH'
+      });
+    }
+  }
+
+  return res.json({ found: false });
+});
+
 function roleMatches(userRole: string, expectedRole?: string): boolean {
   if (!expectedRole) return true;
   const norm = expectedRole.toUpperCase();

@@ -213,6 +213,59 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
   return 'admin@demo-school.local';
 }
 
+function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Institute | undefined {
+  if (!inputEmail || !inputEmail.trim() || !list || list.length === 0) return undefined;
+  const norm = inputEmail.trim().toLowerCase();
+
+  // 1. Explicit TINT matches
+  if (norm.includes('tint.edu.in') || norm.includes('tint.local') || norm.includes('@tint') || norm.includes('tint')) {
+    const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'TINT') || 
+      i.id === '00000000-0000-0000-0000-000000000002' || 
+      i.name.toLowerCase().includes('techno international') ||
+      i.name.toLowerCase().includes('tint')
+    );
+    if (found) return found;
+  }
+
+  // 2. Explicit Greenwood matches
+  if (norm.includes('demo-school.local') || norm.includes('greenwood') || norm.includes('greenwood.local')) {
+    const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'GIS001') || 
+      i.id === '00000000-0000-0000-0000-000000000001' || 
+      i.name.toLowerCase().includes('greenwood')
+    );
+    if (found) return found;
+  }
+
+  // 3. Explicit ABC Public School matches
+  if (norm.includes('abc155') || norm.includes('abc')) {
+    const found = list.find(i => 
+      i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
+      i.name.toLowerCase().includes('abc')
+    );
+    if (found) return found;
+  }
+
+  // 4. Exact domain match against school codes or school names
+  const atParts = norm.split('@');
+  if (atParts.length === 2) {
+    const domain = atParts[1];
+    const subParts = domain.split('.');
+    for (const part of subParts) {
+      if (part.length >= 3 && !['com', 'edu', 'org', 'local', 'in', 'gov', 'net', 'co'].includes(part)) {
+        const match = list.find(i => 
+          (i.code && i.code.toLowerCase() === part) || 
+          i.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(part)
+        );
+        if (match) return match;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
@@ -249,7 +302,62 @@ function Login() {
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   const instituteDropdownRef = useRef<HTMLDivElement>(null);
+  const lookupAbortRef = useRef<AbortController | null>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Automatically select the institute/school based on the entered email address
+  useEffect(() => {
+    if (!email || !email.trim()) return;
+    const cleanEmail = email.trim();
+
+    // 1. Immediate client-side auto-selection
+    const clientMatch = detectInstituteFromEmail(cleanEmail, institutes);
+    if (clientMatch) {
+      if (instituteId !== clientMatch.id) {
+        setInstituteId(clientMatch.id);
+        try {
+          localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
+        } catch {}
+      }
+      return;
+    }
+
+    // 2. Server-side database lookup for arbitrary database accounts
+    if (cleanEmail.length >= 4 && cleanEmail.includes('@')) {
+      if (lookupAbortRef.current) {
+        lookupAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      lookupAbortRef.current = controller;
+
+      const timer = setTimeout(async () => {
+        try {
+          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanEmail)}`, {
+            signal: controller.signal
+          });
+          if (res.data?.found && res.data.instituteId) {
+            const serverId = String(res.data.instituteId);
+            setInstituteId(prev => {
+              if (prev !== serverId) {
+                try {
+                  localStorage.setItem('attendoschool_last_institute_id', serverId);
+                } catch {}
+                return serverId;
+              }
+              return prev;
+            });
+          }
+        } catch (e: any) {
+          // ignore canceled error
+        }
+      }, 200);
+
+      return () => {
+        clearTimeout(timer);
+        controller.abort();
+      };
+    }
+  }, [email, institutes, instituteId]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
@@ -278,8 +386,10 @@ function Login() {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Preserve user selection if valid, otherwise select the first live school from Database
+        // Automatically select the institute matching the current email if available
         setInstituteId(prev => {
+          const match = detectInstituteFromEmail(email, cleanList);
+          if (match) return match.id;
           if (prev && cleanList.some(i => i.id === prev)) return prev;
           return cleanList.length > 0 ? cleanList[0].id : '';
         });
@@ -347,13 +457,19 @@ function Login() {
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
-    setEmail(cfg.defaultEmail);
+    const defaultEmail = cfg.defaultEmail;
+    setEmail(defaultEmail);
     setPassword('ChangeMe123!');
     if (cfg.needsSchool) {
-      setInstituteId(prev => {
-        if (prev && institutes.some(i => i.id === prev)) return prev;
-        return institutes.length > 0 ? institutes[0].id : '';
-      });
+      const match = detectInstituteFromEmail(defaultEmail, institutes);
+      if (match) {
+        setInstituteId(match.id);
+        try {
+          localStorage.setItem('attendoschool_last_institute_id', match.id);
+        } catch {}
+      } else {
+        setInstituteId(prev => (prev && institutes.some(i => i.id === prev)) ? prev : (institutes[0]?.id || ''));
+      }
     } else {
       setInstituteId('');
     }
@@ -566,9 +682,16 @@ function Login() {
               {currentConfig.needsSchool && (
                 <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <label className="as-simple-label" style={{ margin: 0 }}>
-                      Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label className="as-simple-label" style={{ margin: 0 }}>
+                        Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
+                      </label>
+                      {selectedInstitute && (
+                        <span style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                          Auto-selected
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {institutesLoading ? (
                         <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
