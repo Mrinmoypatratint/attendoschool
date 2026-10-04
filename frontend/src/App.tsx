@@ -21,6 +21,7 @@ import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
 import TeacherProfile from './pages/teacher/TeacherProfile';
 import PhotoApprove from './pages/admin/PhotoApprove';
 import LeaveApprove from './pages/admin/LeaveApprove';
+import SmtpLogs from './pages/admin/SmtpLogs';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
 import * as XLSX from 'xlsx';
@@ -1907,6 +1908,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/promotion', 'Student Promotions', ArrowUpDown],
     ['—', 'COMMUNICATION'],
     ['/communication', 'Announcements', MessageSquare],
+    ['/smtp-logs', 'SMTP Email Logs', Mail],
     ...(user.role !== 'SCHOOL_ADMIN' ? [['/notifications', 'Parent Communication', Bell]] : []),
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
@@ -10416,9 +10418,10 @@ function NotificationCenter(){
         <table>
           <thead>
             <tr>
-              <th>Student</th>
+              <th>Admission No.</th>
+              <th>Recipient / Student</th>
               <th>Channel</th>
-              <th>Recipient</th>
+              <th>Mail ID</th>
               <th>Status</th>
               <th>Attempts</th>
               <th>Created</th>
@@ -10427,7 +10430,16 @@ function NotificationCenter(){
           <tbody>
             {logs.map(x=>(
               <tr key={x.id}>
-                <td>{x.student_name||'—'}</td>
+                <td>
+                  {x.admission_number ? (
+                    <code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', background: 'var(--bg, #f1f5f9)', borderRadius: 4 }}>
+                      {x.admission_number}
+                    </code>
+                  ) : (
+                    <span style={{ color: 'var(--muted, #94a3b8)' }}>—</span>
+                  )}
+                </td>
+                <td><b>{x.recipient_name || x.student_name || '—'}</b></td>
                 <td><span className="badge">{x.channel}</span></td>
                 <td><code>{x.recipient}</code></td>
                 <td><span className={`badge ${x.status==='SENT'?'active':'processing'}`}>{x.status}</span></td>
@@ -11312,6 +11324,7 @@ function App(){return <Routes>
   <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
   <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
   <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+  <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
