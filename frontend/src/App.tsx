@@ -46,6 +46,7 @@ import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
+import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import {
@@ -6621,7 +6622,9 @@ function Teachers(){
               </td>
               <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
-                <b>{x.name}</b>
+                <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x.id)}>
+                  <b>{x.name}</b>
+                </TeacherProfileHoverCard>
               </td>
               <td>
                 {x.gender ? (

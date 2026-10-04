@@ -11176,7 +11176,8 @@ header {
 }
 
 .student-name-hover-trigger:hover,
-.student-name-click-trigger:hover {
+.student-name-click-trigger:hover,
+.teacher-name-click-trigger:hover {
   color: #1d4ed8 !important;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -11184,7 +11185,8 @@ header {
   background-color: rgba(37, 99, 235, 0.08);
 }
 
-.student-name-click-trigger:focus-visible {
+.student-name-click-trigger:focus-visible,
+.teacher-name-click-trigger:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
