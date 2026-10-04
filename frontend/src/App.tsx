@@ -21,16 +21,17 @@ import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
 import TeacherProfile from './pages/teacher/TeacherProfile';
 import PhotoApprove from './pages/admin/PhotoApprove';
 import LeaveApprove from './pages/admin/LeaveApprove';
+import SmtpLogs from './pages/admin/SmtpLogs';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
   CalendarDays, ClipboardCheck, School, CheckCircle2, MessageSquare, BarChart3,
-  FileText, Shield, Database, Clock, Wifi, UserPlus, Settings, Moon, Sun,
+  FileText, Shield, Database, Clock, UserPlus, Settings, Moon, Sun,
   ArrowUpDown, Bell, CreditCard, Eye, FileSpreadsheet, Download, Trash2,
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
-  Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
+  Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
   Camera, CalendarCheck
@@ -46,6 +47,7 @@ import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
+import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import {
@@ -211,6 +213,59 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
   return 'admin@demo-school.local';
 }
 
+function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Institute | undefined {
+  if (!inputEmail || !inputEmail.trim() || !list || list.length === 0) return undefined;
+  const norm = inputEmail.trim().toLowerCase();
+
+  // 1. Explicit TINT matches
+  if (norm.includes('tint.edu.in') || norm.includes('tint.local') || norm.includes('@tint') || norm.includes('tint')) {
+    const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'TINT') || 
+      i.id === '00000000-0000-0000-0000-000000000002' || 
+      i.name.toLowerCase().includes('techno international') ||
+      i.name.toLowerCase().includes('tint')
+    );
+    if (found) return found;
+  }
+
+  // 2. Explicit Greenwood matches
+  if (norm.includes('demo-school.local') || norm.includes('greenwood') || norm.includes('greenwood.local')) {
+    const found = list.find(i => 
+      (i.code && i.code.toUpperCase() === 'GIS001') || 
+      i.id === '00000000-0000-0000-0000-000000000001' || 
+      i.name.toLowerCase().includes('greenwood')
+    );
+    if (found) return found;
+  }
+
+  // 3. Explicit ABC Public School matches
+  if (norm.includes('abc155') || norm.includes('abc')) {
+    const found = list.find(i => 
+      i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
+      i.name.toLowerCase().includes('abc')
+    );
+    if (found) return found;
+  }
+
+  // 4. Exact domain match against school codes or school names
+  const atParts = norm.split('@');
+  if (atParts.length === 2) {
+    const domain = atParts[1];
+    const subParts = domain.split('.');
+    for (const part of subParts) {
+      if (part.length >= 3 && !['com', 'edu', 'org', 'local', 'in', 'gov', 'net', 'co'].includes(part)) {
+        const match = list.find(i => 
+          (i.code && i.code.toLowerCase() === part) || 
+          i.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(part)
+        );
+        if (match) return match;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
@@ -247,7 +302,62 @@ function Login() {
   const [forgotNotice, setForgotNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
 
   const instituteDropdownRef = useRef<HTMLDivElement>(null);
+  const lookupAbortRef = useRef<AbortController | null>(null);
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Automatically select the institute/school based on the entered email address
+  useEffect(() => {
+    if (!email || !email.trim()) return;
+    const cleanEmail = email.trim();
+
+    // 1. Immediate client-side auto-selection
+    const clientMatch = detectInstituteFromEmail(cleanEmail, institutes);
+    if (clientMatch) {
+      if (instituteId !== clientMatch.id) {
+        setInstituteId(clientMatch.id);
+        try {
+          localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
+        } catch {}
+      }
+      return;
+    }
+
+    // 2. Server-side database lookup for arbitrary database accounts
+    if (cleanEmail.length >= 4 && cleanEmail.includes('@')) {
+      if (lookupAbortRef.current) {
+        lookupAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      lookupAbortRef.current = controller;
+
+      const timer = setTimeout(async () => {
+        try {
+          const res = await api.get(`/auth/lookup-institute?email=${encodeURIComponent(cleanEmail)}`, {
+            signal: controller.signal
+          });
+          if (res.data?.found && res.data.instituteId) {
+            const serverId = String(res.data.instituteId);
+            setInstituteId(prev => {
+              if (prev !== serverId) {
+                try {
+                  localStorage.setItem('attendoschool_last_institute_id', serverId);
+                } catch {}
+                return serverId;
+              }
+              return prev;
+            });
+          }
+        } catch (e: any) {
+          // ignore canceled error
+        }
+      }, 200);
+
+      return () => {
+        clearTimeout(timer);
+        controller.abort();
+      };
+    }
+  }, [email, institutes, instituteId]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.location.hash.includes('session_expired=1') || window.location.search.includes('session_expired=1'))) {
@@ -276,8 +386,10 @@ function Login() {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
         } catch {}
 
-        // Preserve user selection if valid, otherwise select the first live school from Database
+        // Automatically select the institute matching the current email if available
         setInstituteId(prev => {
+          const match = detectInstituteFromEmail(email, cleanList);
+          if (match) return match.id;
           if (prev && cleanList.some(i => i.id === prev)) return prev;
           return cleanList.length > 0 ? cleanList[0].id : '';
         });
@@ -346,13 +458,19 @@ function Login() {
     setLoginRole(role);
     setError('');
     const cfg = LOGIN_ROLES[role];
-    setEmail(cfg.defaultEmail);
+    const defaultEmail = cfg.defaultEmail;
+    setEmail(defaultEmail);
     setPassword('ChangeMe123!');
     if (cfg.needsSchool) {
-      setInstituteId(prev => {
-        if (prev && institutes.some(i => i.id === prev)) return prev;
-        return institutes.length > 0 ? institutes[0].id : '';
-      });
+      const match = detectInstituteFromEmail(defaultEmail, institutes);
+      if (match) {
+        setInstituteId(match.id);
+        try {
+          localStorage.setItem('attendoschool_last_institute_id', match.id);
+        } catch {}
+      } else {
+        setInstituteId(prev => (prev && institutes.some(i => i.id === prev)) ? prev : (institutes[0]?.id || ''));
+      }
     } else {
       setInstituteId('');
     }
@@ -561,32 +679,21 @@ function Login() {
                 </div>
               </div>
 
-              {/* Quick Demo Auto-Fill Button */}
-              <div className="as-simple-demo-row">
-                <span className="as-simple-demo-label">⚡ Test Mode</span>
-                <button
-                  type="button"
-                  className="as-simple-demo-btn"
-                  onClick={() => {
-                    const activeInst = institutes.find(i => i.id === instituteId);
-                    const demoEmail = getDemoEmailForInstitute(activeInst?.code || activeInst?.id || instituteId, loginRole);
-                    setEmail(demoEmail);
-                    setPassword('ChangeMe123!');
-                    setError('');
-                  }}
-                >
-                  <Sparkles size={12} />
-                  Auto-fill {currentConfig.roleName}
-                </button>
-              </div>
 
               {/* Institute Choose Option (REQUIRED for School Admin, Teacher, Student) */}
               {currentConfig.needsSchool && (
                 <div className="as-simple-field" ref={instituteDropdownRef} style={{ position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <label className="as-simple-label" style={{ margin: 0 }}>
-                      Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label className="as-simple-label" style={{ margin: 0 }}>
+                        Select Institute / School <span style={{ color: '#fb923c' }}>*</span>
+                      </label>
+                      {selectedInstitute && (
+                        <span style={{ fontSize: 10.5, color: '#38bdf8', background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                          Auto-selected
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {institutesLoading ? (
                         <span style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1903,19 +2010,18 @@ function Layout({children}:{children:React.ReactNode}){
     ['/attendance-reports', 'Attendance', ClipboardCheck],
     ['/timetable', 'Timetable', CalendarDays],
     ['—', 'ACADEMICS'],
-    ['/academic-years', 'Academic Years', Clock],
+    ['/academic-years', 'Academic Calendar & Holidays', Clock],
     ['/subjects', 'Subjects', BookOpen],
     ['/promotion', 'Student Promotions', ArrowUpDown],
     ['—', 'COMMUNICATION'],
     ['/communication', 'Announcements', MessageSquare],
-    ['/notifications', 'Parent Communication', Bell],
+    ['/smtp-logs', 'SMTP Email Logs', Mail],
+    ...(user.role !== 'SCHOOL_ADMIN' ? [['/notifications', 'Parent Communication', Bell]] : []),
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
-    ['review_group', 'Review', CheckSquare, [
-      ['/review/photos', 'Photo Approve', Camera],
-      ['/review/leaves', 'Leave Approve', CalendarCheck]
-    ]],
+    ['/leave-applications', 'Leave Applications', CalendarCheck],
+    ['/photo-approvals', 'Photo Approvals', Camera],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
@@ -1937,7 +2043,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['/attendance-reports','Reports',FileText],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
-    ['/offline-attendance','Offline Mode',Wifi],
     ['/teacher/profile','Profile',User],
   ];
 
@@ -1957,16 +2062,27 @@ function Layout({children}:{children:React.ReactNode}){
     ['/super-admin/backups','Backups',Database],
   ];
 
-  const links=user.role==='SUPER_ADMIN'?superAdminLinks:
-    user.role==='TEACHER'?teacherLinks:
+  const rawLinks = user.role === 'SUPER_ADMIN' ? superAdminLinks :
+    user.role === 'TEACHER' ? teacherLinks :
     adminLinks;
+
+  const links = rawLinks.filter(item => {
+    if (user.role === 'SCHOOL_ADMIN') {
+      if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
+    }
+    if (user.role === 'TEACHER') {
+      if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
+    }
+    return true;
+  });
 
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
-  const activeSessionName = rawSessionName.replace(/ Academic Session| Session/gi, '').trim();
+  const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+  const activeSessionName = cleanSessionName || '2026–27';
 
   return <div className="app-shell">
     {/* ── Mobile Sidebar Backdrop ── */}
@@ -2387,13 +2503,24 @@ function Layout({children}:{children:React.ReactNode}){
                       <CheckCircle2 size={13} />
                       <span>Review Center</span>
                     </button>
-                    <button
-                      type="button"
-                      className="super-notif-footer-link"
-                      onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
-                    >
-                      <span>Settings & All Alerts →</span>
-                    </button>
+                    {user?.role !== 'SCHOOL_ADMIN' ? (
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
+                      >
+                        <span>Settings & All Alerts →</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
+                      >
+                        <CalendarCheck size={13} />
+                        <span>Review Leaves</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -2511,6 +2638,10 @@ function Layout({children}:{children:React.ReactNode}){
               onClick={() => {
                 if (user.role === 'TEACHER') {
                   nav('/announcements');
+                } else if (user.role === 'SUPER_ADMIN') {
+                  nav('/notifications');
+                } else if (user.role === 'SCHOOL_ADMIN') {
+                  nav('/dashboard');
                 } else {
                   nav('/notifications');
                 }
@@ -2780,9 +2911,24 @@ function Layout({children}:{children:React.ReactNode}){
                         <div key={s.id} className="search-result-item" onClick={() => handleSearchResultClick(s)}>
                           <div className="search-result-avatar student">{s.name?.[0]?.toUpperCase() || 'S'}</div>
                           <div className="search-result-info">
-                            <span className="search-result-name">{s.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="search-result-name">{s.name}</span>
+                              {s.gender && (
+                                <span style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: 999,
+                                  background: /^f/i.test(s.gender) ? '#fdf2f8' : /^m/i.test(s.gender) ? '#f0f9ff' : '#f8fafc',
+                                  color: /^f/i.test(s.gender) ? '#db2777' : /^m/i.test(s.gender) ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${/^f/i.test(s.gender) ? '#fbcfe8' : /^m/i.test(s.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {s.gender}
+                                </span>
+                              )}
+                            </div>
                             <span className="search-result-meta">
-                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''} · {s.email}
+                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${s.gender}` : ''} · {s.email}
                             </span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
@@ -2797,8 +2943,23 @@ function Layout({children}:{children:React.ReactNode}){
                         <div key={t.id} className="search-result-item" onClick={() => handleSearchResultClick(t)}>
                           <div className="search-result-avatar teacher">{t.name?.[0]?.toUpperCase() || 'T'}</div>
                           <div className="search-result-info">
-                            <span className="search-result-name">{t.name}</span>
-                            <span className="search-result-meta">{t.email}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="search-result-name">{t.name}</span>
+                              {t.gender && (
+                                <span style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: 999,
+                                  background: /^f/i.test(t.gender) ? '#fdf2f8' : /^m/i.test(t.gender) ? '#f0f9ff' : '#f8fafc',
+                                  color: /^f/i.test(t.gender) ? '#db2777' : /^m/i.test(t.gender) ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${/^f/i.test(t.gender) ? '#fbcfe8' : /^m/i.test(t.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {t.gender}
+                                </span>
+                              )}
+                            </div>
+                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${t.gender} · ` : ''}{t.email}</span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
@@ -3373,23 +3534,30 @@ function TeacherHome(){
   const [todaySessions,setTodaySessions]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
 
-  useEffect(()=>{
-    async function loadSchedule() {
-      try {
-        const [routineRes, historyRes] = await Promise.all([
-          api.get('/teacher/routine/today').catch(()=>({data:[]})),
-          api.get('/teacher/attendance/history').catch(()=>({data:[]}))
-        ]);
-        setR(Array.isArray(routineRes.data) ? routineRes.data : []);
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
-        setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
-      } finally {
-        setLoading(false);
-      }
+  async function loadSchedule(showSpinner = true) {
+    if (showSpinner) setLoading(true);
+    try {
+      const [routineRes, historyRes] = await Promise.all([
+        api.get('/teacher/routine/today').catch(() => ({ data: [] })),
+        api.get('/teacher/attendance/history').catch(() => ({ data: [] }))
+      ]);
+      setR(Array.isArray(routineRes.data) ? routineRes.data : []);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
+      setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
+    } finally {
+      setLoading(false);
     }
-    loadSchedule();
-  },[]);
+  }
+
+  const fetchTodayRoutine = (showSpinner = true) => loadSchedule(showSpinner);
+
+  useEffect(() => {
+    loadSchedule(true);
+    const onFocus = () => loadSchedule(false);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   // Helper to find if routine class has already had attendance taken today
   const getRoutineAttendance = (item: any) => {
@@ -3412,7 +3580,17 @@ function TeacherHome(){
     </div>
     <div className="panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
+          <button
+            onClick={() => fetchTodayRoutine(true)}
+            type="button"
+            title="Refresh today's routine"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+          >
+            <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
+          </button>
+        </div>
         <a href="#/timetable" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
           View Full Weekly Timetable →
         </a>
@@ -4067,6 +4245,7 @@ function Students(){
       String(r.class_number).toLowerCase().includes(q) ||
       (r.admission_number && r.admission_number.toLowerCase().includes(q)) ||
       (r.admissionNumber && r.admissionNumber.toLowerCase().includes(q)) ||
+      (r.gender && String(r.gender).toLowerCase().includes(q)) ||
       (r.student_email && r.student_email.toLowerCase().includes(q)) ||
       (r.parent_email && r.parent_email.toLowerCase().includes(q));
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
@@ -4535,10 +4714,10 @@ function Students(){
           )}
         </div>
         <input 
-          placeholder="🔍 Search name, roll number, admission number, email..."
+          placeholder="🔍 Search name, roll number, admission number, gender, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: 340, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+          style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
         />
         <select 
           value={classFilter} 
@@ -4580,7 +4759,7 @@ function Students(){
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
           <span>Rows per page:</span>
           <select
@@ -4636,16 +4815,18 @@ function Students(){
             <th>Roll No</th>
             <th>Adm No</th>
             <th>Student Name</th>
+            <th>Gender</th>
             <th>Class</th>
             <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
+            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {displayedStudents.length === 0 ? (
-            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -4673,27 +4854,45 @@ function Students(){
                 </StudentProfileHoverCard>
               </td>
               <td>
+                {x.gender ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
+                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
+                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                  }}>
+                    {x.gender}
+                  </span>
+                ) : (
+                  <span className="muted" style={{ fontSize: 12 }}>—</span>
+                )}
+              </td>
+              <td>
                 {(() => {
                   const cNum = Number(x.class_number);
                   const cId = String(x.class_id || '');
                   if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
                   if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
-                  if (!isNaN(cNum) && cNum > 0) return cNum;
+                  if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
                   const m = cId.match(/cls-(\d+)/);
-                  if (m) return m[1];
+                  if (m) return `Class ${m[1]}`;
                   const label = String(x.class_label || x.class_name || '');
-                  if (label) {
-                    const cleaned = label.replace(/^class\s*/i, '').trim();
-                    if (cleaned) return cleaned;
-                  }
-                  return cNum || 1;
+                  if (label) return label.replace(/^class\s*/i, '').trim() || label;
+                  return 'Class ' + (cNum || 1);
                 })()}
               </td>
               <td>
-                {(() => {
-                  const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
-                  return raw.replace(/^section\s*/i, '').trim() || 'A';
-                })()}
+                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {(() => {
+                    const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
+                    return raw.replace(/^section\s*/i, '').trim() || 'A';
+                  })()}
+                </span>
               </td>
               <td>
                 <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
@@ -4706,6 +4905,15 @@ function Students(){
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
+              </td>
+              <td>
+                {x.student_email || x.email || x.parent_email ? (
+                  <span className="badge active" title={`Student portal login: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>
+                    🎓 Student Portal
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Offline Only</span>
+                )}
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -6022,6 +6230,7 @@ function Teachers(){
         fields: [
           { label: 'Full Name', value: name, color: 'blue' },
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
+          { label: 'Gender', value: f.gender || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
@@ -6048,6 +6257,7 @@ function Teachers(){
         name,
         email,
         employee_id: employeeId,
+        gender: f.gender || '',
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
@@ -6056,6 +6266,7 @@ function Teachers(){
         name: 'Faculty Name',
         email: 'Email Address',
         employee_id: 'Employee ID',
+        gender: 'Gender',
         mobile: 'Mobile Number',
         designation: 'Designation',
         is_active: 'Status'
@@ -6092,7 +6303,7 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -6200,11 +6411,15 @@ function Teachers(){
     });
   }
 
-  const filtered = rows.filter(r => 
-    r.name.toLowerCase().includes(search.toLowerCase()) || 
-    r.email.toLowerCase().includes(search.toLowerCase()) ||
-    String(r.employee_id).toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = rows.filter(r => {
+    const q = search.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) || 
+      r.email.toLowerCase().includes(q) ||
+      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q) ||
+      (r.gender && String(r.gender).toLowerCase().includes(q))
+    );
+  });
 
   useEffect(() => {
     setDirectoryPage(1);
@@ -6434,7 +6649,7 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
-        placeholder="🔍 Search teacher name, email, or employee ID..."
+        placeholder="🔍 Search teacher name, email, employee ID, or gender..."
         value={search}
         onChange={e => setSearch(e.target.value)}
         style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
@@ -6495,11 +6710,11 @@ function Teachers(){
             </th>
             <th>Employee Id/Savior_NO</th>
             <th>Teacher Name</th>
+            <th>Gender</th>
             <th>Designation</th>
             <th>Assigned Classes</th>
             <th>Email</th>
             <th>Mobile</th>
-            <th>Email Delivery Status</th>
             <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
@@ -6518,7 +6733,28 @@ function Teachers(){
               </td>
               <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
-                <b>{x.name}</b>
+                <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x.id)}>
+                  <b>{x.name}</b>
+                </TeacherProfileHoverCard>
+              </td>
+              <td>
+                {x.gender ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
+                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
+                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                  }}>
+                    {x.gender}
+                  </span>
+                ) : (
+                  <span className="muted" style={{ fontSize: 12 }}>—</span>
+                )}
               </td>
               <td>
                 <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
@@ -6528,11 +6764,6 @@ function Teachers(){
               </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
-              <td>
-                <span className={`badge ${x.email_status === 'Sent' ? 'active' : x.email_status === 'Failed' ? 'failed' : 'pending'}`} style={{ fontSize: 11 }}>
-                  {x.email_status === 'Sent' ? '✓ Sent' : x.email_status === 'Failed' ? '✕ Failed' : '● Pending'}
-                </span>
-              </td>
               <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -6552,6 +6783,8 @@ function Teachers(){
                       email: x.email,
                       employeeId: x.employee_id || x.employeeId || '',
                       mobile: x.mobile || x.phone || '',
+                      gender: x.gender || '',
+                      designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
                     });
                     setOpen(true);
@@ -6747,7 +6980,19 @@ function Teachers(){
         <label>Employee Id / Savior_NO
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <label>Gender
+            <select
+              value={f.gender || ''}
+              onChange={e => setF({ ...f, gender: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
           <label>Designation
             <input placeholder="e.g. Senior Teacher, TGT Mathematics" value={f.designation||''} onChange={e=>setF({...f,designation:e.target.value})}/>
           </label>
@@ -7695,6 +7940,28 @@ function Attendance(){
   const [loadingStatus, setLoadingStatus] = useState<boolean>(false);
   const [reattendanceSuccessMsg, setReattendanceSuccessMsg] = useState<string>('');
 
+  // Sunday / Gazetted Holiday Attendance Guard state (TC-ATT-010)
+  const [calendarGuard, setCalendarGuard] = useState<{
+    isInstructional: boolean;
+    reason?: string;
+    dayName?: string;
+  } | null>(null);
+  const [overrideGuard, setOverrideGuard] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!attendanceDate) return;
+    setOverrideGuard(false);
+    api.get(`/calendar/check-date?date=${attendanceDate}`)
+      .then(res => {
+        if (res.data?.success && res.data?.data) {
+          setCalendarGuard(res.data.data);
+        } else {
+          setCalendarGuard(null);
+        }
+      })
+      .catch(() => setCalendarGuard(null));
+  }, [attendanceDate]);
+
   // Modals state
   const [activeModal, setActiveModal] = useState<'EARLY_DEPARTURE' | 'LATE_ARRIVAL' | 'AUDIT_LOGS' | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -7750,6 +8017,10 @@ function Attendance(){
   });
 
   function initiateAttendancePreview(isReattendance = false) {
+    if (calendarGuard && !calendarGuard.isInstructional && !overrideGuard) {
+      alert(`Notice: Selected date (${attendanceDate}) is a declared non-instructional day (${calendarGuard.reason}). Attendance marking controls are disabled by default. Please click "Enable Marking Controls (Override)" if this is an authorized session.`);
+      return;
+    }
     if (!selectedClassId || !selectedSectionId) {
       alert('Validation Error: Please select both Class and Section.');
       return;
@@ -8411,6 +8682,42 @@ function Attendance(){
             <strong style={{ fontSize: 13.5 }}>{reattendanceSuccessMsg}</strong>
           </div>
           <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setReattendanceSuccessMsg('')}>✕</button>
+        </div>
+      )}
+
+      {/* Sunday / Gazetted Holiday Attendance Guard Banner (TC-ATT-010) */}
+      {calendarGuard && !calendarGuard.isInstructional && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 10,
+          padding: '14px 18px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
+        }} id="non-instructional-guard-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <AlertTriangle size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <div>
+              <b style={{ color: '#b91c1c', fontSize: 13.5 }}>
+                Selected date is a declared non-instructional day ({calendarGuard.reason || 'Holiday / Sunday'})
+              </b>
+              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
+                Selected date is a declared non-instructional day (Holiday/Sunday). Attendance marking controls disabled by default.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setOverrideGuard(prev => !prev)}
+            style={{ fontSize: 12, padding: '6px 14px', fontWeight: 600 }}
+          >
+            {overrideGuard ? '🔒 Lock Attendance Controls' : '🔓 Enable Marking Controls (Override)'}
+          </button>
         </div>
       )}
 
@@ -9904,6 +10211,9 @@ function History(){
 /* ────── Notifications V11 & SMTP ────── */
 function NotificationCenter(){
   const {user}=useAuth();
+  if (user?.role === 'SCHOOL_ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [channels,setChannels]=useState<any>(null);
   const [smtp,setSmtp]=useState<any>({
@@ -10489,9 +10799,10 @@ function NotificationCenter(){
         <table>
           <thead>
             <tr>
-              <th>Student</th>
+              <th>Admission No.</th>
+              <th>Recipient / Student</th>
               <th>Channel</th>
-              <th>Recipient</th>
+              <th>Mail ID</th>
               <th>Status</th>
               <th>Attempts</th>
               <th>Created</th>
@@ -10500,7 +10811,16 @@ function NotificationCenter(){
           <tbody>
             {logs.map(x=>(
               <tr key={x.id}>
-                <td>{x.student_name||'—'}</td>
+                <td>
+                  {x.admission_number ? (
+                    <code style={{ fontSize: 12, fontWeight: 700, padding: '2px 6px', background: 'var(--bg, #f1f5f9)', borderRadius: 4 }}>
+                      {x.admission_number}
+                    </code>
+                  ) : (
+                    <span style={{ color: 'var(--muted, #94a3b8)' }}>—</span>
+                  )}
+                </td>
+                <td><b>{x.recipient_name || x.student_name || '—'}</b></td>
                 <td><span className="badge">{x.channel}</span></td>
                 <td><code>{x.recipient}</code></td>
                 <td><span className={`badge ${x.status==='SENT'?'active':'processing'}`}>{x.status}</span></td>
@@ -10995,6 +11315,46 @@ function SchoolProfile() {
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
+    if (!currentPassword) {
+      setPwMsg({ type: 'error', text: 'Please enter your current password.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwMsg({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+
+    setChangingPw(true);
+    try {
+      const res = await api.put('/school-profile/change-password', {
+        currentPassword,
+        newPassword
+      });
+      setPwMsg({ type: 'success', text: res.data?.message || 'Administrator password updated successfully!' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update administrator password' });
+    } finally {
+      setChangingPw(false);
+    }
+  }
+
   // Universal Preview State for School Profile
   const [profilePreview, setProfilePreview] = useState<{
     isOpen: boolean;
@@ -11095,7 +11455,8 @@ function SchoolProfile() {
       {loading ? (
         <p className="muted">Loading institutional profile...</p>
       ) : (
-        <div className="two-col">
+        <>
+          <div className="two-col">
           <div className="panel">
             <h3>Institution Identity</h3>
             <div className="list">
@@ -11162,7 +11523,141 @@ function SchoolProfile() {
             </form>
           </div>
         </div>
-      )}
+
+        {/* ── Email & Password Management Section ── */}
+        <div className="panel" style={{ marginTop: 24 }} id="email-password-section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Lock size={18} style={{ color: '#2563eb' }} />
+                Email &amp; Password
+              </h3>
+              <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                Official administrator credentials, affiliated school verification, and account security.
+              </p>
+            </div>
+            <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <ShieldCheck size={14} /> BCrypt Protected
+            </span>
+          </div>
+
+          {pwMsg && (
+            <div className={pwMsg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
+              {pwMsg.text}
+            </div>
+          )}
+
+          <div className="two-col" style={{ gap: 20 }}>
+            {/* Associated School Identity & Login Credentials */}
+            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <School size={15} style={{ color: '#2563eb' }} />
+                Associated School Identity
+              </h4>
+
+              <div className="modal-form" style={{ gap: 14 }}>
+                <label>
+                  Associated School Name
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
+                    style={{
+                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                      color: 'var(--text-color, #0f172a)',
+                      cursor: 'not-allowed',
+                      fontWeight: 600
+                    }}
+                    id="admin-school-name"
+                    title="Associated school name is automatically bound and cannot be edited manually"
+                  />
+                </label>
+
+                <label>
+                  Administrator Login Email
+                  <input
+                    type="email"
+                    readOnly
+                    disabled
+                    value={user?.email || profile?.adminEmail || profile?.email || '—'}
+                    style={{
+                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                      color: 'var(--text-color, #0f172a)',
+                      cursor: 'not-allowed'
+                    }}
+                    id="admin-email-input"
+                    title="Administrator login email"
+                  />
+                </label>
+
+                <div className="list" style={{ marginTop: 6 }}>
+                  <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                    <b>Affiliated School Code</b>
+                    <span><code>{profile?.code || (user as any)?.schoolCode || 'SCH'}</code></span>
+                  </div>
+                  <div className="list-row" style={{ padding: '8px 0' }}>
+                    <b>Admin Profile Access</b>
+                    <span><span className="badge active">Authorized School Admin</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Change Password Form */}
+            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <KeyRound size={15} style={{ color: '#2563eb' }} />
+                Change Administrator Password
+              </h4>
+
+              <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
+                <label>
+                  Current Password
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  New Password (min 8 characters)
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter new strong password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Confirm New Password
+                  <input
+                    type="password"
+                    required
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={changingPw}
+                  style={{ alignSelf: 'flex-start', marginTop: 6 }}
+                >
+                  {changingPw ? 'Updating Password...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
 
       {/* Universal School Profile Preview Modal */}
       <UniversalPreviewModal
@@ -11209,7 +11704,8 @@ function App(){return <Routes>
   <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
   <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
   <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
-  <Route path="/notifications" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+  <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+  <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
   <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
   <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
   <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
@@ -11217,7 +11713,11 @@ function App(){return <Routes>
   <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
   <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
   <Route path="/people" element={<Navigate to="/students" replace />}/>
-  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+  <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
+  <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+  <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
+  <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
   <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
   <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
   <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
@@ -11227,13 +11727,15 @@ function App(){return <Routes>
   <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
   <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/offline-attendance" element={<RoleGuard roles={['TEACHER']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
+  <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-  <Route path="/review/photos" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
-  <Route path="/review/leaves" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
-  <Route path="/review-photos" element={<Navigate to="/review/photos" replace/>}/>
-  <Route path="/review-leaves" element={<Navigate to="/review/leaves" replace/>}/>
-  <Route path="/review" element={<Navigate to="/review/photos" replace/>}/>
+  <Route path="/leave-applications" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+  <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+  <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
+  <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
+  <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>

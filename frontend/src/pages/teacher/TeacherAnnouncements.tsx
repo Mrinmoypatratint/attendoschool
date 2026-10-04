@@ -45,6 +45,7 @@ export interface ReplyItem {
 
 export function TeacherAnnouncements() {
   const { user } = useAuth();
+  const isStudent = user?.role === 'STUDENT';
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -663,87 +664,91 @@ export function TeacherAnnouncements() {
                     </div>
                   )}
 
-                  {/* ── Quick Acknowledgment Options ── */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>Quick Replies:</span>
-                    {[
-                      '👍 Acknowledged and noted.',
-                      '✅ Received with thanks.',
-                      '📅 Will attend as scheduled.'
-                    ].map(tag => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => handleQuickReply(notice.id, tag)}
+                  {/* ── Quick Acknowledgment Options (Hidden for Student profile, available for Admin & Teacher) ── */}
+                  {!isStudent && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>Quick Replies:</span>
+                      {[
+                        '👍 Acknowledged and noted.',
+                        '✅ Received with thanks.',
+                        '📅 Will attend as scheduled.'
+                      ].map(tag => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => handleQuickReply(notice.id, tag)}
+                          style={{
+                            padding: '3px 9px',
+                            fontSize: 11.5,
+                            borderRadius: 14,
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#ffffff',
+                            color: '#334155',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Reply Input Box (Hidden for Student profile, available for Admin & Teacher) ── */}
+                  {!isStudent && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <textarea
+                        rows={2}
+                        value={inputValue}
+                        onChange={e =>
+                          setReplyInputs(prev => ({
+                            ...prev,
+                            [notice.id]: e.target.value
+                          }))
+                        }
+                        placeholder="Type your response, clarification, or question for administration..."
                         style={{
-                          padding: '3px 9px',
-                          fontSize: 11.5,
-                          borderRadius: 14,
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: 8,
                           border: '1px solid #cbd5e1',
                           backgroundColor: '#ffffff',
-                          color: '#334155',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
+                          fontSize: 13,
+                          lineHeight: 1.45,
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          outline: 'none',
+                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        disabled={isSubmitting || !inputValue.trim()}
+                        onClick={() => handleSendReply(notice.id)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '10px 18px',
+                          borderRadius: 8,
+                          border: 'none',
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: inputValue.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
+                          opacity: inputValue.trim() && !isSubmitting ? 1 : 0.6,
+                          height: 40,
+                          whiteSpace: 'nowrap',
+                          boxShadow: '0 1px 3px rgba(37,99,235,0.2)'
                         }}
                       >
-                        {tag}
+                        <Send size={14} className={isSubmitting ? 'spin' : ''} />
+                        {isSubmitting ? 'Sending...' : 'Send Reply'}
                       </button>
-                    ))}
-                  </div>
-
-                  {/* ── Reply Input Box ── */}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                    <textarea
-                      rows={2}
-                      value={inputValue}
-                      onChange={e =>
-                        setReplyInputs(prev => ({
-                          ...prev,
-                          [notice.id]: e.target.value
-                        }))
-                      }
-                      placeholder="Type your response, clarification, or question for administration..."
-                      style={{
-                        flex: 1,
-                        padding: '10px 12px',
-                        borderRadius: 8,
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        fontSize: 13,
-                        lineHeight: 1.45,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        outline: 'none',
-                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      disabled={isSubmitting || !inputValue.trim()}
-                      onClick={() => handleSendReply(notice.id)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '10px 18px',
-                        borderRadius: 8,
-                        border: 'none',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: inputValue.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
-                        opacity: inputValue.trim() && !isSubmitting ? 1 : 0.6,
-                        height: 40,
-                        whiteSpace: 'nowrap',
-                        boxShadow: '0 1px 3px rgba(37,99,235,0.2)'
-                      }}
-                    >
-                      <Send size={14} className={isSubmitting ? 'spin' : ''} />
-                      {isSubmitting ? 'Sending...' : 'Send Reply'}
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -28,6 +28,7 @@ import {
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
+export const schoolStaff = reader;
 
 /**
  * Normalizes academic session strings into a canonical format: "YYYY-YYYY"
@@ -403,8 +404,8 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
 export const demoStudents: any[] = [];
 
 export const demoTeachers: any[] = [
-  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
-  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', school_id: '00000000-0000-0000-0000-000000000001', is_active: true }
+  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', gender: 'Male', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
+  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', gender: 'Female', school_id: '00000000-0000-0000-0000-000000000001', is_active: true }
 ];
 
 // In-memory teacher teaching allocations (empty - no mock data)
@@ -488,7 +489,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
   LEFT JOIN sections sec ON sec.id=st.section_id
   LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
   WHERE st.school_id=$1 AND st.is_active=true
-  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
+  AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.gender, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
   if (q.rowCount && q.rows.length > 0) {
     let rows = q.rows.map((st: any) => {
@@ -554,6 +555,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
           parent_email: dt.parent_email || dt.parentEmail || '',
           student_email: dt.student_email || dt.studentEmail || dt.email || '',
           email: dt.email || dt.student_email || '',
+          gender: dt.gender || '',
           class_id: dt.class_id || dt.classId || 'cls-1',
           class_number: (() => {
             const cId = String(dt.class_id || dt.classId || '');
@@ -590,6 +592,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
               String(s.roll_number).includes(search) ||
               (s.admission_number && s.admission_number.toLowerCase().includes(search)) ||
               (s.admissionNumber && s.admissionNumber.toLowerCase().includes(search)) ||
+              (s.gender && String(s.gender).toLowerCase().includes(search)) ||
               (s.email && s.email.toLowerCase().includes(search)) ||
               (s.student_email && s.student_email.toLowerCase().includes(search)) ||
               (s.parent_email && s.parent_email.toLowerCase().includes(search))
@@ -1800,7 +1803,7 @@ r.get('/teachers/template', ...reader, (_req, res) => {
 r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,u.is_active
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
@@ -1819,6 +1822,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           email: dt.email || '',
           employee_id: dt.employee_id || dt.employeeId || '',
           mobile: dt.mobile || dt.phone || '',
+          gender: dt.gender || '',
           school_id: docSchoolId,
           schoolId: docSchoolId,
           is_active: dt.is_active !== false,
@@ -1961,6 +1965,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         employee_id: employeeId,
         savior_no: employeeId,
         designation,
+        gender: gender || null,
         mobile: mobile || '—',
         email_status: emailDeliveryStatus,
         is_active: true,
@@ -2412,6 +2417,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const resolvedSchoolId = userSchoolId || existingDocData.school_id || existingDocData.schoolId || demoTeachers[idx]?.school_id || null;
   const resolvedStatus = status || (is_active === false ? 'INACTIVE' : 'ACTIVE');
   const cleanEmail = email ? String(email).trim().toLowerCase() : (existingDocData.email || demoTeachers[idx]?.email || '');
+  const rawGender = req.body.gender;
+  const resolvedGender = rawGender !== undefined ? (rawGender ? String(rawGender).trim() : null) : (existingDocData.gender || demoTeachers[idx]?.gender || null);
 
   try {
     await pool.query(
@@ -2419,8 +2426,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
       [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
     );
     await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2 WHERE user_id=$3`,
-      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, tid]
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3 WHERE user_id=$4`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, tid]
     );
   } catch {}
 
@@ -2432,6 +2439,7 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     employeeId: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',
     mobile: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
     phone: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
+    gender: resolvedGender,
     school_id: resolvedSchoolId,
     schoolId: resolvedSchoolId,
     status: resolvedStatus,
@@ -2540,7 +2548,15 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
  try {
   const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, created_at FROM schools WHERE id = $1', [sid]);
-  if (q.rowCount) return res.json(q.rows[0]);
+  if (q.rowCount) {
+    const s = q.rows[0];
+    return res.json({
+      ...s,
+      schoolName: s.name,
+      adminEmail: req.user?.email || '',
+      adminName: req.user?.name || ''
+    });
+  }
  } catch {}
 
  // Check Firestore
@@ -2550,12 +2566,15 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
    return res.json({
     id: fsSchool.id,
     name: fsSchool.name,
+    schoolName: fsSchool.name,
     code: fsSchool.code || 'SCH001',
     status: fsSchool.status || 'ACTIVE',
     enquiry_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
     contact_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
     address: fsSchool.address || 'Main Campus',
     website: fsSchool.website || '',
+    adminEmail: req.user?.email || '',
+    adminName: req.user?.name || '',
     created_at: fsSchool.createdAt || new Date().toISOString()
    });
   }
@@ -2564,10 +2583,13 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  res.json({
   id: sid,
   name: req.user?.schoolName || 'Institutional Campus',
+  schoolName: req.user?.schoolName || 'Institutional Campus',
   code: (req.user as any)?.schoolCode || 'SCH001',
   status: 'ACTIVE',
   enquiry_number: '1800123456',
-  address: 'Main Campus'
+  address: 'Main Campus',
+  adminEmail: req.user?.email || '',
+  adminName: req.user?.name || ''
  });
 });
 
@@ -2605,6 +2627,36 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  res.json(updatedSchool);
 });
 
+r.put('/school-profile/change-password', ...admin, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  }
+
+  try {
+    const q = await pool.query(`SELECT id, password_hash FROM users WHERE id = $1`, [userId]);
+    if (q.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const userRow = q.rows[0];
+    const bcryptModule = await import('bcryptjs');
+    const valid = await bcryptModule.compare(currentPassword, userRow.password_hash);
+    if (!valid) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const hashed = await bcryptModule.hash(newPassword, 10);
+    await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [hashed, userId]);
+
+    res.json({ success: true, message: 'Administrator password updated successfully!' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to change administrator password' });
+  }
+});
+
 /* ── Global Search ── */
 r.get('/search', ...admin, async (req: AuthRequest, res) => {
   const q = String(req.query.q || '').trim();
@@ -2616,32 +2668,33 @@ r.get('/search', ...admin, async (req: AuthRequest, res) => {
   try {
     // Students
     const stRes = await pool.query(
-      `SELECT st.id, st.roll_number, st.name, st.parent_email AS email, c.class_number, sec.name AS section_name
+      `SELECT st.id, st.roll_number, st.name, st.gender, st.parent_email AS email, c.class_number, sec.name AS section_name
        FROM students st
        JOIN classes c ON c.id = st.class_id
        JOIN sections sec ON sec.id = st.section_id
        WHERE st.school_id = $1 AND st.is_active = true
-         AND (st.name ILIKE $2 OR st.roll_number ILIKE $2 OR COALESCE(st.parent_email,'') ILIKE $2)
+         AND (st.name ILIKE $2 OR st.roll_number ILIKE $2 OR COALESCE(st.parent_email,'') ILIKE $2 OR COALESCE(st.gender,'') ILIKE $2)
        ORDER BY st.name ASC LIMIT 8`,
       [sid, pattern]
     );
     results.students = stRes.rows.map((r: any) => ({
-      id: r.id, name: r.name, email: r.email, roll: r.roll_number,
+      id: r.id, name: r.name, email: r.email, roll: r.roll_number, gender: r.gender,
       class: r.class_number ? `Class ${r.class_number}` : null,
       section: r.section_name, type: 'student'
     }));
 
     // Teachers
     const tRes = await pool.query(
-      `SELECT id, name, email
-       FROM users
-       WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true
-         AND (LOWER(name) LIKE LOWER($2) OR LOWER(email) LIKE LOWER($2))
-       ORDER BY name ASC LIMIT 8`,
+      `SELECT u.id, u.name, u.email, tp.gender, tp.employee_id
+       FROM users u
+       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       WHERE u.school_id = $1 AND u.role = 'TEACHER' AND u.is_active = true
+         AND (LOWER(u.name) LIKE LOWER($2) OR LOWER(u.email) LIKE LOWER($2) OR LOWER(COALESCE(tp.employee_id,'')) LIKE LOWER($2) OR LOWER(COALESCE(tp.gender,'')) LIKE LOWER($2))
+       ORDER BY u.name ASC LIMIT 8`,
       [sid, pattern]
     );
     results.teachers = tRes.rows.map((r: any) => ({
-      id: r.id, name: r.name, email: r.email, type: 'teacher'
+      id: r.id, name: r.name, email: r.email, employee_id: r.employee_id, gender: r.gender, type: 'teacher'
     }));
 
     // Classes
@@ -2656,7 +2709,37 @@ r.get('/search', ...admin, async (req: AuthRequest, res) => {
       id: r.id, name: `Class ${r.class_number}`, sections: r.section_count, type: 'class'
     }));
   } catch (_e) {
-    // DB unavailable — return empty
+    // DB unavailable — fallback to in-memory/demo search
+  }
+
+  // Fallback to in-memory datasets if DB returns empty
+  if (results.students.length === 0) {
+    results.students = demoStudents.filter(s => {
+      if (s.school_id && !isSameSchool(s.school_id, sid)) return false;
+      return (
+        (s.name && s.name.toLowerCase().includes(q.toLowerCase())) ||
+        (s.roll_number && String(s.roll_number).toLowerCase().includes(q.toLowerCase())) ||
+        (s.gender && s.gender.toLowerCase().includes(q.toLowerCase())) ||
+        (s.email && s.email.toLowerCase().includes(q.toLowerCase()))
+      );
+    }).slice(0, 8).map(s => ({
+      id: s.id, name: s.name, email: s.email, roll: s.roll_number, gender: s.gender,
+      class: s.class_name || (s.class_number ? `Class ${s.class_number}` : null),
+      section: s.section_name, type: 'student'
+    }));
+  }
+  if (results.teachers.length === 0) {
+    results.teachers = demoTeachers.filter(t => {
+      if (t.school_id && !isSameSchool(t.school_id, sid) && !isTestSchool(sid)) return false;
+      return (
+        (t.name && t.name.toLowerCase().includes(q.toLowerCase())) ||
+        (t.email && t.email.toLowerCase().includes(q.toLowerCase())) ||
+        (t.employee_id && t.employee_id.toLowerCase().includes(q.toLowerCase())) ||
+        (t.gender && t.gender.toLowerCase().includes(q.toLowerCase()))
+      );
+    }).slice(0, 8).map(t => ({
+      id: t.id, name: t.name, email: t.email, employee_id: t.employee_id, gender: t.gender, type: 'teacher'
+    }));
   }
 
   res.json(results);

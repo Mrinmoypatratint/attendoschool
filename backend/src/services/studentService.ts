@@ -4,6 +4,7 @@ import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool, isTestSchool } from '../utils/tenant';
 import { demoStudents } from '../routes/schoolData';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
+import { calculateWorkingCalendar } from './calendarService';
 
 /**
  * Resolves student record by authenticated user ID and school ID
@@ -602,7 +603,21 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       } catch {}
     }
     if (attendanceSummary.totalWorkingDays === 0) {
-      attendanceSummary = { attendancePercentage: 92, presentDays: 23, totalWorkingDays: 25, absentDays: 2 };
+      try {
+        const today = new Date();
+        const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+        const todayStr = today.toISOString().slice(0, 10);
+        const cal = await calculateWorkingCalendar(schoolId, startOfMonth, todayStr);
+        const actualWorkingDays = Math.max(1, Math.round(cal.workingDays));
+        attendanceSummary = {
+          attendancePercentage: 0,
+          presentDays: 0,
+          totalWorkingDays: actualWorkingDays,
+          absentDays: 0
+        };
+      } catch {
+        attendanceSummary = { attendancePercentage: 0, presentDays: 0, totalWorkingDays: 0, absentDays: 0 };
+      }
     }
   }
 

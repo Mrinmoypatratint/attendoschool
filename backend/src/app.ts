@@ -43,6 +43,7 @@ import parentOnboarding from './routes/parentOnboarding';
 import finalIntegration from './routes/finalIntegration';
 import student from './routes/student';
 import reviews from './routes/reviews';
+import calendar from './routes/calendar';
 
 const app = express();
 
@@ -129,6 +130,8 @@ app.use('/api/attendance-corrections-v13', requireAuth, attendanceCorrections);
 
 app.use('/api/attendance-reports', requireAuth, attendanceReports);
 app.use('/api/attendance-reports-v12', requireAuth, attendanceReports);
+
+app.use('/api/calendar', requireAuth, calendar);
 
 // Info endpoints
 app.get('/', (_q, res) => res.json({

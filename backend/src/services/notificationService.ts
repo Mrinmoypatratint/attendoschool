@@ -1062,29 +1062,53 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
 
   // 2. Persist to PostgreSQL if active
   try {
-    await pool.query(
-      `INSERT INTO notification_logs(
-        id, school_id, attendance_session_id, student_id, channel, recipient,
-        recipient_type, template_key, subject, message, html_body, status,
-        attempts, max_attempts, scheduled_at, idempotency_key, created_at
-      ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,'QUEUED',0,$11,NOW(),$12,NOW())
-      ON CONFLICT(idempotency_key) DO NOTHING`,
-      [
-        logId.length === 36 ? logId : crypto.randomUUID(),
-        schoolId,
-        attendanceSessionId,
-        studentId,
-        cleanRecipient,
-        recipientType,
-        templateKey,
-        rendered.subject,
-        rendered.text,
-        rendered.html,
-        env.emailMaxRetries || 4,
-        idempotencyKey
-      ]
-    );
-  } catch (_sqlErr) {}
+    const isValidUuid = (val?: any) =>
+      typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+
+    const safeSchoolId = isValidUuid(schoolId) ? schoolId.trim() : null;
+    const safeSessionId = isValidUuid(attendanceSessionId) ? attendanceSessionId.trim() : null;
+    let safeStudentId = isValidUuid(studentId) ? studentId.trim() : null;
+
+    // If studentId wasn't passed directly, resolve from students table by matching email within the school
+    if (!safeStudentId && safeSchoolId && cleanRecipient) {
+      try {
+        const stMatch = await pool.query(
+          `SELECT id FROM students WHERE school_id=$1 AND (LOWER(email)=$2 OR LOWER(parent_email)=$2) LIMIT 1`,
+          [safeSchoolId, cleanRecipient]
+        );
+        if (stMatch.rows[0]?.id) {
+          safeStudentId = stMatch.rows[0].id;
+        }
+      } catch {}
+    }
+
+    if (safeSchoolId) {
+      await pool.query(
+        `INSERT INTO notification_logs(
+          id, school_id, attendance_session_id, student_id, channel, recipient,
+          recipient_type, template_key, subject, message, html_body, status,
+          attempts, max_attempts, scheduled_at, idempotency_key, created_at
+        ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,'QUEUED',0,$11,NOW(),$12,NOW())
+        ON CONFLICT(idempotency_key) DO NOTHING`,
+        [
+          crypto.randomUUID(),
+          safeSchoolId,
+          safeSessionId,
+          safeStudentId,
+          cleanRecipient,
+          recipientType,
+          templateKey,
+          rendered.subject,
+          rendered.text,
+          rendered.html,
+          env.emailMaxRetries || 4,
+          idempotencyKey
+        ]
+      );
+    }
+  } catch (_sqlErr: any) {
+    console.warn('[NotificationQueue] Error saving to notification_logs SQL:', _sqlErr?.message || _sqlErr);
+  }
 
   // 3. Mirror to Firestore if configured
   if (isFirebaseConfigured()) {

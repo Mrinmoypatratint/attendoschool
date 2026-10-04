@@ -1,6 +1,6 @@
 import { Router, Request } from 'express';
 import * as svc from '../services/timetableService';
-import { demoTeachers, demoTeacherAssignments, demoSubjects } from './schoolData';
+import { demoTeachers, demoTeacherAssignments, demoSubjects, demoClasses, demoSections } from './schoolData';
 import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
 import {
@@ -361,8 +361,8 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
         });
 
         if (query.day) list = list.filter(e => e.day_of_week === Number(query.day));
-        if (query.classId) list = list.filter(e => e.class_id === query.classId);
-        if (query.sectionId) list = list.filter(e => e.section_id === query.sectionId);
+        if (query.classId) list = list.filter(e => e.class_id === query.classId || String(e.class_number) === String(query.classId));
+        if (query.sectionId) list = list.filter(e => e.section_id === query.sectionId || String(e.section_name).toLowerCase() === String(query.sectionId).toLowerCase());
         if (query.teacherId) list = list.filter(e => e.teacher_id === query.teacherId || e.substitute_teacher_id === query.teacherId);
 
         list.sort((a, b) => (a.day_of_week - b.day_of_week) || (a.period_number - b.period_number));
@@ -376,8 +376,8 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
   // 3. Fallback to memory
   let filtered = memEntries.filter(e => (!e.school_id && isTestSchool(sid)) || (e.school_id && isSameSchool(e.school_id, sid)));
   if (query.day) filtered = filtered.filter(e => e.day_of_week === Number(query.day));
-  if (query.classId) filtered = filtered.filter(e => e.class_id === query.classId);
-  if (query.sectionId) filtered = filtered.filter(e => e.section_id === query.sectionId);
+  if (query.classId) filtered = filtered.filter(e => e.class_id === query.classId || String(e.class_number) === String(query.classId));
+  if (query.sectionId) filtered = filtered.filter(e => e.section_id === query.sectionId || String(e.section_name).toLowerCase() === String(query.sectionId).toLowerCase());
   if (query.teacherId) filtered = filtered.filter(e => e.teacher_id === query.teacherId || e.substitute_teacher_id === query.teacherId);
   filtered.sort((a, b) => a.day_of_week - b.day_of_week || a.period_number - b.period_number);
   return filtered;
@@ -425,6 +425,27 @@ router.post('/entries', requireAdmin, async (req, res) => {
   const subject = demoSubjects.find(s => s.id === d.subjectId);
   const altTeacher = d.altTeacherId ? demoTeachers.find(t => t.id === d.altTeacherId) : null;
 
+  // Resolve class and section info dynamically
+  let resolvedClassNumber: number | null = d.classNumber ? Number(d.classNumber) : null;
+  if (!resolvedClassNumber && d.classId) {
+    const foundCls = demoClasses.find(c => c.id === d.classId || String(c.class_number) === String(d.classId));
+    if (foundCls) resolvedClassNumber = Number(foundCls.class_number);
+    else {
+      const matchNum = String(d.classId).match(/\d+/);
+      if (matchNum) resolvedClassNumber = Number(matchNum[0]);
+    }
+  }
+
+  let resolvedSectionName: string | null = d.sectionName || null;
+  if (!resolvedSectionName && d.sectionId) {
+    const foundSec = demoSections.find(s => s.id === d.sectionId);
+    if (foundSec) resolvedSectionName = foundSec.name;
+    else {
+      const matchSec = String(d.sectionId).match(/-([a-zA-Z])$/);
+      if (matchSec) resolvedSectionName = matchSec[1].toUpperCase();
+    }
+  }
+
   const entry = {
     id: `ent-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
     school_id: sid || null,
@@ -440,9 +461,9 @@ router.post('/entries', requireAdmin, async (req, res) => {
     startTime: period?.start_time || period?.startTime || '',
     endTime: period?.end_time || period?.endTime || '',
     class_id: d.classId || null,
-    class_number: d.classNumber || null,
+    class_number: resolvedClassNumber,
     section_id: d.sectionId || null,
-    section_name: d.sectionName || null,
+    section_name: resolvedSectionName || 'A',
     subject_id: d.subjectId || null,
     subject_name: subject?.name || d.subjectName || null,
     teacher_id: d.teacherId || null,
