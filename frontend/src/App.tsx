@@ -2008,7 +2008,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/attendance-reports', 'Attendance', ClipboardCheck],
     ['/timetable', 'Timetable', CalendarDays],
     ['—', 'ACADEMICS'],
-    ['/academic-years', 'Academic Years', Clock],
+    ['/academic-years', 'Academic Calendar & Holidays', Clock],
     ['/subjects', 'Subjects', BookOpen],
     ['/promotion', 'Student Promotions', ArrowUpDown],
     ['—', 'COMMUNICATION'],
@@ -7892,6 +7892,28 @@ function Attendance(){
   const [loadingStatus, setLoadingStatus] = useState<boolean>(false);
   const [reattendanceSuccessMsg, setReattendanceSuccessMsg] = useState<string>('');
 
+  // Sunday / Gazetted Holiday Attendance Guard state (TC-ATT-010)
+  const [calendarGuard, setCalendarGuard] = useState<{
+    isInstructional: boolean;
+    reason?: string;
+    dayName?: string;
+  } | null>(null);
+  const [overrideGuard, setOverrideGuard] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!attendanceDate) return;
+    setOverrideGuard(false);
+    api.get(`/calendar/check-date?date=${attendanceDate}`)
+      .then(res => {
+        if (res.data?.success && res.data?.data) {
+          setCalendarGuard(res.data.data);
+        } else {
+          setCalendarGuard(null);
+        }
+      })
+      .catch(() => setCalendarGuard(null));
+  }, [attendanceDate]);
+
   // Modals state
   const [activeModal, setActiveModal] = useState<'EARLY_DEPARTURE' | 'LATE_ARRIVAL' | 'AUDIT_LOGS' | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -7947,6 +7969,10 @@ function Attendance(){
   });
 
   function initiateAttendancePreview(isReattendance = false) {
+    if (calendarGuard && !calendarGuard.isInstructional && !overrideGuard) {
+      alert(`Notice: Selected date (${attendanceDate}) is a declared non-instructional day (${calendarGuard.reason}). Attendance marking controls are disabled by default. Please click "Enable Marking Controls (Override)" if this is an authorized session.`);
+      return;
+    }
     if (!selectedClassId || !selectedSectionId) {
       alert('Validation Error: Please select both Class and Section.');
       return;
@@ -8608,6 +8634,42 @@ function Attendance(){
             <strong style={{ fontSize: 13.5 }}>{reattendanceSuccessMsg}</strong>
           </div>
           <button className="secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setReattendanceSuccessMsg('')}>✕</button>
+        </div>
+      )}
+
+      {/* Sunday / Gazetted Holiday Attendance Guard Banner (TC-ATT-010) */}
+      {calendarGuard && !calendarGuard.isInstructional && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 10,
+          padding: '14px 18px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
+        }} id="non-instructional-guard-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <AlertTriangle size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <div>
+              <b style={{ color: '#b91c1c', fontSize: 13.5 }}>
+                Selected date is a declared non-instructional day ({calendarGuard.reason || 'Holiday / Sunday'})
+              </b>
+              <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
+                Selected date is a declared non-instructional day (Holiday/Sunday). Attendance marking controls disabled by default.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setOverrideGuard(prev => !prev)}
+            style={{ fontSize: 12, padding: '6px 14px', fontWeight: 600 }}
+          >
+            {overrideGuard ? '🔒 Lock Attendance Controls' : '🔓 Enable Marking Controls (Override)'}
+          </button>
         </div>
       )}
 
@@ -11439,7 +11501,11 @@ function App(){return <Routes>
   <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
   <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
   <Route path="/people" element={<Navigate to="/students" replace />}/>
-  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+  <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
+  <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+  <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
+  <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
   <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
   <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
   <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
