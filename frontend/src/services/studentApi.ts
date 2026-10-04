@@ -23,8 +23,13 @@ export interface StudentProfile {
   parentPhone: string;
   parentEmail: string;
   dateOfBirth: string;
+  gender?: string;
   academicSession: string;
   photoUrl?: string;
+  pendingPhotoUrl?: string | null;
+  hasPendingPhotoApproval?: boolean;
+  photoApprovalStatus?: string;
+  photoRejectionReason?: string | null;
 }
 
 export interface StudentDashboardData {
@@ -178,5 +183,7 @@ export const studentApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/student/change-password', { currentPassword, newPassword }).then((r) => r.data),
   updatePhoto: (photoUrl: string) =>
-    api.put<{ success: boolean; photoUrl: string; message: string }>('/student/photo', { photoUrl }).then((r) => r.data)
+    api.put<{ success: boolean; photoUrl?: string; pendingPhotoUrl?: string; pendingApproval?: boolean; message: string }>('/student/photo', { photoUrl }).then((r) => r.data),
+  updateProfile: (data: { gender?: string; dateOfBirth?: string; address?: string }) =>
+    api.put<{ success: boolean; message: string }>('/student/profile', data).then((r) => r.data)
 };

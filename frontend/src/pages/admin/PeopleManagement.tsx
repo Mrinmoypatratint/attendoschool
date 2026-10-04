@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 
 export default function PeopleManagement() {
   const [tab, setTab] = useState<'students' | 'teachers'>('students');
@@ -447,7 +448,8 @@ export default function PeopleManagement() {
                   <th>Roll No</th>
                   <th>Adm No</th>
                   <th>Student Name</th>
-                  <th>Class & Section</th>
+                  <th>Class</th>
+                  <th>Section</th>
                   <th>Parent</th>
                   <th>SMS Mobile</th>
                   <th>Status</th>
@@ -471,11 +473,18 @@ export default function PeopleManagement() {
                       )}
                     </td>
                     <td>
-                      <b>{r.name}</b>
+                      <StudentProfileHoverCard student={r}>
+                        <b>{r.name}</b>
+                      </StudentProfileHoverCard>
                     </td>
                     <td>
                       <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : `Class ${r.class_number || r.class_name || '1'}`} — Section {r.section_name || 'A'}
+                        {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {String(r.section_name || r.section || 'A').replace(/^section\s*/i, '').trim() || 'A'}
                       </span>
                     </td>
                     <td>{r.parent_name || 'Parent'}</td>
@@ -489,7 +498,7 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={7} className="muted" style={{ padding: 28, textAlign: 'center' }}>
+                    <td colSpan={8} className="muted" style={{ padding: 28, textAlign: 'center' }}>
                       {loading ? 'Searching directory…' : 'No student records found matching this criteria.'}
                     </td>
                   </tr>
@@ -739,6 +748,27 @@ export default function PeopleManagement() {
                   </label>
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <label>Gender
+                    <select
+                      value={teacherForm.gender || ''}
+                      onChange={e => setTeacherForm({ ...teacherForm, gender: e.target.value })}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                  <label>Qualification
+                    <input
+                      placeholder="e.g. M.Sc, B.Ed"
+                      value={teacherForm.qualification || ''}
+                      onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
+                    />
+                  </label>
+                </div>
+
                 {/* Automatic Email Notice */}
                 <div style={{
                   padding: 12,
@@ -833,6 +863,10 @@ export default function PeopleManagement() {
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Designation</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.designation || 'Teacher'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Gender</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.gender || 'Not Specified'}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Mobile Contact</div>

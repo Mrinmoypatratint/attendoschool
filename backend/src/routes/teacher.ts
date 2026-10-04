@@ -1803,7 +1803,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       const q = await pool.query(
         `SELECT u.id, u.name, u.email, u.role, u.school_id,
                 tp.employee_id, COALESCE(tp.mobile, tp.phone) AS phone,
-                tp.address, tp.joining_date, tp.qualification, tp.photo_url
+                tp.address, tp.joining_date, tp.qualification, tp.photo_url, tp.gender
          FROM users u
          LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
          WHERE u.id = $1`,
@@ -1837,7 +1837,8 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
         address: 'Faculty Quarters, Campus Area',
         joining_date: '2023-07-01',
         qualification: 'M.Tech / M.Sc Computer Science',
-        photo_url: null
+        photo_url: null,
+        gender: 'Not Specified'
       };
     }
 
@@ -1877,6 +1878,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
       address: teacherData.address || 'Kolkata, West Bengal',
       qualification: teacherData.qualification || 'M.Tech / M.Sc Computer Science',
+      gender: teacherData.gender || 'Not Specified',
       joiningDate: teacherData.joining_date ? String(teacherData.joining_date).slice(0, 10) : '2023-08-01',
       photoUrl: teacherData.photo_url || '',
       department: 'Academic Faculty / Teaching',
@@ -1964,20 +1966,21 @@ r.put('/change-password', ...teacher, async (req: AuthRequest, res) => {
 // ── PUT /api/teacher/profile ──
 r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { phone, address, qualification } = req.body || {};
+  const { phone, address, qualification, gender } = req.body || {};
 
   try {
     const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
     const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
     await pool.query(
-      `INSERT INTO teacher_profiles (user_id, employee_id, phone, mobile, address, qualification)
-       VALUES ($1, $2, $3, $3, $4, $5)
+      `INSERT INTO teacher_profiles (user_id, employee_id, phone, mobile, address, qualification, gender)
+       VALUES ($1, $2, $3, $3, $4, $5, $6)
        ON CONFLICT (user_id) DO UPDATE SET
          phone = COALESCE($3, teacher_profiles.phone),
          mobile = COALESCE($3, teacher_profiles.mobile),
          address = COALESCE($4, teacher_profiles.address),
-         qualification = COALESCE($5, teacher_profiles.qualification)`,
-      [userId, empId, phone || null, address || null, qualification || null]
+         qualification = COALESCE($5, teacher_profiles.qualification),
+         gender = COALESCE($6, teacher_profiles.gender)`,
+      [userId, empId, phone || null, address || null, qualification || null, gender || null]
     );
 
     res.json({ success: true, message: 'Profile details updated successfully' });

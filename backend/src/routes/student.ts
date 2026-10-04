@@ -160,4 +160,15 @@ router.put('/photo', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// PUT /api/student/profile - Update student profile details (gender, date of birth, etc.)
+router.put('/profile', async (req: AuthRequest, res: Response) => {
+  try {
+    const { gender, dateOfBirth, address } = req.body || {};
+    const data = await svc.updateStudentProfile(req.user!.schoolId!, req.user!.id, { gender, dateOfBirth, address });
+    res.json(data);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message || 'Failed to update student profile' });
+  }
+});
+
 export default router;

@@ -19,6 +19,8 @@ import ParentCommunication from './pages/admin/ParentCommunication';
 import ParentPortal from './pages/parent/ParentPortal';
 import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
 import TeacherProfile from './pages/teacher/TeacherProfile';
+import PhotoApprove from './pages/admin/PhotoApprove';
+import LeaveApprove from './pages/admin/LeaveApprove';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
 import * as XLSX from 'xlsx';
@@ -30,7 +32,8 @@ import {
   UploadCloud, CheckSquare, Square, RefreshCw, Send, ShieldCheck, Mail, Server,
   Search, Sparkles, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
-  History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2
+  History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
+  Camera, CalendarCheck
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { StudentLayout } from './components/student/StudentLayout';
@@ -42,6 +45,7 @@ import { StudentExams } from './pages/student/StudentExams';
 import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
 import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
+import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import {
@@ -1633,10 +1637,14 @@ function Layout({children}:{children:React.ReactNode}){
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
+  const [reviewOpen, setReviewOpen] = useState(true);
 
-  // Close mobile drawer on route change
+  // Close mobile drawer on route change & keep review section open if active
   useEffect(() => {
     setMobileSidebarOpen(false);
+    if (loc.pathname.startsWith('/review')) {
+      setReviewOpen(true);
+    }
   }, [loc.pathname]);
 
   // ── Global Search State ──
@@ -1690,6 +1698,42 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }, [user?.role]);
 
+  // ── Admin Review Notifications ──
+  const [adminNotifs, setAdminNotifs] = useState<any[]>([]);
+  const [adminNotifOpen, setAdminNotifOpen] = useState(false);
+  const adminNotifRef = useRef<HTMLDivElement>(null);
+  const [pendingPhotoCount, setPendingPhotoCount] = useState(0);
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
+
+  const loadAdminNotifications = useCallback(async () => {
+    try {
+      const res = await api.get('/reviews/notifications');
+      if (res.data?.success) {
+        setAdminNotifs(res.data.notifications || []);
+        setPendingPhotoCount(res.data.pendingPhotosCount || 0);
+        setPendingLeaveCount(res.data.pendingLeavesCount || 0);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN')) {
+      loadAdminNotifications();
+      const interval = setInterval(loadAdminNotifications, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.role, loadAdminNotifications]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (adminNotifRef.current && !adminNotifRef.current.contains(e.target as Node)) {
+        setAdminNotifOpen(false);
+      }
+    }
+    if (adminNotifOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminNotifOpen]);
+
   useEffect(() => {
     if (user) {
       loadAcademicYears();
@@ -1709,6 +1753,7 @@ function Layout({children}:{children:React.ReactNode}){
       if (e.key === 'Escape') {
         setSearchOpen(false);
         setAyDropdownOpen(false);
+        setAdminNotifOpen(false);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -1865,6 +1910,10 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
+    ['review_group', 'Review', CheckSquare, [
+      ['/review/photos', 'Photo Approve', Camera],
+      ['/review/leaves', 'Leave Approve', CalendarCheck]
+    ]],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
@@ -1946,8 +1995,54 @@ function Layout({children}:{children:React.ReactNode}){
       </div>
       <div className="sidebar-nav-container">
         <nav>
-          {links.map(([p,l,I]:any,i:number)=>{
+          {links.map(([p,l,I,sub]:any,i:number)=>{
             if(p==='—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
+            if(sub && Array.isArray(sub)) {
+              const isChildActive = sub.some(([sp]:any) => loc.pathname === sp);
+              return (
+                <div key={`group-${p}-${l}`} className="sidebar-group-wrap" style={{ display: 'grid', gap: 2 }}>
+                  <button
+                    type="button"
+                    className={`sidebar-group-btn ${isChildActive ? 'nav-active-parent' : ''}`}
+                    onClick={() => setReviewOpen(prev => !prev)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '10px 14px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <I size={16}/> <span>{l}</span>
+                    </div>
+                    {reviewOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                  {reviewOpen && (
+                    <div style={{ display: 'grid', gap: 2, paddingLeft: 10, marginLeft: 16, borderLeft: '2px solid var(--border)' }}>
+                      {sub.map(([sp, sl, SubIcon]: any) => (
+                        <button
+                          key={`${sp}-${sl}`}
+                          type="button"
+                          className={loc.pathname === sp ? 'nav-active' : ''}
+                          onClick={() => { setMobileSidebarOpen(false); nav(sp); }}
+                          style={{
+                            fontSize: 13,
+                            padding: '8px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontWeight: loc.pathname === sp ? 600 : 500
+                          }}
+                        >
+                          <SubIcon size={14} /> <span>{sl}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
             return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>{ setMobileSidebarOpen(false); nav(p); }}>
               <I size={16}/> <span>{l}</span>
             </button>;
@@ -2182,12 +2277,125 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            <button className="header-icon-btn" title="Announcements & Notifications" onClick={()=>nav('/notifications')}>
-              <Bell size={16}/>
-              {(schoolInfo?.pendingCorrectionsCount > 0) && (
-                <span className="header-badge-num">{schoolInfo.pendingCorrectionsCount}</span>
+            {/* Connected Review Notifications Bell & Popover */}
+            <div className="super-notif-wrap" ref={adminNotifRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="header-icon-btn"
+                title="Photo & Leave Approval Requests"
+                onClick={() => { setAdminNotifOpen(prev => !prev); if (!adminNotifOpen) loadAdminNotifications(); }}
+                style={{ position: 'relative' }}
+              >
+                <Bell size={16} />
+                {(pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
+                  <span className="header-badge-num" style={{ background: '#ef4444' }}>
+                    {pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
+                  </span>
+                )}
+              </button>
+
+              {adminNotifOpen && (
+                <div className="super-notif-dropdown">
+                  <div className="super-notif-header">
+                    <div className="super-notif-title-row">
+                      <h4 className="super-notif-title">Notifications</h4>
+                      {(pendingPhotoCount + pendingLeaveCount > 0) && (
+                        <span className="super-notif-count-pill">
+                          {pendingPhotoCount + pendingLeaveCount} pending
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="super-notif-readall-btn"
+                        title="Review Submitted Photos"
+                        onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                      >
+                        <Camera size={12} />
+                        <span>Photos</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="super-notif-readall-btn"
+                        style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0' }}
+                        title="Review Leave Requests"
+                        onClick={() => { setAdminNotifOpen(false); nav('/review/leaves'); }}
+                      >
+                        <Calendar size={12} />
+                        <span>Leaves</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="super-notif-list">
+                    {adminNotifs.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo or leave approval requests.</div>
+                      </div>
+                    ) : (
+                      adminNotifs.map((n: any) => (
+                        <div
+                          key={n.id}
+                          className="super-notif-item unread"
+                          onClick={() => {
+                            setAdminNotifOpen(false);
+                            nav(n.link || '/review/photos');
+                          }}
+                        >
+                          {n.avatar ? (
+                            <img
+                              src={n.avatar}
+                              alt={n.applicantName || 'Applicant'}
+                              style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid #bfdbfe', flexShrink: 0 }}
+                            />
+                          ) : (
+                            <div className={`super-notif-icon-wrap ${n.type === 'PHOTO_APPROVAL' ? 'notif-photo' : 'notif-leave'}`}>
+                              {n.type === 'PHOTO_APPROVAL' ? <Camera size={17} /> : <Calendar size={17} />}
+                            </div>
+                          )}
+
+                          <div className="super-notif-body">
+                            <div className="super-notif-item-title">
+                              <span className="super-notif-item-title-text">{n.title}</span>
+                              <span className="super-notif-time">
+                                {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+                            <p className="super-notif-msg">{n.message}</p>
+                            <span className="super-notif-action-tag">
+                              Review & Verify →
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="super-notif-footer">
+                    <button
+                      type="button"
+                      className="super-notif-footer-link"
+                      onClick={() => { setAdminNotifOpen(false); nav('/review/photos'); }}
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Review Center</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="super-notif-footer-link"
+                      onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
+                    >
+                      <span>Settings & All Alerts →</span>
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
             <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
@@ -2336,13 +2544,33 @@ function Layout({children}:{children:React.ReactNode}){
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
             <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/teacher/profile')} title="View My Profile">
-              <div className="user-avatar">
-                {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative' }}>
+                <span style={{ position: 'absolute' }}>
+                  {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'TC'}
+                </span>
+                {user?.avatarUrl && (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative', zIndex: 1 }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div className="profile-info">
                 <span className="profile-name">{user.name}</span>
-                <span className="profile-role">{user.email}</span>
+                <span className="profile-role">{user.role === 'TEACHER' ? 'Teacher' : (user.role ? user.role.replace(/_/g, ' ') : user.email)}</span>
               </div>
+              <button 
+                className="header-icon-btn" 
+                title="Sign out" 
+                style={{ width: 28, height: 28, marginLeft: 4 }}
+                onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
+              >
+                <LogOut size={13} />
+              </button>
             </div>
           </div>
         </header>
@@ -2774,6 +3002,24 @@ function AdminHome(){
         </button>
       </div>
     </div>
+
+    {/* Alert Banner if Pending Photo Approvals */}
+    {(data?.pendingPhotosCount > 0) && (
+      <div className="admin-alert-banner" style={{ marginBottom: 14, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
+        <div className="alert-left">
+          <Camera size={20} color="#2563eb" />
+          <div>
+            <strong style={{ color: '#1e3a8a' }}>Student Profile Photo Submissions Pending Approval</strong>
+            <p style={{ color: '#1e40af', margin: 0, fontSize: 13 }}>
+              There {data.pendingPhotosCount === 1 ? 'is 1 photo' : `are ${data.pendingPhotosCount} photos`} submitted by students waiting for your verification.
+            </p>
+          </div>
+        </div>
+        <button className="alert-action-btn" onClick={() => nav('/review/photos')} style={{ background: '#2563eb', color: '#ffffff' }}>
+          Review Photos ({data.pendingPhotosCount}) →
+        </button>
+      </div>
+    )}
 
     {/* Alert Banner if Pending Corrections */}
     {pendingCorrections > 0 && (
@@ -3868,12 +4114,12 @@ function Students(){
     } catch {
       // Fallback: build locally
       const sample = [
-        { "First Name": "Aarav", "Last Name": "Sharma", "Full Name": "Aarav Sharma", "Admission Number": "ADM-2025-001", "Roll Number": "101", "Session": "2025-26", "Class": "Class 1", "Section": "A", "Parent Name": "Rajesh Sharma", "Parent Phone": "9876543210", "Parent Email": "rajesh@example.com", "Student Email": "aarav@school.edu" },
-        { "First Name": "Diya",  "Last Name": "Patel",  "Full Name": "Diya Patel",   "Admission Number": "ADM-2025-002", "Roll Number": "102", "Session": "2025-26", "Class": "L-KG",    "Section": "A", "Parent Name": "Kirit Patel",   "Parent Phone": "9876543211", "Parent Email": "kirit@example.com",  "Student Email": "" },
-        { "First Name": "Rohan", "Last Name": "Gupta",  "Full Name": "Rohan Gupta",  "Admission Number": "ADM-2025-003", "Roll Number": "103", "Session": "2025-26", "Class": "U-KG",    "Section": "B", "Parent Name": "Manoj Gupta",   "Parent Phone": "9876543212", "Parent Email": "manoj@example.com", "Student Email": "" },
+        { "First Name": "Aarav", "Last Name": "Sharma", "Full Name": "Aarav Sharma", "Admission Number": "ADM-2025-001", "Roll Number": "101", "Session": "2025-26", "Class": "Class 1", "Section": "A", "Gender": "Male", "Parent Name": "Rajesh Sharma", "Parent Phone": "9876543210", "Parent Email": "rajesh@example.com", "Student Email": "aarav@school.edu" },
+        { "First Name": "Diya",  "Last Name": "Patel",  "Full Name": "Diya Patel",   "Admission Number": "ADM-2025-002", "Roll Number": "102", "Session": "2025-26", "Class": "L-KG",    "Section": "A", "Gender": "Female", "Parent Name": "Kirit Patel",   "Parent Phone": "9876543211", "Parent Email": "kirit@example.com",  "Student Email": "" },
+        { "First Name": "Rohan", "Last Name": "Gupta",  "Full Name": "Rohan Gupta",  "Admission Number": "ADM-2025-003", "Roll Number": "103", "Session": "2025-26", "Class": "U-KG",    "Section": "B", "Gender": "Male", "Parent Name": "Manoj Gupta",   "Parent Phone": "9876543212", "Parent Email": "manoj@example.com", "Student Email": "" },
       ];
       const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [14,14,20,18,14,12,12,10,20,16,24,26].map(wch => ({ wch }));
+      ws['!cols'] = [14,14,20,18,14,12,12,10,12,20,16,24,26].map(wch => ({ wch }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
       XLSX.writeFile(wb, 'students_import_template.xlsx');
@@ -3920,6 +4166,7 @@ function Students(){
           const parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
           const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
           const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
+          const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
           // Class parsing: supports 'L-KG','U-KG','Class 1','1' etc.
@@ -3942,7 +4189,7 @@ function Students(){
           if (admissionNumber) seenAdm.add(admissionNumber);
 
           rowErrors.push(...rowErrs);
-          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
+          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, gender, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
         });
 
         setImportErrors(rowErrors);
@@ -3977,7 +4224,8 @@ function Students(){
       }));
       const res = await api.post('/students/bulk-import', {
         students: enrichedRows,
-        sessionId: sessionObj?.id || undefined
+        sessionId: sessionObj?.id || importSession || undefined,
+        session: importSession || undefined
       });
       alert(`Successfully imported ${res.data.count || enrichedRows.length} students${res.data.session ? ` into ${res.data.session}` : ''}!`);
       setImportOpen(false);
@@ -3986,8 +4234,27 @@ function Students(){
       setImportPreviewPage(1);
       setImportPreviewSearch('');
       setImportStep(1);
+
+      // Switch active session to imported session so students appear immediately
+      const targetSession = res.data.session || importSession || activeSession;
+      if (targetSession && targetSession !== activeSession) {
+        setActiveSession(targetSession);
+        try {
+          localStorage.setItem('attendo_academic_session', targetSession);
+          window.dispatchEvent(new CustomEvent('sessionChanged', { detail: targetSession }));
+        } catch {}
+      }
+
+      // Update rows immediately with imported items
+      if (Array.isArray(res.data.items) && res.data.items.length > 0) {
+        setRows(prev => {
+          const newIds = new Set(res.data.items.map((it: any) => it.id));
+          return [...res.data.items, ...prev.filter(r => !newIds.has(r.id))];
+        });
+      }
+
       setImportSession(''); setImportClass(''); setImportSection('');
-      load();
+      load(targetSession || activeSession);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to import students';
       const serverErrs = err?.response?.data?.errors;
@@ -4019,6 +4286,7 @@ function Students(){
       r.session,
       r.classLabel || r.classNumber,
       r.sectionName,
+      r.gender,
       r.parentPhone || r.parentSmsNumber,
       r.studentEmail
     ].filter(Boolean).join(' ').toLowerCase();
@@ -4367,9 +4635,9 @@ function Students(){
             <th>Adm No</th>
             <th>Student Name</th>
             <th>Class</th>
+            <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
-            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -4397,18 +4665,33 @@ function Students(){
                   <span className="muted" style={{ fontSize: 11 }}>—</span>
                 )}
               </td>
-              <td><b>{x.name}</b></td>
+              <td>
+                <StudentProfileHoverCard student={x} activeSession={activeSession}>
+                  <b>{x.name}</b>
+                </StudentProfileHoverCard>
+              </td>
               <td>
                 {(() => {
                   const cNum = Number(x.class_number);
                   const cId = String(x.class_id || '');
                   if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
                   if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
-                  if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
+                  if (!isNaN(cNum) && cNum > 0) return cNum;
                   const m = cId.match(/cls-(\d+)/);
-                  if (m) return `Class ${m[1]}`;
-                  return 'Class ' + (cNum || 1);
-                })()} — Section {x.section_name || 'A'}
+                  if (m) return m[1];
+                  const label = String(x.class_label || x.class_name || '');
+                  if (label) {
+                    const cleaned = label.replace(/^class\s*/i, '').trim();
+                    if (cleaned) return cleaned;
+                  }
+                  return cNum || 1;
+                })()}
+              </td>
+              <td>
+                {(() => {
+                  const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
+                  return raw.replace(/^section\s*/i, '').trim() || 'A';
+                })()}
               </td>
               <td>
                 <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
@@ -4421,15 +4704,6 @@ function Students(){
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
-              </td>
-              <td>
-                {x.student_email || x.email || x.parent_email ? (
-                  <span className="badge active" title={`Student portal login email: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>
-                    🎓 Student Portal
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Offline Only</span>
-                )}
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -4463,6 +4737,8 @@ function Students(){
                       parentEmail: x.parent_email || '',
                       classId: x.class_id,
                       sectionId: x.section_id,
+                      gender: x.gender || '',
+                      dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
                       loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
                       sendInviteEmail: true
                     });
@@ -4669,6 +4945,27 @@ function Students(){
           </label>
           <label>Admission Number
             <input placeholder="Admission Number (e.g. ADM-2025-001)" value={f.admissionNumber||''} onChange={e=>setF({...f,admissionNumber:e.target.value})}/>
+          </label>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>Gender
+            <select
+              value={f.gender || ''}
+              onChange={e => setF({ ...f, gender: e.target.value })}
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Date of Birth
+            <input
+              type="date"
+              value={f.dob || ''}
+              onChange={e => setF({ ...f, dob: e.target.value })}
+            />
           </label>
         </div>
         <label>Class
@@ -5007,7 +5304,7 @@ function Students(){
                 </div>
                 <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
                 <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Parent Phone, Student Email</span>
+                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Gender, Parent Name, Parent Phone, Parent Email, Student Email</span>
               </label>
               <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between' }}>
                 <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
@@ -5176,6 +5473,7 @@ function Students(){
                       <th style={{ minWidth: 110 }}>Session</th>
                       <th style={{ minWidth: 90 }}>Class</th>
                       <th style={{ minWidth: 80 }}>Section</th>
+                      <th style={{ minWidth: 90 }}>Gender</th>
                       <th style={{ minWidth: 130 }}>Parent Phone</th>
                       <th style={{ minWidth: 160 }}>Student Email</th>
                     </tr>
@@ -5183,7 +5481,7 @@ function Students(){
                   <tbody>
                     {displayedStudentPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={11} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No students match the current search or error filter.
                         </td>
                       </tr>
@@ -5220,6 +5518,7 @@ function Students(){
                             <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
+                            <td>{r.gender || '—'}</td>
                             <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
                               {r.parentPhone || r.parentSmsNumber || '—'}
                               {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
@@ -9408,7 +9707,8 @@ function NotificationCenter(){
   const [showPass,setShowPass]=useState(false);
   const [logs,setLogs]=useState<any[]>([]);
   const [analytics,setAnalytics]=useState<any>(null);
-  const [tab,setTab]=useState<'settings' | 'smtp' | 'templates' | 'analytics' | 'logs'>('settings');
+  const [reviewNotifs, setReviewNotifs] = useState<any[]>([]);
+  const [tab,setTab]=useState<'settings' | 'smtp' | 'templates' | 'analytics' | 'logs' | 'requests'>('settings');
   const [msg,setMsg]=useState('');
   const [templates,setTemplates]=useState<any[]>([]);
   const [testModal,setTestModal]=useState(false);
@@ -9439,6 +9739,15 @@ function NotificationCenter(){
     }
   }, [tab, selectedPreviewTpl]);
 
+  async function loadReviewQueue() {
+    try {
+      const res = await api.get('/reviews/notifications');
+      if (res.data?.success) {
+        setReviewNotifs(res.data.notifications || []);
+      }
+    } catch {}
+  }
+
   async function load(){
     try {
       const [a,b,c,d,e]=await Promise.all([
@@ -9453,6 +9762,7 @@ function NotificationCenter(){
       setAnalytics(c.data);
       setTemplates(d.data);
       if (e.data) setSmtp(e.data);
+      loadReviewQueue();
     } catch {}
   }
 
@@ -9513,6 +9823,7 @@ function NotificationCenter(){
       <button className={tab==='templates'?'tab-active':''} onClick={()=>setTab('templates')}>📑 Templates & Live Preview</button>
       <button className={tab==='analytics'?'tab-active':''} onClick={()=>setTab('analytics')}>Analytics</button>
       <button className={tab==='logs'?'tab-active':''} onClick={()=>setTab('logs')}>Delivery logs</button>
+      <button className={tab==='requests'?'tab-active':''} onClick={()=>setTab('requests')}>📸 Pending Approvals {reviewNotifs.length > 0 ? `(${reviewNotifs.length})` : ''}</button>
     </div>
 
     {msg && <div className="success" style={{ marginBottom: 16 }}>{msg}</div>}
@@ -9987,6 +10298,91 @@ function NotificationCenter(){
             ))}
           </tbody>
         </table>
+      </div>
+    )}
+
+    {/* TAB 6: PENDING APPROVAL REQUESTS */}
+    {tab==='requests'&&(
+      <div className="panel" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 17 }}>Administrative Approval Requests</h3>
+            <p className="muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
+              Live queue of photo approval requests and leave applications awaiting verification.
+            </p>
+          </div>
+          <button className="small-btn" onClick={() => loadReviewQueue()}>
+            <RefreshCw size={12} /> Refresh Queue
+          </button>
+        </div>
+
+        {reviewNotifs.length === 0 ? (
+          <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <CheckCircle2 size={32} style={{ color: '#10B981', margin: '0 auto 8px', display: 'block' }} />
+            <p style={{ margin: 0, fontWeight: 600 }}>All review queues are clear!</p>
+            <span style={{ fontSize: 12.5, opacity: 0.8 }}>No pending student photo submissions or leave requests.</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {reviewNotifs.map((item: any) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {item.avatar ? (
+                    <img
+                      src={item.avatar}
+                      alt={item.applicantName}
+                      style={{ width: 46, height: 46, borderRadius: 8, objectFit: 'cover', border: '1px solid #bfdbfe' }}
+                    />
+                  ) : (
+                    <div style={{ width: 46, height: 46, borderRadius: 8, background: '#EFF6FF', display: 'grid', placeItems: 'center', color: '#2563EB' }}>
+                      {item.type === 'PHOTO_APPROVAL' ? <Camera size={20} /> : <Calendar size={20} />}
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <strong style={{ fontSize: 14 }}>{item.applicantName}</strong>
+                      <span className="badge" style={{ fontSize: 11, background: item.type === 'PHOTO_APPROVAL' ? '#EFF6FF' : '#FEF3C7', color: item.type === 'PHOTO_APPROVAL' ? '#1D4ED8' : '#92400E' }}>
+                        {item.type === 'PHOTO_APPROVAL' ? 'Photo Submission' : 'Leave Request'}
+                      </span>
+                    </div>
+                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                      {item.message}
+                    </p>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      Submitted {item.createdAt ? new Date(item.createdAt).toLocaleString() : 'recently'}
+                    </span>
+                  </div>
+                </div>
+
+                <a
+                  href={`#${item.link}`}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    background: '#2563EB',
+                    color: '#FFF',
+                    textDecoration: 'none',
+                    fontSize: 13,
+                    fontWeight: 600
+                  }}
+                >
+                  Review Request →
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     )}
 
@@ -10621,6 +11017,11 @@ function App(){return <Routes>
   <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
   <Route path="/offline-attendance" element={<RoleGuard roles={['TEACHER']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
+  <Route path="/review/photos" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+  <Route path="/review/leaves" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+  <Route path="/review-photos" element={<Navigate to="/review/photos" replace/>}/>
+  <Route path="/review-leaves" element={<Navigate to="/review/leaves" replace/>}/>
+  <Route path="/review" element={<Navigate to="/review/photos" replace/>}/>
   <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
   <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
   <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
