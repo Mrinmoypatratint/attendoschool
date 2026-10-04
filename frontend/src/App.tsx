@@ -3125,23 +3125,30 @@ function TeacherHome(){
   const [todaySessions,setTodaySessions]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
 
-  useEffect(()=>{
-    async function loadSchedule() {
-      try {
-        const [routineRes, historyRes] = await Promise.all([
-          api.get('/teacher/routine/today').catch(()=>({data:[]})),
-          api.get('/teacher/attendance/history').catch(()=>({data:[]}))
-        ]);
-        setR(Array.isArray(routineRes.data) ? routineRes.data : []);
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
-        setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
-      } finally {
-        setLoading(false);
-      }
+  async function loadSchedule(showSpinner = true) {
+    if (showSpinner) setLoading(true);
+    try {
+      const [routineRes, historyRes] = await Promise.all([
+        api.get('/teacher/routine/today').catch(() => ({ data: [] })),
+        api.get('/teacher/attendance/history').catch(() => ({ data: [] }))
+      ]);
+      setR(Array.isArray(routineRes.data) ? routineRes.data : []);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
+      setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
+    } finally {
+      setLoading(false);
     }
-    loadSchedule();
-  },[]);
+  }
+
+  const fetchTodayRoutine = (showSpinner = true) => loadSchedule(showSpinner);
+
+  useEffect(() => {
+    loadSchedule(true);
+    const onFocus = () => loadSchedule(false);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   // Helper to find if routine class has already had attendance taken today
   const getRoutineAttendance = (item: any) => {
@@ -3164,7 +3171,17 @@ function TeacherHome(){
     </div>
     <div className="panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
+          <button
+            onClick={() => fetchTodayRoutine(true)}
+            type="button"
+            title="Refresh today's routine"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+          >
+            <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
+          </button>
+        </div>
         <a href="#/timetable" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
           View Full Weekly Timetable →
         </a>

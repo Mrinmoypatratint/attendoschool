@@ -28,6 +28,7 @@ import {
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
+export const schoolStaff = reader;
 
 /**
  * Normalizes academic session strings into a canonical format: "YYYY-YYYY"
