@@ -1752,6 +1752,52 @@ r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
  res.json({success:true});
 });
 
+export function normalizeToDdMmYyyy(val: any): string | null {
+  if (!val) return null;
+  // If Excel serial number (e.g. 35000 -> date)
+  if (typeof val === 'number' || (/^\d{4,5}$/.test(String(val).trim()) && !String(val).includes('-') && !String(val).includes('/'))) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 1000 && num < 60000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const y = String(date.getUTCFullYear());
+        return `${d}-${m}-${y}`;
+      }
+    }
+  }
+
+  const s = String(val).trim();
+  // Check DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmyMatch) {
+    const d = dmyMatch[1].padStart(2, '0');
+    const m = dmyMatch[2].padStart(2, '0');
+    const y = dmyMatch[3];
+    return `${d}-${m}-${y}`;
+  }
+
+  // Check YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (ymdMatch) {
+    const y = ymdMatch[1];
+    const m = ymdMatch[2].padStart(2, '0');
+    const d = ymdMatch[3].padStart(2, '0');
+    return `${d}-${m}-${y}`;
+  }
+
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, '0');
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const y = String(parsed.getFullYear());
+    return `${d}-${m}-${y}`;
+  }
+
+  return s;
+}
+
 // GET /teachers/template — standardized Excel import template
 r.get('/teachers/template', ...reader, (_req, res) => {
   const XLSX = require('xlsx');
@@ -1762,6 +1808,8 @@ r.get('/teachers/template', ...reader, (_req, res) => {
       'Last Name': 'Verma',
       'Full Name(Automatically generated)': 'Sunita Verma',
       'Email_id': 'sunita.v@school.local',
+      'Gender': 'Female',
+      'Date_of_Birth': '15-08-1990',
       'Class': 'Class 10',
       'Section': 'A',
       'Status': 'Active',
@@ -1773,6 +1821,8 @@ r.get('/teachers/template', ...reader, (_req, res) => {
       'Last Name': 'Mishra',
       'Full Name(Automatically generated)': 'Alok Mishra',
       'Email_id': 'alok.m@school.local',
+      'Gender': 'Male',
+      'Date_of_Birth': '22-04-1988',
       'Class': 'Class 9',
       'Section': 'B',
       'Status': 'Active',
@@ -1784,6 +1834,8 @@ r.get('/teachers/template', ...reader, (_req, res) => {
       'Last Name': 'Sengupta',
       'Full Name(Automatically generated)': 'Rekha Sengupta',
       'Email_id': 'rekha.s@school.local',
+      'Gender': 'Female',
+      'Date_of_Birth': '10-12-1992',
       'Class': 'Class 8',
       'Section': 'A',
       'Status': 'Active',
@@ -1791,7 +1843,7 @@ r.get('/teachers/template', ...reader, (_req, res) => {
     }
   ];
   const ws = XLSX.utils.json_to_sheet(sample);
-  ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
+  ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Teachers Import Template');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -1823,6 +1875,8 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           employee_id: dt.employee_id || dt.employeeId || '',
           mobile: dt.mobile || dt.phone || '',
           gender: dt.gender || '',
+          dob: dt.dob || dt.date_of_birth || '',
+          date_of_birth: dt.dob || dt.date_of_birth || '',
           school_id: docSchoolId,
           schoolId: docSchoolId,
           is_active: dt.is_active !== false,
@@ -1868,6 +1922,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     email, password, employeeId: rawEmp, saviorNo, Savior_No,
     mobile: rawMobile, designation: rawDesig,
     gender: rawGender, qualification: rawQual,
+    dob: rawDob, dateOfBirth: rawDateOfBirth, date_of_birth: rawDate_of_birth,
     classId, sectionId, sendInviteEmail=true
   } = req.body;
 
@@ -1880,6 +1935,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const designation = String(rawDesig || 'Teacher').trim();
   const gender = String(rawGender || req.body?.gender || '').trim() || null;
   const qualification = String(rawQual || req.body?.qualification || '').trim() || null;
+  const rawDobInput = rawDob || rawDateOfBirth || rawDate_of_birth || req.body?.dob || req.body?.date_of_birth;
+  const dob = rawDobInput ? normalizeToDdMmYyyy(rawDobInput) : null;
 
   if (!name || !cleanEmail || !employeeId) {
     return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
@@ -1966,6 +2023,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         savior_no: employeeId,
         designation,
         gender: gender || null,
+        dob: dob || null,
+        date_of_birth: dob || null,
         mobile: mobile || '—',
         email_status: emailDeliveryStatus,
         is_active: true,
@@ -2033,6 +2092,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     savior_no: employeeId,
     designation,
     gender: gender || null,
+    dob: dob || null,
+    date_of_birth: dob || null,
     mobile: mobile || '—',
     email_status: emailDeliveryStatus,
     is_active: true,
@@ -2156,6 +2217,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const designation = getVal(['Designation', 'designation']) || 'Teacher';
     const status = getVal(['Status', 'status']) || 'Active';
     const rawMobile = getVal(['Mobile', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
+    const gender = getVal(['Gender', 'gender', 'Sex', 'sex']) || null;
+    const rawDob = getVal(['Date_of_Birth', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
+    const dob = rawDob ? normalizeToDdMmYyyy(rawDob) : null;
 
     // Validation engine:
     if (!name) errors.push({ row: rowNum, field: 'First Name', message: 'First Name or Teacher Name is required' });
@@ -2188,6 +2252,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         name,
         email,
         mobile: rawMobile || '9876500000',
+        gender,
+        dob,
+        date_of_birth: dob,
         designation,
         status,
         class: rawClass,
@@ -2275,6 +2342,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         employee_id: t.saviorNo,
         savior_no: t.saviorNo,
         mobile: t.mobile,
+        gender: t.gender || null,
+        dob: t.dob || null,
+        date_of_birth: t.dob || null,
         designation: t.designation,
         class_name: t.class,
         section_name: t.section,
@@ -2317,6 +2387,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       employee_id: t.saviorNo,
       savior_no: t.saviorNo,
       mobile: t.mobile,
+      gender: t.gender || null,
+      dob: t.dob || null,
+      date_of_birth: t.dob || null,
       designation: t.designation,
       class_name: t.class,
       section_name: t.section,
@@ -2419,6 +2492,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const cleanEmail = email ? String(email).trim().toLowerCase() : (existingDocData.email || demoTeachers[idx]?.email || '');
   const rawGender = req.body.gender;
   const resolvedGender = rawGender !== undefined ? (rawGender ? String(rawGender).trim() : null) : (existingDocData.gender || demoTeachers[idx]?.gender || null);
+  const rawDob = req.body.dob !== undefined ? req.body.dob : (req.body.date_of_birth !== undefined ? req.body.date_of_birth : req.body.dateOfBirth);
+  const resolvedDob = rawDob !== undefined ? (rawDob ? normalizeToDdMmYyyy(rawDob) : null) : (existingDocData.dob || existingDocData.date_of_birth || demoTeachers[idx]?.dob || null);
 
   try {
     await pool.query(
@@ -2440,6 +2515,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     mobile: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
     phone: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
     gender: resolvedGender,
+    dob: resolvedDob,
+    date_of_birth: resolvedDob,
     school_id: resolvedSchoolId,
     schoolId: resolvedSchoolId,
     status: resolvedStatus,

@@ -28,6 +28,8 @@ export interface TeacherHoverData {
   mobile?: string;
   phone?: string;
   gender?: string;
+  dob?: string;
+  date_of_birth?: string;
   qualification?: string;
   joining_date?: string;
   joiningDate?: string;
@@ -93,6 +95,7 @@ export function TeacherProfileHoverCard({
   const email = teacher.email || '—';
   const mobile = teacher.mobile || teacher.phone || '—';
   const genderStr = teacher.gender && teacher.gender.trim() ? teacher.gender : 'Not Specified';
+  const dobStr = teacher.dob || teacher.date_of_birth || '—';
   const qualification = teacher.qualification || 'Faculty Member';
   const address = teacher.address;
   const isActive = teacher.is_active !== false && teacher.active !== false && teacher.status !== 'INACTIVE';
@@ -367,11 +370,11 @@ export function TeacherProfileHoverCard({
                 {/* Divider */}
                 <div style={{ height: 1, backgroundColor: '#f1f5f9', margin: '8px 0' }} />
 
-                {/* Personal & Professional Details 2-Column Grid */}
+                {/* Personal & Professional Details Grid */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '8px 10px',
                     backgroundColor: '#f8fafc',
                     padding: '9px 11px',
@@ -393,6 +396,22 @@ export function TeacherProfileHoverCard({
                       }}
                     >
                       {genderStr}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                      Date of Birth
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: '#1e293b',
+                        marginTop: 1
+                      }}
+                    >
+                      {dobStr}
                     </div>
                   </div>
 

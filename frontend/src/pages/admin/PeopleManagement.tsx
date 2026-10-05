@@ -1,9 +1,61 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
+
+/* ────── Teacher DOB Validation & Formatting Helpers ────── */
+function isValidDdMmYyyy(val: string): boolean {
+  if (!val || typeof val !== 'string') return false;
+  const match = val.trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return false;
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1920 || year > new Date().getFullYear()) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function toDdMmYyyy(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'number' || (/^\d{4,5}$/.test(String(val).trim()) && !String(val).includes('-') && !String(val).includes('/'))) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 1000 && num < 60000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const y = String(date.getUTCFullYear());
+        return `${d}-${m}-${y}`;
+      }
+    }
+  }
+  const s = String(val).trim();
+  const dmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmy) {
+    return `${dmy[1].padStart(2, '0')}-${dmy[2].padStart(2, '0')}-${dmy[3]}`;
+  }
+  const ymd = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (ymd) {
+    return `${ymd[3].padStart(2, '0')}-${ymd[2].padStart(2, '0')}-${ymd[1]}`;
+  }
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) {
+    const d = String(dt.getDate()).padStart(2, '0');
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const y = String(dt.getFullYear());
+    return `${d}-${m}-${y}`;
+  }
+  return s;
+}
 
 export default function PeopleManagement() {
   const [tab, setTab] = useState<'students' | 'teachers'>('students');
@@ -75,6 +127,8 @@ export default function PeopleManagement() {
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
+        'Gender': r.gender || '',
+        'Date_of_Birth': r.dob || r.date_of_birth || '',
         'Class': r.class_name || r.class || '',
         'Section': r.section_name || r.section || '',
         'Status': (r.is_active !== false && r.active !== false) ? 'Active' : 'Inactive',
@@ -130,6 +184,10 @@ export default function PeopleManagement() {
   // Teacher Addition
   async function handleAddTeacher(e: React.FormEvent) {
     e.preventDefault();
+    if (teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob)) {
+      alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).');
+      return;
+    }
     setSavingTeacher(true);
     try {
       const firstName = String(teacherForm.firstName || '').trim();
@@ -141,7 +199,10 @@ export default function PeopleManagement() {
         lastName,
         name: fullName,
         fullName,
-        employeeId: teacherForm.employeeId || teacherForm.saviorNo
+        employeeId: teacherForm.employeeId || teacherForm.saviorNo,
+        gender: teacherForm.gender || '',
+        dob: teacherForm.dob ? toDdMmYyyy(teacherForm.dob) : '',
+        date_of_birth: teacherForm.dob ? toDdMmYyyy(teacherForm.dob) : ''
       };
 
       const res = await api.post('/teachers', payload);
@@ -161,28 +222,17 @@ export default function PeopleManagement() {
   }
 
   // Teacher Bulk Template Download
-  async function downloadTeacherTemplate() {
-    try {
-      const res = await api.get('/teachers/template', { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'teachers_import_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Local fallback with exact requested headers
-      const sample = [
-        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
-      ];
-      const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-      XLSX.writeFile(wb, "teachers_import_template.xlsx");
-    }
+  function downloadTeacherTemplate() {
+    const sample = [
+      { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
+    XLSX.writeFile(wb, "teachers_import_template.xlsx");
   }
 
   // Teacher Excel Ingestion
@@ -209,6 +259,9 @@ export default function PeopleManagement() {
           const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
           const email = String(r['Email_id'] || r['Email ID'] || r['Email'] || r['email'] || `teacher${idx+1}@school.local`).toLowerCase().trim();
           const mobile = String(r['Mobile'] || r['Phone'] || r['mobile'] || '9876500000').trim();
+          const gender = String(r['Gender'] || r['gender'] || r['Sex'] || r['sex'] || '').trim();
+          const rawDob = r['Date_of_Birth'] || r['Date of Birth'] || r['date_of_birth'] || r['DOB'] || r['dob'] || '';
+          const dob = toDdMmYyyy(rawDob);
           const designation = String(r['Designation'] || r['designation'] || 'Teacher').trim();
           const status = String(r['Status'] || r['status'] || 'Active').trim();
           const className = String(r['Class'] || r['class'] || '').trim();
@@ -221,6 +274,8 @@ export default function PeopleManagement() {
             name,
             email,
             mobile,
+            gender,
+            dob,
             designation,
             status,
             class: className,
@@ -768,12 +823,13 @@ export default function PeopleManagement() {
                   />
                 </label>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                {/* Row 1: Gender & Date of Birth */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <label>Gender
                     <select
                       value={teacherForm.gender || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, gender: e.target.value })}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Gender</option>
                       <option value="Male">Male</option>
@@ -781,11 +837,78 @@ export default function PeopleManagement() {
                       <option value="Other">Other</option>
                     </select>
                   </label>
+                  <label>Date of Birth <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
+                      <input
+                        type="text"
+                        placeholder="DD-MM-YYYY (e.g. 15-08-1990)"
+                        maxLength={10}
+                        value={teacherForm.dob || ''}
+                        onChange={e => {
+                          let val = e.target.value.replace(/[^0-9-]/g, '');
+                          const rawDigits = val.replace(/-/g, '');
+                          if (rawDigits.length <= 8 && !val.includes('-')) {
+                            if (rawDigits.length > 4) {
+                              val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
+                            } else if (rawDigits.length > 2) {
+                              val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
+                            }
+                          }
+                          setTeacherForm({ ...teacherForm, dob: val });
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 34px 8px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob) ? '#ef4444' : 'var(--border)'}`,
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <input
+                        type="date"
+                        title="Select from date picker"
+                        style={{
+                          position: 'absolute',
+                          right: 8,
+                          width: 22,
+                          height: 22,
+                          opacity: 0,
+                          cursor: 'pointer',
+                          zIndex: 2
+                        }}
+                        onChange={e => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value.split('-');
+                            setTeacherForm({ ...teacherForm, dob: `${d}-${m}-${y}` });
+                          }
+                        }}
+                      />
+                      <Calendar
+                        size={16}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          color: '#64748b',
+                          pointerEvents: 'none'
+                        }}
+                      />
+                    </div>
+                    {teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob) && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Strict format required: DD-MM-YYYY (e.g. 15-08-1990)
+                      </span>
+                    )}
+                  </label>
+                </div>
+
+                {/* Row 2: Designation & Mobile Number */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <label>Designation
                     <input
                       placeholder="e.g. Senior Teacher, TGT Science"
                       value={teacherForm.designation || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, designation: e.target.value })}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                   </label>
                   <label>Mobile Number
@@ -793,30 +916,20 @@ export default function PeopleManagement() {
                       placeholder="10-digit mobile number"
                       value={teacherForm.mobile || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, mobile: e.target.value })}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                   </label>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <label>Gender
-                    <select
-                      value={teacherForm.gender || ''}
-                      onChange={e => setTeacherForm({ ...teacherForm, gender: e.target.value })}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </label>
-                  <label>Qualification
-                    <input
-                      placeholder="e.g. M.Sc, B.Ed"
-                      value={teacherForm.qualification || ''}
-                      onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
-                    />
-                  </label>
-                </div>
+                {/* Row 3: Qualification */}
+                <label>Qualification
+                  <input
+                    placeholder="e.g. M.Sc, B.Ed"
+                    value={teacherForm.qualification || ''}
+                    onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                </label>
 
                 {/* Automatic Email Notice */}
                 <div style={{
@@ -918,6 +1031,10 @@ export default function PeopleManagement() {
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.gender || 'Not Specified'}</div>
                   </div>
                   <div>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Date of Birth</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.dob || 'Not Specified'}</div>
+                  </div>
+                  <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Mobile Contact</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.mobile || '—'}</div>
                   </div>
@@ -975,7 +1092,7 @@ export default function PeopleManagement() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: 12, color: '#475569' }}>
-                Required headers: <code>Savior_No</code>, <code>Fist Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
+                Required headers: <code>Savior_No</code>, <code>Fist Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Gender</code>, <code>Date_of_Birth</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
               </span>
               <button
                 type="button"
@@ -1090,7 +1207,7 @@ export default function PeopleManagement() {
 
                 {/* ── PREVIEW TABLE ── */}
                 <div className="preview-table-container" style={{ flex: 1, maxHeight: 'calc(100vh - 350px)', minHeight: 340, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 6 }}>
-                  <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
+                  <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <th style={{ width: 44, textAlign: 'center' }}>#</th>
@@ -1099,6 +1216,8 @@ export default function PeopleManagement() {
                         <th>Last Name</th>
                         <th>Full Name</th>
                         <th>Email ID</th>
+                        <th>Gender</th>
+                        <th>Date of Birth</th>
                         <th>Designation</th>
                         <th>Class & Section</th>
                         <th>Status</th>
@@ -1108,7 +1227,7 @@ export default function PeopleManagement() {
                     <tbody>
                       {displayedTeacherPreviewRows.length === 0 ? (
                         <tr>
-                          <td colSpan={10} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                             No teachers match the current search filter.
                           </td>
                         </tr>
@@ -1123,6 +1242,24 @@ export default function PeopleManagement() {
                               <td>{r.lastName || '—'}</td>
                               <td><b>{r.name}</b></td>
                               <td>{r.email}</td>
+                              <td>
+                                {r.gender ? (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
+                                    color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
+                                    border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  }}>
+                                    {r.gender}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td>{r.dob || '—'}</td>
                               <td>{r.designation || 'Teacher'}</td>
                               <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
                               <td><span className="badge active">{r.status || 'Active'}</span></td>
@@ -1290,6 +1427,8 @@ export default function PeopleManagement() {
                     <th>Last Name</th>
                     <th>Full Name(Automatically generated)</th>
                     <th>Email_id</th>
+                    <th>Gender</th>
+                    <th>Date of Birth</th>
                     <th>Class</th>
                     <th>Section</th>
                     <th>Status</th>
@@ -1304,6 +1443,14 @@ export default function PeopleManagement() {
                       <td>{r['Last Name'] || '—'}</td>
                       <td><b>{r['Full Name(Automatically generated)']}</b></td>
                       <td>{r['Email_id']}</td>
+                      <td>
+                        {r['Gender'] ? (
+                          <span className={`badge ${String(r['Gender']).toLowerCase() === 'female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
+                            {r['Gender']}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td>{r['Date_of_Birth'] ? <code>{r['Date_of_Birth']}</code> : '—'}</td>
                       <td>{r['Class'] || '—'}</td>
                       <td>{r['Section'] || '—'}</td>
                       <td><span className="badge active">{r['Status']}</span></td>
