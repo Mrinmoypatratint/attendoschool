@@ -508,6 +508,7 @@ router.post('/login', async (req, res) => {
               fsUserSid === String(instituteId) ||
               isSameSchool(fsUserSid, resolvedInstituteId) ||
               isSameSchool(fsUserSid, String(instituteId)) ||
+              (isTintSchool(fsUserSid) && (isTintSchool(resolvedInstituteId) || isTintSchool(String(instituteId)))) ||
               (selectedSchoolCode && String(fUser.schoolCode || '').toUpperCase() === selectedSchoolCode.toUpperCase());
 
             if (!matches) {
@@ -531,8 +532,8 @@ router.post('/login', async (req, res) => {
           const userPayload: any = {
             id: fUser.id,
             schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
-            schoolName: schoolName || selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
-            schoolCode: schoolCode || selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
+            schoolName: schoolName || selectedSchoolName || (isTintSchool(fUser.schoolId) ? 'TINT School' : (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus')),
+            schoolCode: schoolCode || selectedSchoolCode || (isTintSchool(fUser.schoolId) ? 'TINT-187' : (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH')),
             name: fUser.name,
             email: fUser.email,
             role
@@ -561,15 +562,16 @@ router.post('/login', async (req, res) => {
       !isSameSchool(demo.schoolId, resolvedInstituteId) &&
       !isSameSchool(demo.schoolId, instituteId) &&
       demo.schoolId !== resolvedInstituteId &&
-      !(isTestSchool(demo.schoolId) && isTestSchool(instituteId))
+      !(isTestSchool(demo.schoolId) && isTestSchool(instituteId)) &&
+      !(isTintSchool(demo.schoolId) && (isTintSchool(instituteId) || isTintSchool(resolvedInstituteId)))
     ) {
       return res.status(401).json({ message: 'Account does not belong to the selected institute' });
     }
 
-    const demoSchoolObj = demoSchools.find(s => s.id === demo.schoolId || s.code === demo.schoolId);
-    const resolvedSchoolId = demo.schoolId || resolvedInstituteId || '00000000-0000-0000-0000-000000000001';
-    const resolvedSchoolName = demoSchoolObj?.name || selectedSchoolName || (isTestSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus');
-    const resolvedSchoolCode = demoSchoolObj?.code || selectedSchoolCode || (isTestSchool(resolvedSchoolId) ? 'GIS001' : 'SCH');
+    const demoSchoolObj = demoSchools.find(s => s.id === demo.schoolId || s.code === demo.schoolId || isSameSchool(s.id, demo.schoolId));
+    const resolvedSchoolId = canonicalSchoolId(demo.schoolId) || demo.schoolId || resolvedInstituteId || '00000000-0000-0000-0000-000000000001';
+    const resolvedSchoolName = selectedSchoolName || demoSchoolObj?.name || (isTintSchool(resolvedSchoolId) ? 'TINT School' : (isTestSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus'));
+    const resolvedSchoolCode = selectedSchoolCode || demoSchoolObj?.code || (isTintSchool(resolvedSchoolId) ? 'TINT-187' : (isTestSchool(resolvedSchoolId) ? 'GIS001' : 'SCH'));
 
     const userPayload: any = {
       id: demo.id,

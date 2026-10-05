@@ -36,11 +36,11 @@ router.get('/', async (req: Request, res: Response) => {
     const from = String(req.query.from || startOfMonth);
     const to = String(req.query.to || today);
     if (!sid) {
-      return res.json({ present: 0, absent: 0, marked: 0, percentage: 0 });
+      return res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
     }
     res.json(await attendanceSummary(sid, from, to));
   } catch (_e: any) {
-    res.json({ present: 0, absent: 0, marked: 0, percentage: 0 });
+    res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
   }
 });
 
@@ -56,7 +56,7 @@ router.get('/summary', async (req: Request, res: Response) => {
     }
     res.json(await attendanceSummary(sid, from, to));
   } catch (_e: any) {
-    res.json({ present: 0, absent: 0, marked: 0, percentage: 0 });
+    res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
   }
 });
 
@@ -137,7 +137,7 @@ router.get('/export/csv', async (req: Request, res: Response) => {
       records = [];
     }
 
-    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Sessions', 'Attendance Rate (%)'];
+    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Left Early Days', 'Total Sessions', 'Attendance Rate (%)'];
     const lines = [header.join(',')];
     for (const r of records) {
       lines.push([
@@ -147,6 +147,7 @@ router.get('/export/csv', async (req: Request, res: Response) => {
         `"${String(r.section_name || '').replace(/"/g, '""')}"`,
         r.present_days ?? 0,
         r.absent_days ?? 0,
+        r.left_early_days ?? 0,
         r.marked_days ?? 0,
         `${r.attendance_percentage ?? 0}%`
       ].join(','));
@@ -267,6 +268,7 @@ router.post('/import-offline', async (req: Request, res: Response) => {
     let absent = 0;
     let late = 0;
     let halfDay = 0;
+    let leftEarly = 0;
 
     const normalizedRecords: any[] = [];
     for (const r of records) {
@@ -282,6 +284,10 @@ router.post('/import-offline', async (req: Request, res: Response) => {
         status = 'LATE';
         isPresent = true;
         late++;
+      } else if (rawStatus === 'LE' || rawStatus === 'LEFT_EARLY' || rawStatus === 'LEFT EARLY' || rawStatus === 'EARLY') {
+        status = 'LEFT_EARLY';
+        isPresent = true;
+        leftEarly++;
       } else if (rawStatus === 'HD' || rawStatus === 'HALF_DAY' || rawStatus === 'HALF DAY') {
         status = 'HALF_DAY';
         isPresent = true;

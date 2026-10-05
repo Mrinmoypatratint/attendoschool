@@ -1,4 +1,4 @@
-import {useEffect,useState,useRef,useCallback} from 'react';
+import {useEffect,useState,useRef,useCallback,useMemo} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
@@ -3952,6 +3952,33 @@ function Students(){
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  const lastRegisteredStudentInfo = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('attendo_last_registered_student');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.name) return parsed;
+      }
+    } catch {}
+
+    if (!rows || rows.length === 0) return null;
+
+    const withTime = rows.filter(r => r.created_at || r.createdAt);
+    if (withTime.length > 0) {
+      const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
+      return {
+        name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
+        rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—'
+      };
+    }
+
+    const candidate = rows[0];
+    return {
+      name: candidate.name || candidate.full_name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Student',
+      rollNumber: candidate.roll_number || candidate.rollNumber || candidate.roll || '—'
+    };
+  }, [rows]);
+
   const directoryTopRef = useRef<HTMLDivElement>(null);
   const tableBodyRef = useRef<HTMLDivElement>(null);
   const isInitialDirectoryMount = useRef(true);
@@ -4315,6 +4342,12 @@ function Students(){
           section_name: resolvedSecName
         };
         setRows(prev => [rowItem, ...prev.filter(r => r.id !== rowItem.id)]);
+        try {
+          localStorage.setItem('attendo_last_registered_student', JSON.stringify({
+            name: created.name || payload.name,
+            rollNumber: created.roll_number || payload.rollNumber || '—'
+          }));
+        } catch {}
         if (created.invite_sent) {
           setToastNotice({
             type: 'success',
@@ -4585,6 +4618,17 @@ function Students(){
         sessionId: sessionObj?.id || importSession || undefined,
         session: importSession || undefined
       });
+      if (enrichedRows.length > 0) {
+        const lastRow = enrichedRows[enrichedRows.length - 1];
+        const lastFullName = lastRow.fullName || lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Student';
+        const lastRoll = lastRow.rollNumber || lastRow.roll_number || '—';
+        try {
+          localStorage.setItem('attendo_last_registered_student', JSON.stringify({
+            name: lastFullName,
+            rollNumber: lastRoll
+          }));
+        } catch {}
+      }
       alert(`Successfully imported ${res.data.count || enrichedRows.length} students${res.data.session ? ` into ${res.data.session}` : ''}!`);
       setImportOpen(false);
       setPreviewRows([]);
@@ -4738,9 +4782,9 @@ function Students(){
     <div className="directory-box" ref={directoryTopRef}>
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto' }}>
         {/* Interactive Session Switcher Dropdown */}
-        <div style={{ position: 'relative' }} ref={sessionPickerRef}>
+        <div style={{ position: 'relative', flexShrink: 0 }} ref={sessionPickerRef}>
           <button 
             type="button"
             onClick={() => setSessionPickerOpen(prev => !prev)}
@@ -4748,7 +4792,7 @@ function Students(){
               display: 'inline-flex', 
               alignItems: 'center', 
               gap: 8, 
-              padding: '7px 14px', 
+              padding: '7px 12px', 
               background: sessionPickerOpen ? '#dbeafe' : '#eff6ff', 
               border: `1px solid ${sessionPickerOpen ? '#2563eb' : '#bfdbfe'}`, 
               borderRadius: 'var(--radius-sm)', 
@@ -4758,7 +4802,8 @@ function Students(){
               fontWeight: 500,
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               transition: 'all 0.15s ease',
-              outline: 'none'
+              outline: 'none',
+              whiteSpace: 'nowrap'
             }}
             onMouseEnter={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#dbeafe'; }}
             onMouseLeave={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#eff6ff'; }}
@@ -4894,42 +4939,45 @@ function Students(){
           placeholder="🔍 Search name, roll number, admission number, gender, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 240px', minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+          style={{ flex: '1 1 180px', minWidth: 160, maxWidth: 280, padding: '7px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
         />
-        <select 
-          value={classFilter} 
-          onChange={e => { setClassFilter(e.target.value); setSectionFilter(''); }}
-          style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
-        >
-          <option value="">All Classes</option>
-          {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
-        </select>
-        <select 
-          value={sectionFilter} 
-          onChange={e => setSectionFilter(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
-        >
-          <option value="">All Sections</option>
-          {(() => {
-            const list = classFilter ? sections.filter(s => s.class_id === classFilter) : sections;
-            const seen = new Set<string>();
-            const unique: any[] = [];
-            for (const s of list) {
-              const name = String(s.name || '').toUpperCase();
-              if (name && !seen.has(name)) {
-                seen.add(name);
-                unique.push(s);
+        {/* Class and Section grouped together on the same line */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <select 
+            value={classFilter} 
+            onChange={e => { setClassFilter(e.target.value); setSectionFilter(''); }}
+            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+          >
+            <option value="">All Classes</option>
+            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+          </select>
+          <select 
+            value={sectionFilter} 
+            onChange={e => setSectionFilter(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+          >
+            <option value="">All Sections</option>
+            {(() => {
+              const list = classFilter ? sections.filter(s => s.class_id === classFilter) : sections;
+              const seen = new Set<string>();
+              const unique: any[] = [];
+              for (const s of list) {
+                const name = String(s.name || '').toUpperCase();
+                if (name && !seen.has(name)) {
+                  seen.add(name);
+                  unique.push(s);
+                }
               }
-            }
-            return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
-          })()}
-        </select>
+              return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
+            })()}
+          </select>
+        </div>
         {(search || classFilter || sectionFilter) && (
           <button 
             type="button" 
             className="btn-secondary" 
             onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); }}
-            style={{ padding: '6px 10px', fontSize: 12 }}
+            style={{ padding: '6px 10px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             Clear Filters
           </button>
@@ -5251,6 +5299,27 @@ function Students(){
     {/* SINGLE STUDENT ADD / EDIT MODAL */}
     {open && <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
       <form className="modal-form" onSubmit={handleInitiateSave}>
+        {/* Last Registered Student Banner in Red */}
+        {lastRegisteredStudentInfo && (
+          <div style={{
+            color: '#dc2626',
+            fontSize: 12.5,
+            fontWeight: 600,
+            padding: '8px 12px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 6,
+            marginBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <span>
+              Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong>
+            </span>
+          </div>
+        )}
 
         {/* First Name + Last Name */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -5613,6 +5682,28 @@ function Students(){
         }}
       >
         <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* Last Registered Student Banner in Red */}
+          {lastRegisteredStudentInfo && (
+            <div style={{
+              color: '#dc2626',
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '8px 14px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 6,
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              flexShrink: 0
+            }}>
+              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <span>
+                Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong>
+              </span>
+            </div>
+          )}
 
           {/* Step indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 18, fontSize: 12.5, flexShrink: 0 }}>
@@ -6134,6 +6225,33 @@ function Teachers(){
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
+  const lastRegisteredTeacherInfo = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('attendo_last_registered_teacher');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.name) return parsed;
+      }
+    } catch {}
+
+    if (!rows || rows.length === 0) return null;
+
+    const withTime = rows.filter(r => r.created_at || r.createdAt);
+    if (withTime.length > 0) {
+      const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
+      return {
+        name: latest.name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Teacher',
+        employeeId: latest.employee_id || latest.savior_no || latest.Savior_No || latest.employeeId || '—'
+      };
+    }
+
+    const candidate = rows[0];
+    return {
+      name: candidate.name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Teacher',
+      employeeId: candidate.employee_id || candidate.savior_no || candidate.Savior_No || candidate.employeeId || '—'
+    };
+  }, [rows]);
+
   const directoryTopRef = useRef<HTMLDivElement>(null);
   const tableBodyRef = useRef<HTMLDivElement>(null);
   const isInitialDirectoryMount = useRef(true);
@@ -6554,6 +6672,12 @@ function Teachers(){
         const res = await api.post('/teachers', payload);
         const created = res.data;
         setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
+        try {
+          localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
+            name: created.name || payload.name,
+            employeeId: created.employee_id || payload.employeeId || '—'
+          }));
+        } catch {}
         if (created.invite_sent) {
           setToastNotice({
             type: 'success',
@@ -6767,6 +6891,17 @@ function Teachers(){
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
+      if (previewRows.length > 0) {
+        const lastRow = previewRows[previewRows.length - 1];
+        const teacherName = lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Teacher';
+        const teacherEmpId = lastRow.saviorNo || lastRow.employeeId || '—';
+        try {
+          localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
+            name: teacherName,
+            employeeId: teacherEmpId
+          }));
+        } catch {}
+      }
       alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
       setPreviewRows([]);
@@ -7154,6 +7289,28 @@ function Teachers(){
     {/* SINGLE TEACHER ADD / EDIT MODAL */}
     {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
       <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
+        {/* Last Registered Teacher Banner in Red */}
+        {lastRegisteredTeacherInfo && (
+          <div style={{
+            color: '#dc2626',
+            fontSize: 12.5,
+            fontWeight: 600,
+            padding: '8px 12px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 6,
+            marginBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <span>
+              Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+            </span>
+          </div>
+        )}
+
         {/* First Name + Last Name */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>First Name
@@ -7448,6 +7605,28 @@ function Teachers(){
         close={() => { setImportOpen(false); setPreviewRows([]); }}
       >
         <div style={{ padding: '4px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* Last Registered Teacher Banner in Red */}
+          {lastRegisteredTeacherInfo && (
+            <div style={{
+              color: '#dc2626',
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '8px 14px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 6,
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              flexShrink: 0
+            }}>
+              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <span>
+                Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexShrink: 0 }}>
             <p className="muted" style={{ margin: 0, fontSize: 13 }}>
               Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
@@ -8561,22 +8740,41 @@ function Attendance(){
     }
   }, []);
 
+  // Helper to deduplicate student roster
+  const deduplicateStudents = (list: any[]) => {
+    const seen = new Set<string>();
+    const result: any[] = [];
+    for (const s of list) {
+      const roll = String(s.roll_number || s.rollNumber || '').trim();
+      const adm = String(s.admission_number || s.admissionNumber || '').trim().toLowerCase();
+      const name = String(s.name || s.fullName || '').trim().toLowerCase();
+      const key = adm && !adm.startsWith('adm-st-')
+        ? `adm:${adm}`
+        : (roll ? `roll:${roll}` : `name:${name}`);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(s);
+      }
+    }
+    return result;
+  };
+
   // Fetch students when class or section changes
   useEffect(()=>{
     if (!selectedClassId || !selectedSectionId) return;
     api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
       .then(res => {
-        const list = res.data || [];
+        const list = deduplicateStudents(res.data || []);
         setStudents(list);
         checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
       })
       .catch(() => {
         // Fallback to /students
         api.get('/students').then(res => {
-          const matched = (res.data || []).filter((s:any)=>
+          const matched = deduplicateStudents((res.data || []).filter((s:any)=>
             (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
             (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
-          );
+          ));
           setStudents(matched);
           checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
         }).catch(()=>{});

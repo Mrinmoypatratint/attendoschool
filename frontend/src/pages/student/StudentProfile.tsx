@@ -1,8 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock } from 'lucide-react';
+import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+
+function isValidDdMmYyyy(val: string): boolean {
+  if (!val) return false;
+  const match = val.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return false;
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  if (month < 1 || month > 12) return false;
+  const currentYear = new Date().getFullYear();
+  if (year < 1920 || year > currentYear) return false;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return day >= 1 && day <= daysInMonth;
+}
+
+function toDdMmYyyy(val: any): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (altMatch) {
+    return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;
+  }
+  const isoMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[3].padStart(2, '0')}-${isoMatch[2].padStart(2, '0')}-${isoMatch[1]}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return s;
+}
 
 export function StudentProfile() {
   const { user } = useAuth();
@@ -32,7 +68,7 @@ export function StudentProfile() {
       .then((res) => {
         setProfile(res);
         setEditGender(res?.gender || '');
-        setEditDob(res?.dateOfBirth || '');
+        setEditDob(toDdMmYyyy(res?.dateOfBirth));
         setLoading(false);
       })
       .catch(() => {
@@ -43,10 +79,20 @@ export function StudentProfile() {
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setDetailsMsg(null);
+
+    const cleanDob = editDob.trim();
+    if (cleanDob && !isValidDdMmYyyy(cleanDob)) {
+      setDetailsMsg({
+        type: 'error',
+        text: 'Invalid Date of Birth. Please enter a valid date strictly in DD-MM-YYYY format (e.g. 15-06-2008).'
+      });
+      return;
+    }
+
     setSavingDetails(true);
     try {
-      await studentApi.updateProfile({ gender: editGender, dateOfBirth: editDob });
-      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: editDob } : null);
+      await studentApi.updateProfile({ gender: editGender, dateOfBirth: cleanDob });
+      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: cleanDob } : null);
       setDetailsMsg({ type: 'success', text: 'Personal details updated successfully!' });
       setEditingDetails(false);
     } catch (err: any) {
@@ -408,18 +454,72 @@ export function StudentProfile() {
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Date of Birth:
                   </span>
-                  <input
-                    type="date"
-                    value={editDob}
-                    onChange={(e) => setEditDob(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 6,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      outline: 'none'
-                    }}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="DD-MM-YYYY (e.g. 15-06-2008)"
+                      maxLength={10}
+                      value={editDob}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/[^0-9-]/g, '');
+                        const rawDigits = val.replace(/-/g, '');
+                        if (rawDigits.length <= 8 && !val.includes('-')) {
+                          if (rawDigits.length > 4) {
+                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
+                          } else if (rawDigits.length > 2) {
+                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
+                          }
+                        } else if (val.length > 10) {
+                          val = val.slice(0, 10);
+                        }
+                        setEditDob(val);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 34px 8px 12px',
+                        borderRadius: 6,
+                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : '#cbd5e1'}`,
+                        fontSize: 13,
+                        outline: 'none',
+                        backgroundColor: '#ffffff',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <input
+                      type="date"
+                      max={new Date().toISOString().slice(0, 10)}
+                      title="Choose from calendar picker"
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        width: 24,
+                        height: 24,
+                        opacity: 0,
+                        cursor: 'pointer',
+                        zIndex: 2
+                      }}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const [y, m, d] = e.target.value.split('-');
+                          setEditDob(`${d}-${m}-${y}`);
+                        }
+                      }}
+                    />
+                    <Calendar
+                      size={16}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        color: '#64748b',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  </div>
+                  {editDob && !isValidDdMmYyyy(editDob) && (
+                    <span style={{ color: '#ef4444', fontSize: 11, fontWeight: 500, marginTop: 2 }}>
+                      Strict format required: DD-MM-YYYY (e.g. 15-06-2008)
+                    </span>
+                  )}
                 </label>
               </div>
 
@@ -429,7 +529,7 @@ export function StudentProfile() {
                   onClick={() => {
                     setEditingDetails(false);
                     setEditGender(profile?.gender || '');
-                    setEditDob(profile?.dateOfBirth || '');
+                    setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
                   }}
                   style={{
                     display: 'inline-flex',
@@ -491,7 +591,7 @@ export function StudentProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Date of Birth</span>
-                <span className="detail-val">{profile?.dateOfBirth || '—'}</span>
+                <span className="detail-val">{profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '—'}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
