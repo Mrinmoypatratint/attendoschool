@@ -1,5 +1,6 @@
 import {pool} from '../db';
 import crypto from 'crypto';
+import { validatePasswordStrength } from '../utils/passwordPolicy';
 
 const MAX_ATTEMPTS=5, LOCK_MINUTES=15;
 
@@ -34,10 +35,9 @@ export async function registerLoginSuccess(user:any,ctx:any){
  await recordSecurityEvent('LOGIN_SUCCESS',ctx,{});
 }
 
+
 export function passwordStrongEnough(password:string){
- return typeof password==='string' && password.length>=10 &&
-   /[A-Z]/.test(password) && /[a-z]/.test(password) &&
-   /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+ return validatePasswordStrength(password).valid;
 }
 
 export function hashToken(token:string){

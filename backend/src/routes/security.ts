@@ -20,7 +20,7 @@ router.post('/check-login',async(req,res)=>{
 
 router.post('/validate-password',async(req,res)=>{
  const {password}=req.body||{};
- res.json({valid:passwordStrongEnough(password),requirements:['10+ characters','uppercase','lowercase','number','special character']});
+ res.json({valid:passwordStrongEnough(password),requirements:['8+ characters','uppercase','lowercase','number','special character']});
 });
 
 router.post('/logout-refresh',async(req,res)=>{

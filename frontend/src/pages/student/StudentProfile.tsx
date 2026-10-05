@@ -3,6 +3,7 @@ import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera
 import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 function isValidDdMmYyyy(val: string): boolean {
   if (!val) return false;
@@ -198,8 +199,9 @@ export function StudentProfile() {
       setPwMsg({ type: 'error', text: 'New passwords do not match' });
       return;
     }
-    if (newPassword.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters' });
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      setPwMsg({ type: 'error', text: pwCheck.message || 'Password must meet complexity requirements.' });
       return;
     }
 
@@ -653,7 +655,7 @@ export function StudentProfile() {
             </label>
 
             <label>
-              <span>New Password (min 8 characters):</span>
+              <span>New Password:</span>
               <input
                 type="password"
                 required
@@ -661,6 +663,9 @@ export function StudentProfile() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
+              <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+                Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
+              </span>
             </label>
 
             <label>

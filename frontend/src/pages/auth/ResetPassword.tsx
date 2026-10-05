@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Mail, Check, Building2, School } from 'lucide-react';
 import { api } from '../../api';
+import { validatePassword } from '../../utils/passwordPolicy';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -74,10 +75,9 @@ export default function ResetPassword() {
   }, [token]);
 
   // Password Strength Rules
-  const hasMinLength = newPassword.length >= 8;
-  const hasLettersAndNumbers = /[a-zA-Z]/.test(newPassword) && /[0-9]/.test(newPassword);
+  const pwCheck = validatePassword(newPassword);
   const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
-  const isFormValid = hasMinLength && hasLettersAndNumbers && passwordsMatch;
+  const isFormValid = pwCheck.valid && passwordsMatch;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -435,13 +435,25 @@ export default function ResetPassword() {
                 fontSize: 12
               }}>
                 <div style={{ fontWeight: 600, color: '#475569', marginBottom: 8 }}>Password Requirements:</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: hasMinLength ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: hasMinLength ? '#16a34a' : '#cbd5e1' }} />
-                  <span>At least 8 characters long</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasMinLength ? '#16a34a' : '#94a3b8' }}>
+                  <Check size={14} style={{ color: pwCheck.hasMinLength ? '#16a34a' : '#cbd5e1' }} />
+                  <span>Minimum 8 characters in length</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: hasLettersAndNumbers ? '#16a34a' : '#94a3b8' }}>
-                  <Check size={14} style={{ color: hasLettersAndNumbers ? '#16a34a' : '#cbd5e1' }} />
-                  <span>Contains both letters and numbers</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasUpperCase ? '#16a34a' : '#94a3b8' }}>
+                  <Check size={14} style={{ color: pwCheck.hasUpperCase ? '#16a34a' : '#cbd5e1' }} />
+                  <span>At least 1 Capital letter (A-Z)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasLowerCase ? '#16a34a' : '#94a3b8' }}>
+                  <Check size={14} style={{ color: pwCheck.hasLowerCase ? '#16a34a' : '#cbd5e1' }} />
+                  <span>At least 1 small letter (a-z)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasNumber ? '#16a34a' : '#94a3b8' }}>
+                  <Check size={14} style={{ color: pwCheck.hasNumber ? '#16a34a' : '#cbd5e1' }} />
+                  <span>At least 1 number (0-9)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: pwCheck.hasSpecialChar ? '#16a34a' : '#94a3b8' }}>
+                  <Check size={14} style={{ color: pwCheck.hasSpecialChar ? '#16a34a' : '#cbd5e1' }} />
+                  <span>At least 1 special character (e.g. !@#$%^&*)</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: passwordsMatch ? '#16a34a' : '#94a3b8' }}>
                   <Check size={14} style={{ color: passwordsMatch ? '#16a34a' : '#cbd5e1' }} />

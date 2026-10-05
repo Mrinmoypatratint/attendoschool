@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
+import { validatePassword } from '../../utils/passwordPolicy';
 import { useAuth } from '../../hooks/useAuth';
 
 export interface ITeacherProfile {
@@ -214,8 +215,9 @@ export function TeacherProfile() {
       setPwMsg({ type: 'error', text: 'New passwords do not match' });
       return;
     }
-    if (newPassword.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters' });
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      setPwMsg({ type: 'error', text: pwCheck.message || 'Password must meet complexity requirements.' });
       return;
     }
 
@@ -631,7 +633,7 @@ export function TeacherProfile() {
             </label>
 
             <label>
-              <span>New Password (min 8 characters):</span>
+              <span>New Password:</span>
               <input
                 type="password"
                 required
@@ -639,6 +641,9 @@ export function TeacherProfile() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
+              <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+                Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
+              </span>
             </label>
 
             <label>

@@ -60,6 +60,12 @@ async function ensureReviewTables() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
 
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS leave_type VARCHAR(50) DEFAULT 'CASUAL';
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(255);
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS teacher_email VARCHAR(255);
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewer_name VARCHAR(255);
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
+
       ALTER TABLE student_leave_requests DROP CONSTRAINT IF EXISTS student_leave_requests_status_check;
       ALTER TABLE student_leave_requests ADD CONSTRAINT student_leave_requests_status_check CHECK (status IN ('PENDING', 'SEEN', 'APPROVED', 'REJECTED', 'CANCELLED'));
     `);
@@ -69,7 +75,16 @@ async function ensureReviewTables() {
   }
 }
 
-import { inMemoryLeaves } from '../store/leavesStore';
+import { inMemoryLeaves, inMemoryTeacherLeaves } from '../store/leavesStore';
+import { isTintSchool, isTestSchool, isSameSchool } from '../utils/tenant';
+
+function resolvePostgresSchoolId(sid: string | null | undefined): string | null {
+  if (!sid) return null;
+  if (isTintSchool(sid)) return '00000000-0000-0000-0000-000000000002';
+  if (isTestSchool(sid)) return '00000000-0000-0000-0000-000000000001';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)) return sid;
+  return null;
+}
 
 // In-memory fallback if Postgres is not configured
 const inMemoryPhotos: any[] = [];
@@ -743,6 +758,347 @@ router.post('/leaves', async (req: AuthRequest, res: Response) => {
   }
 });
 
+/* =========================================================================
+   TEACHER LEAVE REQUEST ENDPOINTS
+   ========================================================================= */
+
+// POST /api/reviews/teacher-leaves - Teacher submits leave request
+router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureReviewTables();
+    const schoolId = req.user?.schoolId;
+    const { startDate, endDate, leaveType, reason } = req.body;
+
+    if (!startDate || !endDate || !reason) {
+      return res.status(400).json({ success: false, message: 'Start date, end date, and reason are required' });
+    }
+
+    const teacherName = req.user?.name || 'Faculty Member';
+    const teacherEmail = req.user?.email || '';
+    const teacherId = req.user?.id;
+    const cleanLeaveType = String(leaveType || 'CASUAL').toUpperCase();
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+
+    let savedItem: any = null;
+    if (isPostgresConfigured && pgSchoolId) {
+      let targetTeacherId = teacherId;
+      const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      if (!isUuid(targetTeacherId)) {
+        const uRes = await pool.query(`SELECT id FROM users WHERE (email = $1 OR id::text = $2) AND school_id = $3 LIMIT 1`, [teacherEmail, String(teacherId), pgSchoolId]);
+        if (uRes.rowCount && uRes.rowCount > 0) {
+          targetTeacherId = uRes.rows[0].id;
+        } else {
+          const anyT = await pool.query(`SELECT id FROM users WHERE school_id = $1 AND role = 'TEACHER' LIMIT 1`, [pgSchoolId]);
+          if (anyT.rowCount && anyT.rowCount > 0) {
+            targetTeacherId = anyT.rows[0].id;
+          } else {
+            const insUser = await pool.query(
+              `INSERT INTO users (school_id, name, email, role, status) VALUES ($1, $2, $3, 'TEACHER', 'ACTIVE') RETURNING id`,
+              [pgSchoolId, teacherName, teacherEmail || `teacher-${Date.now()}@school.local`]
+            );
+            targetTeacherId = insUser.rows[0].id;
+          }
+        }
+      }
+
+      const ins = await pool.query(`
+        INSERT INTO teacher_leave_requests (
+          school_id, teacher_id, teacher_name, teacher_email, leave_type, start_date, end_date, reason, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+        RETURNING *
+      `, [pgSchoolId, targetTeacherId, teacherName, teacherEmail, cleanLeaveType, startDate, endDate, reason]);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Leave application submitted to School Administration',
+        data: ins.rows[0]
+      });
+    }
+
+    const memItem = {
+      id: `teacher-leave-${Date.now()}`,
+      school_id: schoolId || '00000000-0000-0000-0000-000000000002',
+      teacher_id: String(teacherId || ''),
+      teacher_name: teacherName,
+      teacher_email: teacherEmail,
+      leave_type: cleanLeaveType,
+      start_date: startDate,
+      end_date: endDate,
+      reason,
+      status: 'PENDING' as const,
+      created_at: new Date().toISOString()
+    };
+    inMemoryTeacherLeaves.unshift(memItem);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Leave application submitted to School Administration',
+      data: memItem
+    });
+  } catch (error: any) {
+    console.error('Error creating teacher leave request:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to submit leave application' });
+  }
+});
+
+// GET /api/reviews/teacher-leaves/my - Logged-in teacher gets their own leave applications
+router.get('/teacher-leaves/my', async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureReviewTables();
+    const schoolId = req.user?.schoolId;
+    const teacherId = req.user?.id;
+    const teacherEmail = req.user?.email;
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+
+    if (isPostgresConfigured && pgSchoolId) {
+      const q = await pool.query(`
+        SELECT 
+          l.id,
+          l.school_id,
+          l.teacher_id,
+          COALESCE(l.teacher_name, u.name, 'Teacher') as teacher_name,
+          COALESCE(l.teacher_email, u.email, '') as teacher_email,
+          l.leave_type,
+          l.start_date,
+          l.end_date,
+          l.reason,
+          l.status,
+          l.reviewed_by,
+          COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
+          l.review_notes,
+          l.reviewed_at,
+          l.created_at,
+          l.updated_at
+        FROM teacher_leave_requests l
+        LEFT JOIN users u ON u.id = l.teacher_id
+        LEFT JOIN users ru ON ru.id = l.reviewed_by
+        WHERE (l.school_id = $1 OR l.school_id::text = $2)
+          AND (l.teacher_id::text = $3 OR l.teacher_email = $4 OR u.email = $4)
+        ORDER BY l.created_at DESC
+      `, [pgSchoolId, String(schoolId), String(teacherId), teacherEmail]);
+
+      return res.json({ success: true, data: q.rows });
+    }
+
+    const filtered = inMemoryTeacherLeaves.filter(l => 
+      isSameSchool(l.school_id, schoolId) && 
+      (l.teacher_id === teacherId || l.teacher_email === teacherEmail)
+    );
+    return res.json({ success: true, data: filtered });
+  } catch (error: any) {
+    console.error('Error fetching my teacher leaves:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/reviews/teacher-leaves - School Admin views all teacher leaves
+router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureReviewTables();
+    const schoolId = req.user?.schoolId;
+    const { status, search } = req.query;
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+
+    if (isPostgresConfigured && pgSchoolId) {
+      let query = `
+        SELECT 
+          l.id,
+          l.school_id,
+          'TEACHER' as applicant_type,
+          l.teacher_id as applicant_id,
+          COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
+          COALESCE(l.teacher_email, u.email, '') as teacher_email,
+          tp.employee_id as identifier,
+          COALESCE(tp.qualification, 'Faculty Member') as detail,
+          tp.photo_url,
+          l.leave_type,
+          l.start_date,
+          l.end_date,
+          l.reason,
+          l.status,
+          l.reviewed_by,
+          COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
+          l.review_notes,
+          l.reviewed_at,
+          l.created_at,
+          l.updated_at
+        FROM teacher_leave_requests l
+        LEFT JOIN users u ON u.id = l.teacher_id
+        LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
+        LEFT JOIN users ru ON ru.id = l.reviewed_by
+        WHERE (l.school_id = $1 OR l.school_id::text = $2)
+      `;
+      const params: any[] = [pgSchoolId, String(schoolId)];
+      let pIdx = 3;
+
+      if (status && status !== 'ALL') {
+        query += ` AND l.status = $${pIdx++}`;
+        params.push(status);
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        query += ` AND (l.teacher_name ILIKE $${pIdx} OR l.teacher_email ILIKE $${pIdx} OR u.name ILIKE $${pIdx} OR l.reason ILIKE $${pIdx})`;
+        params.push(`%${search.trim()}%`);
+        pIdx++;
+      }
+
+      query += ` ORDER BY CASE WHEN l.status = 'PENDING' THEN 1 WHEN l.status = 'APPROVED' THEN 2 ELSE 3 END, l.created_at DESC`;
+
+      const result = await pool.query(query, params);
+
+      const countRes = await pool.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+          COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
+          COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
+        FROM teacher_leave_requests
+        WHERE (school_id = $1 OR school_id::text = $2)
+      `, [pgSchoolId, String(schoolId)]);
+
+      const counts = {
+        all: parseInt(countRes.rows[0]?.total || '0', 10),
+        pending: parseInt(countRes.rows[0]?.pending || '0', 10),
+        approved: parseInt(countRes.rows[0]?.approved || '0', 10),
+        rejected: parseInt(countRes.rows[0]?.rejected || '0', 10)
+      };
+
+      return res.json({ success: true, data: result.rows, counts });
+    }
+
+    const filtered = inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId));
+    const counts = {
+      all: filtered.length,
+      pending: filtered.filter(l => l.status === 'PENDING').length,
+      approved: filtered.filter(l => l.status === 'APPROVED').length,
+      rejected: filtered.filter(l => l.status === 'REJECTED').length
+    };
+    return res.json({
+      success: true,
+      data: filtered.map(m => ({
+        ...m,
+        applicant_name: m.teacher_name || 'Faculty Member',
+        applicant_id: m.teacher_id,
+        applicant_type: 'TEACHER',
+        identifier: 'FAC-EMP',
+        detail: 'Faculty Member'
+      })),
+      counts
+    });
+  } catch (error: any) {
+    console.error('Error fetching teacher leaves for admin:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/reviews/teacher-leaves/:id/approve - School Admin approves teacher leave
+router.put('/teacher-leaves/:id/approve', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const schoolId = req.user?.schoolId;
+    const reviewerId = req.user?.id;
+    const reviewerName = req.user?.name || 'School Administration';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const defaultNotes = notes || 'Approved by School Administration';
+
+    if (isPostgresConfigured && pgSchoolId) {
+      const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+
+      const updateRes = await pool.query(`
+        UPDATE teacher_leave_requests
+        SET status = 'APPROVED',
+            reviewed_by = $1,
+            reviewer_name = $2,
+            review_notes = $3,
+            reviewed_at = NOW(),
+            updated_at = NOW()
+        WHERE id::text = $4 AND (school_id = $5 OR school_id::text = $6)
+        RETURNING *
+      `, [safeReviewerId, reviewerName, defaultNotes, String(id), pgSchoolId, String(schoolId)]);
+
+      if (updateRes.rowCount && updateRes.rowCount > 0) {
+        return res.json({
+          success: true,
+          message: 'Teacher leave approved successfully',
+          data: updateRes.rows[0]
+        });
+      }
+    }
+
+    const item = inMemoryTeacherLeaves.find(l => (l.id === id || String(l.id) === String(id)) && isSameSchool(l.school_id, schoolId));
+    if (item) {
+      item.status = 'APPROVED';
+      item.reviewed_by = reviewerId;
+      item.reviewer_name = reviewerName;
+      item.review_notes = defaultNotes;
+      item.reviewed_at = new Date().toISOString();
+      item.updated_at = new Date().toISOString();
+      return res.json({ success: true, message: 'Teacher leave approved successfully', data: item });
+    }
+
+    return res.status(404).json({ success: false, message: 'Teacher leave request not found' });
+  } catch (error: any) {
+    console.error('Error approving teacher leave:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/reviews/teacher-leaves/:id/reject - School Admin rejects teacher leave
+router.put('/teacher-leaves/:id/reject', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { reason, notes } = req.body;
+    const schoolId = req.user?.schoolId;
+    const reviewerId = req.user?.id;
+    const reviewerName = req.user?.name || 'School Administration';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const defaultNotes = notes || reason || 'Declined by School Administration';
+
+    if (isPostgresConfigured && pgSchoolId) {
+      const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+
+      const updateRes = await pool.query(`
+        UPDATE teacher_leave_requests
+        SET status = 'REJECTED',
+            reviewed_by = $1,
+            reviewer_name = $2,
+            review_notes = $3,
+            reviewed_at = NOW(),
+            updated_at = NOW()
+        WHERE id::text = $4 AND (school_id = $5 OR school_id::text = $6)
+        RETURNING *
+      `, [safeReviewerId, reviewerName, defaultNotes, String(id), pgSchoolId, String(schoolId)]);
+
+      if (updateRes.rowCount && updateRes.rowCount > 0) {
+        return res.json({
+          success: true,
+          message: 'Teacher leave application rejected',
+          data: updateRes.rows[0]
+        });
+      }
+    }
+
+    const item = inMemoryTeacherLeaves.find(l => (l.id === id || String(l.id) === String(id)) && isSameSchool(l.school_id, schoolId));
+    if (item) {
+      item.status = 'REJECTED';
+      item.reviewed_by = reviewerId;
+      item.reviewer_name = reviewerName;
+      item.review_notes = defaultNotes;
+      item.reviewed_at = new Date().toISOString();
+      item.updated_at = new Date().toISOString();
+      return res.json({ success: true, message: 'Teacher leave application rejected', data: item });
+    }
+
+    return res.status(404).json({ success: false, message: 'Teacher leave request not found' });
+  } catch (error: any) {
+    console.error('Error rejecting teacher leave:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 function formatLeaveDate(d: any) {
   if (!d) return '';
   const dt = new Date(d);
@@ -757,41 +1113,61 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
     const schoolId = req.user?.schoolId;
     const userRole = req.user?.role;
     if (!schoolId) {
-      return res.json({ success: true, pendingPhotosCount: 0, pendingLeavesCount: 0, totalPendingCount: 0, notifications: [] });
+      return res.json({ success: true, pendingPhotosCount: 0, pendingLeavesCount: 0, pendingTeacherLeavesCount: 0, totalPendingCount: 0, notifications: [] });
     }
 
-    if (isPostgresConfigured) {
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+
+    if (isPostgresConfigured && pgSchoolId) {
       const photosRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
         SELECT id, applicant_name, applicant_type, identifier, detail, photo_url, created_at
         FROM photo_approval_requests
-        WHERE school_id = $1 AND status = 'PENDING'
+        WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING'
         ORDER BY created_at DESC
         LIMIT 10
-      `, [schoolId]);
+      `, [pgSchoolId, String(schoolId)]);
 
-      const leavesRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
+      // For TEACHER: student leaves awaiting review
+      const studentLeavesRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
         SELECT l.id, 'STUDENT' as applicant_type, COALESCE(s.name, 'Student') as applicant_name,
                s.admission_number as identifier, l.start_date, l.end_date, l.reason, l.created_at
         FROM student_leave_requests l
         LEFT JOIN students s ON s.id = l.student_id
-        WHERE l.school_id = $1 AND l.status = 'PENDING'
+        WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
         ORDER BY l.created_at DESC
         LIMIT 10
-      `, [schoolId]);
+      `, [pgSchoolId, String(schoolId)]);
+
+      // For SCHOOL_ADMIN: teacher leaves awaiting review
+      const teacherLeavesRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
+        SELECT l.id, 'TEACHER' as applicant_type, COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
+               tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.created_at
+        FROM teacher_leave_requests l
+        LEFT JOIN users u ON u.id = l.teacher_id
+        LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
+        WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
+        ORDER BY l.created_at DESC
+        LIMIT 10
+      `, [pgSchoolId, String(schoolId)]);
 
       const countRes = await pool.query(`
         SELECT 
-          (SELECT COUNT(*) FROM photo_approval_requests WHERE school_id = $1 AND status = 'PENDING') as pending_photos,
-          (SELECT COUNT(*) FROM student_leave_requests WHERE school_id = $1 AND status = 'PENDING') as pending_leaves
-      `, [schoolId]);
+          (SELECT COUNT(*) FROM photo_approval_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_photos,
+          (SELECT COUNT(*) FROM student_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_student_leaves,
+          (SELECT COUNT(*) FROM teacher_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_teacher_leaves
+      `, [pgSchoolId, String(schoolId)]);
 
       const rawPhotosCount = parseInt(countRes.rows[0]?.pending_photos || '0', 10);
-      const rawLeavesCount = parseInt(countRes.rows[0]?.pending_leaves || '0', 10);
+      const rawStudentLeavesCount = parseInt(countRes.rows[0]?.pending_student_leaves || '0', 10);
+      const rawTeacherLeavesCount = parseInt(countRes.rows[0]?.pending_teacher_leaves || '0', 10);
 
       const pendingPhotosCount = (userRole === 'TEACHER') ? 0 : rawPhotosCount;
-      const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? 0 : rawLeavesCount;
+      const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') 
+        ? rawTeacherLeavesCount
+        : rawStudentLeavesCount;
+      const pendingTeacherLeavesCount = (userRole === 'TEACHER') ? 0 : rawTeacherLeavesCount;
 
-      const notifications = [
+      const notifications: any[] = [
         ...photosRes.rows.map(p => ({
           id: `photo-${p.id}`,
           rawId: p.id,
@@ -805,12 +1181,12 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           applicantName: p.applicant_name,
           applicantType: p.applicant_type
         })),
-        ...leavesRes.rows.map(l => ({
+        ...studentLeavesRes.rows.map(l => ({
           id: `leave-${l.id}`,
           rawId: l.id,
           type: 'LEAVE_REQUEST',
           category: 'REVIEW',
-          title: 'Leave Request',
+          title: 'Student Leave Request',
           message: `${l.applicant_name} submitted a leave application (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
           link: '/leave-applications',
           createdAt: l.created_at,
@@ -819,22 +1195,44 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           reason: l.reason,
           startDate: l.start_date,
           endDate: l.end_date
+        })),
+        ...teacherLeavesRes.rows.map(l => ({
+          id: `teacher-leave-${l.id}`,
+          rawId: l.id,
+          type: 'TEACHER_LEAVE_REQUEST',
+          category: 'REVIEW',
+          title: "Teacher's Leave Request",
+          message: `${l.applicant_name} applied for ${l.leave_type || 'Leave'} (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
+          link: '/teacher-leave-approvals',
+          createdAt: l.created_at,
+          applicantName: l.applicant_name,
+          applicantType: 'TEACHER',
+          leaveType: l.leave_type,
+          reason: l.reason,
+          startDate: l.start_date,
+          endDate: l.end_date
         }))
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      ];
+
+      notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       return res.json({
         success: true,
         pendingPhotosCount,
         pendingLeavesCount,
+        pendingTeacherLeavesCount,
         totalPendingCount: pendingPhotosCount + pendingLeavesCount,
         notifications
       });
     }
 
-    const memLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => l.school_id === schoolId && l.status === 'PENDING');
-    const memPhotos = (userRole === 'TEACHER') ? [] : inMemoryPhotos.filter(p => p.school_id === schoolId && p.status === 'PENDING');
+    const memTeacherLeaves = (userRole === 'TEACHER') ? [] : inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
+    const memStudentLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
+    const memPhotos = (userRole === 'TEACHER') ? [] : inMemoryPhotos.filter(p => isSameSchool(p.school_id, schoolId) && p.status === 'PENDING');
 
-    const notifications = [
+    const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
+
+    const notifications: any[] = [
       ...memPhotos.map(p => ({
         id: `photo-${p.id}`,
         rawId: p.id,
@@ -848,25 +1246,42 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         applicantName: p.applicant_name,
         applicantType: p.applicant_type
       })),
-      ...memLeaves.map(l => ({
+      ...memStudentLeaves.map(l => ({
         id: `leave-${l.id}`,
         rawId: l.id,
         type: 'LEAVE_REQUEST',
         category: 'REVIEW',
-        title: 'Leave Request',
+        title: 'Student Leave Request',
         message: `${l.applicant_name} submitted a leave application (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
         link: '/leave-applications',
         createdAt: l.created_at,
         applicantName: l.applicant_name,
         applicantType: l.applicant_type
+      })),
+      ...memTeacherLeaves.map(l => ({
+        id: `teacher-leave-${l.id}`,
+        rawId: l.id,
+        type: 'TEACHER_LEAVE_REQUEST',
+        category: 'REVIEW',
+        title: "Teacher's Leave Request",
+        message: `${l.teacher_name} applied for ${l.leave_type || 'Leave'} (${formatLeaveDate(l.start_date)} to ${formatLeaveDate(l.end_date)}).`,
+        link: '/teacher-leave-approvals',
+        createdAt: l.created_at,
+        applicantName: l.teacher_name,
+        applicantType: 'TEACHER',
+        leaveType: l.leave_type,
+        reason: l.reason,
+        startDate: l.start_date,
+        endDate: l.end_date
       }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return res.json({
       success: true,
       pendingPhotosCount: memPhotos.length,
-      pendingLeavesCount: memLeaves.length,
-      totalPendingCount: memPhotos.length + memLeaves.length,
+      pendingLeavesCount,
+      pendingTeacherLeavesCount: memTeacherLeaves.length,
+      totalPendingCount: memPhotos.length + pendingLeavesCount,
       notifications
     });
   } catch (error: any) {

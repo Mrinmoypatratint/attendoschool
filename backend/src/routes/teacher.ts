@@ -10,6 +10,7 @@ import { syncAttendanceToFirestore, syncAttendanceAuditLogToFirestore } from '..
 import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { memEntries } from './timetable';
+import { validatePasswordStrength } from '../utils/passwordPolicy';
 
 export interface MemAttendanceSession {
   id: string;
@@ -2623,8 +2624,9 @@ r.put('/change-password', ...teacher, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const { currentPassword, newPassword } = req.body || {};
 
-  if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  const pwValidation = validatePasswordStrength(String(newPassword));
+  if (!pwValidation.valid) {
+    return res.status(400).json({ message: pwValidation.message });
   }
 
   try {
