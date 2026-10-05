@@ -164,6 +164,27 @@ router.put('/photo', async (req: AuthRequest, res: Response) => {
 router.put('/profile', async (req: AuthRequest, res: Response) => {
   try {
     const { gender, dateOfBirth, address } = req.body || {};
+    if (dateOfBirth) {
+      const cleanDob = String(dateOfBirth).trim();
+      const match = cleanDob.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (!match) {
+        return res.status(400).json({ message: 'Date of birth must be strictly in DD-MM-YYYY format (e.g. 15-06-2008)' });
+      }
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const year = parseInt(match[3], 10);
+      if (month < 1 || month > 12) {
+        return res.status(400).json({ message: 'Invalid month in Date of Birth (must be 01-12)' });
+      }
+      const currentYear = new Date().getFullYear();
+      if (year < 1920 || year > currentYear) {
+        return res.status(400).json({ message: `Invalid year in Date of Birth (must be between 1920 and ${currentYear})` });
+      }
+      const daysInMonth = new Date(year, month, 0).getDate();
+      if (day < 1 || day > daysInMonth) {
+        return res.status(400).json({ message: `Invalid day ${day} for month ${month}` });
+      }
+    }
     const data = await svc.updateStudentProfile(req.user!.schoolId!, req.user!.id, { gender, dateOfBirth, address });
     res.json(data);
   } catch (e: any) {

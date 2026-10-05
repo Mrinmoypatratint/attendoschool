@@ -7,6 +7,28 @@ import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
 
+export function toDdMmYyyy(val: any): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (altMatch) {
+    return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;
+  }
+  const isoMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[3].padStart(2, '0')}-${isoMatch[2].padStart(2, '0')}-${isoMatch[1]}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return s;
+}
+
 /**
  * Resolves student record by authenticated user ID and school ID
  */
@@ -198,7 +220,7 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     parentName: st.parent_name || '',
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
-    dateOfBirth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
+    dateOfBirth: st.date_of_birth ? toDdMmYyyy(st.date_of_birth) : (st.dob ? toDdMmYyyy(st.dob) : ''),
     gender: st.gender || '',
     academicSession: academicSessionName || st.session_name || '',
     photoUrl: st.photo_url || '',
@@ -216,6 +238,7 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) throw new Error('Student record not found');
 
+  const cleanDob = data.dateOfBirth ? toDdMmYyyy(data.dateOfBirth) : null;
   const updates: string[] = [];
   const params: any[] = [];
   let idx = 1;
@@ -226,7 +249,7 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
   }
   if (data.dateOfBirth !== undefined) {
     updates.push(`date_of_birth = $${idx++}`);
-    params.push(data.dateOfBirth || null);
+    params.push(cleanDob);
   }
   if (data.address !== undefined) {
     updates.push(`address = $${idx++}`);
@@ -234,11 +257,38 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
   }
 
   if (updates.length > 0) {
-    params.push(st.id);
-    await pool.query(
-      `UPDATE students SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
-      params
-    );
+    try {
+      params.push(st.id);
+      await pool.query(
+        `UPDATE students SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
+        params
+      );
+    } catch (_dbErr) {}
+  }
+
+  // Update in Firestore
+  if (isTestSchool(schoolId) && isFirebaseConfigured()) {
+    try {
+      const fUpdates: Record<string, any> = { updatedAt: new Date().toISOString() };
+      if (data.gender !== undefined) fUpdates.gender = data.gender;
+      if (data.dateOfBirth !== undefined) {
+        fUpdates.date_of_birth = cleanDob;
+        fUpdates.dob = cleanDob;
+        fUpdates.dateOfBirth = cleanDob;
+      }
+      if (data.address !== undefined) fUpdates.address = data.address || null;
+      await collections.students().doc(st.id).set(fUpdates, { merge: true });
+    } catch (_fErr) {}
+  }
+
+  // Update in demoStudents
+  const ds = demoStudents.find(d => d.id === st.id || d.user_id === userId);
+  if (ds) {
+    if (data.gender !== undefined) ds.gender = data.gender;
+    if (data.dateOfBirth !== undefined) {
+      ds.date_of_birth = cleanDob;
+      ds.dob = cleanDob;
+    }
   }
 
   return { success: true, message: 'Student profile updated successfully' };

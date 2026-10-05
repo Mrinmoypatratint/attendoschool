@@ -9,6 +9,7 @@ import {
   UploadCloud,
   CheckCircle2,
   AlertCircle,
+  Clock,
   Check,
   Users,
   BarChart3,
@@ -31,6 +32,7 @@ type Row = {
   session?: string;
   present_days: number;
   absent_days: number;
+  left_early_days?: number;
   marked_days: number;
   attendance_percentage: number;
 };
@@ -188,26 +190,90 @@ export default function AttendanceReports() {
     }
   };
 
+  // Helper to extract numeric class index or normalized label
+  const extractClassNumber = (val: any): number | null => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'number') return val;
+    const s = String(val).trim().toLowerCase();
+    if (s === 'l-kg' || s === 'lkg') return -1;
+    if (s === 'u-kg' || s === 'ukg') return 0;
+    const m = s.match(/(?:class\s*|cls-?)?(\d+)/i);
+    return m ? Number(m[1]) : null;
+  };
+
+  // Helper to normalize section to single uppercase letter or name
+  const normalizeSection = (val: any): string => {
+    return String(val || '')
+      .replace(/^sec(tion)?[-_\s]*/i, '')
+      .trim()
+      .toUpperCase();
+  };
+
   // Multi-dimensional filtering logic
   const filteredRows = useMemo(() => {
-    return rows.filter(r => {
+    return rows.filter((r: any) => {
       // 1. Class filter
       if (selectedClass !== 'ALL') {
-        const cMatch = String(r.class_name || '').toLowerCase();
-        const selectedClsObj = classes.find(c => c.id === selectedClass);
-        const targetLabel = (selectedClsObj?.label || selectedClsObj?.class_number?.toString() || selectedClass).toLowerCase();
-        if (!cMatch.includes(targetLabel) && r.class_id !== selectedClass) return false;
+        const selectedClsObj = classes.find(c => c.id === selectedClass || String(c.class_number) === String(selectedClass));
+        const targetNum = selectedClsObj?.class_number !== undefined
+          ? Number(selectedClsObj.class_number)
+          : extractClassNumber(selectedClass);
+
+        const rowNum = r.class_number !== undefined && r.class_number !== null
+          ? Number(r.class_number)
+          : extractClassNumber(r.class_name || r.class_id);
+
+        let classMatched = false;
+        // Direct ID match
+        if (r.class_id && (r.class_id === selectedClass || (selectedClsObj && r.class_id === selectedClsObj.id))) {
+          classMatched = true;
+        } else if (targetNum !== null && rowNum !== null && targetNum === rowNum) {
+          classMatched = true;
+        } else {
+          const targetLabel = (selectedClsObj?.label || (targetNum !== null ? `class ${targetNum}` : selectedClass)).toLowerCase().replace(/\s+/g, '');
+          const rowLabel = String(r.class_name || '').toLowerCase().replace(/\s+/g, '');
+          if (rowLabel && (rowLabel === targetLabel || rowLabel.includes(targetLabel) || targetLabel.includes(rowLabel))) {
+            classMatched = true;
+          }
+        }
+        if (!classMatched) return false;
       }
+
       // 2. Section filter
       if (selectedSection !== 'ALL') {
-        const sMatch = String(r.section_name || '').toUpperCase();
-        if (sMatch !== selectedSection.toUpperCase() && r.section_id !== selectedSection) return false;
+        const targetSec = normalizeSection(selectedSection);
+        const rowSec = normalizeSection(r.section_name);
+        let secMatched = false;
+        if (r.section_id && (r.section_id === selectedSection || sections.some(s => s.id === selectedSection && s.id === r.section_id))) {
+          secMatched = true;
+        } else if (targetSec && rowSec && (targetSec === rowSec || rowSec.includes(targetSec) || targetSec.includes(rowSec))) {
+          secMatched = true;
+        }
+        if (!secMatched) return false;
       }
+
       // 3. Academic Session filter
       if (selectedSession !== 'ALL') {
-        if (r.academic_year_id && r.academic_year_id !== selectedSession) return false;
-        if (r.session && !r.session.includes(selectedSession)) return false;
+        const selectedSessObj = sessions.find(s => s.id === selectedSession);
+        const sessName = (selectedSessObj?.name || selectedSession).toLowerCase();
+        if (r.academic_year_id) {
+          const directMatch = r.academic_year_id === selectedSession || (selectedSessObj && r.academic_year_id === selectedSessObj.id);
+          if (!directMatch) {
+            const rSessName = String(r.session || r.academic_year_name || '').toLowerCase();
+            if (rSessName) {
+              const sessYears = sessName.match(/\d{4}/g) || [];
+              const rowYears = rSessName.match(/\d{4}/g) || [];
+              const sharesYear = sessYears.some(y => rowYears.includes(y));
+              if (!sharesYear && !rSessName.includes(sessName)) return false;
+            } else {
+              return false;
+            }
+          }
+        } else if (r.session) {
+          if (!String(r.session).toLowerCase().includes(sessName)) return false;
+        }
       }
+
       // 4. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -215,9 +281,10 @@ export default function AttendanceReports() {
         const rollMatch = String(r.roll || '').toLowerCase().includes(q);
         if (!nameMatch && !rollMatch) return false;
       }
+
       return true;
     });
-  }, [rows, selectedClass, selectedSection, selectedSession, searchQuery, classes]);
+  }, [rows, selectedClass, selectedSection, selectedSession, searchQuery, classes, sections, sessions]);
 
   // Compute 4 KPI totals dynamically from filtered rows
   const totalPresent = useMemo(() => {
@@ -232,6 +299,13 @@ export default function AttendanceReports() {
       return summary.absent;
     }
     return filteredRows.reduce((acc, r) => acc + (Number(r.absent_days) || 0), 0);
+  }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
+
+  const totalLeftEarly = useMemo(() => {
+    if (summary && (summary.left_early !== undefined || summary.leftEarly !== undefined) && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+      return Number(summary.left_early ?? summary.leftEarly ?? 0);
+    }
+    return filteredRows.reduce((acc, r: any) => acc + (Number(r.left_early_days || r.leftEarlyDays || r.left_early || r.leftEarly) || 0), 0);
   }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
 
   const totalMarked = useMemo(() => {
@@ -279,6 +353,7 @@ export default function AttendanceReports() {
           section_name: st.section_name || st.section || '—',
           present_days: 0,
           absent_days: 0,
+          left_early_days: 0,
           marked_days: 0,
           attendance_percentage: 0
         }));
@@ -288,21 +363,22 @@ export default function AttendanceReports() {
 
   function downloadCsv() {
     setExportDropdownOpen(false);
-    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Total Marked', 'Attendance Rate (%)'];
+    const header = ['Student Name', 'Roll Number', 'Class', 'Section', 'Present Days', 'Absent Days', 'Left Early Days', 'Total Marked', 'Attendance Rate (%)'];
     const exportData = getRowsForExport();
 
     const body = exportData.length > 0
-      ? exportData.map(r => [
+      ? exportData.map((r: any) => [
           r.student_name,
           r.roll,
           r.class_name || '—',
           r.section_name || '—',
           r.present_days || 0,
           r.absent_days || 0,
+          r.left_early_days || 0,
           r.marked_days || 0,
           `${r.attendance_percentage || 0}%`
         ])
-      : [['No attendance records found matching this criteria', '', '', '', 0, 0, 0, '0%']];
+      : [['No attendance records found matching this criteria', '', '', '', 0, 0, 0, 0, '0%']];
 
     const totalRow = [
       'Total / Average',
@@ -311,6 +387,7 @@ export default function AttendanceReports() {
       '',
       totalPresent,
       totalAbsent,
+      totalLeftEarly,
       totalMarked,
       `${overallPercentage}%`
     ];
@@ -330,13 +407,14 @@ export default function AttendanceReports() {
     const exportData = getRowsForExport();
 
     const data = exportData.length > 0
-      ? exportData.map(r => ({
+      ? exportData.map((r: any) => ({
           'Student Name': r.student_name,
           'Roll Number': r.roll,
           'Class': r.class_name || '—',
           'Section': r.section_name || '—',
           'Present Days': r.present_days || 0,
           'Absent Days': r.absent_days || 0,
+          'Left Early Days': r.left_early_days || 0,
           'Total Marked': r.marked_days || 0,
           'Attendance Rate (%)': `${r.attendance_percentage || 0}%`
         }))
@@ -347,6 +425,7 @@ export default function AttendanceReports() {
           'Section': '',
           'Present Days': 0,
           'Absent Days': 0,
+          'Left Early Days': 0,
           'Total Marked': 0,
           'Attendance Rate (%)': '0%'
         }];
@@ -358,6 +437,7 @@ export default function AttendanceReports() {
       'Section': '',
       'Present Days': totalPresent,
       'Absent Days': totalAbsent,
+      'Left Early Days': totalLeftEarly,
       'Total Marked': totalMarked,
       'Attendance Rate (%)': `${overallPercentage}%`
     } as any);
@@ -371,7 +451,8 @@ export default function AttendanceReports() {
       { wch: 15 },
       { wch: 15 },
       { wch: 15 },
-      { wch: 22 }
+      { wch: 15 },
+      { wch: 20 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -739,8 +820,9 @@ export default function AttendanceReports() {
             style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
           >
             <option value="ALL">All Sections</option>
-            <option value="A">Section A</option>
-            <option value="B">Section B</option>
+            {Array.from(new Set(['A', 'B', ...sections.map(s => String(s.name || s.section_name || '').replace(/^sec(tion)?[-_\s]*/i, '').trim().toUpperCase()).filter(Boolean)])).map(sec => (
+              <option key={sec} value={sec}>Section {sec}</option>
+            ))}
           </select>
         </label>
 
@@ -806,10 +888,10 @@ export default function AttendanceReports() {
 
       {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
 
-      {/* ─── 4 Separate KPI Cards Side-by-Side ─── */}
+      {/* ─── 5 Separate KPI Cards Side-by-Side ─── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: 16,
         marginBottom: 20
       }}>
@@ -845,6 +927,23 @@ export default function AttendanceReports() {
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{totalAbsent}</div>
           <span style={{ fontSize: 11.5, color: '#64748b' }}>Total absent days recorded</span>
+        </div>
+
+        {/* Left Early Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #fed7aa',
+          borderLeft: '4px solid #f97316',
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#c2410c', letterSpacing: '0.04em' }}>LEFT EARLY</span>
+            <Clock size={18} color="#f97316" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{totalLeftEarly}</div>
+          <span style={{ fontSize: 11.5, color: '#64748b' }}>Total early departures recorded</span>
         </div>
 
         {/* Marked Attendance Card */}
@@ -893,6 +992,7 @@ export default function AttendanceReports() {
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>SECTION</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>PRESENT</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>ABSENT</th>
+              <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>LEFT EARLY</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>MARKED</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>ATTENDANCE %</th>
             </tr>
@@ -906,13 +1006,14 @@ export default function AttendanceReports() {
                 <td style={{ padding: '12px 14px', fontSize: 13, color: '#475569' }}>{r.section_name || '-'}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: '#16a34a', fontWeight: 600 }}>{r.present_days}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: '#dc2626', fontWeight: 600 }}>{r.absent_days}</td>
+                <td style={{ padding: '12px 14px', fontSize: 13, color: '#ea580c', fontWeight: 600 }}>{r.left_early_days || 0}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>{r.marked_days}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{r.attendance_percentage}%</td>
               </tr>
             ))}
             {!filteredRows.length && !loading && (
               <tr>
-                <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
+                <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
                   No attendance records found matching this criteria.
                 </td>
               </tr>

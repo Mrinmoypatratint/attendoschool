@@ -68,7 +68,7 @@ const demoUsers: DemoUser[] = [
   // Techno International New Town (TINT) School Admin, Faculty & Student
   {
     id: '00000000-0000-0000-0000-000000000031',
-    schoolId: '00000000-0000-0000-0000-000000000002',
+    schoolId: 'sch-1790665531365',
     name: 'TINT School Administrator',
     email: 'admin@tint.edu.in',
     role: 'SCHOOL_ADMIN',
@@ -77,7 +77,7 @@ const demoUsers: DemoUser[] = [
   },
   {
     id: '00000000-0000-0000-0000-000000000032',
-    schoolId: '00000000-0000-0000-0000-000000000002',
+    schoolId: 'sch-1790665531365',
     name: 'TINT Administrator',
     email: 'admin@tint.local',
     role: 'SCHOOL_ADMIN',
@@ -86,7 +86,7 @@ const demoUsers: DemoUser[] = [
   },
   {
     id: '00000000-0000-0000-0000-000000000035',
-    schoolId: '00000000-0000-0000-0000-000000000002',
+    schoolId: 'sch-1790665531365',
     name: 'TINT Faculty Teacher',
     email: 'teacher@tint.edu.in',
     role: 'TEACHER',
@@ -95,7 +95,7 @@ const demoUsers: DemoUser[] = [
   },
   {
     id: 'ce8082a9-4280-47a1-90aa-0feaa5f42234',
-    schoolId: '00000000-0000-0000-0000-000000000002',
+    schoolId: 'sch-1790665531365',
     name: 'Sweta Mondal',
     email: 'sweta@gmail.com',
     role: 'STUDENT',
@@ -105,7 +105,7 @@ const demoUsers: DemoUser[] = [
   },
   {
     id: '00000000-0000-0000-0000-000000000037',
-    schoolId: '00000000-0000-0000-0000-000000000002',
+    schoolId: 'sch-1790665531365',
     name: 'TINT Demo Student',
     email: 'student@tint.edu.in',
     role: 'STUDENT',

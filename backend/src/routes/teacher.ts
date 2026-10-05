@@ -452,7 +452,15 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
          ORDER BY roll_number`,
         [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec]
       );
-      if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+      if (q.rowCount && q.rows.length > 0) {
+        const uniqueStudents = new Map<string, any>();
+        for (const s of q.rows) {
+          const roll = String(s.roll_number || '').trim();
+          const key = roll ? `roll:${roll}` : `name:${String(s.name).trim().toLowerCase()}`;
+          if (!uniqueStudents.has(key)) uniqueStudents.set(key, s);
+        }
+        return res.json(Array.from(uniqueStudents.values()));
+      }
     } catch {}
   }
 
@@ -479,8 +487,26 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
         });
 
         if (list.length > 0) {
-          list.sort((a: any, b: any) => String(a.roll_number || a.rollNumber || '').localeCompare(String(b.roll_number || b.rollNumber || ''), undefined, { numeric: true }));
-          return res.json(list);
+          const uniqueStudents = new Map<string, any>();
+          for (const s of list as any[]) {
+            const roll = String(s.roll_number || s.rollNumber || '').trim();
+            const adm = String(s.admission_number || s.admissionNumber || '').trim().toLowerCase();
+            const name = String(s.name || s.fullName || '').trim().toLowerCase();
+            const key = (adm && !adm.startsWith('adm-st-'))
+              ? `adm:${adm}`
+              : (roll ? `roll:${roll}` : `name:${name}`);
+
+            if (!uniqueStudents.has(key)) {
+              uniqueStudents.set(key, s);
+            } else {
+              if (s.school_id === sid || s.schoolId === sid) {
+                uniqueStudents.set(key, s);
+              }
+            }
+          }
+          const deduplicated = Array.from(uniqueStudents.values());
+          deduplicated.sort((a: any, b: any) => String(a.roll_number || a.rollNumber || '').localeCompare(String(b.roll_number || b.rollNumber || ''), undefined, { numeric: true }));
+          return res.json(deduplicated);
         }
       }
     } catch {}
@@ -1166,34 +1192,57 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
 
   // 6. Sync to Supabase PostgreSQL as PRIMARY
   if (isPostgresConfigured) {
-    pool.query(
-      `UPDATE attendance_records
-       SET status=$1, is_present=$2, remarks=$3, departure_period=$4, departure_time=$5,
-           arrival_period=$6, arrival_time=$7, updated_by=$8, updated_by_name=$9, updated_at=NOW()
-       WHERE attendance_session_id=$10 AND student_id=$11`,
-      [status, isPresent, reason || '', record.departurePeriod || null, record.departureTime || null,
-       record.arrivalPeriod || null, record.arrivalTime || null, req.user!.id, userName, sessionId, studentId]
-    ).catch(() => {});
+    (async () => {
+      try {
+        let pgStudentId = studentId;
+        const isStudUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pgStudentId);
+        if (!isStudUuid) {
+          const pSt = await pool.query(
+            `SELECT id FROM students WHERE (school_id = $1 OR school_id = '00000000-0000-0000-0000-000000000002') AND (roll_number = $2 OR name = $3) LIMIT 1`,
+            [sid, record.rollNumber || '', record.studentName || '']
+          );
+          if (pSt.rowCount) pgStudentId = pSt.rows[0].id;
+        }
 
-    pool.query(
-      `UPDATE attendance_sessions
-       SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
-           is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
-           last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
-       WHERE id=$7`,
-      [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
-    ).catch(() => {});
+        const isSessUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+        if (isSessUuid) {
+          await pool.query(
+            `UPDATE attendance_records
+             SET status=$1, is_present=$2, remarks=$3, departure_period=$4, departure_time=$5,
+                 arrival_period=$6, arrival_time=$7, updated_by=$8, updated_by_name=$9, updated_at=NOW()
+             WHERE attendance_session_id=$10 AND (student_id::text=$11 OR student_id::text=$12)`,
+            [status, isPresent, reason || '', record.departurePeriod || null, record.departureTime || null,
+             record.arrivalPeriod || null, record.arrivalTime || null, req.user!.id, userName, sessionId, studentId, pgStudentId]
+          );
 
-    pool.query(
-      `INSERT INTO attendance_audit_logs(
-         school_id, session_id, student_id, student_name, roll_number, action,
-         previous_status, new_status, departure_period, departure_time,
-         arrival_period, arrival_time, reason, changed_by, changed_by_name, notification_sent
-       ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-      [sid, sessionId, studentId, record.studentName || 'Student', record.rollNumber || '',
-       auditLog.action, prevStatus, status, record.departurePeriod || null, record.departureTime || null,
-       record.arrivalPeriod || null, record.arrivalTime || null, reason || '', req.user!.id, userName, Boolean(notifyParent)]
-    ).catch(() => {});
+          await pool.query(
+            `UPDATE attendance_sessions
+             SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4,
+                 is_reattendance=TRUE, reattendance_count=COALESCE(reattendance_count, 0) + 1,
+                 last_modified_by=$5, last_modified_name=$6, last_modified_at=NOW()
+             WHERE id=$7`,
+            [presCount, absCount, leftEarlyCount, lateCount, req.user!.id, userName, sessionId]
+          );
+
+          const isSidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
+          if (isSidUuid) {
+            await pool.query(
+              `INSERT INTO attendance_audit_logs(
+                 school_id, session_id, student_id, student_name, roll_number, action,
+                 previous_status, new_status, departure_period, departure_time,
+                 arrival_period, arrival_time, reason, changed_by, changed_by_name, notification_sent
+               ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+              [sid, sessionId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pgStudentId) ? pgStudentId : null,
+               record.studentName || 'Student', record.rollNumber || '',
+               auditLog.action, prevStatus, status, record.departurePeriod || null, record.departureTime || null,
+               record.arrivalPeriod || null, record.arrivalTime || null, reason || '', req.user!.id, userName, Boolean(notifyParent)]
+            );
+          }
+        }
+      } catch (err: any) {
+        console.warn('[UpdateStudentAttendance] Postgres update warning:', err.message);
+      }
+    })().catch(() => {});
   }
 
   // 7. Dispatch Alert if notifyParent is true
@@ -1960,20 +2009,61 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
           }
         }
 
+        const incomingRecordsMap = new Map<string, any>();
+        if (Array.isArray(x.records)) {
+          for (const rec of x.records) {
+            if (rec.studentId) incomingRecordsMap.set(String(rec.studentId).toLowerCase(), rec);
+            if (rec.student_id) incomingRecordsMap.set(String(rec.student_id).toLowerCase(), rec);
+            if (rec.id) incomingRecordsMap.set(String(rec.id).toLowerCase(), rec);
+            if (rec.rollNumber) incomingRecordsMap.set(`roll:${String(rec.rollNumber).trim().toLowerCase()}`, rec);
+            if (rec.roll_number) incomingRecordsMap.set(`roll:${String(rec.roll_number).trim().toLowerCase()}`, rec);
+            if (rec.studentName) incomingRecordsMap.set(`name:${String(rec.studentName).trim().toLowerCase()}`, rec);
+            if (rec.name) incomingRecordsMap.set(`name:${String(rec.name).trim().toLowerCase()}`, rec);
+          }
+        }
+
         if (students.length > 0) {
           for (const st of students) {
-            const isPres = (st as any).is_present !== undefined
-              ? (st as any).is_present
-              : (presentSet.has(String(st.id)) || presentSet.has(String(st.roll_number)));
-            const status = (st as any).status || (isPres ? 'PRESENT' : 'ABSENT');
+            const stId = String(st.id).toLowerCase();
+            const stRoll = String(st.roll_number || '').trim().toLowerCase();
+            const stName = String(st.name || '').trim().toLowerCase();
+            const matchRec =
+              (st as any).status ? st :
+              incomingRecordsMap.get(stId) ||
+              (stRoll ? incomingRecordsMap.get(`roll:${stRoll}`) : null) ||
+              (stName ? incomingRecordsMap.get(`name:${stName}`) : null);
+
+            let status = matchRec?.status;
+            const departurePeriod = matchRec?.departurePeriod || matchRec?.departure_period || null;
+            const departureTime = matchRec?.departureTime || matchRec?.departure_time || null;
+            const arrivalPeriod = matchRec?.arrivalPeriod || matchRec?.arrival_period || null;
+            const arrivalTime = matchRec?.arrivalTime || matchRec?.arrival_time || null;
+            const remarks = matchRec?.remarks || '';
+
+            if (!status) {
+              const isPres = (st as any).is_present !== undefined
+                ? (st as any).is_present
+                : (presentSet.has(String(st.id)) || (st.roll_number && presentSet.has(String(st.roll_number))));
+              status = isPres ? 'PRESENT' : 'ABSENT';
+            }
+
+            const isPres = status === 'PRESENT' || status === 'LATE' || status === 'LEFT_EARLY' || Boolean(departurePeriod);
+
             await client.query(
-              `INSERT INTO attendance_records(id, attendance_session_id, student_id, is_present, status)
-               VALUES(gen_random_uuid(), $1, $2, $3, $4)
+              `INSERT INTO attendance_records(
+                 id, attendance_session_id, student_id, is_present, status,
+                 departure_period, departure_time, arrival_period, arrival_time, remarks
+               ) VALUES(gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
                ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET
                  is_present = EXCLUDED.is_present,
                  status = EXCLUDED.status,
+                 departure_period = EXCLUDED.departure_period,
+                 departure_time = EXCLUDED.departure_time,
+                 arrival_period = EXCLUDED.arrival_period,
+                 arrival_time = EXCLUDED.arrival_time,
+                 remarks = EXCLUDED.remarks,
                  marked_at = NOW()`,
-              [sessionId, st.id, isPres, status]
+              [sessionId, st.id, isPres, status, departurePeriod, departureTime, arrivalPeriod, arrivalTime, remarks]
             );
             finalRecords.push({
               student_id: st.id,
@@ -1981,15 +2071,25 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
               studentName: st.name,
               rollNumber: st.roll_number,
               is_present: isPres,
-              status
+              status,
+              departurePeriod,
+              departureTime,
+              arrivalPeriod,
+              arrivalTime,
+              remarks
             });
           }
 
-          const presCount = finalRecords.filter(r => r.is_present).length;
-          const absCount = finalRecords.length - presCount;
+          const presCount = finalRecords.filter(r => r.status === 'PRESENT' || (r.status !== 'ABSENT' && r.status !== 'LEFT_EARLY' && r.is_present)).length;
+          const leftEarlyCount = finalRecords.filter(r => r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod)).length;
+          const lateCount = finalRecords.filter(r => r.status === 'LATE').length;
+          const absCount = finalRecords.filter(r => r.status === 'ABSENT' || (!r.is_present && r.status !== 'LEFT_EARLY' && r.status !== 'LATE')).length;
+
           await client.query(
-            `UPDATE attendance_sessions SET present_count=$1, absent_count=$2, total_count=$3 WHERE id=$4`,
-            [presCount, absCount, finalRecords.length, sessionId]
+            `UPDATE attendance_sessions
+             SET present_count=$1, absent_count=$2, left_early_count=$3, late_count=$4, total_count=$5
+             WHERE id=$6`,
+            [presCount, absCount, leftEarlyCount, lateCount, finalRecords.length, sessionId]
           ).catch(() => {});
 
           await client.query('COMMIT');
@@ -2016,8 +2116,10 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   if (!sessionSavedInDb) {
     if (Array.isArray(x.records) && x.records.length > 0) {
       finalRecords = x.records.map((r: any) => {
-        const status = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
-        const isPres = status === 'PRESENT' || status === 'LATE' || r.isPresent === true || r.is_present === true || presentSet.has(String(r.studentId || r.id));
+        const departurePeriod = r.departurePeriod || r.departure_period || null;
+        let status = r.status || (r.is_present || r.isPresent ? 'PRESENT' : 'ABSENT');
+        if (departurePeriod && status !== 'LEFT_EARLY') status = 'LEFT_EARLY';
+        const isPres = status === 'PRESENT' || status === 'LATE' || status === 'LEFT_EARLY' || r.isPresent === true || r.is_present === true || presentSet.has(String(r.studentId || r.id));
         return {
           student_id: String(r.studentId || r.student_id || r.id),
           studentId: String(r.studentId || r.student_id || r.id),
@@ -2025,7 +2127,7 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
           rollNumber: String(r.rollNumber || r.roll_number || ''),
           is_present: isPres,
           status,
-          departurePeriod: r.departurePeriod || r.departure_period,
+          departurePeriod,
           departureTime: r.departureTime || r.departure_time,
           arrivalPeriod: r.arrivalPeriod || r.arrival_period,
           arrivalTime: r.arrivalTime || r.arrival_time,
@@ -2042,12 +2144,19 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         try {
           const snap = await collections.students().get();
           if (!snap.empty) {
-            studentPool = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => {
+            const rawPool = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => {
               if (s.is_active === false || s.status === 'DELETED') return false;
               const matchSchool = (s.school_id && isSameSchool(s.school_id, schoolId)) || (s.schoolId && isSameSchool(s.schoolId, schoolId));
               if (!matchSchool) return false;
               return matchesStudentClassAndSection(s, String(x.classId), String(x.sectionId));
             });
+            const poolMap = new Map<string, any>();
+            for (const sp of rawPool as any[]) {
+              const r = String(sp.roll_number || sp.rollNumber || '').trim();
+              const key = r ? `roll:${r}` : `name:${String(sp.fullName || sp.name).trim().toLowerCase()}`;
+              if (!poolMap.has(key)) poolMap.set(key, sp);
+            }
+            studentPool = Array.from(poolMap.values());
           }
         } catch {}
       }

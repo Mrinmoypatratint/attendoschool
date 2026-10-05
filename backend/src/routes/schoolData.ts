@@ -481,7 +481,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
 
  try {
-  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,
+  const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,st.created_at,
   st.academic_year_id, ay.name AS session_name,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
@@ -515,7 +515,9 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         photo_url: st.photo_url || '',
         photoUrl: st.photo_url || '',
         session: st.session_name || st.academic_year_id,
-        session_id: st.academic_year_id
+        session_id: st.academic_year_id,
+        created_at: st.created_at,
+        createdAt: st.created_at
       };
     });
     const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
@@ -1855,7 +1857,7 @@ r.get('/teachers/template', ...reader, (_req, res) => {
 r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rowCount && q.rows.length > 0) return res.json(q.rows);

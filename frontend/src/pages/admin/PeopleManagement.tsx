@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar } from 'lucide-react';
+import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 
@@ -79,6 +79,33 @@ export default function PeopleManagement() {
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
+
+  const lastRegisteredTeacherInfo = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('attendo_last_registered_teacher');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.name) return parsed;
+      }
+    } catch {}
+
+    if (!rows || rows.length === 0) return null;
+
+    const withTime = rows.filter(r => r.created_at || r.createdAt);
+    if (withTime.length > 0) {
+      const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
+      return {
+        name: latest.name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Teacher',
+        employeeId: latest.employee_id || latest.savior_no || latest.Savior_No || latest.employeeId || '—'
+      };
+    }
+
+    const candidate = rows[0];
+    return {
+      name: candidate.name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Teacher',
+      employeeId: candidate.employee_id || candidate.savior_no || candidate.Savior_No || candidate.employeeId || '—'
+    };
+  }, [rows]);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
   const tableBodyRef = useRef<HTMLDivElement>(null);
@@ -206,6 +233,12 @@ export default function PeopleManagement() {
       };
 
       const res = await api.post('/teachers', payload);
+      try {
+        localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
+          name: fullName,
+          employeeId: teacherForm.employeeId || teacherForm.saviorNo || res.data?.employee_id || '—'
+        }));
+      } catch {}
       setToastNotice({
         type: 'success',
         message: `Faculty member ${fullName} added! Automatic welcome email dispatched via SMTP to ${res.data.email}.`,
@@ -300,6 +333,17 @@ export default function PeopleManagement() {
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
+      if (previewRows.length > 0) {
+        const lastRow = previewRows[previewRows.length - 1];
+        const teacherName = lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Teacher';
+        const teacherEmpId = lastRow.saviorNo || lastRow.employeeId || '—';
+        try {
+          localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
+            name: teacherName,
+            employeeId: teacherEmpId
+          }));
+        } catch {}
+      }
       setToastNotice({
         type: 'success',
         message: `Successfully onboarded ${res.data.count} teachers! Automatic welcome emails and credentials have been dispatched via SMTP.`
@@ -747,6 +791,28 @@ export default function PeopleManagement() {
             </div>
             {!addTeacherPreview ? (
               <form className="modal-form" onSubmit={(e) => { e.preventDefault(); setAddTeacherPreview(true); }}>
+                {/* Last Registered Teacher Banner in Red */}
+                {lastRegisteredTeacherInfo && (
+                  <div style={{
+                    color: '#dc2626',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    padding: '8px 12px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 6,
+                    marginBottom: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+                    <span>
+                      Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                    </span>
+                  </div>
+                )}
+
                 {/* First Name + Last Name */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <label>First Name
@@ -1089,6 +1155,29 @@ export default function PeopleManagement() {
                 ×
               </button>
             </div>
+
+            {/* Last Registered Teacher Banner in Red */}
+            {lastRegisteredTeacherInfo && (
+              <div style={{
+                color: '#dc2626',
+                fontSize: 12.5,
+                fontWeight: 600,
+                padding: '8px 14px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 6,
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                flexShrink: 0
+              }}>
+                <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+                <span>
+                  Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                </span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: 12, color: '#475569' }}>

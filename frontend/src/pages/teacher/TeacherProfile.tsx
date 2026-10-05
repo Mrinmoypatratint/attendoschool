@@ -490,17 +490,28 @@ export function TeacherProfile() {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
+                  onClick={() => {
+                    setEditing(false);
+                    setEditPhone(profile?.phone || '');
+                    setEditGender(profile?.gender || '');
+                    setEditAddress(profile?.address || '');
+                    setEditQualification(profile?.qualification || '');
+                  }}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
                     padding: '6px 14px',
                     borderRadius: 6,
                     border: '1px solid #cbd5e1',
                     backgroundColor: '#ffffff',
+                    color: '#334155',
                     fontSize: 12.5,
+                    fontWeight: 600,
                     cursor: 'pointer'
                   }}
                 >
-                  Cancel
+                  <X size={13} /> Cancel
                 </button>
                 <button
                   type="submit"

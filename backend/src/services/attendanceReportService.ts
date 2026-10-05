@@ -1,6 +1,6 @@
 import { pool, isPostgresConfigured } from '../db';
 import { isFirebaseConfigured, collections } from '../firebase';
-import { isSameSchool, isTestSchool } from '../utils/tenant';
+import { isSameSchool, isTestSchool, isTintSchool } from '../utils/tenant';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { demoStudents } from '../routes/schoolData';
 
@@ -14,27 +14,37 @@ export async function attendanceSummary(
 
   if (usePostgres) {
     try {
+      const isTint = isTintSchool(schoolId);
+      const isGw = isTestSchool(schoolId);
+      let schoolCond = `s.school_id::text = $1`;
+      if (isTint) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000002' OR s.school_id::text = 'sch-1790665531365')`;
+      } else if (isGw) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000001')`;
+      }
       const query = isGlobal
         ? `SELECT
-             COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present,
+             COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
              COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+             COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
              COUNT(*)::int AS marked
            FROM attendance_sessions s
            JOIN attendance_records ar ON ar.attendance_session_id = s.id
            WHERE s.attendance_date BETWEEN $1 AND $2`
         : `SELECT
-             COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present,
+             COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
              COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+             COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
              COUNT(*)::int AS marked
            FROM attendance_sessions s
            JOIN attendance_records ar ON ar.attendance_session_id = s.id
-           WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3`;
+           WHERE ${schoolCond} AND s.attendance_date BETWEEN $2 AND $3`;
       const params = isGlobal ? [from, to] : [schoolId, from, to];
       const { rows } = await pool.query(query, params);
-      const r = rows[0] || { present: 0, absent: 0, marked: 0 };
+      const r = rows[0] || { present: 0, absent: 0, left_early: 0, marked: 0 };
       if (Number(r.marked) > 0) {
         const percentage = Number(((Number(r.present) / Number(r.marked)) * 100).toFixed(2));
-        return { ...r, percentage };
+        return { ...r, percentage, leftEarly: r.left_early ?? 0 };
       }
     } catch {}
   }
@@ -42,6 +52,7 @@ export async function attendanceSummary(
   // Cloud Firestore & In-Memory aggregation
   let present = 0;
   let absent = 0;
+  let leftEarly = 0;
   let marked = 0;
 
   const validSessionIds = new Set<string>();
@@ -49,9 +60,7 @@ export async function attendanceSummary(
   // 1. Cloud Firestore Sessions
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = (!isGlobal && schoolId)
-        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
-        : await collections.attendanceSessions().get();
+      const sessSnap = await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -80,16 +89,16 @@ export async function attendanceSummary(
   // 3. Process Firestore Records
   if (isFirebaseConfigured() && validSessionIds.size > 0) {
     try {
-      const recSnap = (!isGlobal && schoolId)
-        ? await collections.attendanceRecords().where('school_id', '==', schoolId).get()
-        : await collections.attendanceRecords().get();
+      const recSnap = await collections.attendanceRecords().get();
       recSnap.docs.forEach(doc => {
         const r = doc.data();
         const sessId = r.sessionId || r.attendance_session_id;
         const key = doc.id || `${sessId}-${r.studentId || r.student_id}`;
         if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
           countedRecordKeys.add(key);
-          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+          const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
+          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
+          if (isLeftEarly) leftEarly++;
           if (isPres) present++;
           else absent++;
           marked++;
@@ -106,7 +115,9 @@ export async function attendanceSummary(
     const key = r.id || `${sessId}-${r.studentId || r.student_id}`;
     if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
       countedRecordKeys.add(key);
-      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+      const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
+      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || isLeftEarly || r.is_present === true || (r as any).isPresent === true;
+      if (isLeftEarly) leftEarly++;
       if (isPres) present++;
       else absent++;
       marked++;
@@ -114,7 +125,7 @@ export async function attendanceSummary(
   });
 
   const percentage = marked > 0 ? Number(((present / marked) * 100).toFixed(2)) : 0;
-  return { present, absent, marked, percentage };
+  return { present, absent, marked, percentage, left_early: leftEarly, leftEarly };
 }
 
 export async function studentAttendanceReport(
@@ -128,6 +139,15 @@ export async function studentAttendanceReport(
 
   if (usePostgres) {
     try {
+      const isTint = isTintSchool(schoolId);
+      const isGw = isTestSchool(schoolId);
+      let schoolCond = `s.school_id::text = $1`;
+      if (isTint) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000002' OR s.school_id::text = 'sch-1790665531365')`;
+      } else if (isGw) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000001')`;
+      }
+
       const params: any[] = isGlobal ? [from, to] : [schoolId, from, to];
       let studentFilter = '';
       if (studentId) {
@@ -137,21 +157,34 @@ export async function studentAttendanceReport(
 
       const whereClause = isGlobal
         ? `WHERE s.attendance_date BETWEEN $1 AND $2 ${studentFilter}`
-        : `WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3 ${studentFilter}`;
+        : `WHERE ${schoolCond} AND s.attendance_date BETWEEN $2 AND $3 ${studentFilter}`;
 
       const { rows } = await pool.query(
         `SELECT
            ar.student_id,
            st.name AS student_name,
            COALESCE(st.roll_number, '') AS roll,
-           COALESCE(c.name, c.class_number::text, '10') AS class_name,
+           st.class_id,
+           st.section_id,
+           st.academic_year_id,
+           c.class_number,
+           COALESCE(
+             CASE 
+               WHEN c.class_number = -1 THEN 'L-KG'
+               WHEN c.class_number = 0 THEN 'U-KG'
+               WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
+               ELSE NULL
+             END,
+             'Class 10'
+           ) AS class_name,
            COALESCE(sec.name, 'A') AS section_name,
-           COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present_days,
+           COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present_days,
            COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent_days,
+           COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early_days,
            COUNT(*)::int AS marked_days,
            ROUND(
              CASE WHEN COUNT(*) = 0 THEN 0
-             ELSE COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::numeric / COUNT(*)::numeric * 100
+             ELSE COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::numeric / COUNT(*)::numeric * 100
              END, 2
            ) AS attendance_percentage
          FROM attendance_sessions s
@@ -160,7 +193,7 @@ export async function studentAttendanceReport(
          LEFT JOIN classes c ON c.id = st.class_id
          LEFT JOIN sections sec ON sec.id = st.section_id
          ${whereClause}
-         GROUP BY ar.student_id, st.name, st.roll_number, c.name, c.class_number, sec.name
+         GROUP BY ar.student_id, st.name, st.roll_number, st.class_id, st.section_id, st.academic_year_id, c.class_number, sec.name
          ORDER BY c.class_number, sec.name, st.roll_number, st.name`,
         params
       );
@@ -172,9 +205,7 @@ export async function studentAttendanceReport(
   const schoolStudents = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const studSnap = (!isGlobal && schoolId)
-        ? await collections.students().where('school_id', '==', schoolId).get()
-        : await collections.students().get();
+      const studSnap = await collections.students().get();
       studSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -191,9 +222,7 @@ export async function studentAttendanceReport(
   const validSessions = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = (!isGlobal && schoolId)
-        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
-        : await collections.attendanceSessions().get();
+      const sessSnap = await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -225,10 +254,15 @@ export async function studentAttendanceReport(
     student_id: string;
     student_name: string;
     roll: string | number;
+    class_id?: string;
+    section_id?: string;
+    academic_year_id?: string;
+    class_number?: number;
     class_name: string;
     section_name: string;
     present_days: number;
     absent_days: number;
+    left_early_days: number;
     marked_days: number;
     attendance_percentage: number;
   }>();
@@ -236,16 +270,24 @@ export async function studentAttendanceReport(
   schoolStudents.forEach(s => {
     if (studentId && s.id !== studentId) return;
     const rawCls = s.class_number !== undefined && s.class_number !== null
-      ? (s.class_number === -1 ? 'L-KG' : s.class_number === 0 ? 'U-KG' : String(s.class_number))
-      : (s.className || s.class_name || s.class_id || '10');
+      ? (s.class_number === -1 ? 'L-KG' : s.class_number === 0 ? 'U-KG' : `Class ${s.class_number}`)
+      : (s.className || s.class_name || (s.class_id ? `Class ${String(s.class_id).replace(/^cls-/, '')}` : 'Class 10'));
+    const formattedCls = String(rawCls).startsWith('Class ') || rawCls === 'L-KG' || rawCls === 'U-KG'
+      ? String(rawCls)
+      : `Class ${String(rawCls).replace(/^cls-/, '')}`;
     studentMap.set(s.id, {
       student_id: s.id,
       student_name: s.name || s.fullName || s.full_name || 'Student',
       roll: s.roll_number || s.rollNumber || '—',
-      class_name: String(rawCls).replace(/^cls-/, ''),
+      class_id: s.class_id || s.classId,
+      section_id: s.section_id || s.sectionId,
+      academic_year_id: s.academic_year_id || s.academicYearId,
+      class_number: s.class_number !== undefined ? Number(s.class_number) : undefined,
+      class_name: formattedCls,
       section_name: String(s.section_name || s.section || 'A').toUpperCase(),
       present_days: 0,
       absent_days: 0,
+      left_early_days: 0,
       marked_days: 0,
       attendance_percentage: 0
     });
@@ -269,24 +311,35 @@ export async function studentAttendanceReport(
 
     if (!studentMap.has(stId)) {
       const rawCls = sess?.className || sess?.classNumber || sess?.class_number || '10';
+      const formattedCls = (rawCls === -1 || rawCls === '-1') ? 'L-KG' : (rawCls === 0 || rawCls === '0') ? 'U-KG' : (String(rawCls).startsWith('Class ') ? String(rawCls) : `Class ${String(rawCls).replace(/^cls-/, '')}`);
       studentMap.set(stId, {
         student_id: stId,
         student_name: r.studentName || r.student_name || 'Student',
         roll: r.rollNumber || r.roll_number || '—',
-        class_name: String(rawCls).replace(/^cls-/, ''),
+        class_id: r.classId || r.class_id || sess?.classId || sess?.class_id,
+        section_id: r.sectionId || r.section_id || sess?.sectionId || sess?.section_id,
+        academic_year_id: r.academicYearId || r.academic_year_id || sess?.academicYearId || sess?.academic_year_id,
+        class_number: sess?.class_number !== undefined ? Number(sess.class_number) : undefined,
+        class_name: formattedCls,
         section_name: String(sess?.sectionName || sess?.section_name || 'A').toUpperCase(),
         present_days: 0,
         absent_days: 0,
+        left_early_days: 0,
         marked_days: 0,
         attendance_percentage: 0
       });
     }
 
     const rec = studentMap.get(stId)!;
-    const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
+    const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
+    const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
     rec.marked_days++;
-    if (isPres) rec.present_days++;
-    else rec.absent_days++;
+    if (isLeftEarly) {
+      rec.left_early_days = (rec.left_early_days || 0) + 1;
+    }
+    if (isPres && !isLeftEarly) rec.present_days++;
+    else if (!isPres) rec.absent_days++;
+    else rec.present_days++;
     rec.attendance_percentage = rec.marked_days > 0 ? Number(((rec.present_days / rec.marked_days) * 100).toFixed(2)) : 0;
   };
 
@@ -327,16 +380,26 @@ export async function dailyAttendanceReport(
 
   if (usePostgres) {
     try {
+      const isTint = isTintSchool(schoolId);
+      const isGw = isTestSchool(schoolId);
+      let schoolCond = `s.school_id::text = $1`;
+      if (isTint) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000002' OR s.school_id::text = 'sch-1790665531365')`;
+      } else if (isGw) {
+        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000001')`;
+      }
+
       const params = isGlobal ? [from, to] : [schoolId, from, to];
       const whereClause = isGlobal
         ? `WHERE s.attendance_date BETWEEN $1 AND $2`
-        : `WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3`;
+        : `WHERE ${schoolCond} AND s.attendance_date BETWEEN $2 AND $3`;
 
       const { rows } = await pool.query(
         `SELECT
            s.attendance_date,
-           COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present,
+           COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
            COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+           COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
            COUNT(*)::int AS marked
          FROM attendance_sessions s
          JOIN attendance_records ar ON ar.attendance_session_id = s.id
@@ -354,7 +417,7 @@ export async function dailyAttendanceReport(
     } catch {}
   }
 
-  const dayMap = new Map<string, { attendance_date: string; present: number; absent: number; marked: number; percentage: number }>();
+  const dayMap = new Map<string, { attendance_date: string; present: number; absent: number; left_early: number; marked: number; percentage: number }>();
 
   const validSessions = new Map<string, string>();
   if (isFirebaseConfigured()) {
@@ -381,18 +444,20 @@ export async function dailyAttendanceReport(
   });
 
   const processed = new Set<string>();
-  const addDayRecord = (dateStr: string, isPres: boolean, key: string) => {
+  const addDayRecord = (dateStr: string, isPres: boolean, isLeftEarly: boolean, key: string) => {
     if (!dateStr || (from && dateStr < from) || (to && dateStr > to)) return;
     if (processed.has(key)) return;
     processed.add(key);
 
     if (!dayMap.has(dateStr)) {
-      dayMap.set(dateStr, { attendance_date: dateStr, present: 0, absent: 0, marked: 0, percentage: 0 });
+      dayMap.set(dateStr, { attendance_date: dateStr, present: 0, absent: 0, left_early: 0, marked: 0, percentage: 0 });
     }
     const d = dayMap.get(dateStr)!;
     d.marked++;
-    if (isPres) d.present++;
-    else d.absent++;
+    if (isLeftEarly) d.left_early++;
+    if (isPres && !isLeftEarly) d.present++;
+    else if (!isPres) d.absent++;
+    else d.present++;
     d.percentage = Number(((d.present / d.marked) * 100).toFixed(1));
   };
 
@@ -404,8 +469,9 @@ export async function dailyAttendanceReport(
         const sessId = r.sessionId || r.attendance_session_id;
         const dStr = validSessions.get(sessId) || r.attendanceDate || r.attendance_date;
         if (dStr) {
-          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
-          addDayRecord(dStr, isPres, doc.id || `${sessId}-${r.studentId}`);
+          const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
+          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
+          addDayRecord(dStr, isPres, isLeftEarly, doc.id || `${sessId}-${r.studentId}`);
         }
       });
     } catch {}
@@ -415,8 +481,9 @@ export async function dailyAttendanceReport(
     const sessId = r.sessionId || r.attendance_session_id;
     const dStr = validSessions.get(sessId) || r.attendanceDate || r.attendance_date;
     if (dStr) {
-      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || r.is_present === true || r.isPresent === true;
-      addDayRecord(dStr, isPres, r.id || `${sessId}-${r.studentId}`);
+      const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
+      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
+      addDayRecord(dStr, isPres, isLeftEarly, r.id || `${sessId}-${r.studentId}`);
     }
   });
 
