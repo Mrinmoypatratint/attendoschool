@@ -261,9 +261,8 @@ export default function AttendanceReports() {
           if (!directMatch) {
             const rSessName = String(r.session || r.academic_year_name || '').toLowerCase();
             if (rSessName) {
-              const sessYears = sessName.match(/\d{4}/g) || [];
-              const rowYears = rSessName.match(/\d{4}/g) || [];
-              const sharesYear = sessYears.some(y => rowYears.includes(y));
+              const sessYears: string[] = sessName.match(/\d{4}/g) || [];
+              const sharesYear = sessYears.some(y => rSessName.includes(y));
               if (!sharesYear && !rSessName.includes(sessName)) return false;
             } else {
               return false;
