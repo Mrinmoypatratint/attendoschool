@@ -6061,6 +6061,58 @@ function Students(){
   </Layout>
 }
 
+/* ────── Teacher DOB Validation & Formatting Helpers ────── */
+function isValidDdMmYyyy(val: string): boolean {
+  if (!val || typeof val !== 'string') return false;
+  const match = val.trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) return false;
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1920 || year > new Date().getFullYear()) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function toDdMmYyyy(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'number' || (/^\d{4,5}$/.test(String(val).trim()) && !String(val).includes('-') && !String(val).includes('/'))) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 1000 && num < 60000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const y = String(date.getUTCFullYear());
+        return `${d}-${m}-${y}`;
+      }
+    }
+  }
+  const s = String(val).trim();
+  const dmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmy) {
+    return `${dmy[1].padStart(2, '0')}-${dmy[2].padStart(2, '0')}-${dmy[3]}`;
+  }
+  const ymd = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (ymd) {
+    return `${ymd[3].padStart(2, '0')}-${ymd[2].padStart(2, '0')}-${ymd[1]}`;
+  }
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) {
+    const d = String(dt.getDate()).padStart(2, '0');
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const y = String(dt.getFullYear());
+    return `${d}-${m}-${y}`;
+  }
+  return s;
+}
+
 /* ────── Teachers ────── */
 function Teachers(){
   const {user}=useAuth();
@@ -6327,10 +6379,13 @@ function Teachers(){
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
+        'Gender': r.gender || '',
+        'Date_of_Birth': toDdMmYyyy(r.dob || r.date_of_birth),
         'Class': allocSummary !== '—' ? allocSummary : '',
         'Section': '',
         'Status': r.is_active !== false ? 'Active' : 'Inactive',
-        'Designation': r.designation || 'Teacher'
+        'Designation': r.designation || 'Teacher',
+        'Mobile': r.mobile || r.phone || ''
       };
     });
   }
@@ -6382,6 +6437,10 @@ function Teachers(){
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
+    if (f.dob && !isValidDdMmYyyy(f.dob)) {
+      alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).');
+      return;
+    }
 
     const payload = {
       ...f,
@@ -6394,6 +6453,9 @@ function Teachers(){
       saviorNo: employeeId,
       employee_id: employeeId,
       mobile: f.mobile || '',
+      gender: f.gender || '',
+      dob: f.dob ? toDdMmYyyy(f.dob) : '',
+      date_of_birth: f.dob ? toDdMmYyyy(f.dob) : '',
       designation: f.designation || 'Teacher',
       is_active: f.is_active !== false,
       status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
@@ -6408,6 +6470,7 @@ function Teachers(){
           { label: 'Full Name', value: name, color: 'blue' },
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
           { label: 'Gender', value: f.gender || 'Not specified' },
+          { label: 'Date of Birth', value: f.dob || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
@@ -6435,6 +6498,7 @@ function Teachers(){
         email,
         employee_id: employeeId,
         gender: f.gender || '',
+        dob: f.dob ? toDdMmYyyy(f.dob) : (editingTeacher.dob || editingTeacher.date_of_birth || ''),
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
@@ -6444,6 +6508,7 @@ function Teachers(){
         email: 'Email Address',
         employee_id: 'Employee ID',
         gender: 'Gender',
+        dob: 'Date of Birth',
         mobile: 'Mobile Number',
         designation: 'Designation',
         is_active: 'Status'
@@ -6480,7 +6545,7 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, dob: payload.dob || updated.dob, date_of_birth: payload.dob || updated.dob, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -6638,12 +6703,12 @@ function Teachers(){
     } catch {
       // Local fallback with exact requested headers
       const sample = [
-        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
       ];
       const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [16, 14, 14, 24, 26, 12, 10, 12, 20].map(wch => ({ wch }));
+      ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Teachers");
       XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -6673,6 +6738,9 @@ function Teachers(){
           const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
           const email = String(r["Email_id"] || r["Email ID"] || r["Email"] || r["email"] || `teacher${idx + 1}@school.local`).toLowerCase().trim();
           const mobile = String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000').trim();
+          const gender = String(r["Gender"] || r["gender"] || r["Sex"] || r["sex"] || '').trim();
+          const rawDob = r["Date_of_Birth"] || r["Date of Birth"] || r["date_of_birth"] || r["DOB"] || r["dob"] || '';
+          const dob = toDdMmYyyy(rawDob);
           const designation = String(r["Designation"] || r["designation"] || 'Teacher').trim();
           const status = String(r["Status"] || r["status"] || 'Active').trim();
           const className = String(r["Class"] || r["class"] || '').trim();
@@ -6685,6 +6753,8 @@ function Teachers(){
             name,
             email,
             mobile,
+            gender,
+            dob,
             designation,
             status,
             class: className,
@@ -6961,6 +7031,7 @@ function Teachers(){
                       employeeId: x.employee_id || x.employeeId || '',
                       mobile: x.mobile || x.phone || '',
                       gender: x.gender || '',
+                      dob: toDdMmYyyy(x.dob || x.date_of_birth),
                       designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
                     });
@@ -7157,12 +7228,13 @@ function Teachers(){
         <label>Employee Id / Savior_NO
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        {/* Row 1: Gender & Date of Birth */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Gender
             <select
               value={f.gender || ''}
               onChange={e => setF({ ...f, gender: e.target.value })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
             >
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
@@ -7170,11 +7242,87 @@ function Teachers(){
               <option value="Other">Other</option>
             </select>
           </label>
+          <label>Date of Birth <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
+              <input
+                type="text"
+                placeholder="DD-MM-YYYY (e.g. 15-08-1990)"
+                maxLength={10}
+                value={f.dob || ''}
+                onChange={e => {
+                  let val = e.target.value.replace(/[^0-9-]/g, '');
+                  const rawDigits = val.replace(/-/g, '');
+                  if (rawDigits.length <= 8 && !val.includes('-')) {
+                    if (rawDigits.length > 4) {
+                      val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
+                    } else if (rawDigits.length > 2) {
+                      val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
+                    }
+                  }
+                  setF({ ...f, dob: val });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 34px 8px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${f.dob && !isValidDdMmYyyy(f.dob) ? '#ef4444' : 'var(--border)'}`,
+                  boxSizing: 'border-box'
+                }}
+              />
+              <input
+                type="date"
+                title="Select from date picker"
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  width: 22,
+                  height: 22,
+                  opacity: 0,
+                  cursor: 'pointer',
+                  zIndex: 2
+                }}
+                onChange={e => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split('-');
+                    setF({ ...f, dob: `${d}-${m}-${y}` });
+                  }
+                }}
+              />
+              <Calendar
+                size={16}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  color: '#64748b',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+            {f.dob && !isValidDdMmYyyy(f.dob) && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Strict format required: DD-MM-YYYY (e.g. 15-08-1990)
+              </span>
+            )}
+          </label>
+        </div>
+
+        {/* Row 2: Designation & Mobile Number */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Designation
-            <input placeholder="e.g. Senior Teacher, TGT Mathematics" value={f.designation||''} onChange={e=>setF({...f,designation:e.target.value})}/>
+            <input
+              placeholder="e.g. Senior Teacher, TGT Mathematics"
+              value={f.designation||''}
+              onChange={e=>setF({...f,designation:e.target.value})}
+              style={{ width: '100%', boxSizing: 'border-box' }}
+            />
           </label>
           <label>Mobile Number
-            <input placeholder="10-digit mobile number" value={f.mobile||''} onChange={e=>setF({...f,mobile:e.target.value})}/>
+            <input
+              placeholder="10-digit mobile number"
+              value={f.mobile||''}
+              onChange={e=>setF({...f,mobile:e.target.value})}
+              style={{ width: '100%', boxSizing: 'border-box' }}
+            />
           </label>
         </div>
 
@@ -7427,7 +7575,7 @@ function Teachers(){
 
               {/* ── PREVIEW TABLE ── */}
               <div className="preview-table-container" style={{ flex: 1, minHeight: 320, overflow: 'auto' }}>
-                <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ width: 44, textAlign: 'center' }}>#</th>
@@ -7436,6 +7584,8 @@ function Teachers(){
                       <th style={{ minWidth: 120 }}>Last Name</th>
                       <th style={{ minWidth: 150 }}>Full Name</th>
                       <th style={{ minWidth: 180 }}>Email ID</th>
+                      <th style={{ minWidth: 90 }}>Gender</th>
+                      <th style={{ minWidth: 110 }}>Date of Birth</th>
                       <th style={{ minWidth: 130 }}>Designation</th>
                       <th style={{ minWidth: 140 }}>Class & Section</th>
                       <th style={{ minWidth: 100 }}>Status</th>
@@ -7445,7 +7595,7 @@ function Teachers(){
                   <tbody>
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={10} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No teachers match the current search filter.
                         </td>
                       </tr>
@@ -7460,6 +7610,24 @@ function Teachers(){
                             <td>{r.lastName || '—'}</td>
                             <td><b>{r.name}</b></td>
                             <td>{r.email}</td>
+                            <td>
+                              {r.gender ? (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '1px 7px',
+                                  borderRadius: 999,
+                                  fontSize: 11,
+                                  fontWeight: 500,
+                                  background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
+                                  color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {r.gender}
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td>{r.dob || '—'}</td>
                             <td>{r.designation || 'Teacher'}</td>
                             <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
                             <td><span className="badge active">{r.status || 'Active'}</span></td>
