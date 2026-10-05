@@ -127,6 +127,8 @@ export default function PeopleManagement() {
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
+        'Gender': r.gender || '',
+        'Date_of_Birth': r.dob || r.date_of_birth || '',
         'Class': r.class_name || r.class || '',
         'Section': r.section_name || r.section || '',
         'Status': (r.is_active !== false && r.active !== false) ? 'Active' : 'Inactive',
@@ -220,28 +222,17 @@ export default function PeopleManagement() {
   }
 
   // Teacher Bulk Template Download
-  async function downloadTeacherTemplate() {
-    try {
-      const res = await api.get('/teachers/template', { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'teachers_import_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Local fallback with exact requested headers
-      const sample = [
-        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
-      ];
-      const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-      XLSX.writeFile(wb, "teachers_import_template.xlsx");
-    }
+  function downloadTeacherTemplate() {
+    const sample = [
+      { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
+    XLSX.writeFile(wb, "teachers_import_template.xlsx");
   }
 
   // Teacher Excel Ingestion
@@ -1101,7 +1092,7 @@ export default function PeopleManagement() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: 12, color: '#475569' }}>
-                Required headers: <code>Savior_No</code>, <code>Fist Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
+                Required headers: <code>Savior_No</code>, <code>Fist Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Gender</code>, <code>Date_of_Birth</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
               </span>
               <button
                 type="button"
@@ -1436,6 +1427,8 @@ export default function PeopleManagement() {
                     <th>Last Name</th>
                     <th>Full Name(Automatically generated)</th>
                     <th>Email_id</th>
+                    <th>Gender</th>
+                    <th>Date of Birth</th>
                     <th>Class</th>
                     <th>Section</th>
                     <th>Status</th>
@@ -1450,6 +1443,14 @@ export default function PeopleManagement() {
                       <td>{r['Last Name'] || '—'}</td>
                       <td><b>{r['Full Name(Automatically generated)']}</b></td>
                       <td>{r['Email_id']}</td>
+                      <td>
+                        {r['Gender'] ? (
+                          <span className={`badge ${String(r['Gender']).toLowerCase() === 'female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
+                            {r['Gender']}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td>{r['Date_of_Birth'] ? <code>{r['Date_of_Birth']}</code> : '—'}</td>
                       <td>{r['Class'] || '—'}</td>
                       <td>{r['Section'] || '—'}</td>
                       <td><span className="badge active">{r['Status']}</span></td>

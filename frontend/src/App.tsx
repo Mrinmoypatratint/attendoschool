@@ -6691,28 +6691,17 @@ function Teachers(){
     }
   }
 
-  async function downloadTemplate() {
-    try {
-      const res = await api.get('/teachers/template', { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'teachers_import_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Local fallback with exact requested headers
-      const sample = [
-        { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-        { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-        { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
-      ];
-      const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
-      XLSX.writeFile(wb, "teachers_import_template.xlsx");
-    }
+  function downloadTemplate() {
+    const sample = [
+      { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
+    XLSX.writeFile(wb, "teachers_import_template.xlsx");
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -7805,7 +7794,7 @@ function Teachers(){
               Previewing <b>{prepareExportData().length}</b> faculty records for export
             </div>
             <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
-              Formatted with standardized template headers: Savior_No, Fist Name, Last Name, Full Name(Automatically generated), Email_id, Class, Section, Status, Designation
+              Formatted with standardized template headers: Savior_No, Fist Name, Last Name, Full Name(Automatically generated), Email_id, Gender, Date_of_Birth, Class, Section, Status, Designation
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -7836,6 +7825,8 @@ function Teachers(){
                 <th>Last Name</th>
                 <th>Full Name(Automatically generated)</th>
                 <th>Email_id</th>
+                <th>Gender</th>
+                <th>Date of Birth</th>
                 <th>Class</th>
                 <th>Section</th>
                 <th>Status</th>
@@ -7850,6 +7841,14 @@ function Teachers(){
                   <td>{r['Last Name'] || '—'}</td>
                   <td><b>{r['Full Name(Automatically generated)']}</b></td>
                   <td>{r['Email_id']}</td>
+                  <td>
+                    {r['Gender'] ? (
+                      <span className={`badge ${String(r['Gender']).toLowerCase() === 'female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
+                        {r['Gender']}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td>{r['Date_of_Birth'] ? <code>{r['Date_of_Birth']}</code> : '—'}</td>
                   <td>{r['Class'] || '—'}</td>
                   <td>{r['Section'] || '—'}</td>
                   <td><span className="badge active">{r['Status']}</span></td>
