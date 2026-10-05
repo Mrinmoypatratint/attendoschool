@@ -24,6 +24,7 @@ import {
   syncSchoolToFirestore,
   rehydrateAllFromFirestore
 } from '../services/firestoreSync';
+import { validatePasswordStrength } from '../utils/passwordPolicy';
 
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
@@ -1960,6 +1961,13 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: `Employee ID / Savior_NO '${employeeId}' already exists for this school.` });
   }
 
+  if (password && String(password).trim()) {
+    const pwValidation = validatePasswordStrength(String(password).trim());
+    if (!pwValidation.valid) {
+      return res.status(400).json({ message: pwValidation.message });
+    }
+  }
+
   const rawPassword = password || (crypto.randomBytes(8).toString('hex') + 'Tt1!');
   let resetInfo: any = null;
   let emailDeliveryStatus: 'Sent' | 'Failed' | 'Pending' = 'Pending';
@@ -2528,9 +2536,22 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   if (idx >= 0) demoTeachers[idx] = { ...demoTeachers[idx], ...updated };
   else demoTeachers.push(updated);
 
+  if (password && String(password).trim()) {
+    const pwValidation = validatePasswordStrength(String(password).trim());
+    if (!pwValidation.valid) {
+      return res.status(400).json({ message: pwValidation.message });
+    }
+  }
+
   let newPasswordHash: string | undefined = undefined;
-  if (password && String(password).trim().length >= 6) {
+  if (password && String(password).trim()) {
     newPasswordHash = await bcrypt.hash(String(password).trim(), 10);
+    try {
+      await pool.query(
+        `UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2 AND school_id=$3`,
+        [newPasswordHash, tid, userSchoolId]
+      );
+    } catch {}
   }
 
   await syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
@@ -2710,8 +2731,9 @@ r.put('/school-profile/change-password', ...admin, async (req: AuthRequest, res)
   const userId = req.user!.id;
   const { currentPassword, newPassword } = req.body || {};
 
-  if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
+  const pwValidation = validatePasswordStrength(String(newPassword));
+  if (!pwValidation.valid) {
+    return res.status(400).json({ message: pwValidation.message });
   }
 
   try {

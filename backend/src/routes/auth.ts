@@ -11,6 +11,7 @@ import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById }
 import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
 import { isFirebaseConfigured, collections } from '../firebase';
+import { validatePasswordStrength } from '../utils/passwordPolicy';
 
 const router = Router();
 
@@ -773,8 +774,9 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ message: 'Token and new password are required' });
   }
 
-  if (String(newPassword).length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters long and include numbers/letters.' });
+  const pwValidation = validatePasswordStrength(String(newPassword));
+  if (!pwValidation.valid) {
+    return res.status(400).json({ message: pwValidation.message });
   }
 
   let targetEmail = '';

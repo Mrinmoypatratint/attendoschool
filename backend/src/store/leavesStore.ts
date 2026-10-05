@@ -19,3 +19,24 @@ export interface LeaveStoreItem {
 }
 
 export const inMemoryLeaves: LeaveStoreItem[] = [];
+
+export interface TeacherLeaveStoreItem {
+  id: string;
+  school_id: string;
+  teacher_id: string;
+  teacher_name?: string;
+  teacher_email?: string;
+  leave_type?: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  reviewed_by?: string;
+  reviewer_name?: string;
+  review_notes?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export const inMemoryTeacherLeaves: TeacherLeaveStoreItem[] = [];

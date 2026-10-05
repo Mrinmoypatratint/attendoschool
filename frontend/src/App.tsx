@@ -21,6 +21,8 @@ import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
 import TeacherProfile from './pages/teacher/TeacherProfile';
 import PhotoApprove from './pages/admin/PhotoApprove';
 import LeaveApprove from './pages/admin/LeaveApprove';
+import TeacherLeaveApprove from './pages/admin/TeacherLeaveApprove';
+import TeacherLeaveRequest from './pages/teacher/TeacherLeaveRequest';
 import SmtpLogs from './pages/admin/SmtpLogs';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -34,9 +36,10 @@ import {
   Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
-  Camera, CalendarCheck
+  Camera, CalendarCheck, CalendarPlus
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
+import { validatePassword } from './utils/passwordPolicy';
 import { StudentLayout } from './components/student/StudentLayout';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentAttendance } from './pages/student/StudentAttendance';
@@ -2081,6 +2084,7 @@ function Layout({children}:{children:React.ReactNode}){
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
     ['/photo-approvals', 'Photo Approvals', Camera],
+    ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
@@ -2098,6 +2102,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/teacher-history','History',CalendarDays],
     ['—','REVIEW'],
     ['/leave-applications','Leave Review',CalendarCheck],
+    ['/teacher/leave-request','Apply Leave',CalendarPlus],
     ['—','COMMUNICATION'],
     ['/announcements','Announcements',Megaphone],
     ['—','ATTENDANCE'],
@@ -2458,19 +2463,19 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            {/* Connected Review Notifications Bell & Popover (Admin Photo Approvals) */}
+            {/* Connected Review Notifications Bell & Popover (Admin Photo Approvals & Teacher Leaves) */}
             <div className="super-notif-wrap" ref={adminNotifRef} style={{ position: 'relative' }}>
               <button
                 type="button"
                 className="header-icon-btn"
-                title="Photo Approval Requests"
+                title="Review Approval Requests"
                 onClick={() => { setAdminNotifOpen(prev => !prev); if (!adminNotifOpen) loadAdminNotifications(); }}
                 style={{ position: 'relative' }}
               >
                 <Bell size={16} />
-                {(pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
+                {(pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
                   <span className="header-badge-num" style={{ background: '#ef4444' }}>
-                    {pendingPhotoCount + (schoolInfo?.pendingCorrectionsCount || 0)}
+                    {pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
                   </span>
                 )}
               </button>
@@ -2480,9 +2485,9 @@ function Layout({children}:{children:React.ReactNode}){
                   <div className="super-notif-header">
                     <div className="super-notif-title-row">
                       <h4 className="super-notif-title">Notifications</h4>
-                      {pendingPhotoCount > 0 && (
+                      {(pendingPhotoCount + pendingLeaveCount) > 0 && (
                         <span className="super-notif-count-pill">
-                          {pendingPhotoCount} pending
+                          {pendingPhotoCount + pendingLeaveCount} pending
                         </span>
                       )}
                     </div>
@@ -2496,29 +2501,43 @@ function Layout({children}:{children:React.ReactNode}){
                         <Camera size={12} />
                         <span>Photos</span>
                       </button>
+                      <button
+                        type="button"
+                        className="super-notif-readall-btn"
+                        title="Review Teacher Leave Requests"
+                        style={{ color: '#d97706', background: '#fffbeb', borderColor: '#fde68a' }}
+                        onClick={() => { setAdminNotifOpen(false); nav('/teacher-leave-approvals'); }}
+                      >
+                        <CalendarCheck size={12} />
+                        <span>Teacher Leaves</span>
+                      </button>
                     </div>
                   </div>
 
                   <div className="super-notif-list">
-                    {adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').length === 0 ? (
+                    {adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL' || n.type === 'TEACHER_LEAVE_REQUEST').length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo approval requests.</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo or leave approval requests.</div>
                       </div>
                     ) : (
-                      adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL').map((n: any) => (
+                      adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL' || n.type === 'TEACHER_LEAVE_REQUEST').map((n: any) => (
                         <div
                           key={n.id}
                           className="super-notif-item unread"
                           onClick={() => {
                             setAdminNotifOpen(false);
-                            nav(n.link || '/photo-approvals');
+                            nav(n.link || (n.type === 'TEACHER_LEAVE_REQUEST' ? '/teacher-leave-approvals' : '/photo-approvals'));
                           }}
                         >
-                          {n.avatar ? (
+                          {n.type === 'TEACHER_LEAVE_REQUEST' ? (
+                            <div className="super-notif-icon-wrap notif-leave" style={{ background: '#fef3c7', color: '#d97706', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <CalendarCheck size={18} />
+                            </div>
+                          ) : n.avatar ? (
                             <img
                               src={n.avatar}
                               alt={n.applicantName || 'Applicant'}
@@ -2539,7 +2558,7 @@ function Layout({children}:{children:React.ReactNode}){
                             </div>
                             <p className="super-notif-msg">{n.message}</p>
                             <span className="super-notif-action-tag">
-                              Review & Verify →
+                              {n.type === 'TEACHER_LEAVE_REQUEST' ? "Review Faculty Leave →" : "Review & Verify →"}
                             </span>
                           </div>
                         </div>
@@ -2551,10 +2570,18 @@ function Layout({children}:{children:React.ReactNode}){
                     <button
                       type="button"
                       className="super-notif-footer-link"
+                      onClick={() => { setAdminNotifOpen(false); nav('/teacher-leave-approvals'); }}
+                    >
+                      <CalendarCheck size={13} />
+                      <span>Teacher's Leaves</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="super-notif-footer-link"
                       onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
                     >
-                      <CheckCircle2 size={13} />
-                      <span>Review Center</span>
+                      <Camera size={13} />
+                      <span>Photo Reviews</span>
                     </button>
                     {user?.role !== 'SCHOOL_ADMIN' && (
                       <button
@@ -2562,7 +2589,7 @@ function Layout({children}:{children:React.ReactNode}){
                         className="super-notif-footer-link"
                         onClick={() => { setAdminNotifOpen(false); nav('/notifications'); }}
                       >
-                        <span>Settings & All Alerts →</span>
+                        <span>All Alerts →</span>
                       </button>
                     )}
                   </div>
@@ -11871,8 +11898,9 @@ function SchoolProfile() {
       setPwMsg({ type: 'error', text: 'Please enter your current password.' });
       return;
     }
-    if (newPassword.length < 8) {
-      setPwMsg({ type: 'error', text: 'New password must be at least 8 characters long.' });
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) {
+      setPwMsg({ type: 'error', text: pwCheck.message || 'Password must meet complexity requirements.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -12166,7 +12194,7 @@ function SchoolProfile() {
                 </label>
 
                 <label>
-                  New Password (min 8 characters)
+                  New Password
                   <input
                     type="password"
                     required
@@ -12174,6 +12202,9 @@ function SchoolProfile() {
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                   />
+                  <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+                    Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
+                  </span>
                 </label>
 
                 <label>
@@ -12273,11 +12304,18 @@ function App(){return <Routes>
   <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
   <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
   <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+  <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
+  <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
+  <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
+  <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
+  <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
   <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
+  <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
   <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
   <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
+  <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
   <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
   <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>

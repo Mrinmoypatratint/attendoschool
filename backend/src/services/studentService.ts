@@ -6,6 +6,7 @@ import { demoStudents } from '../routes/schoolData';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
+import { validatePasswordStrength } from '../utils/passwordPolicy';
 
 export function toDdMmYyyy(val: any): string {
   if (!val) return '';
@@ -1309,8 +1310,9 @@ export async function createStudentLeaveRequest(schoolId: string, userId: string
  * Change student password securely
  */
 export async function changeStudentPassword(userId: string, currentPass: string, newPass: string) {
-  if (!newPass || newPass.length < 8) {
-    throw new Error('New password must be at least 8 characters');
+  const pwValidation = validatePasswordStrength(String(newPass));
+  if (!pwValidation.valid) {
+    throw new Error(pwValidation.message);
   }
   try {
     const q = await pool.query(`SELECT password_hash FROM users WHERE id = $1`, [userId]);
