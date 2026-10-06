@@ -1709,6 +1709,24 @@ header {
   transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px 0;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 .modal-fullwindow {
   width: calc(100vw - 28px) !important;
   max-width: calc(100vw - 28px) !important;
@@ -1810,7 +1828,8 @@ header {
 }
 
 .modal-form { display: grid; gap: 16px; }
-.modal-form label { display: grid; gap: 7px; }
+.modal-form > div { min-width: 0; }
+.modal-form label { display: grid; gap: 7px; min-width: 0; }
 .modal-form button { margin-top: 10px; }
 
 /* ─── Routine & Attendance ─── */

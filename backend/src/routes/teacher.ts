@@ -629,7 +629,10 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secParam);
-      const classNum = parseInt(classParam.replace(/\D/g, ''), 10) || 10;
+
+      const rawClassNum = parseInt(classParam.replace(/\D/g, ''), 10);
+      const isSmallInt = Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767;
+      const classNum = isSmallInt ? rawClassNum : -99999;
       const cleanSec = secParam.replace(/section\s*/i, '').trim();
 
       const q = await pool.query(
@@ -640,11 +643,20 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
          LEFT JOIN sections s ON s.id = a.section_id
          LEFT JOIN subjects sub ON sub.id = a.subject_id
          WHERE a.school_id = $1 AND a.attendance_date = $2
-           AND (${isClassUuid ? 'a.class_id = $3::uuid' : 'FALSE'} OR c.class_number = $4)
-           AND (${isSecUuid ? 'a.section_id = $5::uuid' : 'TRUE'} OR LOWER(s.name) = LOWER($6) OR $6 = '')
+           AND (
+             a.class_id::text = $3
+             OR (${isClassUuid ? 'a.class_id = $3::uuid' : 'FALSE'})
+             OR (${isSmallInt ? 'c.class_number = $4' : 'FALSE'})
+           )
+           AND (
+             a.section_id::text = $5
+             OR (${isSecUuid ? 'a.section_id = $5::uuid' : 'FALSE'})
+             OR LOWER(s.name) = LOWER($6)
+             OR $6 = ''
+           )
          ORDER BY a.submitted_at DESC NULLS LAST
          LIMIT 1`,
-        [sid, dateParam, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000', cleanSec]
+        [sid, dateParam, classParam, classNum, secParam, cleanSec]
       );
       if (q.rowCount && q.rows[0]) {
         const row = q.rows[0];
@@ -697,7 +709,12 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
         };
       }
     } catch (pgErr: any) {
-      console.warn('[TodayStatus] Supabase attendance session query warning:', pgErr.message);
+      console.error('[TodayStatus] Supabase attendance session query error:', pgErr.message);
+      return res.status(500).json({
+        success: false,
+        code: 'DATABASE_QUERY_ERROR',
+        message: `Failed to query attendance session status: ${pgErr.message}`
+      });
     }
   }
 

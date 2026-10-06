@@ -4037,14 +4037,16 @@ function Students(){
       const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
       return {
         name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
-        rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—'
+        rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—',
+        admissionNumber: latest.admission_number || latest.admissionNumber || latest.admission_no || latest.admissionNo || '—'
       };
     }
 
     const candidate = rows[0];
     return {
       name: candidate.name || candidate.full_name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Student',
-      rollNumber: candidate.roll_number || candidate.rollNumber || candidate.roll || '—'
+      rollNumber: candidate.roll_number || candidate.rollNumber || candidate.roll || '—',
+      admissionNumber: candidate.admission_number || candidate.admissionNumber || candidate.admission_no || candidate.admissionNo || '—'
     };
   }, [rows]);
 
@@ -4414,7 +4416,8 @@ function Students(){
         try {
           localStorage.setItem('attendo_last_registered_student', JSON.stringify({
             name: created.name || payload.name,
-            rollNumber: created.roll_number || payload.rollNumber || '—'
+            rollNumber: created.roll_number || payload.rollNumber || '—',
+            admissionNumber: created.admission_number || created.admissionNumber || payload.admissionNumber || payload.admission_number || '—'
           }));
         } catch {}
         if (created.invite_sent) {
@@ -4769,10 +4772,12 @@ function Students(){
         const lastRow = enrichedRows[enrichedRows.length - 1];
         const lastFullName = lastRow.fullName || lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Student';
         const lastRoll = lastRow.rollNumber || lastRow.roll_number || '—';
+        const lastAdm = lastRow.admissionNumber || lastRow.admission_number || lastRow.admission_no || '—';
         try {
           localStorage.setItem('attendo_last_registered_student', JSON.stringify({
             name: lastFullName,
-            rollNumber: lastRoll
+            rollNumber: lastRoll,
+            admissionNumber: lastAdm
           }));
         } catch {}
       }
@@ -5465,7 +5470,7 @@ function Students(){
           }}>
             <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
             <span>
-              Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong>
+              Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
             </span>
           </div>
         )}
@@ -5666,15 +5671,15 @@ function Students(){
               </span>
             )}
           </label>
-          <label>Parent SMS Mobile Number
-            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 4 }}>
+          <label style={{ minWidth: 0 }}>Parent SMS Mobile Number
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 4, minWidth: 0 }}>
               <select
                 value={f.countryCode || '+91'}
                 onChange={e => setF({ ...f, countryCode: e.target.value })}
                 style={{
-                  width: 125,
+                  width: 98,
                   flexShrink: 0,
-                  padding: '0 6px',
+                  padding: '0 4px',
                   fontSize: 12,
                   height: 38,
                   borderRadius: 6,
@@ -5724,22 +5729,25 @@ function Students(){
               <input
                 required
                 placeholder="Mobile (e.g. 9876543210)"
+                maxLength={10}
+                inputMode="numeric"
                 value={f.parentSmsNumber || ''}
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   height: 38,
                   borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
                   boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
                 }}
                 onChange={e => {
-                  const val = e.target.value.replace(/[^\d\s-]/g, '');
-                  setF({ ...f, parentSmsNumber: val });
+                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setF({ ...f, parentSmsNumber: cleaned });
                 }}
               />
             </div>
             {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
               <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                pls check your number....
+                Must be a valid 10-digit mobile number
               </span>
             )}
           </label>
@@ -5849,7 +5857,7 @@ function Students(){
             }}>
               <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
               <span>
-                Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong>
+                Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
               </span>
             </div>
           )}
@@ -6355,13 +6363,58 @@ function isValidDdMmYyyy(val: string): boolean {
   const year = parseInt(match[3], 10);
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
-  if (year < 1920 || year > new Date().getFullYear()) return false;
+  if (year < 1000 || year > 9999) return false;
   const date = new Date(year, month - 1, day);
   return (
     date.getFullYear() === year &&
     date.getMonth() === month - 1 &&
     date.getDate() === day
   );
+}
+
+function formatDdMmYyyyInput(inputVal: string, prevVal: string): string {
+  if (inputVal.length < prevVal.length) {
+    return inputVal;
+  }
+
+  const rawDigits = inputVal.replace(/\D/g, '').slice(0, 8);
+  if (!rawDigits) return '';
+
+  let dayStr = '';
+  let monthStr = '';
+  let yearStr = '';
+
+  // 1. Day segment (Max 31)
+  if (rawDigits.length >= 2) {
+    let dayNum = parseInt(rawDigits.slice(0, 2), 10);
+    if (dayNum > 31) dayNum = 31;
+    dayStr = String(dayNum).padStart(2, '0');
+  } else {
+    return rawDigits;
+  }
+
+  const monthDigits = rawDigits.slice(2);
+  if (!monthDigits) {
+    return dayStr;
+  }
+
+  // 2. Month segment (Max 12)
+  if (monthDigits.length >= 2) {
+    let monthNum = parseInt(monthDigits.slice(0, 2), 10);
+    if (monthNum > 12) monthNum = 12;
+    monthStr = String(monthNum).padStart(2, '0');
+  } else {
+    return `${dayStr}-${monthDigits}`;
+  }
+
+  const yearDigits = monthDigits.slice(2);
+  if (!yearDigits) {
+    return `${dayStr}-${monthStr}`;
+  }
+
+  // 3. Year segment (Max 4 digits)
+  yearStr = yearDigits.slice(0, 4);
+  return `${dayStr}-${monthStr}-${yearStr}`;
 }
 
 function toDdMmYyyy(val: any): string {
@@ -7589,16 +7642,8 @@ function Teachers(){
                 maxLength={10}
                 value={f.dob || ''}
                 onChange={e => {
-                  let val = e.target.value.replace(/[^0-9-]/g, '');
-                  const rawDigits = val.replace(/-/g, '');
-                  if (rawDigits.length <= 8 && !val.includes('-')) {
-                    if (rawDigits.length > 4) {
-                      val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
-                    } else if (rawDigits.length > 2) {
-                      val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
-                    }
-                  }
-                  setF({ ...f, dob: val });
+                  const formatted = formatDdMmYyyyInput(e.target.value, f.dob || '');
+                  setF({ ...f, dob: formatted });
                 }}
                 style={{
                   width: '100%',
@@ -7613,12 +7658,19 @@ function Teachers(){
                 title="Select from date picker"
                 style={{
                   position: 'absolute',
-                  right: 8,
-                  width: 22,
-                  height: 22,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 38,
+                  height: '100%',
                   opacity: 0,
                   cursor: 'pointer',
                   zIndex: 2
+                }}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
                 }}
                 onChange={e => {
                   if (e.target.value) {
@@ -7658,10 +7710,25 @@ function Teachers(){
           <label>Mobile Number
             <input
               placeholder="10-digit mobile number"
+              maxLength={10}
+              inputMode="numeric"
               value={f.mobile||''}
-              onChange={e=>setF({...f,mobile:e.target.value})}
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              onChange={e => {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setF({ ...f, mobile: cleaned });
+              }}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
+                boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+              }}
             />
+            {f.mobile && f.mobile.length < 10 && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Must be a valid 10-digit mobile number
+              </span>
+            )}
           </label>
         </div>
 
@@ -8756,15 +8823,19 @@ function Attendance(){
       { label: 'Present', value: presentCount, color: 'green' },
       { label: 'Absent', value: absentCount, color: 'red' },
       { label: 'Late / Left Early', value: lateCount + leftEarlyCount, color: 'amber' },
+      ...(unmarkedCount > 0 ? [{ label: 'Unmarked (Default Absent)', value: unmarkedCount, color: 'blue' as const }] : []),
       { label: 'Attendance Rate', value: `${ratePct}%`, color: 'blue' },
     ];
 
     const headers = ['Roll', 'Student Name', 'Status', 'Notes'];
     const previewRows = students.map(s => {
-      const st = studentStatusMap[s.id] || {};
-      const isPres = checked[s.id];
-      let status = st.status;
-      if (!status) status = isPres ? 'PRESENT' : 'ABSENT';
+      const sid = String(s.id);
+      const st = studentStatusMap[sid] || studentStatusMap[s.id] || {};
+      const isPres = checked[sid] ?? checked[s.id];
+      let status: string = st.status || '';
+      if (!status) {
+        status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'UNMARKED (Default ABSENT)';
+      }
       const note = st.departurePeriod || st.arrivalPeriod || st.remarks || '—';
       return [
         s.roll_number || '•',
@@ -8890,11 +8961,12 @@ function Attendance(){
           chkMap[sId] = (st === 'PRESENT' || st === 'LATE' || (st !== 'ABSENT' && (r.is_present || r.isPresent)));
         });
 
-        // Ensure every student in roster has a status if not in records
+        // Ensure every student in roster has normalized lookup key if record exists
         (studentList || []).forEach(s => {
-          if (!stMap[s.id]) {
-            stMap[s.id] = { status: 'PRESENT' };
-            chkMap[s.id] = true;
+          const sid = String(s.id);
+          if (stMap[sid]) {
+            stMap[s.id] = stMap[sid];
+            chkMap[s.id] = chkMap[sid];
           }
         });
 
@@ -8912,22 +8984,14 @@ function Attendance(){
           teacherName: sess.teacher_name ?? sess.teacherName,
           lastModifiedName: sess.last_modified_name ?? sess.lastModifiedName
         });
-      } else {
+      } else if (res.data && res.data.hasAttendance === false) {
         setExistingSession(null);
         setAuditLogs([]);
-        const initChecked: Record<string, boolean> = {};
-        const initMap: Record<string, any> = {};
-        (studentList || []).forEach(s => {
-          initChecked[s.id] = true;
-          initMap[s.id] = { status: 'PRESENT' };
-        });
-        setChecked(initChecked);
-        setStudentStatusMap(initMap);
         setDone(false);
         setSummary(null);
       }
-    } catch (err) {
-      console.error('Failed to query today attendance status:', err);
+    } catch (err: any) {
+      console.warn('Failed to query today attendance status:', err?.response?.data?.message || err?.message || err);
     } finally {
       setLoadingStatus(false);
     }
@@ -8984,29 +9048,49 @@ function Attendance(){
 
   const selectAll = (val: boolean) => {
     const updatedChk: Record<string, boolean> = {};
-    const updatedMap = { ...studentStatusMap };
-    students.forEach(s => {
-      updatedChk[s.id] = val;
-      updatedMap[s.id] = {
-        ...updatedMap[s.id],
-        status: val ? 'PRESENT' : 'ABSENT'
-      };
-    });
+    const updatedMap: Record<string, any> = {};
+    if (val) {
+      students.forEach(s => {
+        const sid = String(s.id);
+        updatedChk[sid] = true;
+        updatedChk[s.id] = true;
+        updatedMap[sid] = { ...(studentStatusMap[sid] || {}), status: 'PRESENT' };
+        updatedMap[s.id] = { ...(studentStatusMap[s.id] || {}), status: 'PRESENT' };
+      });
+    }
     setChecked(updatedChk);
     setStudentStatusMap(updatedMap);
   };
 
-  const leftEarlyCount = students.filter(s => studentStatusMap[s.id]?.status === 'LEFT_EARLY').length;
-  const lateCount = students.filter(s => studentStatusMap[s.id]?.status === 'LATE').length;
-  const presentCount = students.filter(s => {
-    const st = studentStatusMap[s.id]?.status;
-    if (st === 'PRESENT') return true;
-    if (st === 'LATE') return true;
-    if (st === 'LEFT_EARLY' || st === 'ABSENT') return false;
-    return !!checked[s.id];
+  const leftEarlyCount = students.filter(s => {
+    const sid = String(s.id);
+    return (studentStatusMap[sid]?.status || studentStatusMap[s.id]?.status) === 'LEFT_EARLY';
   }).length;
-  const absentCount = Math.max(0, students.length - presentCount - leftEarlyCount);
-  const ratePct = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
+
+  const lateCount = students.filter(s => {
+    const sid = String(s.id);
+    return (studentStatusMap[sid]?.status || studentStatusMap[s.id]?.status) === 'LATE';
+  }).length;
+
+  const presentCount = students.filter(s => {
+    const sid = String(s.id);
+    const st = studentStatusMap[sid]?.status || studentStatusMap[s.id]?.status;
+    if (st === 'PRESENT' || st === 'LATE') return true;
+    if (st === 'LEFT_EARLY' || st === 'ABSENT') return false;
+    return checked[sid] === true || checked[s.id] === true;
+  }).length;
+
+  const absentCount = students.filter(s => {
+    const sid = String(s.id);
+    const st = studentStatusMap[sid]?.status || studentStatusMap[s.id]?.status;
+    if (st === 'ABSENT') return true;
+    if (st === 'PRESENT' || st === 'LATE' || st === 'LEFT_EARLY') return false;
+    return checked[sid] === false || checked[s.id] === false;
+  }).length;
+
+  const unmarkedCount = Math.max(0, students.length - presentCount - leftEarlyCount - lateCount - absentCount);
+  const totalMarked = presentCount + leftEarlyCount + lateCount + absentCount;
+  const ratePct = totalMarked > 0 ? Math.round((presentCount / totalMarked) * 100) : 0;
 
   const filteredStudents = students.filter(s => {
     if (!search.trim()) return true;
@@ -9017,7 +9101,8 @@ function Attendance(){
   // Early Departure Handler
   function openEarlyDeparture(student: any) {
     setSelectedStudent(student);
-    const existing = studentStatusMap[student.id];
+    const sid = String(student.id);
+    const existing = studentStatusMap[sid] || studentStatusMap[student.id];
     setDepPeriod(existing?.departurePeriod || 'After 1st Period');
     setDepTime(existing?.departureTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     setDepReason('Parent Picked Up Early');
@@ -9029,7 +9114,8 @@ function Attendance(){
   // Late Arrival Handler
   function openLateArrival(student: any) {
     setSelectedStudent(student);
-    const existing = studentStatusMap[student.id];
+    const sid = String(student.id);
+    const existing = studentStatusMap[sid] || studentStatusMap[student.id];
     setArrPeriod(existing?.arrivalPeriod || 'Period 2');
     setArrTime(existing?.arrivalTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     setArrReason('Traffic / Commute Delay');
@@ -9041,8 +9127,26 @@ function Attendance(){
   async function submitEarlyDeparture() {
     if (!selectedStudent) return;
     setSavingAction(true);
+    const sid = String(selectedStudent.id);
     const fullReason = depReason + (depRemarks ? ` (${depRemarks})` : '');
     try {
+      setStudentStatusMap(prev => ({
+        ...prev,
+        [sid]: {
+          status: 'LEFT_EARLY',
+          departurePeriod: depPeriod,
+          departureTime: depTime,
+          remarks: fullReason
+        },
+        [selectedStudent.id]: {
+          status: 'LEFT_EARLY',
+          departurePeriod: depPeriod,
+          departureTime: depTime,
+          remarks: fullReason
+        }
+      }));
+      setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
+
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
           status: 'LEFT_EARLY',
@@ -9055,16 +9159,6 @@ function Attendance(){
         setReattendanceSuccessMsg(`✓ ${selectedStudent.name} marked as Left Early (${depPeriod}). Parent alert queued.`);
         checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
       } else {
-        setStudentStatusMap(prev => ({
-          ...prev,
-          [selectedStudent.id]: {
-            status: 'LEFT_EARLY',
-            departurePeriod: depPeriod,
-            departureTime: depTime,
-            remarks: fullReason
-          }
-        }));
-        setChecked(prev => ({ ...prev, [selectedStudent.id]: false }));
         setReattendanceSuccessMsg(`✓ Marked ${selectedStudent.name} as Left Early (${depPeriod}) for upcoming submission.`);
       }
       setActiveModal(null);
@@ -9079,8 +9173,26 @@ function Attendance(){
   async function submitLateArrival() {
     if (!selectedStudent) return;
     setSavingAction(true);
+    const sid = String(selectedStudent.id);
     const fullReason = arrReason + (arrRemarks ? ` (${arrRemarks})` : '');
     try {
+      setStudentStatusMap(prev => ({
+        ...prev,
+        [sid]: {
+          status: 'LATE',
+          arrivalPeriod: arrPeriod,
+          arrivalTime: arrTime,
+          remarks: fullReason
+        },
+        [selectedStudent.id]: {
+          status: 'LATE',
+          arrivalPeriod: arrPeriod,
+          arrivalTime: arrTime,
+          remarks: fullReason
+        }
+      }));
+      setChecked(prev => ({ ...prev, [sid]: true, [selectedStudent.id]: true }));
+
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
           status: 'LATE',
@@ -9093,16 +9205,6 @@ function Attendance(){
         setReattendanceSuccessMsg(`✓ ${selectedStudent.name} marked as Late Arrival (${arrPeriod}). Parent alert queued.`);
         checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
       } else {
-        setStudentStatusMap(prev => ({
-          ...prev,
-          [selectedStudent.id]: {
-            status: 'LATE',
-            arrivalPeriod: arrPeriod,
-            arrivalTime: arrTime,
-            remarks: fullReason
-          }
-        }));
-        setChecked(prev => ({ ...prev, [selectedStudent.id]: true }));
         setReattendanceSuccessMsg(`✓ Marked ${selectedStudent.name} as Late Arrival (${arrPeriod}) for upcoming submission.`);
       }
       setActiveModal(null);
@@ -9115,6 +9217,14 @@ function Attendance(){
   }
 
   async function quickToggleStudent(s: any, newStatus: 'PRESENT' | 'ABSENT') {
+    const sid = String(s.id);
+    setChecked(prev => ({ ...prev, [sid]: newStatus === 'PRESENT', [s.id]: newStatus === 'PRESENT' }));
+    setStudentStatusMap(prev => ({
+      ...prev,
+      [sid]: { ...(prev[sid] || {}), status: newStatus },
+      [s.id]: { ...(prev[s.id] || {}), status: newStatus }
+    }));
+
     if (existingSession?.id) {
       setBusy(true);
       try {
@@ -9128,12 +9238,6 @@ function Attendance(){
       } finally {
         setBusy(false);
       }
-    } else {
-      setChecked(prev => ({ ...prev, [s.id]: newStatus === 'PRESENT' }));
-      setStudentStatusMap(prev => ({
-        ...prev,
-        [s.id]: { status: newStatus }
-      }));
     }
   }
 
@@ -9142,15 +9246,12 @@ function Attendance(){
     setBusy(true);
     try {
       const recordsPayload = students.map(s => {
-        const st = studentStatusMap[s.id] || {};
-        const isPres = checked[s.id];
+        const sid = String(s.id);
+        const st = studentStatusMap[sid] || studentStatusMap[s.id] || {};
+        const isPres = checked[sid] ?? checked[s.id];
         let status = st.status;
         if (!status) {
-          status = isPres ? 'PRESENT' : 'ABSENT';
-        } else if (status === 'PRESENT' && !isPres) {
-          status = 'ABSENT';
-        } else if (status === 'ABSENT' && isPres) {
-          status = 'PRESENT';
+          status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'ABSENT';
         }
         return {
           studentId: s.id,
@@ -9193,15 +9294,12 @@ function Attendance(){
     setBusy(true);
     try {
       const recordsPayload = students.map(s => {
-        const st = studentStatusMap[s.id] || {};
-        const isPres = checked[s.id];
+        const sid = String(s.id);
+        const st = studentStatusMap[sid] || studentStatusMap[s.id] || {};
+        const isPres = checked[sid] ?? checked[s.id];
         let status = st.status;
         if (!status) {
-          status = isPres ? 'PRESENT' : 'ABSENT';
-        } else if (status === 'PRESENT' && !isPres) {
-          status = 'ABSENT';
-        } else if (status === 'ABSENT' && isPres) {
-          status = 'PRESENT';
+          status = isPres !== undefined ? (isPres ? 'PRESENT' : 'ABSENT') : 'ABSENT';
         }
         return {
           studentId: s.id,
@@ -9797,7 +9895,7 @@ function Attendance(){
         <div className="attendance-list">
           {filteredStudents.map((s: any) => {
             const stObj = studentStatusMap[s.id] || {};
-            const rawStatus = stObj.status || (checked[s.id] ? 'PRESENT' : 'ABSENT');
+            const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
             const isLeftEarly = rawStatus === 'LEFT_EARLY';
             const isLate = rawStatus === 'LATE';
             const isPresent = rawStatus === 'PRESENT' || isLate;
@@ -9814,14 +9912,18 @@ function Attendance(){
                     ? 'rgba(37, 99, 235, 0.05)'
                     : isPresent
                     ? 'var(--bg-card)'
-                    : 'rgba(239, 68, 68, 0.04)',
+                    : isAbsent
+                    ? 'rgba(239, 68, 68, 0.04)'
+                    : 'var(--bg-card)',
                   borderColor: isLeftEarly
                     ? 'rgba(245, 158, 11, 0.4)'
                     : isLate
                     ? 'rgba(37, 99, 235, 0.3)'
                     : isPresent
                     ? 'var(--border)'
-                    : 'rgba(239, 68, 68, 0.3)',
+                    : isAbsent
+                    ? 'rgba(239, 68, 68, 0.3)'
+                    : 'var(--border)',
                   padding: '12px 16px',
                   display: 'flex',
                   alignItems: 'center',
@@ -9837,8 +9939,8 @@ function Attendance(){
                   <span
                     className="roll"
                     style={{
-                      background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : '#fee2e2',
-                      color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : '#dc2626',
+                      background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : isAbsent ? '#fee2e2' : 'var(--bg-subtle)',
+                      color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : isAbsent ? '#dc2626' : 'var(--text-muted)',
                       fontWeight: 700,
                       minWidth: 32,
                       textAlign: 'center'
@@ -9867,7 +9969,7 @@ function Attendance(){
                   </div>
                 </div>
 
-                {/* Right: Status Pill & Re-attendance Action Buttons */}
+                {/* Right: Status Pill & Attendance Action Buttons */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {/* Status Indicator Chip */}
                   <span
@@ -9885,105 +9987,86 @@ function Attendance(){
                         ? 'rgba(37, 99, 235, 0.12)'
                         : isPresent
                         ? 'rgba(16, 185, 129, 0.12)'
-                        : 'rgba(239, 68, 68, 0.12)',
-                      color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : '#dc2626'
+                        : isAbsent
+                        ? 'rgba(239, 68, 68, 0.12)'
+                        : 'rgba(100, 116, 139, 0.12)',
+                      color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : isAbsent ? '#dc2626' : 'var(--text-muted)'
                     }}
                   >
-                    {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : '✕ ABSENT'}
+                    {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : isAbsent ? '✕ ABSENT' : '⚪ UNMARKED'}
                   </span>
 
-                  {/* Re-attendance Specific Quick Actions */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {/* Early Departure Button (Scenario: Student came 1st period and went after 1st period) */}
-                    {(isPresent || isLeftEarly) && (
-                      <button
-                        type="button"
-                        onClick={() => openEarlyDeparture(s)}
-                        title="Mark student early departure (e.g. left after 1st period)"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
-                          background: isLeftEarly ? '#fef3c7' : 'var(--bg-subtle)',
-                          color: isLeftEarly ? '#b45309' : 'var(--text)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontWeight: 600
-                        }}
-                      >
-                        <DoorOpen size={13} />
-                        {isLeftEarly ? 'Edit Departure' : 'Left Early'}
-                      </button>
-                    )}
+                  {/* Attendance Action Buttons */}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {/* 1. Present Button */}
+                    <button
+                      type="button"
+                      onClick={() => quickToggleStudent(s, 'PRESENT')}
+                      title="Mark Present"
+                      style={{
+                        fontSize: 11.5,
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
+                        background: isPresent ? '#10b981' : 'var(--bg-subtle)',
+                        color: isPresent ? '#ffffff' : 'var(--text)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontWeight: isPresent ? 700 : 600,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      ✓ Present
+                    </button>
 
-                    {/* Late Arrival Button */}
-                    {(isAbsent || isLate) && (
-                      <button
-                        type="button"
-                        onClick={() => openLateArrival(s)}
-                        title="Mark student late arrival"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          border: isLate ? '1px solid #3b82f6' : '1px solid var(--border)',
-                          background: isLate ? '#dbeafe' : 'var(--bg-subtle)',
-                          color: isLate ? '#1d4ed8' : 'var(--text)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontWeight: 600
-                        }}
-                      >
-                        <Clock size={13} />
-                        {isLate ? 'Edit Late' : 'Late Arrival'}
-                      </button>
-                    )}
+                    {/* 2. Left Early Button */}
+                    <button
+                      type="button"
+                      onClick={() => openEarlyDeparture(s)}
+                      title="Mark student early departure"
+                      style={{
+                        fontSize: 11.5,
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
+                        background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
+                        color: isLeftEarly ? '#ffffff' : 'var(--text)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontWeight: isLeftEarly ? 700 : 600,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <DoorOpen size={13} />
+                      {isLeftEarly ? 'Left Early' : 'Left Early'}
+                    </button>
 
-                    {/* Toggle Present / Absent Quick Button */}
-                    {isPresent && (
-                      <button
-                        type="button"
-                        onClick={() => quickToggleStudent(s, 'ABSENT')}
-                        title="Mark Absent"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          background: 'rgba(239, 68, 68, 0.08)',
-                          color: '#dc2626',
-                          cursor: 'pointer',
-                          fontWeight: 600
-                        }}
-                      >
-                        Mark Absent
-                      </button>
-                    )}
-
-                    {(isAbsent || isLeftEarly) && (
-                      <button
-                        type="button"
-                        onClick={() => quickToggleStudent(s, 'PRESENT')}
-                        title="Mark Present"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                          background: 'rgba(16, 185, 129, 0.08)',
-                          color: '#059669',
-                          cursor: 'pointer',
-                          fontWeight: 600
-                        }}
-                      >
-                        Mark Present
-                      </button>
-                    )}
+                    {/* 3. Mark Absent Button */}
+                    <button
+                      type="button"
+                      onClick={() => quickToggleStudent(s, 'ABSENT')}
+                      title="Mark Absent"
+                      style={{
+                        fontSize: 11.5,
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
+                        background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
+                        color: isAbsent ? '#ffffff' : 'var(--text)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontWeight: isAbsent ? 700 : 600,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      Mark Absent
+                    </button>
                   </div>
                 </div>
               </div>
@@ -9996,7 +10079,10 @@ function Attendance(){
       {students.length > 0 && (
         <div className="submit-bar" style={{ marginTop: 20 }}>
           <div>
-            <strong>Summary: {presentCount} Present</strong>, {leftEarlyCount > 0 ? `${leftEarlyCount} Left Early, ` : ''}{lateCount > 0 ? `${lateCount} Late, ` : ''}{absentCount} Absent ({ratePct}% Rate)
+            <strong>Summary: {presentCount} Present</strong>, {absentCount} Absent
+            {leftEarlyCount > 0 ? `, ${leftEarlyCount} Left Early` : ''}
+            {lateCount > 0 ? `, ${lateCount} Late` : ''}
+            {unmarkedCount > 0 ? `, ${unmarkedCount} Unmarked` : ` (${ratePct}% Rate)`}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {existingSession && (
