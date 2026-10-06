@@ -2600,8 +2600,17 @@ function Layout({children}:{children:React.ReactNode}){
               {dark?<Sun size={16}/>:<Moon size={16}/>}
             </button>
             <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={()=>nav('/school-profile')}>
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
-                {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden' }}>
+                {user.photo_url || user.photoUrl || user.avatarUrl ? (
+                  <img
+                    src={user.photo_url || user.photoUrl || user.avatarUrl}
+                    alt={user.name || 'Admin'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'
+                )}
               </div>
               <div className="profile-info">
                 <span className="profile-name">{user.name}</span>
@@ -11877,12 +11886,17 @@ function Payments(){
 
 /* ────── School Profile (School Admin) ────── */
 function SchoolProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Picture upload state
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -11890,6 +11904,64 @@ function SchoolProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPw, setChangingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoMsg({ type: 'error', text: 'Please select a valid image file (PNG, JPG, JPEG, WebP, SVG).' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoMsg({ type: 'error', text: 'Image size exceeds the 5MB limit. Please choose a smaller picture.' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setPhotoUploading(true);
+      setPhotoMsg(null);
+      try {
+        const res = await api.post('/school-profile/photo', { photo_url: base64 });
+        const uploadedUrl = res.data?.photo_url || base64;
+        setProfile((prev: any) => ({ ...prev, photo_url: uploadedUrl, photoUrl: uploadedUrl }));
+        if (updateUser) {
+          updateUser({ photo_url: uploadedUrl, photoUrl: uploadedUrl });
+        }
+        setPhotoMsg({ type: 'success', text: 'School Admin profile picture uploaded and saved successfully!' });
+      } catch (err: any) {
+        setPhotoMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to upload profile picture' });
+      } finally {
+        setPhotoUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.onerror = () => {
+      setPhotoMsg({ type: 'error', text: 'Failed to read image file.' });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleRemovePhoto() {
+    if (!confirm('Are you sure you want to remove your profile picture?')) return;
+    setPhotoUploading(true);
+    setPhotoMsg(null);
+    try {
+      await api.delete('/school-profile/photo');
+      setProfile((prev: any) => ({ ...prev, photo_url: '', photoUrl: '' }));
+      if (updateUser) {
+        updateUser({ photo_url: '', photoUrl: '' });
+      }
+      setPhotoMsg({ type: 'success', text: 'Profile picture removed successfully.' });
+    } catch (err: any) {
+      setPhotoMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to remove picture' });
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -12011,6 +12083,10 @@ function SchoolProfile() {
     }
   }
 
+  const currentPhoto = profile?.photo_url || profile?.photoUrl || user?.photo_url || user?.photoUrl || '';
+  const adminName = user?.name || profile?.adminName || 'School Administrator';
+  const adminInitials = adminName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'SA';
+
   return (
     <Layout>
       <PageHead
@@ -12026,6 +12102,154 @@ function SchoolProfile() {
         <p className="muted">Loading institutional profile...</p>
       ) : (
         <>
+          {/* ── Administrator & Institutional Picture Section (Admin Only) ── */}
+          <div className="panel" style={{ marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                {/* Picture Frame with Hover Overlay */}
+                <div
+                  style={{
+                    position: 'relative',
+                    width: 92,
+                    height: 92,
+                    borderRadius: '50%',
+                    border: '3.5px solid #ffffff',
+                    boxShadow: '0 8px 24px -4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                    backgroundColor: '#2563eb',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Click to upload or change picture"
+                >
+                  {currentPhoto ? (
+                    <img
+                      src={currentPhoto}
+                      alt={adminName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={() => {
+                        setProfile((prev: any) => ({ ...prev, photo_url: '' }));
+                      }}
+                    />
+                  ) : (
+                    <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 28, letterSpacing: '0.02em', userSelect: 'none' }}>
+                      {adminInitials}
+                    </div>
+                  )}
+
+                  {/* Camera overlay on hover */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                      color: '#ffffff'
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
+                  >
+                    <Camera size={24} />
+                  </div>
+                </div>
+
+                {/* Title & Info */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 750, color: 'var(--text-color, #0f172a)' }}>
+                      {adminName}
+                    </h3>
+                    <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                      <ShieldCheck size={12} /> School Admin Only
+                    </span>
+                  </div>
+                  <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
+                    Official administrator display picture and institutional profile badge. Only the School Admin has privileges to upload or modify this image.
+                  </p>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                      onChange={handlePhotoSelected}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={photoUploading}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 13,
+                        padding: '7px 14px',
+                        backgroundColor: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Camera size={14} />
+                      {photoUploading ? 'Uploading...' : (currentPhoto ? 'Change Picture' : 'Upload Picture')}
+                    </button>
+
+                    {currentPhoto && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        disabled={photoUploading}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontSize: 13,
+                          padding: '7px 12px',
+                          backgroundColor: '#fee2e2',
+                          color: '#b91c1c',
+                          border: '1px solid #fca5a5',
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                        title="Remove current picture"
+                      >
+                        <Trash2 size={13} />
+                        Remove Picture
+                      </button>
+                    )}
+                    <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>
+                      PNG, JPG, WebP up to 5MB
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {photoMsg && (
+              <div
+                className={photoMsg.type === 'success' ? 'success' : 'error'}
+                style={{ marginTop: 14, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {photoMsg.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                <span>{photoMsg.text}</span>
+              </div>
+            )}
+          </div>
+
           <div className="two-col">
           <div className="panel">
             <h3>Institution Identity</h3>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   GraduationCap,
@@ -9,7 +9,12 @@ import {
   User,
   ShieldCheck,
   Sparkles,
-  X
+  X,
+  Copy,
+  Check,
+  Hash,
+  Cake,
+  ExternalLink
 } from 'lucide-react';
 
 export interface StudentHoverData {
@@ -65,6 +70,7 @@ export function StudentProfileHoverCard({
   children
 }: StudentProfileHoverCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +78,17 @@ export function StudentProfileHoverCard({
     e.preventDefault();
     e.stopPropagation();
     setIsOpen(prev => !prev);
+  };
+
+  const handleCopy = (text: string, key: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!text || text === '—') return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey(null);
+    }, 1800);
   };
 
   // Close when pressing Escape key
@@ -128,13 +145,15 @@ export function StudentProfileHoverCard({
     '2025–2026 Academic Session';
 
   // Gender & DOB
-  const genderStr = student.gender && student.gender.trim() ? student.gender : 'Not Specified';
-  const dobStr = student.date_of_birth || student.dob || '—';
+  const rawGender = student.gender ? student.gender.trim() : '';
+  const genderStr = rawGender || 'Not Specified';
+  const dobRaw = student.date_of_birth || student.dob || '';
+  const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
 
   // Emails & parent contact
   const studentEmail = student.student_email || student.email;
   const parentName = student.parent_name || student.parentName || 'Parent / Guardian';
-  const parentPhone = student.parent_sms_number || student.parent_phone || student.parentPhone || '—';
+  const parentPhone = student.parent_sms_number || student.parent_phone || student.parentPhone;
   const parentEmail = student.parent_email || student.parentEmail;
   const address = student.address;
 
@@ -156,9 +175,9 @@ export function StudentProfileHoverCard({
           display: 'inline-flex',
           alignItems: 'center',
           cursor: 'pointer',
-          borderRadius: 4,
-          padding: '2px 4px',
-          margin: '-2px -4px',
+          borderRadius: 6,
+          padding: '2px 6px',
+          margin: '-2px -6px',
           color: 'var(--text, #1e293b)',
           textDecoration: 'none',
           transition: 'all 0.15s ease',
@@ -166,9 +185,11 @@ export function StudentProfileHoverCard({
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = '#2563eb';
+          e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.08)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.color = 'var(--text, #1e293b)';
+          e.currentTarget.style.backgroundColor = 'transparent';
         }}
         className="student-name-click-trigger"
       >
@@ -187,8 +208,9 @@ export function StudentProfileHoverCard({
               right: 0,
               bottom: 0,
               zIndex: 99999,
-              backgroundColor: 'rgba(15, 23, 42, 0.45)',
-              backdropFilter: 'blur(3px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.52)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -200,373 +222,669 @@ export function StudentProfileHoverCard({
               onClick={(e) => e.stopPropagation()}
               style={{
                 width: '100%',
-                maxWidth: 420,
+                maxWidth: 440,
                 backgroundColor: '#ffffff',
-                borderRadius: 16,
+                borderRadius: 20,
                 boxShadow:
-                  '0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(203, 213, 225, 0.9)',
+                  '0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8), 0 10px 25px -5px rgba(0, 0, 0, 0.06)',
                 border: '1px solid #e2e8f0',
                 overflow: 'hidden',
                 zIndex: 100000,
                 fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-                animation: 'studentProfileCardPop 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                pointerEvents: 'auto'
+                animation: 'studentProfileCardPop 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: 'auto',
+                position: 'relative'
               }}
             >
-            {/* Header Gradient Banner */}
-            <div
-              style={{
-                height: 52,
-                background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 12px'
-              }}
-            >
+              {/* Header Gradient Banner with Ambient Glow Orbs */}
               <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: '#eff6ff',
-                  letterSpacing: '0.02em',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(4px)',
-                  padding: '3px 8px',
-                  borderRadius: 999
-                }}
-              >
-                <GraduationCap size={12} />
-                <span>Student Profile</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div
-                  style={{
-                    fontSize: 10.5,
-                    color: '#dbeafe',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4
-                  }}
-                >
-                  <Sparkles size={11} color="#93c5fd" />
-                  <span>Active SIS</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(false);
-                  }}
-                  title="Close profile"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 22,
-                    height: 22,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s ease',
-                    padding: 0
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.35)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)')}
-                >
-                  <X size={13} />
-                </button>
-              </div>
-            </div>
-
-            {/* Profile Avatar & Hero Section */}
-            <div style={{ padding: '0 14px 10px 14px', position: 'relative' }}>
-              <div
-                style={{
+                  height: 74,
+                  background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #4f46e5 100%)',
+                  position: 'relative',
                   display: 'flex',
-                  alignItems: 'flex-end',
+                  alignItems: 'flex-start',
                   justifyContent: 'space-between',
-                  marginTop: -28,
-                  marginBottom: 10
+                  padding: '14px 16px 0 16px',
+                  overflow: 'hidden'
                 }}
               >
-                {/* Blue Avatar with Initials / Photo */}
+                {/* Ambient Decorative Lighting */}
                 <div
                   style={{
-                    width: 58,
-                    height: 58,
+                    position: 'absolute',
+                    top: -30,
+                    right: 40,
+                    width: 140,
+                    height: 140,
                     borderRadius: '50%',
-                    border: '3px solid #ffffff',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-                    backgroundColor: '#2563eb',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 60%, #1d4ed8 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
+                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, transparent 70%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -20,
+                    left: 80,
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(147, 197, 253, 0.2) 0%, transparent 70%)',
+                    pointerEvents: 'none'
+                  }}
+                />
+
+                {/* Left Badge: Student Profile */}
+                <div
+                  style={{
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: 6,
+                    fontSize: 11.5,
                     fontWeight: 700,
-                    fontSize: 20,
+                    color: '#ffffff',
                     letterSpacing: '0.02em',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    flexShrink: 0
+                    background: 'rgba(255, 255, 255, 0.18)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
                   }}
                 >
-                  <span style={{ position: 'absolute', userSelect: 'none' }}>{initials}</span>
-                  {photo && (
-                    <img
-                      src={photo}
-                      alt={fullName}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        position: 'relative',
-                        zIndex: 1
-                      }}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  )}
+                  <GraduationCap size={13} />
+                  <span>Student Profile</span>
                 </div>
 
-                {/* Roll & Adm Badges */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {/* Right Controls: Active SIS Status + Close Button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, zIndex: 2 }}>
                   <div
                     style={{
                       fontSize: 11,
-                      fontWeight: 700,
-                      color: '#1d4ed8',
-                      backgroundColor: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      padding: '2px 8px',
-                      borderRadius: 6,
-                      fontFamily: 'monospace'
+                      color: '#eff6ff',
+                      fontWeight: 650,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      background: 'rgba(255, 255, 255, 0.16)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      padding: '4px 9px',
+                      borderRadius: 999
                     }}
-                    title="Student Roll Number"
                   >
-                    Roll: {roll}
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: '#34d399',
+                        boxShadow: '0 0 6px #34d399',
+                        display: 'inline-block'
+                      }}
+                    />
+                    <span>Active SIS</span>
                   </div>
-                  {adm !== '—' && (
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOpen(false);
+                    }}
+                    title="Close profile (Esc)"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      borderRadius: '50%',
+                      width: 26,
+                      height: 26,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      padding: 0
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.35)';
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Profile Avatar & Hero Section */}
+              <div style={{ padding: '0 18px 14px 18px', position: 'relative' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'space-between',
+                    marginTop: -34,
+                    marginBottom: 12
+                  }}
+                >
+                  {/* Avatar Container with Multi-layer Shadow & Online Badge */}
+                  <div style={{ position: 'relative' }}>
                     <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: '#475569',
-                        backgroundColor: '#f1f5f9',
-                        border: '1px solid #e2e8f0',
-                        padding: '2px 7px',
-                        borderRadius: 6,
-                        fontFamily: 'monospace'
+                        width: 66,
+                        height: 66,
+                        borderRadius: '50%',
+                        border: '3.5px solid #ffffff',
+                        boxShadow: '0 8px 22px -3px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0, 0, 0, 0.08)',
+                        backgroundColor: '#2563eb',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: 22,
+                        letterSpacing: '0.04em',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        flexShrink: 0
                       }}
-                      title="Admission Number"
                     >
-                      {adm}
+                      <span style={{ position: 'absolute', userSelect: 'none' }}>{initials}</span>
+                      {photo && (
+                        <img
+                          src={photo}
+                          alt={fullName}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            position: 'relative',
+                            zIndex: 1
+                          }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
+                    {/* Active Status Badge on Avatar */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 2,
+                        right: 2,
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        backgroundColor: '#10b981',
+                        border: '2.5px solid #ffffff',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                      }}
+                      title="Enrolled & Active"
+                    />
+                  </div>
+
+                  {/* Roll & Admission ID Micro-Badges */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {roll !== '—' && (
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 750,
+                          color: '#1d4ed8',
+                          backgroundColor: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          padding: '3px 9px',
+                          borderRadius: 8,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          boxShadow: '0 1px 2px rgba(37, 99, 235, 0.05)'
+                        }}
+                        title="Student Roll Number"
+                      >
+                        <Hash size={12} color="#2563eb" />
+                        <span>Roll: {roll}</span>
+                      </div>
+                    )}
+                    {adm !== '—' && (
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 650,
+                          color: '#334155',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          padding: '3px 9px',
+                          borderRadius: 8,
+                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                          letterSpacing: '-0.01em',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
+                        }}
+                        title="Official Student Admission ID"
+                      >
+                        {adm}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Student Full Name & Academic Grouping */}
+                <div style={{ marginBottom: 10 }}>
+                  <h3
+                    style={{
+                      margin: '0 0 4px 0',
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: '#0f172a',
+                      letterSpacing: '-0.02em',
+                      lineHeight: 1.25
+                    }}
+                  >
+                    {fullName}
+                  </h3>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#4338ca',
+                        backgroundColor: '#eef2ff',
+                        border: '1px solid #c7d2fe',
+                        padding: '2px 8px',
+                        borderRadius: 6
+                      }}
+                    >
+                      {classStr} • Section {secStr}
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize: 11.5,
+                        color: '#64748b',
+                        fontWeight: 500,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Calendar size={12} color="#94a3b8" />
+                      <span>{sessionStr}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Attributes 2-Column Cards */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 8,
+                    marginBottom: 12
+                  }}
+                >
+                  {/* Gender Card */}
+                  <div
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #e2e8f0'
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: '#64748b',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}
+                    >
+                      Gender
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color:
+                            genderStr.toLowerCase() === 'female'
+                              ? '#be185d'
+                              : genderStr.toLowerCase() === 'male'
+                              ? '#0284c7'
+                              : '#334155',
+                          backgroundColor:
+                            genderStr.toLowerCase() === 'female'
+                              ? '#fdf2f8'
+                              : genderStr.toLowerCase() === 'male'
+                              ? '#f0f9ff'
+                              : '#f1f5f9',
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          display: 'inline-block'
+                        }}
+                      >
+                        {genderStr}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Date of Birth Card */}
+                  <div
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #e2e8f0'
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: '#64748b',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Cake size={10} color="#94a3b8" />
+                      <span>Date of Birth</span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: dobStr ? 650 : 500,
+                        color: dobStr ? '#0f172a' : '#94a3b8',
+                        fontStyle: dobStr ? 'normal' : 'italic',
+                        marginTop: 2
+                      }}
+                    >
+                      {dobStr || 'Not Recorded'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact & Family Information Cards */}
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 12,
+                    padding: '8px 10px',
+                    display: 'grid',
+                    gap: 6
+                  }}
+                >
+                  {/* Student Email */}
+                  {studentEmail && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '4px 6px',
+                        borderRadius: 6,
+                        backgroundColor: '#f8fafc'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            backgroundColor: '#eff6ff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Mail size={12} color="#2563eb" />
+                        </div>
+                        <a
+                          href={`mailto:${studentEmail}`}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#1d4ed8',
+                            textDecoration: 'none',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title={`Email student: ${studentEmail}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {studentEmail}
+                        </a>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopy(studentEmail, 'student_email', e)}
+                        title="Copy student email"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 3,
+                          color: copiedKey === 'student_email' ? '#16a34a' : '#94a3b8',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        {copiedKey === 'student_email' ? <Check size={12} /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Parent / Guardian Name */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '4px 6px',
+                      borderRadius: 6,
+                      backgroundColor: '#f8fafc'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        backgroundColor: '#f5f3ff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <User size={12} color="#7c3aed" />
+                    </div>
+                    <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#64748b' }}>Parent: </span>
+                      <b style={{ color: '#0f172a' }}>{parentName}</b>
+                    </div>
+                  </div>
+
+                  {/* Parent Phone & Email */}
+                  {((parentPhone && parentPhone !== '—') || parentEmail) && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '4px 6px',
+                        borderRadius: 6,
+                        backgroundColor: '#f8fafc'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            backgroundColor: '#f0fdf4',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Phone size={12} color="#16a34a" />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                          {parentPhone && parentPhone !== '—' && (
+                            <a
+                              href={`tel:${parentPhone}`}
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: '#15803d',
+                                textDecoration: 'none',
+                                fontFamily: 'ui-monospace, SFMono-Regular, monospace'
+                              }}
+                              title={`Call parent: ${parentPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {parentPhone}
+                            </a>
+                          )}
+                          {parentEmail && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: '#64748b',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title={parentEmail}
+                            >
+                              • {parentEmail}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {parentPhone && parentPhone !== '—' && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopy(parentPhone, 'parent_phone', e)}
+                          title="Copy parent phone number"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 3,
+                            color: copiedKey === 'parent_phone' ? '#16a34a' : '#94a3b8',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          {copiedKey === 'parent_phone' ? <Check size={12} /> : <Copy size={12} />}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Address (if present) */}
+                  {address && address.trim() && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '4px 6px',
+                        borderRadius: 6,
+                        backgroundColor: '#f8fafc'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          backgroundColor: '#fffbeb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <MapPin size={12} color="#d97706" />
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          color: '#475569',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={address}
+                      >
+                        {address}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Student Name */}
-              <div style={{ marginBottom: 4 }}>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 15.5,
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    lineHeight: 1.2
-                  }}
-                >
-                  {fullName}
-                </h3>
-                <div
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    color: '#2563eb',
-                    marginTop: 2
-                  }}
-                >
-                  {classStr} • Section {secStr}
-                </div>
-              </div>
-
-              {/* Session Tag */}
+              {/* Bottom Premium Status Stripe */}
               <div
                 style={{
-                  fontSize: 11,
-                  color: '#64748b',
-                  marginBottom: 10,
+                  backgroundColor: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                  padding: '9px 18px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 4
+                  justifyContent: 'space-between',
+                  fontSize: 11,
+                  color: '#64748b'
                 }}
               >
-                <Calendar size={11.5} color="#94a3b8" />
-                <span>{sessionStr}</span>
-              </div>
-
-              {/* Divider */}
-              <div style={{ height: 1, backgroundColor: '#f1f5f9', margin: '8px 0' }} />
-
-              {/* Personal Details 2-Column Grid */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '8px 10px',
-                  backgroundColor: '#f8fafc',
-                  padding: '9px 11px',
-                  borderRadius: 8,
-                  border: '1px solid #e2e8f0',
-                  marginBottom: 10
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
-                    Gender
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: genderStr === 'Female' ? '#ec4899' : genderStr === 'Male' ? '#0284c7' : '#334155',
-                      marginTop: 1
-                    }}
-                  >
-                    {genderStr}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
-                    Date of Birth
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', marginTop: 1 }}>
-                    {dobStr}
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information Section */}
-              <div style={{ display: 'grid', gap: 6, fontSize: 11.5, color: '#334155' }}>
-                {studentEmail && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-                    <Mail size={13} color="#2563eb" style={{ flexShrink: 0 }} />
-                    <span
-                      style={{
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        color: '#0f172a'
-                      }}
-                      title={studentEmail}
-                    >
-                      {studentEmail}
-                    </span>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-                  <User size={13} color="#64748b" style={{ flexShrink: 0 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#15803d', fontWeight: 700 }}>
                   <span
                     style={{
-                      textOverflow: 'ellipsis',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap'
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      backgroundColor: '#10b981',
+                      boxShadow: '0 0 0 2.5px rgba(16, 185, 129, 0.2)',
+                      display: 'inline-block'
                     }}
-                  >
-                    Parent: <b>{parentName}</b>
-                  </span>
+                  />
+                  <span>Enrolled Student</span>
                 </div>
 
-                {parentPhone && parentPhone !== '—' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Phone size={13} color="#16a34a" style={{ flexShrink: 0 }} />
-                    <code
-                      style={{
-                        fontSize: 11,
-                        background: '#f1f5f9',
-                        padding: '1px 5px',
-                        borderRadius: 4,
-                        color: '#0f172a'
-                      }}
-                    >
-                      {parentPhone}
-                    </code>
-                    {parentEmail && (
-                      <span style={{ fontSize: 10.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        • {parentEmail}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {address && address.trim() && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <MapPin size={13} color="#ea580c" style={{ flexShrink: 0 }} />
-                    <span
-                      style={{
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        color: '#475569'
-                      }}
-                      title={address}
-                    >
-                      {address}
-                    </span>
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: '#475569', fontWeight: 600 }}>
+                  <ShieldCheck size={13} color="#2563eb" />
+                  <span>Verified Record</span>
+                </div>
               </div>
             </div>
-
-            {/* Bottom Status Stripe */}
-            <div
-              style={{
-                backgroundColor: '#f8fafc',
-                borderTop: '1px solid #e2e8f0',
-                padding: '6px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: 10.5,
-                color: '#64748b'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#16a34a', fontWeight: 600 }}>
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    backgroundColor: '#16a34a',
-                    display: 'inline-block'
-                  }}
-                />
-                Enrolled Student
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b' }}>
-                <ShieldCheck size={12} color="#2563eb" />
-                <span>Verified Record</span>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }

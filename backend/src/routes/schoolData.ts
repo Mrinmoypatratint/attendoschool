@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
-import { registerDemoUser } from '../store/demoUsers';
+import { registerDemoUser, updateDemoUserPhoto, getAllDemoUsers } from '../store/demoUsers';
 import { createAndSendPasswordReset, isSameSchool, isTestSchool } from './auth';
 import { queueEmailNotification } from '../services/notificationService';
 import { demoSchools } from './superAdmin';
@@ -2646,12 +2646,31 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
 
 r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
+ const uid = req.user!.id;
+ let adminPhotoUrl = '';
  try {
-  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, created_at FROM schools WHERE id = $1', [sid]);
+   const uq = await pool.query('SELECT photo_url FROM users WHERE id = $1', [uid]);
+   if (uq.rowCount && uq.rows[0].photo_url) {
+     adminPhotoUrl = uq.rows[0].photo_url;
+   }
+ } catch {}
+
+ if (!adminPhotoUrl) {
+   const demoAdmin = getAllDemoUsers().find(u => u.id === uid || u.email.toLowerCase() === (req.user?.email || '').toLowerCase());
+   if (demoAdmin?.photo_url) {
+     adminPhotoUrl = demoAdmin.photo_url;
+   }
+ }
+
+ try {
+  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, photo_url, created_at FROM schools WHERE id = $1', [sid]);
   if (q.rowCount) {
     const s = q.rows[0];
+    const resolvedPhoto = adminPhotoUrl || s.photo_url || '';
     return res.json({
       ...s,
+      photo_url: resolvedPhoto,
+      photoUrl: resolvedPhoto,
       schoolName: s.name,
       adminEmail: req.user?.email || '',
       adminName: req.user?.name || ''
@@ -2663,6 +2682,7 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  try {
   const fsSchool = await getFirestoreSchoolById(sid);
   if (fsSchool) {
+   const resolvedPhoto = adminPhotoUrl || (fsSchool as any).photo_url || (fsSchool as any).photoUrl || (fsSchool as any).logo_url || '';
    return res.json({
     id: fsSchool.id,
     name: fsSchool.name,
@@ -2673,6 +2693,8 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
     contact_number: fsSchool.phone || fsSchool.enquiryNumber || '1800123456',
     address: fsSchool.address || 'Main Campus',
     website: fsSchool.website || '',
+    photo_url: resolvedPhoto,
+    photoUrl: resolvedPhoto,
     adminEmail: req.user?.email || '',
     adminName: req.user?.name || '',
     created_at: fsSchool.createdAt || new Date().toISOString()
@@ -2688,6 +2710,8 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
   status: 'ACTIVE',
   enquiry_number: '1800123456',
   address: 'Main Campus',
+  photo_url: adminPhotoUrl || '',
+  photoUrl: adminPhotoUrl || '',
   adminEmail: req.user?.email || '',
   adminName: req.user?.name || ''
  });
@@ -2695,36 +2719,142 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
 
 r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
- const { enquiryNumber, contact_number, address, website } = req.body || {};
+ const uid = req.user!.id;
+ const { enquiryNumber, contact_number, address, website, photo_url, photoUrl, photo } = req.body || {};
  const phone = contact_number || enquiryNumber;
+ const incomingPhoto = photo_url !== undefined ? photo_url : (photoUrl !== undefined ? photoUrl : photo);
+
+ if (incomingPhoto !== undefined) {
+   updateDemoUserPhoto(uid, incomingPhoto || null);
+   try {
+     await pool.query('UPDATE users SET photo_url = $1, updated_at = NOW() WHERE id = $2 AND school_id = $3', [incomingPhoto || null, uid, sid]);
+     await pool.query('UPDATE schools SET photo_url = $1, updated_at = NOW() WHERE id = $2', [incomingPhoto || null, sid]);
+   } catch {}
+ }
+
  try {
   const q = await pool.query(
-    'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address) WHERE id = $3 RETURNING id, name, code, status, enquiry_number, address',
-    [phone, address, sid]
+    'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address), photo_url = COALESCE($3, photo_url) WHERE id = $4 RETURNING id, name, code, status, enquiry_number, address, photo_url',
+    [phone, address, incomingPhoto !== undefined ? (incomingPhoto || null) : null, sid]
   );
   if (q.rowCount) {
     syncSchoolToFirestore(q.rows[0]).catch(() => {});
-    return res.json(q.rows[0]);
+    return res.json({
+      ...q.rows[0],
+      photo_url: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url,
+      photoUrl: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url
+    });
   }
  } catch {}
 
  try {
   if (isFirebaseConfigured()) {
-    await collections.schools().doc(sid).set({
+    const updatePayload: any = {
       phone,
       enquiryNumber: phone,
       address,
       website: website || '',
       updatedAt: new Date().toISOString()
-    }, { merge: true });
+    };
+    if (incomingPhoto !== undefined) {
+      updatePayload.photo_url = incomingPhoto;
+      updatePayload.photoUrl = incomingPhoto;
+    }
+    await collections.schools().doc(sid).set(updatePayload, { merge: true });
+    if (incomingPhoto !== undefined && uid) {
+      await collections.users().doc(uid).set({ photo_url: incomingPhoto, photoUrl: incomingPhoto }, { merge: true }).catch(() => {});
+    }
     const updated = await getFirestoreSchoolById(sid);
-    if (updated) return res.json(updated);
+    if (updated) return res.json({ ...updated, photo_url: incomingPhoto, photoUrl: incomingPhoto });
   }
  } catch {}
 
- const updatedSchool = { id: sid, enquiry_number: phone, address, website };
+ const updatedSchool = { id: sid, enquiry_number: phone, address, website, photo_url: incomingPhoto, photoUrl: incomingPhoto };
  syncSchoolToFirestore(updatedSchool).catch(() => {});
  res.json(updatedSchool);
+});
+
+// ── POST /api/school-profile/photo - Upload picture (School Admin only) ──
+r.post('/school-profile/photo', ...admin, async (req: AuthRequest, res) => {
+  const sid = req.user!.schoolId!;
+  const uid = req.user!.id;
+  const { photo_url, photoUrl, photo } = req.body || {};
+  const newPhoto = photo_url || photoUrl || photo;
+
+  if (!newPhoto || typeof newPhoto !== 'string') {
+    return res.status(400).json({ message: 'Valid photo data or URL is required' });
+  }
+
+  // Basic payload size check (max 10MB data string)
+  if (newPhoto.length > 10 * 1024 * 1024) {
+    return res.status(400).json({ message: 'Image size exceeds maximum allowed limit of 10MB' });
+  }
+
+  // Sync to in-memory demo store
+  updateDemoUserPhoto(uid, newPhoto);
+
+  try {
+    await pool.query(
+      'UPDATE users SET photo_url = $1, updated_at = NOW() WHERE id = $2 AND school_id = $3',
+      [newPhoto, uid, sid]
+    );
+    await pool.query(
+      'UPDATE schools SET photo_url = $1, updated_at = NOW() WHERE id = $2',
+      [newPhoto, sid]
+    );
+  } catch (err: any) {
+    console.warn('[SchoolProfile] DB update photo warning:', err.message);
+  }
+
+  if (isFirebaseConfigured()) {
+    try {
+      await collections.users().doc(uid).set({ photo_url: newPhoto, photoUrl: newPhoto }, { merge: true });
+      await collections.schools().doc(sid).set({ photo_url: newPhoto, photoUrl: newPhoto, logo_url: newPhoto }, { merge: true });
+    } catch {}
+  }
+
+  res.json({
+    success: true,
+    message: 'Profile picture uploaded successfully',
+    photo_url: newPhoto,
+    photoUrl: newPhoto
+  });
+});
+
+// ── DELETE /api/school-profile/photo - Remove picture (School Admin only) ──
+r.delete('/school-profile/photo', ...admin, async (req: AuthRequest, res) => {
+  const sid = req.user!.schoolId!;
+  const uid = req.user!.id;
+
+  // Sync to in-memory demo store
+  updateDemoUserPhoto(uid, null);
+
+  try {
+    await pool.query(
+      'UPDATE users SET photo_url = NULL, updated_at = NOW() WHERE id = $1 AND school_id = $2',
+      [uid, sid]
+    );
+    await pool.query(
+      'UPDATE schools SET photo_url = NULL, updated_at = NOW() WHERE id = $1',
+      [sid]
+    );
+  } catch (err: any) {
+    console.warn('[SchoolProfile] DB remove photo warning:', err.message);
+  }
+
+  if (isFirebaseConfigured()) {
+    try {
+      await collections.users().doc(uid).set({ photo_url: null, photoUrl: null }, { merge: true });
+      await collections.schools().doc(sid).set({ photo_url: null, photoUrl: null, logo_url: null }, { merge: true });
+    } catch {}
+  }
+
+  res.json({
+    success: true,
+    message: 'Profile picture removed successfully',
+    photo_url: null,
+    photoUrl: null
+  });
 });
 
 r.put('/school-profile/change-password', ...admin, async (req: AuthRequest, res) => {
