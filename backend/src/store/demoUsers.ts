@@ -15,6 +15,8 @@ export interface DemoUser {
   password: string;
   admissionNumber?: string;
   isActive?: boolean;
+  photo_url?: string;
+  photoUrl?: string;
 }
 
 const demoUsers: DemoUser[] = [
@@ -157,3 +159,19 @@ export function registerDemoUser(user: DemoUser): void {
 export function getAllDemoUsers(): DemoUser[] {
   return [...demoUsers];
 }
+
+/** Update photo for a demo user */
+export function updateDemoUserPhoto(userIdOrEmail: string, photoUrl: string | null): void {
+  const norm = userIdOrEmail.toLowerCase().trim();
+  const u = demoUsers.find(user => user.id.toLowerCase() === norm || user.email.toLowerCase() === norm);
+  if (u) {
+    if (photoUrl) {
+      u.photo_url = photoUrl;
+      u.photoUrl = photoUrl;
+    } else {
+      delete u.photo_url;
+      delete u.photoUrl;
+    }
+  }
+}
+

@@ -19,12 +19,15 @@ export type User = {
   rollNumber?: string;
   schoolName?: string;
   avatarUrl?: string;
+  photo_url?: string;
+  photoUrl?: string;
 };
 
 type AuthContextType = {
   user: User | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (fields: Partial<User>) => void;
   isAuthenticated: boolean;
 };
 
@@ -51,6 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((fields: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...fields };
+      localStorage.setItem('attendance_user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   useEffect(() => {
     const handleAuthExpired = () => {
       setUser(null);
@@ -60,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

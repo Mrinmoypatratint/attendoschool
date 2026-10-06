@@ -385,8 +385,8 @@ router.post('/login', async (req, res) => {
       } else {
         // School Admin, Teacher, Super Admin, or unspecified role login
         const facultyQuery = `
-          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active,
-                 sch.name AS school_name, sch.code AS school_code
+          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active, u.photo_url,
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
           FROM users u
           LEFT JOIN schools sch ON sch.id = u.school_id
           WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
@@ -418,6 +418,7 @@ router.post('/login', async (req, res) => {
           }
 
           const role = u.role as Role;
+          const photoUrl = u.photo_url || u.school_photo_url || undefined;
           const userPayload: any = {
             id: u.id,
             schoolId: u.school_id || resolvedInstituteId,
@@ -425,7 +426,9 @@ router.post('/login', async (req, res) => {
             schoolCode: u.school_code || selectedSchoolCode || 'SCH',
             name: u.name,
             email: u.email,
-            role
+            role,
+            photo_url: photoUrl,
+            photoUrl: photoUrl
           };
 
           const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
@@ -531,6 +534,7 @@ router.post('/login', async (req, res) => {
             } catch {}
           }
 
+          const fsPhoto = (fUser as any).photo_url || (fUser as any).photoUrl || undefined;
           const userPayload: any = {
             id: fUser.id,
             schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
@@ -538,7 +542,9 @@ router.post('/login', async (req, res) => {
             schoolCode: schoolCode || selectedSchoolCode || (isTintSchool(fUser.schoolId) ? 'TINT-187' : (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH')),
             name: fUser.name,
             email: fUser.email,
-            role
+            role,
+            photo_url: fsPhoto,
+            photoUrl: fsPhoto
           };
 
           const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
@@ -575,6 +581,7 @@ router.post('/login', async (req, res) => {
     const resolvedSchoolName = selectedSchoolName || demoSchoolObj?.name || (isTintSchool(resolvedSchoolId) ? 'TINT School' : (isTestSchool(resolvedSchoolId) ? 'Greenwood International School' : 'Institutional Campus'));
     const resolvedSchoolCode = selectedSchoolCode || demoSchoolObj?.code || (isTintSchool(resolvedSchoolId) ? 'TINT-187' : (isTestSchool(resolvedSchoolId) ? 'GIS001' : 'SCH'));
 
+    const demoPhoto = demo.photo_url || demo.photoUrl || undefined;
     const userPayload: any = {
       id: demo.id,
       schoolId: resolvedSchoolId,
@@ -582,7 +589,9 @@ router.post('/login', async (req, res) => {
       schoolCode: resolvedSchoolCode,
       name: demo.name,
       email: demo.email,
-      role: demo.role as Role
+      role: demo.role as Role,
+      photo_url: demoPhoto,
+      photoUrl: demoPhoto
     };
 
     if (demo.role === 'STUDENT') {
