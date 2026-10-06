@@ -34,9 +34,15 @@ const server = app.listen(env.port, () => {
     console.warn('[Server] Firestore rehydration encountered error:', err.message);
   });
 
-  // Keep-alive auto-pinger (prevents cloud container idle hibernation)
-  startKeepAliveService(env.keepAliveUrl, 10);
+  // Keep-alive auto-pinger (prevents cloud container idle hibernation - 4 min interval)
+  startKeepAliveService(env.keepAliveUrl, 4);
 });
+
+// Production reverse proxy / load balancer keep-alive alignment:
+// Ensure Node.js HTTP keep-alive timeout is higher than upstream proxy timeout (e.g., Render/ALB 60s)
+// to prevent upstream proxy getting ECONNRESET or "server unreachable" 502/504 errors.
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000;   // 66 seconds (> keepAliveTimeout)
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, starting graceful shutdown...`);

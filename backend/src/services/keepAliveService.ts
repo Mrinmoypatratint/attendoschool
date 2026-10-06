@@ -4,9 +4,9 @@ import https from 'https';
 /**
  * AttendoSchool Keep-Alive Service
  * Prevents cloud free-tier hosting (e.g., Render) from spinning down
- * by issuing periodic health pings to the configured URL every 10 minutes.
+ * by issuing periodic health pings to the configured URL every 4 minutes.
  */
-export function startKeepAliveService(targetUrl?: string, intervalMinutes: number = 10): void {
+export function startKeepAliveService(targetUrl?: string, intervalMinutes: number = 4): void {
   const rawUrl = targetUrl || process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL;
   if (!rawUrl) {
     console.log('[KeepAlive] No KEEP_ALIVE_URL or RENDER_EXTERNAL_URL configured. Self-ping skipped in local mode.');

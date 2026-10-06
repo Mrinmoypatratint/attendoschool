@@ -34,11 +34,19 @@ export const pool: Pool = (isPostgresConfigured
   ? new Pool({
       connectionString: pgConnectionString,
       ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      max: Number(process.env.PG_POOL_MAX || 25),
+      idleTimeoutMillis: 60000,
+      connectionTimeoutMillis: 10000,
+      allowExitOnIdle: false,
     })
   : new DisabledPool() as unknown as Pool);
+
+// Prevent pool from crashing the process on transient connection errors
+if (isPostgresConfigured) {
+  pool.on('error', (err) => {
+    console.error('[Database] Unexpected pool error (connection will be recycled):', err.message);
+  });
+}
 
 if (isPostgresConfigured) {
   const isSupabase = pgConnectionString.includes('supabase.co');

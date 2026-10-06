@@ -3970,6 +3970,7 @@ function Students(){
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; batch: number; totalBatches: number } | null>(null);
   const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
@@ -4640,11 +4641,38 @@ function Students(){
         classNumber: r.classNumber || Number(importClass) || 1,
         sectionName: r.sectionName || importSection || 'A'
       }));
-      const res = await api.post('/students/bulk-import', {
-        students: enrichedRows,
-        sessionId: sessionObj?.id || importSession || undefined,
-        session: importSession || undefined
-      });
+
+      // Enterprise batch chunking: chunk large files into batches of 500 records
+      // to eliminate 'request entity too large' (413) and avoid proxy gateway timeouts
+      const CHUNK_SIZE = 500;
+      let totalImported = 0;
+      let targetSession = '';
+      const allCreatedItems: any[] = [];
+      const totalBatches = Math.ceil(enrichedRows.length / CHUNK_SIZE);
+
+      for (let i = 0; i < enrichedRows.length; i += CHUNK_SIZE) {
+        const chunk = enrichedRows.slice(i, i + CHUNK_SIZE);
+        const currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
+        setImportProgress({
+          current: Math.min(i + chunk.length, enrichedRows.length),
+          total: enrichedRows.length,
+          batch: currentBatch,
+          totalBatches
+        });
+
+        const res = await api.post('/students/bulk-import', {
+          students: chunk,
+          sessionId: sessionObj?.id || importSession || undefined,
+          session: importSession || undefined
+        });
+
+        totalImported += res.data?.count || chunk.length;
+        if (res.data?.session) targetSession = res.data.session;
+        if (Array.isArray(res.data?.items)) {
+          allCreatedItems.push(...res.data.items);
+        }
+      }
+
       if (enrichedRows.length > 0) {
         const lastRow = enrichedRows[enrichedRows.length - 1];
         const lastFullName = lastRow.fullName || lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Student';
@@ -4656,7 +4684,8 @@ function Students(){
           }));
         } catch {}
       }
-      alert(`Successfully imported ${res.data.count || enrichedRows.length} students${res.data.session ? ` into ${res.data.session}` : ''}!`);
+
+      alert(`Successfully imported ${totalImported} students${targetSession ? ` into ${targetSession}` : ''}!`);
       setImportOpen(false);
       setPreviewRows([]);
       setImportErrors([]);
@@ -4665,27 +4694,27 @@ function Students(){
       setImportStep(1);
 
       // Switch active session to imported session so students appear immediately
-      const targetSession = res.data.session || importSession || activeSession;
-      if (targetSession && targetSession !== activeSession) {
-        setActiveSession(targetSession);
+      const finalSession = targetSession || importSession || activeSession;
+      if (finalSession && finalSession !== activeSession) {
+        setActiveSession(finalSession);
         try {
-          localStorage.setItem('attendo_academic_session', targetSession);
-          window.dispatchEvent(new CustomEvent('sessionChanged', { detail: targetSession }));
+          localStorage.setItem('attendo_academic_session', finalSession);
+          window.dispatchEvent(new CustomEvent('sessionChanged', { detail: finalSession }));
         } catch {}
       }
 
       // Update rows immediately with imported items
-      if (Array.isArray(res.data.items) && res.data.items.length > 0) {
+      if (allCreatedItems.length > 0) {
         setRows(prev => {
-          const newIds = new Set(res.data.items.map((it: any) => it.id));
-          return [...res.data.items, ...prev.filter(r => !newIds.has(r.id))];
+          const newIds = new Set(allCreatedItems.map((it: any) => it.id));
+          return [...allCreatedItems, ...prev.filter(r => !newIds.has(r.id))];
         });
       }
 
       setImportSession(''); setImportClass(''); setImportSection('');
-      load(targetSession || activeSession);
+      load(finalSession || activeSession);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to import students';
+      const msg = err?.response?.data?.message || (err?.response?.status === 413 ? 'Payload size too large. Please retry with a smaller file.' : (err?.message || 'Failed to import students'));
       const serverErrs = err?.response?.data?.errors;
       if (serverErrs && Array.isArray(serverErrs)) {
         setImportErrors(serverErrs);
@@ -4694,6 +4723,7 @@ function Students(){
       alert(msg);
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   }
 
@@ -6134,7 +6164,11 @@ function Students(){
                     disabled={importing}
                     style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
                   >
-                    {importing ? 'Importing Students...' : `Confirm & Import ${studentValidCount} Valid Students`}
+                    {importing
+                      ? (importProgress
+                          ? `Importing Batch ${importProgress.batch}/${importProgress.totalBatches} (${importProgress.current}/${importProgress.total})...`
+                          : 'Importing Students...')
+                      : `Confirm & Import ${studentValidCount} Valid Students`}
                   </button>
                 </div>
               </div>

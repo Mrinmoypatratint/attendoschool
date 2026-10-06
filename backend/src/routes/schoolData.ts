@@ -1167,6 +1167,19 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
  const REQUIRED_HEADERS = ['First Name','Last Name','Admission Number','Roll Number','Parent Name','Parent Phone','Parent Email','Student Email'];
 
+ // Preload existing classes and sections to eliminate duplicate DB queries per row
+ const classMap = new Map<number, string>();
+ const sectionMap = new Map<string, string>();
+ try {
+   const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
+   for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
+
+   const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
+   for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
+ } catch (preloadErr) {
+   console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr);
+ }
+
  // Validate rows and collect errors
  const validRows: any[] = [];
  const errors: {row:number;field:string;message:string}[] = [];
@@ -1204,31 +1217,40 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
    let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
    if (!['A','B','C','D','E','F'].includes(sectionName)) sectionName = 'A';
 
-   let classId = '';
-   let sectionId = '';
-   try {
-     let clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 AND class_number=$2 LIMIT 1`, [schoolId, classNumber]);
-     if (!clsQ.rowCount) {
-       clsQ = await pool.query(
+   let classId = classMap.get(classNumber) || '';
+   if (!classId) {
+     try {
+       const clsQ = await pool.query(
          `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
-          ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id, class_number`,
+          ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
          [schoolId, classNumber]
        );
+       if (clsQ.rows.length > 0) {
+         classId = clsQ.rows[0].id;
+         classMap.set(classNumber, classId);
+       }
+     } catch (csErr) {
+       console.warn('[bulk-import] Failed to create class:', csErr);
      }
-     classId = clsQ.rows[0].id;
+   }
 
-     let secQ = await pool.query(`SELECT id, name FROM sections WHERE school_id=$1 AND class_id=$2 AND UPPER(name)=UPPER($3) LIMIT 1`, [schoolId, classId, sectionName]);
-     if (!secQ.rowCount) {
-       secQ = await pool.query(
+   let sectionId = classId ? (sectionMap.get(`${classId}_${sectionName}`) || '') : '';
+   if (!sectionId && classId) {
+     try {
+       const secQ = await pool.query(
          `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-          ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id, name`,
+          ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
          [schoolId, classId, sectionName]
        );
+       if (secQ.rows.length > 0) {
+         sectionId = secQ.rows[0].id;
+         sectionMap.set(`${classId}_${sectionName}`, sectionId);
+       }
+     } catch (csErr) {
+       console.warn('[bulk-import] Failed to create section:', csErr);
      }
-     sectionId = secQ.rows[0].id;
-   } catch (csErr) {
-     console.warn('[bulk-import] Failed to resolve class/section:', csErr);
    }
+
    if (!classId) classId = `cls-${classNumber}`;
    if (!sectionId) sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
@@ -1256,6 +1278,20 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  try {
    const client = await pool.connect();
    try {
+     // Pre-fetch existing students with admission numbers to avoid individual SELECT queries
+     const existingAdmMap = new Map<string, string>();
+     try {
+       const existStudentsQ = await client.query(
+         `SELECT id, admission_number FROM students WHERE school_id=$1 AND admission_number IS NOT NULL`,
+         [schoolId]
+       );
+       for (const row of existStudentsQ.rows) {
+         if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
+       }
+     } catch (e) {
+       console.warn('[bulk-import] Notice loading existing admission numbers:', e);
+     }
+
      await client.query('BEGIN');
      for (let i = 0; i < validRows.length; i++) {
        const st = validRows[i];
