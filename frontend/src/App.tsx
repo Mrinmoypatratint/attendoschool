@@ -3970,7 +3970,16 @@ function Students(){
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
-  const [importProgress, setImportProgress] = useState<{ current: number; total: number; batch: number; totalBatches: number } | null>(null);
+  const [importProgress, setImportProgress] = useState<{
+    current: number;
+    total: number;
+    batch: number;
+    totalBatches: number;
+    uploadedBytes: number;
+    totalBytes: number;
+    percent: number;
+  } | null>(null);
+  const [importFileMeta, setImportFileMeta] = useState<{ name: string; size: number } | null>(null);
   const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
@@ -4545,9 +4554,20 @@ function Students(){
     }
   }
 
+  function formatBytes(bytes: number): string {
+    if (!bytes || isNaN(bytes) || bytes <= 0) return '0 KB';
+    if (bytes < 1024 * 1024) {
+      const kb = Math.round(bytes / 1024);
+      return `${kb} KB`;
+    }
+    const mb = (bytes / (1024 * 1024)).toFixed(1);
+    return `${mb} MB`;
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportFileMeta({ name: file.name, size: file.size });
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -4649,21 +4669,42 @@ function Students(){
       let targetSession = '';
       const allCreatedItems: any[] = [];
       const totalBatches = Math.ceil(enrichedRows.length / CHUNK_SIZE);
+      const totalFileSize = (importFileMeta && importFileMeta.size > 0)
+        ? importFileMeta.size
+        : (enrichedRows.length * 320);
+
+      // Initialize progress display at 0%
+      setImportProgress({
+        current: 0,
+        total: enrichedRows.length,
+        batch: 1,
+        totalBatches,
+        uploadedBytes: 0,
+        totalBytes: totalFileSize,
+        percent: 0
+      });
 
       for (let i = 0; i < enrichedRows.length; i += CHUNK_SIZE) {
         const chunk = enrichedRows.slice(i, i + CHUNK_SIZE);
         const currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
-        setImportProgress({
-          current: Math.min(i + chunk.length, enrichedRows.length),
-          total: enrichedRows.length,
-          batch: currentBatch,
-          totalBatches
-        });
+        const currentCount = Math.min(i + chunk.length, enrichedRows.length);
+        const percent = Math.min(100, Math.round((currentCount / enrichedRows.length) * 100));
+        const uploadedBytes = Math.min(totalFileSize, Math.round((currentCount / enrichedRows.length) * totalFileSize));
 
         const res = await api.post('/students/bulk-import', {
           students: chunk,
           sessionId: sessionObj?.id || importSession || undefined,
           session: importSession || undefined
+        });
+
+        setImportProgress({
+          current: currentCount,
+          total: enrichedRows.length,
+          batch: currentBatch,
+          totalBatches,
+          uploadedBytes,
+          totalBytes: totalFileSize,
+          percent
         });
 
         totalImported += res.data?.count || chunk.length;
@@ -6153,20 +6194,60 @@ function Students(){
                 </div>
               </div>
 
+              {/* ── LIVE UPLOAD & BATCH PROGRESS DISPLAY ── */}
+              {importing && importProgress && (
+                <div style={{
+                  marginTop: 12,
+                  marginBottom: 6,
+                  padding: '12px 16px',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.06))',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: 10
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#10b981' }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                        Uploading & Processing Batch {importProgress.batch} of {importProgress.totalBatches} ({importProgress.current.toLocaleString()} / {importProgress.total.toLocaleString()} students)
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>
+                      {formatBytes(importProgress.uploadedBytes)} / {formatBytes(importProgress.totalBytes)} ({importProgress.percent}%)
+                    </span>
+                  </div>
+                  {/* Progress bar track & filler */}
+                  <div style={{ width: '100%', height: 10, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${importProgress.percent}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #10b981, #059669)',
+                        borderRadius: 999,
+                        transition: 'width 0.3s ease'
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 11, color: '#64748b' }}>
+                    <span>File: {importFileMeta?.name || 'Bulk Student Import'}</span>
+                    <span>{importProgress.percent}% Uploaded</span>
+                  </div>
+                </div>
+              )}
+
               {/* ── MODAL FOOTER ── */}
               <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <button type="button" className="btn-secondary" onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}>← Back</button>
+                <button type="button" className="btn-secondary" disabled={importing} onClick={() => { setImportStep(2); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}>← Back</button>
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportStep(1); }}>Cancel</button>
+                  <button type="button" className="btn-secondary" disabled={importing} onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportStep(1); }}>Cancel</button>
                   <button
                     type="button"
                     onClick={submitBulkImport}
                     disabled={importing}
-                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
+                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px', minWidth: 220 }}
                   >
                     {importing
                       ? (importProgress
-                          ? `Importing Batch ${importProgress.batch}/${importProgress.totalBatches} (${importProgress.current}/${importProgress.total})...`
+                          ? `Uploading: ${importProgress.percent}% (${formatBytes(importProgress.uploadedBytes)} / ${formatBytes(importProgress.totalBytes)})`
                           : 'Importing Students...')
                       : `Confirm & Import ${studentValidCount} Valid Students`}
                   </button>
