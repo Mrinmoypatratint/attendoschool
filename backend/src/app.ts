@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
 import { requireAuth } from './middleware/auth';
-import { securityHeaders, apiRateLimit, requestContext } from './middleware/security';
+import { securityHeaders, apiRateLimit, loginRateLimit, requestContext } from './middleware/security';
 
 // Core routes
 import health from './routes/health';
@@ -55,7 +55,8 @@ const allowedOrigin =
       : env.corsOrigin;
 
 app.use(cors({ origin: allowedOrigin, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -152,7 +153,7 @@ app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', vers
 
 // Core routes
 app.use('/api/health', health);
-app.use('/api/auth', auth);
+app.use('/api/auth', loginRateLimit, auth);
 app.use('/api/dashboard', dashboard);
 app.use('/api/super-admin', superAdmin);
 app.use('/api/super-admin', superAdminOperations);
