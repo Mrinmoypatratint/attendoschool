@@ -15,13 +15,58 @@ function isValidDdMmYyyy(val: string): boolean {
   const year = parseInt(match[3], 10);
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
-  if (year < 1920 || year > new Date().getFullYear()) return false;
+  if (year < 1000 || year > 9999) return false;
   const date = new Date(year, month - 1, day);
   return (
     date.getFullYear() === year &&
     date.getMonth() === month - 1 &&
     date.getDate() === day
   );
+}
+
+function formatDdMmYyyyInput(inputVal: string, prevVal: string): string {
+  if (inputVal.length < prevVal.length) {
+    return inputVal;
+  }
+
+  const rawDigits = inputVal.replace(/\D/g, '').slice(0, 8);
+  if (!rawDigits) return '';
+
+  let dayStr = '';
+  let monthStr = '';
+  let yearStr = '';
+
+  // 1. Day segment (Max 31)
+  if (rawDigits.length >= 2) {
+    let dayNum = parseInt(rawDigits.slice(0, 2), 10);
+    if (dayNum > 31) dayNum = 31;
+    dayStr = String(dayNum).padStart(2, '0');
+  } else {
+    return rawDigits;
+  }
+
+  const monthDigits = rawDigits.slice(2);
+  if (!monthDigits) {
+    return dayStr;
+  }
+
+  // 2. Month segment (Max 12)
+  if (monthDigits.length >= 2) {
+    let monthNum = parseInt(monthDigits.slice(0, 2), 10);
+    if (monthNum > 12) monthNum = 12;
+    monthStr = String(monthNum).padStart(2, '0');
+  } else {
+    return `${dayStr}-${monthDigits}`;
+  }
+
+  const yearDigits = monthDigits.slice(2);
+  if (!yearDigits) {
+    return `${dayStr}-${monthStr}`;
+  }
+
+  // 3. Year segment (Max 4 digits)
+  yearStr = yearDigits.slice(0, 4);
+  return `${dayStr}-${monthStr}-${yearStr}`;
 }
 
 function toDdMmYyyy(val: any): string {
@@ -911,16 +956,8 @@ export default function PeopleManagement() {
                         maxLength={10}
                         value={teacherForm.dob || ''}
                         onChange={e => {
-                          let val = e.target.value.replace(/[^0-9-]/g, '');
-                          const rawDigits = val.replace(/-/g, '');
-                          if (rawDigits.length <= 8 && !val.includes('-')) {
-                            if (rawDigits.length > 4) {
-                              val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
-                            } else if (rawDigits.length > 2) {
-                              val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
-                            }
-                          }
-                          setTeacherForm({ ...teacherForm, dob: val });
+                          const formatted = formatDdMmYyyyInput(e.target.value, teacherForm.dob || '');
+                          setTeacherForm({ ...teacherForm, dob: formatted });
                         }}
                         style={{
                           width: '100%',
@@ -935,12 +972,19 @@ export default function PeopleManagement() {
                         title="Select from date picker"
                         style={{
                           position: 'absolute',
-                          right: 8,
-                          width: 22,
-                          height: 22,
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 38,
+                          height: '100%',
                           opacity: 0,
                           cursor: 'pointer',
                           zIndex: 2
+                        }}
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {}
                         }}
                         onChange={e => {
                           if (e.target.value) {
@@ -980,10 +1024,25 @@ export default function PeopleManagement() {
                   <label>Mobile Number
                     <input
                       placeholder="10-digit mobile number"
+                      maxLength={10}
+                      inputMode="numeric"
                       value={teacherForm.mobile || ''}
-                      onChange={e => setTeacherForm({ ...teacherForm, mobile: e.target.value })}
-                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      onChange={e => {
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setTeacherForm({ ...teacherForm, mobile: cleaned });
+                      }}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        borderColor: (teacherForm.mobile && teacherForm.mobile.length < 10) ? '#ef4444' : undefined,
+                        boxShadow: (teacherForm.mobile && teacherForm.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+                      }}
                     />
+                    {teacherForm.mobile && teacherForm.mobile.length < 10 && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Must be a valid 10-digit mobile number
+                      </span>
+                    )}
                   </label>
                 </div>
 
