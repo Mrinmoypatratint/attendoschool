@@ -1274,84 +1274,69 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
  const createdList: any[] = [];
 
- // Try PostgreSQL transaction
- try {
-   const client = await pool.connect();
-   try {
-     // Pre-fetch existing students with admission numbers to avoid individual SELECT queries
-     const existingAdmMap = new Map<string, string>();
-     try {
-       const existStudentsQ = await client.query(
-         `SELECT id, admission_number FROM students WHERE school_id=$1 AND admission_number IS NOT NULL`,
-         [schoolId]
-       );
-       for (const row of existStudentsQ.rows) {
-         if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
-       }
-     } catch (e) {
-       console.warn('[bulk-import] Notice loading existing admission numbers:', e);
-     }
+  // Try PostgreSQL transaction with ultra-fast batch ingestion
+  try {
+    const client = await pool.connect();
+    try {
+      const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
+      const safeAyId = isAyUuid ? bulkSessionId : null;
 
-     await client.query('BEGIN');
-     for (let i = 0; i < validRows.length; i++) {
-       const st = validRows[i];
-       const spName = `sp_row_${i}`;
-       await client.query(`SAVEPOINT ${spName}`);
-       try {
-         const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
-         let q: any = null;
-         if (st.admissionNumber) {
-           const existQ = await client.query(
-             `SELECT id FROM students WHERE school_id=$1 AND admission_number=$2 LIMIT 1`,
-             [schoolId, st.admissionNumber]
-           );
-           if (existQ.rowCount && existQ.rows.length > 0) {
-             q = await client.query(
-               `UPDATE students SET
-                  name = $1,
-                  gender = COALESCE($2, gender),
-                  class_id = $3,
-                  section_id = $4,
-                  roll_number = $5,
-                  parent_name = COALESCE($6, parent_name),
-                  parent_sms_number = $7,
-                  email = COALESCE($8, email),
-                  parent_email = COALESCE($9, parent_email),
-                  academic_year_id = COALESCE($10, academic_year_id),
-                  is_active = true,
-                  updated_at = NOW()
-                WHERE id = $11
-                RETURNING *`,
-               [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, isAyUuid ? bulkSessionId : null, existQ.rows[0].id]
-             );
-           }
-         }
-         if (!q || !q.rowCount) {
-           q = await client.query(
-             `INSERT INTO students(
-                school_id, academic_year_id, class_id, section_id, roll_number, 
-                admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
-              )
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-              ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
-                name = EXCLUDED.name,
-                admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
-                gender = COALESCE(EXCLUDED.gender, students.gender),
-                parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
-                parent_sms_number = EXCLUDED.parent_sms_number,
-                email = COALESCE(EXCLUDED.email, students.email),
-                parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
-                academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
-                is_active = true,
-                updated_at = NOW()
-              RETURNING *`,
-             [schoolId, isAyUuid ? bulkSessionId : null, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.gender || null, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, null]
-           );
-         }
-         if (q.rowCount && q.rows.length>0) {
-           const created = {
-              ...q.rows[0],
-              gender: q.rows[0].gender || st.gender || null,
+      // 1. Pre-fetch existing students ONLY for admission numbers in the current batch
+      const existingAdmMap = new Map<string, string>();
+      const batchAdmNums = validRows.map(r => r.admissionNumber).filter(Boolean);
+      if (batchAdmNums.length > 0) {
+        try {
+          const existStudentsQ = await client.query(
+            `SELECT id, admission_number FROM students WHERE school_id = $1 AND admission_number = ANY($2::text[])`,
+            [schoolId, batchAdmNums]
+          );
+          for (const row of existStudentsQ.rows) {
+            if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
+          }
+        } catch (e) {
+          console.warn('[bulk-import] Notice checking batch admission numbers:', e);
+        }
+      }
+
+      // 2. Partition into updates (existing admission number) and inserts (new records)
+      const toUpdate: any[] = [];
+      const toInsert: any[] = [];
+      for (const st of validRows) {
+        if (st.admissionNumber && existingAdmMap.has(st.admissionNumber)) {
+          toUpdate.push(st);
+        } else {
+          toInsert.push(st);
+        }
+      }
+
+      await client.query('BEGIN');
+
+      // 3. Process existing record updates (usually 0 in bulk imports)
+      for (const st of toUpdate) {
+        const existId = existingAdmMap.get(st.admissionNumber);
+        try {
+          const upQ = await client.query(
+            `UPDATE students SET
+               name = $1,
+               gender = COALESCE($2, gender),
+               class_id = $3,
+               section_id = $4,
+               roll_number = $5,
+               parent_name = COALESCE($6, parent_name),
+               parent_sms_number = $7,
+               email = COALESCE($8, email),
+               parent_email = COALESCE($9, parent_email),
+               academic_year_id = COALESCE($10, academic_year_id),
+               is_active = true,
+               updated_at = NOW()
+             WHERE id = $11
+             RETURNING *`,
+            [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, safeAyId, existId]
+          );
+          if (upQ.rowCount && upQ.rows.length > 0) {
+            createdList.push({
+              ...upQ.rows[0],
+              gender: upQ.rows[0].gender || st.gender || null,
               academic_year_id: bulkSessionId,
               session_id: bulkSessionId,
               session_name: bulkSessionName,
@@ -1361,18 +1346,133 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               class_label: st.classLabel,
               section_name: st.sectionName,
               is_active: true
-            };
-           createdList.push(created);
-           demoStudents.unshift(created);
-           syncStudentToFirestore(created).catch(()=>{});
-           await client.query(`RELEASE SAVEPOINT ${spName}`);
-         }
-       } catch (rowErr: any) {
-         await client.query(`ROLLBACK TO SAVEPOINT ${spName}`);
-         console.warn(`[bulk-import] Row ${i+1} insert skipped:`, rowErr.message);
-       }
-     }
-     if (createdList.length === 0 && validRows.length > 0) {
+            });
+          }
+        } catch (upErr: any) {
+          console.warn('[bulk-import] Row update skipped:', upErr.message);
+        }
+      }
+
+      // 4. Fast Bulk Multi-Row Insert for new records
+      if (toInsert.length > 0) {
+        // Deduplicate by (class_id, section_id, roll_number) within the batch to prevent ON CONFLICT DO UPDATE conflict
+        const dedupedInsertMap = new Map<string, any>();
+        for (const st of toInsert) {
+          const key = `${st.classId}_${st.sectionId}_${st.rollNumber}`;
+          dedupedInsertMap.set(key, st);
+        }
+        const dedupedInserts = Array.from(dedupedInsertMap.values());
+
+        try {
+          const valuesChunks: string[] = [];
+          const params: any[] = [schoolId, safeAyId];
+          let pIdx = 3;
+
+          for (const st of dedupedInserts) {
+            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, null)`);
+            params.push(
+              st.classId,
+              st.sectionId,
+              String(st.rollNumber),
+              st.admissionNumber || null,
+              st.name,
+              st.gender || null,
+              st.parentName || null,
+              st.parentPhone,
+              st.studentEmail || null,
+              st.parentEmail || null
+            );
+            pIdx += 10;
+          }
+
+          const insertSql = `
+            INSERT INTO students(
+              school_id, academic_year_id, class_id, section_id, roll_number, 
+              admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
+            )
+            VALUES ${valuesChunks.join(', ')}
+            ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+              name = EXCLUDED.name,
+              admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
+              gender = COALESCE(EXCLUDED.gender, students.gender),
+              parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
+              parent_sms_number = EXCLUDED.parent_sms_number,
+              email = COALESCE(EXCLUDED.email, students.email),
+              parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
+              academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
+              is_active = true,
+              updated_at = NOW()
+            RETURNING *
+          `;
+
+          const insQ = await client.query(insertSql, params);
+          const metaMap = new Map<string, any>();
+          for (const st of dedupedInserts) {
+            metaMap.set(`${st.classId}_${st.sectionId}_${st.rollNumber}`, st);
+          }
+          for (const row of insQ.rows) {
+            const meta = metaMap.get(`${row.class_id}_${row.section_id}_${row.roll_number}`);
+            createdList.push({
+              ...row,
+              gender: row.gender || meta?.gender || null,
+              academic_year_id: bulkSessionId,
+              session_id: bulkSessionId,
+              session_name: bulkSessionName,
+              session: bulkSessionName || bulkSessionId,
+              full_name: row.name,
+              class_number: meta?.classNumber,
+              class_label: meta?.classLabel,
+              section_name: meta?.sectionName,
+              is_active: true
+            });
+          }
+        } catch (bulkErr: any) {
+          console.warn('[bulk-import] Fast bulk insert error, attempting row-by-row fallback:', bulkErr.message);
+          for (const st of dedupedInserts) {
+            try {
+              const singleQ = await client.query(
+                `INSERT INTO students(
+                   school_id, academic_year_id, class_id, section_id, roll_number, 
+                   admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
+                 )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, null)
+                 ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+                   name = EXCLUDED.name,
+                   admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
+                   gender = COALESCE(EXCLUDED.gender, students.gender),
+                   parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
+                   parent_sms_number = EXCLUDED.parent_sms_number,
+                   email = COALESCE(EXCLUDED.email, students.email),
+                   parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
+                   academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
+                   is_active = true,
+                   updated_at = NOW()
+                 RETURNING *`,
+                [schoolId, safeAyId, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.gender || null, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null]
+              );
+              if (singleQ.rowCount && singleQ.rows.length > 0) {
+                createdList.push({
+                  ...singleQ.rows[0],
+                  gender: singleQ.rows[0].gender || st.gender || null,
+                  academic_year_id: bulkSessionId,
+                  session_id: bulkSessionId,
+                  session_name: bulkSessionName,
+                  session: bulkSessionName || bulkSessionId,
+                  full_name: st.name,
+                  class_number: st.classNumber,
+                  class_label: st.classLabel,
+                  section_name: st.sectionName,
+                  is_active: true
+                });
+              }
+            } catch (rowErr: any) {
+              console.warn('[bulk-import] Row insert skipped:', rowErr.message);
+            }
+          }
+        }
+      }
+
+      if (createdList.length === 0 && validRows.length > 0) {
         await client.query('ROLLBACK');
         client.release();
         throw new Error('Zero DB rows inserted, falling back to memory/Firestore');
@@ -1380,60 +1480,76 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       await client.query('COMMIT');
       client.release();
 
-      // Student Email Automation on Bulk Import
-      for (const st of createdList) {
-        const studentEmail = String(st.email || st.student_email || '').trim().toLowerCase();
-        const parentEmail = String(st.parent_email || '').trim().toLowerCase();
-        const loginOption = st.login_option || st.loginOption || (studentEmail ? 'STUDENT' : (parentEmail ? 'PARENT' : 'NONE'));
-        const sendInviteEmail = st.sendInviteEmail !== false && req.body?.sendInviteEmail !== false;
-
-        if (sendInviteEmail && loginOption !== 'NONE') {
-          const isParent = loginOption === 'PARENT';
-          const targetLoginEmail = isParent ? (parentEmail || studentEmail) : (studentEmail || parentEmail);
-
-          if (targetLoginEmail) {
-            createAndSendPasswordReset({
-              email: targetLoginEmail,
-              name: st.name || st.full_name,
-              role: isParent ? 'PARENT' : 'STUDENT',
-              schoolId: schoolId || undefined,
-              schoolName: req.user?.schoolName || 'School',
-              req
-            }).then(resetInfo => {
-              if (resetInfo?.resetUrl) {
-                queueEmailNotification({
-                  schoolId: schoolId || 'school-default',
-                  recipientEmail: targetLoginEmail,
-                  recipientName: isParent ? (st.parent_name || 'Parent') : (st.name || st.full_name),
-                  recipientType: isParent ? 'PARENT' : 'STUDENT',
-                  templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
-                  templateData: {
-                    student_name: st.name || st.full_name,
-                    school_name: req.user?.schoolName || 'School',
-                    class_name: String(st.class_number || st.class_name || ''),
-                    section_name: String(st.section_name || 'A'),
-                    roll_number: String(st.roll_number || ''),
-                    reset_link: resetInfo.resetUrl
-                  },
-                  idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
-                }).catch(err => {
-                  console.warn('[BulkStudentEnrollment] SMTP network/dispatch error:', err.message);
-                });
-              }
-            }).catch(err => {
-              console.warn('[BulkStudentEnrollment] Error generating reset link:', err.message);
-            });
-          }
-        }
+      // Keep in-memory store synchronized efficiently without O(N^2) unshifts
+      if (createdList.length > 0) {
+        demoStudents = [...createdList.slice(0, 500), ...demoStudents].slice(0, 5000);
       }
 
-      return res.status(201).json({ success:true, count:createdList.length, items:createdList, session:bulkSessionName });
-   } catch (txErr:any) {
-     await client.query('ROLLBACK');
-     client.release();
-     throw txErr;
-   }
- } catch {}
+      // Background Firestore sync (non-blocking)
+      if (isFirebaseConfigured()) {
+        setImmediate(() => {
+          for (const c of createdList.slice(0, 100)) {
+            syncStudentToFirestore(c).catch(() => {});
+          }
+        });
+      }
+
+      // Student Email Automation on Bulk Import (only executed if explicitly requested)
+      const sendInviteEmail = req.body?.sendInviteEmail === true;
+      if (sendInviteEmail && createdList.length > 0) {
+        setImmediate(async () => {
+          for (const st of createdList) {
+            const studentEmail = String(st.email || st.student_email || '').trim().toLowerCase();
+            const parentEmail = String(st.parent_email || '').trim().toLowerCase();
+            const loginOption = st.login_option || st.loginOption || (studentEmail ? 'STUDENT' : (parentEmail ? 'PARENT' : 'NONE'));
+            if (loginOption !== 'NONE') {
+              const isParent = loginOption === 'PARENT';
+              const targetLoginEmail = isParent ? (parentEmail || studentEmail) : (studentEmail || parentEmail);
+              if (targetLoginEmail) {
+                createAndSendPasswordReset({
+                  email: targetLoginEmail,
+                  name: st.name || st.full_name,
+                  role: isParent ? 'PARENT' : 'STUDENT',
+                  schoolId: schoolId || undefined,
+                  schoolName: req.user?.schoolName || 'School',
+                  req
+                }).then(resetInfo => {
+                  if (resetInfo?.resetUrl) {
+                    queueEmailNotification({
+                      schoolId: schoolId || 'school-default',
+                      recipientEmail: targetLoginEmail,
+                      recipientName: isParent ? (st.parent_name || 'Parent') : (st.name || st.full_name),
+                      recipientType: isParent ? 'PARENT' : 'STUDENT',
+                      templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+                      templateData: {
+                        student_name: st.name || st.full_name,
+                        school_name: req.user?.schoolName || 'School',
+                        class_name: String(st.class_number || st.class_name || ''),
+                        section_name: String(st.section_name || 'A'),
+                        roll_number: String(st.roll_number || ''),
+                        reset_link: resetInfo.resetUrl
+                      },
+                      idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
+                    }).catch(err => {
+                      console.warn('[BulkStudentEnrollment] SMTP network/dispatch error:', err.message);
+                    });
+                  }
+                }).catch(err => {
+                  console.warn('[BulkStudentEnrollment] Error generating reset link:', err.message);
+                });
+              }
+            }
+          }
+        });
+      }
+
+      return res.status(201).json({ success: true, count: createdList.length, items: createdList, session: bulkSessionName });
+    } catch (txErr: any) {
+      await client.query('ROLLBACK');
+      client.release();
+      throw txErr;
+    }
+  } catch {}
 
  // Fallback: in-memory / Firestore
  for (const st of validRows) {
