@@ -1482,7 +1482,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
       // Keep in-memory store synchronized efficiently without O(N^2) unshifts
       if (createdList.length > 0) {
-        demoStudents = [...createdList.slice(0, 500), ...demoStudents].slice(0, 5000);
+        demoStudents.unshift(...createdList.slice(0, 100));
+        if (demoStudents.length > 5000) demoStudents.length = 5000;
       }
 
       // Background Firestore sync (non-blocking)
