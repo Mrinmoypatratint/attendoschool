@@ -3975,6 +3975,19 @@ function studentMatchesSession(st: any, activeSess: string): boolean {
   return true;
 }
 
+export function formatLastFetched(date: Date | null): string {
+  if (!date) return 'Not yet fetched';
+  const now = new Date();
+  const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  
+  if (diffSec < 8) return `${timeStr} (Just now)`;
+  if (diffSec < 60) return `${timeStr} (${diffSec}s ago)`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${timeStr} (${diffMin}m ago)`;
+  return `${timeStr} (${date.toLocaleDateString([], { month: 'short', day: 'numeric' })})`;
+}
+
 /* ────── Students ────── */
 function Students(){
   const {user}=useAuth();
@@ -3983,6 +3996,23 @@ function Students(){
            localStorage.getItem('attendo_active_academic_year') || 
            '2026-2027';
   });
+  const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(() => {
+    try {
+      const saved = localStorage.getItem('attendo_students_last_fetched');
+      return saved ? new Date(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [, setTimeTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTimeTick(t => t + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [rows,setRows]=useState<any[]>([]);
   const [classes,setClasses]=useState<any[]>(DEFAULT_CLASSES);
   const [sections,setSections]=useState<any[]>(DEFAULT_SECTIONS);
@@ -4164,6 +4194,16 @@ function Students(){
   }, []);
 
   async function load(sessionToLoad = activeSession){
+    setLoading(true);
+    setLoadProgress(15);
+    const progressTimer = setInterval(() => {
+      setLoadProgress(prev => {
+        if (prev >= 88) return prev;
+        const jump = Math.floor(Math.random() * 12) + 8;
+        return Math.min(88, prev + jump);
+      });
+    }, 120);
+
     try {
       const isAll = !sessionToLoad || /^all(\s+sessions?)?$/i.test(sessionToLoad);
       const sessParam = isAll ? '' : encodeURIComponent(sessionToLoad || '');
@@ -4173,6 +4213,7 @@ function Students(){
         api.get('/sections'),
         api.get('/academic-years').catch(()=>({data:[]})) as any
       ]);
+      setLoadProgress(95);
       if (Array.isArray(a.data)) {
         setRows(a.data);
       }
@@ -4195,8 +4236,20 @@ function Students(){
           { id: 'ay-2026-27', name: '2026–27 Academic Session', code: '2026-27', label: '2026–27 Academic Session', is_active: true }
         ]);
       }
+      setLoadProgress(100);
+      const now = new Date();
+      setLastFetchedAt(now);
+      try {
+        localStorage.setItem('attendo_students_last_fetched', now.toISOString());
+      } catch {}
     } catch(err) {
       console.error('Failed to load students:', err);
+    } finally {
+      clearInterval(progressTimer);
+      setTimeout(() => {
+        setLoading(false);
+        setLoadProgress(0);
+      }, 350);
     }
   }
 
@@ -4682,12 +4735,17 @@ function Students(){
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
     if (importErrors.length > 0) {
-      if (!confirm(`There are ${importErrors.length} validation error(s). Only valid rows will be submitted. Continue?`)) return;
+      alert(`Cannot import file: ${importErrors.length} validation error(s) found in your file.\n\nAll rows must be valid before uploading, otherwise no data will be stored. Please correct the highlighted errors in your spreadsheet and re-upload.`);
+      return;
     }
     setImporting(true);
     try {
       const validRows = previewRows.filter(r => !r._errors || r._errors.length === 0);
-      if (validRows.length === 0) { alert('No valid rows to import.'); setImporting(false); return; }
+      if (validRows.length === 0 || validRows.length !== previewRows.length) {
+        alert('Cannot proceed with import: some rows have validation errors. All rows must be valid to import.');
+        setImporting(false);
+        return;
+      }
       // Resolve sessionId from wizard selection
       const sessionObj = sessions.find(s => (s.name||s.code||s.id) === importSession);
       const enrichedRows = validRows.map(r => ({
@@ -4697,76 +4755,43 @@ function Students(){
         sectionName: r.sectionName || importSection || 'A'
       }));
 
-      // Enterprise batch chunking: chunk large files into batches of 500 records
-      // to eliminate 'request entity too large' (413) and avoid proxy gateway timeouts
-      // High-performance streaming batch chunking: 1,000 records per batch
-      // Backend now ingests in single SQL roundtrip, achieving ~1.5s total import for 10,001 students
-      const CHUNK_SIZE = 500;
-      let totalImported = 0;
-      let targetSession = '';
-      const allCreatedItems: any[] = [];
-      const totalBatches = Math.ceil(enrichedRows.length / CHUNK_SIZE);
       const totalFileSize = (importFileMeta && importFileMeta.size > 0)
         ? importFileMeta.size
         : (enrichedRows.length * 320);
 
-      // Initialize progress display at 0%
+      // Initialize progress display
       setImportProgress({
         current: 0,
         total: enrichedRows.length,
         batch: 1,
-        totalBatches,
+        totalBatches: 1,
         uploadedBytes: 0,
         totalBytes: totalFileSize,
-        percent: 0
+        percent: 10
       });
 
-      for (let i = 0; i < enrichedRows.length; i += CHUNK_SIZE) {
-        const chunk = enrichedRows.slice(i, i + CHUNK_SIZE);
-        const currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
-        const startCount = i;
-        const endCount = Math.min(i + chunk.length, enrichedRows.length);
-        const startBytes = Math.min(totalFileSize, Math.round((startCount / enrichedRows.length) * totalFileSize));
-        const startPercent = Math.min(100, Math.round((startCount / enrichedRows.length) * 100));
+      // Submit the ENTIRE dataset in a single atomic request so PostgreSQL executes in ONE transaction (BEGIN...COMMIT)
+      // If ANY row fails, the entire transaction is cancelled and zero records are stored!
+      const res = await api.post('/students/bulk-import', {
+        students: enrichedRows,
+        sessionId: sessionObj?.id || importSession || undefined,
+        session: importSession || undefined,
+        sendInviteEmail: false
+      }, { timeout: 300000 });
 
-        // Update progress at start of batch upload
-        setImportProgress({
-          current: startCount,
-          total: enrichedRows.length,
-          batch: currentBatch,
-          totalBatches,
-          uploadedBytes: startBytes,
-          totalBytes: totalFileSize,
-          percent: startPercent
-        });
+      setImportProgress({
+        current: enrichedRows.length,
+        total: enrichedRows.length,
+        batch: 1,
+        totalBatches: 1,
+        uploadedBytes: totalFileSize,
+        totalBytes: totalFileSize,
+        percent: 100
+      });
 
-        const res = await api.post('/students/bulk-import', {
-          students: chunk,
-          sessionId: sessionObj?.id || importSession || undefined,
-          session: importSession || undefined,
-          sendInviteEmail: false
-        }, { timeout: 120000 });
-
-        const completedBytes = Math.min(totalFileSize, Math.round((endCount / enrichedRows.length) * totalFileSize));
-        const completedPercent = Math.min(100, Math.round((endCount / enrichedRows.length) * 100));
-
-        // Update progress at completion of batch
-        setImportProgress({
-          current: endCount,
-          total: enrichedRows.length,
-          batch: currentBatch,
-          totalBatches,
-          uploadedBytes: completedBytes,
-          totalBytes: totalFileSize,
-          percent: completedPercent
-        });
-
-        totalImported += res.data?.count || chunk.length;
-        if (res.data?.session) targetSession = res.data.session;
-        if (Array.isArray(res.data?.items)) {
-          allCreatedItems.push(...res.data.items);
-        }
-      }
+      const totalImported = res.data?.count || enrichedRows.length;
+      const targetSession = res.data?.session || '';
+      const allCreatedItems: any[] = Array.isArray(res.data?.items) ? res.data.items : [];
 
       if (enrichedRows.length > 0) {
         const lastRow = enrichedRows[enrichedRows.length - 1];
@@ -4817,7 +4842,7 @@ function Students(){
         setImportErrors(serverErrs);
         setImportStep(3);
       }
-      alert(msg);
+      alert(`Import Failed: ${msg}\n\nThe operation was cancelled and no records were saved in the database.`);
     } finally {
       setImporting(false);
       setImportProgress(null);
@@ -4862,8 +4887,32 @@ function Students(){
         <h1 style={{ margin: 0, fontSize: 24 }}>Students Directory</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Manage enrolled students, section assignments, parent contacts, and batch Excel imports.</p>
       </div>
-      {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button 
+            type="button"
+            onClick={() => load(activeSession)}
+            disabled={loading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+              color: loading ? '#64748b' : 'var(--text, #1e293b)',
+              border: '1px solid var(--border, #cbd5e1)',
+              padding: '7px 13px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 13,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            title="Refetch students directly from database"
+            id="students-top-refresh-btn"
+          >
+            <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+          </button>
           <button 
             onClick={() => setImportOpen(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
@@ -4880,6 +4929,33 @@ function Students(){
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
             <Plus size={16} /> Add Student
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button 
+            type="button"
+            onClick={() => load(activeSession)}
+            disabled={loading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+              color: loading ? '#64748b' : 'var(--text, #1e293b)',
+              border: '1px solid var(--border, #cbd5e1)',
+              padding: '7px 13px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 13,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            title="Refetch students directly from database"
+            id="students-top-refresh-btn"
+          >
+            <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
         </div>
       )}
@@ -4934,6 +5010,24 @@ function Students(){
 
     {/* ── UNIFIED STUDENT DIRECTORY BOX WITH INNER SCROLLBAR ── */}
     <div className="directory-box" ref={directoryTopRef}>
+      {/* Top Loading Progress Bar */}
+      {loading && (
+        <div style={{
+          width: '100%',
+          height: '4px',
+          background: 'rgba(37, 99, 235, 0.12)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${loadProgress}%`,
+            background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+            transition: 'width 0.15s ease-out',
+            boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+          }} />
+        </div>
+      )}
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto' }}>
@@ -5138,7 +5232,66 @@ function Students(){
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
+        {/* Refresh Button */}
+        <button 
+          type="button"
+          onClick={() => load(activeSession)}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+            border: '1px solid var(--border, #cbd5e1)',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 12.5,
+            color: loading ? '#64748b' : 'var(--text, #1e293b)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            transition: 'all 0.15s ease'
+          }}
+          title="Refetch student records from database"
+          id="students-directory-refresh-btn"
+        >
+          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+        </button>
+
+        {/* Last Fetched Time Badge */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '4px 9px',
+          borderRadius: 6,
+          background: 'var(--bg-muted, #f8fafc)',
+          border: '1px solid var(--border, #e2e8f0)',
+          fontSize: 12,
+          color: 'var(--text-secondary, #475569)'
+        }} title="Last successful synchronization with database">
+          <Clock size={12} style={{ color: '#64748b' }} />
+          <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+          {loading && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginLeft: 3,
+              padding: '1px 5px',
+              borderRadius: 4,
+              background: '#dbeafe',
+              color: '#1d4ed8',
+              fontWeight: 600,
+              fontSize: 11
+            }}>
+              <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+              {loadProgress}%
+            </span>
+          )}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
           <span>Rows per page:</span>
           <select
@@ -5180,6 +5333,36 @@ function Students(){
 
     {/* Box Body (Scrollable Table Area) */}
     <div className="directory-box-body" ref={tableBodyRef}>
+      {loading && displayedStudents.length > 0 && (
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          background: 'rgba(239, 246, 255, 0.95)',
+          backdropFilter: 'blur(4px)',
+          borderBottom: '1px solid #bfdbfe',
+          padding: '6px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 12,
+          color: '#1d4ed8',
+          fontWeight: 500
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+            <span>Refetching student directory from database...</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+            <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+            </div>
+          </div>
+        </div>
+      )}
       <table>
         <thead>
           <tr>
@@ -5204,8 +5387,26 @@ function Students(){
           </tr>
         </thead>
         <tbody>
-          {displayedStudents.length === 0 ? (
-            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+          {loading && displayedStudents.length === 0 ? (
+            <tr>
+              <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                    <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                  </div>
+                  <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                  </div>
+                </div>
+              </td>
+            </tr>
+          ) : displayedStudents.length === 0 ? (
+            <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -6453,6 +6654,23 @@ function toDdMmYyyy(val: any): string {
 /* ────── Teachers ────── */
 function Teachers(){
   const {user}=useAuth();
+  const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(() => {
+    try {
+      const saved = localStorage.getItem('attendo_teachers_last_fetched');
+      return saved ? new Date(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [, setTimeTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTimeTick(t => t + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
@@ -6601,6 +6819,16 @@ function Teachers(){
   const [allocSessions,setAllocSessions]=useState<any[]>([]);
 
   async function load(){
+    setLoading(true);
+    setLoadProgress(15);
+    const progressTimer = setInterval(() => {
+      setLoadProgress(prev => {
+        if (prev >= 88) return prev;
+        const jump = Math.floor(Math.random() * 12) + 8;
+        return Math.min(88, prev + jump);
+      });
+    }, 120);
+
     try {
       const [tRes, aRes, subRes, clsRes, secRes] = await Promise.all([
         api.get('/teachers'),
@@ -6609,13 +6837,26 @@ function Teachers(){
         api.get('/classes').catch(()=>({data:[]})),
         api.get('/sections').catch(()=>({data:[]}))
       ]);
+      setLoadProgress(95);
       setRows(tRes.data || []);
       setAllAssignments(Array.isArray(aRes.data) ? aRes.data : []);
       setAllocSubjects(Array.isArray(subRes.data) ? subRes.data : []);
       setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
       setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
+      setLoadProgress(100);
+      const now = new Date();
+      setLastFetchedAt(now);
+      try {
+        localStorage.setItem('attendo_teachers_last_fetched', now.toISOString());
+      } catch {}
     } catch(err) {
       console.error('Failed to load teachers:', err);
+    } finally {
+      clearInterval(progressTimer);
+      setTimeout(() => {
+        setLoading(false);
+        setLoadProgress(0);
+      }, 350);
     }
   }
 
@@ -7121,7 +7362,7 @@ function Teachers(){
             emailStatus: 'Pending',
             _origRowIndex: idx + 1
           };
-        }).filter(x => x.name && x.email);
+        });
         setPreviewRows(mapped);
         setImportPreviewPage(1);
         setImportPreviewSearch('');
@@ -7134,6 +7375,11 @@ function Teachers(){
 
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
+    const invalidRow = previewRows.find(r => !r.name || !r.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email) || !r.saviorNo);
+    if (invalidRow) {
+      alert(`Cannot import file: Row #${invalidRow._origRowIndex || 1} has invalid or missing name, email, or Employee ID.\n\nAll rows must be valid before importing. No partial data will be stored.`);
+      return;
+    }
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
@@ -7155,7 +7401,8 @@ function Teachers(){
       setImportPreviewSearch('');
       load();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to import teachers');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to import teachers';
+      alert(`Import Failed: ${msg}\n\nThe entire operation was cancelled and no faculty records were saved in the database.`);
     } finally {
       setImporting(false);
     }
@@ -7193,7 +7440,31 @@ function Teachers(){
         <h1 style={{ margin: 0, fontSize: 24 }}>Teachers & Faculty</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>Appointed faculty accounts, classroom attendance permissions, and bulk onboarding.</p>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button 
+          type="button"
+          onClick={() => load()}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+            color: loading ? '#64748b' : 'var(--text, #1e293b)',
+            border: '1px solid var(--border, #cbd5e1)',
+            padding: '7px 13px',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 13,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }}
+          title="Refetch faculty records directly from database"
+          id="teachers-top-refresh-btn"
+        >
+          <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+        </button>
         <button 
           onClick={() => setImportOpen(true)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
@@ -7263,6 +7534,24 @@ function Teachers(){
 
     {/* ── UNIFIED TEACHER DIRECTORY BOX WITH INNER SCROLLBAR ── */}
     <div className="directory-box" ref={directoryTopRef}>
+      {/* Top Loading Progress Bar */}
+      {loading && (
+        <div style={{
+          width: '100%',
+          height: '4px',
+          background: 'rgba(37, 99, 235, 0.12)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${loadProgress}%`,
+            background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+            transition: 'width 0.15s ease-out',
+            boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+          }} />
+        </div>
+      )}
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
@@ -7272,7 +7561,66 @@ function Teachers(){
         style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
       />
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        {/* Refresh Button */}
+        <button 
+          type="button"
+          onClick={() => load()}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+            border: '1px solid var(--border, #cbd5e1)',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 12.5,
+            color: loading ? '#64748b' : 'var(--text, #1e293b)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            transition: 'all 0.15s ease'
+          }}
+          title="Refetch faculty records from database"
+          id="teachers-directory-refresh-btn"
+        >
+          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+        </button>
+
+        {/* Last Fetched Time Badge */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '4px 9px',
+          borderRadius: 6,
+          background: 'var(--bg-muted, #f8fafc)',
+          border: '1px solid var(--border, #e2e8f0)',
+          fontSize: 12,
+          color: 'var(--text-secondary, #475569)'
+        }} title="Last successful synchronization with database">
+          <Clock size={12} style={{ color: '#64748b' }} />
+          <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+          {loading && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginLeft: 3,
+              padding: '1px 5px',
+              borderRadius: 4,
+              background: '#dbeafe',
+              color: '#1d4ed8',
+              fontWeight: 600,
+              fontSize: 11
+            }}>
+              <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+              {loadProgress}%
+            </span>
+          )}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
           <span>Rows per page:</span>
           <select
@@ -7314,6 +7662,36 @@ function Teachers(){
 
     {/* Box Body (Scrollable Table Area) */}
     <div className="directory-box-body" ref={tableBodyRef}>
+      {loading && displayedTeachers.length > 0 && (
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          background: 'rgba(239, 246, 255, 0.95)',
+          backdropFilter: 'blur(4px)',
+          borderBottom: '1px solid #bfdbfe',
+          padding: '6px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 12,
+          color: '#1d4ed8',
+          fontWeight: 500
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+            <span>Refetching faculty directory from database...</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+            <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+            </div>
+          </div>
+        </div>
+      )}
       <table>
         <thead>
           <tr>
@@ -7337,7 +7715,25 @@ function Teachers(){
           </tr>
         </thead>
         <tbody>
-          {displayedTeachers.length === 0 ? (
+          {loading && displayedTeachers.length === 0 ? (
+            <tr>
+              <td colSpan={10} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                    <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records and allocations from database ({loadProgress}%)</div>
+                  </div>
+                  <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                  </div>
+                </div>
+              </td>
+            </tr>
+          ) : displayedTeachers.length === 0 ? (
             <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : displayedTeachers.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>

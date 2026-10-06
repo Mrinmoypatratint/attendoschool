@@ -41,13 +41,23 @@ export async function attendanceSummary(
            WHERE ${schoolCond} AND s.attendance_date BETWEEN $2 AND $3`;
       const params = isGlobal ? [from, to] : [schoolId, from, to];
       const { rows } = await pool.query(query, params);
-      const r = rows[0] || { present: 0, absent: 0, left_early: 0, marked: 0 };
-      if (Number(r.marked) > 0) {
-        const percentage = Number(((Number(r.present) / Number(r.marked)) * 100).toFixed(2));
-        return { ...r, percentage, leftEarly: r.left_early ?? 0 };
+      if (rows && rows.length > 0) {
+        const r = rows[0];
+        const marked = Number(r.marked) || 0;
+        const present = Number(r.present) || 0;
+        const percentage = marked > 0 ? Number(((present / marked) * 100).toFixed(2)) : 0;
+        return {
+          present,
+          absent: Number(r.absent) || 0,
+          left_early: Number(r.left_early) || 0,
+          leftEarly: Number(r.left_early) || 0,
+          marked,
+          percentage
+        };
       }
     } catch {}
   }
+
 
   // Cloud Firestore & In-Memory aggregation
   let present = 0;
@@ -60,7 +70,9 @@ export async function attendanceSummary(
   // 1. Cloud Firestore Sessions
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
+      const sessSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
+        : await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -89,7 +101,9 @@ export async function attendanceSummary(
   // 3. Process Firestore Records
   if (isFirebaseConfigured() && validSessionIds.size > 0) {
     try {
-      const recSnap = await collections.attendanceRecords().get();
+      const recSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceRecords().where('school_id', '==', schoolId).get()
+        : await collections.attendanceRecords().get();
       recSnap.docs.forEach(doc => {
         const r = doc.data();
         const sessId = r.sessionId || r.attendance_session_id;
@@ -197,7 +211,7 @@ export async function studentAttendanceReport(
          ORDER BY c.class_number, sec.name, st.roll_number, st.name`,
         params
       );
-      if (rows && rows.length > 0) return rows;
+      if (rows) return rows;
     } catch {}
   }
 
@@ -205,7 +219,9 @@ export async function studentAttendanceReport(
   const schoolStudents = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const studSnap = await collections.students().get();
+      const studSnap = (!isGlobal && schoolId)
+        ? await collections.students().where('school_id', '==', schoolId).get()
+        : await collections.students().get();
       studSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -222,7 +238,9 @@ export async function studentAttendanceReport(
   const validSessions = new Map<string, any>();
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
+      const sessSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
+        : await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -345,7 +363,9 @@ export async function studentAttendanceReport(
 
   if (isFirebaseConfigured() && validSessions.size > 0) {
     try {
-      const recSnap = await collections.attendanceRecords().get();
+      const recSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceRecords().where('school_id', '==', schoolId).get()
+        : await collections.attendanceRecords().get();
       recSnap.docs.forEach(doc => {
         processRecord(doc.data());
       });
@@ -408,7 +428,7 @@ export async function dailyAttendanceReport(
          ORDER BY s.attendance_date`,
         params
       );
-      if (rows && rows.length > 0) {
+      if (rows) {
         return rows.map(r => ({
           ...r,
           percentage: Number(r.marked) ? Number(((Number(r.present) / Number(r.marked)) * 100).toFixed(1)) : 0
@@ -422,7 +442,9 @@ export async function dailyAttendanceReport(
   const validSessions = new Map<string, string>();
   if (isFirebaseConfigured()) {
     try {
-      const sessSnap = await collections.attendanceSessions().get();
+      const sessSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceSessions().where('school_id', '==', schoolId).get()
+        : await collections.attendanceSessions().get();
       sessSnap.docs.forEach(doc => {
         const d = doc.data();
         const docSid = d.school_id || d.schoolId;
@@ -463,7 +485,9 @@ export async function dailyAttendanceReport(
 
   if (isFirebaseConfigured() && validSessions.size > 0) {
     try {
-      const recSnap = await collections.attendanceRecords().get();
+      const recSnap = (!isGlobal && schoolId)
+        ? await collections.attendanceRecords().where('school_id', '==', schoolId).get()
+        : await collections.attendanceRecords().get();
       recSnap.docs.forEach(doc => {
         const r = doc.data();
         const sessId = r.sessionId || r.attendance_session_id;

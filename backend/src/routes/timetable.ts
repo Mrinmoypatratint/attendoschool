@@ -58,9 +58,26 @@ async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, 
   const memConf = findMemConflicts(dayOfWeek, periodId, teacherId, classId, sectionId, roomName, excludeId);
   if (memConf.length > 0) return memConf;
 
+  if (isPostgresConfigured && sid) {
+    try {
+      const pgConf = await svc.findConflicts(sid, {
+        dayOfWeek,
+        periodId,
+        teacherId,
+        classId,
+        sectionId,
+        roomName,
+        id: excludeId
+      });
+      if (pgConf && pgConf.length > 0) return pgConf;
+    } catch {}
+  }
+
   if (isFirebaseConfigured()) {
     try {
-      const snap = await collections.timetableEntries().get();
+      const snap = sid
+        ? await collections.timetableEntries().where('school_id', '==', sid).get()
+        : await collections.timetableEntries().get();
       for (const doc of snap.docs) {
         const e = doc.data();
         const eId = e.id || doc.id;
@@ -128,7 +145,9 @@ router.get('/periods', async (req, res) => {
   // 2. Query Firestore directly
   if (isFirebaseConfigured()) {
     try {
-      const snap = await collections.timetablePeriods().get();
+      const snap = sid
+        ? await collections.timetablePeriods().where('school_id', '==', sid).get()
+        : await collections.timetablePeriods().get();
       if (!snap.empty) {
         const list: any[] = [];
         snap.docs.forEach(doc => {
@@ -312,14 +331,17 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
   // 1. Try DB first
   try {
     const rows = await svc.listEntries(sid, query);
-    if (rows?.length) return rows;
+    if (Array.isArray(rows)) return rows;
   } catch (_e) {}
 
-  // 2. Query Firestore
+  // 2. Query Firestore scoped to tenant
   if (isFirebaseConfigured()) {
     try {
-      const snap = await collections.timetableEntries().get();
+      const snap = sid
+        ? await collections.timetableEntries().where('school_id', '==', sid).get()
+        : await collections.timetableEntries().get();
       if (!snap.empty) {
+
         let list: any[] = [];
         snap.docs.forEach(doc => {
           const e = doc.data();

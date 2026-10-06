@@ -567,6 +567,11 @@ export default function AttendanceReports() {
   // Submit Offline Attendance
   async function submitOfflineAttendance() {
     if (!parsedRecords.length) return;
+    const invalidRow = parsedRecords.find(r => !r.isValid);
+    if (invalidRow) {
+      alert(`Cannot submit attendance: Row #${invalidRow.rowNum} is missing admission number and student name.\n\nAll records must have valid student identification. No partial attendance will be stored.`);
+      return;
+    }
     setImporting(true);
     try {
       const payload = {
@@ -591,7 +596,8 @@ export default function AttendanceReports() {
       setShowImportPreview(false);
       load();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to submit offline attendance');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to submit offline attendance';
+      alert(`Import Failed: ${msg}\n\nThe entire operation was cancelled and no attendance records were saved in the database.`);
     } finally {
       setImporting(false);
     }

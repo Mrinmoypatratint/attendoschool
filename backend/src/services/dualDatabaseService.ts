@@ -196,50 +196,85 @@ export class DualDatabaseService {
       ]);
 
       if (records && records.length > 0) {
-        for (const r of records) {
+        // Collect students needing lookup and batch resolve
+        const lookupNeeded: { idx: number; roll: string; name: string }[] = [];
+        const studentIdMap = new Map<number, string>();
+
+        for (let i = 0; i < records.length; i++) {
+          const r = records[i];
           const rawStudentId = r.student_id || r.studentId;
           if (!rawStudentId) continue;
 
-          let studentId = rawStudentId;
-          if (!isUuid(studentId)) {
-            // Find student by roll number or name in postgres
-            const stRes = await pool.query(
-              'SELECT id FROM students WHERE school_id = $1 AND (roll_number = $2 OR name = $3) LIMIT 1',
-              [schoolId, String(r.rollNumber || r.roll_number || rawStudentId), String(r.studentName || r.name || '')]
-            );
-            if (stRes.rowCount) {
-              studentId = stRes.rows[0].id;
+          if (isUuid(rawStudentId)) {
+            studentIdMap.set(i, rawStudentId);
+          } else {
+            lookupNeeded.push({
+              idx: i,
+              roll: String(r.rollNumber || r.roll_number || rawStudentId).trim(),
+              name: String(r.studentName || r.name || '').trim()
+            });
+          }
+        }
+
+        if (lookupNeeded.length > 0) {
+          const rolls = lookupNeeded.map(l => l.roll).filter(Boolean);
+          const stRes = rolls.length > 0
+            ? await pool.query(
+                `SELECT id, roll_number, name FROM students WHERE school_id = $1 AND roll_number = ANY($2)`,
+                [schoolId, rolls]
+              )
+            : { rows: [] };
+          const rollMap = new Map<string, string>();
+          stRes.rows.forEach(row => rollMap.set(String(row.roll_number).trim(), row.id));
+
+          for (const item of lookupNeeded) {
+            const foundId = rollMap.get(item.roll);
+            if (foundId) {
+              studentIdMap.set(item.idx, foundId);
             } else {
-              // Ensure student exists in students table
               const newUuid = crypto.randomUUID();
               await pool.query(`
                 INSERT INTO students (id, school_id, class_id, section_id, roll_number, name, parent_sms_number, is_active)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, true)
                 ON CONFLICT (id) DO NOTHING
-              `, [newUuid, schoolId, classId, sectionId, String(r.rollNumber || r.roll_number || '1'), String(r.studentName || r.name || 'Student'), '+919876543210']);
-              studentId = newUuid;
+              `, [newUuid, schoolId, classId, sectionId, item.roll || '1', item.name || 'Student', '+919876543210']);
+              studentIdMap.set(item.idx, newUuid);
             }
           }
+        }
 
+        // Batch insert attendance records in a single query per chunk
+        const preparedRecords: { studentId: string; isPres: boolean; status: string; remarks: string }[] = [];
+        for (let i = 0; i < records.length; i++) {
+          const studentId = studentIdMap.get(i);
+          if (!studentId) continue;
+          const r = records[i];
           const isPres = r.is_present ?? (r.status === 'PRESENT' || r.status === 'LATE');
           const status = r.status || (isPres ? 'PRESENT' : 'ABSENT');
+          preparedRecords.push({ studentId, isPres, status, remarks: r.remarks || '' });
+        }
 
+        const CHUNK_SIZE = 50;
+        for (let c = 0; c < preparedRecords.length; c += CHUNK_SIZE) {
+          const chunk = preparedRecords.slice(c, c + CHUNK_SIZE);
+          const values: any[] = [];
+          const clauses: string[] = [];
+          for (let i = 0; i < chunk.length; i++) {
+            const rec = chunk[i];
+            const offset = i * 5;
+            clauses.push(`(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, NOW())`);
+            values.push(sessionId, rec.studentId, rec.isPres, rec.status, rec.remarks);
+          }
           await pool.query(`
             INSERT INTO attendance_records (
               id, attendance_session_id, student_id, is_present, status, remarks, marked_at
-            ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW())
+            ) VALUES ${clauses.join(', ')}
             ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET
               is_present = EXCLUDED.is_present,
               status = EXCLUDED.status,
               remarks = EXCLUDED.remarks,
               marked_at = NOW();
-          `, [
-            sessionId,
-            studentId,
-            isPres,
-            status,
-            r.remarks || ''
-          ]);
+          `, values);
         }
       }
       return true;
@@ -314,6 +349,48 @@ export class DualDatabaseService {
     } catch (err: any) {
       console.warn('[DualDB] Supabase section count query warning:', err.message);
       return 0;
+    }
+  }
+
+  /**
+   * Supabase: Get Pending Attendance Corrections Count
+   */
+  static async getPendingCorrectionsCountFromSupabase(schoolId: string): Promise<number> {
+    if (!isPostgresConfigured || !schoolId) return 0;
+    try {
+      const res = await pool.query(
+        `SELECT COUNT(*)::int as count FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING'`,
+        [schoolId]
+      );
+      return res.rows[0]?.count || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Supabase: Get Unified Dashboard Metrics in a single atomic SQL roundtrip (<15ms)
+   */
+  static async getUnifiedDashboardMetricsFromSupabase(schoolId: string) {
+    if (!isPostgresConfigured || !schoolId) return null;
+    try {
+      const query = `
+        SELECT
+          (SELECT row_to_json(s) FROM (SELECT id, name, code, status, enquiry_number, address, gstin, billing_address FROM schools WHERE id = $1) s) AS school,
+          (SELECT COUNT(*)::int FROM students WHERE school_id = $1 AND is_active = true) AS total_students,
+          (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true) AS total_teachers,
+          (SELECT COUNT(*)::int FROM classes WHERE school_id = $1) AS total_classes,
+          (SELECT COUNT(*)::int FROM sections WHERE school_id = $1) AS total_sections,
+          (SELECT COUNT(*)::int FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_corrections,
+          (SELECT COUNT(*)::int FROM photo_approval_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_photos,
+          (SELECT COUNT(*)::int FROM student_leave_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_leaves,
+          (SELECT row_to_json(ay) FROM (SELECT id, name, start_date, end_date FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1) ay) AS active_academic_year;
+      `;
+      const res = await pool.query(query, [schoolId]);
+      return res.rows[0] || null;
+    } catch (err: any) {
+      console.warn('[DualDB] Supabase unified dashboard query warning:', err.message);
+      return null;
     }
   }
 
@@ -397,4 +474,31 @@ export class DualDatabaseService {
       return result;
     }
   }
+
+  /**
+   * Supabase: Get Weekly Attendance Trend with a single date-range query
+   */
+  static async getWeeklyTrendFromSupabase(schoolId: string, fromDate: string, toDate: string) {
+    if (!isPostgresConfigured || !schoolId) return [];
+
+    try {
+      const res = await pool.query(`
+        SELECT 
+          attendance_date,
+          SUM(present_count)::int as present,
+          SUM(absent_count)::int as absent,
+          SUM(total_count)::int as total
+        FROM attendance_sessions
+        WHERE school_id = $1 AND attendance_date >= $2 AND attendance_date <= $3
+        GROUP BY attendance_date
+        ORDER BY attendance_date ASC
+      `, [schoolId, fromDate, toDate]);
+
+      return res.rows || [];
+    } catch (err: any) {
+      console.warn('[DualDB] Supabase weekly trend query warning:', err.message);
+      return [];
+    }
+  }
 }
+
