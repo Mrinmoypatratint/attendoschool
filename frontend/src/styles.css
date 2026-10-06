@@ -6018,12 +6018,44 @@ header {
   font-size: 14px;
 }
 
+.student-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .student-calendar-nav button {
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 4px;
   color: var(--text-secondary, #64748B);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.student-calendar-nav button:hover {
+  background: var(--bg-hover, #F1F5F9);
+  color: var(--text, #0F172A);
+}
+
+.student-cal-today-btn {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #2563EB !important;
+  padding: 2px 7px !important;
+  border-radius: 6px !important;
+  background: #EFF6FF !important;
+  border: 1px solid #DBEAFE !important;
+  margin-right: 4px;
+}
+
+.student-cal-today-btn:hover {
+  background: #DBEAFE !important;
+  color: #1D4ED8 !important;
 }
 
 .student-calendar-grid {
@@ -6046,15 +6078,33 @@ header {
   border-radius: 8px;
   color: var(--text, #0F172A);
   position: relative;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cal-date:not(.muted):not(.active-date):hover {
+  background: var(--bg-hover, #F1F5F9);
 }
 
 .cal-date.muted {
   color: #CBD5E1;
+  opacity: 0.6;
+}
+
+.cal-date.muted:hover {
+  background: #F8FAFC;
 }
 
 .cal-date.active-date {
   background: #2563EB;
   color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.cal-date.today-date {
+  border: 1.5px solid #2563EB;
+  color: #2563EB;
   font-weight: 700;
 }
 
