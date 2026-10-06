@@ -4666,7 +4666,7 @@ function Students(){
       // to eliminate 'request entity too large' (413) and avoid proxy gateway timeouts
       // High-performance streaming batch chunking: 1,000 records per batch
       // Backend now ingests in single SQL roundtrip, achieving ~1.5s total import for 10,001 students
-      const CHUNK_SIZE = 1000;
+      const CHUNK_SIZE = 500;
       let totalImported = 0;
       let targetSession = '';
       const allCreatedItems: any[] = [];
@@ -4710,7 +4710,7 @@ function Students(){
           sessionId: sessionObj?.id || importSession || undefined,
           session: importSession || undefined,
           sendInviteEmail: false
-        });
+        }, { timeout: 120000 });
 
         const completedBytes = Math.min(totalFileSize, Math.round((endCount / enrichedRows.length) * totalFileSize));
         const completedPercent = Math.min(100, Math.round((endCount / enrichedRows.length) * 100));

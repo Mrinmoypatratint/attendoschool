@@ -1167,28 +1167,81 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
  const REQUIRED_HEADERS = ['First Name','Last Name','Admission Number','Roll Number','Parent Name','Parent Phone','Parent Email','Student Email'];
 
- // Preload existing classes and sections to eliminate duplicate DB queries per row
- const classMap = new Map<number, string>();
- const sectionMap = new Map<string, string>();
- try {
-   const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
-   for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
+  // Preload existing classes and sections to eliminate duplicate DB queries per row
+  const classMap = new Map<number, string>();
+  const sectionMap = new Map<string, string>();
+  try {
+    const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
+    for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
 
-   const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
-   for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
- } catch (preloadErr) {
-   console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr);
- }
+    const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
+    for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
+  } catch (preloadErr) {
+    console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr);
+  }
 
- // Validate rows and collect errors
- const validRows: any[] = [];
- const errors: {row:number;field:string;message:string}[] = [];
- const seenAdmNums = new Set<string>();
+  // Pre-resolve all classes & sections needed in this batch in a single pass before the row loop
+  const neededClasses = new Set<number>();
+  const neededSections = new Set<string>(); // "classNumber:sectionName"
+  for (const st of students) {
+    const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
+    let cn: number;
+    if (/l.?kg/i.test(rawClass)) cn = -1;
+    else if (/u.?kg/i.test(rawClass)) cn = 0;
+    else cn = Number(rawClass.replace(/[^0-9]/g,'')) || 1;
+    neededClasses.add(cn);
 
- for (let i=0;i<students.length;i++) {
-   const st = students[i];
-   const rowNum = i+1;
-   let firstName  = String(st.firstName||st['First Name']||st.first_name||'').trim();
+    let sn = String(st.sectionName||st['Section']||st.section_name||'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
+    if (!['A','B','C','D','E','F'].includes(sn)) sn = 'A';
+    neededSections.add(`${cn}:${sn}`);
+  }
+
+  for (const cn of neededClasses) {
+    if (!classMap.has(cn)) {
+      try {
+        const clsQ = await pool.query(
+          `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+           ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
+          [schoolId, cn]
+        );
+        if (clsQ.rows.length > 0) {
+          classMap.set(cn, clsQ.rows[0].id);
+        }
+      } catch (csErr) {
+        console.warn('[bulk-import] Failed to create class:', csErr);
+      }
+    }
+  }
+
+  for (const item of neededSections) {
+    const [cnStr, sn] = item.split(':');
+    const cn = Number(cnStr);
+    const cId = classMap.get(cn);
+    if (cId && !sectionMap.has(`${cId}_${sn}`)) {
+      try {
+        const secQ = await pool.query(
+          `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+           ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
+          [schoolId, cId, sn]
+        );
+        if (secQ.rows.length > 0) {
+          sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
+        }
+      } catch (csErr) {
+        console.warn('[bulk-import] Failed to create section:', csErr);
+      }
+    }
+  }
+
+  // Validate rows and collect errors (100% in-memory — 0 queries in loop)
+  const validRows: any[] = [];
+  const errors: {row:number;field:string;message:string}[] = [];
+  const seenAdmNums = new Set<string>();
+
+  for (let i=0;i<students.length;i++) {
+    const st = students[i];
+    const rowNum = i+1;
+    let firstName  = String(st.firstName||st['First Name']||st.first_name||'').trim();
     let lastName   = String(st.lastName||st['Last Name']||st.last_name||'').trim();
     const rawFullName = String(st.fullName||st['Full Name']||st.full_name||st.name||'').trim();
     if ((!firstName || !lastName) && rawFullName) {
@@ -1197,64 +1250,28 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       if (!lastName) lastName = parts.slice(1).join(' ') || '';
     }
     const name = rawFullName || (firstName&&lastName ? `${firstName} ${lastName}` : (firstName||lastName||String(st.name||'').trim()));
-   const rollNumber = String(st.rollNumber||st['Roll Number']||st.roll_number||'').trim();
-   const admissionNumber = String(st.admissionNumber||st['Admission Number']||st.admission_number||'').trim();
-   const parentName = String(st.parentName||st['Parent Name']||st.parent_name||'').trim();
-   const parentPhone = String(st.parentPhone||st['Parent Phone']||st.parentSmsNumber||st.parent_sms_number||'').trim();
-   const parentEmail = String(st.parentEmail||st['Parent Email']||st.parent_email||'').trim();
-   const studentEmail = String(st.studentEmail||st['Student Email']||st.email||'').trim();
-   const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
+    const rollNumber = String(st.rollNumber||st['Roll Number']||st.roll_number||'').trim();
+    const admissionNumber = String(st.admissionNumber||st['Admission Number']||st.admission_number||'').trim();
+    const parentName = String(st.parentName||st['Parent Name']||st.parent_name||'').trim();
+    const parentPhone = String(st.parentPhone||st['Parent Phone']||st.parentSmsNumber||st.parent_sms_number||'').trim();
+    const parentEmail = String(st.parentEmail||st['Parent Email']||st.parent_email||'').trim();
+    const studentEmail = String(st.studentEmail||st['Student Email']||st.email||'').trim();
+    const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
 
-   // Class/section resolution — support label names like 'L-KG','U-KG','Class 1' etc.
-   const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
-   const rawSection = String(st.sectionName||st['Section']||st.section_name||'A').trim().toUpperCase();
-   let classNumber: number;
-   let classLabel = rawClass;
-   if (/l.?kg/i.test(rawClass)) { classNumber=-1; classLabel='L-KG'; }
-   else if (/u.?kg/i.test(rawClass)) { classNumber=0; classLabel='U-KG'; }
-   else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||1; classLabel=`Class ${classNumber}`; }
+    // Class/section resolution from in-memory preloaded maps
+    const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
+    const rawSection = String(st.sectionName||st['Section']||st.section_name||'A').trim().toUpperCase();
+    let classNumber: number;
+    let classLabel = rawClass;
+    if (/l.?kg/i.test(rawClass)) { classNumber=-1; classLabel='L-KG'; }
+    else if (/u.?kg/i.test(rawClass)) { classNumber=0; classLabel='U-KG'; }
+    else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||1; classLabel=`Class ${classNumber}`; }
 
-   let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-   if (!['A','B','C','D','E','F'].includes(sectionName)) sectionName = 'A';
+    let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
+    if (!['A','B','C','D','E','F'].includes(sectionName)) sectionName = 'A';
 
-   let classId = classMap.get(classNumber) || '';
-   if (!classId) {
-     try {
-       const clsQ = await pool.query(
-         `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
-          ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
-         [schoolId, classNumber]
-       );
-       if (clsQ.rows.length > 0) {
-         classId = clsQ.rows[0].id;
-         classMap.set(classNumber, classId);
-       }
-     } catch (csErr) {
-       console.warn('[bulk-import] Failed to create class:', csErr);
-     }
-   }
-
-   let sectionId = classId ? (sectionMap.get(`${classId}_${sectionName}`) || '') : '';
-   if (!sectionId && classId) {
-     try {
-       const secQ = await pool.query(
-         `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-          ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
-         [schoolId, classId, sectionName]
-       );
-       if (secQ.rows.length > 0) {
-         sectionId = secQ.rows[0].id;
-         sectionMap.set(`${classId}_${sectionName}`, sectionId);
-       }
-     } catch (csErr) {
-       console.warn('[bulk-import] Failed to create section:', csErr);
-     }
-   }
-
-   if (!classId) classId = `cls-${classNumber}`;
-   if (!sectionId) sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
-
-   // Validation
+    let classId = classMap.get(classNumber) || `cls-${classNumber}`;
+    let sectionId = (classId && sectionMap.get(`${classId}_${sectionName}`)) || `sec-${classId}-${sectionName.toLowerCase()}`;
    if (!firstName) errors.push({row:rowNum,field:'First Name',message:'First Name is required'});
    if (!lastName)  errors.push({row:rowNum,field:'Last Name', message:'Last Name is required'});
    if (!rollNumber) errors.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});

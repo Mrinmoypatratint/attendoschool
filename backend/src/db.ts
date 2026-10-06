@@ -34,9 +34,9 @@ export const pool: Pool = (isPostgresConfigured
   ? new Pool({
       connectionString: pgConnectionString,
       ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
-      max: Number(process.env.PG_POOL_MAX || 25),
+      max: Math.min(Number(process.env.PG_POOL_MAX || 10), 12),
       idleTimeoutMillis: 60000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
       allowExitOnIdle: false,
     })
   : new DisabledPool() as unknown as Pool);
