@@ -1,7 +1,14 @@
 import { Pool } from 'pg';
 import { env } from './config/env';
 
-const pgConnectionString = env.supabaseDatabaseUrl || env.databaseUrl;
+let rawPgConnectionString = env.supabaseDatabaseUrl || env.databaseUrl || '';
+// Supabase pooler port 5432 is Session Mode (hard-capped to 15 clients -> throws EMAXCONNSESSION).
+// Port 6543 is Transaction Mode (multiplexed, handles thousands of clients without pool_size: 15 limit).
+// Automatically upgrade any pooler.supabase.com:5432 connection to port 6543 for instant scaling!
+if (rawPgConnectionString.includes('pooler.supabase.com:5432')) {
+  rawPgConnectionString = rawPgConnectionString.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+}
+const pgConnectionString = rawPgConnectionString;
 const isPlaceholder = !pgConnectionString || 
   pgConnectionString.includes('[YOUR-PASSWORD]') || 
   pgConnectionString.includes('[YOUR-PROJECT-REF]') ||
@@ -35,7 +42,7 @@ export const pool: Pool = (isPostgresConfigured
       connectionString: pgConnectionString,
       ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
       max: Math.min(Number(process.env.PG_POOL_MAX || 10), 12),
-      idleTimeoutMillis: 60000,
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 5000,
       allowExitOnIdle: false,
     })
