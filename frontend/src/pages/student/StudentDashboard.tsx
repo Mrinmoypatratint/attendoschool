@@ -24,7 +24,7 @@ export function StudentDashboard() {
     try {
       const cached = sessionStorage.getItem('cached_student_dashboard');
       if (cached) return JSON.parse(cached);
-    } catch {}
+    } catch { }
     return null;
   });
   const [loading, setLoading] = useState(() => !data);
@@ -39,7 +39,7 @@ export function StudentDashboard() {
         setData(res);
         try {
           sessionStorage.setItem('cached_student_dashboard', JSON.stringify(res));
-        } catch {}
+        } catch { }
         setLoading(false);
       })
       .catch((err) => {
@@ -87,6 +87,80 @@ export function StudentDashboard() {
   const announcements = data?.announcements || [];
   const assignments = data?.pendingAssignments || [];
   const recentAttendance = data?.recentAttendance || [];
+
+  // Dynamic Mini Calendar state
+  const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const today = new Date();
+
+  const calYear = calendarViewDate.getFullYear();
+  const calMonth = calendarViewDate.getMonth();
+
+  const calMonthName = calendarViewDate.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  const handlePrevMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth + 1, 1));
+  };
+
+  const handleResetToday = () => {
+    const now = new Date();
+    setCalendarViewDate(now);
+    setSelectedDate(now);
+  };
+
+  const isViewingCurrentMonth =
+    calYear === today.getFullYear() && calMonth === today.getMonth();
+
+  // First day of current month (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
+  const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+
+  // Previous month trailing padding days
+  const prevMonthDays: number[] = [];
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    prevMonthDays.push(daysInPrevMonth - i);
+  }
+
+  // Next month leading padding days (fill consistent 35 or 42 grid cells)
+  const totalOccupied = prevMonthDays.length + daysInCurrentMonth;
+  const targetTotalCells = totalOccupied <= 35 ? 35 : 42;
+  const nextMonthDaysCount = targetTotalCells - totalOccupied;
+  const nextMonthDays: number[] = [];
+  for (let i = 1; i <= nextMonthDaysCount; i++) {
+    nextMonthDays.push(i);
+  }
+
+  // Map attendance dots for the current month
+  const attendanceDayMap = new Map<number, 'Present' | 'Absent'>();
+  if (recentAttendance && Array.isArray(recentAttendance)) {
+    recentAttendance.forEach((rec) => {
+      try {
+        const d = new Date(rec.date);
+        if (!isNaN(d.getTime()) && d.getFullYear() === calYear && d.getMonth() === calMonth) {
+          attendanceDayMap.set(d.getDate(), rec.status);
+        }
+      } catch { }
+    });
+  }
+
+  // Upcoming exam indicator for current month
+  let examDayInMonth: number | null = null;
+  if (data?.upcomingExam?.date) {
+    try {
+      const ed = new Date(data.upcomingExam.date);
+      if (!isNaN(ed.getTime()) && ed.getFullYear() === calYear && ed.getMonth() === calMonth) {
+        examDayInMonth = ed.getDate();
+      }
+    } catch { }
+  }
 
   return (
     <div className="student-dashboard-page">
@@ -168,7 +242,7 @@ export function StudentDashboard() {
           </div>
           <div className="student-kpi-body">
             <div className="student-kpi-value student-kpi-value-sm">Next: {kpis?.upcomingExamTitle?.split('-')[0]?.trim() || 'Maths'}</div>
-            <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || '22 Sep 2025')}</div>
+            <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || 'No upcoming exam scheduled')}</div>
           </div>
         </Link>
 
@@ -356,11 +430,35 @@ export function StudentDashboard() {
             <div className="student-calendar-header">
               <div className="student-calendar-title-wrap">
                 <Calendar size={18} />
-                <span className="student-calendar-month">September 2025</span>
+                <span className="student-calendar-month">{calMonthName}</span>
               </div>
               <div className="student-calendar-nav">
-                <button type="button" aria-label="Previous month"><ChevronLeft size={16} /></button>
-                <button type="button" aria-label="Next month"><ChevronRight size={16} /></button>
+                {!isViewingCurrentMonth && (
+                  <button
+                    type="button"
+                    onClick={handleResetToday}
+                    className="student-cal-today-btn"
+                    title="Jump to today"
+                  >
+                    Today
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  aria-label="Previous month"
+                  title="Previous month"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  aria-label="Next month"
+                  title="Next month"
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
 
@@ -373,46 +471,82 @@ export function StudentDashboard() {
               <div className="cal-day-header">Fri</div>
               <div className="cal-day-header">Sat</div>
 
-              {/* September 2025 calendar days mockup */}
-              <div className="cal-date muted">31</div>
-              <div className="cal-date">1</div>
-              <div className="cal-date">2</div>
-              <div className="cal-date dot-present">3</div>
-              <div className="cal-date">4</div>
-              <div className="cal-date">5</div>
-              <div className="cal-date">6</div>
+              {/* Previous month padding days */}
+              {prevMonthDays.map((d) => (
+                <div
+                  key={`prev-${d}`}
+                  className="cal-date muted"
+                  onClick={() => {
+                    const newD = new Date(calYear, calMonth - 1, d);
+                    setCalendarViewDate(newD);
+                    setSelectedDate(newD);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {d}
+                </div>
+              ))}
 
-              <div className="cal-date">7</div>
-              <div className="cal-date">8</div>
-              <div className="cal-date dot-present">9</div>
-              <div className="cal-date dot-present">10</div>
-              <div className="cal-date">11</div>
-              <div className="cal-date dot-absent">12</div>
-              <div className="cal-date">13</div>
+              {/* Current month days */}
+              {Array.from({ length: daysInCurrentMonth }, (_, idx) => {
+                const dayNum = idx + 1;
+                const isToday =
+                  today.getFullYear() === calYear &&
+                  today.getMonth() === calMonth &&
+                  today.getDate() === dayNum;
+                const isSelected =
+                  selectedDate.getFullYear() === calYear &&
+                  selectedDate.getMonth() === calMonth &&
+                  selectedDate.getDate() === dayNum;
 
-              <div className="cal-date">14</div>
-              <div className="cal-date dot-present">15</div>
-              <div className="cal-date dot-present">16</div>
-              <div className="cal-date active-date">17</div>
-              <div className="cal-date">18</div>
-              <div className="cal-date">19</div>
-              <div className="cal-date">20</div>
+                const isActive = isSelected;
+                const attStatus = attendanceDayMap.get(dayNum);
+                const isExam = examDayInMonth === dayNum;
 
-              <div className="cal-date">21</div>
-              <div className="cal-date dot-exam">22</div>
-              <div className="cal-date">23</div>
-              <div className="cal-date">24</div>
-              <div className="cal-date dot-exam">25</div>
-              <div className="cal-date">26</div>
-              <div className="cal-date">27</div>
+                let dotClass = '';
+                if (isExam) {
+                  dotClass = 'dot-exam';
+                } else if (attStatus === 'Present') {
+                  dotClass = 'dot-present';
+                } else if (attStatus === 'Absent') {
+                  dotClass = 'dot-absent';
+                }
 
-              <div className="cal-date">28</div>
-              <div className="cal-date">29</div>
-              <div className="cal-date">30</div>
-              <div className="cal-date muted">1</div>
-              <div className="cal-date muted">2</div>
-              <div className="cal-date muted">3</div>
-              <div className="cal-date muted">4</div>
+                const classes = [
+                  'cal-date',
+                  isActive ? 'active-date' : '',
+                  isToday && !isActive ? 'today-date' : '',
+                  dotClass
+                ].filter(Boolean).join(' ');
+
+                return (
+                  <div
+                    key={dayNum}
+                    className={classes}
+                    onClick={() => setSelectedDate(new Date(calYear, calMonth, dayNum))}
+                    style={{ cursor: 'pointer' }}
+                    title={isToday ? `Today (${dayNum} ${calMonthName})` : `${dayNum} ${calMonthName}`}
+                  >
+                    {dayNum}
+                  </div>
+                );
+              })}
+
+              {/* Next month padding days */}
+              {nextMonthDays.map((d) => (
+                <div
+                  key={`next-${d}`}
+                  className="cal-date muted"
+                  onClick={() => {
+                    const newD = new Date(calYear, calMonth + 1, d);
+                    setCalendarViewDate(newD);
+                    setSelectedDate(newD);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {d}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -429,15 +563,21 @@ export function StudentDashboard() {
             </div>
 
             <div className="student-recent-attendance-list">
-              {recentAttendance.map((rec, i) => (
-                <div key={i} className="student-recent-att-row">
-                  <span className="student-att-date">{rec.date}</span>
-                  <span className={`student-att-pill ${rec.status === 'Present' ? 'present' : 'absent'}`}>
-                    <span className="att-indicator-dot" />
-                    {rec.status}
-                  </span>
+              {recentAttendance.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                  No recent attendance records
                 </div>
-              ))}
+              ) : (
+                recentAttendance.map((rec, i) => (
+                  <div key={i} className="student-recent-att-row">
+                    <span className="student-att-date">{rec.date}</span>
+                    <span className={`student-att-pill ${rec.status === 'Present' ? 'present' : 'absent'}`}>
+                      <span className="att-indicator-dot" />
+                      {rec.status}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
