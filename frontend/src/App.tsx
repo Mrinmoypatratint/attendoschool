@@ -3299,25 +3299,48 @@ function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role===
 function AdminHome(){
   const {user}=useAuth();
   const nav=useNavigate();
-  const [data,setData]=useState<any>(null);
-  const [loading,setLoading]=useState(true);
-  const [dashboardError,setDashboardError]=useState<string | null>(null);
+  const cacheKey = `dashboard_cache_${(user as any)?.schoolId || 'current'}`;
+  const [data, setData] = useState<any>(() => {
+    try {
+      const c = typeof window !== 'undefined' ? localStorage.getItem(`dashboard_cache_${(user as any)?.schoolId || 'current'}`) : null;
+      return c ? JSON.parse(c) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(!data);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
-  async function load(){
-    setLoading(true);
+  async function load(retryCount = 0) {
+    if (!data) setLoading(true);
     setDashboardError(null);
     try {
       const res = await api.get('/dashboard/school');
-      setData(res.data);
+      if (res.data) {
+        setData(res.data);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(res.data));
+        } catch {}
+      }
     } catch (e: any) {
       console.error('Failed to load school dashboard', e);
-      setDashboardError(e?.response?.data?.message || 'Unable to load school dashboard from Firebase.');
+      if (retryCount < 2) {
+        setTimeout(() => load(retryCount + 1), 1500);
+        return;
+      }
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached && !data) {
+          setData(JSON.parse(cached));
+        }
+      } catch {}
+      setDashboardError(e?.response?.data?.message || 'Database connection is synchronizing. Please click Retry Connection.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(()=>{ load(); }, []);
+  useEffect(() => { load(); }, []);
 
   const school = data?.school;
   const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, percentage: 0, classBreakdown: [] };
@@ -3337,11 +3360,11 @@ function AdminHome(){
         <div className="alert-left">
           <AlertTriangle size={20} color="#dc2626" />
           <div>
-            <strong>Unable to Load Live Data from Firebase</strong>
+            <strong>Unable to Connect to Live Database</strong>
             <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
           </div>
         </div>
-        <button className="alert-action-btn" onClick={load} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
+        <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
           Retry Connection
         </button>
       </div>

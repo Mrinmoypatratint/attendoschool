@@ -1,16 +1,33 @@
 import { Pool } from 'pg';
 import { env } from './config/env';
 
-let rawPgConnectionString = env.supabaseDatabaseUrl || env.databaseUrl || '';
-// Supabase pooler port 5432 is Session Mode (hard-capped to 15 clients -> throws EMAXCONNSESSION).
-// Port 6543 is Transaction Mode (multiplexed, handles thousands of clients without pool_size: 15 limit).
-// Automatically upgrade any pooler.supabase.com:5432 connection to port 6543 for instant scaling!
-if (rawPgConnectionString.includes('pooler.supabase.com:5432')) {
-  rawPgConnectionString = rawPgConnectionString.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+/**
+ * Supabase Connection Normalizer:
+ * Supabase pooler port 5432 is Session Mode (hard-capped to 15 clients -> throws EMAXCONNSESSION).
+ * Port 6543 is Transaction Mode (multiplexed via PgBouncer -> handles thousands of clients).
+ * This function guarantees port 6543 is always used for pooler connections, even if port was omitted.
+ */
+export function normalizeSupabaseUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+
+  // If using direct Supabase DB domain, route through transaction pooler gateway
+  if (url.includes('db.widbnephnmbufxaggflw.supabase.co')) {
+    url = url.replace('db.widbnephnmbufxaggflw.supabase.co', 'aws-0-ap-northeast-2.pooler.supabase.com');
+  }
+
+  // Force pooler.supabase.com to Transaction Mode port 6543
+  if (url.includes('pooler.supabase.com')) {
+    url = url.replace(/pooler\.supabase\.com(:5432)?(?=[\/\?]|$)/g, 'pooler.supabase.com:6543');
+  }
+
+  return url;
 }
-const pgConnectionString = rawPgConnectionString;
-const isPlaceholder = !pgConnectionString || 
-  pgConnectionString.includes('[YOUR-PASSWORD]') || 
+
+const rawPgConnectionString = env.supabaseDatabaseUrl || env.databaseUrl || '';
+const pgConnectionString = normalizeSupabaseUrl(rawPgConnectionString);
+const isPlaceholder = !pgConnectionString ||
+  pgConnectionString.includes('[YOUR-PASSWORD]') ||
   pgConnectionString.includes('[YOUR-PROJECT-REF]') ||
   pgConnectionString.includes('postgres:postgres@127.0.0.1');
 
@@ -24,10 +41,10 @@ class DisabledPool {
   async connect(): Promise<{ query: (_t?: any, _p?: any) => Promise<{ rows: any[]; rowCount: number }>; release: () => void }> {
     return {
       query: async () => ({ rows: [], rowCount: 0 }),
-      release: () => {}
+      release: () => { }
     };
   }
-  async end(): Promise<void> {}
+  async end(): Promise<void> { }
   on(_event: string, _listener: (...args: any[]) => void): this { return this; }
 }
 
@@ -39,13 +56,13 @@ const requiresSsl = pgConnectionString.includes('supabase.co') ||
 
 export const pool: Pool = (isPostgresConfigured
   ? new Pool({
-      connectionString: pgConnectionString,
-      ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
-      max: Math.min(Number(process.env.PG_POOL_MAX || 10), 12),
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 5000,
-      allowExitOnIdle: false,
-    })
+    connectionString: pgConnectionString,
+    ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+    max: Math.min(Number(process.env.PG_POOL_MAX || 10), 15),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 15000,
+    allowExitOnIdle: false,
+  })
   : new DisabledPool() as unknown as Pool);
 
 // Prevent pool from crashing the process on transient connection errors
@@ -78,4 +95,6 @@ export async function checkPostgresHealth(): Promise<{ ok: boolean; message: str
     return { ok: false, message: `PostgreSQL connection error: ${err.message}` };
   }
 }
+
+
 

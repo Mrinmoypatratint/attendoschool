@@ -33,8 +33,7 @@ async function countTenantCollection(
   // 1. PRIMARY: Execute directly against Supabase PostgreSQL if available
   if (secondaryFallbackFn && DualDatabaseService.isPrimaryAvailable() && schoolId) {
     try {
-      const count = await secondaryFallbackFn();
-      if (count > 0 || !isFirebaseConfigured()) return count;
+      return await secondaryFallbackFn();
     } catch (err: any) {
       console.warn(`[TenantDataService] Supabase count query warning for school ${schoolId}:`, err.message);
     }
@@ -90,7 +89,7 @@ export async function getTenantTodayAttendance(schoolId: string, targetDate?: st
   if (DualDatabaseService.isPrimaryAvailable()) {
     try {
       const sbAttendance = await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr);
-      if (sbAttendance && sbAttendance.total > 0) {
+      if (sbAttendance) {
         return sbAttendance;
       }
     } catch (err: any) {
