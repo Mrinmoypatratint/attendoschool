@@ -628,12 +628,13 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  try {
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,st.created_at,
   st.academic_year_id, ay.name AS session_name,
+  COALESCE(st.is_active, true) AS is_active,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
   LEFT JOIN classes c ON c.id=st.class_id 
   LEFT JOIN sections sec ON sec.id=st.section_id
   LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-  WHERE st.school_id=$1 AND st.is_active=true
+  WHERE st.school_id=$1
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.gender, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
   if (q.rows) {
@@ -662,7 +663,9 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         session: st.session_name || st.academic_year_id,
         session_id: st.academic_year_id,
         created_at: st.created_at,
-        createdAt: st.created_at
+        createdAt: st.created_at,
+        is_active: st.is_active !== false,
+        status: st.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       };
     });
     const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
@@ -1915,15 +1918,23 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
     const q = await pool.query(
       `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
        st.academic_year_id, ay.name AS session_name,
+       COALESCE(st.is_active, true) AS is_active,
        c.id class_id,c.class_number,sec.id section_id,sec.name section_name
        FROM students st 
        JOIN classes c ON c.id=st.class_id 
        JOIN sections sec ON sec.id=st.section_id
        LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-       WHERE st.id=$1 AND st.school_id=$2 AND st.is_active=true LIMIT 1`,
+       WHERE st.id=$1 AND st.school_id=$2 LIMIT 1`,
       [studentId, schoolId]
     );
-    if (q.rowCount && q.rows.length > 0) return res.json(q.rows[0]);
+    if (q.rowCount && q.rows.length > 0) {
+      const row = q.rows[0];
+      return res.json({
+        ...row,
+        is_active: row.is_active !== false,
+        status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE'
+      });
+    }
   } catch {}
 
   if (isFirebaseConfigured()) {
@@ -1952,11 +1963,34 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     classId, class_id,
     sectionId, section_id,
     sessionId, session, academic_year_id,
-    gender, dob, dateOfBirth, date_of_birth, address
+    gender, dob, dateOfBirth, date_of_birth, address,
+    is_active, status, password
   } = req.body || {};
 
   const studentId = String(req.params.id);
   const schoolId = req.user!.schoolId;
+
+  // Active / Deactive resolution
+  let resolvedIsActive = true;
+  if (is_active !== undefined) {
+    resolvedIsActive = is_active === true || is_active === 'true' || is_active === 'ACTIVE' || is_active === 'active';
+  } else if (status !== undefined) {
+    resolvedIsActive = String(status).toUpperCase() === 'ACTIVE';
+  }
+  const resolvedStatus = resolvedIsActive ? 'ACTIVE' : 'INACTIVE';
+
+  // Password validation if specified
+  if (password && String(password).trim()) {
+    const pwValidation = validatePasswordStrength(String(password).trim());
+    if (!pwValidation.valid) {
+      return res.status(400).json({ message: pwValidation.message });
+    }
+  }
+
+  let newPasswordHash: string | undefined = undefined;
+  if (password && String(password).trim()) {
+    newPasswordHash = await bcrypt.hash(String(password).trim(), 10);
+  }
 
   const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
   const cleanParentEmail = String(parentEmail || parent_email || '').trim().toLowerCase();
@@ -2036,11 +2070,80 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            gender=COALESCE($13, gender),
            date_of_birth=COALESCE($14, date_of_birth),
            address=COALESCE($15, address),
+           is_active=$16,
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress]
+        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress, resolvedIsActive]
       );
       if (q.rowCount && q.rows.length > 0) {
+        let studentUserId = q.rows[0].user_id;
+
+        // Try to locate user row by email if user_id is unlinked
+        if (!studentUserId && cleanStudentEmail) {
+          const uLookup = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [cleanStudentEmail]);
+          if (uLookup.rowCount && uLookup.rows.length > 0) {
+            studentUserId = uLookup.rows[0].id;
+          }
+        }
+
+        // If user row exists, sync credentials and status
+        if (studentUserId) {
+          if (newPasswordHash) {
+            await pool.query(
+              `UPDATE users SET
+                 name = COALESCE($1, name),
+                 email = COALESCE($2, email),
+                 is_active = $3,
+                 password_hash = $4,
+                 updated_at = NOW()
+               WHERE id = $5`,
+              [fullName || name || null, cleanStudentEmail || null, resolvedIsActive, newPasswordHash, studentUserId]
+            );
+          } else {
+            await pool.query(
+              `UPDATE users SET
+                 name = COALESCE($1, name),
+                 email = COALESCE($2, email),
+                 is_active = $3,
+                 updated_at = NOW()
+               WHERE id = $4`,
+              [fullName || name || null, cleanStudentEmail || null, resolvedIsActive, studentUserId]
+            );
+          }
+
+          if (!q.rows[0].user_id) {
+            await pool.query(`UPDATE students SET user_id=$1 WHERE id=$2`, [studentUserId, studentId]);
+          }
+        } else if (newPasswordHash || cleanStudentEmail || cleanAdmissionNumber) {
+          // Provision linked portal user account so student can log in
+          const studentLoginEmail = cleanStudentEmail || (cleanAdmissionNumber ? `student.${cleanAdmissionNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@${schoolId}.portal` : `student.${studentId}@portal.local`);
+          const hashToUse = newPasswordHash || await bcrypt.hash('ChangeMe123!', 10);
+          try {
+            const insUser = await pool.query(
+              `INSERT INTO users (school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, 'STUDENT', $5, NOW(), NOW())
+               ON CONFLICT (email) DO UPDATE SET
+                 name = EXCLUDED.name,
+                 password_hash = EXCLUDED.password_hash,
+                 is_active = EXCLUDED.is_active,
+                 updated_at = NOW()
+               RETURNING id`,
+              [schoolId, fullName || name, studentLoginEmail, hashToUse, resolvedIsActive]
+            );
+            if (insUser.rowCount && insUser.rows.length > 0) {
+              studentUserId = insUser.rows[0].id;
+              await pool.query(`UPDATE students SET user_id=$1 WHERE id=$2`, [studentUserId, studentId]);
+            }
+          } catch (uErr: any) {
+            console.warn('[UpdateStudent] User link creation notice:', uErr.message);
+          }
+        }
+
+        if (schoolId) {
+          fastCache.delete(`students:${schoolId}`);
+          fastCache.deletePattern(`student:`);
+        }
+
         const result = {
           ...q.rows[0],
           name: fullName || q.rows[0].name,
@@ -2072,7 +2175,9 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           academic_year_id: resolvedSession || q.rows[0].academic_year_id,
-          is_active: true
+          is_active: resolvedIsActive,
+          status: resolvedStatus,
+          user_id: studentUserId || q.rows[0].user_id
         };
         const idx = demoStudents.findIndex(s => s.id === studentId);
         if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...result };
@@ -2085,55 +2190,56 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     console.warn('[UpdateStudent] Database update warning:', err.message);
   }
 
-  // Pure Cloud Firestore & in-memory update
-  let existingFirestoreData: any = {};
-  if (isFirebaseConfigured()) {
-    try {
-      const docSnap = await collections.students().doc(studentId).get();
-      if (docSnap.exists) {
-        existingFirestoreData = docSnap.data() || {};
-      }
-    } catch {}
-  }
-
+  // Pure in-memory fallback
   const idx = demoStudents.findIndex(s => s.id === studentId);
   const existingMem = idx >= 0 ? demoStudents[idx] : {};
 
   const updated: any = {
-    ...existingFirestoreData,
     ...existingMem,
     id: studentId,
-    name: fullName || existingFirestoreData.name || existingMem.name || 'Student',
-    full_name: fullName || existingFirestoreData.full_name || existingFirestoreData.name || existingMem.full_name || existingMem.name || 'Student',
-    first_name: firstName || existingFirestoreData.first_name || existingMem.first_name || '',
-    last_name: lastName || existingFirestoreData.last_name || existingMem.last_name || '',
-    roll_number: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
-    rollNumber: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
-    admission_number: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
-    admissionNumber: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
-    parent_name: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
-    parentName: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
-    parent_sms_number: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
-    parentPhone: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
-    email: cleanStudentEmail || existingFirestoreData.email || existingMem.email || '',
-    student_email: cleanStudentEmail || existingFirestoreData.student_email || existingMem.student_email || '',
-    parent_email: cleanParentEmail || existingFirestoreData.parent_email || existingMem.parent_email || '',
-    class_id: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
-    classId: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
+    name: fullName || existingMem.name || 'Student',
+    full_name: fullName || existingMem.full_name || existingMem.name || 'Student',
+    first_name: firstName || existingMem.first_name || '',
+    last_name: lastName || existingMem.last_name || '',
+    roll_number: cleanRollNumber || existingMem.roll_number || '',
+    rollNumber: cleanRollNumber || existingMem.roll_number || '',
+    admission_number: cleanAdmissionNumber || existingMem.admission_number || `ADM-${studentId}`,
+    admissionNumber: cleanAdmissionNumber || existingMem.admission_number || `ADM-${studentId}`,
+    parent_name: cleanParentName || existingMem.parent_name || '—',
+    parentName: cleanParentName || existingMem.parent_name || '—',
+    parent_sms_number: cleanParentPhone || existingMem.parent_sms_number || '',
+    parentPhone: cleanParentPhone || existingMem.parent_sms_number || '',
+    email: cleanStudentEmail || existingMem.email || '',
+    student_email: cleanStudentEmail || existingMem.student_email || '',
+    parent_email: cleanParentEmail || existingMem.parent_email || '',
+    class_id: resolvedClassId || existingMem.class_id || 'cls-1',
+    classId: resolvedClassId || existingMem.class_id || 'cls-1',
     class_number: putClsNum,
     class_label: putClassLabel,
-    section_id: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
-    sectionId: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
+    section_id: resolvedSectionId || existingMem.section_id || 'sec-a',
+    sectionId: resolvedSectionId || existingMem.section_id || 'sec-a',
     section_name: putSecName,
-    school_id: schoolId || existingFirestoreData.school_id || existingMem.school_id,
-    schoolId: schoolId || existingFirestoreData.school_id || existingMem.school_id,
-    academic_year_id: resolvedSession || existingFirestoreData.academic_year_id || existingMem.academic_year_id || null,
-    session_id: resolvedSession || existingFirestoreData.session_id || existingMem.session_id || null,
-    session_name: resolvedSession || existingFirestoreData.session_name || existingMem.session_name || null,
-    session: resolvedSession || existingFirestoreData.session || existingMem.session || null,
-    is_active: true,
+    school_id: schoolId || existingMem.school_id,
+    schoolId: schoolId || existingMem.school_id,
+    academic_year_id: resolvedSession || existingMem.academic_year_id || null,
+    session_id: resolvedSession || existingMem.session_id || null,
+    session_name: resolvedSession || existingMem.session_name || null,
+    session: resolvedSession || existingMem.session || null,
+    is_active: resolvedIsActive,
+    status: resolvedStatus,
     updated_at: new Date().toISOString()
   };
+
+  if (password && String(password).trim()) {
+    registerDemoUser({
+      id: studentId,
+      schoolId: schoolId || '00000000-0000-0000-0000-000000000001',
+      name: fullName || name || 'Student',
+      email: cleanStudentEmail || `student.${cleanAdmissionNumber || studentId}@portal.local`,
+      role: 'STUDENT',
+      password: String(password).trim()
+    });
+  }
 
   if (idx >= 0) {
     demoStudents[idx] = { ...demoStudents[idx], ...updated };

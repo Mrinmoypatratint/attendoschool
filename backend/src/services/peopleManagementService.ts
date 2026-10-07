@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 
 export async function listStudents(schoolId: string, search = '', activeOnly = true) {
@@ -24,7 +25,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   const allowed = [
     'name','roll','class_id','section_id','parent_phone','parent_name',
     'parent_email','admission_number','date_of_birth','gender','address',
-    'emergency_contact','photo_url'
+    'emergency_contact','photo_url','is_active'
   ];
   const fields: string[] = [];
   const values: any[] = [];
@@ -34,16 +35,34 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
       fields.push(`${key}=$${values.length}`);
     }
   }
-  if (!fields.length) throw new Error('No student fields supplied');
+  if (!fields.length && !body.password) throw new Error('No student fields supplied');
   values.push(id, schoolId);
-  const { rows } = await pool.query(
+  const { rows } = fields.length ? await pool.query(
     `UPDATE students SET ${fields.join(', ')}, updated_at=NOW()
      WHERE id=$${values.length-1} AND school_id=$${values.length}
      RETURNING *`,
     values
-  );
+  ) : await pool.query(`SELECT * FROM students WHERE id=$1 AND school_id=$2`, [id, schoolId]);
   if (!rows.length) throw new Error('Student not found');
-  return rows[0];
+  const stu = rows[0];
+
+  // Sync with users table
+  const newIsActive = body.is_active !== undefined ? Boolean(body.is_active) : stu.is_active;
+  if (stu.user_id) {
+    if (body.password && String(body.password).trim()) {
+      const hash = await bcrypt.hash(String(body.password).trim(), 10);
+      await pool.query(
+        `UPDATE users SET password_hash=$1, is_active=$2, updated_at=NOW() WHERE id=$3`,
+        [hash, newIsActive, stu.user_id]
+      );
+    } else if (body.is_active !== undefined) {
+      await pool.query(
+        `UPDATE users SET is_active=$1, updated_at=NOW() WHERE id=$2`,
+        [newIsActive, stu.user_id]
+      );
+    }
+  }
+  return stu;
 }
 
 export async function setStudentActive(schoolId: string, id: string, active: boolean) {
@@ -53,7 +72,11 @@ export async function setStudentActive(schoolId: string, id: string, active: boo
     [active, id, schoolId]
   );
   if (!rows.length) throw new Error('Student not found');
-  return rows[0];
+  const stu = rows[0];
+  if (stu.user_id) {
+    await pool.query(`UPDATE users SET is_active=$1, updated_at=NOW() WHERE id=$2`, [active, stu.user_id]);
+  }
+  return stu;
 }
 
 export async function listTeachers(schoolId: string, search = '', activeOnly = true) {

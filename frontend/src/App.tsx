@@ -4333,8 +4333,16 @@ function Students(){
       const targetSec = sections.find(s => (s.class_id === f.classId || s.classId === f.classId) && s.name.toUpperCase() === curName.toUpperCase());
       if (targetSec) finalSectionId = targetSec.id;
     }
+    if (f.password && f.password.trim() && f.password.trim().length < 6) {
+      alert('Password must be at least 6 characters in length.');
+      return;
+    }
+
     const payload = {
       ...f,
+      is_active: f.is_active !== false,
+      status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+      password: f.password && f.password.trim() ? f.password.trim() : undefined,
       parentSmsNumber: fullParentPhone,
       parent_sms_number: fullParentPhone,
       parentPhone: fullParentPhone,
@@ -4383,6 +4391,8 @@ function Students(){
       {
         title: 'Portal Credentials & Security',
         fields: [
+          { label: 'Account Status', value: f.is_active !== false ? 'Active' : 'Deactive', type: 'pill', color: f.is_active !== false ? 'green' : 'amber' },
+          { label: 'Portal Password', value: editingStudent ? (f.password ? 'Custom password specified' : 'Retain existing password') : (f.password ? 'Initial password set' : 'Auto-invite link'), type: 'pill', color: 'purple' },
           { label: 'Student Portal Email', value: f.studentEmail || f.email || editingStudent?.student_email || '—', type: 'email' },
           { label: 'Parent Portal Email', value: f.parentEmail || editingStudent?.parent_email || '—', type: 'email' },
           { label: 'Login Provisioning', value: f.loginOption || 'STUDENT', type: 'pill', color: 'purple' },
@@ -4395,6 +4405,7 @@ function Students(){
       { label: 'Student Name', value: fullName, color: 'blue' },
       { label: 'Class & Section', value: `${classLabel} · ${secLabel}`, color: 'green' },
       { label: 'Roll No', value: f.rollNumber || editingStudent?.roll_number || 'Auto', color: 'purple' },
+      { label: 'Status', value: f.is_active !== false ? 'Active' : 'Deactive', color: f.is_active !== false ? 'green' : 'amber' },
     ];
 
     const changes = editingStudent ? calculateChanges(
@@ -4408,6 +4419,7 @@ function Students(){
         address: f.address,
         student_email: f.studentEmail || f.email,
         parent_email: f.parentEmail,
+        is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
       },
       {
         name: 'Student Name',
@@ -4418,6 +4430,7 @@ function Students(){
         address: 'Residential Address',
         student_email: 'Student Email',
         parent_email: 'Parent Email',
+        is_active: 'Account Status',
       }
     ) : [];
 
@@ -4449,7 +4462,14 @@ function Students(){
     setStudentPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       if (editingStudent) {
-        await api.put(`/students/${editingStudent.id}`, payload);
+        const res = await api.put(`/students/${editingStudent.id}`, payload);
+        const updated = res.data;
+        setRows(prev => prev.map(r => r.id === editingStudent.id ? {
+          ...r,
+          ...updated,
+          is_active: payload.is_active !== false,
+          status: payload.is_active !== false ? 'ACTIVE' : 'INACTIVE'
+        } : r));
         setToastNotice({ type: 'success', message: `Student profile for ${payload.name} updated successfully.` });
       } else {
         const res = await api.post('/students', payload);
@@ -5495,13 +5515,14 @@ function Students(){
             <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
+            <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && displayedStudents.length === 0 ? (
             <tr>
-              <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px' }}>
                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
@@ -5518,7 +5539,7 @@ function Students(){
               </td>
             </tr>
           ) : displayedStudents.length === 0 ? (
-            <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={12} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -5598,6 +5619,19 @@ function Students(){
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
               </td>
+              <td>
+                <span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`} style={{
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: x.is_active !== false ? '#ecfdf5' : '#fef2f2',
+                  color: x.is_active !== false ? '#059669' : '#dc2626',
+                  border: `1px solid ${x.is_active !== false ? '#a7f3d0' : '#fecaca'}`
+                }}>
+                  {x.is_active !== false ? 'ACTIVE' : 'DEACTIVE'}
+                </span>
+              </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
                   className="table-action-btn"
@@ -5633,7 +5667,10 @@ function Students(){
                       gender: x.gender || '',
                       dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
                       loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
-                      sendInviteEmail: true
+                      sendInviteEmail: true,
+                      is_active: x.is_active !== false,
+                      status: x.status || (x.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+                      password: ''
                     });
                     setOpen(true);
                   }}
@@ -6053,6 +6090,39 @@ function Students(){
           />
         </label>
 
+        {editingStudent && (
+          <label>Account Status
+            <select
+              value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+              onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE', status: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', marginTop: 4 }}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Deactive (Inactive)</option>
+            </select>
+          </label>
+        )}
+
+        {/* Student Portal Password & Account Setup Box */}
+        <div className="student-portal-box">
+          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
+            <KeyRound size={14} style={{ color: '#2563eb' }} />
+            {editingStudent ? 'Update Portal Password (Optional)' : 'Portal Password & Setup'}
+          </div>
+          <label style={{ display: 'block', fontSize: 12, margin: '4px 0 10px 0' }} className="student-portal-box-desc">
+            {editingStudent
+              ? 'Leave blank to retain current password, or set a new password for student portal login:'
+              : 'Optional initial login password (leave empty to let student/parent activate via link):'}
+            <input
+              type="password"
+              placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+              value={f.password || ''}
+              onChange={e => setF({ ...f, password: e.target.value })}
+              style={{ marginTop: 6, width: '100%' }}
+            />
+          </label>
+        </div>
+
         {/* Student Portal Login Credentials Section */}
         <div className="student-portal-box">
           <div className="student-portal-box-title">
@@ -6105,7 +6175,16 @@ function Students(){
           </label>
         </div>
 
-        <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => { setOpen(false); setEditingStudent(null); setF({}); }}
+          >
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
+        </div>
       </form>
     </Modal>}
 

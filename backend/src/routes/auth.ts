@@ -264,15 +264,15 @@ router.post('/login', async (req, res) => {
         const stu = studentRes.rows[0];
 
         if (stu) {
-          // Check active status
-          if (!stu.user_is_active || !stu.student_is_active) {
+          // Verify password securely using bcrypt
+          const passwordMatch = await bcrypt.compare(password, stu.password_hash || '');
+          if (!passwordMatch) {
             return res.status(401).json({ message: 'Invalid credentials or account not found' });
           }
 
-          // Verify password securely using bcrypt
-          const passwordMatch = await bcrypt.compare(password, stu.password_hash);
-          if (!passwordMatch) {
-            return res.status(401).json({ message: 'Invalid credentials or account not found' });
+          // Check active status
+          if (!stu.user_is_active || !stu.student_is_active) {
+            return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
           }
 
           const userPayload: any = {
@@ -312,7 +312,10 @@ router.post('/login', async (req, res) => {
         const facultyRes = await pool.query(facultyQuery, [rawIdentifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
         const u = facultyRes.rows[0];
 
-        if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
+        if (u && (await bcrypt.compare(password, u.password_hash || ''))) {
+          if (!u.is_active) {
+            return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
+          }
           if (expectedRole && !roleMatches(u.role, expectedRole)) {
             return res.status(401).json({ message: 'Account is not authorized for the selected role' });
           }
