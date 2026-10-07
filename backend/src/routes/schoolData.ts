@@ -1369,8 +1369,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       neededClasses.add(parsed.classNumber);
     }
 
-    let sn = String(st.sectionName||st['Section']||st.section_name||'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A','B','C','D','E','F'].includes(sn)) sn = 'A';
+    let sn = String(st.sectionName || st['Section'] || st.section_name || 'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
     if (parsed.valid) {
       neededSections.add(`${parsed.classNumber}:${sn}`);
     }
@@ -1444,13 +1443,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
       ? st.classNumber 
       : (st.classLabel || st['Class'] || st.class_number || '');
-    const rawSection = String(st.sectionName||st['Section']||st.section_name||'A').trim().toUpperCase();
+    const rawSection = String(st.sectionName || st['Section'] || st.section_name || 'A');
     const parsedCls = parseClassValue(rawClassVal);
     const classNumber = parsedCls.classNumber;
     const classLabel = parsedCls.classLabel;
 
     let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(sectionName)) sectionName = 'A';
 
     let classId = classMap.get(classNumber) || `cls-${classNumber}`;
     let sectionId = (classId && sectionMap.get(`${classId}_${sectionName}`)) || `sec-${classId}-${sectionName.toLowerCase()}`;
