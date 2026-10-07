@@ -80,30 +80,60 @@ app.get('/attendo-school-logo.png', (_req, res) => {
 
 // Public integration endpoints
 app.use('/api/parent-onboarding', parentOnboarding);
+app.use('/api/parent-onboarding-v27', parentOnboarding);
 app.use('/api/final-integration', finalIntegration);
+app.use('/api/final-v28', finalIntegration);
 app.use('/api/production', production);
+app.use('/api/production-v26', production);
 
 // Global security middleware
 app.use(securityHeaders);
 app.use(requestContext);
 app.use(apiRateLimit);
 
-// Authenticated operational routes
+// Authenticated operational routes (mounted on clean paths + backward-compatible aliases)
 app.use('/api/communication', requireAuth, communication);
+app.use('/api/communication-v25', requireAuth, communication);
+
 app.use('/api/analytics', requireAuth, analytics);
+app.use('/api/analytics-v24', requireAuth, analytics);
+
 app.use('/api/offline-attendance', requireAuth, offlineAttendance);
+app.use('/api/offline-attendance-v23', requireAuth, offlineAttendance);
+
 app.use('/api/timetable', requireAuth, timetable);
+app.use('/api/timetable-v22', requireAuth, timetable);
+
 app.use('/api/backups', requireAuth, backups);
-app.use('/api/backups-v21', requireAuth, backups); // frontend uses this alias
+app.use('/api/backups-v21', requireAuth, backups);
+
 app.use('/api/security', requireAuth, security);
+app.use('/api/security-v20', requireAuth, security);
+
 app.use('/api/subscriptions', requireAuth, subscriptions);
+app.use('/api/subscriptions-v19', requireAuth, subscriptions);
+
 app.use('/api/permissions', requireAuth, permissions);
+app.use('/api/permissions-v18', requireAuth, permissions);
+
 app.use('/api/parent-portal', requireAuth, parentPortal);
+app.use('/api/parent-portal-v17', requireAuth, parentPortal);
+
 app.use('/api/student-promotions', requireAuth, studentPromotions);
+app.use('/api/student-promotions-v16', requireAuth, studentPromotions);
+
 app.use('/api/academic-years', requireAuth, academicYears);
+app.use('/api/academic-years-v15', requireAuth, academicYears);
+
 app.use('/api/people', requireAuth, peopleManagement);
+app.use('/api/people-v14', requireAuth, peopleManagement);
+
 app.use('/api/attendance-corrections', requireAuth, attendanceCorrections);
+app.use('/api/attendance-corrections-v13', requireAuth, attendanceCorrections);
+
 app.use('/api/attendance-reports', requireAuth, attendanceReports);
+app.use('/api/attendance-reports-v12', requireAuth, attendanceReports);
+
 app.use('/api/calendar', requireAuth, calendar);
 
 // Info endpoints
