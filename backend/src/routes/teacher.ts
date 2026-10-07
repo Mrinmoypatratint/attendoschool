@@ -541,16 +541,18 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
+      const classUuidVal = isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000';
+      const secUuidVal = isSecUuid ? secId : '00000000-0000-0000-0000-000000000000';
 
       const q = await pool.query(
         `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
          FROM students
-         WHERE school_id=$1
-           AND (${isClassUuid ? 'class_id=$2' : 'FALSE'} OR class_id IN (SELECT id FROM classes WHERE school_id=$1 AND class_number=$3))
-           AND (${isSecUuid ? 'section_id=$4' : 'FALSE'} OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND (UPPER(name)=$5 OR LOWER(name)=$6)))
+         WHERE school_id = $1::uuid
+           AND (class_id = $2::uuid OR class_id IN (SELECT id FROM classes WHERE school_id = $1::uuid AND class_number = $3::smallint))
+           AND (section_id = $4::uuid OR section_id IN (SELECT id FROM sections WHERE school_id = $1::uuid AND (UPPER(name) = UPPER($5) OR LOWER(name) = LOWER($6))))
            AND is_active
          ORDER BY roll_number`,
-        [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec, cleanSec.toLowerCase()]
+        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase()]
       );
       if (q.rows) {
         const uniqueStudents = new Map<string, any>();
@@ -734,6 +736,8 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secParam);
+      const classUuidVal = isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000';
+      const secUuidVal = isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000';
 
       const rawClassNum = parseInt(classParam.replace(/\D/g, ''), 10);
       const isSmallInt = Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767;
@@ -747,21 +751,21 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
          LEFT JOIN classes c ON c.id = a.class_id
          LEFT JOIN sections s ON s.id = a.section_id
          LEFT JOIN subjects sub ON sub.id = a.subject_id
-         WHERE a.school_id = $1 AND a.attendance_date = $2
+         WHERE a.school_id = $1::uuid AND a.attendance_date = $2::date
            AND (
              a.class_id::text = $3
-             OR (${isClassUuid ? 'a.class_id = $3::uuid' : 'FALSE'})
-             OR (${isSmallInt ? 'c.class_number = $4' : 'FALSE'})
+             OR a.class_id = $4::uuid
+             OR (c.class_number IS NOT NULL AND c.class_number = $5::smallint)
            )
            AND (
-             a.section_id::text = $5
-             OR (${isSecUuid ? 'a.section_id = $5::uuid' : 'FALSE'})
-             OR LOWER(s.name) = LOWER($6)
-             OR $6 = ''
+             $6::text = ''
+             OR a.section_id::text = $6
+             OR a.section_id = $7::uuid
+             OR LOWER(s.name) = LOWER($8)
            )
          ORDER BY a.submitted_at DESC NULLS LAST
          LIMIT 1`,
-        [sid, dateParam, classParam, classNum, secParam, cleanSec]
+        [sid, dateParam, classParam, classUuidVal, classNum, secParam, secUuidVal, cleanSec]
       );
       if (q.rowCount && q.rows[0]) {
         const row = q.rows[0];

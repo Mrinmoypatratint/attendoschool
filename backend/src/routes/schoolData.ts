@@ -431,8 +431,8 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
    // Try resolving class from PostgreSQL
    const valid = await pool.query(
      `SELECT id, class_number FROM classes 
-      WHERE (${isClassUuid ? 'id = $1' : 'FALSE'} OR ($2::int IS NOT NULL AND class_number = $2)) 
-        AND school_id = $3 LIMIT 1`,
+      WHERE (id = $1::uuid OR ($2::int IS NOT NULL AND class_number = $2))
+        AND school_id = $3::uuid LIMIT 1`,
      [isClassUuid ? strClassId : '00000000-0000-0000-0000-000000000000', resolvedClassNumber, sid]
    );
 
@@ -959,8 +959,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
          FROM sections s 
          JOIN classes c ON c.id = s.class_id 
-         WHERE s.school_id = $1 
-           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+         WHERE s.school_id = $1::uuid 
+           AND (c.id = $2::uuid OR c.class_number = $3)
            AND UPPER(s.name) = UPPER($4)
          LIMIT 1`,
         [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum, secName]
@@ -971,8 +971,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
          FROM sections s 
          JOIN classes c ON c.id = s.class_id 
-         WHERE s.school_id = $1 
-           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+         WHERE s.school_id = $1::uuid 
+           AND (c.id = $2::uuid OR c.class_number = $3)
          LIMIT 1`,
         [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum]
       ).catch(() => ({ rowCount: 0, rows: [] }));
@@ -2034,8 +2034,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           `SELECT s.id AS section_id, c.id AS class_id 
            FROM sections s 
            JOIN classes c ON c.id = s.class_id 
-           WHERE s.school_id = $1 
-             AND (${isPutClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+           WHERE s.school_id = $1::uuid 
+             AND (c.id = $2::uuid OR c.class_number = $3)
              AND UPPER(s.name) = UPPER($4)
            LIMIT 1`,
           [schoolId, isPutClassUuid ? resolvedClassId : '00000000-0000-0000-0000-000000000000', putClsNum, putSecName]
