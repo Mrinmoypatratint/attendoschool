@@ -90,10 +90,10 @@ export function isSameSession(s1?: string | null, s2?: string | null): boolean {
   return str1.toLowerCase().includes(str2.toLowerCase()) || str2.toLowerCase().includes(str1.toLowerCase());
 }
 
-// Class grades: L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
+// Class grades: Class-L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
 export const CLASS_GRADES = [
-  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -123,9 +123,12 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
   if (ensuredSchools.has(schoolId)) return;
 
   try {
-    // Ultra-fast path: If classes already exist in PostgreSQL, return in 1 roundtrip instead of 42
-    const checkExisting = await pool.query('SELECT 1 FROM classes WHERE school_id = $1 LIMIT 1', [schoolId]);
-    if (checkExisting.rowCount && checkExisting.rowCount > 0) {
+    // Ultra-fast path: If classes already exist in PostgreSQL including kindergarten, return in 1 roundtrip
+    const checkExisting = await pool.query(
+      'SELECT COUNT(DISTINCT class_number)::int as count FROM classes WHERE school_id = $1 AND class_number IN (-1, 0, 1, 12)',
+      [schoolId]
+    );
+    if ((checkExisting.rows[0]?.count || 0) >= 4) {
       ensuredSchools.add(schoolId);
       return;
     }
@@ -403,52 +406,100 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
 
 r.post('/sections',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
- const classId = req.body?.classId || req.body?.class_id;
+ const rawClassId = req.body?.classId || req.body?.class_id;
  const name = req.body?.name;
- if(!classId||!name||!String(name).trim()) return res.status(400).json({message:'Class and section name are required'});
+ if(!rawClassId||!name||!String(name).trim()) return res.status(400).json({message:'Class and section name are required'});
  const cleanName = String(name).trim().toUpperCase();
 
- let classNumber = 8;
- const matchClass = demoClasses.find(c => (c.id === classId || String(c.class_number) === String(classId)) && (!c.school_id || isSameSchool(c.school_id, sid)));
- if (matchClass) {
-   classNumber = matchClass.class_number;
- } else if (typeof classId === 'string' && classId.startsWith('cls-')) {
-   classNumber = Number(classId.replace(/cls-.*?-?/, '')) || 8;
+ // Resolve class_number from rawClassId
+ let resolvedClassNumber: number | null = null;
+ const strClassId = String(rawClassId);
+ if (/l.?kg/i.test(strClassId)) {
+   resolvedClassNumber = -1;
+ } else if (/u.?kg/i.test(strClassId)) {
+   resolvedClassNumber = 0;
+ } else {
+   const m = strClassId.match(/cls-(\d+)/) || strClassId.match(/-(\d+)$/) || strClassId.match(/^(\d+)$/);
+   if (m) {
+     resolvedClassNumber = Number(m[1]);
+   }
  }
 
-  try {
-   const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
-   const valid=await pool.query(
+ const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(strClassId);
+
+ try {
+   // Try resolving class from PostgreSQL
+   const valid = await pool.query(
      `SELECT id, class_number FROM classes 
-      WHERE (${isClassUuid ? 'id=$1' : 'FALSE'} OR class_number=$2) 
-        AND school_id=$3 LIMIT 1`,
-     [isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', classNumber, sid]
+      WHERE (${isClassUuid ? 'id = $1' : 'FALSE'} OR ($2::int IS NOT NULL AND class_number = $2)) 
+        AND school_id = $3 LIMIT 1`,
+     [isClassUuid ? strClassId : '00000000-0000-0000-0000-000000000000', resolvedClassNumber, sid]
    );
-   if(valid.rowCount) {
-     const realClassId = valid.rows[0].id;
-     classNumber = valid.rows[0].class_number;
-     const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING *',[sid,realClassId,cleanName]);
-     const created = { id: q.rows[0].id, class_id: realClassId, class_number: classNumber, name: cleanName, school_id: sid };
+
+   let realClassId = isClassUuid ? strClassId : '';
+   let classNumber = resolvedClassNumber ?? 1;
+
+   if (valid.rowCount && valid.rows.length > 0) {
+     realClassId = valid.rows[0].id;
+     classNumber = Number(valid.rows[0].class_number);
+   } else if (resolvedClassNumber !== null) {
+     const ins = await pool.query(
+       `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+        ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number
+        RETURNING id, class_number`,
+       [sid, resolvedClassNumber]
+     );
+     if (ins.rows.length > 0) {
+       realClassId = ins.rows[0].id;
+       classNumber = Number(ins.rows[0].class_number);
+     }
+   }
+
+   if (realClassId) {
+     const q = await pool.query(
+       `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+        ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name
+        RETURNING id, name, class_id`,
+       [sid, realClassId, cleanName]
+     );
+     const created = {
+       id: q.rows[0].id,
+       class_id: realClassId,
+       classId: realClassId,
+       class_number: classNumber,
+       classNumber: classNumber,
+       name: cleanName,
+       section_name: cleanName,
+       school_id: sid
+     };
      demoSections.push(created);
-     demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
-     const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
-     if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+     demoSections.sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name).localeCompare(String(b.name)));
+     fastCache.delete(`classes:${sid}`);
+     fastCache.delete(`sections:${sid}`);
+     if (sid) invalidateSchoolCache(sid);
      syncSectionToFirestore(created).catch(() => {});
      return res.status(201).json(created);
    }
-  } catch {}
+ } catch (err: any) {
+   console.error('[POST /sections] Error:', err.message);
+ }
 
+ const fallbackNum = resolvedClassNumber ?? 1;
  const newSection = {
-   id: `sec-${sid}-${classNumber}-${cleanName.toLowerCase()}-${Date.now().toString().slice(-4)}`,
-   class_id: classId,
-   class_number: classNumber,
+   id: `sec-${sid}-${fallbackNum}-${cleanName.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+   class_id: rawClassId,
+   classId: rawClassId,
+   class_number: fallbackNum,
+   classNumber: fallbackNum,
    name: cleanName,
+   section_name: cleanName,
    school_id: sid
  };
  demoSections.push(newSection);
- demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
- const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
- if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+ demoSections.sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name).localeCompare(String(b.name)));
+ fastCache.delete(`classes:${sid}`);
+ fastCache.delete(`sections:${sid}`);
+ if (sid) invalidateSchoolCache(sid);
  syncSectionToFirestore(newSection).catch(() => {});
  res.status(201).json(newSection);
 });
@@ -483,6 +534,8 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
   const idx = demoSections.findIndex(s => s.id === secId && (!s.school_id || isSameSchool(s.school_id, sid)));
   if (idx >= 0) demoSections.splice(idx, 1);
   deleteSectionFromFirestore(secId).catch(() => {});
+  fastCache.delete(`classes:${sid}`);
+  fastCache.delete(`sections:${sid}`);
   if (sid) invalidateSchoolCache(sid);
   res.json({success:true});
 });
@@ -2306,7 +2359,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
@@ -2649,7 +2702,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
   for (let i = 0; i < teachers.length; i++) {
     const t = teachers[i];
-    const rowNum = i + 1;
+    const rowNum = t._origRowIndex || (i + 1);
 
     const getVal = (patterns: string[]): string => {
       for (const p of patterns) {
@@ -2663,25 +2716,31 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       return '';
     };
 
-    const saviorNo = getVal(['Savior_No', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO']);
-    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name']);
-    let lastName  = getVal(['Last Name', 'lastName', 'last_name']);
-    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'fullName', 'name']);
+    // Skip completely empty rows
+    const hasRealContent = Object.entries(t).some(([k, v]) => !k.startsWith('_') && v !== undefined && v !== null && String(v).trim() !== '');
+    if (!hasRealContent) {
+      continue;
+    }
+
+    const saviorNo = getVal(['Savior_No', 'SAVIOR_NO', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'ID']);
+    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+    let lastName  = getVal(['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
+    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName', 'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name']);
 
     if ((!firstName || !lastName) && explicitFullName) {
-      const parts = explicitFullName.split(' ');
+      const parts = explicitFullName.split(/\s+/).filter(Boolean);
       if (!firstName) firstName = parts[0] || '';
       if (!lastName) lastName = parts.slice(1).join(' ') || '';
     }
     const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${rowNum}`));
-    const email = getVal(['Email_id', 'email_id', 'Email ID', 'emailId', 'Email', 'email', 'Email Address']).toLowerCase();
-    const rawClass = getVal(['Class', 'class']);
-    const rawSection = (getVal(['Section', 'section']) || 'A').toUpperCase();
-    const designation = getVal(['Designation', 'designation']) || 'Teacher';
-    const status = getVal(['Status', 'status']) || 'Active';
-    const rawMobile = getVal(['Mobile', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
-    const gender = getVal(['Gender', 'gender', 'Sex', 'sex']) || null;
-    const rawDob = getVal(['Date_of_Birth', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
+    const email = getVal(['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase() || `${saviorNo ? `teacher.${saviorNo.toLowerCase()}` : `teacher${rowNum}`}@school.local`;
+    const rawClass = getVal(['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+    const rawSection = (getVal(['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+    const designation = getVal(['Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title']) || 'Teacher';
+    const status = getVal(['Status', 'STATUS', 'status']) || 'Active';
+    const rawMobile = getVal(['Mobile', 'MOBILE', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
+    const gender = getVal(['Gender', 'GENDER', 'gender', 'Sex', 'sex']) || null;
+    const rawDob = getVal(['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
     const dob = rawDob ? normalizeToDdMmYyyy(rawDob) : null;
 
     // Validation engine:
@@ -2743,12 +2802,19 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       await client.query('BEGIN');
       const stagedList: any[] = [];
 
-      for (const t of validRows) {
-        const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
-        const hash = await bcrypt.hash(tempPassword, 10);
+      // Pre-compute password hashes in parallel with rounds 8
+      const preparedRows = await Promise.all(
+        validRows.map(async (t) => {
+          const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+          const hash = await bcrypt.hash(tempPassword, 8);
+          return { t, tempPassword, hash };
+        })
+      );
+
+      for (const { t, tempPassword, hash } of preparedRows) {
         const u = await client.query(
           `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'TEACHER')
-           ON CONFLICT (school_id, email) DO UPDATE SET name=EXCLUDED.name, password_hash=EXCLUDED.password_hash
+           ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name, school_id=EXCLUDED.school_id, password_hash=EXCLUDED.password_hash
            RETURNING id, name, email`,
           [schoolId, t.name, t.email, hash]
         );
@@ -2756,12 +2822,40 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           throw new Error(`Failed to insert or update user record for faculty member ${t.name} (${t.email})`);
         }
 
-        await client.query(
-          `INSERT INTO teacher_profiles(user_id, employee_id, mobile) VALUES($1, $2, $3)
-           ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile
-           RETURNING *`,
-          [u.rows[0].id, t.saviorNo, t.mobile || null]
-        );
+        const rawClass = t.class ? String(t.class).trim() : null;
+        const rawSection = t.section ? String(t.section).trim().toUpperCase() : null;
+        let parsedGender = t.gender ? String(t.gender).trim() : null;
+        if (parsedGender) {
+          if (/^f/i.test(parsedGender)) parsedGender = 'Female';
+          else if (/^m/i.test(parsedGender)) parsedGender = 'Male';
+        }
+
+        const existingEp = await client.query('SELECT user_id FROM teacher_profiles WHERE employee_id = $1', [t.saviorNo]);
+        if (existingEp.rows.length > 0 && existingEp.rows[0].user_id !== u.rows[0].id) {
+          await client.query(
+            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender) WHERE employee_id = $7`,
+            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, t.saviorNo]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender) VALUES($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender)
+             RETURNING *`,
+            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender]
+          );
+        }
+
+        if (rawClass) {
+          demoTeacherAssignments.push({
+            id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            school_id: schoolId,
+            teacher_id: u.rows[0].id,
+            teacher_name: t.name,
+            class_number: rawClass,
+            section_name: rawSection || 'A',
+            subject_name: null
+          });
+        }
 
         const created = {
           ...u.rows[0],
@@ -2793,6 +2887,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
       await client.query('COMMIT');
       client.release();
+      fastCache.delete(`teachers:${schoolId}`);
 
       // After COMMIT: update memory, register demo users, sync to Firestore, dispatch emails
       for (const item of stagedList) {

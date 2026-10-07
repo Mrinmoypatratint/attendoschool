@@ -9,10 +9,12 @@ const uid=(req:Request)=>(req as any).user?.id;
 router.get('/candidates',async(req,res)=>{
   try {
     if(!sid(req)) return res.status(403).json({message:'School access required'});
-    const year=String(req.query.fromYearId||'');
+    const year=String(req.query.fromYearId||req.query.yearId||'');
     if(!year) return res.status(400).json({message:'fromYearId is required'});
-    res.json(await listPromotionCandidates(sid(req),year));
-  } catch(_e:any){
+    const list = await listPromotionCandidates(sid(req),year);
+    res.json(list);
+  } catch(err:any){
+    console.error('[StudentPromotions] Error fetching candidates:', err);
     if (isTestSchool(sid(req))) {
       return res.json([
         { id: 'st-01', name: 'Aarav Sharma', roll: 1, from_class_name: '8', from_section_name: 'A', already_processed: false },
