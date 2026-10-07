@@ -4323,8 +4323,8 @@ function Students(){
         title: 'Parent & Contact Coordinates',
         fields: [
           { label: 'Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
-          { label: 'Contact Phone Number', value: f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
-          { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
+          { label: 'Contact Phone Number', value: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
+          // { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
         ]
       },
       {
@@ -4351,7 +4351,7 @@ function Students(){
         roll_number: f.rollNumber || editingStudent.roll_number,
         admission_number: f.admissionNumber || editingStudent.admission_number,
         parent_name: f.guardianName || f.parentName,
-        parent_phone: f.parentPhone || f.phone,
+        parent_phone: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone,
         address: f.address,
         student_email: f.studentEmail || f.email,
         parent_email: f.parentEmail,
@@ -4599,6 +4599,90 @@ function Students(){
     return `${mb} MB`;
   }
 
+  interface ParsedClassResult {
+    valid: boolean;
+    classNumber: number;
+    classId: string;
+    classLabel: string;
+    error?: string;
+  }
+
+  function parseClassValue(rawVal: any, fallbackClass?: string | number): ParsedClassResult {
+    let val = String(rawVal ?? '').trim();
+
+    if (!val && fallbackClass !== undefined && fallbackClass !== null && String(fallbackClass).trim() !== '') {
+      val = String(fallbackClass).trim();
+    }
+
+    if (!val) {
+      return {
+        valid: false,
+        classNumber: 1,
+        classId: 'cls-1',
+        classLabel: '',
+        error: 'Class is required'
+      };
+    }
+
+    // Kindergarten string checks
+    if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    }
+    if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    }
+
+    const clean = val.toLowerCase();
+
+    // Roman Numeral lookup (I to XII)
+    const ROMAN_MAP: Record<string, number> = {
+      i: 1,
+      ii: 2,
+      iii: 3,
+      iv: 4,
+      v: 5,
+      vi: 6,
+      vii: 7,
+      viii: 8,
+      ix: 9,
+      x: 10,
+      xi: 11,
+      xii: 12,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(ROMAN_MAP, clean)) {
+      const num = ROMAN_MAP[clean];
+      return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+    }
+
+    // Numeric string e.g. "10", "Class 10", "Grade 5", "Std 8"
+    const cleanNoPrefix = val.replace(/^(class|grade|std|standard)\s*/i, '').trim();
+    if (/^\d+$/.test(cleanNoPrefix)) {
+      const num = parseInt(cleanNoPrefix, 10);
+      if (num >= 1 && num <= 12) {
+        return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+      }
+    }
+
+    // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
+    if (typeof rawVal === 'number') {
+      if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+      if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+      if (rawVal >= 1 && rawVal <= 12) {
+        return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
+      }
+    }
+
+    // Invalid class value
+    return {
+      valid: false,
+      classNumber: 1,
+      classId: 'cls-1',
+      classLabel: val,
+      error: `Invalid Class '${val}'. Expected 1–12, Roman numerals (I–XII), LKG, or UKG.`
+    };
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4643,12 +4727,12 @@ function Students(){
           const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
-          // Class parsing: supports 'L-KG','U-KG','Class 1','1' etc.
-          const rawClass = String(r['Class']||r['Class Number']||r['class_number']||importClass||'').trim();
-          let classId='', classNumber=1, classLabel='';
-          if (/l.?kg/i.test(rawClass))      { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
-          else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
-          else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||Number(importClass)||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
+          // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
+          const excelClassVal = r['Class'] ?? r['Class Number'] ?? r['class_number'];
+          const parsedCls = parseClassValue(excelClassVal, importClass);
+          const classId = parsedCls.classId;
+          const classNumber = parsedCls.classNumber;
+          const classLabel = parsedCls.classLabel;
           const sectionName = String(r['Section']||r['Section Name']||r['section_name']||importSection||'A').trim().toUpperCase();
           const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
@@ -4659,6 +4743,7 @@ function Students(){
           if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
           if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
           if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+          if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
           if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
           if (admissionNumber) seenAdm.add(admissionNumber);
 
@@ -4693,7 +4778,7 @@ function Students(){
       const enrichedRows = validRows.map(r => ({
         ...r,
         session: r.session || importSession || '2025-26',
-        classNumber: r.classNumber || Number(importClass) || 1,
+        classNumber: r.classNumber !== undefined ? r.classNumber : (Number(importClass) || 1),
         sectionName: r.sectionName || importSection || 'A'
       }));
 
@@ -5199,7 +5284,6 @@ function Students(){
             <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
-            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -5284,15 +5368,6 @@ function Students(){
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
-              </td>
-              <td>
-                {x.student_email || x.email || x.parent_email ? (
-                  <span className="badge active" title={`Student portal login: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>
-                    🎓 Student Portal
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Offline Only</span>
-                )}
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
