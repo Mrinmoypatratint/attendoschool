@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { api } from '../../api';
 import * as XLSX from 'xlsx';
-import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info } from 'lucide-react';
+import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info, RefreshCw, Clock, Loader2 } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 
@@ -102,12 +102,40 @@ function toDdMmYyyy(val: any): string {
   return s;
 }
 
+function formatLastFetched(date: Date | null): string {
+  if (!date) return 'Not yet fetched';
+  const now = new Date();
+  const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  
+  if (diffSec < 8) return `${timeStr} (Just now)`;
+  if (diffSec < 60) return `${timeStr} (${diffSec}s ago)`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${timeStr} (${diffMin}m ago)`;
+  return `${timeStr} (${date.toLocaleDateString([], { month: 'short', day: 'numeric' })})`;
+}
+
 export default function PeopleManagement() {
   const [tab, setTab] = useState<'students' | 'teachers'>('students');
   const [rows, setRows] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(() => {
+    try {
+      const saved = localStorage.getItem('attendo_people_last_fetched');
+      return saved ? new Date(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [, setTimeTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTimeTick(t => t + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Teacher Modals State
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
@@ -232,15 +260,35 @@ export default function PeopleManagement() {
 
   async function load() {
     setLoading(true);
+    setLoadProgress(15);
     setMessage('');
+    const progressTimer = setInterval(() => {
+      setLoadProgress(prev => {
+        if (prev >= 88) return prev;
+        const jump = Math.floor(Math.random() * 12) + 8;
+        return Math.min(88, prev + jump);
+      });
+    }, 120);
+
     try {
       const endpoint = tab === 'students' ? '/people/students' : '/teachers';
       const res = await api.get(endpoint, { params: { search: search.trim() || undefined } });
+      setLoadProgress(95);
       setRows(res.data || []);
+      setLoadProgress(100);
+      const now = new Date();
+      setLastFetchedAt(now);
+      try {
+        localStorage.setItem('attendo_people_last_fetched', now.toISOString());
+      } catch {}
     } catch (e: any) {
       setMessage(e?.response?.data?.message || 'Unable to load people records');
     } finally {
-      setLoading(false);
+      clearInterval(progressTimer);
+      setTimeout(() => {
+        setLoading(false);
+        setLoadProgress(0);
+      }, 350);
     }
   }
 
@@ -361,7 +409,7 @@ export default function PeopleManagement() {
             emailStatus: 'Pending',
             _origRowIndex: idx + 1
           };
-        }).filter(x => x.name && x.email);
+        });
         setPreviewRows(mapped);
         setImportPreviewPage(1);
         setImportPreviewSearch('');
@@ -375,6 +423,11 @@ export default function PeopleManagement() {
   // Teacher Bulk Import Submit
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
+    const invalidRow = previewRows.find(r => !r.name || !r.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email) || !r.saviorNo);
+    if (invalidRow) {
+      alert(`Cannot import file: Row #${invalidRow._origRowIndex || 1} has invalid or missing name, email, or Employee ID.\n\nAll rows must be valid before importing. No partial data will be stored.`);
+      return;
+    }
     setImporting(true);
     try {
       const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
@@ -399,7 +452,8 @@ export default function PeopleManagement() {
       setImportPreviewSearch('');
       load();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to import teachers');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to import faculty';
+      alert(`Import Failed: ${msg}\n\nThe entire operation was cancelled and no faculty records were stored in the database.`);
     } finally {
       setImporting(false);
     }
@@ -498,6 +552,24 @@ export default function PeopleManagement() {
 
       {/* ── UNIFIED PEOPLE DIRECTORY BOX WITH INNER SCROLLBAR ── */}
       <div className="directory-box" ref={directoryTopRef}>
+        {/* Top Loading Progress Bar */}
+        {loading && (
+          <div style={{
+            width: '100%',
+            height: '4px',
+            background: 'rgba(37, 99, 235, 0.12)',
+            overflow: 'hidden',
+            position: 'relative'
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${loadProgress}%`,
+              background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+              transition: 'width 0.15s ease-out',
+              boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+            }} />
+          </div>
+        )}
         {/* Box Header (Tabs & Search Controls) */}
         <div className="directory-box-header">
         {/* Segmented Tab Switcher */}
@@ -544,6 +616,65 @@ export default function PeopleManagement() {
             )}
           </form>
 
+          {/* Refresh Button */}
+          <button 
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
+              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 12.5,
+              color: loading ? '#64748b' : 'var(--text, #1e293b)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              transition: 'all 0.15s ease'
+            }}
+            title={`Refetch ${tab === 'students' ? 'students' : 'faculty'} from database`}
+            id="people-refresh-btn"
+          >
+            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+          </button>
+
+          {/* Last Fetched Time Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 9px',
+            borderRadius: 6,
+            background: 'var(--bg-muted, #f8fafc)',
+            border: '1px solid var(--border, #e2e8f0)',
+            fontSize: 12,
+            color: 'var(--text-secondary, #475569)'
+          }} title="Last successful synchronization with database">
+            <Clock size={12} style={{ color: '#64748b' }} />
+            <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+            {loading && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                marginLeft: 3,
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: '#dbeafe',
+                color: '#1d4ed8',
+                fontWeight: 600,
+                fontSize: 11
+              }}>
+                <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+                {loadProgress}%
+              </span>
+            )}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
             <span>Rows per page:</span>
             <select
@@ -585,6 +716,36 @@ export default function PeopleManagement() {
 
       {/* Box Body (Scrollable Table Area) */}
       <div className="directory-box-body" ref={tableBodyRef}>
+        {loading && rows.length > 0 && (
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            background: 'rgba(239, 246, 255, 0.95)',
+            backdropFilter: 'blur(4px)',
+            borderBottom: '1px solid #bfdbfe',
+            padding: '6px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            color: '#1d4ed8',
+            fontWeight: 500
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+              <span>Refetching {tab === 'students' ? 'students' : 'faculty'} from database...</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+              </div>
+            </div>
+          </div>
+        )}
         <table>
           {tab === 'students' ? (
             <>
@@ -663,8 +824,24 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={9} className="muted" style={{ padding: 28, textAlign: 'center' }}>
-                      {loading ? 'Searching directory…' : 'No student records found matching this criteria.'}
+                    <td colSpan={9} style={{ padding: 36, textAlign: 'center' }}>
+                      {loading ? (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                            <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                          </div>
+                          <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="muted">No student records found matching this criteria.</span>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -727,8 +904,24 @@ export default function PeopleManagement() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={7} className="muted" style={{ padding: 28, textAlign: 'center' }}>
-                      {loading ? 'Searching directory…' : 'No faculty records found matching this criteria.'}
+                    <td colSpan={7} style={{ padding: 36, textAlign: 'center' }}>
+                      {loading ? (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                            <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records from database ({loadProgress}%)</div>
+                          </div>
+                          <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="muted">No faculty records found matching this criteria.</span>
+                      )}
                     </td>
                   </tr>
                 )}

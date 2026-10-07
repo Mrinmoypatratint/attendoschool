@@ -58,12 +58,21 @@ export const pool: Pool = (isPostgresConfigured
   ? new Pool({
     connectionString: pgConnectionString,
     ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+    min: 2,
     max: Math.min(Number(process.env.PG_POOL_MAX || 10), 15),
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 15000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
+    statement_timeout: 15000,
     allowExitOnIdle: false,
   })
   : new DisabledPool() as unknown as Pool);
+
+// Proactively warm up database connections immediately at process boot
+if (isPostgresConfigured) {
+  pool.query('SELECT 1').catch(() => {});
+}
 
 // Prevent pool from crashing the process on transient connection errors
 if (isPostgresConfigured) {

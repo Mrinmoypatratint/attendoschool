@@ -58,9 +58,8 @@ router.post('/process',async(req:Request,res:Response)=>{
     if(!fromYearId||!toYearId||!Array.isArray(items))
       return res.status(400).json({message:'fromYearId, toYearId and items are required'});
     res.json(await promoteStudents(sid(req),uid(req),fromYearId,toYearId,items));
-  } catch(_e:any){
-    const items = req.body?.items || [];
-    res.json(items.map((x: any) => ({ ...x, status: 'SUCCESS' })));
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message || 'Promotion processing failed. Operation rolled back; no student records were updated.' });
   }
 });
 

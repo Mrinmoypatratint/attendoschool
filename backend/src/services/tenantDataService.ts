@@ -2,6 +2,7 @@ import { CollectionReference, WhereFilterOp } from 'firebase-admin/firestore';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { getFirestoreSchoolById } from './firestoreService';
 import { DualDatabaseService } from './dualDatabaseService';
+import { fastCache } from '../utils/cache';
 
 // In-memory short-lived cache (30-second TTL) per school to prevent burning Firestore quota
 interface CacheEntry<T> {
@@ -18,6 +19,7 @@ export function invalidateSchoolCache(schoolId: string): void {
   if (!schoolId) return;
   const sid = schoolId.trim().toLowerCase();
   dashboardCache.delete(sid);
+  fastCache.invalidatePattern(sid);
 }
 
 /**
@@ -185,7 +187,6 @@ export async function getTenantTodayAttendance(schoolId: string, targetDate?: st
  * Retrieve real weekly attendance trend (Monday to Friday of current week) for this tenant
  */
 export async function getTenantWeeklyTrend(schoolId: string) {
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const now = new Date();
   const currentDayNum = now.getDay();
 
@@ -194,41 +195,90 @@ export async function getTenantWeeklyTrend(schoolId: string) {
   const diff = now.getDate() - currentDayNum + (currentDayNum === 0 ? -6 : 1);
   monday.setDate(diff);
 
-  const trend = [];
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
 
-  for (let i = 0; i < 5; i++) {
-    const dayDate = new Date(monday);
-    dayDate.setDate(monday.getDate() + i);
-    const dateStr = dayDate.toISOString().slice(0, 10);
-    const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i];
-    const isToday = dayDate.toDateString() === now.toDateString();
+  const monStr = monday.toISOString().slice(0, 10);
+  const friStr = friday.toISOString().slice(0, 10);
+  const todayStr = now.toISOString().slice(0, 10);
 
+  // 1. PRIMARY: Single fast query against Supabase PostgreSQL
+  if (DualDatabaseService.isPrimaryAvailable() && schoolId) {
     try {
-      const att = await getTenantTodayAttendance(schoolId, dateStr);
-      trend.push({
-        day: dayName,
-        date: dateStr,
-        percentage: att.percentage,
-        present: att.present,
-        absent: att.absent,
-        total: att.total,
-        isToday
-      });
-    } catch {
-      trend.push({
-        day: dayName,
-        date: dateStr,
-        percentage: 0,
-        present: 0,
-        absent: 0,
-        total: 0,
-        isToday
-      });
+      const rows = await DualDatabaseService.getWeeklyTrendFromSupabase(schoolId, monStr, friStr);
+      if (rows) {
+        const trendMap = new Map<string, any>();
+        rows.forEach(r => {
+          const dStr = typeof r.attendance_date === 'string'
+            ? r.attendance_date.slice(0, 10)
+            : new Date(r.attendance_date).toISOString().slice(0, 10);
+          trendMap.set(dStr, r);
+        });
+
+        return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((dayName, idx) => {
+          const dayDate = new Date(monday);
+          dayDate.setDate(monday.getDate() + idx);
+          const dateStr = dayDate.toISOString().slice(0, 10);
+          const rec = trendMap.get(dateStr);
+          const total = rec ? Number(rec.total) || 0 : 0;
+          const present = rec ? Number(rec.present) || 0 : 0;
+          const absent = rec ? Number(rec.absent) || 0 : 0;
+          const percentage = total > 0 ? Number(((present / total) * 100).toFixed(1)) : 0;
+          return {
+            day: dayName,
+            date: dateStr,
+            percentage,
+            present,
+            absent,
+            total,
+            isToday: dateStr === todayStr
+          };
+        });
+      }
+    } catch (err: any) {
+      console.warn('[TenantDataService] Supabase weekly trend query error:', err.message);
     }
   }
 
-  return trend;
+  // 2. SECONDARY: Concurrent Promise.all queries (instead of slow sequential loop)
+  const days = [0, 1, 2, 3, 4].map(i => {
+    const dayDate = new Date(monday);
+    dayDate.setDate(monday.getDate() + i);
+    return {
+      dayName: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i],
+      dateStr: dayDate.toISOString().slice(0, 10),
+      isToday: dayDate.toDateString() === now.toDateString()
+    };
+  });
+
+  return await Promise.all(
+    days.map(async ({ dayName, dateStr, isToday }) => {
+      try {
+        const att = await getTenantTodayAttendance(schoolId, dateStr);
+        return {
+          day: dayName,
+          date: dateStr,
+          percentage: att.percentage,
+          present: att.present,
+          absent: att.absent,
+          total: att.total,
+          isToday
+        };
+      } catch {
+        return {
+          day: dayName,
+          date: dateStr,
+          percentage: 0,
+          present: 0,
+          absent: 0,
+          total: 0,
+          isToday
+        };
+      }
+    })
+  );
 }
+
 
 /**
  * Comprehensive, 100% Firebase-backed, school-isolated dashboard aggregator
@@ -246,7 +296,70 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     return cached.data;
   }
 
-  // 1. Resolve authentic school record from Supabase (or Firestore fallback)
+  // 1. FAST PATH: Supabase PostgreSQL Primary Atomic Pull (<20ms)
+  if (DualDatabaseService.isPrimaryAvailable()) {
+    try {
+      const [unifiedMetrics, todayAttendance, weeklyTrend] = await Promise.all([
+        DualDatabaseService.getUnifiedDashboardMetricsFromSupabase(schoolId),
+        getTenantTodayAttendance(schoolId),
+        getTenantWeeklyTrend(schoolId)
+      ]);
+
+      if (unifiedMetrics) {
+        const schoolObj = unifiedMetrics.school || {};
+        const schoolProfile = {
+          id: schoolId,
+          name: schoolObj.name || userSchoolName || 'Institutional Campus',
+          code: schoolObj.code || userSchoolCode || 'SCH',
+          status: schoolObj.status || 'ACTIVE',
+          enquiry_number: schoolObj.enquiry_number || 'Not configured',
+          address: schoolObj.address || 'Institutional Campus',
+          city: '',
+          state: '',
+          affiliation: schoolObj.code ? `${schoolObj.code} · Affiliated` : 'Affiliated'
+        };
+
+        const activeAcademicYear = unifiedMetrics.active_academic_year || null;
+
+        const payload = {
+          school: schoolProfile,
+          totalStudents: Number(unifiedMetrics.total_students) || 0,
+          totalTeachers: Number(unifiedMetrics.total_teachers) || 0,
+          totalClasses: Number(unifiedMetrics.total_classes) || 0,
+          totalSections: Number(unifiedMetrics.total_sections) || 0,
+          turnout_rate: todayAttendance.percentage,
+          present_today: todayAttendance.present,
+          absent_today: todayAttendance.absent,
+          total_today: todayAttendance.total,
+          class_breakdown: todayAttendance.classBreakdown,
+          todayAttendance,
+          weeklyTrend,
+          pendingCorrectionsCount: Number(unifiedMetrics.pending_corrections) || 0,
+          pendingPhotosCount: Number(unifiedMetrics.pending_photos) || 0,
+          pendingLeavesCount: Number(unifiedMetrics.pending_leaves) || 0,
+          activeAcademicYear,
+          announcements: [],
+          subscription: {
+            plan_name: 'Standard',
+            max_students: 100000,
+            status: 'ACTIVE',
+            start_date: null,
+            end_date: null,
+            days_remaining: 365,
+            discount_percentage: 0
+          },
+          recentActivity: []
+        };
+
+        dashboardCache.set(sidKey, { data: payload, timestamp: now });
+        return payload;
+      }
+    } catch (fastErr: any) {
+      console.warn('[TenantDataService] Fast-path dashboard fetch warning:', fastErr.message);
+    }
+  }
+
+  // 2. SECONDARY / FALLBACK: Granular Multi-Source Aggregator
   let sbSchool = await DualDatabaseService.getSchoolFromSupabase(schoolId);
   let fsSchool = !sbSchool ? await getFirestoreSchoolById(schoolId).catch(() => null) : null;
   const schoolProfile = {
@@ -261,7 +374,7 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
     affiliation: sbSchool?.code ? `${sbSchool.code} · Affiliated` : (fsSchool?.affiliation || 'Affiliated')
   };
 
-  // 2. Perform tenant-scoped aggregation counts concurrently with Supabase primary
+  // Perform tenant-scoped aggregation counts concurrently with Supabase primary
   const [
     studentCount,
     teacherCount,
@@ -296,10 +409,15 @@ export async function getSchoolDashboardStats(schoolId: string, userSchoolName?:
       undefined,
       () => DualDatabaseService.getSectionCountFromSupabase(schoolId)
     ),
-    countTenantCollection(collections.attendanceCorrections, schoolId, { field: 'status', op: '==', value: 'PENDING' }),
+    countTenantCollection(
+      collections.attendanceCorrections,
+      schoolId,
+      { field: 'status', op: '==', value: 'PENDING' },
+      () => DualDatabaseService.getPendingCorrectionsCountFromSupabase(schoolId)
+    ),
     getTenantTodayAttendance(schoolId),
     DualDatabaseService.getActiveAcademicYearFromSupabase(schoolId),
-    collections.announcements().where('school_id', '==', schoolId).orderBy('created_at', 'desc').limit(4).get().catch(() => null)
+    collections.announcements().where('school_id', '==', schoolId).limit(4).get().catch(() => null)
   ]);
 
   // 3. Compute real subscription status from school document

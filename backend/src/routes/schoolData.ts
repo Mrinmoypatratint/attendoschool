@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, updateDemoUserPhoto, getAllDemoUsers } from '../store/demoUsers';
 import { createAndSendPasswordReset, isSameSchool, isTestSchool } from './auth';
@@ -11,6 +11,7 @@ import { getFirestoreSchoolById } from '../services/firestoreService';
 import { collections, isFirebaseConfigured } from '../firebase';
 import {
   syncStudentToFirestore,
+  syncStudentsBulkToFirestore,
   deleteStudentFromFirestore,
   syncTeacherToFirestore,
   deleteTeacherFromFirestore,
@@ -25,11 +26,30 @@ import {
   rehydrateAllFromFirestore
 } from '../services/firestoreSync';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { fastCache } from '../utils/cache';
+import { invalidateSchoolCache } from '../services/tenantDataService';
+
+const isUuid = (val: any): boolean => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
 const r=Router();
 const admin= [requireAuth,requireRoles('SCHOOL_ADMIN')];
 const reader= [requireAuth,requireRoles('SUPER_ADMIN','SCHOOL_ADMIN','TEACHER')];
 export const schoolStaff = reader;
+
+// Auto-invalidate school memory cache on any successful mutation (POST, PUT, DELETE)
+r.use((req: any, res: any, next: any) => {
+  if (req.method !== 'GET') {
+    res.on('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        const sid = req.user?.schoolId || req.body?.schoolId || req.params?.schoolId;
+        if (sid) {
+          fastCache.invalidatePattern(String(sid));
+        }
+      }
+    });
+  }
+  next();
+});
 
 /**
  * Normalizes academic session strings into a canonical format: "YYYY-YYYY"
@@ -103,6 +123,12 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
   if (ensuredSchools.has(schoolId)) return;
 
   try {
+    // Ultra-fast path: If classes already exist in PostgreSQL, return in 1 roundtrip instead of 42
+    const checkExisting = await pool.query('SELECT 1 FROM classes WHERE school_id = $1 LIMIT 1', [schoolId]);
+    if (checkExisting.rowCount && checkExisting.rowCount > 0) {
+      ensuredSchools.add(schoolId);
+      return;
+    }
     // Ensure classes check constraint allows -1 to 12
     await pool.query(`
       DO $$
@@ -141,6 +167,10 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
 
 r.get('/classes',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ const cacheKey = `classes:${sid}`;
+ const cached = fastCache.get<any>(cacheKey);
+ if (cached) return res.json(cached);
+
  await ensureSchoolClassesAndSections(sid);
 
  // Build standard class list from CLASS_GRADES — always the full L-KG → Class 12 set
@@ -167,6 +197,7 @@ r.get('/classes',...reader,async(req:AuthRequest,res)=>{
       }
     }
     merged.sort((a: any, b: any) => Number(a.class_number) - Number(b.class_number));
+    fastCache.set(cacheKey, merged, 30);
     return res.json(merged);
   }
  } catch {}
@@ -174,7 +205,8 @@ r.get('/classes',...reader,async(req:AuthRequest,res)=>{
  // Merge any Firestore classes on top
  if (isFirebaseConfigured()) {
    try {
-     const snap = await collections.classes().get();
+     let snap = await collections.classes().where('school_id', '==', sid).get();
+     if (snap.empty) snap = await collections.classes().get();
      if (!snap.empty) {
        const fsClasses = snap.docs
          .map(d => {
@@ -232,18 +264,46 @@ r.post('/classes',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.delete('/classes/:id',...admin,async(req:AuthRequest,res)=>{
- const sid=req.user!.schoolId;
- try {
-  await pool.query('DELETE FROM classes WHERE id=$1 AND school_id=$2 RETURNING id',[req.params.id,sid]);
- } catch {}
- const idx = demoClasses.findIndex(c => c.id === req.params.id && (!c.school_id || isSameSchool(c.school_id, sid)));
- if (idx >= 0) demoClasses.splice(idx, 1);
- deleteClassFromFirestore(String(req.params.id)).catch(() => {});
- res.json({success:true});
+  const sid = req.user!.schoolId;
+  const cid = String(req.params.id);
+  if (isPostgresConfigured && isUuid(cid)) {
+    try {
+      const stCount = await pool.query('SELECT COUNT(*)::int AS cnt FROM students WHERE class_id = $1 AND school_id = $2', [cid, sid]);
+      if (stCount.rows[0]?.cnt > 0) {
+        return res.status(400).json({ success: false, message: `Cannot delete class: ${stCount.rows[0].cnt} students are enrolled in this class. Please delete or reassign them first.` });
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM class_routines WHERE class_id = $1', [cid]);
+        await client.query('UPDATE attendance_sessions SET class_id = NULL WHERE class_id = $1', [cid]);
+        await client.query('DELETE FROM student_enrollment_history_v28 WHERE class_id = $1', [cid]);
+        await client.query('DELETE FROM sections WHERE class_id = $1 AND school_id = $2', [cid, sid]);
+        await client.query('DELETE FROM classes WHERE id = $1 AND school_id = $2', [cid, sid]);
+        await client.query('COMMIT');
+      } catch (delErr: any) {
+        await client.query('ROLLBACK').catch(() => {});
+        return res.status(400).json({ success: false, message: `Delete class failed: ${delErr.message}` });
+      } finally {
+        client.release();
+      }
+    } catch (checkErr: any) {
+      return res.status(400).json({ success: false, message: `Delete class failed: ${checkErr.message}` });
+    }
+  }
+  const idx = demoClasses.findIndex(c => c.id === cid && (!c.school_id || isSameSchool(c.school_id, sid)));
+  if (idx >= 0) demoClasses.splice(idx, 1);
+  deleteClassFromFirestore(cid).catch(() => {});
+  if (sid) invalidateSchoolCache(sid);
+  res.json({success:true});
 });
 
 r.get('/sections',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ const cacheKey = `sections:${sid}`;
+ const cached = fastCache.get<any>(cacheKey);
+ if (cached) return res.json(cached);
+
  await ensureSchoolClassesAndSections(sid);
 
  // Standard sections: Section A and Section B for each class in CLASS_GRADES
@@ -282,6 +342,7 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
       }
     }
     list.sort((a: any, b: any) => (Number(a.class_number) - Number(b.class_number)) || String(a.name).localeCompare(String(b.name)));
+    fastCache.set(cacheKey, list, 30);
     return res.json(list);
   }
  } catch {}
@@ -289,7 +350,8 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
  // Query Cloud Firestore for sections belonging to this school
  if (isFirebaseConfigured()) {
    try {
-      const snap = await collections.sections().get();
+      let snap = await collections.sections().where('school_id', '==', sid).get();
+      if (snap.empty) snap = await collections.sections().get();
       if (!snap.empty) {
         const fsSections = snap.docs
           .map(d => {
@@ -392,14 +454,37 @@ r.post('/sections',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
- const sid = req.user!.schoolId;
- try {
-  await pool.query('DELETE FROM sections WHERE id=$1 AND school_id=$2 RETURNING id',[req.params.id,sid]);
- } catch {}
- const idx = demoSections.findIndex(s => s.id === req.params.id && (!s.school_id || isSameSchool(s.school_id, sid)));
- if (idx >= 0) demoSections.splice(idx, 1);
- deleteSectionFromFirestore(String(req.params.id)).catch(() => {});
- res.json({success:true});
+  const sid = req.user!.schoolId;
+  const secId = String(req.params.id);
+  if (isPostgresConfigured && isUuid(secId)) {
+    try {
+      const stCount = await pool.query('SELECT COUNT(*)::int AS cnt FROM students WHERE section_id = $1 AND school_id = $2', [secId, sid]);
+      if (stCount.rows[0]?.cnt > 0) {
+        return res.status(400).json({ success: false, message: `Cannot delete section: ${stCount.rows[0].cnt} students belong to this section. Please delete or reassign them first.` });
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM class_routines WHERE section_id = $1', [secId]);
+        await client.query('UPDATE attendance_sessions SET section_id = NULL WHERE section_id = $1', [secId]);
+        await client.query('DELETE FROM student_enrollment_history_v28 WHERE section_id = $1', [secId]);
+        await client.query('DELETE FROM sections WHERE id = $1 AND school_id = $2', [secId, sid]);
+        await client.query('COMMIT');
+      } catch (delErr: any) {
+        await client.query('ROLLBACK').catch(() => {});
+        return res.status(400).json({ success: false, message: `Delete section failed: ${delErr.message}` });
+      } finally {
+        client.release();
+      }
+    } catch (checkErr: any) {
+      return res.status(400).json({ success: false, message: `Delete section failed: ${checkErr.message}` });
+    }
+  }
+  const idx = demoSections.findIndex(s => s.id === secId && (!s.school_id || isSameSchool(s.school_id, sid)));
+  if (idx >= 0) demoSections.splice(idx, 1);
+  deleteSectionFromFirestore(secId).catch(() => {});
+  if (sid) invalidateSchoolCache(sid);
+  res.json({success:true});
 });
 
 export const demoStudents: any[] = [];
@@ -481,6 +566,12 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const sessionFilter=String(req.query.session||req.query.sessionId||req.query.academic_year_id||'').trim();
  const userSchoolId = req.user?.schoolId;
 
+ const cacheKey = !search && !sessionFilter && userSchoolId ? `students:${userSchoolId}` : null;
+ if (cacheKey) {
+   const cached = fastCache.get<any>(cacheKey);
+   if (cached) return res.json(cached);
+ }
+
  try {
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,st.created_at,
   st.academic_year_id, ay.name AS session_name,
@@ -492,7 +583,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
   WHERE st.school_id=$1 AND st.is_active=true
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.gender, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
-  if (q.rowCount && q.rows.length > 0) {
+  if (q.rows) {
     let rows = q.rows.map((st: any) => {
       const parts = String(st.name || '').trim().split(' ');
       const firstName = parts[0] || '';
@@ -532,6 +623,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         return true;
       });
     }
+    if (cacheKey) fastCache.set(cacheKey, rows, 15);
     return res.json(rows);
   }
  } catch {}
@@ -1321,29 +1413,31 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     }
   }
 
-  // Validate rows and collect errors (100% in-memory — 0 queries in loop)
+  // Validate rows and collect errors (100% in-memory pre-validation)
   const validRows: any[] = [];
-  const errors: {row:number;field:string;message:string}[] = [];
+  const errors: { row: number; field: string; message: string }[] = [];
   const seenAdmNums = new Set<string>();
+  const seenRollKeys = new Set<string>();
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  for (let i=0;i<students.length;i++) {
+  for (let i = 0; i < students.length; i++) {
     const st = students[i];
-    const rowNum = i+1;
-    let firstName  = String(st.firstName||st['First Name']||st.first_name||'').trim();
-    let lastName   = String(st.lastName||st['Last Name']||st.last_name||'').trim();
-    const rawFullName = String(st.fullName||st['Full Name']||st.full_name||st.name||'').trim();
+    const rowNum = i + 1;
+    let firstName = String(st.firstName || st['First Name'] || st.first_name || '').trim();
+    let lastName  = String(st.lastName || st['Last Name'] || st.last_name || '').trim();
+    const rawFullName = String(st.fullName || st['Full Name'] || st.full_name || st.name || '').trim();
     if ((!firstName || !lastName) && rawFullName) {
       const parts = rawFullName.split(' ');
       if (!firstName) firstName = parts[0] || '';
       if (!lastName) lastName = parts.slice(1).join(' ') || '';
     }
-    const name = rawFullName || (firstName&&lastName ? `${firstName} ${lastName}` : (firstName||lastName||String(st.name||'').trim()));
-    const rollNumber = String(st.rollNumber||st['Roll Number']||st.roll_number||'').trim();
-    const admissionNumber = String(st.admissionNumber||st['Admission Number']||st.admission_number||'').trim();
-    const parentName = String(st.parentName||st['Parent Name']||st.parent_name||'').trim();
-    const parentPhone = String(st.parentPhone||st['Parent Phone']||st.parentSmsNumber||st.parent_sms_number||'').trim();
-    const parentEmail = String(st.parentEmail||st['Parent Email']||st.parent_email||'').trim();
-    const studentEmail = String(st.studentEmail||st['Student Email']||st.email||'').trim();
+    const name = rawFullName || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()));
+    const rollNumber = String(st.rollNumber || st['Roll Number'] || st.roll_number || '').trim();
+    const admissionNumber = String(st.admissionNumber || st['Admission Number'] || st.admission_number || '').trim();
+    const parentName = String(st.parentName || st['Parent Name'] || st.parent_name || '').trim();
+    const parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
+    const parentEmail = String(st.parentEmail || st['Parent Email'] || st.parent_email || '').trim();
+    const studentEmail = String(st.studentEmail || st['Student Email'] || st.email || '').trim();
     const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
 
     // Class/section resolution from in-memory preloaded maps
@@ -1356,34 +1450,56 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const classLabel = parsedCls.classLabel;
 
     let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A','B','C','D','E','F'].includes(sectionName)) sectionName = 'A';
+    if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(sectionName)) sectionName = 'A';
 
     let classId = classMap.get(classNumber) || `cls-${classNumber}`;
     let sectionId = (classId && sectionMap.get(`${classId}_${sectionName}`)) || `sec-${classId}-${sectionName.toLowerCase()}`;
-   if (!firstName) errors.push({row:rowNum,field:'First Name',message:'First Name is required'});
-   if (!lastName)  errors.push({row:rowNum,field:'Last Name', message:'Last Name is required'});
-   if (!rollNumber) errors.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
-   if (!admissionNumber) errors.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
-   if (!parentPhone) errors.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
-   if (!parsedCls.valid) errors.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid class'});
-   if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({row:rowNum,field:'Admission Number',message:`Duplicate admission number '${admissionNumber}' in this batch`});
-   if (admissionNumber) seenAdmNums.add(admissionNumber);
 
-   if (errors.filter(e=>e.row===rowNum).length===0) {
-     validRows.push({ firstName,lastName,name,rollNumber,admissionNumber,gender,parentName,parentPhone,parentEmail,studentEmail,classId,classNumber,classLabel,sectionId,sectionName });
-   }
- }
+    if (!firstName) errors.push({ row: rowNum, field: 'First Name', message: 'First Name is required' });
+    if (!lastName)  errors.push({ row: rowNum, field: 'Last Name', message: 'Last Name is required' });
+    if (!rollNumber) errors.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
+    if (!admissionNumber) errors.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
+    if (!parentPhone) errors.push({ row: rowNum, field: 'Parent Phone', message: 'Parent Phone is required' });
+    if (!parsedCls.valid) errors.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid class' });
+    if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number '${admissionNumber}' in this batch` });
+    if (admissionNumber) seenAdmNums.add(admissionNumber);
 
- if (errors.length>0) {
-   return res.status(422).json({ success:false, errors, message:`${errors.length} validation error(s) found. Fix and re-import.` });
- }
+    const rollKey = `${classNumber}_${sectionName}_${rollNumber}`;
+    if (seenRollKeys.has(rollKey)) {
+      errors.push({ row: rowNum, field: 'Roll Number', message: `Duplicate roll number '${rollNumber}' for ${classLabel} Section ${sectionName} in this file` });
+    } else {
+      seenRollKeys.add(rollKey);
+    }
 
- const createdList: any[] = [];
+    if (studentEmail && !EMAIL_REGEX.test(studentEmail)) {
+      errors.push({ row: rowNum, field: 'Student Email', message: `Invalid student email format '${studentEmail}'` });
+    }
+    if (parentEmail && !EMAIL_REGEX.test(parentEmail)) {
+      errors.push({ row: rowNum, field: 'Parent Email', message: `Invalid parent email format '${parentEmail}'` });
+    }
 
-  // Try PostgreSQL transaction with ultra-fast batch ingestion
-  try {
+    if (errors.filter(e => e.row === rowNum).length === 0) {
+      validRows.push({ firstName, lastName, name, rollNumber, admissionNumber, gender, parentName, parentPhone, parentEmail, studentEmail, classId, classNumber, classLabel, sectionId, sectionName });
+    }
+  }
+
+  // Strict All-or-Nothing Pre-Validation Guarantee: If ANY row has errors, abort entire import
+  if (errors.length > 0) {
+    return res.status(422).json({
+      success: false,
+      errors,
+      message: `Validation failed for ${errors.length} record(s). The entire import has been cancelled and no data was stored in the database.`
+    });
+  }
+
+  const createdList: any[] = [];
+
+  // PostgreSQL Atomic Transaction
+  if (isPostgresConfigured) {
     const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+
       const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
       const safeAyId = isAyUuid ? bulkSessionId : null;
 
@@ -1391,16 +1507,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       const existingAdmMap = new Map<string, string>();
       const batchAdmNums = validRows.map(r => r.admissionNumber).filter(Boolean);
       if (batchAdmNums.length > 0) {
-        try {
-          const existStudentsQ = await client.query(
-            `SELECT id, admission_number FROM students WHERE school_id = $1 AND admission_number = ANY($2::text[])`,
-            [schoolId, batchAdmNums]
-          );
-          for (const row of existStudentsQ.rows) {
-            if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
-          }
-        } catch (e) {
-          console.warn('[bulk-import] Notice checking batch admission numbers:', e);
+        const existStudentsQ = await client.query(
+          `SELECT id, admission_number FROM students WHERE school_id = $1 AND admission_number = ANY($2::text[])`,
+          [schoolId, batchAdmNums]
+        );
+        for (const row of existStudentsQ.rows) {
+          if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
         }
       }
 
@@ -1415,66 +1527,56 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
         }
       }
 
-      await client.query('BEGIN');
-
-      // 3. Process existing record updates (usually 0 in bulk imports)
+      // 3. Process existing record updates (atomic — any failure aborts entire transaction)
       for (const st of toUpdate) {
         const existId = existingAdmMap.get(st.admissionNumber);
-        try {
-          const upQ = await client.query(
-            `UPDATE students SET
-               name = $1,
-               gender = COALESCE($2, gender),
-               class_id = $3,
-               section_id = $4,
-               roll_number = $5,
-               parent_name = COALESCE($6, parent_name),
-               parent_sms_number = $7,
-               email = COALESCE($8, email),
-               parent_email = COALESCE($9, parent_email),
-               academic_year_id = COALESCE($10, academic_year_id),
-               is_active = true,
-               updated_at = NOW()
-             WHERE id = $11
-             RETURNING *`,
-            [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, safeAyId, existId]
-          );
-          if (upQ.rowCount && upQ.rows.length > 0) {
-            createdList.push({
-              ...upQ.rows[0],
-              gender: upQ.rows[0].gender || st.gender || null,
-              academic_year_id: bulkSessionId,
-              session_id: bulkSessionId,
-              session_name: bulkSessionName,
-              session: bulkSessionName || bulkSessionId,
-              full_name: st.name,
-              class_number: st.classNumber,
-              class_label: st.classLabel,
-              section_name: st.sectionName,
-              is_active: true
-            });
-          }
-        } catch (upErr: any) {
-          console.warn('[bulk-import] Row update skipped:', upErr.message);
+        const upQ = await client.query(
+          `UPDATE students SET
+             name = $1,
+             gender = COALESCE($2, gender),
+             class_id = $3,
+             section_id = $4,
+             roll_number = $5,
+             parent_name = COALESCE($6, parent_name),
+             parent_sms_number = $7,
+             email = COALESCE($8, email),
+             parent_email = COALESCE($9, parent_email),
+             academic_year_id = COALESCE($10, academic_year_id),
+             is_active = true,
+             updated_at = NOW()
+           WHERE id = $11
+           RETURNING *`,
+          [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, safeAyId, existId]
+        );
+        if (upQ.rowCount && upQ.rows.length > 0) {
+          createdList.push({
+            ...upQ.rows[0],
+            gender: upQ.rows[0].gender || st.gender || null,
+            academic_year_id: bulkSessionId,
+            session_id: bulkSessionId,
+            session_name: bulkSessionName,
+            session: bulkSessionName || bulkSessionId,
+            full_name: st.name,
+            class_number: st.classNumber,
+            class_label: st.classLabel,
+            section_name: st.sectionName,
+            is_active: true
+          });
+        } else {
+          throw new Error(`Failed to update student with admission number ${st.admissionNumber}`);
         }
       }
 
       // 4. Fast Bulk Multi-Row Insert for new records
       if (toInsert.length > 0) {
-        // Deduplicate by (class_id, section_id, roll_number) within the batch to prevent ON CONFLICT DO UPDATE conflict
-        const dedupedInsertMap = new Map<string, any>();
-        for (const st of toInsert) {
-          const key = `${st.classId}_${st.sectionId}_${st.rollNumber}`;
-          dedupedInsertMap.set(key, st);
-        }
-        const dedupedInserts = Array.from(dedupedInsertMap.values());
-
-        try {
+        const CHUNK_SIZE = 500;
+        for (let c = 0; c < toInsert.length; c += CHUNK_SIZE) {
+          const chunk = toInsert.slice(c, c + CHUNK_SIZE);
           const valuesChunks: string[] = [];
           const params: any[] = [schoolId, safeAyId];
           let pIdx = 3;
 
-          for (const st of dedupedInserts) {
+          for (const st of chunk) {
             valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, null)`);
             params.push(
               st.classId,
@@ -1513,7 +1615,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
           const insQ = await client.query(insertSql, params);
           const metaMap = new Map<string, any>();
-          for (const st of dedupedInserts) {
+          for (const st of chunk) {
             metaMap.set(`${st.classId}_${st.sectionId}_${st.rollNumber}`, st);
           }
           for (const row of insQ.rows) {
@@ -1532,72 +1634,27 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               is_active: true
             });
           }
-        } catch (bulkErr: any) {
-          console.warn('[bulk-import] Fast bulk insert error, attempting row-by-row fallback:', bulkErr.message);
-          for (const st of dedupedInserts) {
-            try {
-              const singleQ = await client.query(
-                `INSERT INTO students(
-                   school_id, academic_year_id, class_id, section_id, roll_number, 
-                   admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
-                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, null)
-                 ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
-                   name = EXCLUDED.name,
-                   admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
-                   gender = COALESCE(EXCLUDED.gender, students.gender),
-                   parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
-                   parent_sms_number = EXCLUDED.parent_sms_number,
-                   email = COALESCE(EXCLUDED.email, students.email),
-                   parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
-                   academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
-                   is_active = true,
-                   updated_at = NOW()
-                 RETURNING *`,
-                [schoolId, safeAyId, st.classId, st.sectionId, String(st.rollNumber), st.admissionNumber || null, st.name, st.gender || null, st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null]
-              );
-              if (singleQ.rowCount && singleQ.rows.length > 0) {
-                createdList.push({
-                  ...singleQ.rows[0],
-                  gender: singleQ.rows[0].gender || st.gender || null,
-                  academic_year_id: bulkSessionId,
-                  session_id: bulkSessionId,
-                  session_name: bulkSessionName,
-                  session: bulkSessionName || bulkSessionId,
-                  full_name: st.name,
-                  class_number: st.classNumber,
-                  class_label: st.classLabel,
-                  section_name: st.sectionName,
-                  is_active: true
-                });
-              }
-            } catch (rowErr: any) {
-              console.warn('[bulk-import] Row insert skipped:', rowErr.message);
-            }
-          }
         }
       }
 
-      if (createdList.length === 0 && validRows.length > 0) {
-        await client.query('ROLLBACK');
-        client.release();
-        throw new Error('Zero DB rows inserted, falling back to memory/Firestore');
+      // Strict sanity check: createdList length must match validRows length
+      if (createdList.length !== validRows.length) {
+        throw new Error(`Incomplete batch insert: processed ${createdList.length} of ${validRows.length} records`);
       }
+
       await client.query('COMMIT');
       client.release();
 
-      // Keep in-memory store synchronized efficiently without O(N^2) unshifts
+      // Only now update in-memory store and Firestore
       if (createdList.length > 0) {
         demoStudents.unshift(...createdList.slice(0, 100));
         if (demoStudents.length > 5000) demoStudents.length = 5000;
       }
 
-      // Background Firestore sync (non-blocking)
+      // Background Firestore sync (non-blocking bulk batch)
       if (isFirebaseConfigured()) {
         setImmediate(() => {
-          for (const c of createdList.slice(0, 100)) {
-            syncStudentToFirestore(c).catch(() => {});
-          }
+          syncStudentsBulkToFirestore(createdList.slice(0, 500)).catch(() => {});
         });
       }
 
@@ -1654,49 +1711,149 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     } catch (txErr: any) {
       await client.query('ROLLBACK');
       client.release();
-      throw txErr;
+      return res.status(400).json({
+        success: false,
+        message: `Student bulk import failed: ${txErr.message || 'Database transaction error'}. The entire operation was cancelled and no student records were stored in the database.`
+      });
     }
-  } catch {}
-
- // Fallback: in-memory / Firestore
- for (const st of validRows) {
-   const studentObj = {
-     id: `st-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-     name: st.name, first_name: st.firstName||null, last_name: st.lastName||null,
-     roll_number: st.rollNumber,
-     admission_number: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
-     admissionNumber: st.admissionNumber||`ADM-${Date.now().toString().slice(-4)}`,
-     gender: st.gender || null,
-     parent_name: st.parentName||'—', parent_sms_number: st.parentPhone,
-     parent_email: st.parentEmail, email: st.studentEmail,
-     class_id: st.classId, class_number: st.classNumber, class_label: st.classLabel,
-     section_id: st.sectionId, section_name: st.sectionName,
-     school_id: schoolId, schoolId,
-     academic_year_id: bulkSessionId, session_id: bulkSessionId, session_name: bulkSessionName, session: bulkSessionName || bulkSessionId, full_name: st.name, is_active: true
-   };
-   createdList.push(studentObj);
-   demoStudents.unshift(studentObj);
-   syncStudentToFirestore(studentObj).catch(()=>{});
- }
- res.status(201).json({ success:true, count:createdList.length, items:createdList, session:bulkSessionName });
+  } else {
+    // Non-Postgres fallback: Guarantee atomic all-or-nothing
+    if (isFirebaseConfigured()) {
+      try {
+        const batch = collections.students().firestore.batch();
+        const stagedList: any[] = [];
+        for (const st of validRows) {
+          const studentId = `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          const docRef = collections.students().doc(studentId);
+          const studentObj = {
+            id: studentId,
+            name: st.name,
+            first_name: st.firstName || null,
+            last_name: st.lastName || null,
+            roll_number: st.rollNumber,
+            admission_number: st.admissionNumber,
+            admissionNumber: st.admissionNumber,
+            gender: st.gender || null,
+            parent_name: st.parentName || '—',
+            parent_sms_number: st.parentPhone,
+            parent_email: st.parentEmail,
+            email: st.studentEmail,
+            class_id: st.classId,
+            class_number: st.classNumber,
+            class_label: st.classLabel,
+            section_id: st.sectionId,
+            section_name: st.sectionName,
+            school_id: schoolId,
+            schoolId,
+            academic_year_id: bulkSessionId,
+            session_id: bulkSessionId,
+            session_name: bulkSessionName,
+            session: bulkSessionName || bulkSessionId,
+            full_name: st.name,
+            is_active: true
+          };
+          batch.set(docRef, studentObj);
+          stagedList.push(studentObj);
+        }
+        await batch.commit();
+        demoStudents.unshift(...stagedList.slice(0, 100));
+        return res.status(201).json({ success: true, count: stagedList.length, items: stagedList, session: bulkSessionName });
+      } catch (fsErr: any) {
+        return res.status(500).json({
+          success: false,
+          message: `Bulk import failed in Cloud Firestore: ${fsErr.message}. The entire operation was cancelled and no data was saved.`
+        });
+      }
+    } else {
+      const stagedList: any[] = [];
+      for (const st of validRows) {
+        const studentObj = {
+          id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: st.name,
+          first_name: st.firstName || null,
+          last_name: st.lastName || null,
+          roll_number: st.rollNumber,
+          admission_number: st.admissionNumber,
+          admissionNumber: st.admissionNumber,
+          gender: st.gender || null,
+          parent_name: st.parentName || '—',
+          parent_sms_number: st.parentPhone,
+          parent_email: st.parentEmail,
+          email: st.studentEmail,
+          class_id: st.classId,
+          class_number: st.classNumber,
+          class_label: st.classLabel,
+          section_id: st.sectionId,
+          section_name: st.sectionName,
+          school_id: schoolId,
+          schoolId,
+          academic_year_id: bulkSessionId,
+          session_id: bulkSessionId,
+          session_name: bulkSessionName,
+          session: bulkSessionName || bulkSessionId,
+          full_name: st.name,
+          is_active: true
+        };
+        stagedList.push(studentObj);
+      }
+      demoStudents.unshift(...stagedList);
+      return res.status(201).json({ success: true, count: stagedList.length, items: stagedList, session: bulkSessionName });
+    }
+  }
 });
 
-r.post('/students/bulk-delete',...admin,async(req:AuthRequest,res)=>{
- const {ids=[]}=req.body||{};
- if(!Array.isArray(ids)||ids.length===0) return res.status(400).json({message:'Array of IDs required'});
- try {
-   await pool.query(`UPDATE students SET is_active=false,updated_at=NOW() WHERE id=ANY($1::uuid[]) AND school_id=$2`,[ids,req.user!.schoolId]);
- } catch {}
- const idSet = new Set(ids);
- for (let i = demoStudents.length - 1; i >= 0; i--) {
-   if (idSet.has(demoStudents[i].id)) {
-     demoStudents.splice(i, 1);
-   }
- }
- for (const id of ids) {
-   deleteStudentFromFirestore(id).catch(() => {});
- }
- res.json({ success: true, count: ids.length });
+r.post('/students/bulk-delete', ...admin, async (req: AuthRequest, res) => {
+  const { ids = [] } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Array of IDs required' });
+  const sid = req.user!.schoolId;
+  const uuidIds = ids.filter(isUuid);
+
+  if (isPostgresConfigured && uuidIds.length > 0) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Clean non-cascading FK references
+      await client.query(`DELETE FROM attendance_records WHERE student_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM attendance_sync_items WHERE student_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM sms_logs WHERE student_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM student_promotions WHERE student_id = ANY($1::uuid[])`, [uuidIds]);
+
+      // Collect user_ids if students have linked user accounts
+      const userRes = await client.query(`SELECT user_id FROM students WHERE id = ANY($1::uuid[]) AND school_id = $2 AND user_id IS NOT NULL`, [uuidIds, sid]);
+      const userIds = userRes.rows.map((r: any) => r.user_id).filter(Boolean);
+
+      // 2. Permanently delete student records from PostgreSQL
+      await client.query(`DELETE FROM students WHERE id = ANY($1::uuid[]) AND school_id = $2`, [uuidIds, sid]);
+
+      // 3. Delete linked user login records if any
+      if (userIds.length > 0) {
+        await client.query(`DELETE FROM users WHERE id = ANY($1::uuid[])`, [userIds]);
+      }
+
+      await client.query('COMMIT');
+    } catch (delErr: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[BulkDeleteStudents] Transaction error:', delErr);
+      return res.status(400).json({ success: false, message: `Bulk delete failed: ${delErr.message}. No records were modified.` });
+    } finally {
+      client.release();
+    }
+  }
+
+  const idSet = new Set(ids);
+  for (let i = demoStudents.length - 1; i >= 0; i--) {
+    if (idSet.has(demoStudents[i].id)) {
+      demoStudents.splice(i, 1);
+    }
+  }
+  for (const id of ids) {
+    deleteStudentFromFirestore(String(id)).catch(() => {});
+  }
+  if (sid) {
+    invalidateSchoolCache(sid);
+  }
+  res.json({ success: true, count: ids.length });
 });
 
 r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
@@ -2005,13 +2162,41 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
 
 
 r.delete('/students/:id',...admin,async(req:AuthRequest,res)=>{
- try {
-  await pool.query(`UPDATE students SET is_active=false,updated_at=NOW() WHERE id=$1 AND school_id=$2 RETURNING id`,[req.params.id,req.user!.schoolId]);
- } catch {}
- const idx = demoStudents.findIndex(s => s.id === req.params.id);
- if (idx >= 0) demoStudents.splice(idx, 1);
- deleteStudentFromFirestore(String(req.params.id)).catch(() => {});
- res.json({success:true});
+  const sid = req.user!.schoolId;
+  const targetId = String(req.params.id);
+  if (isPostgresConfigured && isUuid(targetId)) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM attendance_records WHERE student_id = $1`, [targetId]);
+      await client.query(`DELETE FROM attendance_sync_items WHERE student_id = $1`, [targetId]);
+      await client.query(`DELETE FROM sms_logs WHERE student_id = $1`, [targetId]);
+      await client.query(`DELETE FROM student_promotions WHERE student_id = $1`, [targetId]);
+
+      const userRes = await client.query(`SELECT user_id FROM students WHERE id = $1 AND school_id = $2 AND user_id IS NOT NULL`, [targetId, sid]);
+      const userId = userRes.rows[0]?.user_id;
+
+      await client.query(`DELETE FROM students WHERE id = $1 AND school_id = $2`, [targetId, sid]);
+
+      if (userId) {
+        await client.query(`DELETE FROM users WHERE id = $1`, [userId]);
+      }
+      await client.query('COMMIT');
+    } catch (delErr: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[DeleteStudent] Transaction error:', delErr);
+      return res.status(400).json({ success: false, message: `Delete failed: ${delErr.message}` });
+    } finally {
+      client.release();
+    }
+  }
+  const idx = demoStudents.findIndex(s => s.id === targetId);
+  if (idx >= 0) demoStudents.splice(idx, 1);
+  deleteStudentFromFirestore(targetId).catch(() => {});
+  if (sid) {
+    invalidateSchoolCache(sid);
+  }
+  res.json({success:true});
 });
 
 export function normalizeToDdMmYyyy(val: any): string | null {
@@ -2116,16 +2301,27 @@ r.get('/teachers/template', ...reader, (_req, res) => {
 
 r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
+ const cacheKey = userSchoolId ? `teachers:${userSchoolId}` : null;
+ if (cacheKey) {
+   const cached = fastCache.get<any>(cacheKey);
+   if (cached) return res.json(cached);
+ }
+
  try {
   const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
-  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  if (q.rows) {
+    if (cacheKey) fastCache.set(cacheKey, q.rows, 30);
+    return res.json(q.rows);
+  }
  } catch {}
 
  if (isFirebaseConfigured()) {
   try {
-    const snap = await collections.teachers().get();
+    const snap = userSchoolId
+      ? await collections.teachers().where('school_id', '==', userSchoolId).get()
+      : await collections.teachers().get();
     if (!snap.empty) {
       let list = snap.docs.map(d => {
         const dt = d.data();
@@ -2536,175 +2732,288 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     return res.status(422).json({
       success: false,
       errors,
-      message: `${errors.length} validation error(s) found in uploaded faculty spreadsheet. Fix and re-upload.`
+      message: `Validation failed for ${errors.length} record(s). The entire import has been cancelled and no faculty data was stored in the database.`
     });
   }
 
-  const createdList: any[] = [];
   const schoolName = req.user?.schoolName || 'School';
 
-  for (const t of validRows) {
-    // Automated credentials: cryptographically random temporary password
-    const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
-    let resetInfo: any = null;
-    let emailStatus: 'Sent' | 'Failed' | 'Pending' = 'Pending';
-
-    // Generate single-use 24-hour password setup link
+  // PostgreSQL Atomic Transaction
+  if (isPostgresConfigured) {
+    const client = await pool.connect();
     try {
-      resetInfo = await createAndSendPasswordReset({
-        email: t.email,
-        name: t.name,
-        role: 'TEACHER',
-        schoolId,
-        schoolName,
-        req
-      });
-    } catch {}
-
-    // Asynchronous SMTP Dispatch: Enqueue welcome email in notification_logs
-    try {
-      await queueEmailNotification({
-        schoolId,
-        recipientEmail: t.email,
-        recipientName: t.name,
-        recipientType: 'TEACHER',
-        templateKey: 'TEACHER_CREATED',
-        templateData: {
-          teacher_name: t.name,
-          school_name: schoolName,
-          employee_id: t.saviorNo,
-          login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
-          temporary_password: tempPassword
-        },
-        idempotencyKey: `tch-import-${schoolId}-${t.email}-${Date.now()}`
-      });
-      emailStatus = 'Sent';
-    } catch (err: any) {
-      console.warn(`[TeacherBulkImport] SMTP dispatch warning for ${t.email}:`, err.message);
-      emailStatus = 'Failed';
-    }
-
-    let client: any;
-    try {
-      client = await pool.connect();
       await client.query('BEGIN');
-      const hash = await bcrypt.hash(tempPassword, 10);
-      const u = await client.query(
-        `INSERT INTO users(school_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'TEACHER')
-         ON CONFLICT (school_id, email) DO UPDATE SET name=EXCLUDED.name, password_hash=EXCLUDED.password_hash
-         RETURNING id,name,email`,
-        [schoolId, t.name, t.email, hash]
-      );
-      await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile) VALUES($1,$2,$3)
-         ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile`,
-        [u.rows[0].id, t.saviorNo, t.mobile || null]
-      );
+      const stagedList: any[] = [];
+
+      for (const t of validRows) {
+        const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+        const hash = await bcrypt.hash(tempPassword, 10);
+        const u = await client.query(
+          `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'TEACHER')
+           ON CONFLICT (school_id, email) DO UPDATE SET name=EXCLUDED.name, password_hash=EXCLUDED.password_hash
+           RETURNING id, name, email`,
+          [schoolId, t.name, t.email, hash]
+        );
+        if (!u.rowCount || !u.rows[0]) {
+          throw new Error(`Failed to insert or update user record for faculty member ${t.name} (${t.email})`);
+        }
+
+        await client.query(
+          `INSERT INTO teacher_profiles(user_id, employee_id, mobile) VALUES($1, $2, $3)
+           ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile
+           RETURNING *`,
+          [u.rows[0].id, t.saviorNo, t.mobile || null]
+        );
+
+        const created = {
+          ...u.rows[0],
+          name: t.name,
+          full_name: t.name,
+          first_name: t.firstName,
+          last_name: t.lastName,
+          employee_id: t.saviorNo,
+          savior_no: t.saviorNo,
+          mobile: t.mobile,
+          gender: t.gender || null,
+          dob: t.dob || null,
+          date_of_birth: t.dob || null,
+          designation: t.designation,
+          class_name: t.class,
+          section_name: t.section,
+          status: t.status,
+          email_status: 'Pending',
+          is_active: t.status.toUpperCase() !== 'INACTIVE',
+          school_id: schoolId,
+          schoolId
+        };
+        stagedList.push({ created, hash, tempPassword });
+      }
+
+      if (stagedList.length !== validRows.length) {
+        throw new Error(`Incomplete faculty batch insert: processed ${stagedList.length} of ${validRows.length} records`);
+      }
+
       await client.query('COMMIT');
+      client.release();
 
-      const created = {
-        ...u.rows[0],
-        name: t.name,
-        full_name: t.name,
-        first_name: t.firstName,
-        last_name: t.lastName,
-        employee_id: t.saviorNo,
-        savior_no: t.saviorNo,
-        mobile: t.mobile,
-        gender: t.gender || null,
-        dob: t.dob || null,
-        date_of_birth: t.dob || null,
-        designation: t.designation,
-        class_name: t.class,
-        section_name: t.section,
-        status: t.status,
-        email_status: emailStatus,
-        is_active: t.status.toUpperCase() !== 'INACTIVE',
-        school_id: schoolId,
-        schoolId,
-        reset_url: resetInfo?.resetUrl,
-        invite_sent: Boolean(resetInfo)
-      };
-      createdList.push(created);
-      demoTeachers.unshift(created);
-      registerDemoUser({
-        id: created.id,
-        schoolId,
-        name: t.name,
-        email: t.email,
-        role: 'TEACHER',
-        password: tempPassword
+      // After COMMIT: update memory, register demo users, sync to Firestore, dispatch emails
+      for (const item of stagedList) {
+        demoTeachers.unshift(item.created);
+        registerDemoUser({
+          id: item.created.id,
+          schoolId,
+          name: item.created.name,
+          email: item.created.email,
+          role: 'TEACHER',
+          password: item.tempPassword
+        });
+        syncTeacherToFirestore(item.created, item.hash).catch(() => {});
+        setImmediate(async () => {
+          try {
+            const resetInfo = await createAndSendPasswordReset({
+              email: item.created.email,
+              name: item.created.name,
+              role: 'TEACHER',
+              schoolId,
+              schoolName,
+              req
+            }).catch(() => null);
+
+            await queueEmailNotification({
+              schoolId,
+              recipientEmail: item.created.email,
+              recipientName: item.created.name,
+              recipientType: 'TEACHER',
+              templateKey: 'TEACHER_CREATED',
+              templateData: {
+                teacher_name: item.created.name,
+                school_name: schoolName,
+                employee_id: item.created.employee_id,
+                login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+                temporary_password: item.tempPassword
+              },
+              idempotencyKey: `tch-import-${schoolId}-${item.created.email}-${Date.now()}`
+            }).catch(err => {
+              console.warn(`[TeacherBulkImport] SMTP dispatch warning for ${item.created.email}:`, err.message);
+            });
+          } catch {}
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        count: stagedList.length,
+        items: stagedList.map(s => s.created),
+        message: `Successfully onboarded ${stagedList.length} faculty members. Welcome credentials dispatched via SMTP.`
       });
-      syncTeacherToFirestore(created, hash).catch(() => {});
-      continue;
-    } catch {
-      if (client) { try { await client.query('ROLLBACK'); } catch {} }
-    } finally {
-      if (client) { try { client.release(); } catch {} }
+    } catch (txErr: any) {
+      await client.query('ROLLBACK');
+      client.release();
+      return res.status(400).json({
+        success: false,
+        message: `Teacher bulk import failed: ${txErr.message || 'Database transaction error'}. The entire operation was cancelled and no faculty records were stored in the database.`
+      });
     }
+  } else {
+    // Non-Postgres fallback: atomic batch or staged in-memory
+    if (isFirebaseConfigured()) {
+      try {
+        const batch = collections.teachers().firestore.batch();
+        const stagedList: any[] = [];
+        for (const t of validRows) {
+          const teacherId = `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+          const docRef = collections.teachers().doc(teacherId);
+          const teacherObj = {
+            id: teacherId,
+            school_id: schoolId,
+            schoolId,
+            name: t.name,
+            full_name: t.name,
+            first_name: t.firstName,
+            last_name: t.lastName,
+            email: t.email,
+            employee_id: t.saviorNo,
+            savior_no: t.saviorNo,
+            mobile: t.mobile,
+            gender: t.gender || null,
+            dob: t.dob || null,
+            date_of_birth: t.dob || null,
+            designation: t.designation,
+            class_name: t.class,
+            section_name: t.section,
+            status: t.status,
+            email_status: 'Pending',
+            is_active: t.status.toUpperCase() !== 'INACTIVE'
+          };
+          batch.set(docRef, teacherObj);
+          stagedList.push({ created: teacherObj, tempPassword });
+        }
+        await batch.commit();
 
-    // In-memory / Firestore fallback
-    const teacherObj = {
-      id: `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      school_id: schoolId,
-      schoolId,
-      name: t.name,
-      full_name: t.name,
-      first_name: t.firstName,
-      last_name: t.lastName,
-      email: t.email,
-      employee_id: t.saviorNo,
-      savior_no: t.saviorNo,
-      mobile: t.mobile,
-      gender: t.gender || null,
-      dob: t.dob || null,
-      date_of_birth: t.dob || null,
-      designation: t.designation,
-      class_name: t.class,
-      section_name: t.section,
-      status: t.status,
-      email_status: emailStatus,
-      is_active: t.status.toUpperCase() !== 'INACTIVE',
-      reset_url: resetInfo?.resetUrl,
-      invite_sent: Boolean(resetInfo)
-    };
-    createdList.push(teacherObj);
-    demoTeachers.unshift(teacherObj);
-    registerDemoUser({
-      id: teacherObj.id,
-      schoolId,
-      name: t.name,
-      email: t.email,
-      role: 'TEACHER',
-      password: tempPassword
-    });
-    syncTeacherToFirestore(teacherObj, tempPassword).catch(() => {});
+        for (const item of stagedList) {
+          demoTeachers.unshift(item.created);
+          registerDemoUser({
+            id: item.created.id,
+            schoolId,
+            name: item.created.name,
+            email: item.created.email,
+            role: 'TEACHER',
+            password: item.tempPassword
+          });
+        }
+        return res.status(201).json({
+          success: true,
+          count: stagedList.length,
+          items: stagedList.map(s => s.created),
+          message: `Successfully onboarded ${stagedList.length} faculty members.`
+        });
+      } catch (fsErr: any) {
+        return res.status(500).json({
+          success: false,
+          message: `Faculty bulk import failed in Cloud Firestore: ${fsErr.message}. The entire operation was cancelled and no data was saved.`
+        });
+      }
+    } else {
+      const stagedList: any[] = [];
+      for (const t of validRows) {
+        const teacherId = `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+        const teacherObj = {
+          id: teacherId,
+          school_id: schoolId,
+          schoolId,
+          name: t.name,
+          full_name: t.name,
+          first_name: t.firstName,
+          last_name: t.lastName,
+          email: t.email,
+          employee_id: t.saviorNo,
+          savior_no: t.saviorNo,
+          mobile: t.mobile,
+          gender: t.gender || null,
+          dob: t.dob || null,
+          date_of_birth: t.dob || null,
+          designation: t.designation,
+          class_name: t.class,
+          section_name: t.section,
+          status: t.status,
+          email_status: 'Pending',
+          is_active: t.status.toUpperCase() !== 'INACTIVE'
+        };
+        stagedList.push({ created: teacherObj, tempPassword });
+      }
+      for (const item of stagedList) {
+        demoTeachers.unshift(item.created);
+        registerDemoUser({
+          id: item.created.id,
+          schoolId,
+          name: item.created.name,
+          email: item.created.email,
+          role: 'TEACHER',
+          password: item.tempPassword
+        });
+      }
+      return res.status(201).json({
+        success: true,
+        count: stagedList.length,
+        items: stagedList.map(s => s.created),
+        message: `Successfully onboarded ${stagedList.length} faculty members.`
+      });
+    }
   }
-
-  res.status(201).json({
-    success: true,
-    count: createdList.length,
-    items: createdList,
-    message: `Successfully onboarded ${createdList.length} faculty members. Welcome credentials dispatched via SMTP.`
-  });
 });
 
-r.post('/teachers/bulk-delete',...admin,async(req:AuthRequest,res)=>{
- const {ids=[]}=req.body||{};
- if(!Array.isArray(ids)||ids.length===0) return res.status(400).json({message:'Array of IDs required'});
- try {
-   await pool.query(`UPDATE users SET is_active=false,updated_at=NOW() WHERE id=ANY($1::uuid[]) AND school_id=$2 AND role='TEACHER'`,[ids,req.user!.schoolId]);
- } catch {}
- const idSet = new Set(ids);
- for (let i = demoTeachers.length - 1; i >= 0; i--) {
-   if (idSet.has(demoTeachers[i].id)) {
-     demoTeachers.splice(i, 1);
-   }
- }
- for (const id of ids) {
-   deleteTeacherFromFirestore(id).catch(() => {});
- }
- res.json({ success: true, count: ids.length });
+r.post('/teachers/bulk-delete', ...admin, async (req: AuthRequest, res) => {
+  const { ids = [] } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Array of IDs required' });
+  const sid = req.user!.schoolId;
+  const uuidIds = ids.filter(isUuid);
+
+  if (isPostgresConfigured && uuidIds.length > 0) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Clean non-cascading FK references for teachers
+      await client.query(`DELETE FROM class_routines WHERE teacher_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`UPDATE attendance_sessions SET teacher_id = NULL WHERE teacher_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM attendance_correction_requests WHERE requested_by = ANY($1::uuid[]) OR reviewed_by = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM attendance_correction_audit WHERE actor_user_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`UPDATE student_promotions SET created_by = NULL WHERE created_by = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM admin_activity_logs WHERE user_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM substitute_assignments WHERE substitute_teacher_id = ANY($1::uuid[]) OR created_by = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM attendance_sync_batches WHERE user_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`UPDATE student_leave_requests SET reviewed_by = NULL WHERE reviewed_by = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`UPDATE payments SET initiated_by_user_id = NULL WHERE initiated_by_user_id = ANY($1::uuid[])`, [uuidIds]);
+      await client.query(`DELETE FROM teacher_profiles WHERE user_id = ANY($1::uuid[])`, [uuidIds]);
+
+      // 2. Permanently delete teacher user records from PostgreSQL
+      await client.query(`DELETE FROM users WHERE id = ANY($1::uuid[]) AND school_id = $2 AND role = 'TEACHER'`, [uuidIds, sid]);
+
+      await client.query('COMMIT');
+    } catch (delErr: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[BulkDeleteTeachers] Transaction error:', delErr);
+      return res.status(400).json({ success: false, message: `Bulk delete failed: ${delErr.message}. No records were modified.` });
+    } finally {
+      client.release();
+    }
+  }
+
+  const idSet = new Set(ids);
+  for (let i = demoTeachers.length - 1; i >= 0; i--) {
+    if (idSet.has(demoTeachers[i].id)) {
+      demoTeachers.splice(i, 1);
+    }
+  }
+  for (const id of ids) {
+    deleteTeacherFromFirestore(String(id)).catch(() => {});
+  }
+  if (sid) {
+    invalidateSchoolCache(sid);
+  }
+  res.json({ success: true, count: ids.length });
 });
 
 r.get('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
@@ -2818,13 +3127,41 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.delete('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
- try {
-  await pool.query(`UPDATE users SET is_active=false,updated_at=NOW() WHERE id=$1 AND school_id=$2 AND role='TEACHER' RETURNING id`,[req.params.id,req.user!.schoolId]);
- } catch {}
- const idx = demoTeachers.findIndex(t => t.id === req.params.id);
- if (idx >= 0) demoTeachers.splice(idx, 1);
- deleteTeacherFromFirestore(String(req.params.id)).catch(() => {});
- res.json({success:true});
+  const sid = req.user!.schoolId;
+  const tid = String(req.params.id);
+  if (isPostgresConfigured && isUuid(tid)) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`DELETE FROM class_routines WHERE teacher_id = $1`, [tid]);
+      await client.query(`UPDATE attendance_sessions SET teacher_id = NULL WHERE teacher_id = $1`, [tid]);
+      await client.query(`DELETE FROM attendance_correction_requests WHERE requested_by = $1 OR reviewed_by = $1`, [tid]);
+      await client.query(`DELETE FROM attendance_correction_audit WHERE actor_user_id = $1`, [tid]);
+      await client.query(`UPDATE student_promotions SET created_by = NULL WHERE created_by = $1`, [tid]);
+      await client.query(`DELETE FROM admin_activity_logs WHERE user_id = $1`, [tid]);
+      await client.query(`DELETE FROM substitute_assignments WHERE substitute_teacher_id = $1 OR created_by = $1`, [tid]);
+      await client.query(`DELETE FROM attendance_sync_batches WHERE user_id = $1`, [tid]);
+      await client.query(`UPDATE student_leave_requests SET reviewed_by = NULL WHERE reviewed_by = $1`, [tid]);
+      await client.query(`UPDATE payments SET initiated_by_user_id = NULL WHERE initiated_by_user_id = $1`, [tid]);
+      await client.query(`DELETE FROM teacher_profiles WHERE user_id = $1`, [tid]);
+
+      await client.query(`DELETE FROM users WHERE id = $1 AND school_id = $2 AND role = 'TEACHER'`, [tid, sid]);
+      await client.query('COMMIT');
+    } catch (delErr: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[DeleteTeacher] Transaction error:', delErr);
+      return res.status(400).json({ success: false, message: `Delete failed: ${delErr.message}` });
+    } finally {
+      client.release();
+    }
+  }
+  const idx = demoTeachers.findIndex(t => t.id === tid);
+  if (idx >= 0) demoTeachers.splice(idx, 1);
+  deleteTeacherFromFirestore(tid).catch(() => {});
+  if (sid) {
+    invalidateSchoolCache(sid);
+  }
+  res.json({success:true});
 });
 
 export const demoSubjects: any[] = [
@@ -2842,21 +3179,33 @@ export const demoSubjects: any[] = [
 
 r.get('/subjects',...reader,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
+ const cacheKey = sid ? `subjects:${sid}` : null;
+ if (cacheKey) {
+   const cached = fastCache.get<any>(cacheKey);
+   if (cached) return res.json(cached);
+ }
+
  try {
   const q=await pool.query('SELECT * FROM subjects WHERE school_id=$1 ORDER BY name',[sid]);
-  if (q.rowCount && q.rows.length > 0) return res.json(q.rows);
+  if (q.rowCount && q.rows.length > 0) {
+    if (cacheKey) fastCache.set(cacheKey, q.rows, 30);
+    return res.json(q.rows);
+  }
  } catch {}
 
  // Check Cloud Firestore
  if (isFirebaseConfigured()) {
    try {
-     const snap = await collections.subjects().get();
+     const snap = sid
+       ? await collections.subjects().where('school_id', '==', sid).get()
+       : await collections.subjects().get();
      if (!snap.empty) {
        const list = snap.docs
          .map(d => ({ id: d.id, ...d.data() }))
          .filter((s: any) => s.school_id && isSameSchool(s.school_id, sid));
        if (list.length > 0) {
          list.sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
+         if (cacheKey) fastCache.set(cacheKey, list, 30);
          return res.json(list);
        }
      }
@@ -2893,14 +3242,31 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
 });
 
 r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
- const sid = req.user!.schoolId;
- try {
-  await pool.query('DELETE FROM subjects WHERE id=$1 AND school_id=$2 RETURNING id',[req.params.id,sid]);
- } catch {}
- const idx = demoSubjects.findIndex(s => s.id === req.params.id && (!s.school_id || isSameSchool(s.school_id, sid)));
- if (idx >= 0) demoSubjects.splice(idx, 1);
- deleteSubjectFromFirestore(String(req.params.id)).catch(() => {});
- res.json({success:true});
+  const sid = req.user!.schoolId;
+  const subId = String(req.params.id);
+  if (isPostgresConfigured && isUuid(subId)) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM class_routines WHERE subject_id = $1', [subId]);
+      await client.query('UPDATE attendance_sessions SET subject_id = NULL WHERE subject_id = $1', [subId]);
+      await client.query('DELETE FROM subjects WHERE id = $1 AND school_id = $2', [subId, sid]);
+      await client.query('COMMIT');
+    } catch (delErr: any) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[DeleteSubject] Transaction error:', delErr);
+      return res.status(400).json({ success: false, message: `Delete subject failed: ${delErr.message}` });
+    } finally {
+      client.release();
+    }
+  }
+  const idx = demoSubjects.findIndex(s => s.id === subId && (!s.school_id || isSameSchool(s.school_id, sid)));
+  if (idx >= 0) demoSubjects.splice(idx, 1);
+  deleteSubjectFromFirestore(subId).catch(() => {});
+  if (sid) {
+    invalidateSchoolCache(sid);
+  }
+  res.json({success:true});
 });
 
 r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{

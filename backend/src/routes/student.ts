@@ -4,6 +4,7 @@ import * as svc from '../services/studentService';
 import { memEntries } from './timetable';
 import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
+import { fastCache } from '../utils/cache';
 
 const router = Router();
 
@@ -15,10 +16,32 @@ router.use(requireAuth, requireRoles('STUDENT'), (req: AuthRequest, res: Respons
   next();
 });
 
+// Automatic cache invalidation on student mutations
+router.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const originalJson = res.json.bind(res);
+    res.json = function (body: any) {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        const uid = (req as any).user?.id;
+        if (uid) {
+          fastCache.deletePattern(`student:${uid}`);
+        }
+      }
+      return originalJson(body);
+    };
+  }
+  next();
+});
+
 // GET /api/student/me - Authenticated student profile
 router.get('/me', async (req: AuthRequest, res: Response) => {
+  const cacheKey = `student:${req.user!.id}:me`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     const data = await svc.getStudentProfile(req.user!.schoolId!, req.user!.id);
+    fastCache.set(cacheKey, data, 30);
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load profile' });
@@ -27,8 +50,13 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
 
 // GET /api/student/dashboard - Consolidated dashboard KPIs & widgets
 router.get('/dashboard', async (req: AuthRequest, res: Response) => {
+  const cacheKey = `student:${req.user!.id}:dashboard`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     const data = await svc.getStudentDashboard(req.user!.schoolId!, req.user!.id);
+    fastCache.set(cacheKey, data, 20);
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load dashboard' });
@@ -37,24 +65,36 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
 
 // GET /api/student/attendance - Student attendance logs & summary
 router.get('/attendance', async (req: AuthRequest, res: Response) => {
+  const from = req.query.from ? String(req.query.from) : '';
+  const to = req.query.to ? String(req.query.to) : '';
+  const cacheKey = `student:${req.user!.id}:attendance:${from}:${to}`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
-    const from = req.query.from ? String(req.query.from) : undefined;
-    const to = req.query.to ? String(req.query.to) : undefined;
-    const data = await svc.getStudentAttendance(req.user!.schoolId!, req.user!.id, from, to);
+    const data = await svc.getStudentAttendance(req.user!.schoolId!, req.user!.id, from || undefined, to || undefined);
+    fastCache.set(cacheKey, data, 20);
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load attendance' });
   }
 });
 
-
 // GET /api/student/timetable - Routine & timetable
 router.get('/timetable', async (req: AuthRequest, res: Response) => {
   const sid = req.user!.schoolId!;
+  const cacheKey = `student:${req.user!.id}:timetable`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     const data = await svc.getStudentTimetable(sid, req.user!.id);
-    if (data && data.length > 0) return res.json(data);
+    if (data && data.length > 0) {
+      fastCache.set(cacheKey, data, 30);
+      return res.json(data);
+    }
   } catch (e: any) {}
+
 
   // Fallback to in-memory timetable entries filtered by student's class/section and tenant
   const classId = (req.user as any)?.classId;

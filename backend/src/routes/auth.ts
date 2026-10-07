@@ -448,8 +448,12 @@ router.post('/login', async (req, res) => {
         let matchedStudent: any = null;
         let fUser: any = null;
 
-        const sSnap = await collections.students().get();
+        const studentQueryRef = resolvedInstituteId
+          ? collections.students().where('school_id', '==', resolvedInstituteId)
+          : collections.students();
+        const sSnap = await studentQueryRef.get();
         for (const sDoc of sSnap.docs) {
+
           const sd = sDoc.data();
           const docSid = sd.school_id || sd.schoolId;
           if (resolvedInstituteId && docSid && !isSameSchool(docSid, resolvedInstituteId)) continue;

@@ -237,6 +237,117 @@ async function runTestSuite() {
     assert(authWithTokenRes.status === 200, 'GET /api/auth/me with Bearer token returns 200 OK');
     assert(authWithTokenJson.user?.email === payload.email, 'GET /api/auth/me returns authenticated user details');
 
+    // ---------------------------------------------------------
+    // 7. STRICT ALL-OR-NOTHING IMPORT & TRANSACTION INTEGRITY TESTS
+    // ---------------------------------------------------------
+    console.log('\n🔒 7. Strict All-or-Nothing Import & Transaction Integrity:');
+
+    // Test A: Student Bulk Import rejects invalid rows and stores 0 records
+    const invalidBatchUniqueId = `TEST_STU_${Date.now()}`;
+    const studentImportRes = await fetch('http://localhost:5002/api/students/bulk-import', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        students: [
+          {
+            firstName: 'Valid',
+            lastName: 'Student',
+            admissionNumber: `${invalidBatchUniqueId}_VALID`,
+            rollNumber: '101',
+            parentPhone: '9876543210',
+            classLabel: 'Class 10',
+            sectionName: 'A'
+          },
+          {
+            // Missing First Name & Parent Phone -> Invalid Row
+            firstName: '',
+            lastName: 'FailingRow',
+            admissionNumber: `${invalidBatchUniqueId}_INVALID`,
+            rollNumber: '102',
+            parentPhone: '',
+            classLabel: 'Class 10',
+            sectionName: 'A'
+          }
+        ]
+      })
+    });
+    const studentImportJson = await studentImportRes.json();
+    assert(studentImportRes.status === 422, 'Student bulk-import returns 422 on validation failure');
+    assert(studentImportJson.success === false, 'Student bulk-import success is false when batch has error');
+    assert(studentImportJson.message?.includes('cancelled') || studentImportJson.message?.includes('zero records stored'), 'Student import confirms entire operation cancelled with zero records stored');
+
+    // Test B: Verify zero students from the failed batch were stored in DB or memory
+    const studentCheckRes = await fetch('http://localhost:5002/api/students', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const studentsList = await studentCheckRes.json();
+    const leakedStudent = Array.isArray(studentsList) && studentsList.some((s: any) => s.admission_number === `${invalidBatchUniqueId}_VALID`);
+    assert(!leakedStudent, 'Zero students stored in database/memory when import contains errors (atomic guarantee)');
+
+    // Test C: Faculty / Teacher Bulk Import rejects invalid rows and stores 0 records
+    const invalidTeacherEmpId = `EMP_FAIL_${Date.now()}`;
+    const teacherImportRes = await fetch('http://localhost:5002/api/teachers/bulk-import', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        teachers: [
+          {
+            firstName: 'Valid',
+            lastName: 'Teacher',
+            name: 'Valid Teacher',
+            email: `valid_${Date.now()}@school.local`,
+            saviorNo: `${invalidTeacherEmpId}_VALID`,
+            mobile: '9876543210'
+          },
+          {
+            firstName: 'Invalid',
+            lastName: 'Teacher',
+            name: 'Invalid Teacher',
+            email: 'not-an-email', // invalid email
+            saviorNo: `${invalidTeacherEmpId}_FAIL`,
+            mobile: '123' // invalid mobile
+          }
+        ]
+      })
+    });
+    const teacherImportJson = await teacherImportRes.json();
+    assert(teacherImportRes.status === 422, 'Faculty bulk-import returns 422 on validation failure');
+    assert(teacherImportJson.success === false, 'Faculty bulk-import success is false when batch has error');
+    assert(teacherImportJson.message?.includes('cancelled') || teacherImportJson.message?.includes('no faculty data was stored'), 'Faculty import confirms entire operation cancelled');
+
+    // Test D: Verify zero teachers from failed batch were stored
+    const teacherCheckRes = await fetch('http://localhost:5002/api/teachers', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const teachersList = await teacherCheckRes.json();
+    const leakedTeacher = Array.isArray(teachersList) && teachersList.some((t: any) => t.employee_id === `${invalidTeacherEmpId}_VALID` || t.savior_no === `${invalidTeacherEmpId}_VALID`);
+    assert(!leakedTeacher, 'Zero teachers stored in database/memory when import contains errors (atomic guarantee)');
+
+    // Test E: Offline Attendance Import rejects records missing student identification
+    const offAttendanceRes = await fetch('http://localhost:5002/api/attendance-reports/import-offline', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        classId: 'cls-10',
+        sectionId: 'sec-10-a',
+        records: [
+          { admissionNumber: '', rollNumber: '', studentName: '', status: 'P' }
+        ]
+      })
+    });
+    const offAttendanceJson = await offAttendanceRes.json();
+    assert(offAttendanceRes.status === 422, 'Offline attendance import returns 422 when record lacks student identification');
+    assert(offAttendanceJson.success === false, 'Offline attendance success is false when validation fails');
+
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     await pool.end().catch(() => {});

@@ -25,21 +25,44 @@ export async function receiveBatch(schoolId:string,userId:string,payload:any){
   if(existing.rowCount){await client.query('COMMIT');return existing.rows[0];}
   const b=(await client.query(`INSERT INTO attendance_sync_batches(school_id,user_id,client_batch_id,device_id,records_count)
     VALUES($1,$2,$3,$4,$5) RETURNING *`,[schoolId,pgUserId,batchId,payload.deviceId||null,records.length])).rows[0];
-  for(const r of records){
-   if(!r.clientRecordId||!r.studentId||!r.attendanceDate)continue;
-   let pgStudentId = r.studentId;
-   const isStuUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.studentId));
-   if (!isStuUuid) {
-     const sChk = await client.query('SELECT id FROM students WHERE school_id=$1 LIMIT 1', [schoolId]);
-     if (sChk.rowCount && sChk.rows[0]) {
-       pgStudentId = sChk.rows[0].id;
-     } else {
-       continue;
-     }
-   }
-   await client.query(`INSERT INTO attendance_sync_items(batch_id,client_record_id,student_id,attendance_date,present)
-     VALUES($1,$2,$3,$4,$5) ON CONFLICT(batch_id,client_record_id) DO NOTHING`,
-     [b.id,r.clientRecordId,pgStudentId,r.attendanceDate,!!r.present]);
+  const validRecords = [];
+  for (const r of records) {
+    if (!r.clientRecordId || !r.studentId || !r.attendanceDate) continue;
+    validRecords.push(r);
+  }
+
+  if (validRecords.length > 0) {
+    // Check if any non-uuid student IDs exist
+    let defaultStudentId: string | null = null;
+    const hasNonUuid = validRecords.some(r => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.studentId)));
+    if (hasNonUuid) {
+      const sChk = await client.query('SELECT id FROM students WHERE school_id=$1 LIMIT 1', [schoolId]);
+      defaultStudentId = sChk.rows[0]?.id || null;
+    }
+
+    const CHUNK_SIZE = 50;
+    for (let c = 0; c < validRecords.length; c += CHUNK_SIZE) {
+      const chunk = validRecords.slice(c, c + CHUNK_SIZE);
+      const clauses: string[] = [];
+      const params: any[] = [];
+      for (let i = 0; i < chunk.length; i++) {
+        const r = chunk[i];
+        const isStuUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.studentId));
+        const finalStudentId = isStuUuid ? r.studentId : defaultStudentId;
+        if (!finalStudentId) continue;
+
+        const offset = params.length;
+        clauses.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+        params.push(b.id, r.clientRecordId, finalStudentId, r.attendanceDate, !!r.present);
+      }
+      if (clauses.length > 0) {
+        await client.query(`
+          INSERT INTO attendance_sync_items(batch_id, client_record_id, student_id, attendance_date, present)
+          VALUES ${clauses.join(', ')}
+          ON CONFLICT(batch_id, client_record_id) DO NOTHING
+        `, params);
+      }
+    }
   }
   await client.query('COMMIT'); return b;
  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
@@ -54,23 +77,64 @@ export async function processBatch(schoolId:string,userId:string,batchId:string)
     [batchId,schoolId,userId])).rows[0];
   if(!b)throw new Error('Sync batch not found');
   const items=(await client.query(`SELECT * FROM attendance_sync_items WHERE batch_id=$1 AND status='PENDING'`,[batchId])).rows;
-  for(const item of items){
-   try{
-    // Safe fallback: store sync result in the existing attendance_records table when schema matches.
-    // A production deployment should map these records to a selected attendance_session.
-    const session=(await client.query(`SELECT id FROM attendance_sessions
-      WHERE school_id=$1 AND attendance_date=$2 ORDER BY created_at DESC LIMIT 1`,
-      [schoolId,item.attendance_date])).rows[0];
-    if(!session)throw new Error('No attendance session exists for this date');
-    await client.query(`INSERT INTO attendance_records(attendance_session_id,student_id,status)
-      VALUES($1,$2,$3)
-      ON CONFLICT(attendance_session_id,student_id) DO UPDATE SET status=EXCLUDED.status`,
-      [session.id,item.student_id,item.present?'PRESENT':'ABSENT']);
-    await client.query(`UPDATE attendance_sync_items SET status='SYNCED' WHERE id=$1`,[item.id]);synced++;
-   }catch(e:any){
-    await client.query(`UPDATE attendance_sync_items SET status='FAILED',error_message=$1 WHERE id=$2`,[e.message,item.id]);failed++;
-   }
+
+  if (items.length > 0) {
+    const dates = Array.from(new Set(items.map(it => it.attendance_date)));
+    const sessionsRes = await client.query(
+      `SELECT id, attendance_date FROM attendance_sessions WHERE school_id=$1 AND attendance_date = ANY($2) ORDER BY created_at DESC`,
+      [schoolId, dates]
+    );
+    const sessionMap = new Map<string, string>();
+    sessionsRes.rows.forEach(s => {
+      const dStr = typeof s.attendance_date === 'string' ? s.attendance_date.slice(0, 10) : new Date(s.attendance_date).toISOString().slice(0, 10);
+      if (!sessionMap.has(dStr)) sessionMap.set(dStr, s.id);
+    });
+
+    const syncedItemIds: string[] = [];
+    const failedItemIds: string[] = [];
+    const recordsToInsert: { sessionId: string; studentId: string; status: string }[] = [];
+
+    for (const item of items) {
+      const dStr = typeof item.attendance_date === 'string' ? item.attendance_date.slice(0, 10) : new Date(item.attendance_date).toISOString().slice(0, 10);
+      const sessionId = sessionMap.get(dStr);
+      if (sessionId) {
+        recordsToInsert.push({ sessionId, studentId: item.student_id, status: item.present ? 'PRESENT' : 'ABSENT' });
+        syncedItemIds.push(item.id);
+        synced++;
+      } else {
+        failedItemIds.push(item.id);
+        failed++;
+      }
+    }
+
+    if (recordsToInsert.length > 0) {
+      const CHUNK = 50;
+      for (let c = 0; c < recordsToInsert.length; c += CHUNK) {
+        const chunk = recordsToInsert.slice(c, c + CHUNK);
+        const clauses: string[] = [];
+        const params: any[] = [];
+        for (let i = 0; i < chunk.length; i++) {
+          const r = chunk[i];
+          const offset = i * 3;
+          clauses.push(`($${offset + 1}, $${offset + 2}, $${offset + 3})`);
+          params.push(r.sessionId, r.studentId, r.status);
+        }
+        await client.query(`
+          INSERT INTO attendance_records(attendance_session_id, student_id, status)
+          VALUES ${clauses.join(', ')}
+          ON CONFLICT(attendance_session_id, student_id) DO UPDATE SET status=EXCLUDED.status
+        `, params);
+      }
+    }
+
+    if (syncedItemIds.length > 0) {
+      await client.query(`UPDATE attendance_sync_items SET status='SYNCED' WHERE id = ANY($1)`, [syncedItemIds]);
+    }
+    if (failedItemIds.length > 0) {
+      await client.query(`UPDATE attendance_sync_items SET status='FAILED', error_message='No attendance session exists for this date' WHERE id = ANY($1)`, [failedItemIds]);
+    }
   }
+
   const status=failed?'PARTIAL':'COMPLETED';
   const updated=(await client.query(`UPDATE attendance_sync_batches SET status=$1,synced_count=$2,failed_count=$3,completed_at=NOW()
     WHERE id=$4 RETURNING *`,[status,synced,failed,batchId])).rows[0];

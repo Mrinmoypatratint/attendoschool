@@ -98,6 +98,70 @@ export async function deleteStudentFromFirestore(id: string): Promise<boolean> {
   }
 }
 
+export async function syncStudentsBulkToFirestore(students: any[]): Promise<number> {
+  if (!isFirebaseConfigured() || !Array.isArray(students) || students.length === 0) return 0;
+  try {
+    const CHUNK_SIZE = 400;
+    let totalSynced = 0;
+    for (let c = 0; c < students.length; c += CHUNK_SIZE) {
+      const chunk = students.slice(c, c + CHUNK_SIZE);
+      const batch = firestore.batch();
+      for (const student of chunk) {
+        const id = student.id || `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        const cleanStudentEmail = (student.student_email || student.studentEmail || student.email || '').toLowerCase().trim();
+        const cleanParentEmail = (student.parent_email || student.parentEmail || '').toLowerCase().trim();
+
+        const data: Record<string, any> = {
+          id,
+          name: student.name || student.fullName || '',
+          fullName: student.name || student.fullName || '',
+          rollNumber: String(student.roll_number || student.rollNumber || ''),
+          roll_number: String(student.roll_number || student.rollNumber || ''),
+          admissionNumber: student.admissionNumber || student.admission_number || (student.id ? `ADM-${student.id}` : `ADM-${id}`),
+          admission_number: student.admission_number || student.admissionNumber || (student.id ? `ADM-${student.id}` : `ADM-${id}`),
+          className: student.className || `Class ${student.class_number || 10}`,
+          class_number: Number(student.class_number ?? 10),
+          section: String(student.section_name || student.section || 'A'),
+          section_name: String(student.section_name || student.section || 'A'),
+          classId: student.class_id || student.classId || null,
+          class_id: student.class_id || student.classId || null,
+          sectionId: student.section_id || student.sectionId || null,
+          section_id: student.section_id || student.sectionId || null,
+          parentName: student.parent_name || student.parentName || '',
+          parent_name: student.parent_name || student.parentName || '',
+          parentPhone: student.parent_sms_number || student.parentPhone || '',
+          parent_sms_number: student.parent_sms_number || student.parentPhone || '',
+          parentEmail: cleanParentEmail,
+          parent_email: cleanParentEmail,
+          studentEmail: cleanStudentEmail,
+          student_email: cleanStudentEmail,
+          email: cleanStudentEmail,
+          schoolId: student.school_id || student.schoolId || null,
+          school_id: student.school_id || student.schoolId || null,
+          academic_year_id: student.academic_year_id || student.session_id || student.sessionId || null,
+          academicYearId: student.academic_year_id || student.session_id || student.sessionId || null,
+          session_id: student.session_id || student.academic_year_id || student.sessionId || null,
+          sessionId: student.session_id || student.academic_year_id || student.sessionId || null,
+          session_name: student.session_name || student.session || null,
+          sessionName: student.session_name || student.session || null,
+          session: student.session || student.session_name || null,
+          status: student.status || (student.is_active === false ? 'ARCHIVED' : 'ACTIVE'),
+          is_active: student.is_active !== false,
+          updatedAt: new Date().toISOString()
+        };
+        batch.set(collections.students().doc(id), data, { merge: true });
+        totalSynced++;
+      }
+      await batch.commit();
+    }
+    console.log(`[FirestoreSync] Bulk synced ${totalSynced} students to Firestore`);
+    return totalSynced;
+  } catch (err: any) {
+    console.warn('[FirestoreSync] Failed to bulk sync students to Firestore:', err.message);
+    return 0;
+  }
+}
+
 // ── TEACHERS ──
 export async function syncTeacherToFirestore(teacher: any, passwordHash?: string): Promise<boolean> {
   if (!isFirebaseConfigured()) return false;
@@ -663,221 +727,180 @@ export async function rehydrateAllFromFirestore(stores: {
   const result: Record<string, number> = {};
   if (!isFirebaseConfigured()) return { loaded: result };
 
-  console.log('[FirestoreSync] Rehydrating data from Cloud Firestore collections...');
+  console.log('[FirestoreSync] Rehydrating data from Cloud Firestore collections in parallel...');
+
+  // Fetch all collections concurrently
+  const [
+    studentsSnap,
+    teachersSnap,
+    assignmentsSnap,
+    classesSnap,
+    sectionsSnap,
+    subjectsSnap,
+    periodsSnap,
+    entriesSnap,
+    schoolsSnap
+  ] = await Promise.all([
+    stores.demoStudents ? collections.students().get().catch(e => { console.warn('[FirestoreSync] Students load skipped:', e.message); return null; }) : null,
+    stores.demoTeachers ? collections.teachers().get().catch(e => { console.warn('[FirestoreSync] Teachers load skipped:', e.message); return null; }) : null,
+    stores.demoTeacherAssignments ? collections.teacherAssignments().get().catch(e => { console.warn('[FirestoreSync] Teacher assignments load skipped:', e.message); return null; }) : null,
+    stores.demoClasses ? collections.classes().get().catch(e => { console.warn('[FirestoreSync] Classes load skipped:', e.message); return null; }) : null,
+    stores.demoSections ? collections.sections().get().catch(e => { console.warn('[FirestoreSync] Sections load skipped:', e.message); return null; }) : null,
+    stores.demoSubjects ? collections.subjects().get().catch(e => { console.warn('[FirestoreSync] Subjects load skipped:', e.message); return null; }) : null,
+    stores.memPeriods ? collections.timetablePeriods().get().catch(e => { console.warn('[FirestoreSync] Timetable periods load skipped:', e.message); return null; }) : null,
+    stores.memEntries ? collections.timetableEntries().get().catch(e => { console.warn('[FirestoreSync] Timetable entries load skipped:', e.message); return null; }) : null,
+    stores.demoSchools ? collections.schools().get().catch(e => { console.warn('[FirestoreSync] Schools load skipped:', e.message); return null; }) : null
+  ]);
 
   // 1. Students
-  if (stores.demoStudents) {
-    try {
-      const snap = await collections.students().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => {
-          const dt = d.data();
-          return {
-            id: d.id,
-            name: dt.name || dt.fullName || '',
-            roll_number: dt.roll_number || dt.rollNumber || '',
-            admission_number: dt.admission_number || dt.admissionNumber || '',
-            admissionNumber: dt.admissionNumber || dt.admission_number || '',
-            parent_name: dt.parent_name || dt.parentName || '—',
-            parent_sms_number: dt.parent_sms_number || dt.parentPhone || '',
-            parent_email: dt.parent_email || dt.parentEmail || '',
-            student_email: dt.student_email || dt.studentEmail || dt.email || '',
-            email: dt.email || dt.student_email || '',
-            class_id: dt.class_id || dt.classId || `cls-${dt.class_number || dt.className || 8}`,
-            class_number: Number(dt.class_number || dt.className) || 8,
-            section_id: dt.section_id || dt.sectionId || `sec-${dt.class_number || 8}-${(dt.section_name || dt.section || 'A').toLowerCase()}`,
-            section_name: dt.section_name || dt.section || 'A',
-            academic_year_id: dt.academic_year_id || dt.academicYearId || dt.session_id || dt.sessionId || null,
-            session_id: dt.session_id || dt.sessionId || dt.academic_year_id || null,
-            session_name: dt.session_name || dt.sessionName || dt.session || null,
-            session: dt.session || dt.session_name || dt.sessionName || null,
-            is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
-            ...dt
-          };
-        }).filter(s => s.is_active !== false);
+  if (stores.demoStudents && studentsSnap && !studentsSnap.empty) {
+    const list = studentsSnap.docs.map(d => {
+      const dt = d.data();
+      return {
+        id: d.id,
+        name: dt.name || dt.fullName || '',
+        roll_number: dt.roll_number || dt.rollNumber || '',
+        admission_number: dt.admission_number || dt.admissionNumber || '',
+        admissionNumber: dt.admissionNumber || dt.admission_number || '',
+        parent_name: dt.parent_name || dt.parentName || '—',
+        parent_sms_number: dt.parent_sms_number || dt.parentPhone || '',
+        parent_email: dt.parent_email || dt.parentEmail || '',
+        student_email: dt.student_email || dt.studentEmail || dt.email || '',
+        email: dt.email || dt.student_email || '',
+        class_id: dt.class_id || dt.classId || `cls-${dt.class_number || dt.className || 8}`,
+        class_number: Number(dt.class_number || dt.className) || 8,
+        section_id: dt.section_id || dt.sectionId || `sec-${dt.class_number || 8}-${(dt.section_name || dt.section || 'A').toLowerCase()}`,
+        section_name: dt.section_name || dt.section || 'A',
+        academic_year_id: dt.academic_year_id || dt.academicYearId || dt.session_id || dt.sessionId || null,
+        session_id: dt.session_id || dt.sessionId || dt.academic_year_id || null,
+        session_name: dt.session_name || dt.sessionName || dt.session || null,
+        session: dt.session || dt.session_name || dt.sessionName || null,
+        is_active: dt.is_active !== false && dt.status !== 'ARCHIVED',
+        ...dt
+      };
+    }).filter(s => s.is_active !== false);
 
-        for (const st of list) {
-          const idx = stores.demoStudents.findIndex(x => x.id === st.id);
-          if (idx >= 0) stores.demoStudents[idx] = { ...stores.demoStudents[idx], ...st };
-          else stores.demoStudents.push(st);
-        }
-        result.students = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} students from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Students load skipped:', e.message);
+    for (const st of list) {
+      const idx = stores.demoStudents.findIndex(x => x.id === st.id);
+      if (idx >= 0) stores.demoStudents[idx] = { ...stores.demoStudents[idx], ...st };
+      else stores.demoStudents.push(st);
     }
+    result.students = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} students from Firestore`);
   }
 
   // 2. Teachers
-  if (stores.demoTeachers) {
-    try {
-      const snap = await collections.teachers().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => {
-          const dt = d.data();
-          return {
-            id: d.id,
-            name: dt.name || '',
-            email: dt.email || '',
-            employee_id: dt.employee_id || dt.employeeId || 'EMP',
-            mobile: dt.mobile || dt.phone || '',
-            is_active: dt.is_active !== false && dt.status !== 'INACTIVE',
-            ...dt
-          };
-        }).filter(t => t.is_active !== false);
+  if (stores.demoTeachers && teachersSnap && !teachersSnap.empty) {
+    const list = teachersSnap.docs.map(d => {
+      const dt = d.data();
+      return {
+        id: d.id,
+        name: dt.name || '',
+        email: dt.email || '',
+        employee_id: dt.employee_id || dt.employeeId || 'EMP',
+        mobile: dt.mobile || dt.phone || '',
+        is_active: dt.is_active !== false && dt.status !== 'INACTIVE',
+        ...dt
+      };
+    }).filter(t => t.is_active !== false);
 
-        // Merge into demoTeachers avoiding duplicates
-        for (const t of list) {
-          const idx = stores.demoTeachers.findIndex(x => x.id === t.id || x.email === t.email);
-          if (idx >= 0) stores.demoTeachers[idx] = { ...stores.demoTeachers[idx], ...t };
-          else stores.demoTeachers.push(t);
-        }
-        result.teachers = stores.demoTeachers.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} teachers from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Teachers load skipped:', e.message);
+    for (const t of list) {
+      const idx = stores.demoTeachers.findIndex(x => x.id === t.id || x.email === t.email);
+      if (idx >= 0) stores.demoTeachers[idx] = { ...stores.demoTeachers[idx], ...t };
+      else stores.demoTeachers.push(t);
     }
+    result.teachers = stores.demoTeachers.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} teachers from Firestore`);
   }
 
   // 3. Teacher Assignments
-  if (stores.demoTeacherAssignments) {
-    try {
-      const snap = await collections.teacherAssignments().get();
-      if (!snap.empty) {
-        const allAssignments: any[] = [];
-        snap.docs.forEach(d => {
-          const dt = d.data();
-          if (Array.isArray(dt.assignments)) {
-            allAssignments.push(...dt.assignments);
-          }
-        });
-        if (allAssignments.length > 0) {
-          stores.demoTeacherAssignments.length = 0;
-          stores.demoTeacherAssignments.push(...allAssignments);
-          result.teacherAssignments = allAssignments.length;
-          console.log(`[FirestoreSync] Loaded ${allAssignments.length} teacher allocations from Firestore`);
-        }
+  if (stores.demoTeacherAssignments && assignmentsSnap && !assignmentsSnap.empty) {
+    const allAssignments: any[] = [];
+    assignmentsSnap.docs.forEach(d => {
+      const dt = d.data();
+      if (Array.isArray(dt.assignments)) {
+        allAssignments.push(...dt.assignments);
       }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Teacher assignments load skipped:', e.message);
+    });
+    if (allAssignments.length > 0) {
+      stores.demoTeacherAssignments.length = 0;
+      stores.demoTeacherAssignments.push(...allAssignments);
+      result.teacherAssignments = allAssignments.length;
+      console.log(`[FirestoreSync] Loaded ${allAssignments.length} teacher allocations from Firestore`);
     }
   }
 
   // 4. Classes
-  if (stores.demoClasses) {
-    try {
-      const snap = await collections.classes().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        for (const c of list) {
-          const idx = stores.demoClasses.findIndex(x => x.id === c.id);
-          if (idx >= 0) stores.demoClasses[idx] = { ...stores.demoClasses[idx], ...c };
-          else stores.demoClasses.push(c);
-        }
-        result.classes = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} classes from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Classes load skipped:', e.message);
+  if (stores.demoClasses && classesSnap && !classesSnap.empty) {
+    const list = classesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const c of list) {
+      const idx = stores.demoClasses.findIndex(x => x.id === c.id);
+      if (idx >= 0) stores.demoClasses[idx] = { ...stores.demoClasses[idx], ...c };
+      else stores.demoClasses.push(c);
     }
+    result.classes = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} classes from Firestore`);
   }
 
   // 5. Sections
-  if (stores.demoSections) {
-    try {
-      const snap = await collections.sections().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        for (const s of list) {
-          const idx = stores.demoSections.findIndex(x => x.id === s.id);
-          if (idx >= 0) stores.demoSections[idx] = { ...stores.demoSections[idx], ...s };
-          else stores.demoSections.push(s);
-        }
-        result.sections = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} sections from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Sections load skipped:', e.message);
+  if (stores.demoSections && sectionsSnap && !sectionsSnap.empty) {
+    const list = sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const s of list) {
+      const idx = stores.demoSections.findIndex(x => x.id === s.id);
+      if (idx >= 0) stores.demoSections[idx] = { ...stores.demoSections[idx], ...s };
+      else stores.demoSections.push(s);
     }
+    result.sections = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} sections from Firestore`);
   }
 
   // 6. Subjects
-  if (stores.demoSubjects) {
-    try {
-      const snap = await collections.subjects().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        for (const sub of list) {
-          const idx = stores.demoSubjects.findIndex(x => x.id === sub.id);
-          if (idx >= 0) stores.demoSubjects[idx] = { ...stores.demoSubjects[idx], ...sub };
-          else stores.demoSubjects.push(sub);
-        }
-        result.subjects = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} subjects from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Subjects load skipped:', e.message);
+  if (stores.demoSubjects && subjectsSnap && !subjectsSnap.empty) {
+    const list = subjectsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const sub of list) {
+      const idx = stores.demoSubjects.findIndex(x => x.id === sub.id);
+      if (idx >= 0) stores.demoSubjects[idx] = { ...stores.demoSubjects[idx], ...sub };
+      else stores.demoSubjects.push(sub);
     }
+    result.subjects = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} subjects from Firestore`);
   }
 
   // 7. Timetable Periods
-  if (stores.memPeriods) {
-    try {
-      const snap = await collections.timetablePeriods().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .sort((a: any, b: any) => (a.period_number || 0) - (b.period_number || 0));
-        for (const p of list) {
-          const idx = stores.memPeriods.findIndex(x => x.id === p.id);
-          if (idx >= 0) stores.memPeriods[idx] = { ...stores.memPeriods[idx], ...p };
-          else stores.memPeriods.push(p);
-        }
-        result.timetablePeriods = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} timetable periods from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Timetable periods load skipped:', e.message);
+  if (stores.memPeriods && periodsSnap && !periodsSnap.empty) {
+    const list = periodsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a: any, b: any) => (a.period_number || 0) - (b.period_number || 0));
+    for (const p of list) {
+      const idx = stores.memPeriods.findIndex(x => x.id === p.id);
+      if (idx >= 0) stores.memPeriods[idx] = { ...stores.memPeriods[idx], ...p };
+      else stores.memPeriods.push(p);
     }
+    result.timetablePeriods = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} timetable periods from Firestore`);
   }
 
   // 8. Timetable Entries
-  if (stores.memEntries) {
-    try {
-      const snap = await collections.timetableEntries().get();
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        for (const ent of list) {
-          const idx = stores.memEntries.findIndex(x => x.id === ent.id);
-          if (idx >= 0) stores.memEntries[idx] = { ...stores.memEntries[idx], ...ent };
-          else stores.memEntries.push(ent);
-        }
-        result.timetableEntries = list.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} timetable entries from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Timetable entries load skipped:', e.message);
+  if (stores.memEntries && entriesSnap && !entriesSnap.empty) {
+    const list = entriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const ent of list) {
+      const idx = stores.memEntries.findIndex(x => x.id === ent.id);
+      if (idx >= 0) stores.memEntries[idx] = { ...stores.memEntries[idx], ...ent };
+      else stores.memEntries.push(ent);
     }
+    result.timetableEntries = list.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} timetable entries from Firestore`);
   }
 
   // 9. Schools
-  if (stores.demoSchools) {
-    try {
-      const snap = await collections.schools().get();
-      if (!snap.empty) {
-        const list: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        for (const sch of list) {
-          const idx = stores.demoSchools.findIndex((x: any) => x.id === sch.id || x.code === sch.code);
-          if (idx >= 0) stores.demoSchools[idx] = { ...stores.demoSchools[idx], ...sch };
-          else stores.demoSchools.push(sch);
-        }
-        result.schools = stores.demoSchools.length;
-        console.log(`[FirestoreSync] Loaded ${list.length} schools from Firestore`);
-      }
-    } catch (e: any) {
-      console.warn('[FirestoreSync] Schools load skipped:', e.message);
+  if (stores.demoSchools && schoolsSnap && !schoolsSnap.empty) {
+    const list: any[] = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    for (const sch of list) {
+      const idx = stores.demoSchools.findIndex((x: any) => x.id === sch.id || x.code === sch.code);
+      if (idx >= 0) stores.demoSchools[idx] = { ...stores.demoSchools[idx], ...sch };
+      else stores.demoSchools.push(sch);
     }
+    result.schools = stores.demoSchools.length;
+    console.log(`[FirestoreSync] Loaded ${list.length} schools from Firestore`);
   }
 
   return { loaded: result };

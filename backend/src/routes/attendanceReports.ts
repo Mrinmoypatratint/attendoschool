@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { isFirebaseConfigured, collections } from '../firebase';
 import { memAttendanceSessions, memAttendanceRecords } from './teacher';
 import { demoStudents } from './schoolData';
@@ -10,6 +10,7 @@ import {
   dailyAttendanceReport
 } from '../services/attendanceReportService';
 import { isTestSchool } from './auth';
+import { fastCache } from '../utils/cache';
 
 const router = Router();
 
@@ -38,7 +39,13 @@ router.get('/', async (req: Request, res: Response) => {
     if (!sid) {
       return res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
     }
-    res.json(await attendanceSummary(sid, from, to));
+    const cacheKey = `reports:summary:${sid}:${from}:${to}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+
+    const data = await attendanceSummary(sid, from, to);
+    fastCache.set(cacheKey, data, 30);
+    res.json(data);
   } catch (_e: any) {
     res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
   }
@@ -54,7 +61,13 @@ router.get('/summary', async (req: Request, res: Response) => {
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
     }
-    res.json(await attendanceSummary(sid, from, to));
+    const cacheKey = `reports:summary:${sid}:${from}:${to}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+
+    const data = await attendanceSummary(sid, from, to);
+    fastCache.set(cacheKey, data, 30);
+    res.json(data);
   } catch (_e: any) {
     res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
   }
@@ -69,7 +82,13 @@ router.get('/students', async (req: Request, res: Response) => {
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
     }
-    res.json(await studentAttendanceReport(sid, from, to, studentId));
+    const cacheKey = `reports:students:${sid}:${from}:${to}:${studentId || ''}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+
+    const data = await studentAttendanceReport(sid, from, to, studentId);
+    fastCache.set(cacheKey, data, 30);
+    res.json(data);
   } catch (_e: any) {
     res.json([]);
   }
@@ -83,7 +102,13 @@ router.get('/daily', async (req: Request, res: Response) => {
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
     }
-    res.json(await dailyAttendanceReport(sid, from, to));
+    const cacheKey = `reports:daily:${sid}:${from}:${to}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+
+    const data = await dailyAttendanceReport(sid, from, to);
+    fastCache.set(cacheKey, data, 30);
+    res.json(data);
   } catch (_e: any) {
     res.json([]);
   }
@@ -93,6 +118,10 @@ router.get('/monthly', async (req: Request, res: Response) => {
   try {
     const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';
     const month = String(req.query.month || new Date().toISOString().slice(0, 7));
+    const cacheKey = `reports:monthly:${sid}:${month}`;
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+
     const parts = month.split('-');
     const year = Number(parts[0]) || new Date().getFullYear();
     const m = Number(parts[1]) || (new Date().getMonth() + 1);
@@ -100,11 +129,14 @@ router.get('/monthly', async (req: Request, res: Response) => {
     const from = `${year}-${String(m).padStart(2, '0')}-01`;
     const to = `${year}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const records = await studentAttendanceReport(sid, from, to);
-    res.json({ month, from, to, records });
+    const payload = { month, from, to, records };
+    fastCache.set(cacheKey, payload, 30);
+    res.json(payload);
   } catch (_e: any) {
     res.json({ month: req.query.month, records: [] });
   }
 });
+
 
 router.get('/defaulters', async (req: Request, res: Response) => {
   try {
@@ -262,6 +294,19 @@ router.post('/import-offline', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Array of attendance records is required' });
     }
 
+    // Pre-validation: ensure every record has student identification
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      const adm = String(r.admissionNumber || r['Admission Number'] || r.admission_number || r.roll || r['Roll Number'] || '').trim();
+      const stName = String(r.studentName || r['Student Name'] || r.name || '').trim();
+      if (!adm && !stName) {
+        return res.status(422).json({
+          success: false,
+          message: `Record at row #${i + 1} is missing both admission/roll number and student name. Entire operation cancelled; no attendance data was stored in the database.`
+        });
+      }
+    }
+
     // Breakdown counters
     let total = 0;
     let present = 0;
@@ -309,95 +354,93 @@ router.post('/import-offline', async (req: Request, res: Response) => {
       });
     }
 
-    // 1. PostgreSQL upsert into daily_attendance and attendance_records
-    const usePostgres = process.env.USE_POSTGRES === 'true';
-    if (usePostgres) {
+    // 1. PostgreSQL Atomic Upsert
+    if (isPostgresConfigured) {
+      const client = await pool.connect();
       try {
-        const client = await pool.connect();
-        try {
-          await client.query('BEGIN');
+        await client.query('BEGIN');
 
-          await client.query(`
-            CREATE TABLE IF NOT EXISTS daily_attendance (
-              id VARCHAR(64) PRIMARY KEY,
-              school_id VARCHAR(64) NOT NULL,
-              class_id VARCHAR(64),
-              section_id VARCHAR(64),
-              attendance_date DATE NOT NULL,
-              total_count INT DEFAULT 0,
-              present_count INT DEFAULT 0,
-              absent_count INT DEFAULT 0,
-              late_count INT DEFAULT 0,
-              half_day_count INT DEFAULT 0,
-              updated_at TIMESTAMP DEFAULT NOW(),
-              CONSTRAINT uq_daily_attendance UNIQUE (school_id, class_id, section_id, attendance_date)
-            )
-          `);
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS daily_attendance (
+            id VARCHAR(64) PRIMARY KEY,
+            school_id VARCHAR(64) NOT NULL,
+            class_id VARCHAR(64),
+            section_id VARCHAR(64),
+            attendance_date DATE NOT NULL,
+            total_count INT DEFAULT 0,
+            present_count INT DEFAULT 0,
+            absent_count INT DEFAULT 0,
+            late_count INT DEFAULT 0,
+            half_day_count INT DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT NOW(),
+            CONSTRAINT uq_daily_attendance UNIQUE (school_id, class_id, section_id, attendance_date)
+          )
+        `);
 
-          const dailyId = `da-${sid}-${classId || 'all'}-${sectionId || 'all'}-${date}`;
-          await client.query(`
-            INSERT INTO daily_attendance (id, school_id, class_id, section_id, attendance_date, total_count, present_count, absent_count, late_count, half_day_count, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-            ON CONFLICT (school_id, class_id, section_id, attendance_date)
-            DO UPDATE SET
-              total_count = EXCLUDED.total_count,
-              present_count = EXCLUDED.present_count,
-              absent_count = EXCLUDED.absent_count,
-              late_count = EXCLUDED.late_count,
-              half_day_count = EXCLUDED.half_day_count,
-              updated_at = NOW()
-          `, [dailyId, sid, classId || null, sectionId || null, date, total, present, absent, late, halfDay]);
+        const dailyId = `da-${sid}-${classId || 'all'}-${sectionId || 'all'}-${date}`;
+        await client.query(`
+          INSERT INTO daily_attendance (id, school_id, class_id, section_id, attendance_date, total_count, present_count, absent_count, late_count, half_day_count, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+          ON CONFLICT (school_id, class_id, section_id, attendance_date)
+          DO UPDATE SET
+            total_count = EXCLUDED.total_count,
+            present_count = EXCLUDED.present_count,
+            absent_count = EXCLUDED.absent_count,
+            late_count = EXCLUDED.late_count,
+            half_day_count = EXCLUDED.half_day_count,
+            updated_at = NOW()
+        `, [dailyId, sid, classId || null, sectionId || null, date, total, present, absent, late, halfDay]);
 
-          let sessionId = '';
-          const dup = await client.query(
-            `SELECT id FROM attendance_sessions WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND attendance_date=$4 LIMIT 1`,
-            [sid, classId || 'cls-10', sectionId || 'sec-10-a', date]
+        let sessionId = '';
+        const dup = await client.query(
+          `SELECT id FROM attendance_sessions WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND attendance_date=$4 LIMIT 1`,
+          [sid, classId || 'cls-10', sectionId || 'sec-10-a', date]
+        );
+        if (dup.rowCount) {
+          sessionId = dup.rows[0].id;
+          await client.query(`DELETE FROM attendance_records WHERE attendance_session_id=$1`, [sessionId]);
+        } else {
+          sessionId = `sess-${Date.now()}`;
+          await client.query(
+            `INSERT INTO attendance_sessions (id, school_id, class_id, section_id, attendance_date, total_count, present_count, absent_count)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [sessionId, sid, classId || 'cls-10', sectionId || 'sec-10-a', date, total, present, absent]
           );
-          if (dup.rowCount) {
-            sessionId = dup.rows[0].id;
-            await client.query(`DELETE FROM attendance_records WHERE attendance_session_id=$1`, [sessionId]);
-          } else {
-            sessionId = `sess-${Date.now()}`;
-            await client.query(
-              `INSERT INTO attendance_sessions (id, school_id, class_id, section_id, attendance_date, total_count, present_count, absent_count)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-              [sessionId, sid, classId || 'cls-10', sectionId || 'sec-10-a', date, total, present, absent]
-            );
-          }
-
-          const enrolledStudents = (await client.query(
-            `SELECT id, name, roll_number, admission_number FROM students WHERE school_id=$1 AND is_active`,
-            [sid]
-          )).rows;
-
-          for (const nr of normalizedRecords) {
-            const st = enrolledStudents.find(s =>
-              (nr.admissionNumber && (s.admission_number === nr.admissionNumber || s.roll_number === nr.admissionNumber)) ||
-              (nr.rollNumber && s.roll_number === nr.rollNumber) ||
-              (nr.studentName && s.name && s.name.toLowerCase() === nr.studentName.toLowerCase())
-            ) || { id: `st-off-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
-
-            await client.query(
-              `INSERT INTO attendance_records (attendance_session_id, student_id, is_present, status)
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET is_present=EXCLUDED.is_present, status=EXCLUDED.status`,
-              [sessionId, st.id, nr.isPresent, nr.status]
-            );
-          }
-
-          await client.query('COMMIT');
-        } catch (txErr) {
-          await client.query('ROLLBACK');
-          throw txErr;
-        } finally {
-          client.release();
         }
-      } catch (sqlErr: any) {
-        console.warn('[OfflineAttendance] Postgres upsert fallback:', sqlErr.message);
+
+        const enrolledStudents = (await client.query(
+          `SELECT id, name, roll_number, admission_number FROM students WHERE school_id=$1 AND is_active`,
+          [sid]
+        )).rows;
+
+        for (const nr of normalizedRecords) {
+          const st = enrolledStudents.find(s =>
+            (nr.admissionNumber && (s.admission_number === nr.admissionNumber || s.roll_number === nr.admissionNumber)) ||
+            (nr.rollNumber && s.roll_number === nr.rollNumber) ||
+            (nr.studentName && s.name && s.name.toLowerCase() === nr.studentName.toLowerCase())
+          ) || { id: `st-off-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+
+          await client.query(
+            `INSERT INTO attendance_records (attendance_session_id, student_id, is_present, status)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET is_present=EXCLUDED.is_present, status=EXCLUDED.status`,
+            [sessionId, st.id, nr.isPresent, nr.status]
+          );
+        }
+
+        await client.query('COMMIT');
+        client.release();
+      } catch (txErr: any) {
+        await client.query('ROLLBACK');
+        client.release();
+        return res.status(400).json({
+          success: false,
+          message: `Offline attendance import failed: ${txErr.message || 'Database transaction error'}. The entire operation was rolled back and no records were saved in the database.`
+        });
       }
     }
 
-    // 2. Cloud Firestore & In-Memory Upsert
+    // 2. Cloud Firestore & In-Memory Upsert (Only executes if Postgres succeeded or non-Postgres)
     const sessId = `sess-${sid}-${date}`;
     if (isFirebaseConfigured()) {
       try {

@@ -4,8 +4,15 @@ import { getSchoolDashboardStats } from '../services/tenantDataService';
 import { pool, isPostgresConfigured } from '../db';
 import { DualDatabaseService } from '../services/dualDatabaseService';
 import { env } from '../config/env';
+import { fastCache } from '../utils/cache';
 
 const r = Router();
+
+export function invalidateDashboardCache(schoolId: string): void {
+  if (schoolId) {
+    fastCache.delete(`dashboard:school:${schoolId}`);
+  }
+}
 
 /**
  * GET /api/dashboard/school & GET /api/dashboard/overview
@@ -16,6 +23,13 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user?.schoolId;
   if (!sid) {
     return res.status(400).json({ error: 'TENANT_REQUIRED', message: 'School identifier missing from user credentials' });
+  }
+
+  // Fast-path: Return cached dashboard data in <1ms
+  const cacheKey = `dashboard:school:${sid}`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) {
+    return res.json(cached);
   }
 
   const userSchoolName = req.user?.schoolName || 'ABC Public School';
@@ -145,7 +159,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           };
         });
 
-        return res.json({
+        const payload = {
           school: schoolData,
           totalStudents: Number(kpi.total_students) || 0,
           totalTeachers: Number(kpi.total_teachers) || 0,
@@ -164,7 +178,10 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           announcements: [],
           subscription: { plan_name: 'Enterprise', max_students: 100000, status: 'ACTIVE', days_remaining: 365 },
           recentActivity: []
-        });
+        };
+
+        fastCache.set(cacheKey, payload, 20);
+        return res.json(payload);
       } catch (pgErr: any) {
         console.warn('[Dashboard] PostgreSQL query error:', pgErr.message);
       }

@@ -25,15 +25,19 @@ export function removeBatch(batchId: string) {
 
 export async function syncOffline(api: any) {
   if (!navigator.onLine) return { synced: 0, offline: true };
-  let synced = 0;
-  for (const batch of getQueue()) {
-    try {
+  const queue = getQueue();
+  if (queue.length === 0) return { synced: 0, offline: false };
+
+  const results = await Promise.allSettled(
+    queue.map(async (batch) => {
       const r = await api.post('/offline-attendance/sync', batch);
       await api.post(`/offline-attendance/sync/${r.data.id}/process`);
       removeBatch(batch.batchId);
-      synced++;
-    } catch {}
-  }
+      return batch.batchId;
+    })
+  );
+
+  const synced = results.filter((r) => r.status === 'fulfilled').length;
   return { synced, offline: false };
 }
 
