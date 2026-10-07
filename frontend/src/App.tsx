@@ -4786,7 +4786,35 @@ function Students(){
           const classId = parsedCls.classId;
           const classNumber = parsedCls.classNumber;
           const classLabel = parsedCls.classLabel;
-          const sectionName = String(r['Section']||r['Section Name']||r['section_name']||importSection||'A').trim().toUpperCase();
+
+          // Section extraction: case-insensitive, whitespace-tolerant, prefix-stripping
+          let rawSecVal: any = undefined;
+          if (r && typeof r === 'object') {
+            for (const k of Object.keys(r)) {
+              const cleanKey = k.trim().toLowerCase();
+              if (['section', 'section name', 'section_name', 'sectionname', 'sec', 'sec_name', 'sec name'].includes(cleanKey)) {
+                if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+                  rawSecVal = r[k];
+                  break;
+                }
+              }
+            }
+          }
+          if (rawSecVal === undefined || rawSecVal === null || String(rawSecVal).trim() === '') {
+            rawSecVal = r['Section'] ?? r['Section Name'] ?? r['section_name'] ?? r['SECTION'] ?? r['section'] ?? r['Sec'] ?? r['sec'];
+          }
+
+          let sectionName = '';
+          if (rawSecVal !== undefined && rawSecVal !== null && String(rawSecVal).trim() !== '') {
+            sectionName = String(rawSecVal).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName && importSection && String(importSection).trim() !== '') {
+            sectionName = String(importSection).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName) {
+            sectionName = 'A';
+          }
+
           const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
           // Per-row validation
