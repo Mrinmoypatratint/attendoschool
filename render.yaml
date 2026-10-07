@@ -40,26 +40,29 @@ services:
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
-        value: "587"
+        value: "465"
       - key: SMTP_USER
-        value: rajbsmv@gmail.com
+        value: info.sahayog24x7@gmail.com
       - key: SMTP_PASS
         sync: false  # Enter in Render Dashboard > Environment
       - key: SMTP_FROM
-        value: "AttendoSchool Superadmin <rajbsmv@gmail.com>"
+        value: "AttendoSchool <info.sahayog24x7@gmail.com>"
       - key: SMTP_FROM_NAME
-        value: "AttendoSchool Superadmin"
+        value: "AttendoSchool"
       - key: SMTP_REPLY_TO
-        value: rajbsmv@gmail.com
+        value: info.sahayog24x7@gmail.com
       - key: EMAIL_ENABLED
         value: "true"
       # ── Brevo HTTPS Email Gateway (Port 443 - 100% Free on Render) ──
       - key: BREVO_API_KEY
-        sync: false  # Enter Brevo API Key in Render Dashboard (Port 443 HTTPS Gateway)
+        sync: false  # Enter Brevo API Key (xkeysib-...) in Render Dashboard
       - key: BREVO_SENDER_EMAIL
-        value: "rajbsmv@gmail.com"
+        value: "info.sahayog24x7@gmail.com"
       - key: BREVO_SENDER_NAME
-        value: "AttendoSchool Superadmin"
+        value: "AttendoSchool"
+      # ── Google Apps Script Gmail Webhook Relay (Port 443 - 100% Free Gmail) ──
+      - key: GMAIL_RELAY_URL
+        sync: false
       # ── Application URLs ──
       - key: APP_BASE_URL
         value: https://attendoschool.optinetinnovations.in

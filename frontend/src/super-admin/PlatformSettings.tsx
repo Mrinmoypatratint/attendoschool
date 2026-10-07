@@ -658,6 +658,11 @@ export const PlatformSettings: React.FC = () => {
                       onChange={(e) => setSettings({ ...settings, brevoApiKey: e.target.value })}
                       style={{ fontSize: '13px' }}
                     />
+                    {settings.brevoApiKey?.startsWith('xsmtpsib-') && (
+                      <div style={{ marginTop: '6px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde047', borderRadius: '6px', fontSize: '12px', color: '#b45309', lineHeight: '1.45' }}>
+                        ⚠️ <b>Brevo SMTP Key Detected:</b> You entered an SMTP password (starts with <code>xsmtpsib-</code>). For cloud HTTPS delivery on Render (Port 443), please generate an <b>API Key</b> (starts with <code>xkeysib-</code>) in Brevo &rarr; <b>SMTP & API</b> &rarr; <b>API Keys</b> tab.
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '4px', color: '#166534' }}>
@@ -666,7 +671,7 @@ export const PlatformSettings: React.FC = () => {
                     <input
                       type="email"
                       className="form-control"
-                      placeholder="e.g. rajbsmv@gmail.com"
+                      placeholder="e.g. info.sahayog24x7@gmail.com"
                       value={settings.brevoSenderEmail || ''}
                       onChange={(e) => setSettings({ ...settings, brevoSenderEmail: e.target.value })}
                       style={{ fontSize: '13px' }}
@@ -713,7 +718,10 @@ export const PlatformSettings: React.FC = () => {
                             password: settings.smtpPassword,
                             encryption: settings.smtpEncryption,
                             senderEmail: settings.smtpSenderEmail,
-                            senderName: settings.smtpSenderName
+                            senderName: settings.smtpSenderName,
+                            brevoApiKey: settings.brevoApiKey,
+                            brevoSenderEmail: settings.brevoSenderEmail,
+                            brevoSenderName: settings.brevoSenderName
                           })
                         });
                         setSmtpTestMsg({ success: true, message: res.message || 'Test email dispatched successfully!' });

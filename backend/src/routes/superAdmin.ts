@@ -1629,7 +1629,7 @@ r.put('/smtp', async (req: AuthRequest, res) => {
 });
 
 r.post('/smtp/test', async (req: AuthRequest, res) => {
-  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName } = req.body || {};
+  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName, brevoApiKey, brevoSenderEmail, brevoSenderName } = req.body || {};
   const to = String(recipientEmail || req.user?.email || 'admin@demo-school.local').trim();
   try {
     const result = await testSmtpConnection('global', to, {
@@ -1639,7 +1639,10 @@ r.post('/smtp/test', async (req: AuthRequest, res) => {
       password,
       encryption,
       senderEmail,
-      senderName
+      senderName,
+      brevoApiKey,
+      brevoSenderEmail,
+      brevoSenderName
     });
     res.json(result);
   } catch (err: any) {
