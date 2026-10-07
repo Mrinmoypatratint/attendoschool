@@ -419,8 +419,8 @@ export default function Timetable() {
 
     {/* ── Teacher View Switcher (Class View vs My Schedule) ── */}
     {isTeacher && (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16 }}>
-        <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
           <button
             onClick={() => setViewMode('class')}
             style={{
@@ -443,13 +443,6 @@ export default function Timetable() {
             <Sparkles size={14} /> My Teaching Schedule ({myWeeklyEntries.length})
           </button>
         </div>
-        <button
-          onClick={() => loadAll(false)}
-          type="button"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-        >
-          <RefreshCw size={12} className={loading ? 'spin' : ''} /> Sync Timetable
-        </button>
       </div>
     )}
 
@@ -475,7 +468,7 @@ export default function Timetable() {
         </div>
 
         {myWeeklyEntries.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+          <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 10, border: '1px dashed var(--border)' }}>
             <Calendar size={36} style={{ color: '#2563eb', marginBottom: 10, opacity: 0.8 }} />
             <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No routine periods assigned yet</p>
             <p className="muted" style={{ margin: '0 auto', maxWidth: 450, fontSize: 13 }}>
@@ -546,65 +539,24 @@ export default function Timetable() {
     ) : (
       <>
         {/* ── Filters: Class & Section Aligned on Same Level ── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            flexWrap: 'wrap',
-            marginBottom: 20,
-            padding: '12px 18px',
-            backgroundColor: 'var(--card, #ffffff)',
-            borderRadius: 10,
-            border: '1px solid var(--border, #e2e8f0)',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
-          }}
-        >
+        <div className="timetable-filter-pill">
           {/* Class Field */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 13.5,
-                fontWeight: 600,
-                color: 'var(--text, #1e293b)',
-                whiteSpace: 'nowrap'
-              }}
-            >
+          <div className="timetable-filter-field">
+            <span className="timetable-filter-label">
               <Layers size={16} color="#2563eb" /> Class:
             </span>
             <select
               id="timetable-class-select"
               value={selClassId}
               onChange={e => setSelClassId(e.target.value)}
-              style={{
-                minWidth: 160,
-                height: 38,
-                padding: '6px 34px 6px 12px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                fontSize: 13.5,
-                fontWeight: 500,
-                cursor: 'pointer',
-                outline: 'none',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 10px center',
-                backgroundSize: '14px 14px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-              }}
+              className="timetable-filter-select"
+              style={{ minWidth: 160 }}
             >
               {classes.map(c => {
                 const cNum = c.class_number ?? c.classNumber;
                 const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
                 return (
-                  <option key={c.id} value={c.id} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                  <option key={c.id} value={c.id}>
                     {label}
                   </option>
                 );
@@ -613,74 +565,27 @@ export default function Timetable() {
           </div>
 
           {/* Vertical Divider */}
-          <div style={{ width: 1, height: 24, backgroundColor: '#e2e8f0' }} />
+          <div className="timetable-filter-divider" />
 
           {/* Section Field */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                fontSize: 13.5,
-                fontWeight: 600,
-                color: 'var(--text, #1e293b)',
-                whiteSpace: 'nowrap'
-              }}
-            >
+          <div className="timetable-filter-field">
+            <span className="timetable-filter-label">
               Section:
             </span>
             <select
               id="timetable-section-select"
               value={selSectionId}
               onChange={e => setSelSectionId(e.target.value)}
-              style={{
-                minWidth: 140,
-                height: 38,
-                padding: '6px 34px 6px 12px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                fontSize: 13.5,
-                fontWeight: 500,
-                cursor: 'pointer',
-                outline: 'none',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 10px center',
-                backgroundSize: '14px 14px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-              }}
+              className="timetable-filter-select"
+              style={{ minWidth: 140 }}
             >
               {filteredSections.map(s => (
-                <option key={s.id} value={s.id} style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                <option key={s.id} value={s.id}>
                   Section {s.name || s.section_name || 'A'}
                 </option>
               ))}
             </select>
           </div>
-
-          <button
-            onClick={() => loadAll(false)}
-            type="button"
-            title="Refresh classes and timetable routines"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--card)',
-              color: 'var(--text)',
-              fontSize: 13,
-              cursor: 'pointer',
-              marginLeft: 'auto',
-              fontWeight: 600
-            }}
-          >
-            <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh Classes
-          </button>
         </div>
 
         {/* ── Day Tabs ── */}
@@ -690,7 +595,7 @@ export default function Timetable() {
               onClick={() => setSelDay(d.num)}
               style={{
                 padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                background: selDay === d.num ? '#2563eb' : 'var(--card)',
+                background: selDay === d.num ? '#2563eb' : 'var(--bg-card, #ffffff)',
                 color: selDay === d.num ? '#fff' : 'var(--text)',
                 boxShadow: selDay === d.num ? '0 2px 8px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
                 transition: 'all 0.15s ease'
@@ -710,7 +615,7 @@ export default function Timetable() {
           </div>
 
           {periods.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--card)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
+            <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
               <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
               <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
               <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
@@ -725,7 +630,7 @@ export default function Timetable() {
                     <Plus size={16} /> Add First Period Slot
                   </button>
                   <button onClick={loadTemplatePeriods}
-                    style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                    style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
                     ⚡ Load Standard 6-Period Template (Optional)
                   </button>
                 </div>
@@ -964,7 +869,11 @@ export default function Timetable() {
                     });
                   }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
-                    {classes.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+                    {classes.map(c => {
+                      const cNum = c.class_number ?? c.classNumber;
+                      const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                      return <option key={c.id} value={c.id}>{label}</option>;
+                    })}
                   </select>
                 </label>
                 <label style={{ fontSize: 13, fontWeight: 600 }}>Section
@@ -1037,7 +946,7 @@ export default function Timetable() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
-                <button onClick={() => setAddOpen(false)} style={{ background: 'var(--card)', color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
+                <button onClick={() => setAddOpen(false)} style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
                 <button onClick={saveEntry} disabled={saving}
                   style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {saving ? <><RefreshCw size={14} className="spin" /> Saving...</> : <><Check size={14} /> Create Entry</>}
@@ -1058,26 +967,43 @@ export default function Timetable() {
         </div>
         <div style={{ padding: '16px 20px' }}>
           {/* Existing Periods */}
-          <div className="table-wrap" style={{ marginBottom: 12, maxHeight: 260, overflowY: 'auto' }}>
-            <table>
-              <thead><tr><th>#</th><th>Name</th><th>Start</th><th>End</th><th>Break</th><th></th></tr></thead>
+          <div className="table-wrap period-slots-table-wrap" style={{ marginBottom: 12, maxHeight: 260, overflowY: 'auto' }}>
+            <table className="period-slots-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                  <th>Name</th>
+                  <th style={{ width: 85 }}>Start</th>
+                  <th style={{ width: 85 }}>End</th>
+                  <th style={{ width: 65, textAlign: 'center' }}>Break</th>
+                  <th style={{ width: 44, textAlign: 'center' }}></th>
+                </tr>
+              </thead>
               <tbody>
                 {periods.map(p => (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 700 }}>{p.period_number ?? p.periodNumber ?? '—'}</td>
-                    <td>{p.name}</td>
+                    <td style={{ fontWeight: 700, textAlign: 'center' }}>{p.period_number ?? p.periodNumber ?? '—'}</td>
+                    <td style={{ fontWeight: 600 }}>{p.name}</td>
                     <td>{p.start_time ?? p.startTime ?? '—'}</td>
                     <td>{p.end_time ?? p.endTime ?? '—'}</td>
-                    <td>{(p.is_break ?? p.isBreak) ? '☕ Yes' : 'No'}</td>
-                    <td><button className="table-action-btn danger" onClick={() => deletePeriod(p.id)} title="Delete"><Trash2 size={13} /></button></td>
+                    <td style={{ textAlign: 'center' }}>{(p.is_break ?? p.isBreak) ? '☕ Yes' : 'No'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button className="table-action-btn danger" onClick={() => deletePeriod(p.id)} title="Delete">
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {periods.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="muted" style={{ padding: 20, textAlign: 'center' }}>
+                  <tr className="table-empty-row">
+                    <td colSpan={6} className="muted" style={{ padding: 24, textAlign: 'center' }}>
                       No periods configured yet. Enter slots manually below or click template.
-                      <div style={{ marginTop: 8 }}>
-                        <button onClick={loadTemplatePeriods} style={{ fontSize: 12, padding: '4px 10px', background: 'var(--card)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+                      <div style={{ marginTop: 10 }}>
+                        <button
+                          type="button"
+                          className="period-template-btn"
+                          onClick={loadTemplatePeriods}
+                        >
                           ⚡ Load Standard 6 Periods
                         </button>
                       </div>
