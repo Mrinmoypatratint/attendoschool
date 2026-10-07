@@ -520,8 +520,17 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId;
   const classParam = String(req.params.classId || req.query.classId || req.query.class_id || req.query.class_number || '');
   const secId = String(req.params.sectionId || req.query.sectionId || req.query.section_id || req.query.section_name || '');
-  const secParam = secId.toLowerCase();
-  const cleanSec = secParam.replace(/section\s*/i, '').trim();
+
+  // Extract numeric class number safely from synthetic IDs (e.g. ${sid}-cls-10 -> 10) or plain numbers
+  const clsMatch = classParam.match(/cls-(-?\d+)/i) || classParam.match(/(-?\d+)$/);
+  const classNum = clsMatch ? parseInt(clsMatch[1], 10) : (parseInt(classParam.replace(/\D/g, ''), 10) || 10);
+
+  // Extract clean section name from synthetic IDs (e.g. ${sid}-sec-cls-10-a -> A) or plain section names
+  let cleanSec = secId.trim();
+  if (cleanSec.includes('-sec-') || cleanSec.startsWith('sec-')) {
+    cleanSec = cleanSec.replace(/^.*?-sec-(?:cls-)?(?:\d+|-1|0)-?/i, '').replace(/^sec-/i, '');
+  }
+  cleanSec = cleanSec.replace(/section\s*/i, '').trim().toUpperCase() || 'A';
 
   const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}`;
   const cached = fastCache.get<any>(cacheKey);
@@ -532,17 +541,16 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
-      const classNum = parseInt(classParam.replace(/\D/g, ''), 10) || 10;
 
       const q = await pool.query(
         `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
          FROM students
          WHERE school_id=$1
            AND (${isClassUuid ? 'class_id=$2' : 'FALSE'} OR class_id IN (SELECT id FROM classes WHERE school_id=$1 AND class_number=$3))
-           AND (${isSecUuid ? 'section_id=$4' : 'FALSE'} OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND LOWER(name)=$5))
+           AND (${isSecUuid ? 'section_id=$4' : 'FALSE'} OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND (UPPER(name)=$5 OR LOWER(name)=$6)))
            AND is_active
          ORDER BY roll_number`,
-        [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec]
+        [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec, cleanSec.toLowerCase()]
       );
       if (q.rows) {
         const uniqueStudents = new Map<string, any>();

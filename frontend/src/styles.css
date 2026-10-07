@@ -5959,6 +5959,38 @@ header {
   gap: 2px;
 }
 
+/* Time-based visual theme overlays for Student Quote Card */
+.student-visual-morning {
+  border-color: rgba(249, 115, 22, 0.28);
+}
+.student-visual-morning .student-campus-overlay {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.55), rgba(234, 179, 8, 0.45), rgba(14, 165, 233, 0.4));
+}
+
+.student-visual-afternoon {
+  border-color: rgba(14, 165, 233, 0.28);
+}
+.student-visual-afternoon .student-campus-overlay {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.55), rgba(56, 189, 248, 0.45), rgba(30, 58, 138, 0.45));
+}
+
+.student-visual-evening {
+  border-color: rgba(192, 38, 211, 0.28);
+}
+.student-visual-evening .student-campus-overlay {
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.65), rgba(192, 38, 211, 0.5), rgba(249, 115, 22, 0.55));
+}
+
+.student-visual-night {
+  border-color: rgba(99, 102, 241, 0.28);
+}
+.student-visual-night .student-campus-overlay {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.25) 1.5px, transparent 2px),
+    radial-gradient(circle at 25% 65%, rgba(255, 255, 255, 0.2) 1px, transparent 1.5px),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 27, 75, 0.75), rgba(49, 46, 129, 0.7));
+}
+
 /* ─── 4 KPI Summary Cards Grid ─── */
 .student-kpi-grid {
   display: grid;

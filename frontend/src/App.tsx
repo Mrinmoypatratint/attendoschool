@@ -9496,8 +9496,23 @@ function Attendance(){
     api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
       .then(res => {
         const list = deduplicateStudents(res.data || []);
-        setStudents(list);
-        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+        if (list.length > 0) {
+          setStudents(list);
+          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+        } else {
+          // Primary endpoint returned empty array (200 OK) -> execute fallback to /students
+          api.get('/students').then(fallbackRes => {
+            const matched = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
+              (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
+              (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
+            ));
+            setStudents(matched);
+            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
+          }).catch(() => {
+            setStudents([]);
+            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, []);
+          });
+        }
       })
       .catch(() => {
         // Fallback to /students
