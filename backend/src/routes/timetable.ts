@@ -31,6 +31,7 @@ const requireAdmin = (req: Request, res: any, next: any) => {
   next();
 };
 
+// ── Note: Frontend "Sync Timetable" & "Refresh Classes" buttons removed from UI per design ──
 // ── In-Memory Timetable Store (Empty - No seed data; 100% manual entry) ──
 export const memPeriods: any[] = [];
 export const memEntries: any[] = [];

@@ -4376,8 +4376,8 @@ function Students(){
         title: 'Parent & Contact Coordinates',
         fields: [
           { label: 'Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
-          { label: 'Contact Phone Number', value: f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
-          { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
+          { label: 'Contact Phone Number', value: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
+          // { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
         ]
       },
       {
@@ -4404,7 +4404,7 @@ function Students(){
         roll_number: f.rollNumber || editingStudent.roll_number,
         admission_number: f.admissionNumber || editingStudent.admission_number,
         parent_name: f.guardianName || f.parentName,
-        parent_phone: f.parentPhone || f.phone,
+        parent_phone: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone,
         address: f.address,
         student_email: f.studentEmail || f.email,
         parent_email: f.parentEmail,
@@ -4652,6 +4652,90 @@ function Students(){
     return `${mb} MB`;
   }
 
+  interface ParsedClassResult {
+    valid: boolean;
+    classNumber: number;
+    classId: string;
+    classLabel: string;
+    error?: string;
+  }
+
+  function parseClassValue(rawVal: any, fallbackClass?: string | number): ParsedClassResult {
+    let val = String(rawVal ?? '').trim();
+
+    if (!val && fallbackClass !== undefined && fallbackClass !== null && String(fallbackClass).trim() !== '') {
+      val = String(fallbackClass).trim();
+    }
+
+    if (!val) {
+      return {
+        valid: false,
+        classNumber: 1,
+        classId: 'cls-1',
+        classLabel: '',
+        error: 'Class is required'
+      };
+    }
+
+    // Kindergarten string checks
+    if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    }
+    if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    }
+
+    const clean = val.toLowerCase();
+
+    // Roman Numeral lookup (I to XII)
+    const ROMAN_MAP: Record<string, number> = {
+      i: 1,
+      ii: 2,
+      iii: 3,
+      iv: 4,
+      v: 5,
+      vi: 6,
+      vii: 7,
+      viii: 8,
+      ix: 9,
+      x: 10,
+      xi: 11,
+      xii: 12,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(ROMAN_MAP, clean)) {
+      const num = ROMAN_MAP[clean];
+      return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+    }
+
+    // Numeric string e.g. "10", "Class 10", "Grade 5", "Std 8"
+    const cleanNoPrefix = val.replace(/^(class|grade|std|standard)\s*/i, '').trim();
+    if (/^\d+$/.test(cleanNoPrefix)) {
+      const num = parseInt(cleanNoPrefix, 10);
+      if (num >= 1 && num <= 12) {
+        return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+      }
+    }
+
+    // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
+    if (typeof rawVal === 'number') {
+      if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+      if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+      if (rawVal >= 1 && rawVal <= 12) {
+        return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
+      }
+    }
+
+    // Invalid class value
+    return {
+      valid: false,
+      classNumber: 1,
+      classId: 'cls-1',
+      classLabel: val,
+      error: `Invalid Class '${val}'. Expected 1–12, Roman numerals (I–XII), LKG, or UKG.`
+    };
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4696,13 +4780,41 @@ function Students(){
           const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
-          // Class parsing: supports 'L-KG','U-KG','Class 1','1' etc.
-          const rawClass = String(r['Class']||r['Class Number']||r['class_number']||importClass||'').trim();
-          let classId='', classNumber=1, classLabel='';
-          if (/l.?kg/i.test(rawClass))      { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
-          else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
-          else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||Number(importClass)||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
-          const sectionName = String(r['Section']||r['Section Name']||r['section_name']||importSection||'A').trim().toUpperCase();
+          // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
+          const excelClassVal = r['Class'] ?? r['Class Number'] ?? r['class_number'];
+          const parsedCls = parseClassValue(excelClassVal, importClass);
+          const classId = parsedCls.classId;
+          const classNumber = parsedCls.classNumber;
+          const classLabel = parsedCls.classLabel;
+
+          // Section extraction: case-insensitive, whitespace-tolerant, prefix-stripping
+          let rawSecVal: any = undefined;
+          if (r && typeof r === 'object') {
+            for (const k of Object.keys(r)) {
+              const cleanKey = k.trim().toLowerCase();
+              if (['section', 'section name', 'section_name', 'sectionname', 'sec', 'sec_name', 'sec name'].includes(cleanKey)) {
+                if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+                  rawSecVal = r[k];
+                  break;
+                }
+              }
+            }
+          }
+          if (rawSecVal === undefined || rawSecVal === null || String(rawSecVal).trim() === '') {
+            rawSecVal = r['Section'] ?? r['Section Name'] ?? r['section_name'] ?? r['SECTION'] ?? r['section'] ?? r['Sec'] ?? r['sec'];
+          }
+
+          let sectionName = '';
+          if (rawSecVal !== undefined && rawSecVal !== null && String(rawSecVal).trim() !== '') {
+            sectionName = String(rawSecVal).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName && importSection && String(importSection).trim() !== '') {
+            sectionName = String(importSection).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName) {
+            sectionName = 'A';
+          }
+
           const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
           // Per-row validation
@@ -4712,6 +4824,7 @@ function Students(){
           if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
           if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
           if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+          if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
           if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
           if (admissionNumber) seenAdm.add(admissionNumber);
 
@@ -4751,7 +4864,7 @@ function Students(){
       const enrichedRows = validRows.map(r => ({
         ...r,
         session: r.session || importSession || '2025-26',
-        classNumber: r.classNumber || Number(importClass) || 1,
+        classNumber: r.classNumber !== undefined ? r.classNumber : (Number(importClass) || 1),
         sectionName: r.sectionName || importSection || 'A'
       }));
 
@@ -5382,7 +5495,6 @@ function Students(){
             <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
-            <th>Portal Access</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -5485,15 +5597,6 @@ function Students(){
                   <code>{x.parent_sms_number}</code>
                   {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
                 </div>
-              </td>
-              <td>
-                {x.student_email || x.email || x.parent_email ? (
-                  <span className="badge active" title={`Student portal login: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>
-                    🎓 Student Portal
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Offline Only</span>
-                )}
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -5855,104 +5958,91 @@ function Students(){
           />
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>Parent Name
-            <input 
-              placeholder="Parent Name" 
-              value={f.parentName||''} 
+        <label>Parent Name
+          <input
+            placeholder="Parent Name"
+            value={f.parentName || ''}
+            style={{
+              borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
+              boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
+            }}
+            onChange={e => setF({ ...f, parentName: e.target.value })}
+          />
+          {/\d/.test(f.parentName || '') && (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Enter a string not a number
+            </span>
+          )}
+        </label>
+
+        <label>Parent SMS Mobile Number
+          <div className="student-mobile-row">
+            <select
+              className="student-country-select"
+              value={f.countryCode || '+91'}
+              onChange={e => setF({ ...f, countryCode: e.target.value })}
+              title="Select Country Code"
+            >
+              <option value="+91">🇮🇳 +91 (IN)</option>
+              <option value="+1">🇺🇸 +1 (US)</option>
+              <option value="+44">🇬🇧 +44 (UK)</option>
+              <option value="+971">🇦🇪 +971 (UAE)</option>
+              <option value="+966">🇸🇦 +966 (KSA)</option>
+              <option value="+65">🇸🇬 +65 (SG)</option>
+              <option value="+61">🇦🇺 +61 (AU)</option>
+              <option value="+880">🇧🇩 +880 (BD)</option>
+              <option value="+977">🇳🇵 +977 (NP)</option>
+              <option value="+94">🇱🇰 +94 (LK)</option>
+              <option value="+92">🇵🇰 +92 (PK)</option>
+              <option value="+974">🇶🇦 +974 (QA)</option>
+              <option value="+965">🇰🇼 +965 (KW)</option>
+              <option value="+968">🇴🇲 +968 (OM)</option>
+              <option value="+49">🇩🇪 +49 (DE)</option>
+              <option value="+33">🇫🇷 +33 (FR)</option>
+              <option value="+81">🇯🇵 +81 (JP)</option>
+              <option value="+86">🇨🇳 +86 (CN)</option>
+              <option value="+7">🇷🇺 +7 (RU)</option>
+              <option value="+27">🇿🇦 +27 (ZA)</option>
+              <option value="+234">🇳🇬 +234 (NG)</option>
+              <option value="+254">🇰🇪 +254 (KE)</option>
+              <option value="+55">🇧🇷 +55 (BR)</option>
+              <option value="+52">🇲🇽 +52 (MX)</option>
+              <option value="+39">🇮🇹 +39 (IT)</option>
+              <option value="+34">🇪🇸 +34 (ES)</option>
+              <option value="+31">🇳🇱 +31 (NL)</option>
+              <option value="+41">🇨🇭 +41 (CH)</option>
+              <option value="+46">🇸🇪 +46 (SE)</option>
+              <option value="+64">🇳🇿 +64 (NZ)</option>
+              <option value="+60">🇲🇾 +60 (MY)</option>
+              <option value="+62">🇮🇩 +62 (ID)</option>
+              <option value="+63">🇵🇭 +63 (PH)</option>
+              <option value="+84">🇻🇳 +84 (VN)</option>
+              <option value="+66">🇹🇭 +66 (TH)</option>
+              <option value="+20">🇪🇬 +20 (EG)</option>
+            </select>
+            <input
+              required
+              className="student-mobile-input"
+              placeholder="Mobile (e.g. 9876543210)"
+              maxLength={10}
+              inputMode="numeric"
+              value={f.parentSmsNumber || ''}
               style={{
-                borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
+                borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
               }}
-              onChange={e=>setF({...f,parentName:e.target.value})}
+              onChange={e => {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setF({ ...f, parentSmsNumber: cleaned });
+              }}
             />
-            {/\d/.test(f.parentName || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
-            )}
-          </label>
-          <label style={{ minWidth: 0 }}>Parent SMS Mobile Number
-            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 4, minWidth: 0 }}>
-              <select
-                value={f.countryCode || '+91'}
-                onChange={e => setF({ ...f, countryCode: e.target.value })}
-                style={{
-                  width: 98,
-                  flexShrink: 0,
-                  padding: '0 4px',
-                  fontSize: 12,
-                  height: 38,
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: '#fff',
-                  cursor: 'pointer'
-                }}
-                title="Select Country Code"
-              >
-                <option value="+91">🇮🇳 +91 (IN)</option>
-                <option value="+1">🇺🇸 +1 (US)</option>
-                <option value="+44">🇬🇧 +44 (UK)</option>
-                <option value="+971">🇦🇪 +971 (UAE)</option>
-                <option value="+966">🇸🇦 +966 (KSA)</option>
-                <option value="+65">🇸🇬 +65 (SG)</option>
-                <option value="+61">🇦🇺 +61 (AU)</option>
-                <option value="+880">🇧🇩 +880 (BD)</option>
-                <option value="+977">🇳🇵 +977 (NP)</option>
-                <option value="+94">🇱🇰 +94 (LK)</option>
-                <option value="+92">🇵🇰 +92 (PK)</option>
-                <option value="+974">🇶🇦 +974 (QA)</option>
-                <option value="+965">🇰🇼 +965 (KW)</option>
-                <option value="+968">🇴🇲 +968 (OM)</option>
-                <option value="+49">🇩🇪 +49 (DE)</option>
-                <option value="+33">🇫🇷 +33 (FR)</option>
-                <option value="+81">🇯🇵 +81 (JP)</option>
-                <option value="+86">🇨🇳 +86 (CN)</option>
-                <option value="+7">🇷🇺 +7 (RU)</option>
-                <option value="+27">🇿🇦 +27 (ZA)</option>
-                <option value="+234">🇳🇬 +234 (NG)</option>
-                <option value="+254">🇰🇪 +254 (KE)</option>
-                <option value="+55">🇧🇷 +55 (BR)</option>
-                <option value="+52">🇲🇽 +52 (MX)</option>
-                <option value="+39">🇮🇹 +39 (IT)</option>
-                <option value="+34">🇪🇸 +34 (ES)</option>
-                <option value="+31">🇳🇱 +31 (NL)</option>
-                <option value="+41">🇨🇭 +41 (CH)</option>
-                <option value="+46">🇸🇪 +46 (SE)</option>
-                <option value="+64">🇳🇿 +64 (NZ)</option>
-                <option value="+60">🇲🇾 +60 (MY)</option>
-                <option value="+62">🇮🇩 +62 (ID)</option>
-                <option value="+63">🇵🇭 +63 (PH)</option>
-                <option value="+84">🇻🇳 +84 (VN)</option>
-                <option value="+66">🇹🇭 +66 (TH)</option>
-                <option value="+20">🇪🇬 +20 (EG)</option>
-              </select>
-              <input
-                required
-                placeholder="Mobile (e.g. 9876543210)"
-                maxLength={10}
-                inputMode="numeric"
-                value={f.parentSmsNumber || ''}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  height: 38,
-                  borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                  boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => {
-                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setF({ ...f, parentSmsNumber: cleaned });
-                }}
-              />
-            </div>
-            {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Must be a valid 10-digit mobile number
-              </span>
-            )}
-          </label>
-        </div>
+          </div>
+          {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Must be a valid 10-digit mobile number
+            </span>
+          )}
+        </label>
 
         <label>Parent Email Address (for Login / Absent Alerts)
           <input
@@ -5964,22 +6054,16 @@ function Students(){
         </label>
 
         {/* Student Portal Login Credentials Section */}
-        <div style={{
-          padding: 14,
-          backgroundColor: '#f8fafc',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          margin: '6px 0 16px 0'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="student-portal-box">
+          <div className="student-portal-box-title">
             <KeyRound size={14} style={{ color: '#2563eb' }} />
             Student Portal Login Email Option
           </div>
-          <p style={{ margin: '0 0 10px 0', fontSize: 12, color: '#64748b' }}>
+          <p className="student-portal-box-desc">
             Select which email will be used to log in to the <b>Student Portal</b>:
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: '#334155', marginBottom: 12 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+          <div className="student-portal-radio-group">
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -5989,7 +6073,7 @@ function Students(){
               />
               <span>🎓 <b>Use Student Email</b> for Student Portal Login</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -5999,7 +6083,7 @@ function Students(){
               />
               <span>👨‍👩‍👧 <b>Use Parent Email</b> for Student Portal Login</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -6011,7 +6095,7 @@ function Students(){
             </label>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: 12, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+          <label className="student-portal-invite-note">
             <input
               type="checkbox"
               checked={f.sendInviteEmail !== false}
@@ -8141,12 +8225,12 @@ function Teachers(){
         </div>
 
         {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: '#64748b', fontSize: 12 }}>
+        <label style={{ color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
           Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
           <input
             readOnly
             tabIndex={-1}
-            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            style={{ cursor: 'default', opacity: 0.85 }}
             value={[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || ''}
             placeholder="Full name will appear here automatically"
           />
@@ -8284,19 +8368,13 @@ function Teachers(){
         )}
 
         {/* Password Setup & Activation Box */}
-        <div style={{
-          padding: 14,
-          backgroundColor: '#f8fafc',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          margin: '6px 0 16px 0'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="student-portal-box">
+          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
             <KeyRound size={14} style={{ color: '#2563eb' }} />
             {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
           </div>
           {!editingTeacher && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+            <label className="student-portal-invite-note" style={{ margin: '0 0 10px 0', fontSize: 13 }}>
               <input
                 type="checkbox"
                 checked={f.sendInviteEmail !== false}
@@ -8305,7 +8383,7 @@ function Teachers(){
               <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
             </label>
           )}
-          <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
+          <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
             {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
             <input
               type="password"

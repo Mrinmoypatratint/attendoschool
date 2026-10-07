@@ -618,6 +618,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
     case 'STUDENT_CREATED':
     case 'PARENT_CREATED': {
       const studentName = escapeHtml(data.student_name || data.name || 'Student');
+      const admissionNumber = escapeHtml(data.admission_number || data.admissionNumber || '—');
       const className = escapeHtml(data.class_name || data.className || '8');
       const section = escapeHtml(data.section_name || data.section || 'A');
       const rollNumber = escapeHtml(data.roll_number || data.rollNumber || data.roll || '—');
@@ -625,7 +626,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
       const subject = `Welcome to ${data.school_name || data.schoolName || 'School'} — Student Portal Access for ${data.student_name || 'Student'}`;
       const text = `Hello,
 
-An official student profile has been registered for ${data.student_name} (Roll: ${rollNumber}) in Class ${className}-${section} at ${data.school_name || 'School'}.
+An official student profile has been registered for ${data.student_name} (Admission No: ${admissionNumber}, Roll: ${rollNumber}) in Class ${className}-${section} at ${data.school_name || 'School'}.
 
 To access attendance records, timetables, and academic notices in the Student Portal, set your password here:
 ${resetUrl}
@@ -653,6 +654,10 @@ AttendoSchool: ${baseUrl}`;
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Student Name</td>
             <td style="padding: 10px 14px; font-size: 13.5px; font-weight: 700; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${studentName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${admissionNumber}</td>
           </tr>
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Roll Number</td>

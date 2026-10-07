@@ -1058,6 +1058,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               templateData: {
                 student_name: name,
                 school_name: req.user?.schoolName || 'School',
+                admission_number: cleanAdmissionNumber || '—',
                 class_name: String(clsNum),
                 section_name: secName,
                 roll_number: String(rollNumber),
@@ -1252,6 +1253,90 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  return res.status(201).json(newStudent);
 });
 
+interface ParsedClassResult {
+  valid: boolean;
+  classNumber: number;
+  classId: string;
+  classLabel: string;
+  error?: string;
+}
+
+function parseClassValue(rawVal: any, fallbackClass?: string | number): ParsedClassResult {
+  let val = String(rawVal ?? '').trim();
+
+  if (!val && fallbackClass !== undefined && fallbackClass !== null && String(fallbackClass).trim() !== '') {
+    val = String(fallbackClass).trim();
+  }
+
+  if (!val) {
+    return {
+      valid: false,
+      classNumber: 1,
+      classId: 'cls-1',
+      classLabel: '',
+      error: 'Class is required'
+    };
+  }
+
+  // Kindergarten string checks
+  if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
+    return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+  }
+  if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
+    return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+  }
+
+  const clean = val.toLowerCase();
+
+  // Roman Numeral lookup (I to XII)
+  const ROMAN_MAP: Record<string, number> = {
+    i: 1,
+    ii: 2,
+    iii: 3,
+    iv: 4,
+    v: 5,
+    vi: 6,
+    vii: 7,
+    viii: 8,
+    ix: 9,
+    x: 10,
+    xi: 11,
+    xii: 12,
+  };
+
+  if (Object.prototype.hasOwnProperty.call(ROMAN_MAP, clean)) {
+    const num = ROMAN_MAP[clean];
+    return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+  }
+
+  // Numeric string e.g. "10", "Class 10", "Grade 5", "Std 8"
+  const cleanNoPrefix = val.replace(/^(class|grade|std|standard)\s*/i, '').trim();
+  if (/^\d+$/.test(cleanNoPrefix)) {
+    const num = parseInt(cleanNoPrefix, 10);
+    if (num >= 1 && num <= 12) {
+      return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+    }
+  }
+
+  // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
+  if (typeof rawVal === 'number') {
+    if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    if (rawVal >= 1 && rawVal <= 12) {
+      return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
+    }
+  }
+
+  // Invalid class value
+  return {
+    valid: false,
+    classNumber: 1,
+    classId: 'cls-1',
+    classLabel: val,
+    error: `Invalid Class '${val}'. Expected 1–12, Roman numerals (I–XII), LKG, or UKG.`
+  };
+}
+
 r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  const {students=[],sessionId:reqSessionId}=req.body||{};
  if(!Array.isArray(students)||students.length===0) return res.status(400).json({message:'Array of student records is required'});
@@ -1329,16 +1414,18 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   const neededClasses = new Set<number>();
   const neededSections = new Set<string>(); // "classNumber:sectionName"
   for (const st of students) {
-    const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
-    let cn: number;
-    if (/l.?kg/i.test(rawClass)) cn = -1;
-    else if (/u.?kg/i.test(rawClass)) cn = 0;
-    else cn = Number(rawClass.replace(/[^0-9]/g,'')) || 1;
-    neededClasses.add(cn);
+    const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
+      ? st.classNumber 
+      : (st.classLabel || st['Class'] || st.class_number || '');
+    const parsed = parseClassValue(rawClassVal);
+    if (parsed.valid) {
+      neededClasses.add(parsed.classNumber);
+    }
 
-    let sn = String(st.sectionName||st['Section']||st.section_name||'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A','B','C','D','E','F'].includes(sn)) sn = 'A';
-    neededSections.add(`${cn}:${sn}`);
+    let sn = String(st.sectionName || st['Section'] || st.section_name || 'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
+    if (parsed.valid) {
+      neededSections.add(`${parsed.classNumber}:${sn}`);
+    }
   }
 
   for (const cn of neededClasses) {
@@ -1406,16 +1493,15 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
 
     // Class/section resolution from in-memory preloaded maps
-    const rawClass = String(st.classLabel || st['Class'] || st.classNumber || st.class_number || '').trim();
-    const rawSection = String(st.sectionName || st['Section'] || st.section_name || 'A').trim().toUpperCase();
-    let classNumber: number;
-    let classLabel = rawClass;
-    if (/l.?kg/i.test(rawClass)) { classNumber = -1; classLabel = 'L-KG'; }
-    else if (/u.?kg/i.test(rawClass)) { classNumber = 0; classLabel = 'U-KG'; }
-    else { classNumber = Number(rawClass.replace(/[^0-9]/g, '')) || 1; classLabel = `Class ${classNumber}`; }
+    const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
+      ? st.classNumber 
+      : (st.classLabel || st['Class'] || st.class_number || '');
+    const rawSection = String(st.sectionName || st['Section'] || st.section_name || 'A');
+    const parsedCls = parseClassValue(rawClassVal);
+    const classNumber = parsedCls.classNumber;
+    const classLabel = parsedCls.classLabel;
 
     let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(sectionName)) sectionName = 'A';
 
     let classId = classMap.get(classNumber) || `cls-${classNumber}`;
     let sectionId = (classId && sectionMap.get(`${classId}_${sectionName}`)) || `sec-${classId}-${sectionName.toLowerCase()}`;
@@ -1425,6 +1511,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     if (!rollNumber) errors.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
     if (!admissionNumber) errors.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
     if (!parentPhone) errors.push({ row: rowNum, field: 'Parent Phone', message: 'Parent Phone is required' });
+    if (!parsedCls.valid) errors.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid class' });
     if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number '${admissionNumber}' in this batch` });
     if (admissionNumber) seenAdmNums.add(admissionNumber);
 
