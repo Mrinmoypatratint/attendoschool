@@ -67,7 +67,8 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.is_active AS user_active,
             tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
-            tp.qualification, tp.photo_url, COALESCE(tp.is_active, TRUE) AS is_active
+            tp.qualification, tp.designation, tp.photo_url, tp.class_name, tp.section_name,
+            COALESCE(tp.is_active, TRUE) AS is_active
      FROM users u
      LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
      ${where}
@@ -100,7 +101,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       );
     }
 
-    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','photo_url'];
+    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url'];
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {
