@@ -1210,14 +1210,14 @@ r.delete('/schools/:id', async (req: AuthRequest, res) => {
     }
   }
 
-  // 3. Cascade delete from Firebase Cloud Firestore
-  try {
-    await deleteSchoolFromFirestore(id, schoolCode);
-    if (resolvedId !== id) {
-      await deleteSchoolFromFirestore(resolvedId, schoolCode);
-    }
-  } catch (err: any) {
+  // 3. Cascade delete from Firebase Cloud Firestore (fire-and-forget)
+  deleteSchoolFromFirestore(id, schoolCode).catch(err => {
     console.warn('[superAdmin] Error deleting from Firestore:', err.message);
+  });
+  if (resolvedId !== id) {
+    deleteSchoolFromFirestore(resolvedId, schoolCode).catch(err => {
+      console.warn('[superAdmin] Error deleting resolved ID from Firestore:', err.message);
+    });
   }
 
   // 4. Remove from in-memory cache

@@ -6,7 +6,17 @@ import { isSameSchool } from '../utils/tenant';
  * Ensures all CRUD operations across Students, Teachers, Classes, Sections,
  * Subjects, Teacher Allocations, Timetable, Attendance, and Schools
  * are reliably reflected in Firebase Cloud Firestore.
+ * 
+ * PERFORMANCE: All sync operations are fire-and-forget — they run in the
+ * background and never block API responses. Errors are logged silently.
  */
+
+/** Fire-and-forget wrapper: executes a promise without awaiting or blocking the caller */
+function fireAndForget(fn: () => Promise<any>, label: string): void {
+  fn().catch(err => {
+    console.warn(`[FirestoreSync] Background ${label} failed:`, err.message);
+  });
+}
 
 // ── STUDENTS ──
 export async function syncStudentToFirestore(student: any): Promise<boolean> {

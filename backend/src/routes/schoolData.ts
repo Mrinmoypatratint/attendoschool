@@ -2141,7 +2141,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     demoStudents.unshift(updated);
   }
 
-  await syncStudentToFirestore(updated).catch(() => {});
+  syncStudentToFirestore(updated).catch(() => {});
   return res.json(updated);
 });
 
@@ -3215,7 +3215,7 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     } catch {}
   }
 
-  await syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
+  syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
   res.json(updated);
 });
 
