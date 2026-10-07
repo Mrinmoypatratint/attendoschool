@@ -1,7 +1,7 @@
 services:
   # -------------------------------------------------------------
   # AttendoSchool Backend Web Service (Node.js / Express 5)
-  # Pure Google Cloud Firestore (Zero PostgreSQL dependency)
+  # 100% Supabase PostgreSQL Engine (Zero Firebase Dependency)
   # -------------------------------------------------------------
   - type: web
     name: attendoschool-backend
@@ -12,31 +12,59 @@ services:
     startCommand: npm run start
     healthCheckPath: /health
     envVars:
+      # ── Server Core Settings ──
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: DB_DRIVER
-        value: postgres
-      - key: USE_POSTGRES
-        value: "true"
-      - key: DATABASE_URL
-        sync: false
-      - key: SUPABASE_DATABASE_URL
-        sync: false
       - key: CORS_ORIGIN
         value: "*"
       - key: JWT_SECRET
         generateValue: true
-      # ── Firebase Credentials ──
-      - key: FIREBASE_PROJECT_ID
-        value: attendoschool
-      - key: FIREBASE_CLIENT_EMAIL
-        value: firebase-adminsdk-fbsvc@attendoschool.iam.gserviceaccount.com
-      # IMPORTANT: Set FIREBASE_PRIVATE_KEY and FIREBASE_SERVICE_ACCOUNT
-      # manually in the Render Dashboard > Environment tab.
-      # They contain multi-line secrets that cannot be safely stored in YAML.
-      # ── SMTP Email Configuration (Gmail) ──
+
+      # ── Database Architecture (100% Supabase PostgreSQL Pooler) ──
+      - key: DB_DRIVER
+        value: postgres
+      - key: USE_POSTGRES
+        value: "true"
+      - key: SECONDARY_DB
+        value: none
+      - key: ENABLE_DUAL_DB_SYNC
+        value: "false"
+      - key: PG_POOL_MAX
+        value: "10"
+      # Note: For Supabase on cloud instances, use Transaction Mode Port 6543:
+      # postgresql://postgres.widbnephnmbufxaggflw:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_DATABASE_URL
+        sync: false
+
+      # ── Email Service Gateway (Port 443 HTTPS APIs for Render Free Tier) ──
+      # Render Free Tier blocks outbound TCP ports 25, 465, and 587.
+      # To send emails on Render, use Brevo API Key (xkeysib-...), Resend (re_...), or Google Apps Script.
+      - key: EMAIL_ENABLED
+        value: "true"
+
+      # 1. Brevo HTTPS API (300 Free Emails/Day - Port 443 Never Blocked)
+      # IMPORTANT: Must be a REST API key starting with 'xkeysib-' (Brevo -> SMTP & API -> API Keys tab).
+      # Do NOT use 'xsmtpsib-' which is an SMTP password that will fail over Port 443.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        value: info.sahayog24x7@gmail.com
+      - key: BREVO_SENDER_NAME
+        value: "AttendoSchool"
+
+      # 2. Resend HTTPS API (Port 443 Alternate Provider)
+      - key: RESEND_API_KEY
+        sync: false
+
+      # 3. Google Apps Script Webhook Relay (Port 443 Direct Gmail Dispatch)
+      - key: GMAIL_RELAY_URL
+        sync: false
+
+      # ── Direct SMTP Fallback (Active on Render Paid Plans / Local Dev) ──
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
@@ -44,31 +72,22 @@ services:
       - key: SMTP_USER
         value: info.sahayog24x7@gmail.com
       - key: SMTP_PASS
-        sync: false  # Enter in Render Dashboard > Environment
+        sync: false  # 16-character Gmail App Password (e.g., dfokxsfhkvwlujvw)
       - key: SMTP_FROM
         value: "AttendoSchool <info.sahayog24x7@gmail.com>"
       - key: SMTP_FROM_NAME
         value: "AttendoSchool"
       - key: SMTP_REPLY_TO
         value: info.sahayog24x7@gmail.com
-      - key: EMAIL_ENABLED
-        value: "true"
-      # ── Brevo HTTPS Email Gateway (Port 443 - 100% Free on Render) ──
-      - key: BREVO_API_KEY
-        sync: false  # Enter Brevo API Key (xkeysib-...) in Render Dashboard
-      - key: BREVO_SENDER_EMAIL
-        value: "info.sahayog24x7@gmail.com"
-      - key: BREVO_SENDER_NAME
-        value: "AttendoSchool"
-      # ── Google Apps Script Gmail Webhook Relay (Port 443 - 100% Free Gmail) ──
-      - key: GMAIL_RELAY_URL
-        sync: false
-      # ── Application URLs ──
+
+      # ── Keep-Alive & Application URLs ──
+      - key: KEEP_ALIVE_URL
+        value: https://attendoschool-backend.onrender.com/api/health
       - key: APP_BASE_URL
         value: https://attendoschool.optinetinnovations.in
       - key: FRONTEND_URL
         value: https://attendoschool.optinetinnovations.in
       - key: COMPANY_NAME
-        value: "AttendoSchool Platform"
+        value: "AttendoSchool"
       - key: COMPANY_GST_RATE
         value: "18"
