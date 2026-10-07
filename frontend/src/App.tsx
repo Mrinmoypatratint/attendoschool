@@ -5855,104 +5855,91 @@ function Students(){
           />
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>Parent Name
-            <input 
-              placeholder="Parent Name" 
-              value={f.parentName||''} 
+        <label>Parent Name
+          <input
+            placeholder="Parent Name"
+            value={f.parentName || ''}
+            style={{
+              borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
+              boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
+            }}
+            onChange={e => setF({ ...f, parentName: e.target.value })}
+          />
+          {/\d/.test(f.parentName || '') && (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Enter a string not a number
+            </span>
+          )}
+        </label>
+
+        <label>Parent SMS Mobile Number
+          <div className="student-mobile-row">
+            <select
+              className="student-country-select"
+              value={f.countryCode || '+91'}
+              onChange={e => setF({ ...f, countryCode: e.target.value })}
+              title="Select Country Code"
+            >
+              <option value="+91">🇮🇳 +91 (IN)</option>
+              <option value="+1">🇺🇸 +1 (US)</option>
+              <option value="+44">🇬🇧 +44 (UK)</option>
+              <option value="+971">🇦🇪 +971 (UAE)</option>
+              <option value="+966">🇸🇦 +966 (KSA)</option>
+              <option value="+65">🇸🇬 +65 (SG)</option>
+              <option value="+61">🇦🇺 +61 (AU)</option>
+              <option value="+880">🇧🇩 +880 (BD)</option>
+              <option value="+977">🇳🇵 +977 (NP)</option>
+              <option value="+94">🇱🇰 +94 (LK)</option>
+              <option value="+92">🇵🇰 +92 (PK)</option>
+              <option value="+974">🇶🇦 +974 (QA)</option>
+              <option value="+965">🇰🇼 +965 (KW)</option>
+              <option value="+968">🇴🇲 +968 (OM)</option>
+              <option value="+49">🇩🇪 +49 (DE)</option>
+              <option value="+33">🇫🇷 +33 (FR)</option>
+              <option value="+81">🇯🇵 +81 (JP)</option>
+              <option value="+86">🇨🇳 +86 (CN)</option>
+              <option value="+7">🇷🇺 +7 (RU)</option>
+              <option value="+27">🇿🇦 +27 (ZA)</option>
+              <option value="+234">🇳🇬 +234 (NG)</option>
+              <option value="+254">🇰🇪 +254 (KE)</option>
+              <option value="+55">🇧🇷 +55 (BR)</option>
+              <option value="+52">🇲🇽 +52 (MX)</option>
+              <option value="+39">🇮🇹 +39 (IT)</option>
+              <option value="+34">🇪🇸 +34 (ES)</option>
+              <option value="+31">🇳🇱 +31 (NL)</option>
+              <option value="+41">🇨🇭 +41 (CH)</option>
+              <option value="+46">🇸🇪 +46 (SE)</option>
+              <option value="+64">🇳🇿 +64 (NZ)</option>
+              <option value="+60">🇲🇾 +60 (MY)</option>
+              <option value="+62">🇮🇩 +62 (ID)</option>
+              <option value="+63">🇵🇭 +63 (PH)</option>
+              <option value="+84">🇻🇳 +84 (VN)</option>
+              <option value="+66">🇹🇭 +66 (TH)</option>
+              <option value="+20">🇪🇬 +20 (EG)</option>
+            </select>
+            <input
+              required
+              className="student-mobile-input"
+              placeholder="Mobile (e.g. 9876543210)"
+              maxLength={10}
+              inputMode="numeric"
+              value={f.parentSmsNumber || ''}
               style={{
-                borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
+                borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
               }}
-              onChange={e=>setF({...f,parentName:e.target.value})}
+              onChange={e => {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setF({ ...f, parentSmsNumber: cleaned });
+              }}
             />
-            {/\d/.test(f.parentName || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
-            )}
-          </label>
-          <label style={{ minWidth: 0 }}>Parent SMS Mobile Number
-            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginTop: 4, minWidth: 0 }}>
-              <select
-                value={f.countryCode || '+91'}
-                onChange={e => setF({ ...f, countryCode: e.target.value })}
-                style={{
-                  width: 98,
-                  flexShrink: 0,
-                  padding: '0 4px',
-                  fontSize: 12,
-                  height: 38,
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #cbd5e1)',
-                  backgroundColor: '#fff',
-                  cursor: 'pointer'
-                }}
-                title="Select Country Code"
-              >
-                <option value="+91">🇮🇳 +91 (IN)</option>
-                <option value="+1">🇺🇸 +1 (US)</option>
-                <option value="+44">🇬🇧 +44 (UK)</option>
-                <option value="+971">🇦🇪 +971 (UAE)</option>
-                <option value="+966">🇸🇦 +966 (KSA)</option>
-                <option value="+65">🇸🇬 +65 (SG)</option>
-                <option value="+61">🇦🇺 +61 (AU)</option>
-                <option value="+880">🇧🇩 +880 (BD)</option>
-                <option value="+977">🇳🇵 +977 (NP)</option>
-                <option value="+94">🇱🇰 +94 (LK)</option>
-                <option value="+92">🇵🇰 +92 (PK)</option>
-                <option value="+974">🇶🇦 +974 (QA)</option>
-                <option value="+965">🇰🇼 +965 (KW)</option>
-                <option value="+968">🇴🇲 +968 (OM)</option>
-                <option value="+49">🇩🇪 +49 (DE)</option>
-                <option value="+33">🇫🇷 +33 (FR)</option>
-                <option value="+81">🇯🇵 +81 (JP)</option>
-                <option value="+86">🇨🇳 +86 (CN)</option>
-                <option value="+7">🇷🇺 +7 (RU)</option>
-                <option value="+27">🇿🇦 +27 (ZA)</option>
-                <option value="+234">🇳🇬 +234 (NG)</option>
-                <option value="+254">🇰🇪 +254 (KE)</option>
-                <option value="+55">🇧🇷 +55 (BR)</option>
-                <option value="+52">🇲🇽 +52 (MX)</option>
-                <option value="+39">🇮🇹 +39 (IT)</option>
-                <option value="+34">🇪🇸 +34 (ES)</option>
-                <option value="+31">🇳🇱 +31 (NL)</option>
-                <option value="+41">🇨🇭 +41 (CH)</option>
-                <option value="+46">🇸🇪 +46 (SE)</option>
-                <option value="+64">🇳🇿 +64 (NZ)</option>
-                <option value="+60">🇲🇾 +60 (MY)</option>
-                <option value="+62">🇮🇩 +62 (ID)</option>
-                <option value="+63">🇵🇭 +63 (PH)</option>
-                <option value="+84">🇻🇳 +84 (VN)</option>
-                <option value="+66">🇹🇭 +66 (TH)</option>
-                <option value="+20">🇪🇬 +20 (EG)</option>
-              </select>
-              <input
-                required
-                placeholder="Mobile (e.g. 9876543210)"
-                maxLength={10}
-                inputMode="numeric"
-                value={f.parentSmsNumber || ''}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  height: 38,
-                  borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                  boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => {
-                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setF({ ...f, parentSmsNumber: cleaned });
-                }}
-              />
-            </div>
-            {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Must be a valid 10-digit mobile number
-              </span>
-            )}
-          </label>
-        </div>
+          </div>
+          {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Must be a valid 10-digit mobile number
+            </span>
+          )}
+        </label>
 
         <label>Parent Email Address (for Login / Absent Alerts)
           <input
@@ -5964,22 +5951,16 @@ function Students(){
         </label>
 
         {/* Student Portal Login Credentials Section */}
-        <div style={{
-          padding: 14,
-          backgroundColor: '#f8fafc',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          margin: '6px 0 16px 0'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="student-portal-box">
+          <div className="student-portal-box-title">
             <KeyRound size={14} style={{ color: '#2563eb' }} />
             Student Portal Login Email Option
           </div>
-          <p style={{ margin: '0 0 10px 0', fontSize: 12, color: '#64748b' }}>
+          <p className="student-portal-box-desc">
             Select which email will be used to log in to the <b>Student Portal</b>:
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: '#334155', marginBottom: 12 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+          <div className="student-portal-radio-group">
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -5989,7 +5970,7 @@ function Students(){
               />
               <span>🎓 <b>Use Student Email</b> for Student Portal Login</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -5999,7 +5980,7 @@ function Students(){
               />
               <span>👨‍👩‍👧 <b>Use Parent Email</b> for Student Portal Login</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+            <label className="student-portal-radio-label">
               <input
                 type="radio"
                 name="loginOption"
@@ -6011,7 +5992,7 @@ function Students(){
             </label>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: 12, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+          <label className="student-portal-invite-note">
             <input
               type="checkbox"
               checked={f.sendInviteEmail !== false}
@@ -7999,12 +7980,12 @@ function Teachers(){
         </div>
 
         {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: '#64748b', fontSize: 12 }}>
+        <label style={{ color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
           Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
           <input
             readOnly
             tabIndex={-1}
-            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            style={{ cursor: 'default', opacity: 0.85 }}
             value={[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || ''}
             placeholder="Full name will appear here automatically"
           />
@@ -8142,19 +8123,13 @@ function Teachers(){
         )}
 
         {/* Password Setup & Activation Box */}
-        <div style={{
-          padding: 14,
-          backgroundColor: '#f8fafc',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          margin: '6px 0 16px 0'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="student-portal-box">
+          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
             <KeyRound size={14} style={{ color: '#2563eb' }} />
             {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
           </div>
           {!editingTeacher && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: '0 0 10px 0', fontSize: 13, color: '#1e40af', backgroundColor: '#eff6ff', padding: '8px 10px', borderRadius: 6, border: '1px solid #dbeafe' }}>
+            <label className="student-portal-invite-note" style={{ margin: '0 0 10px 0', fontSize: 13 }}>
               <input
                 type="checkbox"
                 checked={f.sendInviteEmail !== false}
@@ -8163,7 +8138,7 @@ function Teachers(){
               <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
             </label>
           )}
-          <label style={{ display: 'block', fontSize: 12, color: '#64748b', margin: 0 }}>
+          <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
             {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
             <input
               type="password"
