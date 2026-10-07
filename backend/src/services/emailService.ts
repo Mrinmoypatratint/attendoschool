@@ -1,9 +1,10 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { env, extractEmailAddress, cleanEnv } from '../config/env';
-import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback } from './notificationService';
+import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback, isEmailServiceEnabled } from './notificationService';
 
 function configured() {
+  if (!isEmailServiceEnabled()) return false;
   const hasSmtp = Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom);
   const hasHttp = Boolean(
     env.brevoApiKey ||
@@ -17,6 +18,10 @@ function configured() {
 }
 
 export async function sendInvoiceEmail(to: string, invoiceNumber: string, pdf: Buffer) {
+  if (!isEmailServiceEnabled()) {
+    console.warn(`[EmailService] Mail service is disabled by Super Admin. Invoice email skipped for ${to}.`);
+    return;
+  }
   if (!configured()) throw new Error('SMTP is not configured');
 
   const logo = getLogoAttachment();

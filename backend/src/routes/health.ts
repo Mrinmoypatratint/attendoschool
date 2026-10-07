@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { checkPostgresHealth, isPostgresConfigured } from '../db';
 import { env } from '../config/env';
-import { testSmtpConnection, getGlobalSmtpConfig } from '../services/notificationService';
+import { testSmtpConnection, getGlobalSmtpConfig, isEmailServiceEnabled } from '../services/notificationService';
 
 const r = Router();
 
@@ -35,7 +35,7 @@ r.get('/email-status', (_req, res) => {
 
   res.json({
     status: hasCreds ? 'configured' : 'missing_credentials',
-    emailEnabled: env.emailEnabled,
+    emailEnabled: isEmailServiceEnabled(),
     database: {
       engine: 'supabase_postgres',
       configured: isPostgresConfigured

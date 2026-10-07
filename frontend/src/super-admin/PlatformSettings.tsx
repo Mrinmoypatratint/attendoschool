@@ -17,18 +17,44 @@ export const PlatformSettings: React.FC = () => {
     sessionTimeoutMinutes: 60,
     enforceStrongPasswords: true,
     rateLimitPerMinute: 120,
-    maintenanceMode: false
+    maintenanceMode: false,
+    emailEnabled: true,
+    emailServiceEnabled: true
   });
 
   const [activeTab, setActiveTab] = useState<'general' | 'sms' | 'payment' | 'system' | 'smtp'>('general');
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [togglingMail, setTogglingMail] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [showSmtpPass, setShowSmtpPass] = useState<boolean>(false);
   const [smtpTesting, setSmtpTesting] = useState<boolean>(false);
   const [smtpTestMsg, setSmtpTestMsg] = useState<{ success: boolean; message: string } | null>(null);
   const [testEmail, setTestEmail] = useState<string>('rajbsmv@gmail.com');
+
+  const handleToggleMailService = async (targetState?: boolean) => {
+    setTogglingMail(true);
+    setError(null);
+    try {
+      const desiredState = targetState !== undefined ? targetState : (settings.emailEnabled === false);
+      const res: any = await apiRequest('/super-admin/mail-service/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ enabled: desiredState })
+      });
+      setSettings(prev => ({
+        ...prev,
+        emailEnabled: desiredState,
+        emailServiceEnabled: desiredState
+      }));
+      setSaveSuccess(res?.message || `Mail service ${desiredState ? 'enabled' : 'disabled'} successfully.`);
+      setTimeout(() => setSaveSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to toggle mail service status');
+    } finally {
+      setTogglingMail(false);
+    }
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -169,7 +195,7 @@ export const PlatformSettings: React.FC = () => {
           }}
           onClick={() => setActiveTab('smtp')}
         >
-          📧 Email & SMTP Gateway (Superadmin)
+          📧 Mail Service & SMTP Gateway (Superadmin)
         </button>
       </div>
 
@@ -374,6 +400,121 @@ export const PlatformSettings: React.FC = () => {
           ) : (
             /* TAB: SMTP EMAIL GATEWAY (SUPERADMIN ONLY) */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px' }}>
+              
+              {/* MASTER MAIL SERVICE ON/OFF TOGGLE BOX */}
+              <div style={{
+                background: settings.emailEnabled !== false ? '#f0fdf4' : '#fff1f2',
+                borderRadius: '10px',
+                border: `1.5px solid ${settings.emailEnabled !== false ? '#86efac' : '#fecdd3'}`,
+                padding: '20px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '280px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        letterSpacing: '0.03em',
+                        background: settings.emailEnabled !== false ? '#dcfce7' : '#ffe4e6',
+                        color: settings.emailEnabled !== false ? '#15803d' : '#be123c',
+                        border: `1px solid ${settings.emailEnabled !== false ? '#bbf7d0' : '#fecdd3'}`
+                      }}>
+                        <span style={{
+                          display: 'inline-block',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: settings.emailEnabled !== false ? '#22c55e' : '#f43f5e',
+                          boxShadow: settings.emailEnabled !== false ? '0 0 8px #22c55e' : 'none'
+                        }}></span>
+                        {settings.emailEnabled !== false ? 'MAIL SERVICE IS ACTIVE' : 'MAIL SERVICE IS DISABLED / PAUSED'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                        (Superadmin Master Switch)
+                      </span>
+                    </div>
+
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '700', color: settings.emailEnabled !== false ? '#166534' : '#9f1239' }}>
+                      {settings.emailEnabled !== false ? 'Automated & Transactional Email Dispatch Enabled' : 'All Outbound Emails Suspended System-Wide'}
+                    </h4>
+
+                    <p style={{ margin: 0, fontSize: '13px', color: settings.emailEnabled !== false ? '#14532d' : '#881337', lineHeight: '1.5' }}>
+                      {settings.emailEnabled !== false
+                        ? 'Student absence alerts, parent notifications, invoice payment receipts, account credentials, and password resets will be delivered automatically via your configured SMTP / Brevo relay.'
+                        : 'No outbound emails will be dispatched to parents, teachers, students, or administrators. Notifications are safely bypassed without interrupting school workflows or throwing unhandled errors.'}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <button
+                      type="button"
+                      disabled={togglingMail || loading}
+                      onClick={() => handleToggleMailService(settings.emailEnabled === false)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '9px 18px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        cursor: togglingMail ? 'not-allowed' : 'pointer',
+                        border: 'none',
+                        color: '#ffffff',
+                        background: settings.emailEnabled !== false ? '#dc2626' : '#16a34a',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {togglingMail ? (
+                        <span>Updating Status...</span>
+                      ) : settings.emailEnabled !== false ? (
+                        <>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                          Disable Mail Service
+                        </>
+                      ) : (
+                        <>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          Enable Mail Service
+                        </>
+                      )}
+                    </button>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                      Click for instant platform-wide toggle
+                    </span>
+                  </div>
+                </div>
+
+                {/* Explicit Radio Choice */}
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${settings.emailEnabled !== false ? '#bbf7d0' : '#fecdd3'}`, display: 'flex', gap: '20px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#1e293b', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="emailMasterServiceStatus"
+                      checked={settings.emailEnabled !== false}
+                      onChange={() => setSettings({ ...settings, emailEnabled: true, emailServiceEnabled: true })}
+                    />
+                    <span>Active (Deliver Emails)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '600', color: '#1e293b', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="emailMasterServiceStatus"
+                      checked={settings.emailEnabled === false}
+                      onChange={() => setSettings({ ...settings, emailEnabled: false, emailServiceEnabled: false })}
+                    />
+                    <span>Disabled (Pause All Emails)</span>
+                  </label>
+                </div>
+              </div>
+
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', color: '#1e293b', fontWeight: '700', fontSize: '14px' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -539,6 +680,12 @@ export const PlatformSettings: React.FC = () => {
                 <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '8px', color: '#1e293b' }}>
                   Superadmin Test SMTP Dispatch
                 </div>
+                {settings.emailEnabled === false && (
+                  <div style={{ margin: '0 0 12px 0', padding: '10px 12px', borderRadius: '6px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span><b>Notice:</b> Mail service is currently set to DISABLED. Please toggle Mail Service to Active above to test verification email delivery.</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
                     type="email"

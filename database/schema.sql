@@ -177,6 +177,13 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE platform_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value JSONB NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX idx_users_school ON users(school_id);
 CREATE INDEX idx_students_school ON students(school_id);
 CREATE INDEX idx_students_class_section ON students(class_id, section_id);
@@ -184,3 +191,4 @@ CREATE INDEX idx_routines_school ON class_routines(school_id);
 CREATE INDEX idx_attendance_school_date ON attendance_sessions(school_id, attendance_date);
 CREATE INDEX idx_sms_school ON sms_logs(school_id);
 CREATE INDEX idx_payments_school ON payments(school_id);
+

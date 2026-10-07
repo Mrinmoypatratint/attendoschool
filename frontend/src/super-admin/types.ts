@@ -124,6 +124,8 @@ export interface SystemSettings {
   brevoApiKey?: string;
   brevoSenderEmail?: string;
   brevoSenderName?: string;
+  emailEnabled?: boolean;
+  emailServiceEnabled?: boolean;
 }
 
 export interface OverviewMetrics {

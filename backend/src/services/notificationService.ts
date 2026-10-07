@@ -41,6 +41,7 @@ export interface GlobalSmtpConfig {
   brevoSenderName?: string;
   resendApiKey?: string;
   gmailRelayUrl?: string;
+  isEnabled: boolean;
 }
 
 export interface NotificationLog {
@@ -78,7 +79,7 @@ let globalSmtpConfig: GlobalSmtpConfig = {
   port: Number(env.smtpPort) || 587,
   username: cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
   password: cleanSmtpPass(env.smtpPass, ''),
-  encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
+  encryption: Number(env.smtpPort) === 465 ? 'SSL/TLS' : 'STARTTLS',
   defaultSenderEmail: env.smtpFrom ? (extractEmailAddress(env.smtpFrom) || cleanEnv(env.smtpUser, 'rajbsmv@gmail.com')) : cleanEnv(env.smtpUser, 'rajbsmv@gmail.com'),
   defaultSenderName: env.smtpFromName || (env.smtpFrom ? extractSenderName(env.smtpFrom) : 'AttendoSchool Superadmin'),
   defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, 'rajbsmv@gmail.com'),
@@ -86,7 +87,8 @@ let globalSmtpConfig: GlobalSmtpConfig = {
   brevoSenderEmail: cleanEnv(env.brevoSenderEmail || env.smtpUser, 'rajbsmv@gmail.com'),
   brevoSenderName: cleanEnv(env.brevoSenderName || env.smtpFromName, 'AttendoSchool Superadmin'),
   resendApiKey: cleanEnv(env.resendApiKey, ''),
-  gmailRelayUrl: cleanEnv(env.gmailRelayUrl, '')
+  gmailRelayUrl: cleanEnv(env.gmailRelayUrl, ''),
+  isEnabled: env.emailEnabled !== false && process.env.EMAIL_ENABLED !== 'false'
 };
 
 /**
@@ -164,7 +166,11 @@ export function persistSmtpConfigToEnv(config: {
   if (envUpdates['SMTP_FROM']) env.smtpFrom = envUpdates['SMTP_FROM'];
   if (envUpdates['SMTP_FROM_NAME']) env.smtpFromName = envUpdates['SMTP_FROM_NAME'];
   if (envUpdates['SMTP_REPLY_TO']) env.smtpReplyTo = envUpdates['SMTP_REPLY_TO'];
-  if (envUpdates['EMAIL_ENABLED']) env.emailEnabled = envUpdates['EMAIL_ENABLED'] !== 'false';
+  if (envUpdates['EMAIL_ENABLED']) {
+    const isEn = envUpdates['EMAIL_ENABLED'] !== 'false';
+    env.emailEnabled = isEn;
+    globalSmtpConfig.isEnabled = isEn;
+  }
   if (envUpdates['BREVO_API_KEY']) env.brevoApiKey = envUpdates['BREVO_API_KEY'];
   if (envUpdates['BREVO_SENDER_EMAIL']) env.brevoSenderEmail = envUpdates['BREVO_SENDER_EMAIL'];
   if (envUpdates['BREVO_SENDER_NAME']) env.brevoSenderName = envUpdates['BREVO_SENDER_NAME'];
@@ -211,17 +217,66 @@ export function persistSmtpConfigToEnv(config: {
   }
 }
 
-export function getGlobalSmtpConfig(): GlobalSmtpConfig {
-  return { ...globalSmtpConfig };
+/**
+ * Checks whether outbound email service is active across the system.
+ * Honors Super Admin master toggle, runtime env singleton, and process.env.
+ */
+export function isEmailServiceEnabled(): boolean {
+  if (globalSmtpConfig.isEnabled === false) return false;
+  if (env.emailEnabled === false) return false;
+  if (process.env.EMAIL_ENABLED === 'false') return false;
+  return true;
 }
 
-export function updateGlobalSmtpConfig(updates: Partial<GlobalSmtpConfig>): GlobalSmtpConfig {
-  globalSmtpConfig = { ...globalSmtpConfig, ...updates };
+/**
+ * Toggles outbound email service globally for the platform.
+ */
+export function setEmailServiceEnabled(enabled: boolean): void {
+  const isEnabled = Boolean(enabled);
+  globalSmtpConfig.isEnabled = isEnabled;
+  env.emailEnabled = isEnabled;
+  process.env.EMAIL_ENABLED = isEnabled ? 'true' : 'false';
+
+  persistSmtpConfigToEnv({
+    isEnabled,
+    host: globalSmtpConfig.host,
+    port: globalSmtpConfig.port,
+    username: globalSmtpConfig.username,
+    password: globalSmtpConfig.password,
+    encryption: globalSmtpConfig.encryption,
+    senderEmail: globalSmtpConfig.defaultSenderEmail,
+    senderName: globalSmtpConfig.defaultSenderName,
+    replyTo: globalSmtpConfig.defaultReplyTo
+  });
+}
+
+export function getGlobalSmtpConfig(): GlobalSmtpConfig {
+  return { 
+    ...globalSmtpConfig,
+    isEnabled: isEmailServiceEnabled()
+  };
+}
+
+export function updateGlobalSmtpConfig(updates: Partial<GlobalSmtpConfig> & { emailEnabled?: boolean }): GlobalSmtpConfig {
+  const hasEnableFlag = updates.isEnabled !== undefined || updates.emailEnabled !== undefined;
+  const isEnabled = updates.isEnabled !== undefined 
+    ? Boolean(updates.isEnabled) 
+    : updates.emailEnabled !== undefined 
+      ? Boolean(updates.emailEnabled) 
+      : globalSmtpConfig.isEnabled;
+
+  globalSmtpConfig = { ...globalSmtpConfig, ...updates, isEnabled };
+  if (hasEnableFlag) {
+    env.emailEnabled = isEnabled;
+    process.env.EMAIL_ENABLED = isEnabled ? 'true' : 'false';
+  }
+
   for (const [sid, cfg] of smtpStore.entries()) {
     smtpStore.set(sid, {
       ...cfg,
       username: globalSmtpConfig.username,
       password: globalSmtpConfig.password,
+      isEnabled: isEnabled,
       ...(updates.host ? { host: updates.host } : {}),
       ...(updates.port ? { port: updates.port } : {}),
       ...(updates.encryption ? { encryption: updates.encryption } : {})
@@ -237,10 +292,11 @@ export function updateGlobalSmtpConfig(updates: Partial<GlobalSmtpConfig>): Glob
     encryption: globalSmtpConfig.encryption,
     senderEmail: globalSmtpConfig.defaultSenderEmail,
     senderName: globalSmtpConfig.defaultSenderName,
-    replyTo: globalSmtpConfig.defaultReplyTo
+    replyTo: globalSmtpConfig.defaultReplyTo,
+    isEnabled: globalSmtpConfig.isEnabled
   });
 
-  return { ...globalSmtpConfig };
+  return { ...globalSmtpConfig, isEnabled: isEmailServiceEnabled() };
 }
 
 const smtpStore = new Map<string, SchoolSmtpConfig>();
@@ -254,7 +310,8 @@ export function getSchoolSmtpConfig(schoolId: string): SchoolSmtpConfig {
       password: existing.password || globalSmtpConfig.password,
       brevoApiKey: existing.brevoApiKey || globalSmtpConfig.brevoApiKey,
       brevoSenderEmail: existing.brevoSenderEmail || globalSmtpConfig.brevoSenderEmail,
-      brevoSenderName: existing.brevoSenderName || globalSmtpConfig.brevoSenderName
+      brevoSenderName: existing.brevoSenderName || globalSmtpConfig.brevoSenderName,
+      isEnabled: isEmailServiceEnabled() && (existing.isEnabled !== false)
     };
   }
   return {
@@ -267,7 +324,7 @@ export function getSchoolSmtpConfig(schoolId: string): SchoolSmtpConfig {
     senderEmail: globalSmtpConfig.defaultSenderEmail,
     senderName: globalSmtpConfig.defaultSenderName,
     replyTo: globalSmtpConfig.defaultReplyTo,
-    isEnabled: env.emailEnabled,
+    isEnabled: isEmailServiceEnabled(),
     brevoApiKey: globalSmtpConfig.brevoApiKey,
     brevoSenderEmail: globalSmtpConfig.brevoSenderEmail,
     brevoSenderName: globalSmtpConfig.brevoSenderName
@@ -1563,6 +1620,16 @@ export async function sendMailWithDualPortFallback(
     encryption?: 'SSL/TLS' | 'STARTTLS' | 'NONE' | string;
   }
 ): Promise<SmtpSendResult> {
+  if (!isEmailServiceEnabled()) {
+    console.warn('[Email Dispatch] Mail service is disabled by Superadmin. Skipping email delivery.');
+    return {
+      messageId: `MAIL-SERVICE-DISABLED-${Date.now()}`,
+      usedPort: 0,
+      usedEncryption: 'DISABLED',
+      fallbackTriggered: false
+    };
+  }
+
   const host = cleanEnv(config.host || globalSmtpConfig.host || env.smtpHost, 'smtp.gmail.com');
   const user = cleanEnv(config.username || globalSmtpConfig.username || env.smtpUser, '');
   const pass = cleanSmtpPass(config.password || globalSmtpConfig.password || env.smtpPass, '');
@@ -2045,6 +2112,12 @@ export async function queueAbsentNotifications(sessionId: string) {
 
 // ── TEST SMTP CONNECTION HELPER ──
 export async function testSmtpConnection(schoolId: string, testRecipient: string, customConfig?: Partial<SchoolSmtpConfig>) {
+  if (!isEmailServiceEnabled()) {
+    return {
+      success: false,
+      message: 'Mail service is currently DISABLED in Superadmin. Please toggle Mail Service to ENABLED to send verification emails.'
+    };
+  }
   const cfg = customConfig ? { ...getSchoolSmtpConfig(schoolId), ...customConfig } : getSchoolSmtpConfig(schoolId);
   const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
   const port = Number(cfg.port || env.smtpPort || 465);
