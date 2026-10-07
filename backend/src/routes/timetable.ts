@@ -603,13 +603,6 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
   if (entry) {
     entry.status = 'PUBLISHED';
     syncTimetableEntryToFirestore(entry).catch(() => {});
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(id).set({
-        status: 'PUBLISHED',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
   }
   res.json(entry || { id, status: 'PUBLISHED' });
 });
@@ -629,14 +622,6 @@ router.post('/substitutes', requireAdmin, async (req, res) => {
     entry.substitute_teacher_id = d.substituteTeacherId;
     entry.substitute_teacher_name = subName;
     syncTimetableEntryToFirestore(entry).catch(() => {});
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(d.entryId).set({
-        substitute_teacher_id: d.substituteTeacherId,
-        substitute_teacher_name: subName,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
   }
   res.json({ id: d.entryId, substitute_teacher_id: d.substituteTeacherId, substitute_teacher_name: subName });
 });

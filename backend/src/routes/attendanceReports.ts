@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { pool, isPostgresConfigured } from '../db';
-import { isFirebaseConfigured, collections } from '../firebase';
+import { collections, isFirebaseConfigured } from '../firebase';
 import { memAttendanceSessions, memAttendanceRecords } from './teacher';
 import { demoStudents } from './schoolData';
 import { Router, Request, Response } from 'express';

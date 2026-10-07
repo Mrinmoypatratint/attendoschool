@@ -91,10 +91,10 @@ export const env = {
   brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool Superadmin'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
   appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),
-  // Hybrid Dual-Database (Firebase Primary + Supabase PostgreSQL Secondary)
+  // Database Architecture (100% Supabase PostgreSQL Only)
   supabaseDatabaseUrl: cleanEnv(process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL, ''),
-  enableDualDbSync: cleanEnv(process.env.ENABLE_DUAL_DB_SYNC, 'true') === 'true',
-  secondaryDb: cleanEnv(process.env.SECONDARY_DB, 'supabase').toLowerCase(),
+  enableDualDbSync: cleanEnv(process.env.ENABLE_DUAL_DB_SYNC, 'false') === 'true',
+  secondaryDb: cleanEnv(process.env.SECONDARY_DB, 'none').toLowerCase(),
 };
 
 

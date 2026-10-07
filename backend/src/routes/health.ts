@@ -1,23 +1,25 @@
 import { Router } from 'express';
-import { checkFirestoreHealth, isFirebaseConfigured } from '../firebase';
+import { checkPostgresHealth, isPostgresConfigured } from '../db';
 import { env } from '../config/env';
 import { testSmtpConnection, getGlobalSmtpConfig } from '../services/notificationService';
 
 const r = Router();
 
 r.get('/', async (_req, res) => {
-  let fsOk = false;
+  let pgOk = false;
+  let latency: number | undefined;
   try {
-    const fsHealth = await checkFirestoreHealth();
-    fsOk = fsHealth.ok;
+    const pgHealth = await checkPostgresHealth();
+    pgOk = pgHealth.ok;
+    latency = pgHealth.latency;
   } catch {}
 
   res.status(200).json({
     status: 'ok',
     database: {
-      firestore: fsOk ? 'connected' : 'connecting',
-      projectId: 'attendoschool',
-      mode: 'cloud_firestore'
+      supabase: pgOk ? 'connected' : (isPostgresConfigured ? 'connecting' : 'disconnected'),
+      mode: 'supabase_postgres',
+      ...(latency !== undefined ? { latency: `${latency}ms` } : {})
     },
     version: 'production',
     uptime: process.uptime(),
@@ -34,6 +36,10 @@ r.get('/email-status', (_req, res) => {
   res.json({
     status: hasCreds ? 'configured' : 'missing_credentials',
     emailEnabled: env.emailEnabled,
+    database: {
+      engine: 'supabase_postgres',
+      configured: isPostgresConfigured
+    },
     smtp: {
       host: smtp.host || '(not set)',
       port: smtp.port || 587,
@@ -42,13 +48,6 @@ r.get('/email-status', (_req, res) => {
       from: smtp.defaultSenderEmail || '(not set)',
       fromName: smtp.defaultSenderName || '(not set)',
       encryption: smtp.encryption
-    },
-    firebase: {
-      configured: isFirebaseConfigured(),
-      projectId: env.firebaseProjectId || '(not set)',
-      clientEmail: env.firebaseClientEmail ? `${env.firebaseClientEmail.slice(0, 20)}...` : '(not set)',
-      hasPrivateKey: Boolean(env.firebasePrivateKey),
-      hasServiceAccount: Boolean(env.firebaseServiceAccount)
     },
     envSource: {
       SMTP_HOST: process.env.SMTP_HOST ? 'env' : 'default',

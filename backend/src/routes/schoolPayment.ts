@@ -9,32 +9,6 @@ const r = Router();
 r.use(requireAuth, requireRoles('SCHOOL_ADMIN'));
 
 r.get('/plans', async (_req, res) => {
-  if (isFirebaseConfigured()) {
-    try {
-      const snap = await collections.subscriptionPlans().get();
-      if (!snap.empty) {
-        const list = snap.docs
-          .map(doc => {
-            const d = doc.data();
-            const monthly = Number(d.price_monthly ?? d.priceMonthly ?? 0);
-            const yearly = Number(d.price_yearly ?? d.priceYearly ?? monthly * 12);
-            const discount = Number(d.discount_percentage ?? d.discountPercentage ?? 0);
-            return {
-              id: doc.id,
-              name: d.name || 'Tier',
-              description: d.description || '',
-              max_students: Number(d.max_students ?? d.maxStudents ?? 1000),
-              price_monthly: monthly,
-              price_yearly: yearly,
-              discount_percentage: discount,
-              is_active: d.status ? d.status === 'ACTIVE' : (d.is_active ?? true)
-            };
-          })
-          .filter(p => p.is_active);
-        return res.json(list);
-      }
-    } catch {}
-  }
   try {
     const q = await pool.query(`SELECT id,name,max_students,price_monthly,price_yearly,is_active FROM subscription_plans WHERE is_active=true ORDER BY price_monthly`);
     res.json(q.rows.map(r => ({ ...r, discount_percentage: 0 })));
