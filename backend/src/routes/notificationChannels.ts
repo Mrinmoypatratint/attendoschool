@@ -144,6 +144,8 @@ r.get('/preview/:templateKey', ...adminOnly, async (req: AuthRequest, res) => {
     const templateKey = String(req.params.templateKey || 'ATTENDANCE_ABSENT');
     const sampleData = {
       student_name: 'Rahul Sharma',
+      admission_number: 'ADM-2026-0842',
+      roll_number: '12',
       parent_name: 'Vikram Sharma',
       class_name: '8',
       section_name: 'A',

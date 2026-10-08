@@ -1209,8 +1209,10 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
          templateData: {
            student_name: name,
            school_name: req.user?.schoolName || 'School',
+           admission_number: cleanAdmissionNumber || '—',
            class_name: String(clsNum),
            section_name: secName,
+           roll_number: String(rollNumber || '—'),
            reset_link: resetInfo.resetUrl
          },
          idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
@@ -1742,6 +1744,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                       templateData: {
                         student_name: st.name || st.full_name,
                         school_name: req.user?.schoolName || 'School',
+                        admission_number: String(st.admission_number || st.admissionNumber || '—'),
                         class_name: String(st.class_number || st.class_name || ''),
                         section_name: String(st.section_name || 'A'),
                         roll_number: String(st.roll_number || ''),

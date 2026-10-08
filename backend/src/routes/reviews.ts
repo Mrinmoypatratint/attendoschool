@@ -227,7 +227,7 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
         // Fetch student user_id and email to clear cache and send approval email
         try {
           const stRes = await pool.query(`
-            SELECT s.id, s.name, s.user_id, s.email as student_email, s.parent_email,
+            SELECT s.id, s.name, s.user_id, s.admission_number, s.email as student_email, s.parent_email,
                    u.email as user_email, sch.name as school_name
             FROM students s
             LEFT JOIN users u ON u.id = s.user_id
@@ -246,7 +246,8 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
                 status: 'APPROVED',
                 schoolName: st.school_name,
                 schoolId,
-                photoUrl: reqRow.photo_url
+                photoUrl: reqRow.photo_url,
+                admissionNumber: st.admission_number || undefined
               }).catch(emErr => console.warn('[Reviews] Failed to send approval email:', emErr.message));
             }
           }
@@ -312,7 +313,7 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
       if (reqRow.applicant_type === 'STUDENT') {
         try {
           const stRes = await pool.query(`
-            SELECT s.id, s.name, s.email as student_email, s.parent_email,
+            SELECT s.id, s.name, s.admission_number, s.email as student_email, s.parent_email,
                    u.email as user_email, sch.name as school_name
             FROM students s
             LEFT JOIN users u ON u.id = s.user_id
@@ -331,7 +332,8 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
                 reason: rejectionReason,
                 schoolName: st.school_name,
                 schoolId,
-                photoUrl: reqRow.photo_url
+                photoUrl: reqRow.photo_url,
+                admissionNumber: st.admission_number || undefined
               }).catch(emErr => console.warn('[Reviews] Failed to send rejection email:', emErr.message));
             }
           }

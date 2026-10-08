@@ -457,9 +457,42 @@ export async function createAndSendPasswordReset(params: {
   userId?: string;
   schoolId?: string;
   schoolName?: string;
+  admissionNumber?: string;
+  admission_number?: string;
   req?: any;
 }) {
   const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
+  let admissionNumber = params.admission_number || params.admissionNumber || '';
+
+  // Resolve student admission number if missing
+  if (!admissionNumber && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
+    try {
+      const { demoStudents } = await import('./schoolData');
+      const memStu = demoStudents.find((s: any) =>
+        (userId && (s.user_id === userId || s.id === userId)) ||
+        (s.email && s.email.toLowerCase() === email.toLowerCase().trim()) ||
+        (s.student_email && s.student_email.toLowerCase() === email.toLowerCase().trim()) ||
+        (s.parent_email && s.parent_email.toLowerCase() === email.toLowerCase().trim())
+      );
+      if (memStu?.admission_number) {
+        admissionNumber = memStu.admission_number;
+      }
+    } catch {}
+
+    if (!admissionNumber && pool && isPostgresConfigured) {
+      try {
+        const q = await pool.query(
+          `SELECT admission_number FROM students
+           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(student_email) = $2 OR LOWER(parent_email) = $2)
+           LIMIT 1`,
+          [userId || null, email.toLowerCase().trim()]
+        );
+        if (q.rowCount && q.rows[0]?.admission_number) {
+          admissionNumber = q.rows[0].admission_number;
+        }
+      } catch {}
+    }
+  }
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -513,7 +546,9 @@ export async function createAndSendPasswordReset(params: {
       templateData: {
         name,
         school_name: schoolName,
-        reset_link: resetUrl
+        reset_link: resetUrl,
+        role,
+        admission_number: admissionNumber || undefined
       },
       idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
     });
@@ -708,13 +743,15 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   let userId: string | undefined = undefined;
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
+  let studentAdmissionNumber = '';
 
   // 1. Check PostgreSQL (by email or student admission_number)
   try {
     let q = await pool.query(
-      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
+      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
+       LEFT JOIN students st ON (st.user_id = u.id OR (st.email IS NOT NULL AND LOWER(st.email) = LOWER(st.email)))
        WHERE LOWER(u.email) = LOWER($1)
        LIMIT 1`,
       [cleanEmail]
@@ -723,7 +760,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
     if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
       // Try resolving student by admission number
       q = await pool.query(
-        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
+        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
          FROM students st
          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
          LEFT JOIN schools sch ON sch.id = st.school_id
@@ -743,6 +780,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       userId = u.id;
       schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
+      if (u.admission_number) studentAdmissionNumber = u.admission_number;
     }
   } catch (err) {}
 
@@ -769,6 +807,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       userId,
       schoolId,
       schoolName,
+      admissionNumber: studentAdmissionNumber || undefined,
       req
     });
 
