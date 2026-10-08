@@ -31,22 +31,11 @@ export class DualDatabaseService {
   static async executeWithFailover<T>(
     primaryFn: () => Promise<T>,
     secondaryFn: () => Promise<T>,
-    operationName: string
+    _operationName: string
   ): Promise<T> {
-    if (this.isPrimaryAvailable()) {
-      try {
-        return await secondaryFn(); // Run Supabase function as primary
-      } catch (pgErr: any) {
-        console.warn(`[DualDB] Supabase primary query warning for "${operationName}":`, pgErr.message);
-        try {
-          return await primaryFn(); // Fall back to secondary
-        } catch (secErr: any) {
-          throw pgErr;
-        }
-      }
+    if (this.isPrimaryAvailable() && secondaryFn) {
+      return await secondaryFn();
     }
-
-    // Supabase not configured: run Firebase directly
     return await primaryFn();
   }
 

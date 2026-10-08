@@ -6,7 +6,7 @@ import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { registerDemoUser, getAllDemoUsers } from '../store/demoUsers';
 import { collections, isFirebaseConfigured } from '../firebase';
-import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection, queueEmailNotification } from '../services/notificationService';
+import { getGlobalSmtpConfig, updateGlobalSmtpConfig, testSmtpConnection, queueEmailNotification, isEmailServiceEnabled, setEmailServiceEnabled } from '../services/notificationService';
 import { deleteSchoolFromFirestore } from '../services/firestoreSync';
 import { createAndSendPasswordReset } from './auth';
 import { env } from '../config/env';
@@ -144,7 +144,10 @@ export let systemSettings = {
   enforceStrongPasswords: true,
   rateLimitPerMinute: 120,
   maintenanceMode: false,
-  // SMTP settings (managed exclusively by Superadmin)
+  // SMTP & Mail Gateway (managed exclusively by Superadmin)
+  emailEnabled: env.emailEnabled,
+  emailServiceEnabled: env.emailEnabled,
+  isMailServiceEnabled: env.emailEnabled,
   smtpHost: env.smtpHost || "smtp.gmail.com",
   smtpPort: Number(env.smtpPort) || 587,
   smtpUsername: env.smtpUser || "",
@@ -153,6 +156,36 @@ export let systemSettings = {
   smtpSenderEmail: env.smtpFrom ? env.smtpFrom.replace(/.*<(.+)>/, '$1') : (env.smtpUser || ""),
   smtpSenderName: env.smtpFromName || (env.smtpFrom ? env.smtpFrom.replace(/<.+>/, '').trim() : "AttendoSchool")
 };
+
+export async function initPlatformSettingsFromDb(): Promise<void> {
+  if (!isPostgresConfigured) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value JSONB NOT NULL,
+        description TEXT,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    const res = await pool.query(`SELECT value FROM platform_settings WHERE key = 'mail_service' LIMIT 1`);
+    if (res.rows.length && res.rows[0].value) {
+      const val = res.rows[0].value;
+      if (typeof val.enabled === 'boolean') {
+        setEmailServiceEnabled(val.enabled);
+        systemSettings.emailEnabled = val.enabled;
+        systemSettings.emailServiceEnabled = val.enabled;
+        systemSettings.isMailServiceEnabled = val.enabled;
+        console.log(`[PlatformSettings] Restored mail service state from DB: enabled = ${val.enabled}`);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[PlatformSettings] DB init notice:', err.message);
+  }
+}
+
+// Auto-run on server import
+initPlatformSettingsFromDb().catch(() => {});
 
 export const demoSchools: any[] = [
   {
@@ -1210,14 +1243,14 @@ r.delete('/schools/:id', async (req: AuthRequest, res) => {
     }
   }
 
-  // 3. Cascade delete from Firebase Cloud Firestore
-  try {
-    await deleteSchoolFromFirestore(id, schoolCode);
-    if (resolvedId !== id) {
-      await deleteSchoolFromFirestore(resolvedId, schoolCode);
-    }
-  } catch (err: any) {
+  // 3. Cascade delete from Firebase Cloud Firestore (fire-and-forget)
+  deleteSchoolFromFirestore(id, schoolCode).catch(err => {
     console.warn('[superAdmin] Error deleting from Firestore:', err.message);
+  });
+  if (resolvedId !== id) {
+    deleteSchoolFromFirestore(resolvedId, schoolCode).catch(err => {
+      console.warn('[superAdmin] Error deleting resolved ID from Firestore:', err.message);
+    });
   }
 
   // 4. Remove from in-memory cache
@@ -1401,8 +1434,12 @@ r.get('/audit-logs', async (req, res) => {
 /* ────── System Settings ────── */
 r.get('/settings', async (_req, res) => {
   const smtpCfg = getGlobalSmtpConfig();
+  const mailEnabled = isEmailServiceEnabled();
   res.json({
     ...systemSettings,
+    emailEnabled: mailEnabled,
+    emailServiceEnabled: mailEnabled,
+    isMailServiceEnabled: mailEnabled,
     smtpHost: smtpCfg.host || systemSettings.smtpHost,
     smtpPort: smtpCfg.port || systemSettings.smtpPort,
     smtpUsername: smtpCfg.username || systemSettings.smtpUsername,
@@ -1418,9 +1455,36 @@ r.get('/settings', async (_req, res) => {
 
 r.put('/settings', async (req: AuthRequest, res) => {
   const b = req.body || {};
+
+  // Check for emailEnabled or isMailServiceEnabled toggle
+  if (b.emailEnabled !== undefined || b.emailServiceEnabled !== undefined || b.isMailServiceEnabled !== undefined) {
+    const targetState = b.emailEnabled !== undefined
+      ? Boolean(b.emailEnabled)
+      : b.emailServiceEnabled !== undefined
+        ? Boolean(b.emailServiceEnabled)
+        : Boolean(b.isMailServiceEnabled);
+
+    setEmailServiceEnabled(targetState);
+    if (isPostgresConfigured) {
+      try {
+        await pool.query(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('mail_service', $1::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [JSON.stringify({ enabled: targetState, updated_by: req.user?.email || 'super-admin' })]
+        );
+      } catch (dbErr: any) {
+        console.warn('[Settings] DB platform_settings sync notice:', dbErr.message);
+      }
+    }
+  }
+
   systemSettings = {
     ...systemSettings,
-    ...b
+    ...b,
+    emailEnabled: isEmailServiceEnabled(),
+    emailServiceEnabled: isEmailServiceEnabled(),
+    isMailServiceEnabled: isEmailServiceEnabled()
   };
 
   // If SMTP credentials or config are submitted, sync with global SMTP gateway
@@ -1434,7 +1498,9 @@ r.put('/settings', async (req: AuthRequest, res) => {
     b.smtpSenderName !== undefined ||
     b.brevoApiKey !== undefined ||
     b.brevoSenderEmail !== undefined ||
-    b.brevoSenderName !== undefined
+    b.brevoSenderName !== undefined ||
+    b.emailEnabled !== undefined ||
+    b.emailServiceEnabled !== undefined
   ) {
     updateGlobalSmtpConfig({
       ...(b.smtpHost !== undefined ? { host: b.smtpHost } : {}),
@@ -1446,7 +1512,9 @@ r.put('/settings', async (req: AuthRequest, res) => {
       ...(b.smtpSenderName !== undefined ? { defaultSenderName: b.smtpSenderName } : {}),
       ...(b.brevoApiKey !== undefined ? { brevoApiKey: b.brevoApiKey } : {}),
       ...(b.brevoSenderEmail !== undefined ? { brevoSenderEmail: b.brevoSenderEmail } : {}),
-      ...(b.brevoSenderName !== undefined ? { brevoSenderName: b.brevoSenderName } : {})
+      ...(b.brevoSenderName !== undefined ? { brevoSenderName: b.brevoSenderName } : {}),
+      ...(b.emailEnabled !== undefined ? { isEnabled: Boolean(b.emailEnabled) } : {}),
+      ...(b.emailServiceEnabled !== undefined ? { isEnabled: Boolean(b.emailServiceEnabled) } : {})
     });
   }
 
@@ -1460,13 +1528,84 @@ r.put('/settings', async (req: AuthRequest, res) => {
   res.json({ success: true, settings: systemSettings, message: 'Settings saved successfully' });
 });
 
+/* ────── Dedicated Superadmin Mail Service Toggle Endpoints ────── */
+r.get('/mail-service', async (_req, res) => {
+  res.json({
+    enabled: isEmailServiceEnabled(),
+    emailEnabled: isEmailServiceEnabled(),
+    smtpHost: getGlobalSmtpConfig().host,
+    senderEmail: getGlobalSmtpConfig().defaultSenderEmail
+  });
+});
+
+r.post('/mail-service/toggle', async (req: AuthRequest, res) => {
+  const { enabled } = req.body || {};
+  const current = isEmailServiceEnabled();
+  const newState = enabled !== undefined ? Boolean(enabled) : !current;
+  setEmailServiceEnabled(newState);
+  systemSettings.emailEnabled = newState;
+  systemSettings.emailServiceEnabled = newState;
+  systemSettings.isMailServiceEnabled = newState;
+
+  if (isPostgresConfigured) {
+    try {
+      await pool.query(
+        `INSERT INTO platform_settings (key, value, updated_at)
+         VALUES ('mail_service', $1::jsonb, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [JSON.stringify({ enabled: newState, updated_by: req.user?.email || 'super-admin' })]
+      );
+    } catch (dbErr: any) {
+      console.warn('[MailService] DB sync warning:', dbErr.message);
+    }
+  }
+
+  await logSystemAudit(
+    req.user || { id: 'super-admin' },
+    newState ? 'ENABLE_MAIL_SERVICE' : 'DISABLE_MAIL_SERVICE',
+    'MAIL_SERVICE',
+    'global-mail-service',
+    { previous: current, current: newState }
+  );
+
+  res.json({
+    success: true,
+    enabled: newState,
+    emailEnabled: newState,
+    message: `Mail service ${newState ? 'enabled' : 'disabled'} successfully.`
+  });
+});
+
 /* ────── Dedicated Superadmin SMTP Gateway Endpoints ────── */
 r.get('/smtp', async (_req, res) => {
   res.json(getGlobalSmtpConfig());
 });
 
 r.put('/smtp', async (req: AuthRequest, res) => {
-  const updated = updateGlobalSmtpConfig(req.body || {});
+  const b = req.body || {};
+  const updated = updateGlobalSmtpConfig(b);
+
+  if (b.isEnabled !== undefined || b.emailEnabled !== undefined) {
+    const mailState = b.isEnabled !== undefined ? Boolean(b.isEnabled) : Boolean(b.emailEnabled);
+    setEmailServiceEnabled(mailState);
+    systemSettings.emailEnabled = mailState;
+    systemSettings.emailServiceEnabled = mailState;
+    systemSettings.isMailServiceEnabled = mailState;
+
+    if (isPostgresConfigured) {
+      try {
+        await pool.query(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES ('mail_service', $1::jsonb, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [JSON.stringify({ enabled: mailState, updated_by: req.user?.email || 'super-admin' })]
+        );
+      } catch (dbErr: any) {
+        console.warn('[SMTP] DB platform_settings sync notice:', dbErr.message);
+      }
+    }
+  }
+
   systemSettings.smtpHost = updated.host;
   systemSettings.smtpPort = updated.port;
   systemSettings.smtpUsername = updated.username;
@@ -1483,14 +1622,14 @@ r.put('/smtp', async (req: AuthRequest, res) => {
     'UPDATE_SMTP_CONFIG',
     'SMTP',
     'global-smtp',
-    { host: updated.host, port: updated.port, username: updated.username }
+    { host: updated.host, port: updated.port, username: updated.username, enabled: updated.isEnabled }
   );
 
   res.json({ success: true, config: updated, message: 'Global SMTP credentials updated successfully by Superadmin' });
 });
 
 r.post('/smtp/test', async (req: AuthRequest, res) => {
-  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName } = req.body || {};
+  const { recipientEmail, host, port, username, password, encryption, senderEmail, senderName, brevoApiKey, brevoSenderEmail, brevoSenderName } = req.body || {};
   const to = String(recipientEmail || req.user?.email || 'admin@demo-school.local').trim();
   try {
     const result = await testSmtpConnection('global', to, {
@@ -1500,7 +1639,10 @@ r.post('/smtp/test', async (req: AuthRequest, res) => {
       password,
       encryption,
       senderEmail,
-      senderName
+      senderName,
+      brevoApiKey,
+      brevoSenderEmail,
+      brevoSenderName
     });
     res.json(result);
   } catch (err: any) {

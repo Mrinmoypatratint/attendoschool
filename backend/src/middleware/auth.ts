@@ -25,16 +25,19 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
     req.user=jwt.verify(token,env.jwtSecret) as AuthUser;
     return next();
   } catch (primaryErr: any) {
-    const fallbackSecrets = [
-      'super-secret-jwt-key-for-local-testing-12345',
-      'development-only-secret'
-    ].filter(s => s !== env.jwtSecret);
+    // Only try fallback secrets in development (never in production — security risk + CPU waste)
+    if (process.env.NODE_ENV !== 'production') {
+      const fallbackSecrets = [
+        'super-secret-jwt-key-for-local-testing-12345',
+        'development-only-secret'
+      ].filter(s => s !== env.jwtSecret);
 
-    for (const secret of fallbackSecrets) {
-      try {
-        req.user=jwt.verify(token, secret) as AuthUser;
-        return next();
-      } catch {}
+      for (const secret of fallbackSecrets) {
+        try {
+          req.user=jwt.verify(token, secret) as AuthUser;
+          return next();
+        } catch {}
+      }
     }
 
     const isExpired = primaryErr?.name === 'TokenExpiredError';

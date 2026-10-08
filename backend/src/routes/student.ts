@@ -3,7 +3,6 @@ import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import * as svc from '../services/studentService';
 import { memEntries } from './timetable';
 import { isSameSchool, isTestSchool } from './auth';
-import { collections, isFirebaseConfigured } from '../firebase';
 import { fastCache } from '../utils/cache';
 
 const router = Router();

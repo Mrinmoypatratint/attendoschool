@@ -61,10 +61,10 @@ export const pool: Pool = (isPostgresConfigured
     min: 2,
     max: Math.min(Number(process.env.PG_POOL_MAX || 10), 15),
     idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 15000,
+    connectionTimeoutMillis: 10000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
-    statement_timeout: 15000,
+    statement_timeout: 5000,
     allowExitOnIdle: false,
   })
   : new DisabledPool() as unknown as Pool);

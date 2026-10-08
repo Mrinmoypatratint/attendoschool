@@ -231,7 +231,7 @@ router.post('/periods', requireAdmin, async (req, res) => {
   else memPeriods.push(newP);
   memPeriods.sort((a, b) => (a.period_number || a.periodNumber || 0) - (b.period_number || b.periodNumber || 0));
 
-  await syncTimetablePeriodToFirestore(newP);
+  syncTimetablePeriodToFirestore(newP).catch(() => {});
   res.status(201).json(newP);
 });
 
@@ -288,7 +288,7 @@ router.post('/periods/template', requireAdmin, async (req, res) => {
     const idx = memPeriods.findIndex(m => m.id === p.id);
     if (idx >= 0) memPeriods[idx] = p;
     else memPeriods.push(p);
-    await syncTimetablePeriodToFirestore(p);
+    syncTimetablePeriodToFirestore(p).catch(() => {});
   }
   res.status(201).json(template);
 });
@@ -323,7 +323,7 @@ router.delete('/periods/:id', requireAdmin, async (req, res) => {
   }
   const idx = memPeriods.findIndex(p => p.id === id);
   if (idx >= 0) memPeriods.splice(idx, 1);
-  await deleteTimetablePeriodFromFirestore(id);
+  deleteTimetablePeriodFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -421,7 +421,7 @@ router.post('/entries', requireAdmin, async (req, res) => {
   try {
     const created = await svc.createEntry(sid, u(req).id, d);
     if (created && created.id) {
-      await syncTimetableEntryToFirestore(created);
+      syncTimetableEntryToFirestore(created).catch(() => {});
       return res.status(201).json(created);
     }
   } catch (_e) {}
@@ -498,7 +498,7 @@ router.post('/entries', requireAdmin, async (req, res) => {
     notes: d.notes || null
   };
   memEntries.push(entry);
-  await syncTimetableEntryToFirestore(entry);
+  syncTimetableEntryToFirestore(entry).catch(() => {});
   res.status(201).json(entry);
 });
 
@@ -516,7 +516,7 @@ router.delete('/entries/clear', requireAdmin, async (req, res) => {
       memEntries.splice(i, 1);
     }
   }
-  await clearTimetableEntriesFromFirestore(sid);
+  clearTimetableEntriesFromFirestore(sid).catch(() => {});
   res.json({ success: true, count: 0 });
 });
 
@@ -532,7 +532,7 @@ router.delete('/entries/:id', requireAdmin, async (req, res) => {
   }
   const idx = memEntries.findIndex(e => e.id === id);
   if (idx >= 0) memEntries.splice(idx, 1);
-  await deleteTimetableEntryFromFirestore(id);
+  deleteTimetableEntryFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -574,7 +574,7 @@ router.post('/', requireAdmin, async (req, res) => {
   try {
     const created = await svc.createEntry(sid, u(req).id, d);
     if (created && created.id) {
-      await syncTimetableEntryToFirestore(created);
+      syncTimetableEntryToFirestore(created).catch(() => {});
       return res.status(201).json(created);
     }
   } catch (_e) {}
@@ -587,7 +587,7 @@ router.post('/', requireAdmin, async (req, res) => {
     ...d
   };
   memEntries.push(entry);
-  await syncTimetableEntryToFirestore(entry);
+  syncTimetableEntryToFirestore(entry).catch(() => {});
   res.status(201).json(entry);
 });
 
@@ -602,14 +602,7 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
   const entry = memEntries.find(e => e.id === id);
   if (entry) {
     entry.status = 'PUBLISHED';
-    await syncTimetableEntryToFirestore(entry);
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(id).set({
-        status: 'PUBLISHED',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
+    syncTimetableEntryToFirestore(entry).catch(() => {});
   }
   res.json(entry || { id, status: 'PUBLISHED' });
 });
@@ -628,15 +621,7 @@ router.post('/substitutes', requireAdmin, async (req, res) => {
   if (entry) {
     entry.substitute_teacher_id = d.substituteTeacherId;
     entry.substitute_teacher_name = subName;
-    await syncTimetableEntryToFirestore(entry);
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(d.entryId).set({
-        substitute_teacher_id: d.substituteTeacherId,
-        substitute_teacher_name: subName,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
+    syncTimetableEntryToFirestore(entry).catch(() => {});
   }
   res.json({ id: d.entryId, substitute_teacher_id: d.substituteTeacherId, substitute_teacher_name: subName });
 });
