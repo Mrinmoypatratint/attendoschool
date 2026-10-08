@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
 import { requireAuth } from './middleware/auth';
-import { securityHeaders, apiRateLimit, loginRateLimit, requestContext } from './middleware/security';
+import { securityHeaders, apiRateLimit, requestContext } from './middleware/security';
 
 // Core routes
 import health from './routes/health';
@@ -47,6 +47,9 @@ import reviews from './routes/reviews';
 import calendar from './routes/calendar';
 
 const app = express();
+
+// Trust reverse proxy (Render ALB/Envoy, Cloudflare) for accurate client IP
+app.set('trust proxy', 1);
 
 const allowedOrigin =
   env.corsOrigin === '*'
@@ -155,7 +158,7 @@ app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', vers
 
 // Core routes
 app.use('/api/health', health);
-app.use('/api/auth', loginRateLimit, auth);
+app.use('/api/auth', auth);
 app.use('/api/dashboard', dashboard);
 app.use('/api/super-admin', superAdmin);
 app.use('/api/super-admin', superAdminOperations);

@@ -10,6 +10,7 @@ import { demoSchools } from './superAdmin';
 import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { loginRateLimit, clearLoginAttempts } from '../middleware/security';
 
 const router = Router();
 
@@ -179,7 +180,7 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
 }
 
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
   const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
 
@@ -294,6 +295,7 @@ router.post('/login', async (req, res) => {
             rollNumber: stu.roll_number || '25'
           };
 
+          clearLoginAttempts(req, rawIdentifier);
           const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
@@ -349,6 +351,7 @@ router.post('/login', async (req, res) => {
             photoUrl: photoUrl
           };
 
+          clearLoginAttempts(req, rawIdentifier);
           const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
@@ -408,6 +411,7 @@ router.post('/login', async (req, res) => {
       userPayload.schoolName = resolvedSchoolName;
     }
 
+    clearLoginAttempts(req, rawIdentifier);
     const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
     return res.json({ token, user: userPayload, provider: 'demo' });
   }
@@ -690,7 +694,7 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // POST /api/auth/request-password-reset - Public forgot password request (Anti-Enumeration Hardened)
-router.post('/request-password-reset', async (req, res) => {
+router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   const { email, admissionNumber, instituteId } = req.body || {};
   const rawId = String(admissionNumber || email || '').trim();
   if (!rawId) {
