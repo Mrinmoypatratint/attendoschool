@@ -351,8 +351,23 @@ router.post('/login', loginRateLimit, async (req, res) => {
             photoUrl: photoUrl
           };
 
+          // Keep token payload lean (< 500 bytes) so HTTP Authorization header never exceeds Cloudflare/Nginx limits (16KB)
+          const tokenPayload: any = {
+            id: u.id,
+            schoolId: u.school_id || resolvedInstituteId,
+            schoolName: u.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: u.school_code || selectedSchoolCode || 'SCH',
+            name: u.name,
+            email: u.email,
+            role
+          };
+          if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('data:') && photoUrl.length < 256) {
+            tokenPayload.photo_url = photoUrl;
+            tokenPayload.photoUrl = photoUrl;
+          }
+
           clearLoginAttempts(req, rawIdentifier);
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       }
@@ -411,8 +426,11 @@ router.post('/login', loginRateLimit, async (req, res) => {
       userPayload.schoolName = resolvedSchoolName;
     }
 
+    const tokenPayload: any = { ...userPayload };
+    delete tokenPayload.photo_url;
+    delete tokenPayload.photoUrl;
     clearLoginAttempts(req, rawIdentifier);
-    const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+    const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
     return res.json({ token, user: userPayload, provider: 'demo' });
   }
 
@@ -424,11 +442,13 @@ router.get('/me', requireAuth, (req: AuthRequest, res) => res.json({ user: req.u
 
 router.post('/refresh', requireAuth, (req: AuthRequest, res) => {
   if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-  const userPayload: any = { ...req.user };
-  delete userPayload.iat;
-  delete userPayload.exp;
-  const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
-  return res.json({ token, user: userPayload });
+  const tokenPayload: any = { ...req.user };
+  delete tokenPayload.iat;
+  delete tokenPayload.exp;
+  delete tokenPayload.photo_url;
+  delete tokenPayload.photoUrl;
+  const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
+  return res.json({ token, user: req.user });
 });
 
 /* ────── Password Reset Architecture ────── */
