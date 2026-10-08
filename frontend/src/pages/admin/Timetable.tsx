@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
-import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles } from 'lucide-react';
+import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles, Pencil } from 'lucide-react';
 
 const DAYS = [
   { num: 1, name: 'Monday', short: 'Mon' },
@@ -17,6 +17,25 @@ const STANDARD_FALLBACK_CLASSES = [
   { id: 'cls-ukg', class_number: 0, label: 'U-KG' },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` }))
 ];
+
+const parseClassNum = (val: any): number | null => {
+  if (val === undefined || val === null || val === '') return null;
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  const str = String(val).trim();
+  if (!isNaN(Number(str))) return Number(str);
+  const match = str.match(/(?:class|cls)?\s*[-_]?\s*(-?\d+)/i);
+  if (match) return Number(match[1]);
+  return null;
+};
+
+const parseSecName = (val: any): string => {
+  if (!val) return '';
+  return String(val)
+    .trim()
+    .replace(/^section\s*[-_]?\s*/i, '')
+    .trim()
+    .toUpperCase();
+};
 
 export default function Timetable() {
   const { user } = useAuth();
@@ -41,6 +60,7 @@ export default function Timetable() {
 
   // Add entry modal
   const [addOpen, setAddOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
   const [entryForm, setEntryForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [conflicts, setConflicts] = useState<any[]>([]);
@@ -181,34 +201,114 @@ export default function Timetable() {
   const selSectionName = currentSection?.name || currentSection?.section_name || 'A';
   const teachingPeriods = useMemo(() => periods.filter(p => !(p.is_break ?? p.isBreak)), [periods]);
 
+  const isEntryForCurrentClassAndSection = (e: any) => {
+    // 1. Class Matching
+    const entryClassId = e.class_id || e.classId;
+    const entryClassNum = parseClassNum(e.class_number ?? e.classNumber);
+    const targetClassNum = selClassNum !== undefined && selClassNum !== null ? parseClassNum(selClassNum) : parseClassNum(selClassName);
+
+    const matchClass = (Boolean(entryClassId) && Boolean(selClassId) && entryClassId === selClassId) ||
+      (entryClassNum !== null && targetClassNum !== null && entryClassNum === targetClassNum);
+    if (!matchClass) return false;
+
+    // 2. Section Matching
+    const entrySecId = e.section_id || e.sectionId;
+    const entrySecNorm = parseSecName(e.section_name || e.sectionName);
+    const targetSecNorm = parseSecName(selSectionName || selSection?.name || selSection?.section_name);
+
+    if (selSectionId || selSectionName) {
+      const matchSecId = Boolean(entrySecId) && Boolean(selSectionId) && entrySecId === selSectionId;
+      const matchSecNorm = Boolean(entrySecNorm) && Boolean(targetSecNorm) && entrySecNorm === targetSecNorm;
+      if (!matchSecId && !matchSecNorm) return false;
+    }
+    return true;
+  };
+
   const dayEntries = useMemo(() => {
     return entries
       .filter(e => {
         if (Number(e.day_of_week ?? e.dayOfWeek) !== selDay) return false;
-        const entryClassId = e.class_id || e.classId;
-        const entryClassNum = e.class_number ?? e.classNumber;
-        const matchClass = entryClassId === selClassId || (selClassName && String(entryClassNum) === String(selClassName));
-        if (!matchClass) return false;
-
-        const entrySecId = e.section_id || e.sectionId;
-        const entrySecName = e.section_name || e.sectionName;
-        if (selSectionId) {
-          return entrySecId === selSectionId || (selSection?.name && entrySecName === selSection.name);
-        }
-        return true;
+        return isEntryForCurrentClassAndSection(e);
       })
       .sort((a: any, b: any) => (a.period_number ?? a.periodNumber ?? 0) - (b.period_number ?? b.periodNumber ?? 0));
-  }, [entries, selDay, selClassId, selSectionId, selClassName, selSection]);
+  }, [entries, selDay, selClassId, selSectionId, selClassName, selSection, selClassNum, selSectionName]);
 
-  // Map period_id to entry for grid display
-  const periodEntryMap = useMemo(() => {
-    const m: Record<string, any> = {};
-    dayEntries.forEach(e => {
-      const pid = e.period_id || e.periodId;
-      if (pid) m[pid] = e;
+  // Centralized Helper: Normalize time strings (e.g. '09:00:00' -> '09:00')
+  const normalizeTime = (t: any): string => {
+    if (!t) return '';
+    const str = String(t).trim();
+    const parts = str.split(':');
+    if (parts.length >= 2) {
+      const hh = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+    return str;
+  };
+
+  // Centralized Helper: Extract period slot number from template IDs (e.g. 'prd-abc123-t1' -> 1)
+  const extractTemplatePeriodNum = (periodId: any): number | null => {
+    if (!periodId) return null;
+    const str = String(periodId).trim();
+    const match = str.match(/[-_]t(\d+)$/i) || str.match(/[-_]p(\d+)$/i) || str.match(/t(\d+)$/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      return isNaN(num) ? null : num;
+    }
+    return null;
+  };
+
+  // Centralized Helper: Match an entry to a period using strict multi-tier fallback priority
+  const findEntryForPeriod = (p: any, availableEntries: any[]): any => {
+    if (!p || !Array.isArray(availableEntries) || availableEntries.length === 0) return undefined;
+
+    const targetPid = p.id;
+    const targetPNum = Number(p.period_number ?? p.periodNumber);
+    const targetStart = normalizeTime(p.start_time ?? p.startTime);
+    const targetEnd = normalizeTime(p.end_time ?? p.endTime);
+
+    // 1. EXACT PERIOD ID MATCH
+    const exactMatch = availableEntries.find(e => {
+      const ePid = e.period_id || e.periodId;
+      return Boolean(ePid) && Boolean(targetPid) && ePid === targetPid;
     });
-    return m;
-  }, [dayEntries]);
+    if (exactMatch) return exactMatch;
+
+    // 2. PERIOD NUMBER MATCH
+    if (!isNaN(targetPNum) && targetPNum > 0) {
+      const numMatch = availableEntries.find(e => {
+        const ePNum = Number(e.period_number ?? e.periodNumber);
+        return !isNaN(ePNum) && ePNum > 0 && ePNum === targetPNum;
+      });
+      if (numMatch) return numMatch;
+    }
+
+    // 3. DYNAMIC START/END TIME MATCH
+    if (targetStart && targetEnd) {
+      const timeMatch = availableEntries.find(e => {
+        const eStart = normalizeTime(e.start_time ?? e.startTime);
+        const eEnd = normalizeTime(e.end_time ?? e.endTime);
+        return Boolean(eStart) && Boolean(eEnd) && eStart === targetStart && eEnd === targetEnd;
+      });
+      if (timeMatch) return timeMatch;
+    }
+
+    // 4. TEMPLATE PERIOD ID SUFFIX MATCH
+    if (!isNaN(targetPNum) && targetPNum > 0) {
+      const suffixMatch = availableEntries.find(e => {
+        const ePid = e.period_id || e.periodId;
+        const extractedNum = extractTemplatePeriodNum(ePid);
+        return extractedNum !== null && extractedNum === targetPNum;
+      });
+      if (suffixMatch) return suffixMatch;
+    }
+
+    return undefined;
+  };
+
+  const getEntryForPeriod = (p: any) => {
+    return findEntryForPeriod(p, dayEntries);
+  };
 
   // ── Check teacher busy status for a period ──
   function isTeacherBusy(teacherId: string, periodId: string, day: number, excludeEntryId?: string) {
@@ -222,11 +322,11 @@ export default function Timetable() {
   }
 
   // ── Available teachers for a given period/day ──
-  function getAvailableTeachers(periodId: string, day: number) {
+  function getAvailableTeachers(periodId: string, day: number, excludeEntryId?: string) {
     return teachers.map(t => ({
       ...t,
-      busy: isTeacherBusy(t.id, periodId, day),
-      busyWith: entries.find(e => Number(e.day_of_week ?? e.dayOfWeek) === day && (e.period_id || e.periodId) === periodId && e.teacher_id === t.id)
+      busy: isTeacherBusy(t.id, periodId, day, excludeEntryId),
+      busyWith: entries.find(e => Number(e.day_of_week ?? e.dayOfWeek) === day && (e.period_id || e.periodId) === periodId && (e.teacher_id === t.id || e.substitute_teacher_id === t.id) && e.id !== excludeEntryId)
     }));
   }
 
@@ -308,12 +408,13 @@ export default function Timetable() {
   // ── Open Add Entry Modal ──
   function openAddEntry(periodId?: string) {
     if (!isSchoolAdmin) return;
+    setEditingEntry(null);
     const chosenPeriod = periodId || (teachingPeriods[0]?.id || '');
     setEntryForm({
       dayOfWeek: selDay,
       periodId: chosenPeriod,
       classId: selClassId,
-      classNumber: selClassName,
+      classNumber: selClassNum !== undefined && selClassNum !== null ? selClassNum : selClassName,
       sectionId: selSectionId,
       sectionName: selSectionName,
       subjectId: '',
@@ -321,6 +422,37 @@ export default function Timetable() {
       altTeacherId: '',
       altTeacherName: '',
       roomName: ''
+    });
+    setConflicts([]);
+    setAddOpen(true);
+  }
+
+  // ── Open Edit Entry Modal ──
+  function openEditEntry(entry: any) {
+    if (!isSchoolAdmin || !entry) return;
+    setEditingEntry(entry);
+
+    const eDay = Number(entry.day_of_week ?? entry.dayOfWeek ?? selDay);
+    const ePeriodId = entry.period_id || entry.periodId || '';
+    const eClassId = entry.class_id || entry.classId || selClassId;
+    const eClassNum = entry.class_number ?? entry.classNumber ?? selClassNum;
+    const eSectionId = entry.section_id || entry.sectionId || selSectionId;
+    const eSectionName = entry.section_name || entry.sectionName || selSectionName;
+
+    setEntryForm({
+      dayOfWeek: eDay,
+      periodId: ePeriodId,
+      classId: eClassId,
+      classNumber: eClassNum,
+      sectionId: eSectionId,
+      sectionName: eSectionName,
+      subjectId: entry.subject_id || entry.subjectId || '',
+      subjectName: entry.subject_name || entry.subjectName || '',
+      teacherId: entry.teacher_id || entry.teacherId || '',
+      teacherName: entry.teacher_name || entry.teacherName || '',
+      altTeacherId: entry.substitute_teacher_id || entry.altTeacherId || entry.substituteTeacherId || '',
+      altTeacherName: entry.substitute_teacher_name || entry.altTeacherName || '',
+      roomName: entry.room_name || entry.roomName || ''
     });
     setConflicts([]);
     setAddOpen(true);
@@ -335,12 +467,31 @@ export default function Timetable() {
     }
     setSaving(true);
     try {
-      const resp = await api.post('/timetable/entries', entryForm);
-      if (resp.data) {
-        setEntries(prev => [...prev.filter(e => e.id !== resp.data.id), resp.data]);
+      const selectedPeriod = periods.find(p => p.id === entryForm.periodId);
+      const payload = {
+        ...entryForm,
+        periodNumber: selectedPeriod?.period_number ?? selectedPeriod?.periodNumber ?? null,
+        period_number: selectedPeriod?.period_number ?? selectedPeriod?.periodNumber ?? null,
+        start_time: selectedPeriod?.start_time ?? selectedPeriod?.startTime ?? null,
+        end_time: selectedPeriod?.end_time ?? selectedPeriod?.endTime ?? null
+      };
+
+      if (editingEntry) {
+        const resp = await api.put(`/timetable/entries/${editingEntry.id}`, payload);
+        if (resp.data) {
+          setEntries(prev => prev.map(e => e.id === resp.data.id ? resp.data : e));
+        }
+        setAddOpen(false);
+        setEditingEntry(null);
+        setMsg({ type: 'success', text: 'Timetable entry updated!' });
+      } else {
+        const resp = await api.post('/timetable/entries', payload);
+        if (resp.data) {
+          setEntries(prev => [...prev.filter(e => e.id !== resp.data.id), resp.data]);
+        }
+        setAddOpen(false);
+        setMsg({ type: 'success', text: 'Timetable entry created!' });
       }
-      setAddOpen(false);
-      setMsg({ type: 'success', text: 'Timetable entry created!' });
       loadAll(false);
     } catch (e: any) {
       if (e?.response?.status === 409) {
@@ -368,7 +519,7 @@ export default function Timetable() {
 
   // ── Available teachers for the add-entry form ──
   const formAvailableTeachers = entryForm.periodId
-    ? getAvailableTeachers(entryForm.periodId, entryForm.dayOfWeek)
+    ? getAvailableTeachers(entryForm.periodId, entryForm.dayOfWeek, editingEntry?.id)
     : teachers.map(t => ({ ...t, busy: false }));
 
   const formAltTeachers = formAvailableTeachers.filter(t => t.id !== entryForm.teacherId);
@@ -611,7 +762,9 @@ export default function Timetable() {
               <Calendar size={16} style={{ marginRight: 6 }} />
               {DAYS.find(d => d.num === selDay)?.name} — {displayClassLabel} {selSectionName ? `(Section ${selSectionName})` : ''}
             </h3>
-            <span className="muted" style={{ fontSize: 12 }}>{dayEntries.length} of {teachingPeriods.length} periods assigned</span>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {teachingPeriods.filter(p => Boolean(getEntryForPeriod(p))).length} of {teachingPeriods.length} periods assigned
+            </span>
           </div>
 
           {periods.length === 0 ? (
@@ -653,7 +806,7 @@ export default function Timetable() {
                 </thead>
                 <tbody>
                   {periods.map(p => {
-                    const entry = periodEntryMap[p.id];
+                    const entry = getEntryForPeriod(p);
                     const pNum = p.period_number ?? p.periodNumber ?? '';
                     const pName = p.name || `Period ${pNum}`;
                     const pStart = p.start_time ?? p.startTime ?? '';
@@ -686,7 +839,10 @@ export default function Timetable() {
                         {(isSchoolAdmin || isTeacher) && (
                           <td style={{ textAlign: 'right' }}>
                             {isSchoolAdmin && (
-                              <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
+                              <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                                <button className="table-action-btn" onClick={() => openEditEntry(entry)} title="Edit entry"><Pencil size={14} /></button>
+                                <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
+                              </div>
                             )}
                             {isTeacher && isMy && (
                               <a
@@ -753,8 +909,8 @@ export default function Timetable() {
               <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th>{(isSchoolAdmin || isTeacher) && <th style={{ textAlign: 'right', width: 140 }}>Actions</th>}</tr></thead>
               <tbody>
                 {entries
-                  .filter(e => e.class_id === selClassId && e.section_id === selSectionId)
-                  .sort((a, b) => a.day_of_week - b.day_of_week || (a.period_number || 0) - (b.period_number || 0))
+                  .filter(e => isEntryForCurrentClassAndSection(e))
+                  .sort((a, b) => Number(a.day_of_week ?? a.dayOfWeek ?? 0) - Number(b.day_of_week ?? b.dayOfWeek ?? 0) || (a.period_number || 0) - (b.period_number || 0))
                   .map(e => (
                     <tr key={e.id}>
                       <td>{DAYS.find(d => d.num === e.day_of_week)?.short || e.day_of_week}</td>
@@ -787,13 +943,16 @@ export default function Timetable() {
                             </a>
                           )}
                           {isSchoolAdmin && (
-                            <button className="table-action-btn danger" onClick={() => deleteEntry(e.id)} title="Remove entry"><Trash2 size={12} /></button>
+                            <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                              <button className="table-action-btn" onClick={() => openEditEntry(e)} title="Edit entry"><Pencil size={12} /></button>
+                              <button className="table-action-btn danger" onClick={() => deleteEntry(e.id)} title="Remove entry"><Trash2 size={12} /></button>
+                            </div>
                           )}
                         </td>
                       )}
                     </tr>
                   ))}
-                {entries.filter(e => e.class_id === selClassId && e.section_id === selSectionId).length === 0 && (
+                {entries.filter(e => isEntryForCurrentClassAndSection(e)).length === 0 && (
                   <tr>
                     <td colSpan={isSchoolAdmin || isTeacher ? 9 : 8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
                       {isSchoolAdmin
@@ -810,11 +969,11 @@ export default function Timetable() {
     )}
 
     {/* ══════════ ADD ENTRY MODAL ══════════ */}
-    {isSchoolAdmin && addOpen && <div className="modal-backdrop" onClick={() => setAddOpen(false)}>
+    {isSchoolAdmin && addOpen && <div className="modal-backdrop" onClick={() => { setAddOpen(false); setEditingEntry(null); }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
         <div className="modal-header">
-          <h3 style={{ margin: 0, fontSize: 18 }}>Add Timetable Entry</h3>
-          <button className="modal-close" onClick={() => setAddOpen(false)}><X size={18} /></button>
+          <h3 style={{ margin: 0, fontSize: 18 }}>{editingEntry ? 'Edit Timetable Entry' : 'Add Timetable Entry'}</h3>
+          <button className="modal-close" onClick={() => { setAddOpen(false); setEditingEntry(null); }}><X size={18} /></button>
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {teachingPeriods.length === 0 ? (
@@ -859,13 +1018,15 @@ export default function Timetable() {
                   <select value={entryForm.classId} onChange={e => {
                     const targetCid = e.target.value;
                     const c = classes.find(x => x.id === targetCid);
-                    const availSec = sections.filter(s => s.class_id === targetCid || String(s.class_number) === String(c?.class_number));
+                    const cNum = c?.class_number ?? c?.classNumber;
+                    const availSec = sections.filter(s => s.class_id === targetCid || String(s.class_number) === String(cNum));
+                    const selSecObj = availSec.length > 0 ? availSec[0] : (filteredSections.length > 0 ? filteredSections[0] : null);
                     setEntryForm({
                       ...entryForm,
                       classId: targetCid,
-                      classNumber: c?.class_number,
-                      sectionId: availSec[0]?.id || '',
-                      sectionName: availSec[0]?.name || 'A'
+                      classNumber: cNum !== undefined && cNum !== null ? cNum : (c?.label || c?.name),
+                      sectionId: selSecObj?.id || `${targetCid}-sec-a`,
+                      sectionName: selSecObj?.name || selSecObj?.section_name || 'A'
                     });
                   }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
@@ -877,11 +1038,24 @@ export default function Timetable() {
                   </select>
                 </label>
                 <label style={{ fontSize: 13, fontWeight: 600 }}>Section
-                  <select value={entryForm.sectionId} onChange={e => { const s = sections.find(x => x.id === e.target.value); setEntryForm({ ...entryForm, sectionId: e.target.value, sectionName: s?.name }); }}
+                  <select value={entryForm.sectionId || ''} onChange={e => {
+                    const secIdVal = e.target.value;
+                    const sFromSections = sections.find(x => x.id === secIdVal);
+                    const sFromFiltered = filteredSections.find(x => x.id === secIdVal);
+                    const sNameVal = sFromSections?.name || sFromSections?.section_name || sFromFiltered?.name || sFromFiltered?.section_name || (secIdVal.endsWith('-sec-b') ? 'B' : 'A');
+                    setEntryForm({ ...entryForm, sectionId: secIdVal, sectionName: sNameVal });
+                  }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
                     {(() => {
                       const avail = sections.filter(s => s.class_id === entryForm.classId || String(s.class_number) === String(classes.find(c => c.id === entryForm.classId)?.class_number));
-                      return avail.length === 0 ? <option value="">Section A (Default)</option> : avail.map(s => <option key={s.id} value={s.id}>{s.name}</option>);
+                      if (avail.length === 0) {
+                        return filteredSections.map(s => (
+                          <option key={s.id} value={s.id}>
+                            Section {s.name || s.section_name || 'A'}
+                          </option>
+                        ));
+                      }
+                      return avail.map(s => <option key={s.id} value={s.id}>{s.name || s.section_name}</option>);
                     })()}
                   </select>
                 </label>
@@ -946,10 +1120,10 @@ export default function Timetable() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
-                <button onClick={() => setAddOpen(false)} style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
+                <button onClick={() => { setAddOpen(false); setEditingEntry(null); }} style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)' }}>Cancel</button>
                 <button onClick={saveEntry} disabled={saving}
                   style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {saving ? <><RefreshCw size={14} className="spin" /> Saving...</> : <><Check size={14} /> Create Entry</>}
+                  {saving ? <><RefreshCw size={14} className="spin" /> Saving...</> : <><Check size={14} /> {editingEntry ? 'Save Changes' : 'Create Entry'}</>}
                 </button>
               </div>
             </>

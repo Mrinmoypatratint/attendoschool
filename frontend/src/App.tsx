@@ -3852,6 +3852,11 @@ function TeacherHome(){
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {r.map(x => {
             const recordedSession = getRoutineAttendance(x);
+            const uId = String(user?.id || '');
+            const uTeacherId = String((user as any)?.teacher_id || '');
+            const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
+            const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
+
             return (
               <div
                 className="routine-card"
@@ -3872,6 +3877,11 @@ function TeacherHome(){
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <b style={{ fontSize: 15.5 }}>Class {x.class_number}-{x.section_name}</b>
                     {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
+                    {isAlternate && (
+                      <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        🔄 Alternate Teacher
+                      </span>
+                    )}
                     {recordedSession && (
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#d1fae5', color: '#065f46', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         ✓ Recorded ({recordedSession.present || 0} Present{recordedSession.left_early_count ? ` · ${recordedSession.left_early_count} Left Early` : ''})

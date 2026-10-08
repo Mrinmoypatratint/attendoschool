@@ -243,7 +243,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
     let q;
     if (isTeacher) {
       q = await pool.query(
-        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                 p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
@@ -260,7 +260,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
       );
     } else {
       q = await pool.query(
-        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                 p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
@@ -328,6 +328,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
             room_name: e.room_name || e.roomName || e.room || '',
             teacher_id: e.teacher_id || e.teacherId,
             teacher_name: e.teacher_name || e.teacherName,
+            substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
             day_of_week: entryDay
           });
         });
@@ -367,6 +368,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
     room_name: e.room_name || '',
     teacher_id: e.teacher_id,
     teacher_name: e.teacher_name,
+    substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
     day_of_week: e.day_of_week
   }));
 
@@ -402,7 +404,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
       let q;
       if (isTeacher) {
         q = await pool.query(
-          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                   p.start_time, p.end_time, e.day_of_week, e.room_name AS room, e.room_name,
                   c.class_number, s.name AS section_name, sub.name AS subject_name,
                   p.name AS period_name, p.period_number, p.id AS period_id, u.name AS teacher_name
@@ -420,7 +422,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
         );
       } else {
         q = await pool.query(
-          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                   p.start_time, p.end_time, e.day_of_week, e.room_name AS room, e.room_name,
                   c.class_number, s.name AS section_name, sub.name AS subject_name,
                   p.name AS period_name, p.period_number, p.id AS period_id, u.name AS teacher_name
@@ -477,6 +479,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
             room_name: e.room_name || e.roomName || e.room || '',
             teacher_id: e.teacher_id || e.teacherId,
             teacher_name: e.teacher_name || e.teacherName,
+            substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
             day_of_week: Number(e.day_of_week ?? e.dayOfWeek)
           });
         });
