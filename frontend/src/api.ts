@@ -28,7 +28,22 @@ let isHandlingAuthError = false;
 // Attach auth token to all outgoing requests
 api.interceptors.request.use((c) => {
   const t = localStorage.getItem('attendance_token') || localStorage.getItem('token');
-  if (t) c.headers.Authorization = `Bearer ${t}`;
+  if (t) {
+    // Self-healing: Automatically detect and purge oversized legacy tokens (>8KB)
+    // which cause Cloudflare "400 Request Header Or Cookie Too Large" and network drops
+    if (t.length > 8192) {
+      console.warn('[API] Purging oversized legacy token (>8KB) to prevent HTTP 400 Header Too Large');
+      localStorage.removeItem('attendance_token');
+      localStorage.removeItem('attendance_user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message: 'Session updated for optimal performance. Please sign in.' } }));
+      }
+      return c;
+    }
+    c.headers.Authorization = `Bearer ${t}`;
+  }
   return c;
 });
 
@@ -43,6 +58,20 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const config = error.config as RetryConfig | undefined;
+
+    // Handle 400 Header / Cookie Too Large from Cloudflare / Proxy
+    if (error.response && error.response.status === 400) {
+      const dataStr = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data || '');
+      if (dataStr.toLowerCase().includes('too large') || dataStr.toLowerCase().includes('cookie')) {
+        localStorage.removeItem('attendance_token');
+        localStorage.removeItem('attendance_user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message: 'Session updated for optimal performance. Please sign in.' } }));
+        }
+      }
+    }
 
     // Handle 401 unauthorized / token expired
     if (error.response && error.response.status === 401) {

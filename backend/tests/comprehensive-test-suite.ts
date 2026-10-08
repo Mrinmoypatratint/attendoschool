@@ -8,6 +8,7 @@ import { securityHeaders, apiRateLimit, requestContext } from '../src/middleware
 import app from '../src/app';
 import http from 'http';
 import { pool } from '../src/db';
+import { renderEmailTemplate } from '../src/services/notificationService';
 
 let passed = 0;
 let failed = 0;
@@ -179,6 +180,45 @@ async function runTestSuite() {
   assert(processedMessage.includes('Arjun Kumar'), 'Template contains substituted student name');
   assert(processedMessage.includes('Class 8-A'), 'Template contains substituted class and section');
   assert(processedMessage.includes('Rahul Sharma'), 'Template contains substituted teacher name');
+
+  // Validate Admission Number presence across all student-bound email templates
+  const absentTmpl = renderEmailTemplate('ATTENDANCE_ABSENT', {
+    student_name: 'Rohan Verma',
+    admission_number: 'ADM-2026-9999',
+    class_name: '10',
+    section_name: 'B',
+    attendance_date: '2026-10-08'
+  });
+  assert(absentTmpl.text.includes('Admission Number: ADM-2026-9999'), 'ATTENDANCE_ABSENT email text mentions student Admission Number');
+  assert(absentTmpl.html.includes('ADM-2026-9999') && absentTmpl.html.includes('Admission Number'), 'ATTENDANCE_ABSENT email HTML includes Admission Number table row');
+
+  const presentTmpl = renderEmailTemplate('ATTENDANCE_PRESENT', {
+    student_name: 'Rohan Verma',
+    admission_number: 'ADM-2026-9999',
+    class_name: '10',
+    section_name: 'B',
+    attendance_date: '2026-10-08'
+  });
+  assert(presentTmpl.text.includes('Admission Number: ADM-2026-9999'), 'ATTENDANCE_PRESENT email text mentions student Admission Number');
+  assert(presentTmpl.html.includes('ADM-2026-9999') && presentTmpl.html.includes('Admission Number'), 'ATTENDANCE_PRESENT email HTML includes Admission Number table row');
+
+  const studentCreatedTmpl = renderEmailTemplate('STUDENT_CREATED', {
+    student_name: 'Rohan Verma',
+    admission_number: 'ADM-2026-9999',
+    class_name: '10',
+    section_name: 'B',
+    roll_number: '42'
+  });
+  assert(studentCreatedTmpl.text.includes('Admission Number (Login ID): ADM-2026-9999'), 'STUDENT_CREATED email text mentions Admission Number (Login ID)');
+  assert(studentCreatedTmpl.html.includes('ADM-2026-9999') && studentCreatedTmpl.html.includes('Login ID'), 'STUDENT_CREATED email HTML highlights Admission Number Login ID badge');
+
+  const pwdResetTmpl = renderEmailTemplate('PASSWORD_RESET', {
+    name: 'Rohan Verma',
+    admission_number: 'ADM-2026-9999',
+    role: 'STUDENT'
+  });
+  assert(pwdResetTmpl.text.includes('Admission Number (Login ID): ADM-2026-9999'), 'PASSWORD_RESET email text mentions student Admission Number (Login ID)');
+  assert(pwdResetTmpl.html.includes('ADM-2026-9999') && pwdResetTmpl.html.includes('Admission Number (Login ID)'), 'PASSWORD_RESET email HTML displays student Admission Number profile card');
 
   // ---------------------------------------------------------
   // 5. BILLING & GST TAX CALCULATIONS
