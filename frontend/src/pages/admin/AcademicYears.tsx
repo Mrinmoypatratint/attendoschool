@@ -103,11 +103,30 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [holidayName, setHolidayName] = useState('');
-  const [holidayDate, setHolidayDate] = useState('');
+  const [holidayFromDate, setHolidayFromDate] = useState('');
+  const [holidayToDate, setHolidayToDate] = useState('');
   const [holidayType, setHolidayType] = useState<'GAZETTED' | 'NATIONAL' | 'REGIONAL' | 'INSTITUTIONAL' | 'FESTIVAL'>('GAZETTED');
   const [holidayDesc, setHolidayDesc] = useState('');
   const [savingHoliday, setSavingHoliday] = useState(false);
   const [holidayMsg, setHolidayMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const holidayDurationDays = useMemo(() => {
+    if (!holidayFromDate) return 0;
+    const to = holidayToDate || holidayFromDate;
+    if (holidayFromDate > to) return -1;
+    const d1 = new Date(holidayFromDate);
+    const d2 = new Date(to);
+    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 0;
+  }, [holidayFromDate, holidayToDate]);
+
+  const nameCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const h of holidays) {
+      counts[h.name] = (counts[h.name] || 0) + 1;
+    }
+    return counts;
+  }, [holidays]);
 
   /* ─────────────────────────────────────────────────────────────
      4. Real-Time Working Day & Weekend/Holiday Calculator State
@@ -386,8 +405,15 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   ───────────────────────────────────────────────────────────── */
   async function handleAddHoliday(e: React.FormEvent) {
     e.preventDefault();
-    if (!holidayName.trim() || !holidayDate) {
-      alert('Please provide holiday name and valid date.');
+    const from = holidayFromDate.trim();
+    const to = (holidayToDate || holidayFromDate).trim();
+
+    if (!holidayName.trim() || !from) {
+      alert('Please provide holiday name and valid From date.');
+      return;
+    }
+    if (from > to) {
+      alert('To date cannot be earlier than From date.');
       return;
     }
 
@@ -396,7 +422,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     try {
       const res = await api.post('/calendar/holidays', {
         name: holidayName.trim(),
-        holiday_date: holidayDate,
+        from_date: from,
+        to_date: to,
         holiday_type: holidayType,
         description: holidayDesc
       });
@@ -405,7 +432,8 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         text: res.data?.message || `Declared holiday '${holidayName}' successfully!`
       });
       setHolidayName('');
-      setHolidayDate('');
+      setHolidayFromDate('');
+      setHolidayToDate('');
       setHolidayDesc('');
       await loadHolidaysList();
       executeCalculation();
@@ -420,10 +448,13 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     }
   }
 
-  async function handleDeleteHoliday(id: string, name: string) {
-    if (!confirm(`Are you sure you want to remove the declared holiday "${name}"?`)) return;
+  async function handleDeleteHoliday(id: string, name: string, date: string, allSeries = false) {
+    const promptMsg = allSeries
+      ? `Are you sure you want to remove ALL declared dates for holiday "${name}"?`
+      : `Are you sure you want to remove the declared holiday "${name}" on ${date}?`;
+    if (!confirm(promptMsg)) return;
     try {
-      await api.delete(`/calendar/holidays/${id}`);
+      await api.delete(`/calendar/holidays/${id}${allSeries ? '?allSeries=true' : ''}`);
       await loadHolidaysList();
       executeCalculation();
     } catch (err: any) {
@@ -921,12 +952,12 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               Declared holidays are locked on attendance registers and automatically excluded from working-day totals.
             </p>
 
-            <form onSubmit={handleAddHoliday} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, alignItems: 'flex-end' }}>
+            <form onSubmit={handleAddHoliday} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, alignItems: 'flex-end' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Holiday Name *</span>
                 <input
                   type="text"
-                  placeholder="e.g. Gandhi Jayanti"
+                  placeholder="e.g. Durga Puja / Summer Break"
                   value={holidayName}
                   onChange={e => setHolidayName(e.target.value)}
                   required
@@ -934,11 +965,28 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Date *</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>From Date *</span>
                 <input
                   type="date"
-                  value={holidayDate}
-                  onChange={e => setHolidayDate(e.target.value)}
+                  value={holidayFromDate}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setHolidayFromDate(val);
+                    if (!holidayToDate || holidayToDate < val) {
+                      setHolidayToDate(val);
+                    }
+                  }}
+                  required
+                />
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>To Date *</span>
+                <input
+                  type="date"
+                  min={holidayFromDate}
+                  value={holidayToDate}
+                  onChange={e => setHolidayToDate(e.target.value)}
                   required
                 />
               </label>
@@ -967,13 +1015,27 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 />
               </label>
 
-              <div>
+              {holidayFromDate && holidayToDate && (
+                <div style={{ gridColumn: '1 / -1', marginTop: -4, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                  {holidayFromDate > holidayToDate ? (
+                    <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                      ⚠️ "To Date" cannot be earlier than "From Date"
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eff6ff', color: '#1e40af', padding: '4px 10px', borderRadius: 6, border: '1px solid #bfdbfe', fontWeight: 600 }}>
+                      📅 <b>Duration:</b> {holidayDurationDays} {holidayDurationDays === 1 ? 'day (Single day)' : 'days (Multi-day holiday)'} ({holidayFromDate} to {holidayToDate})
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div style={{ gridColumn: '1 / -1', maxWidth: 260 }}>
                 <button
                   type="submit"
-                  disabled={savingHoliday}
+                  disabled={savingHoliday || (holidayDurationDays < 0)}
                   style={{ width: '100%', height: 38, fontWeight: 700 }}
                 >
-                  {savingHoliday ? 'Saving...' : 'Add Holiday'}
+                  {savingHoliday ? 'Saving...' : holidayDurationDays > 1 ? `Declare ${holidayDurationDays}-Day Holiday` : 'Add Holiday'}
                 </button>
               </div>
             </form>
@@ -1017,6 +1079,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       const dt = new Date(Date.UTC(y, m - 1, d));
                       const dayName = DAY_NAMES[dt.getUTCDay()];
                       const isWeekend = weekendDays.includes(dt.getUTCDay()) || (dt.getUTCDay() === 6 && saturdayRule === 'OFF');
+                      const isMulti = (nameCounts[h.name] || 0) > 1;
 
                       return (
                         <tr key={h.id}>
@@ -1024,6 +1087,22 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                           <td>{dayName}</td>
                           <td>
                             <b>{h.name}</b>
+                            {isMulti && (
+                              <span
+                                style={{
+                                  marginLeft: 6,
+                                  fontSize: 10.5,
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                  padding: '2px 6px',
+                                  borderRadius: 6,
+                                  fontWeight: 700,
+                                  display: 'inline-block'
+                                }}
+                              >
+                                Series ({nameCounts[h.name]}d)
+                              </span>
+                            )}
                             {h.description && (
                               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{h.description}</div>
                             )}
@@ -1078,25 +1157,71 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                             </span>
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className="small-btn danger-btn"
-                              onClick={() => handleDeleteHoliday(h.id, h.name)}
-                              style={{
-                                background: '#dc2626',
-                                color: '#fff',
-                                border: 'none',
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4
-                              }}
-                            >
-                              <Trash2 size={13} /> Delete
-                            </button>
+                            {isMulti ? (
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  className="small-btn danger-btn"
+                                  title="Delete only this specific date"
+                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                  style={{
+                                    background: '#ef4444',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 11,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}
+                                >
+                                  <Trash2 size={12} /> Day
+                                </button>
+                                <button
+                                  type="button"
+                                  className="small-btn danger-btn"
+                                  title="Delete all dates in this holiday series"
+                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
+                                  style={{
+                                    background: '#b91c1c',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}
+                                >
+                                  <Trash2 size={12} /> All ({nameCounts[h.name]}d)
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="small-btn danger-btn"
+                                onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                style={{
+                                  background: '#dc2626',
+                                  color: '#fff',
+                                  border: 'none',
+                                  padding: '4px 10px',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}
+                              >
+                                <Trash2 size={13} /> Delete
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

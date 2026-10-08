@@ -55,7 +55,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
         // Atomic unified query executes in 1 client connection and <15ms
         const unifiedKpiQuery = `
           SELECT
-            (SELECT row_to_json(s) FROM (SELECT id, name, code, status, enquiry_number, address FROM schools WHERE id = $1) s) AS school,
+            (SELECT row_to_json(s) FROM (SELECT id, name, code, photo_url, status, enquiry_number, address FROM schools WHERE id = $1) s) AS school,
             (SELECT COUNT(*)::int FROM students WHERE school_id = $1 AND is_active = true) AS total_students,
             (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true) AS total_teachers,
             (SELECT COUNT(*)::int FROM classes WHERE school_id = $1) AS total_classes,
@@ -83,7 +83,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
             console.warn('[Dashboard] Unified query fallback:', unifiedErr.message);
             // Safe granular fallback if any column/subquery is missing
             const [schoolRes, studentsRes, teachersRes, classesRes, sectionsRes, corrRes, ayRes, photosRes, leavesRes] = await Promise.all([
-              pool.query('SELECT id, name, code, status, enquiry_number, address FROM schools WHERE id = $1', [sid]).catch(() => ({ rows: [] })),
+              pool.query('SELECT id, name, code, photo_url, status, enquiry_number, address FROM schools WHERE id = $1', [sid]).catch(() => ({ rows: [] })),
               pool.query('SELECT COUNT(*)::int AS count FROM students WHERE school_id = $1 AND is_active = true', [sid]).catch(() => ({ rows: [{ count: 0 }] })),
               pool.query(`SELECT COUNT(*)::int AS count FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true`, [sid]).catch(() => ({ rows: [{ count: 0 }] })),
               pool.query('SELECT COUNT(*)::int AS count FROM classes WHERE school_id = $1', [sid]).catch(() => ({ rows: [{ count: 0 }] })),
@@ -243,8 +243,8 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
   }
 };
 
-r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), schoolDashboardHandler);
-r.get('/overview', requireAuth, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), schoolDashboardHandler);
+r.get('/school', requireAuth, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER'), schoolDashboardHandler);
+r.get('/overview', requireAuth, requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER'), schoolDashboardHandler);
 
 /**
  * GET /api/dashboard/super-admin

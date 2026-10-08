@@ -210,7 +210,16 @@ export function StudentDashboard() {
             {student?.admissionNumber && (
               <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
             )}
-            <span className="student-meta-pill student-meta-school">{student?.schoolName || 'AttendoSchool'}</span>
+            <span className="student-meta-pill student-meta-school" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {(student?.school_photo_url || student?.schoolPhotoUrl) ? (
+                <img
+                  src={(student?.school_photo_url || student?.schoolPhotoUrl) as string}
+                  alt={student?.schoolName || 'School'}
+                  style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }}
+                />
+              ) : null}
+              {student?.schoolName || 'AttendoSchool'}
+            </span>
           </div>
         </div>
 

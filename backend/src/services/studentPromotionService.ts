@@ -149,9 +149,11 @@ export async function promoteStudents(
       [pgSchoolId, schoolId]
     );
     if (ayQ.rowCount && ayQ.rows.length > 0) {
-      const fFound = ayQ.rows.find((r: any) => r.id === fromYearId || r.name === fromYearId || (fromYearId && r.name.toLowerCase().includes(fromYearId.toLowerCase())));
+      const strFrom = String(fromYearId || '').toLowerCase();
+      const strTo = String(toYearId || '').toLowerCase();
+      const fFound = ayQ.rows.find((r: any) => r.id === fromYearId || r.name === fromYearId || (strFrom && r.name && r.name.toLowerCase().includes(strFrom)));
       if (fFound) resolvedFromId = fFound.id;
-      const tFound = ayQ.rows.find((r: any) => r.id === toYearId || r.name === toYearId || (toYearId && r.name.toLowerCase().includes(toYearId.toLowerCase())));
+      const tFound = ayQ.rows.find((r: any) => r.id === toYearId || r.name === toYearId || (strTo && r.name && r.name.toLowerCase().includes(strTo)));
       if (tFound) resolvedToId = tFound.id;
     }
 
@@ -267,18 +269,46 @@ export async function promoteStudents(
         ]
       );
 
+      // Resolve target roll number: if item specifies roll, or keep currentStudent.roll_number
+      let targetRoll: string | null = item.toRollNumber || item.targetRollNumber || item.rollNumber || item.roll || null;
+      let finalRollNumber = targetRoll || currentStudent.roll_number;
+
+      // Ensure roll number does not conflict with existing students in the same target academic year, class, and section
+      const effectiveClass = targetClass || currentStudent.class_id;
+      const effectiveSection = targetSection || currentStudent.section_id;
+
+      if (effectiveClass && effectiveSection && finalRollNumber) {
+        const rollDupQ = await client.query(
+          `SELECT roll_number FROM students
+           WHERE academic_year_id = $1::uuid AND class_id = $2::uuid AND section_id = $3::uuid
+             AND id != $4::uuid`,
+          [resolvedToId, effectiveClass, effectiveSection, studentId]
+        );
+        const existingRolls = new Set(rollDupQ.rows.map(r => String(r.roll_number).trim()));
+        if (existingRolls.has(String(finalRollNumber).trim())) {
+          // Find next available integer roll number in this section for this academic year
+          let nextRoll = 1;
+          while (existingRolls.has(String(nextRoll))) {
+            nextRoll++;
+          }
+          finalRollNumber = String(nextRoll);
+        }
+      }
+
       await client.query(
         `UPDATE students
          SET academic_year_id = $1::uuid,
              class_id = COALESCE($2::uuid, class_id),
              section_id = COALESCE($3::uuid, section_id),
-             enrollment_status = $4,
+             roll_number = COALESCE($4, roll_number),
+             enrollment_status = $5,
              updated_at = NOW()
-         WHERE id::text = $5`,
+         WHERE id::text = $6`,
         [
           resolvedToId,
           targetClass,
           targetSection,
+          finalRollNumber,
           outcome === 'GRADUATED' ? 'GRADUATED' : (outcome === 'TRANSFERRED' ? 'TRANSFERRED' : 'ACTIVE'),
           studentId
         ]
@@ -291,6 +321,7 @@ export async function promoteStudents(
         demoStu.session_id = resolvedToId;
         if (targetClass) demoStu.class_id = targetClass;
         if (targetSection) demoStu.section_id = targetSection;
+        if (finalRollNumber) demoStu.roll_number = finalRollNumber;
         demoStu.enrollment_status = outcome === 'GRADUATED' ? 'GRADUATED' : (outcome === 'TRANSFERRED' ? 'TRANSFERRED' : 'ACTIVE');
       }
 
