@@ -72,6 +72,7 @@ async function ensureReviewTables() {
     tablesInitialized = true;
   } catch (err) {
     console.error('Failed to ensure review tables:', err);
+    tablesInitialized = true;
   }
 }
 

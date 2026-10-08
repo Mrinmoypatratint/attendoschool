@@ -51,14 +51,41 @@ const app = express();
 // Trust reverse proxy (Render ALB/Envoy, Cloudflare) for accurate client IP
 app.set('trust proxy', 1);
 
-const allowedOrigin =
-  env.corsOrigin === '*'
-    ? true
-    : env.corsOrigin.includes(',')
-      ? env.corsOrigin.split(',').map((s) => s.trim())
-      : env.corsOrigin;
+const allowedOriginsList = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://attendoschool.optinetinnovations.in',
+  'http://attendoschool.optinetinnovations.in',
+  'https://attendoschool.vercel.app',
+  ...(env.corsOrigin && env.corsOrigin !== '*'
+    ? (env.corsOrigin.includes(',') ? env.corsOrigin.split(',').map((s) => s.trim()) : [env.corsOrigin.trim()])
+    : [])
+];
 
-app.use(cors({ origin: allowedOrigin, credentials: true }));
+const corsOptions: cors.CorsOptions = {
+  origin: (requestOrigin, callback) => {
+    // Non-browser or same-origin requests
+    if (!requestOrigin) return callback(null, true);
+    if (
+      env.corsOrigin === '*' ||
+      allowedOriginsList.includes(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?optinetinnovations\.in(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?vercel\.app(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/localhost(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(requestOrigin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+  exposedHeaders: ['Content-Disposition']
+};
+
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));

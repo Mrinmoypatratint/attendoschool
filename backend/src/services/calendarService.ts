@@ -92,6 +92,7 @@ export async function ensureCalendarTables(): Promise<void> {
     tablesInitialized = true;
   } catch (err: any) {
     console.error('[CalendarService] Failed to ensure calendar tables:', err.message);
+    tablesInitialized = true;
   }
 }
 
@@ -138,7 +139,8 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
     updated_at: new Date().toISOString()
   };
 
-  if (!isPostgresConfigured) {
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(schoolId));
+  if (!isPostgresConfigured || !isSchoolUuid) {
     return memWorkingDays[schoolId] || defaultConfig;
   }
 
@@ -159,6 +161,13 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
         saturday_rule: row.saturday_rule || 'WORKING',
         updated_at: row.updated_at
       };
+    }
+
+    // Check if school exists in schools table before inserting default record to satisfy FK
+    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    if (!schoolExists.rowCount) {
+      memWorkingDays[schoolId] = defaultConfig;
+      return defaultConfig;
     }
 
     // Insert default record if not exists

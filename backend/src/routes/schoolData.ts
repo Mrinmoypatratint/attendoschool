@@ -123,7 +123,14 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
   if (ensuredSchools.has(schoolId)) return;
 
   try {
-    // Ultra-fast path: If classes already exist in PostgreSQL including kindergarten, return in 1 roundtrip
+    // 1. Verify school actually exists in PostgreSQL schools table to avoid foreign key errors
+    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    if (!schoolExists.rowCount) {
+      ensuredSchools.add(schoolId);
+      return;
+    }
+
+    // 2. Ultra-fast path: If classes already exist in PostgreSQL including kindergarten, return immediately
     const checkExisting = await pool.query(
       'SELECT COUNT(DISTINCT class_number)::int as count FROM classes WHERE school_id = $1 AND class_number IN (-1, 0, 1, 12)',
       [schoolId]
@@ -132,15 +139,6 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
       ensuredSchools.add(schoolId);
       return;
     }
-    // Ensure classes check constraint allows -1 to 12
-    await pool.query(`
-      DO $$
-      BEGIN
-        ALTER TABLE classes DROP CONSTRAINT IF EXISTS classes_class_number_check;
-        ALTER TABLE classes ADD CONSTRAINT classes_class_number_check CHECK (class_number >= -1 AND class_number <= 12);
-      EXCEPTION WHEN OTHERS THEN NULL;
-      END $$;
-    `).catch(() => {});
 
     for (const g of CLASS_GRADES) {
       const clsRes = await pool.query(
@@ -162,9 +160,11 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
         }
       }
     }
-    ensuredSchools.add(schoolId);
   } catch (err: any) {
     console.warn('[ensureSchoolClassesAndSections] Error:', err.message);
+  } finally {
+    // Always mark school as checked to prevent hammering PostgreSQL or acquiring concurrent locks
+    ensuredSchools.add(schoolId);
   }
 }
 
@@ -1405,14 +1405,19 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   // Preload existing classes and sections to eliminate duplicate DB queries per row
   const classMap = new Map<number, string>();
   const sectionMap = new Map<string, string>();
+  let isSchoolInPostgres = false;
   try {
-    const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
-    for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
+    const schCheck = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    isSchoolInPostgres = Boolean(schCheck.rowCount && schCheck.rowCount > 0);
+    if (isSchoolInPostgres) {
+      const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
+      for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
 
-    const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
-    for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
-  } catch (preloadErr) {
-    console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr);
+      const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
+      for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
+    }
+  } catch (preloadErr: any) {
+    console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr.message);
   }
 
   // Pre-resolve all classes & sections needed in this batch in a single pass before the row loop
@@ -1433,39 +1438,41 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     }
   }
 
-  for (const cn of neededClasses) {
-    if (!classMap.has(cn)) {
-      try {
-        const clsQ = await pool.query(
-          `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
-           ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
-          [schoolId, cn]
-        );
-        if (clsQ.rows.length > 0) {
-          classMap.set(cn, clsQ.rows[0].id);
+  if (isSchoolInPostgres) {
+    for (const cn of neededClasses) {
+      if (!classMap.has(cn)) {
+        try {
+          const clsQ = await pool.query(
+            `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+             ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
+            [schoolId, cn]
+          );
+          if (clsQ.rows.length > 0) {
+            classMap.set(cn, clsQ.rows[0].id);
+          }
+        } catch (csErr: any) {
+          console.warn('[bulk-import] Failed to create class:', csErr.message);
         }
-      } catch (csErr) {
-        console.warn('[bulk-import] Failed to create class:', csErr);
       }
     }
-  }
 
-  for (const item of neededSections) {
-    const [cnStr, sn] = item.split(':');
-    const cn = Number(cnStr);
-    const cId = classMap.get(cn);
-    if (cId && !sectionMap.has(`${cId}_${sn}`)) {
-      try {
-        const secQ = await pool.query(
-          `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-           ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
-          [schoolId, cId, sn]
-        );
-        if (secQ.rows.length > 0) {
-          sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
+    for (const item of neededSections) {
+      const [cnStr, sn] = item.split(':');
+      const cn = Number(cnStr);
+      const cId = classMap.get(cn);
+      if (cId && !sectionMap.has(`${cId}_${sn}`)) {
+        try {
+          const secQ = await pool.query(
+            `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+             ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
+            [schoolId, cId, sn]
+          );
+          if (secQ.rows.length > 0) {
+            sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
+          }
+        } catch (csErr: any) {
+          console.warn('[bulk-import] Failed to create section:', csErr.message);
         }
-      } catch (csErr) {
-        console.warn('[bulk-import] Failed to create section:', csErr);
       }
     }
   }

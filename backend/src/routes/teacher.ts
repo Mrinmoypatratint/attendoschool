@@ -522,8 +522,12 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   const secId = String(req.params.sectionId || req.query.sectionId || req.query.section_id || req.query.section_name || '');
 
   // Extract numeric class number safely from synthetic IDs (e.g. ${sid}-cls-10 -> 10) or plain numbers
+  let classNum: number | null = null;
   const clsMatch = classParam.match(/cls-(-?\d+)/i) || classParam.match(/(-?\d+)$/);
-  const classNum = clsMatch ? parseInt(clsMatch[1], 10) : (parseInt(classParam.replace(/\D/g, ''), 10) || 10);
+  const rawClassNum = clsMatch ? parseInt(clsMatch[1], 10) : parseInt(classParam.replace(/\D/g, ''), 10);
+  if (Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767) {
+    classNum = rawClassNum;
+  }
 
   // Extract clean section name from synthetic IDs (e.g. ${sid}-sec-cls-10-a -> A) or plain section names
   let cleanSec = secId.trim();
@@ -548,7 +552,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
         `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
          FROM students
          WHERE school_id = $1::uuid
-           AND (class_id = $2::uuid OR class_id IN (SELECT id FROM classes WHERE school_id = $1::uuid AND class_number = $3::smallint))
+           AND (class_id = $2::uuid OR ($3::smallint IS NOT NULL AND class_id IN (SELECT id FROM classes WHERE school_id = $1::uuid AND class_number = $3::smallint)))
            AND (section_id = $4::uuid OR section_id IN (SELECT id FROM sections WHERE school_id = $1::uuid AND (UPPER(name) = UPPER($5) OR LOWER(name) = LOWER($6))))
            AND is_active
          ORDER BY roll_number`,
@@ -739,9 +743,14 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
       const classUuidVal = isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000';
       const secUuidVal = isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000';
 
-      const rawClassNum = parseInt(classParam.replace(/\D/g, ''), 10);
-      const isSmallInt = Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767;
-      const classNum = isSmallInt ? rawClassNum : -99999;
+      let classNum: number | null = null;
+      if (!isClassUuid) {
+        const clsMatch = classParam.match(/cls-(-?\d+)/i) || classParam.match(/(-?\d+)$/);
+        const rawClassNum = clsMatch ? parseInt(clsMatch[1], 10) : parseInt(classParam.replace(/\D/g, ''), 10);
+        if (Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767) {
+          classNum = rawClassNum;
+        }
+      }
       const cleanSec = secParam.replace(/section\s*/i, '').trim();
 
       const q = await pool.query(
@@ -755,7 +764,7 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
            AND (
              a.class_id::text = $3
              OR a.class_id = $4::uuid
-             OR (c.class_number IS NOT NULL AND c.class_number = $5::smallint)
+             OR ($5::smallint IS NOT NULL AND c.class_number = $5::smallint)
            )
            AND (
              $6::text = ''
