@@ -18,9 +18,12 @@ export type User = {
   sectionName?: string;
   rollNumber?: string;
   schoolName?: string;
+  schoolCode?: string;
   avatarUrl?: string;
   photo_url?: string;
   photoUrl?: string;
+  schoolPhotoUrl?: string;
+  school_photo_url?: string;
 };
 
 type AuthContextType = {

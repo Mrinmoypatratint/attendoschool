@@ -7,11 +7,10 @@ import { env } from '../config/env';
 import { requireAuth, AuthRequest, Role } from '../middleware/auth';
 import { findDemoUser } from '../store/demoUsers';
 import { demoSchools } from './superAdmin';
-import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
-import { isFirebaseConfigured, collections } from '../firebase';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { loginRateLimit, clearLoginAttempts } from '../middleware/security';
 
 const router = Router();
 
@@ -52,32 +51,7 @@ router.get('/institutes', async (_req, res) => {
     }
   }
 
-  // 2. Direct Firebase Cloud Firestore - merge any additional active schools
-  if (isFirebaseConfigured()) {
-    try {
-      const fsSchools = await getFirestoreSchools();
-      fsSchools
-        .filter((s: any) => s && s.name && s.status !== 'SUSPENDED' && s.status !== 'DELETED')
-        .forEach((s: any) => {
-          const sId = String(s.id);
-          const sCode = String(s.code || '').toUpperCase();
-          if (!existingIds.has(sId) && (!sCode || !existingCodes.has(sCode))) {
-            list.push({
-              id: sId,
-              name: String(s.name),
-              code: sCode || 'SCH001',
-              address: String(s.address || s.city || 'Main Campus')
-            });
-            existingIds.add(sId);
-            if (sCode) existingCodes.add(sCode);
-          }
-        });
-    } catch (err: any) {
-      console.warn('[Auth] Failed to fetch schools from Cloud Firestore:', err.message);
-    }
-  }
-
-  // 3. In-memory demoSchools fallback if list is still completely empty
+  // 2. In-memory demoSchools fallback if list is still completely empty
   if (list.length === 0) {
     list = demoSchools.filter(s => s.status === 'ACTIVE').map(s => ({
       id: String(s.id),
@@ -142,53 +116,7 @@ router.get('/lookup-institute', async (req, res) => {
     }
   }
 
-  // 2. Secondary: Firestore
-  if (isFirebaseConfigured()) {
-    try {
-      const fsUser = await findFirestoreUserByEmail(email);
-      if (fsUser && fsUser.schoolId) {
-        const fsSchool = await getFirestoreSchoolById(fsUser.schoolId);
-        if (fsSchool && fsSchool.status !== 'SUSPENDED') {
-          return res.json({
-            found: true,
-            instituteId: String(fsSchool.id),
-            instituteName: fsSchool.name,
-            instituteCode: fsSchool.code || 'SCH'
-          });
-        }
-      }
-
-      // Check students collection in Firestore using targeted queries instead of full scan
-      const studentFields = ['admission_number', 'admissionNumber', 'email', 'student_email', 'roll_number', 'rollNumber'];
-      let studentFound = false;
-      for (const field of studentFields) {
-        if (studentFound) break;
-        try {
-          const snap = await collections.students().where(field, '==', email).limit(1).get();
-          if (!snap.empty) {
-            const sd = snap.docs[0].data();
-            const docSid = sd.school_id || sd.schoolId;
-            if (docSid) {
-              const fsSchool = await getFirestoreSchoolById(docSid);
-              if (fsSchool && fsSchool.status !== 'SUSPENDED') {
-                studentFound = true;
-                return res.json({
-                  found: true,
-                  instituteId: String(fsSchool.id),
-                  instituteName: fsSchool.name,
-                  instituteCode: fsSchool.code || 'SCH'
-                });
-              }
-            }
-          }
-        } catch {}
-      }
-    } catch (err: any) {
-      console.warn('[Auth] Firestore user lookup error:', err.message);
-    }
-  }
-
-  // 3. Fallback: In-memory demo users
+  // 2. Fallback: In-memory demo users
   const demoMatch = findDemoUser(email);
   if (demoMatch && demoMatch.schoolId) {
     const demoSchool = demoSchools.find(s => s.id === demoMatch.schoolId || isSameSchool(s.id, demoMatch.schoolId!));
@@ -251,14 +179,8 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
   return userRole === norm;
 }
 
-function createTokenPayload(payload: any): any {
-  if (!payload || typeof payload !== 'object') return payload;
-  const { photo_url, photoUrl, ...clean } = payload;
-  return clean;
-}
-
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
   const rawIdentifier = String(admissionNumber || admissionNo || email || studentId || '').trim();
 
@@ -298,25 +220,13 @@ router.post('/login', async (req, res) => {
       selectedSchoolName = schCheck.rows[0].name;
       selectedSchoolCode = schCheck.rows[0].code;
     } else {
-      let fsSchool: any = null;
-      if (isFirebaseConfigured()) {
-        try {
-          fsSchool = await getFirestoreSchoolById(instituteId);
-        } catch {}
-      }
-      if (fsSchool && fsSchool.status === 'ACTIVE') {
-        resolvedInstituteId = String(fsSchool.id);
-        selectedSchoolName = fsSchool.name;
-        selectedSchoolCode = fsSchool.code;
+      const demoMatch = demoSchools.find(s => (s.id === instituteId || s.code === instituteId || isSameSchool(s.id, instituteId)) && s.status === 'ACTIVE');
+      if (!demoMatch) {
+        return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
       } else {
-        const demoMatch = demoSchools.find(s => (s.id === instituteId || s.code === instituteId || isSameSchool(s.id, instituteId)) && s.status === 'ACTIVE');
-        if (!demoMatch) {
-          return res.status(401).json({ message: 'Selected institute is inactive or invalid' });
-        } else {
-          resolvedInstituteId = String(demoMatch.id);
-          selectedSchoolName = demoMatch.name;
-          selectedSchoolCode = demoMatch.code;
-        }
+        resolvedInstituteId = String(demoMatch.id);
+        selectedSchoolName = demoMatch.name;
+        selectedSchoolCode = demoMatch.code;
       }
     }
   }
@@ -330,7 +240,7 @@ router.post('/login', async (req, res) => {
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-                 sch.name AS school_name, sch.code AS school_code
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
           FROM students st
           JOIN schools sch ON sch.id = st.school_id
           JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email) AND u.school_id = st.school_id))
@@ -355,15 +265,15 @@ router.post('/login', async (req, res) => {
         const stu = studentRes.rows[0];
 
         if (stu) {
-          // Check active status
-          if (!stu.user_is_active || !stu.student_is_active) {
+          // Verify password securely using bcrypt
+          const passwordMatch = await bcrypt.compare(password, stu.password_hash || '');
+          if (!passwordMatch) {
             return res.status(401).json({ message: 'Invalid credentials or account not found' });
           }
 
-          // Verify password securely using bcrypt
-          const passwordMatch = await bcrypt.compare(password, stu.password_hash);
-          if (!passwordMatch) {
-            return res.status(401).json({ message: 'Invalid credentials or account not found' });
+          // Check active status
+          if (!stu.user_is_active || !stu.student_is_active) {
+            return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
           }
 
           const userPayload: any = {
@@ -371,6 +281,8 @@ router.post('/login', async (req, res) => {
             schoolId: stu.school_id || resolvedInstituteId,
             schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
             schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            schoolPhotoUrl: stu.school_photo_url || undefined,
+            school_photo_url: stu.school_photo_url || undefined,
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
@@ -385,7 +297,25 @@ router.post('/login', async (req, res) => {
             rollNumber: stu.roll_number || '25'
           };
 
-          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
+          clearLoginAttempts(req, rawIdentifier);
+          // Keep token payload lean (< 500 bytes) - never embed base64 photos into JWT Authorization headers
+          const tokenPayload: any = {
+            id: stu.id,
+            schoolId: stu.school_id || resolvedInstituteId,
+            schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            name: stu.name,
+            email: stu.email,
+            role: 'STUDENT' as Role,
+            studentId: stu.student_id,
+            admissionNumber: stu.admission_number,
+            classId: stu.class_id,
+            sectionId: stu.section_id,
+            className: userPayload.className,
+            sectionName: userPayload.sectionName,
+            rollNumber: userPayload.rollNumber
+          };
+          const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       } else {
@@ -403,7 +333,10 @@ router.post('/login', async (req, res) => {
         const facultyRes = await pool.query(facultyQuery, [rawIdentifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
         const u = facultyRes.rows[0];
 
-        if (u && u.is_active && (await bcrypt.compare(password, u.password_hash))) {
+        if (u && (await bcrypt.compare(password, u.password_hash || ''))) {
+          if (!u.is_active) {
+            return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
+          }
           if (expectedRole && !roleMatches(u.role, expectedRole)) {
             return res.status(401).json({ message: 'Account is not authorized for the selected role' });
           }
@@ -434,10 +367,28 @@ router.post('/login', async (req, res) => {
             email: u.email,
             role,
             photo_url: photoUrl,
-            photoUrl: photoUrl
+            photoUrl: photoUrl,
+            schoolPhotoUrl: u.school_photo_url || undefined,
+            school_photo_url: u.school_photo_url || undefined
           };
 
-          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
+          // Keep token payload lean (< 500 bytes) so HTTP Authorization header never exceeds Cloudflare/Nginx limits (16KB)
+          const tokenPayload: any = {
+            id: u.id,
+            schoolId: u.school_id || resolvedInstituteId,
+            schoolName: u.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: u.school_code || selectedSchoolCode || 'SCH',
+            name: u.name,
+            email: u.email,
+            role
+          };
+          if (photoUrl && typeof photoUrl === 'string' && !photoUrl.startsWith('data:') && photoUrl.length < 256) {
+            tokenPayload.photo_url = photoUrl;
+            tokenPayload.photoUrl = photoUrl;
+          }
+
+          clearLoginAttempts(req, rawIdentifier);
+          const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       }
@@ -447,126 +398,7 @@ router.post('/login', async (req, res) => {
     }
   }
 
-  // 2. SECONDARY: Try Firebase Cloud Firestore
-  if (isFirebaseConfigured()) {
-    try {
-      if (isStudentLogin) {
-        let matchedStudent: any = null;
-        let fUser: any = null;
-
-        const studentQueryRef = resolvedInstituteId
-          ? collections.students().where('school_id', '==', resolvedInstituteId)
-          : collections.students();
-        const sSnap = await studentQueryRef.get();
-        for (const sDoc of sSnap.docs) {
-
-          const sd = sDoc.data();
-          const docSid = sd.school_id || sd.schoolId;
-          if (resolvedInstituteId && docSid && !isSameSchool(docSid, resolvedInstituteId)) continue;
-          const admMatch = (sd.admission_number && sd.admission_number.toLowerCase() === rawIdentifier.toLowerCase()) ||
-                           (sd.admissionNumber && sd.admissionNumber.toLowerCase() === rawIdentifier.toLowerCase());
-          const emailMatch = (sd.email && sd.email.toLowerCase() === rawIdentifier.toLowerCase()) ||
-                             (sd.student_email && sd.student_email.toLowerCase() === rawIdentifier.toLowerCase());
-          if (admMatch || emailMatch) {
-            matchedStudent = { id: sDoc.id, ...sd };
-            break;
-          }
-        }
-
-        if (matchedStudent) {
-          const targetUserId = matchedStudent.user_id || matchedStudent.userId;
-          if (targetUserId) {
-            const uDoc = await collections.users().doc(targetUserId).get();
-            if (uDoc.exists) fUser = { id: uDoc.id, ...uDoc.data() };
-          }
-          if (!fUser && (matchedStudent.email || matchedStudent.student_email)) {
-            fUser = await findFirestoreUserByEmail(matchedStudent.email || matchedStudent.student_email);
-          }
-        }
-
-        if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
-          const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? matchedStudent?.className ?? (fUser as any).classNumber ?? 10;
-          const sName = matchedStudent?.section_name || matchedStudent?.sectionName || matchedStudent?.section || (fUser as any).sectionName || 'A';
-          const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
-
-          const userPayload: any = {
-            id: fUser.id,
-            schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
-            schoolName: selectedSchoolName || (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus'),
-            schoolCode: selectedSchoolCode || (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH'),
-            name: fUser.name,
-            email: fUser.email,
-            role: 'STUDENT' as Role,
-            studentId: matchedStudent?.id || fUser.id,
-            admissionNumber: matchedStudent?.admission_number || matchedStudent?.admissionNumber || rawIdentifier,
-            classId: matchedStudent?.class_id || matchedStudent?.classId || (fUser as any).classId || `cls-${cNum}`,
-            sectionId: matchedStudent?.section_id || matchedStudent?.sectionId || (fUser as any).sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
-            className: `Class ${cNum}`,
-            sectionName: `Section ${cleanSName}`,
-            rollNumber: String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1')
-          };
-
-          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
-          return res.json({ token, user: userPayload, provider: 'firestore' });
-        }
-      } else {
-        const fUser = await findFirestoreUserByEmail(rawIdentifier);
-        if (fUser && fUser.status === 'ACTIVE' && (await bcrypt.compare(password, fUser.passwordHash))) {
-          if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
-            return res.status(401).json({ message: 'Account is not authorized for the selected role' });
-          }
-
-          if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUser.schoolId) {
-            const fsUserSid = String(fUser.schoolId);
-            const matches =
-              fsUserSid === resolvedInstituteId ||
-              fsUserSid === String(instituteId) ||
-              isSameSchool(fsUserSid, resolvedInstituteId) ||
-              isSameSchool(fsUserSid, String(instituteId)) ||
-              (isTintSchool(fsUserSid) && (isTintSchool(resolvedInstituteId) || isTintSchool(String(instituteId)))) ||
-              (selectedSchoolCode && String(fUser.schoolCode || '').toUpperCase() === selectedSchoolCode.toUpperCase());
-
-            if (!matches) {
-              return res.status(401).json({ message: 'Account does not belong to the selected institute' });
-            }
-          }
-
-          const role = fUser.role as Role;
-          let schoolName = fUser.schoolName;
-          let schoolCode = fUser.schoolCode;
-          if (fUser.schoolId) {
-            try {
-              const fsSch = await getFirestoreSchoolById(fUser.schoolId);
-              if (fsSch) {
-                schoolName = fsSch.name;
-                schoolCode = fsSch.code;
-              }
-            } catch {}
-          }
-
-          const fsPhoto = (fUser as any).photo_url || (fUser as any).photoUrl || undefined;
-          const userPayload: any = {
-            id: fUser.id,
-            schoolId: canonicalSchoolId(fUser.schoolId) || resolvedInstituteId,
-            schoolName: schoolName || selectedSchoolName || (isTintSchool(fUser.schoolId) ? 'TINT School' : (isTestSchool(fUser.schoolId) ? 'Greenwood International School' : 'Institutional Campus')),
-            schoolCode: schoolCode || selectedSchoolCode || (isTintSchool(fUser.schoolId) ? 'TINT-187' : (isTestSchool(fUser.schoolId) ? 'GIS001' : 'SCH')),
-            name: fUser.name,
-            email: fUser.email,
-            role,
-            photo_url: fsPhoto,
-            photoUrl: fsPhoto
-          };
-
-          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
-          return res.json({ token, user: userPayload, provider: 'firestore' });
-        }
-      }
-    } catch (fsErr: any) {
-      // Continue to demo fallback
-    }
-  }
-
-  // 3. In-memory demo fallback store
+  // 2. In-memory demo fallback store
   const demo = findDemoUser(rawIdentifier, resolvedInstituteId || instituteId, expectedRole);
   if (demo && (password === demo.password || (await bcrypt.compare(password, demo.password).catch(() => false)))) {
     // Validate role if expectedRole provided
@@ -615,7 +447,11 @@ router.post('/login', async (req, res) => {
       userPayload.schoolName = resolvedSchoolName;
     }
 
-    const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
+    const tokenPayload: any = { ...userPayload };
+    delete tokenPayload.photo_url;
+    delete tokenPayload.photoUrl;
+    clearLoginAttempts(req, rawIdentifier);
+    const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
     return res.json({ token, user: userPayload, provider: 'demo' });
   }
 
@@ -627,11 +463,13 @@ router.get('/me', requireAuth, (req: AuthRequest, res) => res.json({ user: req.u
 
 router.post('/refresh', requireAuth, (req: AuthRequest, res) => {
   if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-  const userPayload: any = { ...req.user };
-  delete userPayload.iat;
-  delete userPayload.exp;
-  const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
-  return res.json({ token, user: userPayload });
+  const tokenPayload: any = { ...req.user };
+  delete tokenPayload.iat;
+  delete tokenPayload.exp;
+  delete tokenPayload.photo_url;
+  delete tokenPayload.photoUrl;
+  const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
+  return res.json({ token, user: req.user });
 });
 
 /* ────── Password Reset Architecture ────── */
@@ -660,9 +498,42 @@ export async function createAndSendPasswordReset(params: {
   userId?: string;
   schoolId?: string;
   schoolName?: string;
+  admissionNumber?: string;
+  admission_number?: string;
   req?: any;
 }) {
   const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
+  let admissionNumber = params.admission_number || params.admissionNumber || '';
+
+  // Resolve student admission number if missing
+  if (!admissionNumber && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
+    try {
+      const { demoStudents } = await import('./schoolData');
+      const memStu = demoStudents.find((s: any) =>
+        (userId && (s.user_id === userId || s.id === userId)) ||
+        (s.email && s.email.toLowerCase() === email.toLowerCase().trim()) ||
+        (s.student_email && s.student_email.toLowerCase() === email.toLowerCase().trim()) ||
+        (s.parent_email && s.parent_email.toLowerCase() === email.toLowerCase().trim())
+      );
+      if (memStu?.admission_number) {
+        admissionNumber = memStu.admission_number;
+      }
+    } catch {}
+
+    if (!admissionNumber && pool && isPostgresConfigured) {
+      try {
+        const q = await pool.query(
+          `SELECT admission_number FROM students
+           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(student_email) = $2 OR LOWER(parent_email) = $2)
+           LIMIT 1`,
+          [userId || null, email.toLowerCase().trim()]
+        );
+        if (q.rowCount && q.rows[0]?.admission_number) {
+          admissionNumber = q.rows[0].admission_number;
+        }
+      } catch {}
+    }
+  }
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -716,7 +587,9 @@ export async function createAndSendPasswordReset(params: {
       templateData: {
         name,
         school_name: schoolName,
-        reset_link: resetUrl
+        reset_link: resetUrl,
+        role,
+        admission_number: admissionNumber || undefined
       },
       idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
     });
@@ -897,7 +770,7 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // POST /api/auth/request-password-reset - Public forgot password request (Anti-Enumeration Hardened)
-router.post('/request-password-reset', async (req, res) => {
+router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   const { email, admissionNumber, instituteId } = req.body || {};
   const rawId = String(admissionNumber || email || '').trim();
   if (!rawId) {
@@ -911,13 +784,15 @@ router.post('/request-password-reset', async (req, res) => {
   let userId: string | undefined = undefined;
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
+  let studentAdmissionNumber = '';
 
   // 1. Check PostgreSQL (by email or student admission_number)
   try {
     let q = await pool.query(
-      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
+      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
+       LEFT JOIN students st ON (st.user_id = u.id OR (st.email IS NOT NULL AND LOWER(st.email) = LOWER(st.email)))
        WHERE LOWER(u.email) = LOWER($1)
        LIMIT 1`,
       [cleanEmail]
@@ -926,7 +801,7 @@ router.post('/request-password-reset', async (req, res) => {
     if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
       // Try resolving student by admission number
       q = await pool.query(
-        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name
+        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
          FROM students st
          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
          LEFT JOIN schools sch ON sch.id = st.school_id
@@ -946,23 +821,9 @@ router.post('/request-password-reset', async (req, res) => {
       userId = u.id;
       schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
+      if (u.admission_number) studentAdmissionNumber = u.admission_number;
     }
   } catch (err) {}
-
-  // 2. Check Firestore if not found yet
-  if (!userFound && isFirebaseConfigured()) {
-    try {
-      const fUser = await findFirestoreUserByEmail(cleanEmail);
-      if (fUser) {
-        userFound = true;
-        userName = fUser.name || 'User';
-        userRole = fUser.role || 'STUDENT';
-        userId = fUser.id || undefined;
-        schoolId = fUser.schoolId || undefined;
-        schoolName = fUser.schoolName || schoolName;
-      }
-    } catch {}
-  }
 
   // 3. Check demoUsers store if not found
   if (!userFound) {
@@ -987,6 +848,7 @@ router.post('/request-password-reset', async (req, res) => {
       userId,
       schoolId,
       schoolName,
+      admissionNumber: studentAdmissionNumber || undefined,
       req
     });
 

@@ -90,10 +90,10 @@ export function isSameSession(s1?: string | null, s2?: string | null): boolean {
   return str1.toLowerCase().includes(str2.toLowerCase()) || str2.toLowerCase().includes(str1.toLowerCase());
 }
 
-// Class grades: L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
+// Class grades: Class-L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
 export const CLASS_GRADES = [
-  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -123,21 +123,22 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
   if (ensuredSchools.has(schoolId)) return;
 
   try {
-    // Ultra-fast path: If classes already exist in PostgreSQL, return in 1 roundtrip instead of 42
-    const checkExisting = await pool.query('SELECT 1 FROM classes WHERE school_id = $1 LIMIT 1', [schoolId]);
-    if (checkExisting.rowCount && checkExisting.rowCount > 0) {
+    // 1. Verify school actually exists in PostgreSQL schools table to avoid foreign key errors
+    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    if (!schoolExists.rowCount) {
       ensuredSchools.add(schoolId);
       return;
     }
-    // Ensure classes check constraint allows -1 to 12
-    await pool.query(`
-      DO $$
-      BEGIN
-        ALTER TABLE classes DROP CONSTRAINT IF EXISTS classes_class_number_check;
-        ALTER TABLE classes ADD CONSTRAINT classes_class_number_check CHECK (class_number >= -1 AND class_number <= 12);
-      EXCEPTION WHEN OTHERS THEN NULL;
-      END $$;
-    `).catch(() => {});
+
+    // 2. Ultra-fast path: If classes already exist in PostgreSQL including kindergarten, return immediately
+    const checkExisting = await pool.query(
+      'SELECT COUNT(DISTINCT class_number)::int as count FROM classes WHERE school_id = $1 AND class_number IN (-1, 0, 1, 12)',
+      [schoolId]
+    );
+    if ((checkExisting.rows[0]?.count || 0) >= 4) {
+      ensuredSchools.add(schoolId);
+      return;
+    }
 
     for (const g of CLASS_GRADES) {
       const clsRes = await pool.query(
@@ -159,9 +160,11 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
         }
       }
     }
-    ensuredSchools.add(schoolId);
   } catch (err: any) {
     console.warn('[ensureSchoolClassesAndSections] Error:', err.message);
+  } finally {
+    // Always mark school as checked to prevent hammering PostgreSQL or acquiring concurrent locks
+    ensuredSchools.add(schoolId);
   }
 }
 
@@ -403,52 +406,100 @@ r.get('/sections',...reader,async(req:AuthRequest,res)=>{
 
 r.post('/sections',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId;
- const classId = req.body?.classId || req.body?.class_id;
+ const rawClassId = req.body?.classId || req.body?.class_id;
  const name = req.body?.name;
- if(!classId||!name||!String(name).trim()) return res.status(400).json({message:'Class and section name are required'});
+ if(!rawClassId||!name||!String(name).trim()) return res.status(400).json({message:'Class and section name are required'});
  const cleanName = String(name).trim().toUpperCase();
 
- let classNumber = 8;
- const matchClass = demoClasses.find(c => (c.id === classId || String(c.class_number) === String(classId)) && (!c.school_id || isSameSchool(c.school_id, sid)));
- if (matchClass) {
-   classNumber = matchClass.class_number;
- } else if (typeof classId === 'string' && classId.startsWith('cls-')) {
-   classNumber = Number(classId.replace(/cls-.*?-?/, '')) || 8;
+ // Resolve class_number from rawClassId
+ let resolvedClassNumber: number | null = null;
+ const strClassId = String(rawClassId);
+ if (/l.?kg/i.test(strClassId)) {
+   resolvedClassNumber = -1;
+ } else if (/u.?kg/i.test(strClassId)) {
+   resolvedClassNumber = 0;
+ } else {
+   const m = strClassId.match(/cls-(\d+)/) || strClassId.match(/-(\d+)$/) || strClassId.match(/^(\d+)$/);
+   if (m) {
+     resolvedClassNumber = Number(m[1]);
+   }
  }
 
-  try {
-   const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
-   const valid=await pool.query(
+ const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(strClassId);
+
+ try {
+   // Try resolving class from PostgreSQL
+   const valid = await pool.query(
      `SELECT id, class_number FROM classes 
-      WHERE (${isClassUuid ? 'id=$1' : 'FALSE'} OR class_number=$2) 
-        AND school_id=$3 LIMIT 1`,
-     [isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', classNumber, sid]
+      WHERE (id = $1::uuid OR ($2::int IS NOT NULL AND class_number = $2))
+        AND school_id = $3::uuid LIMIT 1`,
+     [isClassUuid ? strClassId : '00000000-0000-0000-0000-000000000000', resolvedClassNumber, sid]
    );
-   if(valid.rowCount) {
-     const realClassId = valid.rows[0].id;
-     classNumber = valid.rows[0].class_number;
-     const q=await pool.query('INSERT INTO sections(school_id,class_id,name) VALUES($1,$2,$3) ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING *',[sid,realClassId,cleanName]);
-     const created = { id: q.rows[0].id, class_id: realClassId, class_number: classNumber, name: cleanName, school_id: sid };
+
+   let realClassId = isClassUuid ? strClassId : '';
+   let classNumber = resolvedClassNumber ?? 1;
+
+   if (valid.rowCount && valid.rows.length > 0) {
+     realClassId = valid.rows[0].id;
+     classNumber = Number(valid.rows[0].class_number);
+   } else if (resolvedClassNumber !== null) {
+     const ins = await pool.query(
+       `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+        ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number
+        RETURNING id, class_number`,
+       [sid, resolvedClassNumber]
+     );
+     if (ins.rows.length > 0) {
+       realClassId = ins.rows[0].id;
+       classNumber = Number(ins.rows[0].class_number);
+     }
+   }
+
+   if (realClassId) {
+     const q = await pool.query(
+       `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+        ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name
+        RETURNING id, name, class_id`,
+       [sid, realClassId, cleanName]
+     );
+     const created = {
+       id: q.rows[0].id,
+       class_id: realClassId,
+       classId: realClassId,
+       class_number: classNumber,
+       classNumber: classNumber,
+       name: cleanName,
+       section_name: cleanName,
+       school_id: sid
+     };
      demoSections.push(created);
-     demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
-     const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
-     if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+     demoSections.sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name).localeCompare(String(b.name)));
+     fastCache.delete(`classes:${sid}`);
+     fastCache.delete(`sections:${sid}`);
+     if (sid) invalidateSchoolCache(sid);
      syncSectionToFirestore(created).catch(() => {});
      return res.status(201).json(created);
    }
-  } catch {}
+ } catch (err: any) {
+   console.error('[POST /sections] Error:', err.message);
+ }
 
+ const fallbackNum = resolvedClassNumber ?? 1;
  const newSection = {
-   id: `sec-${sid}-${classNumber}-${cleanName.toLowerCase()}-${Date.now().toString().slice(-4)}`,
-   class_id: classId,
-   class_number: classNumber,
+   id: `sec-${sid}-${fallbackNum}-${cleanName.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+   class_id: rawClassId,
+   classId: rawClassId,
+   class_number: fallbackNum,
+   classNumber: fallbackNum,
    name: cleanName,
+   section_name: cleanName,
    school_id: sid
  };
  demoSections.push(newSection);
- demoSections.sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name));
- const targetCls = demoClasses.find(c => (c.id === classId || c.class_number === classNumber) && (!c.school_id || isSameSchool(c.school_id, sid)));
- if (targetCls) targetCls.section_count = (targetCls.section_count || 0) + 1;
+ demoSections.sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name).localeCompare(String(b.name)));
+ fastCache.delete(`classes:${sid}`);
+ fastCache.delete(`sections:${sid}`);
+ if (sid) invalidateSchoolCache(sid);
  syncSectionToFirestore(newSection).catch(() => {});
  res.status(201).json(newSection);
 });
@@ -483,6 +534,8 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
   const idx = demoSections.findIndex(s => s.id === secId && (!s.school_id || isSameSchool(s.school_id, sid)));
   if (idx >= 0) demoSections.splice(idx, 1);
   deleteSectionFromFirestore(secId).catch(() => {});
+  fastCache.delete(`classes:${sid}`);
+  fastCache.delete(`sections:${sid}`);
   if (sid) invalidateSchoolCache(sid);
   res.json({success:true});
 });
@@ -575,12 +628,13 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  try {
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,st.created_at,
   st.academic_year_id, ay.name AS session_name,
+  COALESCE(st.is_active, true) AS is_active,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
   LEFT JOIN classes c ON c.id=st.class_id 
   LEFT JOIN sections sec ON sec.id=st.section_id
   LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-  WHERE st.school_id=$1 AND st.is_active=true
+  WHERE st.school_id=$1
   AND ($2='' OR st.name ILIKE '%'||$2||'%' OR st.roll_number ILIKE '%'||$2||'%' OR COALESCE(st.admission_number, '') ILIKE '%'||$2||'%' OR COALESCE(st.gender, '') ILIKE '%'||$2||'%' OR COALESCE(st.email, '') ILIKE '%'||$2||'%' OR COALESCE(st.parent_email, '') ILIKE '%'||$2||'%')
   ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
   if (q.rows) {
@@ -609,7 +663,9 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         session: st.session_name || st.academic_year_id,
         session_id: st.academic_year_id,
         created_at: st.created_at,
-        createdAt: st.created_at
+        createdAt: st.created_at,
+        is_active: st.is_active !== false,
+        status: st.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       };
     });
     const isAllSessions = !sessionFilter || /^all(\s+sessions?)?$/i.test(sessionFilter);
@@ -903,8 +959,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
          FROM sections s 
          JOIN classes c ON c.id = s.class_id 
-         WHERE s.school_id = $1 
-           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+         WHERE s.school_id = $1::uuid 
+           AND (c.id = $2::uuid OR c.class_number = $3)
            AND UPPER(s.name) = UPPER($4)
          LIMIT 1`,
         [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum, secName]
@@ -915,8 +971,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         `SELECT s.id AS section_id, s.name AS section_name, c.id AS class_id, c.class_number 
          FROM sections s 
          JOIN classes c ON c.id = s.class_id 
-         WHERE s.school_id = $1 
-           AND (${isClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+         WHERE s.school_id = $1::uuid 
+           AND (c.id = $2::uuid OR c.class_number = $3)
          LIMIT 1`,
         [schoolId, isClassUuid ? classId : '00000000-0000-0000-0000-000000000000', clsNum]
       ).catch(() => ({ rowCount: 0, rows: [] }));
@@ -1005,6 +1061,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               templateData: {
                 student_name: name,
                 school_name: req.user?.schoolName || 'School',
+                admission_number: cleanAdmissionNumber || '—',
                 class_name: String(clsNum),
                 section_name: secName,
                 roll_number: String(rollNumber),
@@ -1056,7 +1113,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
           date_of_birth, gender, address
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+        ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
           name = EXCLUDED.name,
           admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
           parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
@@ -1152,8 +1209,10 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
          templateData: {
            student_name: name,
            school_name: req.user?.schoolName || 'School',
+           admission_number: cleanAdmissionNumber || '—',
            class_name: String(clsNum),
            section_name: secName,
+           roll_number: String(rollNumber || '—'),
            reset_link: resetInfo.resetUrl
          },
          idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
@@ -1198,6 +1257,90 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  syncStudentToFirestore(newStudent).catch(() => {});
  return res.status(201).json(newStudent);
 });
+
+interface ParsedClassResult {
+  valid: boolean;
+  classNumber: number;
+  classId: string;
+  classLabel: string;
+  error?: string;
+}
+
+function parseClassValue(rawVal: any, fallbackClass?: string | number): ParsedClassResult {
+  let val = String(rawVal ?? '').trim();
+
+  if (!val && fallbackClass !== undefined && fallbackClass !== null && String(fallbackClass).trim() !== '') {
+    val = String(fallbackClass).trim();
+  }
+
+  if (!val) {
+    return {
+      valid: false,
+      classNumber: 1,
+      classId: 'cls-1',
+      classLabel: '',
+      error: 'Class is required'
+    };
+  }
+
+  // Kindergarten string checks
+  if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
+    return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+  }
+  if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
+    return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+  }
+
+  const clean = val.toLowerCase();
+
+  // Roman Numeral lookup (I to XII)
+  const ROMAN_MAP: Record<string, number> = {
+    i: 1,
+    ii: 2,
+    iii: 3,
+    iv: 4,
+    v: 5,
+    vi: 6,
+    vii: 7,
+    viii: 8,
+    ix: 9,
+    x: 10,
+    xi: 11,
+    xii: 12,
+  };
+
+  if (Object.prototype.hasOwnProperty.call(ROMAN_MAP, clean)) {
+    const num = ROMAN_MAP[clean];
+    return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+  }
+
+  // Numeric string e.g. "10", "Class 10", "Grade 5", "Std 8"
+  const cleanNoPrefix = val.replace(/^(class|grade|std|standard)\s*/i, '').trim();
+  if (/^\d+$/.test(cleanNoPrefix)) {
+    const num = parseInt(cleanNoPrefix, 10);
+    if (num >= 1 && num <= 12) {
+      return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+    }
+  }
+
+  // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
+  if (typeof rawVal === 'number') {
+    if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    if (rawVal >= 1 && rawVal <= 12) {
+      return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
+    }
+  }
+
+  // Invalid class value
+  return {
+    valid: false,
+    classNumber: 1,
+    classId: 'cls-1',
+    classLabel: val,
+    error: `Invalid Class '${val}'. Expected 1–12, Roman numerals (I–XII), LKG, or UKG.`
+  };
+}
 
 r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
  const {students=[],sessionId:reqSessionId}=req.body||{};
@@ -1262,65 +1405,74 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   // Preload existing classes and sections to eliminate duplicate DB queries per row
   const classMap = new Map<number, string>();
   const sectionMap = new Map<string, string>();
+  let isSchoolInPostgres = false;
   try {
-    const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
-    for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
+    const schCheck = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    isSchoolInPostgres = Boolean(schCheck.rowCount && schCheck.rowCount > 0);
+    if (isSchoolInPostgres) {
+      const clsQ = await pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1`, [schoolId]);
+      for (const r of clsQ.rows) classMap.set(Number(r.class_number), r.id);
 
-    const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
-    for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
-  } catch (preloadErr) {
-    console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr);
+      const secQ = await pool.query(`SELECT id, class_id, UPPER(name) as name FROM sections WHERE school_id=$1`, [schoolId]);
+      for (const r of secQ.rows) sectionMap.set(`${r.class_id}_${r.name}`, r.id);
+    }
+  } catch (preloadErr: any) {
+    console.warn('[bulk-import] Notice preloading classes/sections:', preloadErr.message);
   }
 
   // Pre-resolve all classes & sections needed in this batch in a single pass before the row loop
   const neededClasses = new Set<number>();
   const neededSections = new Set<string>(); // "classNumber:sectionName"
   for (const st of students) {
-    const rawClass = String(st.classLabel||st['Class']||st.classNumber||st.class_number||'').trim();
-    let cn: number;
-    if (/l.?kg/i.test(rawClass)) cn = -1;
-    else if (/u.?kg/i.test(rawClass)) cn = 0;
-    else cn = Number(rawClass.replace(/[^0-9]/g,'')) || 1;
-    neededClasses.add(cn);
+    const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
+      ? st.classNumber 
+      : (st.classLabel || st['Class'] || st.class_number || '');
+    const parsed = parseClassValue(rawClassVal);
+    if (parsed.valid) {
+      neededClasses.add(parsed.classNumber);
+    }
 
-    let sn = String(st.sectionName||st['Section']||st.section_name||'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A','B','C','D','E','F'].includes(sn)) sn = 'A';
-    neededSections.add(`${cn}:${sn}`);
-  }
-
-  for (const cn of neededClasses) {
-    if (!classMap.has(cn)) {
-      try {
-        const clsQ = await pool.query(
-          `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
-           ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
-          [schoolId, cn]
-        );
-        if (clsQ.rows.length > 0) {
-          classMap.set(cn, clsQ.rows[0].id);
-        }
-      } catch (csErr) {
-        console.warn('[bulk-import] Failed to create class:', csErr);
-      }
+    let sn = String(st.sectionName || st['Section'] || st.section_name || 'A').replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
+    if (parsed.valid) {
+      neededSections.add(`${parsed.classNumber}:${sn}`);
     }
   }
 
-  for (const item of neededSections) {
-    const [cnStr, sn] = item.split(':');
-    const cn = Number(cnStr);
-    const cId = classMap.get(cn);
-    if (cId && !sectionMap.has(`${cId}_${sn}`)) {
-      try {
-        const secQ = await pool.query(
-          `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-           ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
-          [schoolId, cId, sn]
-        );
-        if (secQ.rows.length > 0) {
-          sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
+  if (isSchoolInPostgres) {
+    for (const cn of neededClasses) {
+      if (!classMap.has(cn)) {
+        try {
+          const clsQ = await pool.query(
+            `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
+             ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
+            [schoolId, cn]
+          );
+          if (clsQ.rows.length > 0) {
+            classMap.set(cn, clsQ.rows[0].id);
+          }
+        } catch (csErr: any) {
+          console.warn('[bulk-import] Failed to create class:', csErr.message);
         }
-      } catch (csErr) {
-        console.warn('[bulk-import] Failed to create section:', csErr);
+      }
+    }
+
+    for (const item of neededSections) {
+      const [cnStr, sn] = item.split(':');
+      const cn = Number(cnStr);
+      const cId = classMap.get(cn);
+      if (cId && !sectionMap.has(`${cId}_${sn}`)) {
+        try {
+          const secQ = await pool.query(
+            `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
+             ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
+            [schoolId, cId, sn]
+          );
+          if (secQ.rows.length > 0) {
+            sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
+          }
+        } catch (csErr: any) {
+          console.warn('[bulk-import] Failed to create section:', csErr.message);
+        }
       }
     }
   }
@@ -1353,16 +1505,15 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
 
     // Class/section resolution from in-memory preloaded maps
-    const rawClass = String(st.classLabel || st['Class'] || st.classNumber || st.class_number || '').trim();
-    const rawSection = String(st.sectionName || st['Section'] || st.section_name || 'A').trim().toUpperCase();
-    let classNumber: number;
-    let classLabel = rawClass;
-    if (/l.?kg/i.test(rawClass)) { classNumber = -1; classLabel = 'L-KG'; }
-    else if (/u.?kg/i.test(rawClass)) { classNumber = 0; classLabel = 'U-KG'; }
-    else { classNumber = Number(rawClass.replace(/[^0-9]/g, '')) || 1; classLabel = `Class ${classNumber}`; }
+    const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
+      ? st.classNumber 
+      : (st.classLabel || st['Class'] || st.class_number || '');
+    const rawSection = String(st.sectionName || st['Section'] || st.section_name || 'A');
+    const parsedCls = parseClassValue(rawClassVal);
+    const classNumber = parsedCls.classNumber;
+    const classLabel = parsedCls.classLabel;
 
     let sectionName = rawSection.replace(/^section\s*/i, '').trim().toUpperCase() || 'A';
-    if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(sectionName)) sectionName = 'A';
 
     let classId = classMap.get(classNumber) || `cls-${classNumber}`;
     let sectionId = (classId && sectionMap.get(`${classId}_${sectionName}`)) || `sec-${classId}-${sectionName.toLowerCase()}`;
@@ -1372,6 +1523,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     if (!rollNumber) errors.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
     if (!admissionNumber) errors.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
     if (!parentPhone) errors.push({ row: rowNum, field: 'Parent Phone', message: 'Parent Phone is required' });
+    if (!parsedCls.valid) errors.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid class' });
     if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number '${admissionNumber}' in this batch` });
     if (admissionNumber) seenAdmNums.add(admissionNumber);
 
@@ -1510,7 +1662,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
             )
             VALUES ${valuesChunks.join(', ')}
-            ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+            ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
               name = EXCLUDED.name,
               admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
               gender = COALESCE(EXCLUDED.gender, students.gender),
@@ -1599,6 +1751,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                       templateData: {
                         student_name: st.name || st.full_name,
                         school_name: req.user?.schoolName || 'School',
+                        admission_number: String(st.admission_number || st.admissionNumber || '—'),
                         class_name: String(st.class_number || st.class_name || ''),
                         section_name: String(st.section_name || 'A'),
                         roll_number: String(st.roll_number || ''),
@@ -1775,15 +1928,23 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
     const q = await pool.query(
       `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
        st.academic_year_id, ay.name AS session_name,
+       COALESCE(st.is_active, true) AS is_active,
        c.id class_id,c.class_number,sec.id section_id,sec.name section_name
        FROM students st 
        JOIN classes c ON c.id=st.class_id 
        JOIN sections sec ON sec.id=st.section_id
        LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-       WHERE st.id=$1 AND st.school_id=$2 AND st.is_active=true LIMIT 1`,
+       WHERE st.id=$1 AND st.school_id=$2 LIMIT 1`,
       [studentId, schoolId]
     );
-    if (q.rowCount && q.rows.length > 0) return res.json(q.rows[0]);
+    if (q.rowCount && q.rows.length > 0) {
+      const row = q.rows[0];
+      return res.json({
+        ...row,
+        is_active: row.is_active !== false,
+        status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE'
+      });
+    }
   } catch {}
 
   if (isFirebaseConfigured()) {
@@ -1812,11 +1973,34 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     classId, class_id,
     sectionId, section_id,
     sessionId, session, academic_year_id,
-    gender, dob, dateOfBirth, date_of_birth, address
+    gender, dob, dateOfBirth, date_of_birth, address,
+    is_active, status, password
   } = req.body || {};
 
   const studentId = String(req.params.id);
   const schoolId = req.user!.schoolId;
+
+  // Active / Deactive resolution
+  let resolvedIsActive = true;
+  if (is_active !== undefined) {
+    resolvedIsActive = is_active === true || is_active === 'true' || is_active === 'ACTIVE' || is_active === 'active';
+  } else if (status !== undefined) {
+    resolvedIsActive = String(status).toUpperCase() === 'ACTIVE';
+  }
+  const resolvedStatus = resolvedIsActive ? 'ACTIVE' : 'INACTIVE';
+
+  // Password validation if specified
+  if (password && String(password).trim()) {
+    const pwValidation = validatePasswordStrength(String(password).trim());
+    if (!pwValidation.valid) {
+      return res.status(400).json({ message: pwValidation.message });
+    }
+  }
+
+  let newPasswordHash: string | undefined = undefined;
+  if (password && String(password).trim()) {
+    newPasswordHash = await bcrypt.hash(String(password).trim(), 10);
+  }
 
   const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
   const cleanParentEmail = String(parentEmail || parent_email || '').trim().toLowerCase();
@@ -1860,8 +2044,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           `SELECT s.id AS section_id, c.id AS class_id 
            FROM sections s 
            JOIN classes c ON c.id = s.class_id 
-           WHERE s.school_id = $1 
-             AND (${isPutClassUuid ? 'c.id = $2' : 'FALSE'} OR c.class_number = $3)
+           WHERE s.school_id = $1::uuid 
+             AND (c.id = $2::uuid OR c.class_number = $3)
              AND UPPER(s.name) = UPPER($4)
            LIMIT 1`,
           [schoolId, isPutClassUuid ? resolvedClassId : '00000000-0000-0000-0000-000000000000', putClsNum, putSecName]
@@ -1896,11 +2080,80 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            gender=COALESCE($13, gender),
            date_of_birth=COALESCE($14, date_of_birth),
            address=COALESCE($15, address),
+           is_active=$16,
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress]
+        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress, resolvedIsActive]
       );
       if (q.rowCount && q.rows.length > 0) {
+        let studentUserId = q.rows[0].user_id;
+
+        // Try to locate user row by email if user_id is unlinked
+        if (!studentUserId && cleanStudentEmail) {
+          const uLookup = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [cleanStudentEmail]);
+          if (uLookup.rowCount && uLookup.rows.length > 0) {
+            studentUserId = uLookup.rows[0].id;
+          }
+        }
+
+        // If user row exists, sync credentials and status
+        if (studentUserId) {
+          if (newPasswordHash) {
+            await pool.query(
+              `UPDATE users SET
+                 name = COALESCE($1, name),
+                 email = COALESCE($2, email),
+                 is_active = $3,
+                 password_hash = $4,
+                 updated_at = NOW()
+               WHERE id = $5`,
+              [fullName || name || null, cleanStudentEmail || null, resolvedIsActive, newPasswordHash, studentUserId]
+            );
+          } else {
+            await pool.query(
+              `UPDATE users SET
+                 name = COALESCE($1, name),
+                 email = COALESCE($2, email),
+                 is_active = $3,
+                 updated_at = NOW()
+               WHERE id = $4`,
+              [fullName || name || null, cleanStudentEmail || null, resolvedIsActive, studentUserId]
+            );
+          }
+
+          if (!q.rows[0].user_id) {
+            await pool.query(`UPDATE students SET user_id=$1 WHERE id=$2`, [studentUserId, studentId]);
+          }
+        } else if (newPasswordHash || cleanStudentEmail || cleanAdmissionNumber) {
+          // Provision linked portal user account so student can log in
+          const studentLoginEmail = cleanStudentEmail || (cleanAdmissionNumber ? `student.${cleanAdmissionNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@${schoolId}.portal` : `student.${studentId}@portal.local`);
+          const hashToUse = newPasswordHash || await bcrypt.hash('ChangeMe123!', 10);
+          try {
+            const insUser = await pool.query(
+              `INSERT INTO users (school_id, name, email, password_hash, role, is_active, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, 'STUDENT', $5, NOW(), NOW())
+               ON CONFLICT (email) DO UPDATE SET
+                 name = EXCLUDED.name,
+                 password_hash = EXCLUDED.password_hash,
+                 is_active = EXCLUDED.is_active,
+                 updated_at = NOW()
+               RETURNING id`,
+              [schoolId, fullName || name, studentLoginEmail, hashToUse, resolvedIsActive]
+            );
+            if (insUser.rowCount && insUser.rows.length > 0) {
+              studentUserId = insUser.rows[0].id;
+              await pool.query(`UPDATE students SET user_id=$1 WHERE id=$2`, [studentUserId, studentId]);
+            }
+          } catch (uErr: any) {
+            console.warn('[UpdateStudent] User link creation notice:', uErr.message);
+          }
+        }
+
+        if (schoolId) {
+          fastCache.delete(`students:${schoolId}`);
+          fastCache.deletePattern(`student:`);
+        }
+
         const result = {
           ...q.rows[0],
           name: fullName || q.rows[0].name,
@@ -1932,7 +2185,9 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           academic_year_id: resolvedSession || q.rows[0].academic_year_id,
-          is_active: true
+          is_active: resolvedIsActive,
+          status: resolvedStatus,
+          user_id: studentUserId || q.rows[0].user_id
         };
         const idx = demoStudents.findIndex(s => s.id === studentId);
         if (idx >= 0) demoStudents[idx] = { ...demoStudents[idx], ...result };
@@ -1945,55 +2200,56 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     console.warn('[UpdateStudent] Database update warning:', err.message);
   }
 
-  // Pure Cloud Firestore & in-memory update
-  let existingFirestoreData: any = {};
-  if (isFirebaseConfigured()) {
-    try {
-      const docSnap = await collections.students().doc(studentId).get();
-      if (docSnap.exists) {
-        existingFirestoreData = docSnap.data() || {};
-      }
-    } catch {}
-  }
-
+  // Pure in-memory fallback
   const idx = demoStudents.findIndex(s => s.id === studentId);
   const existingMem = idx >= 0 ? demoStudents[idx] : {};
 
   const updated: any = {
-    ...existingFirestoreData,
     ...existingMem,
     id: studentId,
-    name: fullName || existingFirestoreData.name || existingMem.name || 'Student',
-    full_name: fullName || existingFirestoreData.full_name || existingFirestoreData.name || existingMem.full_name || existingMem.name || 'Student',
-    first_name: firstName || existingFirestoreData.first_name || existingMem.first_name || '',
-    last_name: lastName || existingFirestoreData.last_name || existingMem.last_name || '',
-    roll_number: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
-    rollNumber: cleanRollNumber || existingFirestoreData.roll_number || existingMem.roll_number || '',
-    admission_number: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
-    admissionNumber: cleanAdmissionNumber || existingFirestoreData.admission_number || existingMem.admission_number || `ADM-${studentId}`,
-    parent_name: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
-    parentName: cleanParentName || existingFirestoreData.parent_name || existingMem.parent_name || '—',
-    parent_sms_number: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
-    parentPhone: cleanParentPhone || existingFirestoreData.parent_sms_number || existingMem.parent_sms_number || '',
-    email: cleanStudentEmail || existingFirestoreData.email || existingMem.email || '',
-    student_email: cleanStudentEmail || existingFirestoreData.student_email || existingMem.student_email || '',
-    parent_email: cleanParentEmail || existingFirestoreData.parent_email || existingMem.parent_email || '',
-    class_id: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
-    classId: resolvedClassId || existingFirestoreData.class_id || existingMem.class_id || 'cls-1',
+    name: fullName || existingMem.name || 'Student',
+    full_name: fullName || existingMem.full_name || existingMem.name || 'Student',
+    first_name: firstName || existingMem.first_name || '',
+    last_name: lastName || existingMem.last_name || '',
+    roll_number: cleanRollNumber || existingMem.roll_number || '',
+    rollNumber: cleanRollNumber || existingMem.roll_number || '',
+    admission_number: cleanAdmissionNumber || existingMem.admission_number || `ADM-${studentId}`,
+    admissionNumber: cleanAdmissionNumber || existingMem.admission_number || `ADM-${studentId}`,
+    parent_name: cleanParentName || existingMem.parent_name || '—',
+    parentName: cleanParentName || existingMem.parent_name || '—',
+    parent_sms_number: cleanParentPhone || existingMem.parent_sms_number || '',
+    parentPhone: cleanParentPhone || existingMem.parent_sms_number || '',
+    email: cleanStudentEmail || existingMem.email || '',
+    student_email: cleanStudentEmail || existingMem.student_email || '',
+    parent_email: cleanParentEmail || existingMem.parent_email || '',
+    class_id: resolvedClassId || existingMem.class_id || 'cls-1',
+    classId: resolvedClassId || existingMem.class_id || 'cls-1',
     class_number: putClsNum,
     class_label: putClassLabel,
-    section_id: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
-    sectionId: resolvedSectionId || existingFirestoreData.section_id || existingMem.section_id || 'sec-a',
+    section_id: resolvedSectionId || existingMem.section_id || 'sec-a',
+    sectionId: resolvedSectionId || existingMem.section_id || 'sec-a',
     section_name: putSecName,
-    school_id: schoolId || existingFirestoreData.school_id || existingMem.school_id,
-    schoolId: schoolId || existingFirestoreData.school_id || existingMem.school_id,
-    academic_year_id: resolvedSession || existingFirestoreData.academic_year_id || existingMem.academic_year_id || null,
-    session_id: resolvedSession || existingFirestoreData.session_id || existingMem.session_id || null,
-    session_name: resolvedSession || existingFirestoreData.session_name || existingMem.session_name || null,
-    session: resolvedSession || existingFirestoreData.session || existingMem.session || null,
-    is_active: true,
+    school_id: schoolId || existingMem.school_id,
+    schoolId: schoolId || existingMem.school_id,
+    academic_year_id: resolvedSession || existingMem.academic_year_id || null,
+    session_id: resolvedSession || existingMem.session_id || null,
+    session_name: resolvedSession || existingMem.session_name || null,
+    session: resolvedSession || existingMem.session || null,
+    is_active: resolvedIsActive,
+    status: resolvedStatus,
     updated_at: new Date().toISOString()
   };
+
+  if (password && String(password).trim()) {
+    registerDemoUser({
+      id: studentId,
+      schoolId: schoolId || '00000000-0000-0000-0000-000000000001',
+      name: fullName || name || 'Student',
+      email: cleanStudentEmail || `student.${cleanAdmissionNumber || studentId}@portal.local`,
+      role: 'STUDENT',
+      password: String(password).trim()
+    });
+  }
 
   if (idx >= 0) {
     demoStudents[idx] = { ...demoStudents[idx], ...updated };
@@ -2001,7 +2257,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     demoStudents.unshift(updated);
   }
 
-  await syncStudentToFirestore(updated).catch(() => {});
+  syncStudentToFirestore(updated).catch(() => {});
   return res.json(updated);
 });
 
@@ -2219,7 +2475,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
@@ -2562,7 +2818,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
   for (let i = 0; i < teachers.length; i++) {
     const t = teachers[i];
-    const rowNum = i + 1;
+    const rowNum = t._origRowIndex || (i + 1);
 
     const getVal = (patterns: string[]): string => {
       for (const p of patterns) {
@@ -2576,25 +2832,31 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       return '';
     };
 
-    const saviorNo = getVal(['Savior_No', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO']);
-    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name']);
-    let lastName  = getVal(['Last Name', 'lastName', 'last_name']);
-    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'fullName', 'name']);
+    // Skip completely empty rows
+    const hasRealContent = Object.entries(t).some(([k, v]) => !k.startsWith('_') && v !== undefined && v !== null && String(v).trim() !== '');
+    if (!hasRealContent) {
+      continue;
+    }
+
+    const saviorNo = getVal(['Savior_No', 'SAVIOR_NO', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'ID']);
+    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+    let lastName  = getVal(['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
+    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName', 'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name']);
 
     if ((!firstName || !lastName) && explicitFullName) {
-      const parts = explicitFullName.split(' ');
+      const parts = explicitFullName.split(/\s+/).filter(Boolean);
       if (!firstName) firstName = parts[0] || '';
       if (!lastName) lastName = parts.slice(1).join(' ') || '';
     }
     const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${rowNum}`));
-    const email = getVal(['Email_id', 'email_id', 'Email ID', 'emailId', 'Email', 'email', 'Email Address']).toLowerCase();
-    const rawClass = getVal(['Class', 'class']);
-    const rawSection = (getVal(['Section', 'section']) || 'A').toUpperCase();
-    const designation = getVal(['Designation', 'designation']) || 'Teacher';
-    const status = getVal(['Status', 'status']) || 'Active';
-    const rawMobile = getVal(['Mobile', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
-    const gender = getVal(['Gender', 'gender', 'Sex', 'sex']) || null;
-    const rawDob = getVal(['Date_of_Birth', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
+    const email = getVal(['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase() || `${saviorNo ? `teacher.${saviorNo.toLowerCase()}` : `teacher${rowNum}`}@school.local`;
+    const rawClass = getVal(['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+    const rawSection = (getVal(['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+    const designation = getVal(['Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title']) || 'Teacher';
+    const status = getVal(['Status', 'STATUS', 'status']) || 'Active';
+    const rawMobile = getVal(['Mobile', 'MOBILE', 'mobile', 'Phone', 'phone']).replace(/[^0-9]/g, '');
+    const gender = getVal(['Gender', 'GENDER', 'gender', 'Sex', 'sex']) || null;
+    const rawDob = getVal(['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
     const dob = rawDob ? normalizeToDdMmYyyy(rawDob) : null;
 
     // Validation engine:
@@ -2656,12 +2918,19 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       await client.query('BEGIN');
       const stagedList: any[] = [];
 
-      for (const t of validRows) {
-        const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
-        const hash = await bcrypt.hash(tempPassword, 10);
+      // Pre-compute password hashes in parallel with rounds 8
+      const preparedRows = await Promise.all(
+        validRows.map(async (t) => {
+          const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+          const hash = await bcrypt.hash(tempPassword, 8);
+          return { t, tempPassword, hash };
+        })
+      );
+
+      for (const { t, tempPassword, hash } of preparedRows) {
         const u = await client.query(
           `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'TEACHER')
-           ON CONFLICT (school_id, email) DO UPDATE SET name=EXCLUDED.name, password_hash=EXCLUDED.password_hash
+           ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name, school_id=EXCLUDED.school_id, password_hash=EXCLUDED.password_hash
            RETURNING id, name, email`,
           [schoolId, t.name, t.email, hash]
         );
@@ -2669,12 +2938,40 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           throw new Error(`Failed to insert or update user record for faculty member ${t.name} (${t.email})`);
         }
 
-        await client.query(
-          `INSERT INTO teacher_profiles(user_id, employee_id, mobile) VALUES($1, $2, $3)
-           ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile
-           RETURNING *`,
-          [u.rows[0].id, t.saviorNo, t.mobile || null]
-        );
+        const rawClass = t.class ? String(t.class).trim() : null;
+        const rawSection = t.section ? String(t.section).trim().toUpperCase() : null;
+        let parsedGender = t.gender ? String(t.gender).trim() : null;
+        if (parsedGender) {
+          if (/^f/i.test(parsedGender)) parsedGender = 'Female';
+          else if (/^m/i.test(parsedGender)) parsedGender = 'Male';
+        }
+
+        const existingEp = await client.query('SELECT user_id FROM teacher_profiles WHERE employee_id = $1', [t.saviorNo]);
+        if (existingEp.rows.length > 0 && existingEp.rows[0].user_id !== u.rows[0].id) {
+          await client.query(
+            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender) WHERE employee_id = $7`,
+            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, t.saviorNo]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender) VALUES($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender)
+             RETURNING *`,
+            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender]
+          );
+        }
+
+        if (rawClass) {
+          demoTeacherAssignments.push({
+            id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            school_id: schoolId,
+            teacher_id: u.rows[0].id,
+            teacher_name: t.name,
+            class_number: rawClass,
+            section_name: rawSection || 'A',
+            subject_name: null
+          });
+        }
 
         const created = {
           ...u.rows[0],
@@ -2706,6 +3003,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
       await client.query('COMMIT');
       client.release();
+      fastCache.delete(`teachers:${schoolId}`);
 
       // After COMMIT: update memory, register demo users, sync to Firestore, dispatch emails
       for (const item of stagedList) {
@@ -3033,7 +3331,7 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     } catch {}
   }
 
-  await syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
+  syncTeacherToFirestore(updated, newPasswordHash).catch(() => {});
   res.json(updated);
 });
 
@@ -3142,13 +3440,14 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
   if (q.rowCount) {
     const created = { ...q.rows[0], school_id: sid };
     demoSubjects.push(created);
-    syncSubjectToFirestore(created).catch(() => {});
+    if (sid) fastCache.delete(`subjects:${sid}`);
     return res.status(201).json(created);
   }
  } catch {}
  const newSub = { id: `sub-${Date.now()}`, name: cleanName, school_id: sid };
  demoSubjects.push(newSub);
  syncSubjectToFirestore(newSub).catch(() => {});
+ if (sid) fastCache.delete(`subjects:${sid}`);
  res.status(201).json(newSub);
 });
 
@@ -3161,6 +3460,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
       await client.query('BEGIN');
       await client.query('DELETE FROM class_routines WHERE subject_id = $1', [subId]);
       await client.query('UPDATE attendance_sessions SET subject_id = NULL WHERE subject_id = $1', [subId]);
+      await client.query('DELETE FROM timetable_entries WHERE subject_id = $1', [subId]);
       await client.query('DELETE FROM subjects WHERE id = $1 AND school_id = $2', [subId, sid]);
       await client.query('COMMIT');
     } catch (delErr: any) {
@@ -3175,6 +3475,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
   if (idx >= 0) demoSubjects.splice(idx, 1);
   deleteSubjectFromFirestore(subId).catch(() => {});
   if (sid) {
+    fastCache.delete(`subjects:${sid}`);
     invalidateSchoolCache(sid);
   }
   res.json({success:true});

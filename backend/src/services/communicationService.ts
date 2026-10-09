@@ -123,7 +123,7 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
                      Number(raw.replace(/[^0-9-]/g, ''));
     if (!isNaN(cleanNum)) {
       try {
-        const q = await pool.query('SELECT id FROM classes WHERE school_id = $1 AND class_number = $2 LIMIT 1', [schoolId, cleanNum]);
+        const q = await pool.query('SELECT id FROM classes WHERE (school_id = $1 OR school_id = $2) AND class_number = $3 LIMIT 1', [schoolId, '00000000-0000-0000-0000-000000000001', cleanNum]);
         if (q.rowCount && q.rows[0]) cUuid = q.rows[0].id;
       } catch {}
     }
@@ -133,13 +133,16 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
     const sName = String(sUuid).toUpperCase().includes('B') ? 'B' : 'A';
     if (cUuid && isUuid(cUuid)) {
       try {
-        const q = await pool.query('SELECT id FROM sections WHERE school_id = $1 AND class_id = $2 AND UPPER(name) = $3 LIMIT 1', [schoolId, cUuid, sName]);
+        const q = await pool.query('SELECT id FROM sections WHERE class_id = $1 AND UPPER(name) = $2 LIMIT 1', [cUuid, sName]);
         if (q.rowCount && q.rows[0]) sUuid = q.rows[0].id;
       } catch {}
     }
   }
 
-  return { classId: cUuid, sectionId: sUuid };
+  return {
+    classId: isUuid(cUuid) ? cUuid : null,
+    sectionId: isUuid(sUuid) ? sUuid : null
+  };
 }
 
 /**
@@ -160,6 +163,10 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const targetClassId = (audience === 'CLASS' || audience === 'SECTION') ? resolvedClassId : null;
   const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
 
+  const isUuid = (val?: string | null) => Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val)));
+  const safeSchoolId = isUuid(schoolId) ? schoolId : '00000000-0000-0000-0000-000000000001';
+  const safeUserId = isUuid(userId) ? userId : null;
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO announcements
@@ -167,8 +174,8 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, CASE WHEN $9::timestamptz IS NOT NULL THEN 'SCHEDULED' ELSE 'DRAFT' END)
        RETURNING *`,
       [
-        schoolId,
-        userId,
+        safeSchoolId,
+        safeUserId,
         d.title,
         d.message,
         audience,
@@ -180,7 +187,9 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
       ]
     );
     if (rows && rows.length > 0) return rows[0];
-  } catch (_e) {}
+  } catch (dbErr) {
+    console.warn('[createAnnouncement] DB insert fallback to memory:', dbErr);
+  }
 
   // Fallback / Pure Firestore mode
   const item = {

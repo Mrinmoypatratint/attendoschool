@@ -37,26 +37,43 @@ export const memPeriods: any[] = [];
 export const memEntries: any[] = [];
 
 // ── Helper: Find conflicts in memory ──
-function findMemConflicts(dayOfWeek: number, periodId: string, teacherId?: string, classId?: string, sectionId?: string, roomName?: string, excludeId?: string) {
+function findMemConflicts(dayOfWeek: number, periodId: string, teacherId?: string, classId?: string, sectionId?: string, roomName?: string, excludeId?: string, periodNumber?: number, classNumber?: any, sectionName?: string) {
   const conflicts: any[] = [];
+  const targetClassNum = classNumber !== undefined && classNumber !== null ? (typeof classNumber === 'number' ? classNumber : Number(String(classNumber).replace(/\D/g, ''))) : null;
+  const targetSecNorm = sectionName ? String(sectionName).trim().replace(/^section\s*[-_]?\s*/i, '').trim().toUpperCase() : null;
+
   for (const e of memEntries) {
-    if (e.day_of_week !== dayOfWeek || e.period_id !== periodId) continue;
+    if (Number(e.day_of_week ?? e.dayOfWeek) !== dayOfWeek) continue;
     if (excludeId && e.id === excludeId) continue;
     if (e.status === 'CANCELLED') continue;
-    if (teacherId && (e.teacher_id === teacherId || e.substitute_teacher_id === teacherId)) {
-      conflicts.push({ id: e.id, conflict_type: 'TEACHER_DOUBLE_BOOKED', details: `${e.teacher_name || 'Teacher'} is already assigned to ${e.subject_name || 'Subject'} (Class ${e.class_number}-${e.section_name})` });
-    } else if (classId && sectionId && e.class_id === classId && e.section_id === sectionId) {
-      conflicts.push({ id: e.id, conflict_type: 'CLASS_SECTION_DOUBLE_BOOKED', details: `Class ${e.class_number}-${e.section_name} already has ${e.subject_name || 'a class'}` });
-    } else if (roomName && e.room_name === roomName) {
-      conflicts.push({ id: e.id, conflict_type: 'ROOM_DOUBLE_BOOKED', details: `Room ${e.room_name} is already booked for ${e.subject_name || 'another class'}` });
+
+    const ePid = e.period_id || e.periodId;
+    const ePNum = Number(e.period_number ?? e.periodNumber);
+    const matchPeriod = (ePid && periodId && ePid === periodId) || (periodNumber && ePNum && Number(periodNumber) === ePNum);
+    if (!matchPeriod) continue;
+
+    const eClassId = e.class_id || e.classId;
+    const eClassNum = Number(e.class_number ?? e.classNumber);
+    const matchClass = (eClassId && classId && eClassId === classId) || (eClassNum && targetClassNum && eClassNum === targetClassNum);
+
+    const eSecId = e.section_id || e.sectionId;
+    const eSecNorm = e.section_name ? String(e.section_name).trim().replace(/^section\s*[-_]?\s*/i, '').trim().toUpperCase() : null;
+    const matchSec = (eSecId && sectionId && eSecId === sectionId) || (eSecNorm && targetSecNorm && eSecNorm === targetSecNorm);
+
+    if (matchClass && matchSec) {
+      conflicts.push({ id: e.id, conflict_type: 'CLASS_SECTION_DOUBLE_BOOKED', details: `Class ${e.class_number || classNumber || ''}-${e.section_name || sectionName || ''} already has ${e.subject_name || 'a class'} scheduled for this period` });
+    } else if (teacherId && (e.teacher_id === teacherId || e.substitute_teacher_id === teacherId)) {
+      conflicts.push({ id: e.id, conflict_type: 'TEACHER_DOUBLE_BOOKED', details: `${e.teacher_name || 'Teacher'} is already assigned to a class at this time` });
+    } else if (roomName && e.room_name && e.room_name.toLowerCase() === roomName.toLowerCase()) {
+      conflicts.push({ id: e.id, conflict_type: 'ROOM_DOUBLE_BOOKED', details: `Room ${e.room_name} is already booked for this period` });
     }
   }
   return conflicts;
 }
 
 // ── Helper: Find conflicts across Firestore + memory ──
-async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, teacherId?: string, classId?: string, sectionId?: string, roomName?: string, excludeId?: string) {
-  const memConf = findMemConflicts(dayOfWeek, periodId, teacherId, classId, sectionId, roomName, excludeId);
+async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, teacherId?: string, classId?: string, sectionId?: string, roomName?: string, excludeId?: string, periodNumber?: number, classNumber?: any, sectionName?: string) {
+  const memConf = findMemConflicts(dayOfWeek, periodId, teacherId, classId, sectionId, roomName, excludeId, periodNumber, classNumber, sectionName);
   if (memConf.length > 0) return memConf;
 
   if (isPostgresConfigured && sid) {
@@ -64,6 +81,7 @@ async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, 
       const pgConf = await svc.findConflicts(sid, {
         dayOfWeek,
         periodId,
+        periodNumber,
         teacherId,
         classId,
         sectionId,
@@ -88,7 +106,11 @@ async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, 
         const docSid = e.school_id || e.schoolId;
         if (docSid && !isSameSchool(docSid, sid)) continue;
         if (Number(e.day_of_week ?? e.dayOfWeek) !== dayOfWeek) continue;
-        if ((e.period_id || e.periodId) !== periodId) continue;
+
+        const ePid = e.period_id || e.periodId;
+        const ePNum = Number(e.period_number ?? e.periodNumber);
+        const matchPeriod = (ePid && periodId && ePid === periodId) || (periodNumber && ePNum && Number(periodNumber) === ePNum);
+        if (!matchPeriod) continue;
 
         const eTeacher = e.teacher_id || e.teacherId;
         const eSub = e.substitute_teacher_id || e.altTeacherId;
@@ -96,17 +118,25 @@ async function checkConflicts(sid: string, dayOfWeek: number, periodId: string, 
         const eSec = e.section_id || e.sectionId;
         const eRoom = e.room_name || e.roomName;
 
-        if (teacherId && (eTeacher === teacherId || eSub === teacherId)) {
-          return [{
-            id: eId,
-            conflict_type: 'TEACHER_DOUBLE_BOOKED',
-            details: `${e.teacher_name || 'Teacher'} is already assigned to a class at this time`
-          }];
-        } else if (classId && sectionId && eClass === classId && eSec === sectionId) {
+        const eClassNum = Number(e.class_number ?? e.classNumber);
+        const targetClassNum = classNumber !== undefined && classNumber !== null ? (typeof classNumber === 'number' ? classNumber : Number(String(classNumber).replace(/\D/g, ''))) : null;
+        const matchClass = (eClass && classId && eClass === classId) || (eClassNum && targetClassNum && eClassNum === targetClassNum);
+
+        const eSecNorm = e.section_name ? String(e.section_name).trim().replace(/^section\s*[-_]?\s*/i, '').trim().toUpperCase() : null;
+        const targetSecNorm = sectionName ? String(sectionName).trim().replace(/^section\s*[-_]?\s*/i, '').trim().toUpperCase() : null;
+        const matchSec = (eSec && sectionId && eSec === sectionId) || (eSecNorm && targetSecNorm && eSecNorm === targetSecNorm);
+
+        if (matchClass && matchSec) {
           return [{
             id: eId,
             conflict_type: 'CLASS_SECTION_DOUBLE_BOOKED',
             details: `Class section already has a scheduled class for this period`
+          }];
+        } else if (teacherId && (eTeacher === teacherId || eSub === teacherId)) {
+          return [{
+            id: eId,
+            conflict_type: 'TEACHER_DOUBLE_BOOKED',
+            details: `${e.teacher_name || 'Teacher'} is already assigned to a class at this time`
           }];
         } else if (roomName && eRoom && eRoom.toLowerCase() === roomName.toLowerCase()) {
           return [{
@@ -231,13 +261,30 @@ router.post('/periods', requireAdmin, async (req, res) => {
   else memPeriods.push(newP);
   memPeriods.sort((a, b) => (a.period_number || a.periodNumber || 0) - (b.period_number || b.periodNumber || 0));
 
-  await syncTimetablePeriodToFirestore(newP);
+  syncTimetablePeriodToFirestore(newP).catch(() => {});
   res.status(201).json(newP);
 });
 
 // Template periods loader
 router.post('/periods/template', requireAdmin, async (req, res) => {
   const sid = u(req).schoolId;
+
+  if (isPostgresConfigured && sid) {
+    try {
+      const persisted = await svc.createTemplatePeriods(sid);
+      if (persisted && persisted.length > 0) {
+        for (const p of persisted) {
+          const idx = memPeriods.findIndex(m => m.id === p.id || (m.school_id === p.school_id && m.period_number === p.period_number));
+          if (idx >= 0) memPeriods[idx] = p;
+          else memPeriods.push(p);
+          syncTimetablePeriodToFirestore(p).catch(() => {});
+        }
+        return res.status(201).json(persisted);
+      }
+    } catch (err: any) {
+      console.warn('[Timetable] Error persisting template periods to Supabase:', err.message);
+    }
+  }
 
   // Check if existing in Firestore first
   if (isFirebaseConfigured()) {
@@ -288,7 +335,7 @@ router.post('/periods/template', requireAdmin, async (req, res) => {
     const idx = memPeriods.findIndex(m => m.id === p.id);
     if (idx >= 0) memPeriods[idx] = p;
     else memPeriods.push(p);
-    await syncTimetablePeriodToFirestore(p);
+    syncTimetablePeriodToFirestore(p).catch(() => {});
   }
   res.status(201).json(template);
 });
@@ -323,7 +370,7 @@ router.delete('/periods/:id', requireAdmin, async (req, res) => {
   }
   const idx = memPeriods.findIndex(p => p.id === id);
   if (idx >= 0) memPeriods.splice(idx, 1);
-  await deleteTimetablePeriodFromFirestore(id);
+  deleteTimetablePeriodFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -332,7 +379,41 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
   // 1. Try DB first
   try {
     const rows = await svc.listEntries(sid, query);
-    if (Array.isArray(rows)) return rows;
+    if (Array.isArray(rows) && rows.length > 0) {
+      const extractClassNum = (val: any): number | null => {
+        if (val === undefined || val === null || val === '') return null;
+        if (typeof val === 'number' && !isNaN(val)) return val;
+        const str = String(val).trim();
+        if (!isNaN(Number(str))) return Number(str);
+        const match = str.match(/(?:class|cls)?\s*[-_]?\s*(-?\d+)/i);
+        if (match) return Number(match[1]);
+        return null;
+      };
+
+      const enriched = rows.map(e => {
+        const subject = demoSubjects.find(s => s.id === e.subject_id);
+        const teacher = demoTeachers.find(t => t.id === e.teacher_id);
+        const altTeacher = e.substitute_teacher_id ? demoTeachers.find(t => t.id === e.substitute_teacher_id) : null;
+        const cls = demoClasses.find(c => c.id === e.class_id);
+        const sec = demoSections.find(s => s.id === e.section_id);
+
+        return {
+          ...e,
+          period_id: e.period_id,
+          periodId: e.period_id,
+          period_name: e.period_name || 'Period',
+          period_number: Number(e.period_number ?? 0),
+          start_time: e.start_time || '',
+          end_time: e.end_time || '',
+          class_number: e.class_number ?? (cls ? extractClassNum(cls.class_number) : extractClassNum(e.class_id)),
+          section_name: e.section_name || (sec ? sec.name : null) || 'A',
+          subject_name: e.subject_name || (subject ? subject.name : null) || 'Subject',
+          teacher_name: e.teacher_name || (teacher ? teacher.name : null) || 'Teacher',
+          substitute_teacher_name: e.substitute_teacher_name || (altTeacher ? altTeacher.name : null)
+        };
+      });
+      return enriched;
+    }
   } catch (_e) {}
 
   // 2. Query Firestore scoped to tenant
@@ -418,17 +499,24 @@ router.post('/entries', requireAdmin, async (req, res) => {
   const sid = u(req).schoolId;
 
   // Try DB first if Postgres has configured tables
-  try {
-    const created = await svc.createEntry(sid, u(req).id, d);
-    if (created && created.id) {
-      await syncTimetableEntryToFirestore(created);
-      return res.status(201).json(created);
+  if (isPostgresConfigured && sid) {
+    try {
+      const created = await svc.createEntry(sid, u(req).id, d);
+      if (created && created.id) {
+        const list = await fetchTimetableEntries(sid, { id: created.id });
+        const enriched = (list && list.length > 0) ? list.find(x => x.id === created.id) || created : created;
+        syncTimetableEntryToFirestore(enriched).catch(() => {});
+        return res.status(201).json(enriched);
+      }
+    } catch (err: any) {
+      console.error('[Timetable] Error creating timetable entry in Supabase:', err.message || err);
+      return res.status(400).json({ message: err.message || 'Failed to create timetable entry in database' });
     }
-  } catch (_e) {}
+  }
 
   // Conflict check
   const conflicts = await checkConflicts(
-    sid, Number(d.dayOfWeek), d.periodId, d.teacherId, d.classId, d.sectionId, d.roomName
+    sid, Number(d.dayOfWeek), d.periodId, d.teacherId, d.classId, d.sectionId, d.roomName, undefined, d.periodNumber || d.period_number, d.classNumber, d.sectionName
   );
   if (conflicts.length) {
     return res.status(409).json({ message: `Conflict: ${conflicts.map(c => c.details || c.conflict_type).join('; ')}`, conflicts });
@@ -448,26 +536,37 @@ router.post('/entries', requireAdmin, async (req, res) => {
   const subject = demoSubjects.find(s => s.id === d.subjectId);
   const altTeacher = d.altTeacherId ? demoTeachers.find(t => t.id === d.altTeacherId) : null;
 
+  // Helper to extract numeric class number safely from 3, "3", "Class 3", "Class-3", "cls-3"
+  const extractClassNum = (val: any): number | null => {
+    if (val === undefined || val === null || val === '') return null;
+    if (typeof val === 'number' && !isNaN(val)) return val;
+    const str = String(val).trim();
+    if (!isNaN(Number(str))) return Number(str);
+    const match = str.match(/(?:class|cls)?\s*[-_]?\s*(-?\d+)/i);
+    if (match) return Number(match[1]);
+    return null;
+  };
+
   // Resolve class and section info dynamically
-  let resolvedClassNumber: number | null = d.classNumber ? Number(d.classNumber) : null;
-  if (!resolvedClassNumber && d.classId) {
+  let resolvedClassNumber: number | null = extractClassNum(d.classNumber);
+  if (resolvedClassNumber === null && d.classId) {
     const foundCls = demoClasses.find(c => c.id === d.classId || String(c.class_number) === String(d.classId));
-    if (foundCls) resolvedClassNumber = Number(foundCls.class_number);
+    if (foundCls) resolvedClassNumber = extractClassNum(foundCls.class_number);
     else {
-      const matchNum = String(d.classId).match(/\d+/);
-      if (matchNum) resolvedClassNumber = Number(matchNum[0]);
+      resolvedClassNumber = extractClassNum(d.classId);
     }
   }
 
-  let resolvedSectionName: string | null = d.sectionName || null;
+  let resolvedSectionName: string | null = d.sectionName ? String(d.sectionName).trim().replace(/^section\s*[-_]?\s*/i, '').trim().toUpperCase() : null;
   if (!resolvedSectionName && d.sectionId) {
     const foundSec = demoSections.find(s => s.id === d.sectionId);
     if (foundSec) resolvedSectionName = foundSec.name;
     else {
-      const matchSec = String(d.sectionId).match(/-([a-zA-Z])$/);
+      const matchSec = String(d.sectionId).match(/-sec-([a-zA-Z])$/i) || String(d.sectionId).match(/-([a-zA-Z])$/i);
       if (matchSec) resolvedSectionName = matchSec[1].toUpperCase();
     }
   }
+  if (!resolvedSectionName) resolvedSectionName = 'A';
 
   const entry = {
     id: `ent-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -498,9 +597,70 @@ router.post('/entries', requireAdmin, async (req, res) => {
     notes: d.notes || null
   };
   memEntries.push(entry);
-  await syncTimetableEntryToFirestore(entry);
+  syncTimetableEntryToFirestore(entry).catch(() => {});
   res.status(201).json(entry);
 });
+
+router.put('/entries/:id', requireAdmin, async (req, res) => {
+  const id = String(req.params.id);
+  const sid = u(req).schoolId;
+  const d = req.body;
+
+  if (isPostgresConfigured && sid) {
+    try {
+      const updated = await svc.updateEntry(sid, u(req).id, id, d);
+      if (updated && updated.id) {
+        const list = await fetchTimetableEntries(sid, { id: updated.id });
+        const enriched = (list && list.length > 0) ? list.find(x => x.id === updated.id) || updated : updated;
+        syncTimetableEntryToFirestore(enriched).catch(() => {});
+        return res.json(enriched);
+      }
+    } catch (err: any) {
+      console.error('[Timetable] Error updating timetable entry in Supabase:', err.message || err);
+      const isConflict = String(err.message || '').toLowerCase().includes('conflict');
+      return res.status(isConflict ? 409 : 400).json({ message: err.message || 'Failed to update timetable entry in database' });
+    }
+  }
+
+  const entryIdx = memEntries.findIndex(e => e.id === id);
+  if (entryIdx < 0) {
+    return res.status(404).json({ message: 'Timetable entry not found' });
+  }
+  const existing = memEntries[entryIdx];
+
+  const teacherId = d.teacherId !== undefined ? d.teacherId : existing.teacher_id;
+  const roomName = d.roomName !== undefined ? d.roomName : existing.room_name;
+  const dayOfWeek = Number(existing.day_of_week ?? existing.dayOfWeek);
+  const periodId = existing.period_id || existing.periodId;
+
+  const conflicts = await checkConflicts(
+    sid, dayOfWeek, periodId, teacherId, existing.class_id, existing.section_id, roomName, id
+  );
+  if (conflicts.length) {
+    return res.status(409).json({ message: `Conflict: ${conflicts.map(c => c.details || c.conflict_type).join('; ')}`, conflicts });
+  }
+
+  const teacher = d.teacherId ? demoTeachers.find(t => t.id === d.teacherId) : null;
+  const subject = d.subjectId ? demoSubjects.find(s => s.id === d.subjectId) : null;
+  const altTeacher = d.altTeacherId ? demoTeachers.find(t => t.id === d.altTeacherId) : null;
+
+  const updatedEntry = {
+    ...existing,
+    subject_id: d.subjectId !== undefined ? d.subjectId : existing.subject_id,
+    subject_name: subject?.name || d.subjectName || existing.subject_name,
+    teacher_id: d.teacherId !== undefined ? d.teacherId : existing.teacher_id,
+    teacher_name: teacher?.name || d.teacherName || existing.teacher_name,
+    substitute_teacher_id: d.altTeacherId !== undefined ? d.altTeacherId : existing.substitute_teacher_id,
+    substitute_teacher_name: altTeacher?.name || d.altTeacherName || existing.substitute_teacher_name,
+    room_name: d.roomName !== undefined ? d.roomName : existing.room_name,
+    updated_at: new Date().toISOString()
+  };
+
+  memEntries[entryIdx] = updatedEntry;
+  syncTimetableEntryToFirestore(updatedEntry).catch(() => {});
+  return res.json(updatedEntry);
+});
+
 
 router.delete('/entries/clear', requireAdmin, async (req, res) => {
   const sid = u(req)?.schoolId;
@@ -516,7 +676,7 @@ router.delete('/entries/clear', requireAdmin, async (req, res) => {
       memEntries.splice(i, 1);
     }
   }
-  await clearTimetableEntriesFromFirestore(sid);
+  clearTimetableEntriesFromFirestore(sid).catch(() => {});
   res.json({ success: true, count: 0 });
 });
 
@@ -532,7 +692,7 @@ router.delete('/entries/:id', requireAdmin, async (req, res) => {
   }
   const idx = memEntries.findIndex(e => e.id === id);
   if (idx >= 0) memEntries.splice(idx, 1);
-  await deleteTimetableEntryFromFirestore(id);
+  deleteTimetableEntryFromFirestore(id).catch(() => {});
   res.json({ success: true });
 });
 
@@ -574,7 +734,7 @@ router.post('/', requireAdmin, async (req, res) => {
   try {
     const created = await svc.createEntry(sid, u(req).id, d);
     if (created && created.id) {
-      await syncTimetableEntryToFirestore(created);
+      syncTimetableEntryToFirestore(created).catch(() => {});
       return res.status(201).json(created);
     }
   } catch (_e) {}
@@ -587,7 +747,7 @@ router.post('/', requireAdmin, async (req, res) => {
     ...d
   };
   memEntries.push(entry);
-  await syncTimetableEntryToFirestore(entry);
+  syncTimetableEntryToFirestore(entry).catch(() => {});
   res.status(201).json(entry);
 });
 
@@ -602,14 +762,7 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
   const entry = memEntries.find(e => e.id === id);
   if (entry) {
     entry.status = 'PUBLISHED';
-    await syncTimetableEntryToFirestore(entry);
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(id).set({
-        status: 'PUBLISHED',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
+    syncTimetableEntryToFirestore(entry).catch(() => {});
   }
   res.json(entry || { id, status: 'PUBLISHED' });
 });
@@ -628,15 +781,7 @@ router.post('/substitutes', requireAdmin, async (req, res) => {
   if (entry) {
     entry.substitute_teacher_id = d.substituteTeacherId;
     entry.substitute_teacher_name = subName;
-    await syncTimetableEntryToFirestore(entry);
-  } else if (isFirebaseConfigured()) {
-    try {
-      await collections.timetableEntries().doc(d.entryId).set({
-        substitute_teacher_id: d.substituteTeacherId,
-        substitute_teacher_name: subName,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch {}
+    syncTimetableEntryToFirestore(entry).catch(() => {});
   }
   res.json({ id: d.entryId, substitute_teacher_id: d.substituteTeacherId, substitute_teacher_name: subName });
 });

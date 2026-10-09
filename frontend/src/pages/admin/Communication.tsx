@@ -257,8 +257,8 @@ export default function Communication() {
       alert('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (form.audienceType === 'SECTION' && (!form.classId || !form.sectionId)) {
-      alert('Please select both Class (L-KG to 12) and Section (Section A or B).');
+    if (form.audienceType === 'SECTION' && (!form.classId || !selectedSectionLetter)) {
+      alert('Please select both Class (L-KG to 12) and a Section (Section A or B). If targeting the entire class, choose Audience Type: CLASS.');
       return;
     }
     setPreviewError(null);
@@ -288,7 +288,8 @@ export default function Communication() {
       setPreviewOpen(false);
       load();
     } catch (e: any) {
-      setPreviewError(e?.response?.data?.message || 'Unable to save announcement');
+      console.error('[Communication] Error saving announcement:', e);
+      setPreviewError(e?.response?.data?.message || e?.message || 'Unable to save announcement. Please check server connection.');
     } finally {
       setPreviewLoading(false);
     }
@@ -337,7 +338,12 @@ export default function Communication() {
         ...(form.audienceType === 'SECTION'
           ? [
               { label: 'Target Section', value: selectedSectionDisplay },
-              { label: 'Delivery Scope', value: `Strictly delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber}-${selectedSectionLetter} only (students & parents)` }
+              {
+                label: 'Delivery Scope',
+                value: selectedSectionLetter
+                  ? `Strictly delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber}-${selectedSectionLetter} only (students & parents)`
+                  : `Delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber} (All Sections)`
+              }
             ]
           : form.audienceType === 'CLASS'
           ? [{ label: 'Delivery Scope', value: `Delivered to all students & parents of ${selectedClassName}` }]

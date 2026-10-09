@@ -162,6 +162,38 @@ export function StudentDashboard() {
     } catch { }
   }
 
+  // Dynamic greeting based on current local hour (reused for synchronized visual theme)
+  const currentHour = new Date().getHours();
+  const isMorning = currentHour >= 5 && currentHour < 12;
+  const isAfternoon = currentHour >= 12 && currentHour < 17;
+  const isEvening = currentHour >= 17 && currentHour < 21;
+
+  const greetingText = isMorning
+    ? 'Good Morning'
+    : isAfternoon
+    ? 'Good Afternoon'
+    : isEvening
+    ? 'Good Evening'
+    : 'Good Night';
+
+  const greetingEmoji = (currentHour >= 21 || currentHour < 5) ? '🌙' : '👋';
+
+  const visualThemeClass = isMorning
+    ? 'student-visual-morning'
+    : isAfternoon
+    ? 'student-visual-afternoon'
+    : isEvening
+    ? 'student-visual-evening'
+    : 'student-visual-night';
+
+  const visualLabels = isMorning
+    ? ['LEARN', 'GROW', 'BELONG']
+    : isAfternoon
+    ? ['FOCUS', 'EXCEL', 'BELONG']
+    : isEvening
+    ? ['REFLECT', 'REVIEW', 'REST']
+    : ['REST', 'RECHARGE', 'DREAM'];
+
   return (
     <div className="student-dashboard-page">
       {/* Top Hero Showcase */}
@@ -169,7 +201,7 @@ export function StudentDashboard() {
         <div className="student-hero-content">
           <div className="student-greeting-row">
             <h1 className="student-greeting-title">
-              Good Morning, <span className="student-greeting-name">{student?.name || 'Rohan Sharma'}</span> 👋
+              {greetingText}, <span className="student-greeting-name">{student?.name || 'Rohan Sharma'}</span> {greetingEmoji}
             </h1>
           </div>
           <div className="student-greeting-meta">
@@ -178,11 +210,20 @@ export function StudentDashboard() {
             {student?.admissionNumber && (
               <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
             )}
-            <span className="student-meta-pill student-meta-school">{student?.schoolName || 'AttendoSchool'}</span>
+            <span className="student-meta-pill student-meta-school" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {(student?.school_photo_url || student?.schoolPhotoUrl) ? (
+                <img
+                  src={(student?.school_photo_url || student?.schoolPhotoUrl) as string}
+                  alt={student?.schoolName || 'School'}
+                  style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover' }}
+                />
+              ) : null}
+              {student?.schoolName || 'AttendoSchool'}
+            </span>
           </div>
         </div>
 
-        <div className="student-hero-quote-card">
+        <div className={`student-hero-quote-card ${visualThemeClass}`}>
           <div className="student-quote-text-side">
             <p className="student-hero-quote">
               "Consistent effort today leads to success tomorrow."
@@ -191,9 +232,9 @@ export function StudentDashboard() {
           <div className="student-quote-img-side">
             <img src="/educational_student_campus.jpg" alt="Campus" className="student-campus-thumb" />
             <div className="student-campus-overlay">
-              <span>LEARN</span>
-              <span>GROW</span>
-              <span>BELONG</span>
+              {visualLabels.map((lbl, idx) => (
+                <span key={idx}>{lbl}</span>
+              ))}
             </div>
           </div>
         </div>

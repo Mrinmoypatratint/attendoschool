@@ -302,8 +302,20 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { dark, toggle } = useTheme();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'STUDENT') {
+        nav('/student/dashboard', { replace: true });
+      } else if (user.role === 'SUPER_ADMIN') {
+        nav('/super-admin', { replace: true });
+      } else {
+        nav('/dashboard', { replace: true });
+      }
+    }
+  }, [user, nav]);
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [institutesLoading, setInstitutesLoading] = useState(false);
@@ -1908,7 +1920,7 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user) {
       loadAcademicYears();
-      if (user.role === 'SCHOOL_ADMIN') {
+      if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
         api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
       }
     }
@@ -2147,6 +2159,7 @@ function Layout({children}:{children:React.ReactNode}){
 
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
+  const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2164,8 +2177,12 @@ function Layout({children}:{children:React.ReactNode}){
     )}
     <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
-          <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {currentSchoolPhoto ? (
+            <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+          ) : (
+            <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+          )}
         </div>
         <div className="school-info">
           <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
@@ -2389,8 +2406,12 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <School size={20} color="#1d4ed8" />
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {currentSchoolPhoto ? (
+                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                ) : (
+                  <School size={20} color="#1d4ed8" />
+                )}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2610,12 +2631,22 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div className="header-meta" style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
-                <p className="eyebrow" style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {currentSchoolPhoto ? (
+                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                ) : (
+                  <School size={20} color="#1d4ed8" />
+                )}
               </div>
-              <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 18 }}>{user.name}</h2>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {currentSchoolName}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.name} · {user.role.replace(/_/g,' ')}
+                </div>
+              </div>
             </div>
           </div>
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
@@ -3867,6 +3898,11 @@ function TeacherHome(){
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {r.map(x => {
             const recordedSession = getRoutineAttendance(x);
+            const uId = String(user?.id || '');
+            const uTeacherId = String((user as any)?.teacher_id || '');
+            const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
+            const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
+
             return (
               <div
                 className="routine-card"
@@ -3887,6 +3923,11 @@ function TeacherHome(){
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <b style={{ fontSize: 15.5 }}>Class {x.class_number}-{x.section_name}</b>
                     {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
+                    {isAlternate && (
+                      <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        🔄 Alternate Teacher
+                      </span>
+                    )}
                     {recordedSession && (
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#d1fae5', color: '#065f46', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         ✓ Recorded ({recordedSession.present || 0} Present{recordedSession.left_early_count ? ` · ${recordedSession.left_early_count} Left Early` : ''})
@@ -3934,8 +3975,8 @@ function TeacherHome(){
 }
 
 const DEFAULT_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -4348,8 +4389,16 @@ function Students(){
       const targetSec = sections.find(s => (s.class_id === f.classId || s.classId === f.classId) && s.name.toUpperCase() === curName.toUpperCase());
       if (targetSec) finalSectionId = targetSec.id;
     }
+    if (f.password && f.password.trim() && f.password.trim().length < 6) {
+      alert('Password must be at least 6 characters in length.');
+      return;
+    }
+
     const payload = {
       ...f,
+      is_active: f.is_active !== false,
+      status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+      password: f.password && f.password.trim() ? f.password.trim() : undefined,
       parentSmsNumber: fullParentPhone,
       parent_sms_number: fullParentPhone,
       parentPhone: fullParentPhone,
@@ -4391,13 +4440,15 @@ function Students(){
         title: 'Parent & Contact Coordinates',
         fields: [
           { label: 'Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
-          { label: 'Contact Phone Number', value: f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
-          { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
+          { label: 'Contact Phone Number', value: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
+          // { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
         ]
       },
       {
         title: 'Portal Credentials & Security',
         fields: [
+          { label: 'Account Status', value: f.is_active !== false ? 'Active' : 'Deactive', type: 'pill', color: f.is_active !== false ? 'green' : 'amber' },
+          { label: 'Portal Password', value: editingStudent ? (f.password ? 'Custom password specified' : 'Retain existing password') : (f.password ? 'Initial password set' : 'Auto-invite link'), type: 'pill', color: 'purple' },
           { label: 'Student Portal Email', value: f.studentEmail || f.email || editingStudent?.student_email || '—', type: 'email' },
           { label: 'Parent Portal Email', value: f.parentEmail || editingStudent?.parent_email || '—', type: 'email' },
           { label: 'Login Provisioning', value: f.loginOption || 'STUDENT', type: 'pill', color: 'purple' },
@@ -4410,6 +4461,7 @@ function Students(){
       { label: 'Student Name', value: fullName, color: 'blue' },
       { label: 'Class & Section', value: `${classLabel} · ${secLabel}`, color: 'green' },
       { label: 'Roll No', value: f.rollNumber || editingStudent?.roll_number || 'Auto', color: 'purple' },
+      { label: 'Status', value: f.is_active !== false ? 'Active' : 'Deactive', color: f.is_active !== false ? 'green' : 'amber' },
     ];
 
     const changes = editingStudent ? calculateChanges(
@@ -4419,10 +4471,11 @@ function Students(){
         roll_number: f.rollNumber || editingStudent.roll_number,
         admission_number: f.admissionNumber || editingStudent.admission_number,
         parent_name: f.guardianName || f.parentName,
-        parent_phone: f.parentPhone || f.phone,
+        parent_phone: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone,
         address: f.address,
         student_email: f.studentEmail || f.email,
         parent_email: f.parentEmail,
+        is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
       },
       {
         name: 'Student Name',
@@ -4433,6 +4486,7 @@ function Students(){
         address: 'Residential Address',
         student_email: 'Student Email',
         parent_email: 'Parent Email',
+        is_active: 'Account Status',
       }
     ) : [];
 
@@ -4464,7 +4518,14 @@ function Students(){
     setStudentPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       if (editingStudent) {
-        await api.put(`/students/${editingStudent.id}`, payload);
+        const res = await api.put(`/students/${editingStudent.id}`, payload);
+        const updated = res.data;
+        setRows(prev => prev.map(r => r.id === editingStudent.id ? {
+          ...r,
+          ...updated,
+          is_active: payload.is_active !== false,
+          status: payload.is_active !== false ? 'ACTIVE' : 'INACTIVE'
+        } : r));
         setToastNotice({ type: 'success', message: `Student profile for ${payload.name} updated successfully.` });
       } else {
         const res = await api.post('/students', payload);
@@ -4667,6 +4728,90 @@ function Students(){
     return `${mb} MB`;
   }
 
+  interface ParsedClassResult {
+    valid: boolean;
+    classNumber: number;
+    classId: string;
+    classLabel: string;
+    error?: string;
+  }
+
+  function parseClassValue(rawVal: any, fallbackClass?: string | number): ParsedClassResult {
+    let val = String(rawVal ?? '').trim();
+
+    if (!val && fallbackClass !== undefined && fallbackClass !== null && String(fallbackClass).trim() !== '') {
+      val = String(fallbackClass).trim();
+    }
+
+    if (!val) {
+      return {
+        valid: false,
+        classNumber: 1,
+        classId: 'cls-1',
+        classLabel: '',
+        error: 'Class is required'
+      };
+    }
+
+    // Kindergarten string checks
+    if (/^l\.?kg$/i.test(val) || /^l-kg$/i.test(val) || /^lower\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+    }
+    if (/^u\.?kg$/i.test(val) || /^u-kg$/i.test(val) || /^upper\s*kg$/i.test(val)) {
+      return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+    }
+
+    const clean = val.toLowerCase();
+
+    // Roman Numeral lookup (I to XII)
+    const ROMAN_MAP: Record<string, number> = {
+      i: 1,
+      ii: 2,
+      iii: 3,
+      iv: 4,
+      v: 5,
+      vi: 6,
+      vii: 7,
+      viii: 8,
+      ix: 9,
+      x: 10,
+      xi: 11,
+      xii: 12,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(ROMAN_MAP, clean)) {
+      const num = ROMAN_MAP[clean];
+      return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+    }
+
+    // Numeric string e.g. "10", "Class 10", "Grade 5", "Std 8"
+    const cleanNoPrefix = val.replace(/^(class|grade|std|standard)\s*/i, '').trim();
+    if (/^\d+$/.test(cleanNoPrefix)) {
+      const num = parseInt(cleanNoPrefix, 10);
+      if (num >= 1 && num <= 12) {
+        return { valid: true, classNumber: num, classId: `cls-${num}`, classLabel: `Class ${num}` };
+      }
+    }
+
+    // Numeric classNumber passed directly e.g. -1 (LKG) or 0 (UKG) or 1..12
+    if (typeof rawVal === 'number') {
+      if (rawVal === -1) return { valid: true, classNumber: -1, classId: 'cls-lkg', classLabel: 'L-KG' };
+      if (rawVal === 0) return { valid: true, classNumber: 0, classId: 'cls-ukg', classLabel: 'U-KG' };
+      if (rawVal >= 1 && rawVal <= 12) {
+        return { valid: true, classNumber: rawVal, classId: `cls-${rawVal}`, classLabel: `Class ${rawVal}` };
+      }
+    }
+
+    // Invalid class value
+    return {
+      valid: false,
+      classNumber: 1,
+      classId: 'cls-1',
+      classLabel: val,
+      error: `Invalid Class '${val}'. Expected 1–12, Roman numerals (I–XII), LKG, or UKG.`
+    };
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4711,13 +4856,41 @@ function Students(){
           const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
-          // Class parsing: supports 'L-KG','U-KG','Class 1','1' etc.
-          const rawClass = String(r['Class']||r['Class Number']||r['class_number']||importClass||'').trim();
-          let classId='', classNumber=1, classLabel='';
-          if (/l.?kg/i.test(rawClass))      { classId='cls-lkg'; classNumber=-1; classLabel='L-KG'; }
-          else if (/u.?kg/i.test(rawClass)) { classId='cls-ukg'; classNumber=0; classLabel='U-KG'; }
-          else { classNumber=Number(rawClass.replace(/[^0-9]/g,''))||Number(importClass)||1; classId=`cls-${classNumber}`; classLabel=`Class ${classNumber}`; }
-          const sectionName = String(r['Section']||r['Section Name']||r['section_name']||importSection||'A').trim().toUpperCase();
+          // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
+          const excelClassVal = r['Class'] ?? r['Class Number'] ?? r['class_number'];
+          const parsedCls = parseClassValue(excelClassVal, importClass);
+          const classId = parsedCls.classId;
+          const classNumber = parsedCls.classNumber;
+          const classLabel = parsedCls.classLabel;
+
+          // Section extraction: case-insensitive, whitespace-tolerant, prefix-stripping
+          let rawSecVal: any = undefined;
+          if (r && typeof r === 'object') {
+            for (const k of Object.keys(r)) {
+              const cleanKey = k.trim().toLowerCase();
+              if (['section', 'section name', 'section_name', 'sectionname', 'sec', 'sec_name', 'sec name'].includes(cleanKey)) {
+                if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+                  rawSecVal = r[k];
+                  break;
+                }
+              }
+            }
+          }
+          if (rawSecVal === undefined || rawSecVal === null || String(rawSecVal).trim() === '') {
+            rawSecVal = r['Section'] ?? r['Section Name'] ?? r['section_name'] ?? r['SECTION'] ?? r['section'] ?? r['Sec'] ?? r['sec'];
+          }
+
+          let sectionName = '';
+          if (rawSecVal !== undefined && rawSecVal !== null && String(rawSecVal).trim() !== '') {
+            sectionName = String(rawSecVal).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName && importSection && String(importSection).trim() !== '') {
+            sectionName = String(importSection).trim().replace(/^section\s*/i, '').trim().toUpperCase();
+          }
+          if (!sectionName) {
+            sectionName = 'A';
+          }
+
           const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
           // Per-row validation
@@ -4727,6 +4900,7 @@ function Students(){
           if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
           if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
           if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+          if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
           if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
           if (admissionNumber) seenAdm.add(admissionNumber);
 
@@ -4766,7 +4940,7 @@ function Students(){
       const enrichedRows = validRows.map(r => ({
         ...r,
         session: r.session || importSession || '2025-26',
-        classNumber: r.classNumber || Number(importClass) || 1,
+        classNumber: r.classNumber !== undefined ? r.classNumber : (Number(importClass) || 1),
         sectionName: r.sectionName || importSection || 'A'
       }));
 
@@ -5397,14 +5571,14 @@ function Students(){
             <th>Section</th>
             <th>Student Email</th>
             <th>Parent & Contact</th>
-            <th>Portal Access</th>
+            <th>Status</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && displayedStudents.length === 0 ? (
             <tr>
-              <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px' }}>
                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
@@ -5421,7 +5595,7 @@ function Students(){
               </td>
             </tr>
           ) : displayedStudents.length === 0 ? (
-            <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={12} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
               <td style={{ textAlign: 'center' }}>
@@ -5502,13 +5676,17 @@ function Students(){
                 </div>
               </td>
               <td>
-                {x.student_email || x.email || x.parent_email ? (
-                  <span className="badge active" title={`Student portal login: ${x.student_email || x.email || x.parent_email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: 999, padding: '3px 8px', fontSize: 11 }}>
-                    🎓 Student Portal
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Offline Only</span>
-                )}
+                <span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`} style={{
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: x.is_active !== false ? '#ecfdf5' : '#fef2f2',
+                  color: x.is_active !== false ? '#059669' : '#dc2626',
+                  border: `1px solid ${x.is_active !== false ? '#a7f3d0' : '#fecaca'}`
+                }}>
+                  {x.is_active !== false ? 'ACTIVE' : 'DEACTIVE'}
+                </span>
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
@@ -5545,7 +5723,10 @@ function Students(){
                       gender: x.gender || '',
                       dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
                       loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
-                      sendInviteEmail: true
+                      sendInviteEmail: true,
+                      is_active: x.is_active !== false,
+                      status: x.status || (x.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+                      password: ''
                     });
                     setOpen(true);
                   }}
@@ -5965,6 +6146,39 @@ function Students(){
           />
         </label>
 
+        {editingStudent && (
+          <label>Account Status
+            <select
+              value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+              onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE', status: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', marginTop: 4 }}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Deactive (Inactive)</option>
+            </select>
+          </label>
+        )}
+
+        {/* Student Portal Password & Account Setup Box */}
+        <div className="student-portal-box">
+          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
+            <KeyRound size={14} style={{ color: '#2563eb' }} />
+            {editingStudent ? 'Update Portal Password (Optional)' : 'Portal Password & Setup'}
+          </div>
+          <label style={{ display: 'block', fontSize: 12, margin: '4px 0 10px 0' }} className="student-portal-box-desc">
+            {editingStudent
+              ? 'Leave blank to retain current password, or set a new password for student portal login:'
+              : 'Optional initial login password (leave empty to let student/parent activate via link):'}
+            <input
+              type="password"
+              placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+              value={f.password || ''}
+              onChange={e => setF({ ...f, password: e.target.value })}
+              style={{ marginTop: 6, width: '100%' }}
+            />
+          </label>
+        </div>
+
         {/* Student Portal Login Credentials Section */}
         <div className="student-portal-box">
           <div className="student-portal-box-title">
@@ -6017,7 +6231,16 @@ function Students(){
           </label>
         </div>
 
-        <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => { setOpen(false); setEditingStudent(null); setF({}); }}
+          >
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
+        </div>
       </form>
     </Modal>}
 
@@ -6677,6 +6900,8 @@ function Teachers(){
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
   const [search,setSearch]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
+  const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'valid' | 'errors'>('all');
   const [importing,setImporting]=useState(false);
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
@@ -6939,10 +7164,39 @@ function Teachers(){
   }
 
   // Get allocation summary for a teacher (for table display)
-  function getTeacherAllocSummary(tid: string): string {
+  function getTeacherAllocSummary(teacherOrId: any): string {
+    const tid = typeof teacherOrId === 'object' ? teacherOrId?.id : teacherOrId;
+    const teacherObj = typeof teacherOrId === 'object' ? teacherOrId : rows.find(r => r.id === tid);
+
+    // 1. Check direct allocations in allAssignments
     const allocs = allAssignments.filter(a => a.teacher_id === tid);
-    if (allocs.length === 0) return '—';
-    return allocs.map(a => `${a.subject_name || '?'} (${a.class_number||'?'}-${a.section_name||'?'})`).join(', ');
+    if (allocs.length > 0) {
+      return allocs.map(a => {
+        let clsNum = a.class_number !== undefined && a.class_number !== null ? String(a.class_number).trim() : '';
+        if (clsNum === '-1') clsNum = 'Class-L-KG';
+        else if (clsNum === '0') clsNum = 'Class-U-KG';
+        else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
+        const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
+        const classSec = `${clsNum}${sec}`.trim();
+        return classSec || '—';
+      }).filter(Boolean).join(', ');
+    }
+
+    // 2. Check direct class_name / section_name on teacher profile (e.g. from Excel import)
+    if (teacherObj?.class_name || teacherObj?.class) {
+      let rawCls = String(teacherObj.class_name || teacherObj.class || '').trim();
+      if (rawCls === '-1') rawCls = 'Class-L-KG';
+      else if (rawCls === '0') rawCls = 'Class-U-KG';
+      else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
+      const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
+      return `${rawCls}${sec}`;
+    }
+
+    if (teacherObj?.assigned_classes || teacherObj?.assigned_class) {
+      return teacherObj.assigned_classes || teacherObj.assigned_class;
+    }
+
+    return '—';
   }
 
   async function sendTeacherResetEmail(t: any) {
@@ -7311,6 +7565,25 @@ function Teachers(){
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
   }
 
+  // Helper for case-insensitive and punctuation-stripped Excel row lookup
+  function getExcelCell(r: Record<string, any>, possibleKeys: string[]): string {
+    if (!r || typeof r !== 'object') return '';
+    for (const key of possibleKeys) {
+      if (r[key] !== undefined && r[key] !== null && String(r[key]).trim() !== '') {
+        return String(r[key]).trim();
+      }
+    }
+    const rKeys = Object.keys(r);
+    for (const targetKey of possibleKeys) {
+      const cleanTarget = targetKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const matchedKey = rKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget);
+      if (matchedKey && r[matchedKey] !== undefined && r[matchedKey] !== null && String(r[matchedKey]).trim() !== '') {
+        return String(r[matchedKey]).trim();
+      }
+    }
+    return '';
+  }
+
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -7321,32 +7594,98 @@ function Teachers(){
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        const mapped = json.map((r, idx) => {
-          const saviorNo = String(r["Savior_No"] || r["Savior No"] || r["savior_no"] || r["Employee ID"] || r["Employee Id/Savior_NO"] || r["Emp ID"] || r["employee_id"] || `EMP0${idx + 10}`).trim();
-          let firstName = String(r["Fist Name"] || r["First Name"] || r["firstName"] || '').trim();
-          let lastName = String(r["Last Name"] || r["lastName"] || '').trim();
-          const explicitFullName = String(r["Full Name(Automatically generated)"] || r["Full Name"] || r["Teacher Name"] || r["Name"] || r["name"] || '').trim();
+
+        // Filter out completely blank rows
+        const cleanedJson = json.filter(r => {
+          return Object.values(r).some(v => v !== undefined && v !== null && String(v).trim() !== '');
+        });
+
+        const rowErrors: { row: number; field: string; message: string }[] = [];
+        const seenSavior = new Set<string>();
+        const seenMail = new Set<string>();
+
+        const mapped = cleanedJson.map((r, idx) => {
+          const rowNum = idx + 1;
+          const saviorNo = getExcelCell(r, [
+            'Savior_No', 'SAVIOR_NO', 'Savior No', 'savior_no', 'saviorNo',
+            'Employee ID', 'EMPLOYEE_ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'employee_id', 'ID'
+          ]);
+
+          let firstName = getExcelCell(r, ['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+          let lastName = getExcelCell(r, ['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
+          const explicitFullName = getExcelCell(r, [
+            'Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName',
+            'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name'
+          ]);
+
           if ((!firstName || !lastName) && explicitFullName) {
-            const parts = explicitFullName.split(' ');
+            const parts = explicitFullName.split(/\s+/).filter(Boolean);
             if (!firstName) firstName = parts[0] || '';
             if (!lastName) lastName = parts.slice(1).join(' ') || '';
           }
-          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
-          const email = String(r["Email_id"] || r["Email ID"] || r["Email"] || r["email"] || `teacher${idx + 1}@school.local`).toLowerCase().trim();
-          const mobile = String(r["Mobile"] || r["Phone"] || r["mobile"] || '9876500000').trim();
-          const gender = String(r["Gender"] || r["gender"] || r["Sex"] || r["sex"] || '').trim();
-          const rawDob = r["Date_of_Birth"] || r["Date of Birth"] || r["date_of_birth"] || r["DOB"] || r["dob"] || '';
-          const dob = toDdMmYyyy(rawDob);
-          const designation = String(r["Designation"] || r["designation"] || 'Teacher').trim();
-          const status = String(r["Status"] || r["status"] || 'Active').trim();
-          const className = String(r["Class"] || r["class"] || '').trim();
-          const sectionName = String(r["Section"] || r["section"] || 'A').trim().toUpperCase();
+          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+
+          let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            const cleanId = (saviorNo || `emp${rowNum}`).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            email = `teacher.${cleanId}@school.local`;
+          }
+
+          const rawMobile = getExcelCell(r, ['Mobile', 'MOBILE', 'mobile', 'Phone', 'PHONE', 'phone', 'Contact']).replace(/[^0-9]/g, '');
+          const mobile = rawMobile || '9876500000';
+          let rawGender = getExcelCell(r, ['Gender', 'GENDER', 'gender', 'Sex', 'SEX', 'sex', 'Gender (M/F)', 'Gender(M/F)', 'M/F', 'MF', 'Sex/Gender', 'Gen']);
+          if (!rawGender) {
+            const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
+            if (gk && r[gk]) rawGender = String(r[gk]).trim();
+          }
+          let gender = '';
+          if (rawGender) {
+            if (/^f/i.test(rawGender)) gender = 'Female';
+            else if (/^m/i.test(rawGender)) gender = 'Male';
+            else gender = rawGender;
+          }
+          const rawDob = getExcelCell(r, ['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
+          const dob = rawDob ? toDdMmYyyy(rawDob) : '';
+
+          const designation = getExcelCell(r, [
+            'Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title'
+          ]) || 'Teacher';
+
+          const rawStatus = getExcelCell(r, ['Status', 'STATUS', 'status']);
+          const status = (rawStatus === 'T' || /active/i.test(rawStatus) || !rawStatus) ? 'Active' : 'Inactive';
+
+          const className = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+          const sectionName = (getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+
+          // Field validations
+          const rowErrs: { row: number; field: string; message: string }[] = [];
+          if (!name) {
+            rowErrs.push({ row: rowNum, field: 'Full Name', message: 'Name is required' });
+          }
+          if (!saviorNo) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
+          } else if (seenSavior.has(saviorNo)) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else {
+            seenSavior.add(saviorNo);
+          }
+          if (email && seenMail.has(email)) {
+            rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file` });
+          } else if (email) {
+            seenMail.add(email);
+          }
+          if (rawMobile && rawMobile.length !== 10) {
+            rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
+          }
+
+          rowErrors.push(...rowErrs);
+
           return {
-            saviorNo,
-            employeeId: saviorNo,
+            saviorNo: saviorNo || `EMP0${idx + 10}`,
+            employeeId: saviorNo || `EMP0${idx + 10}`,
             firstName,
             lastName,
-            name,
+            name: name || `Faculty ${rowNum}`,
             email,
             mobile,
             gender,
@@ -7356,12 +7695,16 @@ function Teachers(){
             class: className,
             section: sectionName,
             emailStatus: 'Pending',
-            _origRowIndex: idx + 1
+            _origRowIndex: rowNum,
+            _errors: rowErrs
           };
         });
+
+        setImportErrors(rowErrors);
         setPreviewRows(mapped);
         setImportPreviewPage(1);
         setImportPreviewSearch('');
+        setImportPreviewErrorFilter('all');
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
       }
@@ -7371,14 +7714,16 @@ function Teachers(){
 
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
-    const invalidRow = previewRows.find(r => !r.name || !r.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email) || !r.saviorNo);
-    if (invalidRow) {
-      alert(`Cannot import file: Row #${invalidRow._origRowIndex || 1} has invalid or missing name, email, or Employee ID.\n\nAll rows must be valid before importing. No partial data will be stored.`);
+    const errorRows = previewRows.filter(r => r._errors && r._errors.length > 0);
+    if (errorRows.length > 0) {
+      alert(`Cannot import file: ${errorRows.length} record(s) have validation errors.\n\nPlease fix the highlighted fields in the preview table or correct your spreadsheet and re-upload.`);
+      setImportPreviewErrorFilter('errors');
+      setImportPreviewPage(1);
       return;
     }
     setImporting(true);
     try {
-      const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
+      const res = await api.post('/teachers/bulk-import', { teachers: previewRows }, { timeout: 300000 });
       if (previewRows.length > 0) {
         const lastRow = previewRows[previewRows.length - 1];
         const teacherName = lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Teacher';
@@ -7393,19 +7738,39 @@ function Teachers(){
       alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
       setPreviewRows([]);
+      setImportErrors([]);
       setImportPreviewPage(1);
       setImportPreviewSearch('');
+      setImportPreviewErrorFilter('all');
       load();
     } catch (err: any) {
+      const serverErrs = err?.response?.data?.errors;
+      if (serverErrs && Array.isArray(serverErrs) && serverErrs.length > 0) {
+        setImportErrors(serverErrs);
+        setPreviewRows(prev => prev.map(r => {
+          const matched = serverErrs.filter(se => se.row === r._origRowIndex);
+          return {
+            ...r,
+            _errors: matched.length > 0 ? matched : r._errors
+          };
+        }));
+        setImportPreviewErrorFilter('errors');
+        setImportPreviewPage(1);
+      }
       const msg = err?.response?.data?.message || err?.message || 'Failed to import teachers';
-      alert(`Import Failed: ${msg}\n\nThe entire operation was cancelled and no faculty records were saved in the database.`);
+      alert(`Import Failed: ${msg}\n\nPlease check the highlighted error records below.`);
     } finally {
       setImporting(false);
     }
   }
 
   // Teacher Bulk Import Preview Pagination & Filtering
+  const teacherValidCount = previewRows.filter(r => !r._errors?.length).length;
+  const teacherErrorCount = previewRows.filter(r => r._errors?.length).length;
+
   const filteredTeacherPreviewRows = previewRows.filter((r) => {
+    if (importPreviewErrorFilter === 'errors' && (!r._errors || r._errors.length === 0)) return false;
+    if (importPreviewErrorFilter === 'valid' && (r._errors && r._errors.length > 0)) return false;
     if (!importPreviewSearch.trim()) return true;
     const q = importPreviewSearch.toLowerCase();
     const target = [
@@ -7742,7 +8107,7 @@ function Teachers(){
               </td>
               <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
-                <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x.id)}>
+                <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
                   <b>{x.name}</b>
                 </TeacherProfileHoverCard>
               </td>
@@ -7769,7 +8134,7 @@ function Teachers(){
                 <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
               </td>
               <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span title={getTeacherAllocSummary(x.id)}>{getTeacherAllocSummary(x.id)}</span>
+                <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
               </td>
               <td>{x.email}</td>
               <td>{x.mobile || '—'}</td>
@@ -8273,42 +8638,142 @@ function Teachers(){
               </span>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexShrink: 0 }}>
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-              Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
-            </p>
-            <button 
-              type="button" 
-              className="template-download-btn"
-              onClick={downloadTemplate}
-            >
-              <Download size={13} /> Download Sample Template (.xlsx)
-            </button>
-          </div>
+          {previewRows.length === 0 ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexShrink: 0 }}>
+                <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                  Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
+                </p>
+                <button 
+                  type="button" 
+                  className="template-download-btn"
+                  onClick={downloadTemplate}
+                >
+                  <Download size={13} /> Download Sample Template (.xlsx)
+                </button>
+              </div>
 
-          <label className="dropzone" style={{ flexShrink: 0, padding: '30px 20px', maxWidth: 760, width: '100%', margin: '0 auto 16px' }}>
-            <input 
-              type="file" 
-              accept=".xlsx, .xls, .csv" 
-              onChange={handleFile}
-              style={{ display: 'none' }}
-            />
-            <div className="dropzone-icon">
-              <UploadCloud size={28} />
+              <label className="dropzone" style={{ flexShrink: 0, padding: '30px 20px', maxWidth: 760, width: '100%', margin: '0 auto 16px' }}>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  onChange={handleFile}
+                  style={{ display: 'none' }}
+                />
+                <div className="dropzone-icon">
+                  <UploadCloud size={28} />
+                </div>
+                <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
+                <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
+              </label>
+            </>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                Review parsed faculty roster below before confirming import.
+              </p>
+              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 6 }}>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  onChange={handleFile} 
+                  style={{ display: 'none' }} 
+                />
+                <UploadCloud size={14} /> Upload Different File
+              </label>
             </div>
-            <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
-            <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-          </label>
+          )}
 
           {previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginTop: 8 }}>
-              {/* ── TOP TOOLBAR: Search, Page Size & Clear ── */}
+              {/* ── ERROR / VALIDITY SUMMARY BANNER ── */}
+              <div style={{
+                marginBottom: 10,
+                padding: '10px 16px',
+                background: teacherErrorCount > 0 ? '#fffbeb' : '#f0fdf4',
+                borderRadius: 8,
+                border: `1px solid ${teacherErrorCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                fontSize: 13,
+                color: teacherErrorCount > 0 ? '#92400e' : '#166534',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexShrink: 0
+              }}>
+                <span>
+                  {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
+                  {teacherErrorCount > 0 && (
+                    <> · <b style={{ color: '#dc2626' }}>{teacherErrorCount} with validation errors</b></>
+                  )}
+                </span>
+                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#b45309' : '#15803d' }}>
+                  {teacherErrorCount > 0
+                    ? 'Review and resolve highlighted errors below before importing'
+                    : 'All records valid and ready for database import'}
+                </span>
+              </div>
+
+              {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Clear ── */}
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
                   <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
-                    {previewRows.length} faculty ready to import
+                    {previewRows.length} records
                   </span>
+
+                  {/* Filter tabs if validation errors exist */}
+                  {teacherErrorCount > 0 && (
+                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
+                        }}
+                      >
+                        All ({previewRows.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('valid'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
+                        }}
+                      >
+                        Valid ({teacherValidCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setImportPreviewErrorFilter('errors'); setImportPreviewPage(1); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
+                        }}
+                      >
+                        ⚠ Errors ({teacherErrorCount})
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -8380,7 +8845,7 @@ function Teachers(){
                     type="button" 
                     className="btn-secondary" 
                     style={{ fontSize: 12, padding: '5px 12px' }}
-                    onClick={() => { setPreviewRows([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
+                    onClick={() => { setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
                   >
                     Clear
                   </button>
@@ -8410,20 +8875,38 @@ function Teachers(){
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
                         <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
-                          No teachers match the current search filter.
+                          No teachers match the current search or error filter.
                         </td>
                       </tr>
                     ) : (
                       displayedTeacherPreviewRows.map((r, i) => {
                         const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
+                        const hasErr = Boolean(r._errors?.length);
                         return (
-                          <tr key={teacherStartIdx + i}>
-                            <td style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center' }}>{rowNum}</td>
-                            <td><code>{r.saviorNo || r.employeeId}</code></td>
+                          <tr key={teacherStartIdx + i} style={{ background: hasErr ? '#fef2f2' : undefined, outline: hasErr ? '1px solid #fecaca' : undefined }}>
+                            <td style={{ color: hasErr ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
+                              {hasErr ? `⚠ ${rowNum}` : rowNum}
+                            </td>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? '#dc2626' : undefined }}>
+                              <code>{r.saviorNo || r.employeeId}</code>
+                              {r._errors?.filter((e: any) => e.field === 'Savior_No').map((e: any, j: number) => (
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                              ))}
+                            </td>
                             <td>{r.firstName || '—'}</td>
                             <td>{r.lastName || '—'}</td>
-                            <td><b>{r.name}</b></td>
-                            <td>{r.email}</td>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
+                              <b>{r.name}</b>
+                              {r._errors?.filter((e: any) => e.field === 'Full Name' || e.field === 'First Name').map((e: any, j: number) => (
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                              ))}
+                            </td>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? '#dc2626' : undefined }}>
+                              {r.email}
+                              {r._errors?.filter((e: any) => e.field === 'Email_id' || e.field === 'Email ID').map((e: any, j: number) => (
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                              ))}
+                            </td>
                             <td>
                               {r.gender ? (
                                 <span style={{
@@ -8543,17 +9026,27 @@ function Teachers(){
                 <button 
                   type="button" 
                   className="btn-secondary" 
-                  onClick={() => { setImportOpen(false); setPreviewRows([]); setImportPreviewPage(1); }}
+                  onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}
                 >
                   Cancel
                 </button>
                 <button 
                   type="button" 
                   onClick={submitBulkImport}
-                  disabled={importing}
-                  style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
+                  disabled={importing || previewRows.length === 0}
+                  style={{
+                    background: teacherErrorCount > 0 ? '#ef4444' : '#10b981',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    padding: '8px 20px',
+                    cursor: (importing || previewRows.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
                 >
-                  {importing ? 'Importing Teachers...' : `Confirm & Import ${previewRows.length} Teachers`}
+                  {importing
+                    ? 'Importing Teachers...'
+                    : teacherErrorCount > 0
+                      ? `Fix ${teacherErrorCount} Error(s) Before Import`
+                      : `Confirm & Import ${teacherValidCount} Teachers`}
                 </button>
               </div>
             </div>
@@ -8694,38 +9187,44 @@ function Teachers(){
 }
 
 /* ────── Classes ────── */
+function formatClassTitle(classNumber: any, label?: string): string {
+  const num = Number(classNumber);
+  if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber))) {
+    return 'Class-L-KG';
+  }
+  if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber))) {
+    return 'Class-U-KG';
+  }
+  if (!isNaN(num) && num > 0) {
+    return `Class ${num}`;
+  }
+  if (label && !label.includes('-1') && !label.includes('Class 0')) {
+    return label;
+  }
+  return classNumber ? `Class ${classNumber}` : 'Class';
+}
+
 function Classes(){
   const {user}=useAuth();
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
-  const [n,setN]=useState('');
   const [cid,setCid]=useState('');
   const [sn,setSn]=useState('');
-  const [addingClass,setAddingClass]=useState(false);
   const [addingSection,setAddingSection]=useState(false);
 
-  // Preview state for Class and Section
-  const [classPreview, setClassPreview] = useState<{
-    isOpen: boolean;
-    classNumber?: number;
-    loading: boolean;
-    error: string | null;
-  }>({ isOpen: false, loading: false, error: null });
-
-  const [sectionPreview, setSectionPreview] = useState<{
-    isOpen: boolean;
-    classId?: string;
-    className?: string;
-    sectionName?: string;
-    loading: boolean;
-    error: string | null;
-  }>({ isOpen: false, loading: false, error: null });
+  function getSectionCount(classItem: any): number {
+    const matching = s.filter(sec => 
+      sec.class_id === classItem.id || 
+      (classItem.class_number !== undefined && Number(sec.class_number) === Number(classItem.class_number))
+    );
+    return matching.length > 0 ? matching.length : (classItem.section_count || 2);
+  }
 
   async function load(){
     try {
       const [cr, sr]=await Promise.all([api.get('/classes'), api.get('/sections')]);
-      const classesData = cr.data || [];
-      const sectionsData = sr.data || [];
+      const classesData = [...(cr.data || [])].sort((a: any, b: any) => Number(a.class_number ?? 0) - Number(b.class_number ?? 0));
+      const sectionsData = [...(sr.data || [])].sort((a: any, b: any) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       setC(classesData);
       setS(sectionsData);
       if (classesData.length > 0 && !cid) {
@@ -8738,167 +9237,76 @@ function Classes(){
 
   useEffect(()=>{load()},[]);
 
-  function initiateAddClass(e?: React.FormEvent){
-    if (e) e.preventDefault();
-    if (!n) {
-      alert('Validation Error: Please select a class number to add.');
-      return;
-    }
-    setClassPreview({
-      isOpen: true,
-      classNumber: Number(n),
-      loading: false,
-      error: null
-    });
-  }
-
-  async function executeConfirmAddClass(){
-    if (!classPreview.classNumber) return;
-    setClassPreview(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const res = await api.post('/classes', { classNumber: classPreview.classNumber });
-      const created = res.data;
-      setC(prev => {
-        const filtered = prev.filter(x => x.class_number !== created.class_number);
-        return [...filtered, created].sort((a,b) => a.class_number - b.class_number);
-      });
-      setN('');
-      setClassPreview(prev => ({ ...prev, isOpen: false, loading: false }));
-      load();
-    } catch(err:any){
-      setClassPreview(prev => ({
-        ...prev,
-        loading: false,
-        error: err?.response?.data?.message || 'Could not add class'
-      }));
-    }
-  }
-
-  function initiateAddSection(e?: React.FormEvent){
+  async function handleAddSection(e?: React.FormEvent){
     if (e) e.preventDefault();
     const targetCid = cid || c[0]?.id;
     if (!targetCid) {
       alert('Validation Error: Please select a class first.');
       return;
     }
-    if (!sn.trim()) {
+    const cleanSec = sn.trim().toUpperCase();
+    if (!cleanSec) {
       alert('Validation Error: Please enter a section name (e.g. C).');
       return;
     }
-    const targetClass = c.find(x => x.id === targetCid);
-    setSectionPreview({
-      isOpen: true,
-      classId: targetCid,
-      className: targetClass ? `Class ${targetClass.class_number}` : 'Selected Class',
-      sectionName: sn.trim().toUpperCase(),
-      loading: false,
-      error: null
-    });
-  }
-
-  async function executeConfirmAddSection(){
-    if (!sectionPreview.classId || !sectionPreview.sectionName) return;
-    setSectionPreview(prev => ({ ...prev, loading: true, error: null }));
+    setAddingSection(true);
     try {
-      const res = await api.post('/sections', { classId: sectionPreview.classId, name: sectionPreview.sectionName });
+      const res = await api.post('/sections', { classId: targetCid, name: cleanSec });
       const created = res.data;
-      setS(prev => [...prev, created].sort((a,b) => a.class_number - b.class_number || a.name.localeCompare(b.name)));
-      setSn('');
-      setSectionPreview(prev => ({ ...prev, isOpen: false, loading: false }));
-      load();
-    } catch(err:any){
-      setSectionPreview(prev => ({
-        ...prev,
-        loading: false,
-        error: err?.response?.data?.message || 'Could not add section'
+      setS(prev => {
+        const filtered = prev.filter(x => 
+          !( (x.class_id === created.class_id || Number(x.class_number) === Number(created.class_number)) && 
+             String(x.name || x.section_name).toUpperCase() === cleanSec )
+        );
+        return [...filtered, created].sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
+      });
+      setC(prev => prev.map(cls => {
+        if (cls.id === targetCid || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
+          return { ...cls, section_count: Math.max((cls.section_count || 2), (cls.section_count || 2) + 1) };
+        }
+        return cls;
       }));
+      setSn('');
+      await load();
+    } catch(err: any){
+      alert(err?.response?.data?.message || 'Could not add section');
+    } finally {
+      setAddingSection(false);
     }
   }
 
   return <Layout>
-    <PageHead title="Classes & Sections" sub="Build Classes 1–12 and their sections."/>
+    <PageHead title="Classes & Sections" sub="Manage school classes and their sections."/>
     <div className="two-col">
       <div className="panel">
-        <h3>Add class</h3>
-        <form className="inline" onSubmit={initiateAddClass}>
-          <select value={n} onChange={e=>setN(e.target.value)}>
-            <option value="">Select Class</option>
-            {[1,2,3,4,5,6,7,8,9,10,11,12].map(x=><option key={x} value={x}>Class {x}</option>)}
-          </select>
-          <button type="submit" disabled={addingClass}>{addingClass ? 'Adding...' : 'Add Class'}</button>
-        </form>
-        <div className="list">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', marginBottom: 10 }}>
+          <h3 style={{ margin: 0 }}>All Class</h3>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>No. of sections</span>
+        </div>
+        <div className="list" style={{ marginTop: 0 }}>
           {c.map(x=><div className="list-row" key={x.id}>
-            <b>Class {x.class_number}</b>
-            <span>{x.section_count || 0} sections</span>
+            <b>{formatClassTitle(x.class_number, x.label)}</b>
+            <span>{getSectionCount(x)} sections</span>
           </div>)}
         </div>
       </div>
 
       <div className="panel">
         <h3>Add section</h3>
-        <form className="inline" onSubmit={initiateAddSection}>
+        <form className="inline" onSubmit={handleAddSection}>
           <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
-            {c.map(x=><option key={x.id} value={x.id}>Class {x.class_number}</option>)}
+            {c.map(x=><option key={x.id} value={x.id}>{formatClassTitle(x.class_number, x.label)}</option>)}
           </select>
           <input placeholder="Section (e.g. C)" value={sn} onChange={e=>setSn(e.target.value)}/>
           <button type="submit" disabled={addingSection}>{addingSection ? 'Adding...' : 'Add Section'}</button>
         </form>
         <div className="list">
           {s.map(x=><div className="list-row" key={x.id}>
-            <b>Class {x.class_number} — Section {x.name}</b>
+            <b>{formatClassTitle(x.class_number, x.label)} — Section {x.name}</b>
           </div>)}
         </div>
       </div>
     </div>
-
-    {/* Universal Preview Modal for Adding Class */}
-    <UniversalPreviewModal
-      isOpen={classPreview.isOpen}
-      onClose={() => setClassPreview(prev => ({ ...prev, isOpen: false }))}
-      onEdit={() => setClassPreview(prev => ({ ...prev, isOpen: false }))}
-      onConfirm={executeConfirmAddClass}
-      title={`Confirm Class Creation — Class ${classPreview.classNumber || ''}`}
-      subtitle="Verify class grade level before provisioning"
-      operationType="create"
-      confirmText="Confirm & Create Class"
-      editText="Back to Edit"
-      sections={[
-        {
-          title: 'Class Grade Level',
-          fields: [
-            { label: 'Grade / Class', value: `Class ${classPreview.classNumber}`, color: 'blue' },
-            { label: 'Default Provisioning', value: 'Will auto-generate Section A & Section B', color: 'green' }
-          ]
-        }
-      ]}
-      loading={classPreview.loading}
-      error={classPreview.error}
-    />
-
-    {/* Universal Preview Modal for Adding Section */}
-    <UniversalPreviewModal
-      isOpen={sectionPreview.isOpen}
-      onClose={() => setSectionPreview(prev => ({ ...prev, isOpen: false }))}
-      onEdit={() => setSectionPreview(prev => ({ ...prev, isOpen: false }))}
-      onConfirm={executeConfirmAddSection}
-      title={`Confirm Section Creation — Section ${sectionPreview.sectionName || ''}`}
-      subtitle="Verify class assignment before creating section"
-      operationType="create"
-      confirmText="Confirm & Create Section"
-      editText="Back to Edit"
-      sections={[
-        {
-          title: 'Section Assignment Details',
-          fields: [
-            { label: 'Assigned Class', value: sectionPreview.className, color: 'blue' },
-            { label: 'Section Letter / Name', value: `Section ${sectionPreview.sectionName}`, color: 'green' }
-          ]
-        }
-      ]}
-      loading={sectionPreview.loading}
-      error={sectionPreview.error}
-    />
   </Layout>
 }
 
@@ -8912,6 +9320,14 @@ function Subjects(){
   const [subjectPreview, setSubjectPreview] = useState<{
     isOpen: boolean;
     name?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
+  const [deleteSubjectDialog, setDeleteSubjectDialog] = useState<{
+    isOpen: boolean;
+    subjectId?: string;
+    subjectName?: string;
     loading: boolean;
     error: string | null;
   }>({ isOpen: false, loading: false, error: null });
@@ -8960,6 +9376,32 @@ function Subjects(){
     }
   }
 
+  function promptDeleteSubject(sub: any) {
+    setDeleteSubjectDialog({
+      isOpen: true,
+      subjectId: sub.id,
+      subjectName: sub.name,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmDeleteSubject() {
+    if (!deleteSubjectDialog.subjectId) return;
+    setDeleteSubjectDialog(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await api.delete(`/subjects/${deleteSubjectDialog.subjectId}`);
+      setRows(prev => prev.filter(r => r.id !== deleteSubjectDialog.subjectId));
+      setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setDeleteSubjectDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not delete subject'
+      }));
+    }
+  }
+
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
@@ -8968,9 +9410,31 @@ function Subjects(){
         <button type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add subject'}</button>
       </form>
       <div className="list">
-        {rows.map(x=><div className="list-row" key={x.id}>
+        {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
+          <button
+            type="button"
+            className="table-action-btn danger"
+            onClick={() => promptDeleteSubject(x)}
+            title={`Delete ${x.name}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 12.5
+            }}
+          >
+            <Trash2 size={13} />
+            <span>Delete</span>
+          </button>
         </div>)}
+        {rows.length === 0 && (
+          <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>No subjects added yet.</p>
+        )}
       </div>
     </div>
 
@@ -8996,6 +9460,24 @@ function Subjects(){
       ]}
       loading={subjectPreview.loading}
       error={subjectPreview.error}
+    />
+
+    {/* Destructive Confirm Modal for Subject Deletion */}
+    <DestructiveConfirmModal
+      isOpen={deleteSubjectDialog.isOpen}
+      onClose={() => setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmDeleteSubject}
+      title={`Confirm Deletion — ${deleteSubjectDialog.subjectName || 'Subject'}`}
+      entityName={deleteSubjectDialog.subjectName || ''}
+      entityType="Subject"
+      details={[
+        { label: 'Subject Name', value: deleteSubjectDialog.subjectName || '—' },
+        { label: 'Impact', value: 'Will remove subject from class routines & schedules' }
+      ]}
+      warningMessage="Deleting this subject will remove it from all class routines and unassign it from timetable schedules. This action cannot be reversed."
+      confirmText="Confirm & Delete Subject"
+      loading={deleteSubjectDialog.loading}
+      error={deleteSubjectDialog.error}
     />
   </Layout>
 }
@@ -9408,8 +9890,23 @@ function Attendance(){
     api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
       .then(res => {
         const list = deduplicateStudents(res.data || []);
-        setStudents(list);
-        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+        if (list.length > 0) {
+          setStudents(list);
+          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+        } else {
+          // Primary endpoint returned empty array (200 OK) -> execute fallback to /students
+          api.get('/students').then(fallbackRes => {
+            const matched = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
+              (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
+              (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
+            ));
+            setStudents(matched);
+            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
+          }).catch(() => {
+            setStudents([]);
+            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, []);
+          });
+        }
       })
       .catch(() => {
         // Fallback to /students

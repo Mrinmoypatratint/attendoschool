@@ -37,7 +37,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name
+      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url
        FROM students st
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
@@ -218,6 +218,8 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     classNumber: st.class_number ?? 0,
     sectionName: st.section_name || '',
     schoolName: st.school_name || '',
+    schoolPhotoUrl: st.school_photo_url || '',
+    school_photo_url: st.school_photo_url || '',
     parentName: st.parent_name || '',
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
@@ -855,6 +857,8 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       rollNumber: st.roll_number || '',
       admissionNumber: st.admission_number || '',
       schoolName: st.school_name || '',
+      schoolPhotoUrl: st.school_photo_url || '',
+      school_photo_url: st.school_photo_url || '',
       avatarUrl: st.photo_url || ''
     },
     kpis: {

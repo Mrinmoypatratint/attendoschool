@@ -59,12 +59,12 @@ export const pool: Pool = (isPostgresConfigured
     connectionString: pgConnectionString,
     ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
     min: 2,
-    max: Math.min(Number(process.env.PG_POOL_MAX || 10), 15),
-    idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 15000,
+    max: Math.max(10, Math.min(Number(process.env.PG_POOL_MAX || 25), 50)),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 20000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
-    statement_timeout: 15000,
+    statement_timeout: 30000,
     allowExitOnIdle: false,
   })
   : new DisabledPool() as unknown as Pool);

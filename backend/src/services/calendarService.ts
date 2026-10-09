@@ -92,6 +92,7 @@ export async function ensureCalendarTables(): Promise<void> {
     tablesInitialized = true;
   } catch (err: any) {
     console.error('[CalendarService] Failed to ensure calendar tables:', err.message);
+    tablesInitialized = true;
   }
 }
 
@@ -138,7 +139,8 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
     updated_at: new Date().toISOString()
   };
 
-  if (!isPostgresConfigured) {
+  const isSchoolUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(schoolId));
+  if (!isPostgresConfigured || !isSchoolUuid) {
     return memWorkingDays[schoolId] || defaultConfig;
   }
 
@@ -159,6 +161,13 @@ export async function getSchoolWorkingDays(schoolId: string): Promise<SchoolWork
         saturday_rule: row.saturday_rule || 'WORKING',
         updated_at: row.updated_at
       };
+    }
+
+    // Check if school exists in schools table before inserting default record to satisfy FK
+    const schoolExists = await pool.query('SELECT id FROM schools WHERE id = $1 LIMIT 1', [schoolId]);
+    if (!schoolExists.rowCount) {
+      memWorkingDays[schoolId] = defaultConfig;
+      return defaultConfig;
     }
 
     // Insert default record if not exists
@@ -418,19 +427,92 @@ export async function updateSchoolHoliday(
 }
 
 /**
- * Delete a holiday record
+ * Add or upsert a date range of school holidays (inclusive from `from_date` to `to_date`)
  */
-export async function deleteSchoolHoliday(schoolId: string, holidayId: string): Promise<boolean> {
+export async function addSchoolHolidayRange(
+  schoolId: string,
+  data: {
+    name: string;
+    from_date: string; // YYYY-MM-DD
+    to_date: string;   // YYYY-MM-DD
+    holiday_type?: 'GAZETTED' | 'NATIONAL' | 'REGIONAL' | 'INSTITUTIONAL' | 'FESTIVAL';
+    description?: string;
+  }
+): Promise<SchoolHoliday[]> {
+  await ensureCalendarTables();
+
+  const cleanFrom = data.from_date.trim();
+  const cleanTo = data.to_date.trim();
+  const startUtc = parseYMDToUtc(cleanFrom);
+  const endUtc = parseYMDToUtc(cleanTo);
+
+  if (startUtc > endUtc) {
+    throw new Error(`From date (${cleanFrom}) cannot be after To date (${cleanTo}).`);
+  }
+
+  const diffDays = Math.round((endUtc.getTime() - startUtc.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  if (diffDays > 366) {
+    throw new Error(`Date range (${diffDays} days) cannot exceed 366 days.`);
+  }
+
+  const holidayType = data.holiday_type || 'GAZETTED';
+  const name = data.name.trim();
+  const desc = data.description || '';
+
+  const results: SchoolHoliday[] = [];
+  const current = new Date(startUtc.getTime());
+
+  while (current <= endUtc) {
+    const curDateStr = formatDateYMD(current);
+    const item = await addSchoolHoliday(schoolId, {
+      name,
+      holiday_date: curDateStr,
+      holiday_type: holidayType,
+      description: desc
+    });
+    results.push(item);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return results;
+}
+
+/**
+ * Delete a holiday record, optionally removing all dates in the series with matching name
+ */
+export async function deleteSchoolHoliday(
+  schoolId: string,
+  holidayId: string,
+  deleteAllMatchingName: boolean = false
+): Promise<boolean> {
   await ensureCalendarTables();
 
   if (!isPostgresConfigured) {
     const list = memHolidays[schoolId] || [];
-    const idx = list.findIndex(h => h.id === holidayId);
-    if (idx >= 0) {
+    const target = list.find(h => h.id === holidayId);
+    if (!target) return false;
+    if (deleteAllMatchingName) {
+      memHolidays[schoolId] = list.filter(h => h.name !== target.name);
+      return true;
+    } else {
+      const idx = list.findIndex(h => h.id === holidayId);
       list.splice(idx, 1);
       return true;
     }
-    return false;
+  }
+
+  if (deleteAllMatchingName) {
+    const holRes = await pool.query(
+      `SELECT name FROM school_holidays WHERE id = $1 AND school_id = $2`,
+      [holidayId, schoolId]
+    );
+    if (holRes.rows.length === 0) return false;
+    const holName = holRes.rows[0].name;
+    const res = await pool.query(
+      `DELETE FROM school_holidays WHERE school_id = $1 AND name = $2`,
+      [schoolId, holName]
+    );
+    return (res.rowCount || 0) > 0;
   }
 
   const res = await pool.query(

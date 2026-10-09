@@ -243,7 +243,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
     let q;
     if (isTeacher) {
       q = await pool.query(
-        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                 p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
@@ -260,7 +260,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
       );
     } else {
       q = await pool.query(
-        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+        `SELECT e.id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                 p.start_time, p.end_time, e.day_of_week, e.room_name AS room,
                 c.class_number, s.name AS section_name, sub.name AS subject_name,
                 p.name AS period_name, p.period_number
@@ -328,6 +328,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
             room_name: e.room_name || e.roomName || e.room || '',
             teacher_id: e.teacher_id || e.teacherId,
             teacher_name: e.teacher_name || e.teacherName,
+            substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
             day_of_week: entryDay
           });
         });
@@ -367,6 +368,7 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
     room_name: e.room_name || '',
     teacher_id: e.teacher_id,
     teacher_name: e.teacher_name,
+    substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
     day_of_week: e.day_of_week
   }));
 
@@ -402,7 +404,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
       let q;
       if (isTeacher) {
         q = await pool.query(
-          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                   p.start_time, p.end_time, e.day_of_week, e.room_name AS room, e.room_name,
                   c.class_number, s.name AS section_name, sub.name AS subject_name,
                   p.name AS period_name, p.period_number, p.id AS period_id, u.name AS teacher_name
@@ -420,7 +422,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
         );
       } else {
         q = await pool.query(
-          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id,
+          `SELECT e.id, e.id AS timetable_entry_id, e.class_id, e.section_id, e.subject_id, e.teacher_id, e.substitute_teacher_id,
                   p.start_time, p.end_time, e.day_of_week, e.room_name AS room, e.room_name,
                   c.class_number, s.name AS section_name, sub.name AS subject_name,
                   p.name AS period_name, p.period_number, p.id AS period_id, u.name AS teacher_name
@@ -477,6 +479,7 @@ r.get('/routine/week', ...teacher, async (req: AuthRequest, res) => {
             room_name: e.room_name || e.roomName || e.room || '',
             teacher_id: e.teacher_id || e.teacherId,
             teacher_name: e.teacher_name || e.teacherName,
+            substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
             day_of_week: Number(e.day_of_week ?? e.dayOfWeek)
           });
         });
@@ -520,8 +523,21 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId;
   const classParam = String(req.params.classId || req.query.classId || req.query.class_id || req.query.class_number || '');
   const secId = String(req.params.sectionId || req.query.sectionId || req.query.section_id || req.query.section_name || '');
-  const secParam = secId.toLowerCase();
-  const cleanSec = secParam.replace(/section\s*/i, '').trim();
+
+  // Extract numeric class number safely from synthetic IDs (e.g. ${sid}-cls-10 -> 10) or plain numbers
+  let classNum: number | null = null;
+  const clsMatch = classParam.match(/cls-(-?\d+)/i) || classParam.match(/(-?\d+)$/);
+  const rawClassNum = clsMatch ? parseInt(clsMatch[1], 10) : parseInt(classParam.replace(/\D/g, ''), 10);
+  if (Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767) {
+    classNum = rawClassNum;
+  }
+
+  // Extract clean section name from synthetic IDs (e.g. ${sid}-sec-cls-10-a -> A) or plain section names
+  let cleanSec = secId.trim();
+  if (cleanSec.includes('-sec-') || cleanSec.startsWith('sec-')) {
+    cleanSec = cleanSec.replace(/^.*?-sec-(?:cls-)?(?:\d+|-1|0)-?/i, '').replace(/^sec-/i, '');
+  }
+  cleanSec = cleanSec.replace(/section\s*/i, '').trim().toUpperCase() || 'A';
 
   const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}`;
   const cached = fastCache.get<any>(cacheKey);
@@ -532,17 +548,18 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
-      const classNum = parseInt(classParam.replace(/\D/g, ''), 10) || 10;
+      const classUuidVal = isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000';
+      const secUuidVal = isSecUuid ? secId : '00000000-0000-0000-0000-000000000000';
 
       const q = await pool.query(
         `SELECT id, name, roll_number, admission_number, parent_sms_number, email AS student_email, parent_email
          FROM students
-         WHERE school_id=$1
-           AND (${isClassUuid ? 'class_id=$2' : 'FALSE'} OR class_id IN (SELECT id FROM classes WHERE school_id=$1 AND class_number=$3))
-           AND (${isSecUuid ? 'section_id=$4' : 'FALSE'} OR section_id IN (SELECT id FROM sections WHERE school_id=$1 AND LOWER(name)=$5))
+         WHERE school_id = $1::uuid
+           AND (class_id = $2::uuid OR ($3::smallint IS NOT NULL AND class_id IN (SELECT id FROM classes WHERE school_id = $1::uuid AND class_number = $3::smallint)))
+           AND (section_id = $4::uuid OR section_id IN (SELECT id FROM sections WHERE school_id = $1::uuid AND (UPPER(name) = UPPER($5) OR LOWER(name) = LOWER($6))))
            AND is_active
          ORDER BY roll_number`,
-        [sid, isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000', classNum, isSecUuid ? secId : '00000000-0000-0000-0000-000000000000', cleanSec]
+        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase()]
       );
       if (q.rows) {
         const uniqueStudents = new Map<string, any>();
@@ -726,10 +743,17 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
       const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secParam);
+      const classUuidVal = isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000';
+      const secUuidVal = isSecUuid ? secParam : '00000000-0000-0000-0000-000000000000';
 
-      const rawClassNum = parseInt(classParam.replace(/\D/g, ''), 10);
-      const isSmallInt = Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767;
-      const classNum = isSmallInt ? rawClassNum : -99999;
+      let classNum: number | null = null;
+      if (!isClassUuid) {
+        const clsMatch = classParam.match(/cls-(-?\d+)/i) || classParam.match(/(-?\d+)$/);
+        const rawClassNum = clsMatch ? parseInt(clsMatch[1], 10) : parseInt(classParam.replace(/\D/g, ''), 10);
+        if (Number.isInteger(rawClassNum) && rawClassNum >= -32768 && rawClassNum <= 32767) {
+          classNum = rawClassNum;
+        }
+      }
       const cleanSec = secParam.replace(/section\s*/i, '').trim();
 
       const q = await pool.query(
@@ -739,21 +763,21 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
          LEFT JOIN classes c ON c.id = a.class_id
          LEFT JOIN sections s ON s.id = a.section_id
          LEFT JOIN subjects sub ON sub.id = a.subject_id
-         WHERE a.school_id = $1 AND a.attendance_date = $2
+         WHERE a.school_id = $1::uuid AND a.attendance_date = $2::date
            AND (
              a.class_id::text = $3
-             OR (${isClassUuid ? 'a.class_id = $3::uuid' : 'FALSE'})
-             OR (${isSmallInt ? 'c.class_number = $4' : 'FALSE'})
+             OR a.class_id = $4::uuid
+             OR ($5::smallint IS NOT NULL AND c.class_number = $5::smallint)
            )
            AND (
-             a.section_id::text = $5
-             OR (${isSecUuid ? 'a.section_id = $5::uuid' : 'FALSE'})
-             OR LOWER(s.name) = LOWER($6)
-             OR $6 = ''
+             $6::text = ''
+             OR a.section_id::text = $6
+             OR a.section_id = $7::uuid
+             OR LOWER(s.name) = LOWER($8)
            )
          ORDER BY a.submitted_at DESC NULLS LAST
          LIMIT 1`,
-        [sid, dateParam, classParam, classNum, secParam, cleanSec]
+        [sid, dateParam, classParam, classUuidVal, classNum, secParam, secUuidVal, cleanSec]
       );
       if (q.rowCount && q.rows[0]) {
         const row = q.rows[0];

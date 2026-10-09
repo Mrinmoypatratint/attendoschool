@@ -16,12 +16,13 @@ import {
   AlertTriangle,
   FileText,
   Eye,
-  MessageSquare,
+  FileSpreadsheet,
   Paperclip,
   Image as ImageIcon,
   Download,
   ExternalLink
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../api';
 
 interface TeacherLeave {
@@ -68,6 +69,13 @@ export default function TeacherLeaveApprove() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [monthFilter, setMonthFilter] = useState<string>('ALL');
+  const [reportMonth, setReportMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [teachersList, setTeachersList] = useState<any[]>([]);
+  const [exporting, setExporting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Detail Modal State
@@ -122,6 +130,16 @@ export default function TeacherLeaveApprove() {
         if (res.data.counts) {
           setCounts(res.data.counts);
         }
+      }
+
+      // Also silently load all faculty members for institution-wide monthly reporting
+      try {
+        const teachersRes = await api.get('/teachers');
+        if (Array.isArray(teachersRes.data)) {
+          setTeachersList(teachersRes.data);
+        }
+      } catch (_tErr) {
+        // Non-blocking fallback
       }
     } catch (err: any) {
       console.error('Failed to load faculty leave requests:', err);
@@ -201,6 +219,43 @@ export default function TeacherLeaveApprove() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
+  // Helper to calculate exact days of a leave that fall within a given YYYY-MM month
+  const computeLeaveDaysInMonth = (l: { start_date: string; end_date: string }, yearMonthStr: string) => {
+    if (!l.start_date || !l.end_date || !yearMonthStr || yearMonthStr === 'ALL') return 0;
+    const [y, m] = yearMonthStr.split('-').map(Number);
+    if (!y || !m) return 0;
+    const monthStart = new Date(y, m - 1, 1);
+    const monthEnd = new Date(y, m, 0, 23, 59, 59, 999);
+    const s = new Date(l.start_date);
+    const e = new Date(l.end_date);
+    if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+    if (e < monthStart || s > monthEnd) return 0;
+
+    const overlapStart = s < monthStart ? monthStart : s;
+    const overlapEnd = e > monthEnd ? monthEnd : e;
+    const diff = overlapEnd.getTime() - overlapStart.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const formatMonthDisplay = (ym: string) => {
+    if (!ym || ym === 'ALL') return 'All Months';
+    const [y, m] = ym.split('-').map(Number);
+    if (!y || !m) return ym;
+    const d = new Date(y, m - 1, 1);
+    return isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    const cur = new Date().toISOString().slice(0, 7);
+    set.add(cur);
+    leaves.forEach((l) => {
+      if (l.start_date) set.add(l.start_date.slice(0, 7));
+      if (l.end_date) set.add(l.end_date.slice(0, 7));
+    });
+    return Array.from(set).sort().reverse();
+  }, [leaves]);
+
   const formatDate = (val: string) => {
     if (!val) return '—';
     const d = new Date(val);
@@ -223,6 +278,291 @@ export default function TeacherLeaveApprove() {
     };
   };
 
+  // Export Monthly Teacher Leave Report to Excel (.xlsx)
+  const exportMonthlyLeaveReport = (targetMonth?: string) => {
+    try {
+      setExporting(true);
+      const ym = targetMonth || reportMonth || new Date().toISOString().slice(0, 7);
+      const [yearStr, monthStr] = ym.split('-');
+      const year = parseInt(yearStr, 10) || new Date().getFullYear();
+      const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+      const monthDate = new Date(year, monthNum - 1, 1);
+      const monthName = isNaN(monthDate.getTime())
+        ? ym
+        : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      // Gather unique teachers from both teachersList and leave records
+      const teacherMap = new Map<string, {
+        id: string;
+        name: string;
+        email: string;
+        identifier: string;
+        detail: string;
+      }>();
+
+      // Seed from teachers directory
+      teachersList.forEach((t: any) => {
+        const key = String(t.id || t.email || t.name).toLowerCase();
+        if (key) {
+          teacherMap.set(key, {
+            id: t.id || '',
+            name: t.name || t.fullName || 'Faculty Member',
+            email: t.email || '',
+            identifier: t.employee_id || t.employeeId || 'FAC-EMP',
+            detail: t.designation || t.qualification || 'Faculty Member'
+          });
+        }
+      });
+
+      // Also ensure all faculty who submitted leaves are present
+      leaves.forEach((l) => {
+        const key = String(l.applicant_id || l.teacher_email || l.applicant_name).toLowerCase();
+        if (!teacherMap.has(key)) {
+          teacherMap.set(key, {
+            id: l.applicant_id || '',
+            name: l.applicant_name || 'Faculty Member',
+            email: l.teacher_email || '',
+            identifier: l.identifier || 'FAC-EMP',
+            detail: l.detail || 'Faculty Member'
+          });
+        }
+      });
+
+      let facultyList = Array.from(teacherMap.values());
+
+      // If admin has actively filtered by search query, respect the query in the export
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        facultyList = facultyList.filter(
+          (f) =>
+            f.name.toLowerCase().includes(q) ||
+            f.email.toLowerCase().includes(q) ||
+            f.identifier.toLowerCase().includes(q)
+        );
+      }
+
+      // Aggregate leaves taken per teacher for the target month
+      let grandTotalTaken = 0;
+      let grandTotalCL = 0;
+      let grandTotalSL = 0;
+      let grandTotalEL = 0;
+      let grandTotalEmergency = 0;
+      let grandTotalOD = 0;
+      let grandTotalOther = 0;
+      let grandApproved = 0;
+      let grandPending = 0;
+      let grandRejected = 0;
+
+      const summaryRows = facultyList.map((f) => {
+        const tLeaves = leaves.filter((l) => {
+          const idMatch = l.applicant_id && f.id && String(l.applicant_id).toLowerCase() === String(f.id).toLowerCase();
+          const emailMatch = l.teacher_email && f.email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
+          const nameMatch = l.applicant_name && f.name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
+          return idMatch || emailMatch || nameMatch;
+        });
+
+        const monthLeaves = tLeaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+
+        let clDays = 0;
+        let slDays = 0;
+        let elDays = 0;
+        let emergencyDays = 0;
+        let odDays = 0;
+        let maternityDays = 0;
+        let otherDays = 0;
+        let approvedDays = 0;
+
+        let appApproved = 0;
+        let appPending = 0;
+        let appRejected = 0;
+
+        monthLeaves.forEach((l) => {
+          const dInM = computeLeaveDaysInMonth(l, ym);
+          if (l.status === 'APPROVED') {
+            appApproved++;
+            approvedDays += dInM;
+            const norm = String(l.leave_type || 'CASUAL').toUpperCase();
+            if (norm === 'CASUAL') clDays += dInM;
+            else if (norm === 'SICK') slDays += dInM;
+            else if (norm === 'EARNED') elDays += dInM;
+            else if (norm === 'EMERGENCY') emergencyDays += dInM;
+            else if (norm === 'DUTY') odDays += dInM;
+            else if (norm === 'MATERNITY') maternityDays += dInM;
+            else otherDays += dInM;
+          } else if (l.status === 'PENDING') {
+            appPending++;
+          } else if (l.status === 'REJECTED') {
+            appRejected++;
+          }
+        });
+
+        grandTotalTaken += approvedDays;
+        grandTotalCL += clDays;
+        grandTotalSL += slDays;
+        grandTotalEL += elDays;
+        grandTotalEmergency += emergencyDays;
+        grandTotalOD += odDays;
+        grandTotalOther += (maternityDays + otherDays);
+        grandApproved += appApproved;
+        grandPending += appPending;
+        grandRejected += appRejected;
+
+        return {
+          'Teacher / Faculty Member': f.name,
+          'Email Address': f.email || '—',
+          'Employee ID': f.identifier || '—',
+          'Designation / Department': f.detail || 'Faculty Member',
+          'Report Month': monthName,
+          'Total Leaves Taken (Days)': approvedDays,
+          'Casual Leave (CL Days)': clDays,
+          'Sick / Medical Leave (SL Days)': slDays,
+          'Earned Leave (EL Days)': elDays,
+          'Emergency Leave (Days)': emergencyDays,
+          'Official Duty (OD Days)': odDays,
+          'Maternity / Other (Days)': (maternityDays + otherDays),
+          'Approved Requests': appApproved,
+          'Pending Requests': appPending,
+          'Rejected Requests': appRejected,
+          'Total Applications': (appApproved + appPending + appRejected),
+          'Status Summary': approvedDays > 0 ? `${approvedDays} Day(s) Taken` : 'No Leaves Taken'
+        };
+      });
+
+      // Sort: Teachers with leaves taken first, then alphabetically
+      summaryRows.sort((a, b) => {
+        if (b['Total Leaves Taken (Days)'] !== a['Total Leaves Taken (Days)']) {
+          return b['Total Leaves Taken (Days)'] - a['Total Leaves Taken (Days)'];
+        }
+        return a['Teacher / Faculty Member'].localeCompare(b['Teacher / Faculty Member']);
+      });
+
+      // Append institutional summary total row
+      summaryRows.push({
+        'Teacher / Faculty Member': 'TOTAL / INSTITUTION WIDE',
+        'Email Address': '',
+        'Employee ID': '',
+        'Designation / Department': `${facultyList.length} Faculty Members`,
+        'Report Month': monthName,
+        'Total Leaves Taken (Days)': grandTotalTaken,
+        'Casual Leave (CL Days)': grandTotalCL,
+        'Sick / Medical Leave (SL Days)': grandTotalSL,
+        'Earned Leave (EL Days)': grandTotalEL,
+        'Emergency Leave (Days)': grandTotalEmergency,
+        'Official Duty (OD Days)': grandTotalOD,
+        'Maternity / Other (Days)': grandTotalOther,
+        'Approved Requests': grandApproved,
+        'Pending Requests': grandPending,
+        'Rejected Requests': grandRejected,
+        'Total Applications': (grandApproved + grandPending + grandRejected),
+        'Status Summary': `${grandTotalTaken} Total Faculty Leave Day(s)`
+      } as any);
+
+      // Sheet 2: Detailed Applications for this month
+      const monthLeaves = leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+      monthLeaves.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+      const detailRows = monthLeaves.length > 0 ? monthLeaves.map((l) => {
+        const totalDuration = calculateDays(l.start_date, l.end_date);
+        const daysInMonth = computeLeaveDaysInMonth(l, ym);
+        return {
+          'Application ID': l.id.slice(0, 8),
+          'Teacher Name': l.applicant_name,
+          'Email Address': l.teacher_email || '—',
+          'Employee ID': l.identifier || '—',
+          'Leave Type': getLeaveTypeStyle(l.leave_type).label,
+          'Start Date': l.start_date,
+          'End Date': l.end_date,
+          'Total Duration (Days)': totalDuration,
+          'Days in Month': daysInMonth,
+          'Status': l.status,
+          'Reason / Details': l.reason,
+          'Applied Date': l.created_at ? l.created_at.slice(0, 10) : '—',
+          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
+          'Review Remarks': l.review_notes || '—',
+          'Reviewed At': l.reviewed_at ? l.reviewed_at.slice(0, 10) : '—'
+        };
+      }) : [{
+        'Application ID': '—',
+        'Teacher Name': 'No leave applications recorded for this month',
+        'Email Address': '',
+        'Employee ID': '',
+        'Leave Type': '',
+        'Start Date': '',
+        'End Date': '',
+        'Total Duration (Days)': 0,
+        'Days in Month': 0,
+        'Status': '—',
+        'Reason / Details': '',
+        'Applied Date': '',
+        'Reviewed By': '',
+        'Review Remarks': '',
+        'Reviewed At': ''
+      }];
+
+      // Build Workbook
+      const wb = XLSX.utils.book_new();
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+      wsSummary['!cols'] = [
+        { wch: 25 },
+        { wch: 28 },
+        { wch: 15 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 25 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Leave Summary');
+
+      const wsDetails = XLSX.utils.json_to_sheet(detailRows);
+      wsDetails['!cols'] = [
+        { wch: 15 },
+        { wch: 24 },
+        { wch: 26 },
+        { wch: 15 },
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 34 },
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 32 },
+        { wch: 14 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetails, 'Leave Records Detail');
+
+      const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Teacher_Monthly_Leave_Report_${safeMonth}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      setFeedback({
+        type: 'success',
+        message: `Monthly Teacher Leave Report successfully downloaded for ${monthName} (${grandTotalTaken} day(s) taken across ${facultyList.length} faculty member(s)).`
+      });
+    } catch (err: any) {
+      console.error('Failed to export leave report:', err);
+      setFeedback({
+        type: 'error',
+        message: `Export failed: ${err.message || 'Unknown error during Excel generation'}`
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filteredLeaves = useMemo(() => {
     return leaves.filter((l) => {
       // Status Tab filter
@@ -233,6 +573,12 @@ export default function TeacherLeaveApprove() {
       // Leave Type filter
       if (typeFilter !== 'ALL' && String(l.leave_type || 'CASUAL').toUpperCase() !== typeFilter) {
         return false;
+      }
+
+      // Month filter (if set)
+      if (monthFilter !== 'ALL') {
+        const daysInSelectedMonth = computeLeaveDaysInMonth(l, monthFilter);
+        if (daysInSelectedMonth === 0) return false;
       }
 
       // Search Query
@@ -247,7 +593,7 @@ export default function TeacherLeaveApprove() {
 
       return true;
     });
-  }, [leaves, activeTab, typeFilter, searchQuery]);
+  }, [leaves, activeTab, typeFilter, monthFilter, searchQuery]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -278,27 +624,95 @@ export default function TeacherLeaveApprove() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadLeaves}
-          className="student-btn-secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border, #E2E8F0)',
-            background: 'var(--surface, #FFF)',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text, #0F172A)'
-          }}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>Refresh</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Report Month Selector */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #E2E8F0)',
+              background: 'var(--surface, #FFF)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}
+            title="Select month for monthly leave report"
+          >
+            <Calendar size={14} color="#64748B" />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748B)' }}>
+              Month:
+            </span>
+            <input
+              type="month"
+              value={reportMonth}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setReportMonth(e.target.value);
+                }
+              }}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text, #0F172A)',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+
+          {/* Export Excel Button */}
+          <button
+            type="button"
+            onClick={() => exportMonthlyLeaveReport(reportMonth)}
+            disabled={exporting}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '8px 15px',
+              borderRadius: 8,
+              border: '1px solid #16A34A',
+              background: '#16A34A',
+              color: '#FFFFFF',
+              cursor: exporting ? 'wait' : 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 1px 3px rgba(22, 163, 74, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+            title={`Download monthly leave report for ${formatMonthDisplay(reportMonth)}`}
+          >
+            <FileSpreadsheet size={15} />
+            <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={loadLeaves}
+            className="student-btn-secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #E2E8F0)',
+              background: 'var(--surface, #FFF)',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text, #0F172A)'
+            }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Feedback Banner ── */}
@@ -599,31 +1013,68 @@ export default function TeacherLeaveApprove() {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
-            <Filter size={14} />
-            <span>Type:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {/* Month Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+              <Calendar size={14} />
+              <span>Month:</span>
+            </div>
+            <select
+              value={monthFilter}
+              onChange={(e) => {
+                setMonthFilter(e.target.value);
+                if (e.target.value !== 'ALL') {
+                  setReportMonth(e.target.value);
+                }
+              }}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border, #E2E8F0)',
+                background: 'var(--surface, #FFF)',
+                fontSize: 13,
+                color: 'var(--text, #0F172A)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">All Months</option>
+              {availableMonths.map((ym) => (
+                <option key={ym} value={ym}>
+                  {formatMonthDisplay(ym)}
+                </option>
+              ))}
+            </select>
           </div>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            style={{
-              padding: '7px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              fontSize: 13,
-              color: 'var(--text, #0F172A)',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {LEAVE_TYPES.map((lt) => (
-              <option key={lt.value} value={lt.value}>
-                {lt.label}
-              </option>
-            ))}
-          </select>
+
+          {/* Type Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+              <Filter size={14} />
+              <span>Type:</span>
+            </div>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border, #E2E8F0)',
+                background: 'var(--surface, #FFF)',
+                fontSize: 13,
+                color: 'var(--text, #0F172A)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {LEAVE_TYPES.map((lt) => (
+                <option key={lt.value} value={lt.value}>
+                  {lt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

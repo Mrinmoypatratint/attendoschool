@@ -1,10 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
 import { requireAuth } from './middleware/auth';
-import { securityHeaders, apiRateLimit, loginRateLimit, requestContext } from './middleware/security';
+import { securityHeaders, apiRateLimit, requestContext } from './middleware/security';
 
 // Core routes
 import health from './routes/health';
@@ -47,16 +48,47 @@ import calendar from './routes/calendar';
 
 const app = express();
 
-const allowedOrigin =
-  env.corsOrigin === '*'
-    ? true
-    : env.corsOrigin.includes(',')
-      ? env.corsOrigin.split(',').map((s) => s.trim())
-      : env.corsOrigin;
+// Trust reverse proxy (Render ALB/Envoy, Cloudflare) for accurate client IP
+app.set('trust proxy', 1);
 
-app.use(cors({ origin: allowedOrigin, credentials: true }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+const allowedOriginsList = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://attendoschool.optinetinnovations.in',
+  'http://attendoschool.optinetinnovations.in',
+  'https://attendoschool.vercel.app',
+  ...(env.corsOrigin && env.corsOrigin !== '*'
+    ? (env.corsOrigin.includes(',') ? env.corsOrigin.split(',').map((s) => s.trim()) : [env.corsOrigin.trim()])
+    : [])
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (requestOrigin, callback) => {
+    // Non-browser or same-origin requests
+    if (!requestOrigin) return callback(null, true);
+    if (
+      env.corsOrigin === '*' ||
+      allowedOriginsList.includes(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?optinetinnovations\.in(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?vercel\.app(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/localhost(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(requestOrigin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+  exposedHeaders: ['Content-Disposition']
+};
+
+app.use(cors(corsOptions));
+app.use(compression());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -153,7 +185,7 @@ app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', vers
 
 // Core routes
 app.use('/api/health', health);
-app.use('/api/auth', loginRateLimit, auth);
+app.use('/api/auth', auth);
 app.use('/api/dashboard', dashboard);
 app.use('/api/super-admin', superAdmin);
 app.use('/api/super-admin', superAdminOperations);

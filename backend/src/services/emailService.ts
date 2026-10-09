@@ -1,9 +1,10 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { env, extractEmailAddress, cleanEnv } from '../config/env';
-import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback } from './notificationService';
+import { getLogoAttachment, escapeHtml, sendMailWithDualPortFallback, isEmailServiceEnabled } from './notificationService';
 
 function configured() {
+  if (!isEmailServiceEnabled()) return false;
   const hasSmtp = Boolean(env.smtpHost && env.smtpUser && env.smtpPass && env.smtpFrom);
   const hasHttp = Boolean(
     env.brevoApiKey ||
@@ -17,6 +18,10 @@ function configured() {
 }
 
 export async function sendInvoiceEmail(to: string, invoiceNumber: string, pdf: Buffer) {
+  if (!isEmailServiceEnabled()) {
+    console.warn(`[EmailService] Mail service is disabled by Super Admin. Invoice email skipped for ${to}.`);
+    return;
+  }
   if (!configured()) throw new Error('SMTP is not configured');
 
   const logo = getLogoAttachment();
@@ -174,6 +179,7 @@ export interface PasswordResetEmailOptions {
   schoolName?: string;
   resetToken: string;
   resetUrl: string;
+  admissionNumber?: string;
 }
 
 /**
@@ -186,7 +192,7 @@ export interface PasswordResetEmailOptions {
  * - Clear 24-hour expiration notice and institutional authentication footer.
  */
 export async function sendPasswordResetEmail(options: PasswordResetEmailOptions) {
-  const { to, name, role, schoolName = 'Greenwood International School', resetToken, resetUrl } = options;
+  const { to, name, role, schoolName = 'Greenwood International School', resetToken, resetUrl, admissionNumber } = options;
 
   const roleTitleMap: Record<string, string> = {
     STUDENT: 'Student Portal',
@@ -206,7 +212,7 @@ export async function sendPasswordResetEmail(options: PasswordResetEmailOptions)
   const textContent = `Hello ${name},
 
 An official account has been created for you at ${cleanSchool} for the ${roleDisplay}.
-
+${admissionNumber ? `Admission Number (Login ID): ${admissionNumber}\n` : ''}
 Please use the secure link below to set your account password:
 ${resetUrl}
 
@@ -301,6 +307,22 @@ AttendoSchool Enterprise Campus Management
                   Hello <strong>${escapeHtml(name)}</strong>, an official profile has been provisioned for you at <strong>${escapeHtml(cleanSchool)}</strong>.
                 </div>
               </div>
+
+              ${admissionNumber ? `
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
+                Student Account Profile
+              </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-bottom: 22px; border: 1px solid #e2e8f0; font-family: Arial, Helvetica, sans-serif;">
+                <tr>
+                  <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Student Name</td>
+                  <td style="padding: 10px 14px; font-size: 13.5px; font-weight: 700; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${escapeHtml(name)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Admission Number (Login ID)</td>
+                  <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff;">${escapeHtml(admissionNumber)}</td>
+                </tr>
+              </table>
+              ` : ''}
 
               <p style="margin: 0 0 16px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #334155; line-height: 1.5;">
                 To complete your onboarding and securely access your portal, please click the button below to choose your password:
@@ -424,8 +446,9 @@ export async function sendPhotoReviewEmail(options: {
   schoolName?: string;
   schoolId?: string;
   photoUrl?: string;
+  admissionNumber?: string;
 }) {
-  const { to, studentName, status, reason, schoolName, schoolId, photoUrl } = options;
+  const { to, studentName, status, reason, schoolName, schoolId, photoUrl, admissionNumber } = options;
   if (!to || !to.includes('@')) {
     console.warn('[EmailService] Invalid or missing recipient email for photo review notification:', to);
     return { success: false, message: 'Invalid recipient email' };
@@ -455,13 +478,15 @@ export async function sendPhotoReviewEmail(options: {
 
   const textContent = isApproved
     ? `Hello ${studentName},\n\n` +
-      `Great news! Your recent profile photograph has been approved by the School Administration of ${institutionName}.\n\n` +
-      `Your updated photo is now active across your Student Portal, Attendance Register, and Official Identity Records.\n\n` +
+      `Great news! Your recent profile photograph has been approved by the School Administration of ${institutionName}.\n` +
+      (admissionNumber ? `Admission Number: ${admissionNumber}\n` : '') +
+      `\nYour updated photo is now active across your Student Portal, Attendance Register, and Official Identity Records.\n\n` +
       `View your profile: ${portalUrl}\n\n` +
       `Best regards,\n${institutionName} & AttendoSchool Platform`
     : `Hello ${studentName},\n\n` +
-      `Your recent profile photograph submission was reviewed by the School Administration of ${institutionName} and was NOT approved.\n\n` +
-      `Reason: ${reason || 'Photo does not meet administrative standards.'}\n\n` +
+      `Your recent profile photograph submission was reviewed by the School Administration of ${institutionName} and was NOT approved.\n` +
+      (admissionNumber ? `Admission Number: ${admissionNumber}\n` : '') +
+      `\nReason: ${reason || 'Photo does not meet administrative standards.'}\n\n` +
       `Photo Guidelines:\n` +
       `- Use a clear, well-lit, front-facing passport-style photograph.\n` +
       `- Avoid casual selfies, heavy filters, sunglasses, and hats.\n` +
@@ -528,6 +553,11 @@ export async function sendPhotoReviewEmail(options: {
               <p style="margin: 0 0 16px; font-size: 14px; color: #334155; line-height: 1.6;">
                 Dear <strong>${escapeHtml(studentName)}</strong>,
               </p>
+              ${admissionNumber ? `
+              <div style="margin-bottom: 16px; font-size: 13px; font-weight: 600; color: #1e40af; background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 4px; display: inline-block;">
+                Admission Number: <strong>${escapeHtml(admissionNumber)}</strong>
+              </div>
+              ` : ''}
 
               ${isApproved ? `
                 <p style="margin: 0 0 18px; font-size: 14px; color: #334155; line-height: 1.6;">

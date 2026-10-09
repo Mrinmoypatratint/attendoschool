@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -7,7 +7,9 @@ import {
   X,
   FileCheck,
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { UniversalPreviewProps } from './types';
 import { PreviewSection } from './PreviewSection';
@@ -37,6 +39,8 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const [isMaximized, setIsMaximized] = useState(false);
+
   const defaultConfirmText =
     confirmText ||
     (isDestructive
@@ -62,22 +66,25 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16
+        padding: isMaximized ? 8 : 16,
+        transition: 'padding 0.2s ease'
       }}
     >
       <div
         className="modal"
         style={{
-          width,
-          maxHeight: '92vh',
+          width: isMaximized ? '97vw' : width,
+          maxHeight: isMaximized ? '97vh' : '92vh',
+          height: isMaximized ? '97vh' : undefined,
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-card, #ffffff)',
           border: '1px solid var(--border, #cbd5e1)',
-          borderRadius: 16,
+          borderRadius: isMaximized ? 12 : 16,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           overflow: 'hidden',
-          padding: 0
+          padding: 0,
+          transition: 'width 0.2s ease, height 0.2s ease, border-radius 0.2s ease'
         }}
       >
         {/* ─── Modal Header ─── */}
@@ -140,25 +147,49 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              color: 'var(--text-muted, #94a3b8)',
-              padding: 6,
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            title="Cancel and return"
-          >
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => setIsMaximized(m => !m)}
+              disabled={loading}
+              style={{
+                background: isMaximized ? '#e2e8f0' : 'transparent',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                color: isMaximized ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
+                padding: 6,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+              title={isMaximized ? 'Restore standard size' : 'Maximize window'}
+            >
+              {isMaximized ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                color: 'var(--text-muted, #94a3b8)',
+                padding: 6,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+              title="Cancel and return"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* ─── Scrollable Modal Body ─── */}

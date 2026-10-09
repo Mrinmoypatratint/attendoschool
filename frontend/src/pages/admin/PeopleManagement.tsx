@@ -146,6 +146,8 @@ export default function PeopleManagement() {
   const [savingTeacher, setSavingTeacher] = useState(false);
   const [importing, setImporting] = useState(false);
   const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
+  const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'valid' | 'errors'>('all');
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
@@ -361,6 +363,25 @@ export default function PeopleManagement() {
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
   }
 
+  // Helper for case-insensitive and punctuation-stripped Excel row lookup
+  function getExcelCell(r: Record<string, any>, possibleKeys: string[]): string {
+    if (!r || typeof r !== 'object') return '';
+    for (const key of possibleKeys) {
+      if (r[key] !== undefined && r[key] !== null && String(r[key]).trim() !== '') {
+        return String(r[key]).trim();
+      }
+    }
+    const rKeys = Object.keys(r);
+    for (const targetKey of possibleKeys) {
+      const cleanTarget = targetKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const matchedKey = rKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget);
+      if (matchedKey && r[matchedKey] !== undefined && r[matchedKey] !== null && String(r[matchedKey]).trim() !== '') {
+        return String(r[matchedKey]).trim();
+      }
+    }
+    return '';
+  }
+
   // Teacher Excel Ingestion
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -372,32 +393,98 @@ export default function PeopleManagement() {
         const wb = XLSX.read(data, { type: 'array' });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        const mapped = json.map((r, idx) => {
-          const saviorNo = String(r['Savior_No'] || r['Savior No'] || r['savior_no'] || r['Employee ID'] || r['Employee Id/Savior_NO'] || r['Emp ID'] || r['employee_id'] || `EMP0${idx+10}`).trim();
-          let firstName = String(r['Fist Name'] || r['First Name'] || r['firstName'] || '').trim();
-          let lastName = String(r['Last Name'] || r['lastName'] || '').trim();
-          const explicitFullName = String(r['Full Name(Automatically generated)'] || r['Full Name'] || r['Teacher Name'] || r['Name'] || r['name'] || '').trim();
+
+        // Filter out completely blank rows
+        const cleanedJson = json.filter(r => {
+          return Object.values(r).some(v => v !== undefined && v !== null && String(v).trim() !== '');
+        });
+
+        const rowErrors: { row: number; field: string; message: string }[] = [];
+        const seenSavior = new Set<string>();
+        const seenMail = new Set<string>();
+
+        const mapped = cleanedJson.map((r, idx) => {
+          const rowNum = idx + 1;
+          const saviorNo = getExcelCell(r, [
+            'Savior_No', 'SAVIOR_NO', 'Savior No', 'savior_no', 'saviorNo',
+            'Employee ID', 'EMPLOYEE_ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'employee_id', 'ID'
+          ]);
+
+          let firstName = getExcelCell(r, ['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+          let lastName = getExcelCell(r, ['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
+          const explicitFullName = getExcelCell(r, [
+            'Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName',
+            'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name'
+          ]);
+
           if ((!firstName || !lastName) && explicitFullName) {
-            const parts = explicitFullName.split(' ');
+            const parts = explicitFullName.split(/\s+/).filter(Boolean);
             if (!firstName) firstName = parts[0] || '';
             if (!lastName) lastName = parts.slice(1).join(' ') || '';
           }
-          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${idx + 1}`));
-          const email = String(r['Email_id'] || r['Email ID'] || r['Email'] || r['email'] || `teacher${idx+1}@school.local`).toLowerCase().trim();
-          const mobile = String(r['Mobile'] || r['Phone'] || r['mobile'] || '9876500000').trim();
-          const gender = String(r['Gender'] || r['gender'] || r['Sex'] || r['sex'] || '').trim();
-          const rawDob = r['Date_of_Birth'] || r['Date of Birth'] || r['date_of_birth'] || r['DOB'] || r['dob'] || '';
-          const dob = toDdMmYyyy(rawDob);
-          const designation = String(r['Designation'] || r['designation'] || 'Teacher').trim();
-          const status = String(r['Status'] || r['status'] || 'Active').trim();
-          const className = String(r['Class'] || r['class'] || '').trim();
-          const sectionName = String(r['Section'] || r['section'] || 'A').trim().toUpperCase();
+          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+
+          let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            const cleanId = (saviorNo || `emp${rowNum}`).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            email = `teacher.${cleanId}@school.local`;
+          }
+
+          const rawMobile = getExcelCell(r, ['Mobile', 'MOBILE', 'mobile', 'Phone', 'PHONE', 'phone', 'Contact']).replace(/[^0-9]/g, '');
+          const mobile = rawMobile || '9876500000';
+          let rawGender = getExcelCell(r, ['Gender', 'GENDER', 'gender', 'Sex', 'SEX', 'sex', 'Gender (M/F)', 'Gender(M/F)', 'M/F', 'MF', 'Sex/Gender', 'Gen']);
+          if (!rawGender) {
+            const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
+            if (gk && r[gk]) rawGender = String(r[gk]).trim();
+          }
+          let gender = '';
+          if (rawGender) {
+            if (/^f/i.test(rawGender)) gender = 'Female';
+            else if (/^m/i.test(rawGender)) gender = 'Male';
+            else gender = rawGender;
+          }
+          const rawDob = getExcelCell(r, ['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
+          const dob = rawDob ? toDdMmYyyy(rawDob) : '';
+
+          const designation = getExcelCell(r, [
+            'Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title'
+          ]) || 'Teacher';
+
+          const rawStatus = getExcelCell(r, ['Status', 'STATUS', 'status']);
+          const status = (rawStatus === 'T' || /active/i.test(rawStatus) || !rawStatus) ? 'Active' : 'Inactive';
+
+          const className = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+          const sectionName = (getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+
+          // Field validations
+          const rowErrs: { row: number; field: string; message: string }[] = [];
+          if (!name) {
+            rowErrs.push({ row: rowNum, field: 'Full Name', message: 'Name is required' });
+          }
+          if (!saviorNo) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
+          } else if (seenSavior.has(saviorNo)) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else {
+            seenSavior.add(saviorNo);
+          }
+          if (email && seenMail.has(email)) {
+            rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file` });
+          } else if (email) {
+            seenMail.add(email);
+          }
+          if (rawMobile && rawMobile.length !== 10) {
+            rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
+          }
+
+          rowErrors.push(...rowErrs);
+
           return {
-            saviorNo,
-            employeeId: saviorNo,
+            saviorNo: saviorNo || `EMP0${idx + 10}`,
+            employeeId: saviorNo || `EMP0${idx + 10}`,
             firstName,
             lastName,
-            name,
+            name: name || `Faculty ${rowNum}`,
             email,
             mobile,
             gender,
@@ -407,12 +494,16 @@ export default function PeopleManagement() {
             class: className,
             section: sectionName,
             emailStatus: 'Pending',
-            _origRowIndex: idx + 1
+            _origRowIndex: rowNum,
+            _errors: rowErrs
           };
         });
+
+        setImportErrors(rowErrors);
         setPreviewRows(mapped);
         setImportPreviewPage(1);
         setImportPreviewSearch('');
+        setImportPreviewErrorFilter('all');
       } catch (err) {
         alert('Failed to parse file. Please upload a valid .xlsx or .csv file.');
       }
@@ -423,14 +514,16 @@ export default function PeopleManagement() {
   // Teacher Bulk Import Submit
   async function submitBulkImport() {
     if (previewRows.length === 0) return;
-    const invalidRow = previewRows.find(r => !r.name || !r.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email) || !r.saviorNo);
-    if (invalidRow) {
-      alert(`Cannot import file: Row #${invalidRow._origRowIndex || 1} has invalid or missing name, email, or Employee ID.\n\nAll rows must be valid before importing. No partial data will be stored.`);
+    const errorRows = previewRows.filter(r => r._errors && r._errors.length > 0);
+    if (errorRows.length > 0) {
+      alert(`Cannot import file: ${errorRows.length} record(s) have validation errors.\n\nPlease fix the highlighted fields in the preview table or correct your spreadsheet and re-upload.`);
+      setImportPreviewErrorFilter('errors');
+      setImportPreviewPage(1);
       return;
     }
     setImporting(true);
     try {
-      const res = await api.post('/teachers/bulk-import', { teachers: previewRows });
+      const res = await api.post('/teachers/bulk-import', { teachers: previewRows }, { timeout: 300000 });
       if (previewRows.length > 0) {
         const lastRow = previewRows[previewRows.length - 1];
         const teacherName = lastRow.name || `${lastRow.firstName || ''} ${lastRow.lastName || ''}`.trim() || 'Teacher';
@@ -448,19 +541,39 @@ export default function PeopleManagement() {
       });
       setImportOpen(false);
       setPreviewRows([]);
+      setImportErrors([]);
       setImportPreviewPage(1);
       setImportPreviewSearch('');
+      setImportPreviewErrorFilter('all');
       load();
     } catch (err: any) {
+      const serverErrs = err?.response?.data?.errors;
+      if (serverErrs && Array.isArray(serverErrs) && serverErrs.length > 0) {
+        setImportErrors(serverErrs);
+        setPreviewRows(prev => prev.map(r => {
+          const matched = serverErrs.filter(se => se.row === r._origRowIndex);
+          return {
+            ...r,
+            _errors: matched.length > 0 ? matched : r._errors
+          };
+        }));
+        setImportPreviewErrorFilter('errors');
+        setImportPreviewPage(1);
+      }
       const msg = err?.response?.data?.message || err?.message || 'Failed to import faculty';
-      alert(`Import Failed: ${msg}\n\nThe entire operation was cancelled and no faculty records were stored in the database.`);
+      alert(`Import Failed: ${msg}\n\nPlease check the highlighted error records below.`);
     } finally {
       setImporting(false);
     }
   }
 
   // Teacher Bulk Import Preview Pagination & Filtering
+  const teacherValidCount = previewRows.filter(r => !r._errors?.length).length;
+  const teacherErrorCount = previewRows.filter(r => r._errors?.length).length;
+
   const filteredTeacherPreviewRows = previewRows.filter((r) => {
+    if (importPreviewErrorFilter === 'errors' && (!r._errors || r._errors.length === 0)) return false;
+    if (importPreviewErrorFilter === 'valid' && (r._errors && r._errors.length > 0)) return false;
     if (!importPreviewSearch.trim()) return true;
     const q = importPreviewSearch.toLowerCase();
     const target = [
@@ -1445,29 +1558,124 @@ export default function PeopleManagement() {
               </button>
             </div>
 
-            <label className="dropzone" style={{ border: '2px dashed #cbd5e1', padding: 24, textAlign: 'center', borderRadius: 8, cursor: 'pointer', display: 'block', background: '#ffffff' }}>
-              <input
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFile}
-                style={{ display: 'none' }}
-              />
-              <div className="dropzone-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#2563eb' }}>
-                <UploadCloud size={28} />
+            {previewRows.length === 0 ? (
+              <label className="dropzone" style={{ border: '2px dashed #cbd5e1', padding: 24, textAlign: 'center', borderRadius: 8, cursor: 'pointer', display: 'block', background: '#ffffff' }}>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFile}
+                  style={{ display: 'none' }}
+                />
+                <div className="dropzone-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, color: '#2563eb' }}>
+                  <UploadCloud size={28} />
+                </div>
+                <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</div>
+              </label>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 6 }}>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleFile}
+                    style={{ display: 'none' }}
+                  />
+                  <UploadCloud size={14} /> Upload Different File
+                </label>
               </div>
-              <strong style={{ fontSize: 14 }}>Click to browse or drop Excel file here</strong>
-              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</div>
-            </label>
+            )}
 
             {previewRows.length > 0 && (
               <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                {/* ── TOP TOOLBAR: Search, Page Size & Clear ── */}
+                {/* ── ERROR / VALIDITY SUMMARY BANNER ── */}
+                <div style={{
+                  marginBottom: 10,
+                  padding: '10px 16px',
+                  background: teacherErrorCount > 0 ? '#fffbeb' : '#f0fdf4',
+                  borderRadius: 8,
+                  border: `1px solid ${teacherErrorCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                  fontSize: 13,
+                  color: teacherErrorCount > 0 ? '#92400e' : '#166534',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexShrink: 0
+                }}>
+                  <span>
+                    {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
+                    {teacherErrorCount > 0 && (
+                      <> · <b style={{ color: '#dc2626' }}>{teacherErrorCount} with validation errors</b></>
+                    )}
+                  </span>
+                  <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#b45309' : '#15803d' }}>
+                    {teacherErrorCount > 0
+                      ? 'Review and resolve highlighted errors below before importing'
+                      : 'All records valid and ready for database import'}
+                  </span>
+                </div>
+
+                {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Clear ── */}
                 <div className="preview-toolbar">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <strong style={{ fontSize: 14 }}>Preview Data</strong>
                     <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
-                      {previewRows.length} faculty ready to import
+                      {previewRows.length} records
                     </span>
+
+                    {/* Filter tabs if validation errors exist */}
+                    {teacherErrorCount > 0 && (
+                      <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
+                            color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
+                            boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
+                          }}
+                        >
+                          All ({previewRows.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setImportPreviewErrorFilter('valid'); setImportPreviewPage(1); }}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
+                            color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
+                            boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
+                          }}
+                        >
+                          Valid ({teacherValidCount})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setImportPreviewErrorFilter('errors'); setImportPreviewPage(1); }}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
+                            color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
+                            boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                            fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
+                          }}
+                        >
+                          ⚠ Errors ({teacherErrorCount})
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -1539,7 +1747,7 @@ export default function PeopleManagement() {
                       type="button"
                       className="btn-secondary"
                       style={{ fontSize: 12, padding: '4px 10px' }}
-                      onClick={() => { setPreviewRows([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
+                      onClick={() => { setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
                     >
                       Clear
                     </button>
@@ -1569,20 +1777,38 @@ export default function PeopleManagement() {
                       {displayedTeacherPreviewRows.length === 0 ? (
                         <tr>
                           <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
-                            No teachers match the current search filter.
+                            No teachers match the current search or error filter.
                           </td>
                         </tr>
                       ) : (
                         displayedTeacherPreviewRows.map((r, i) => {
                           const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
+                          const hasErr = Boolean(r._errors?.length);
                           return (
-                            <tr key={teacherStartIdx + i}>
-                              <td style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center' }}>{rowNum}</td>
-                              <td><code>{r.saviorNo || r.employeeId}</code></td>
+                            <tr key={teacherStartIdx + i} style={{ background: hasErr ? '#fef2f2' : undefined, outline: hasErr ? '1px solid #fecaca' : undefined }}>
+                              <td style={{ color: hasErr ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
+                                {hasErr ? `⚠ ${rowNum}` : rowNum}
+                              </td>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Savior_No') ? '#dc2626' : undefined }}>
+                                <code>{r.saviorNo || r.employeeId}</code>
+                                {r._errors?.filter((e: any) => e.field === 'Savior_No').map((e: any, j: number) => (
+                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                ))}
+                              </td>
                               <td>{r.firstName || '—'}</td>
                               <td>{r.lastName || '—'}</td>
-                              <td><b>{r.name}</b></td>
-                              <td>{r.email}</td>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
+                                <b>{r.name}</b>
+                                {r._errors?.filter((e: any) => e.field === 'Full Name' || e.field === 'First Name').map((e: any, j: number) => (
+                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                ))}
+                              </td>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Email_id' || e.field === 'Email ID') ? '#dc2626' : undefined }}>
+                                {r.email}
+                                {r._errors?.filter((e: any) => e.field === 'Email_id' || e.field === 'Email ID').map((e: any, j: number) => (
+                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                ))}
+                              </td>
                               <td>
                                 {r.gender ? (
                                   <span style={{
@@ -1702,17 +1928,27 @@ export default function PeopleManagement() {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => { setImportOpen(false); setPreviewRows([]); setImportPreviewPage(1); }}
+                    onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={submitBulkImport}
-                    disabled={importing}
-                    style={{ background: '#10b981', color: '#ffffff', fontWeight: 600, padding: '8px 20px' }}
+                    disabled={importing || previewRows.length === 0}
+                    style={{
+                      background: teacherErrorCount > 0 ? '#ef4444' : '#10b981',
+                      color: '#ffffff',
+                      fontWeight: 600,
+                      padding: '8px 20px',
+                      cursor: (importing || previewRows.length === 0) ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    {importing ? 'Importing Teachers…' : `Confirm & Import ${previewRows.length} Teachers`}
+                    {importing
+                      ? 'Importing Teachers…'
+                      : teacherErrorCount > 0
+                        ? `Fix ${teacherErrorCount} Error(s) Before Import`
+                        : `Confirm & Import ${teacherValidCount} Teachers`}
                   </button>
                 </div>
               </div>

@@ -37,7 +37,12 @@ export default function StudentPromotion() {
       const r = await api.get('/academic-years');
       setYears(r.data);
       if (!fromYear && r.data.length) {
-        setFromYear(r.data.find((x: any) => x.is_active)?.id || r.data[0].id);
+        const activeYear = r.data.find((x: any) => x.is_active)?.id || r.data[0].id;
+        setFromYear(activeYear);
+        if (!toYear && r.data.length > 1) {
+          const targetYear = r.data.find((x: any) => x.id !== activeYear && !x.is_archived)?.id;
+          if (targetYear) setToYear(targetYear);
+        }
       }
     } catch (e: any) {
       setMessage(e?.response?.data?.message || 'Unable to load academic sessions');
@@ -69,7 +74,8 @@ export default function StudentPromotion() {
       .map(x => ({
         studentId: x.id,
         name: x.name,
-        roll: x.roll,
+        roll: x.roll || x.roll_number || '—',
+        admissionNumber: x.admission_number || x.admissionNumber || '—',
         fromClass: x.from_class_name || '—',
         fromSection: x.from_section_name || '—',
         outcome: outcome[x.id] || 'PROMOTED'
@@ -98,9 +104,10 @@ export default function StudentPromotion() {
       { label: 'Total Candidates', value: candidateList.length, color: 'green' }
     ];
 
-    const headers = ['Roll', 'Student Name', 'Current Class', 'Target Outcome'];
+    const headers = ['Roll', 'Admission No.', 'Student Name', 'Current Class', 'Target Outcome'];
     const previewRows = candidateList.map(c => [
       c.roll || '—',
+      c.admissionNumber || '—',
       c.name,
       `${c.fromClass} (${c.fromSection})`,
       c.outcome
@@ -136,13 +143,17 @@ export default function StudentPromotion() {
     }
   }
 
+  const eligibleCount = items.filter(x => !x.already_processed).length;
+  const selectedCount = Object.values(selected).filter(Boolean).length;
+  const allEligibleSelected = eligibleCount > 0 && items.filter(x => !x.already_processed).every(x => selected[x.id]);
+
   return (
     <div className="feature-page">
       <h1>Student Promotion</h1>
       <p className="muted">Transition students into a new academic session while preserving historical records and attendance.</p>
 
-      <div className="filter-row">
-        <label>
+      <div className="filter-row" style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <label style={{ minWidth: 220 }}>
           From
           <select value={fromYear} onChange={e => setFromYear(e.target.value)}>
             <option value="">Select Session</option>
@@ -151,7 +162,7 @@ export default function StudentPromotion() {
             ))}
           </select>
         </label>
-        <label>
+        <label style={{ minWidth: 220 }}>
           To
           <select value={toYear} onChange={e => setToYear(e.target.value)}>
             <option value="">Select Target Session</option>
@@ -160,8 +171,8 @@ export default function StudentPromotion() {
             ))}
           </select>
         </label>
-        <button onClick={initiateProcess}>
-          Review & Process Selected
+        <button onClick={initiateProcess} disabled={selectedCount === 0 || !toYear}>
+          Review & Process Selected ({selectedCount})
         </button>
       </div>
 
@@ -171,10 +182,47 @@ export default function StudentPromotion() {
         <p className="muted">Loading students for promotion...</p>
       ) : (
         <div className="table-wrap">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '4px 8px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
+              Showing <strong>{items.length}</strong> candidate(s) ({eligibleCount} pending, {items.length - eligibleCount} processed)
+            </span>
+            {eligibleCount > 0 && (
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: '0.82rem', padding: '4px 10px' }}
+                onClick={() => {
+                  const next: Record<string, boolean> = {};
+                  items.forEach(x => {
+                    if (!x.already_processed) next[x.id] = !allEligibleSelected;
+                  });
+                  setSelected(next);
+                }}
+              >
+                {allEligibleSelected ? 'Deselect All' : 'Select All Eligible'}
+              </button>
+            )}
+          </div>
           <table>
             <thead>
               <tr>
-                {['Select', 'Student', 'Roll', 'Current Class', 'Section', 'Outcome', 'Status'].map(h => (
+                <th style={{ width: 44, textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={allEligibleSelected}
+                    disabled={eligibleCount === 0}
+                    onChange={e => {
+                      const allChecked = e.target.checked;
+                      const next: Record<string, boolean> = {};
+                      items.forEach(x => {
+                        if (!x.already_processed) next[x.id] = allChecked;
+                      });
+                      setSelected(next);
+                    }}
+                    title="Select All Eligible"
+                  />
+                </th>
+                {['Student', 'Roll', 'Admission No.', 'Current Class', 'Section', 'Outcome', 'Status'].map(h => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
@@ -182,7 +230,7 @@ export default function StudentPromotion() {
             <tbody>
               {items.map(x => (
                 <tr key={x.id}>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <input
                       type="checkbox"
                       disabled={x.already_processed}
@@ -191,9 +239,14 @@ export default function StudentPromotion() {
                     />
                   </td>
                   <td><b>{x.name}</b></td>
-                  <td>{x.roll}</td>
-                  <td>{x.from_class_name || '-'}</td>
-                  <td>{x.from_section_name || '-'}</td>
+                  <td>{x.roll || x.roll_number || '—'}</td>
+                  <td>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
+                      {x.admission_number || x.admissionNumber || '—'}
+                    </span>
+                  </td>
+                  <td>{x.from_class_name || '—'}</td>
+                  <td>{x.from_section_name || '—'}</td>
                   <td>
                     <select
                       disabled={!selected[x.id]}
@@ -215,7 +268,7 @@ export default function StudentPromotion() {
               ))}
               {!items.length && (
                 <tr>
-                  <td colSpan={7} className="muted" style={{ padding: 20 }}>
+                  <td colSpan={8} className="muted" style={{ padding: 20 }}>
                     No students found for this academic year.
                   </td>
                 </tr>
