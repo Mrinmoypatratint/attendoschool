@@ -339,7 +339,7 @@ export function StudentProfile() {
                   <Clock size={13} /> Photo Pending Approval
                 </div>
                 <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1, color: '#B45309' }}>
-                  Your uploaded photo is waiting for administrator approval. Once approved, it will automatically become active on your profile.
+                  Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
                 </div>
               </div>
             </div>

@@ -251,6 +251,12 @@ function roleMatches(userRole: string, expectedRole?: string): boolean {
   return userRole === norm;
 }
 
+function createTokenPayload(payload: any): any {
+  if (!payload || typeof payload !== 'object') return payload;
+  const { photo_url, photoUrl, ...clean } = payload;
+  return clean;
+}
+
 // POST /api/auth/login - Multi-tenant login supporting Firestore, PostgreSQL, and Demo fallback
 router.post('/login', async (req, res) => {
   const { instituteId, email, studentId, admissionNumber, admissionNo, password, role: expectedRole } = req.body ?? {};
@@ -379,7 +385,7 @@ router.post('/login', async (req, res) => {
             rollNumber: stu.roll_number || '25'
           };
 
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       } else {
@@ -431,7 +437,7 @@ router.post('/login', async (req, res) => {
             photoUrl: photoUrl
           };
 
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       }
@@ -500,7 +506,7 @@ router.post('/login', async (req, res) => {
             rollNumber: String(matchedStudent?.roll_number || matchedStudent?.rollNumber || (fUser as any).rollNumber || '1')
           };
 
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'firestore' });
         }
       } else {
@@ -551,7 +557,7 @@ router.post('/login', async (req, res) => {
             photoUrl: fsPhoto
           };
 
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'firestore' });
         }
       }
@@ -609,7 +615,7 @@ router.post('/login', async (req, res) => {
       userPayload.schoolName = resolvedSchoolName;
     }
 
-    const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+    const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
     return res.json({ token, user: userPayload, provider: 'demo' });
   }
 
@@ -624,7 +630,7 @@ router.post('/refresh', requireAuth, (req: AuthRequest, res) => {
   const userPayload: any = { ...req.user };
   delete userPayload.iat;
   delete userPayload.exp;
-  const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+  const token = jwt.sign(createTokenPayload(userPayload), env.jwtSecret, { expiresIn: '30d' });
   return res.json({ token, user: userPayload });
 });
 

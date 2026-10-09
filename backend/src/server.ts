@@ -1,3 +1,4 @@
+import http from 'http';
 import app from './app';
 import { env } from './config/env';
 import { pool } from './db';
@@ -14,7 +15,8 @@ import { memPeriods, memEntries } from './routes/timetable';
 import { demoSchools } from './routes/superAdmin';
 import { startKeepAliveService } from './services/keepAliveService';
 
-const server = app.listen(env.port, () => {
+const server = http.createServer({ maxHeaderSize: 1024 * 1024 }, app);
+server.listen(env.port, () => {
   console.log(`School Attendance API running on http://localhost:${env.port}`);
 
   // Rehydrate data from Firebase Cloud Firestore into backend stores
