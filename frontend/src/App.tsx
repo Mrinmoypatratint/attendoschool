@@ -302,8 +302,20 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { dark, toggle } = useTheme();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'STUDENT') {
+        nav('/student/dashboard', { replace: true });
+      } else if (user.role === 'SUPER_ADMIN') {
+        nav('/super-admin', { replace: true });
+      } else {
+        nav('/dashboard', { replace: true });
+      }
+    }
+  }, [user, nav]);
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [institutesLoading, setInstitutesLoading] = useState(false);
@@ -1908,7 +1920,7 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user) {
       loadAcademicYears();
-      if (user.role === 'SCHOOL_ADMIN') {
+      if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
         api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
       }
     }
@@ -2146,6 +2158,7 @@ function Layout({children}:{children:React.ReactNode}){
 
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
+  const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2163,8 +2176,12 @@ function Layout({children}:{children:React.ReactNode}){
     )}
     <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
-          <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {currentSchoolPhoto ? (
+            <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+          ) : (
+            <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+          )}
         </div>
         <div className="school-info">
           <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
@@ -2388,8 +2405,12 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <School size={20} color="#1d4ed8" />
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {currentSchoolPhoto ? (
+                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                ) : (
+                  <School size={20} color="#1d4ed8" />
+                )}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2638,12 +2659,22 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div className="header-meta" style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
-                <p className="eyebrow" style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>ATTENDOSCHOOL · {user.role.replace(/_/g,' ')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {currentSchoolPhoto ? (
+                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                ) : (
+                  <School size={20} color="#1d4ed8" />
+                )}
               </div>
-              <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 18 }}>{user.name}</h2>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {currentSchoolName}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.name} · {user.role.replace(/_/g,' ')}
+                </div>
+              </div>
             </div>
           </div>
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
@@ -9278,6 +9309,14 @@ function Subjects(){
     error: string | null;
   }>({ isOpen: false, loading: false, error: null });
 
+  const [deleteSubjectDialog, setDeleteSubjectDialog] = useState<{
+    isOpen: boolean;
+    subjectId?: string;
+    subjectName?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
   async function load(){
     try {
       const res = await api.get('/subjects');
@@ -9322,6 +9361,32 @@ function Subjects(){
     }
   }
 
+  function promptDeleteSubject(sub: any) {
+    setDeleteSubjectDialog({
+      isOpen: true,
+      subjectId: sub.id,
+      subjectName: sub.name,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmDeleteSubject() {
+    if (!deleteSubjectDialog.subjectId) return;
+    setDeleteSubjectDialog(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await api.delete(`/subjects/${deleteSubjectDialog.subjectId}`);
+      setRows(prev => prev.filter(r => r.id !== deleteSubjectDialog.subjectId));
+      setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setDeleteSubjectDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not delete subject'
+      }));
+    }
+  }
+
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
@@ -9330,9 +9395,31 @@ function Subjects(){
         <button type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add subject'}</button>
       </form>
       <div className="list">
-        {rows.map(x=><div className="list-row" key={x.id}>
+        {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
+          <button
+            type="button"
+            className="table-action-btn danger"
+            onClick={() => promptDeleteSubject(x)}
+            title={`Delete ${x.name}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 12.5
+            }}
+          >
+            <Trash2 size={13} />
+            <span>Delete</span>
+          </button>
         </div>)}
+        {rows.length === 0 && (
+          <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>No subjects added yet.</p>
+        )}
       </div>
     </div>
 
@@ -9358,6 +9445,24 @@ function Subjects(){
       ]}
       loading={subjectPreview.loading}
       error={subjectPreview.error}
+    />
+
+    {/* Destructive Confirm Modal for Subject Deletion */}
+    <DestructiveConfirmModal
+      isOpen={deleteSubjectDialog.isOpen}
+      onClose={() => setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmDeleteSubject}
+      title={`Confirm Deletion — ${deleteSubjectDialog.subjectName || 'Subject'}`}
+      entityName={deleteSubjectDialog.subjectName || ''}
+      entityType="Subject"
+      details={[
+        { label: 'Subject Name', value: deleteSubjectDialog.subjectName || '—' },
+        { label: 'Impact', value: 'Will remove subject from class routines & schedules' }
+      ]}
+      warningMessage="Deleting this subject will remove it from all class routines and unassign it from timetable schedules. This action cannot be reversed."
+      confirmText="Confirm & Delete Subject"
+      loading={deleteSubjectDialog.loading}
+      error={deleteSubjectDialog.error}
     />
   </Layout>
 }

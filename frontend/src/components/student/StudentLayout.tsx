@@ -36,6 +36,25 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     return localStorage.getItem('theme') === 'dark';
   });
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [schoolPhoto, setSchoolPhoto] = useState<string | null>(
+    (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || null
+  );
+  const [schoolNameState, setSchoolNameState] = useState<string>(
+    user?.schoolName || 'AttendoSchool'
+  );
+
+  useEffect(() => {
+    studentApi.getProfile()
+      .then((p) => {
+        if (p?.schoolPhotoUrl || p?.school_photo_url) {
+          setSchoolPhoto(p.schoolPhotoUrl || p.school_photo_url || null);
+        }
+        if (p?.schoolName) {
+          setSchoolNameState(p.schoolName);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -107,7 +126,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const studentClass = user?.className && user?.sectionName 
     ? `${user.className} - Section ${user.sectionName}` 
     : 'Class 10 - Section A';
-  const schoolName = user?.schoolName || 'AttendoSchool';
+  const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
 
   return (
     <div className="student-portal-root">
@@ -122,9 +141,13 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand">
-          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer' }}>
-            <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
-            <span style={{ marginLeft: 8, fontWeight: 700, fontSize: 15, color: 'var(--text, #0F172A)' }}>AttendoSchool</span>
+          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {schoolPhoto ? (
+              <img src={schoolPhoto} alt={schoolName} className="student-brand-logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
+            )}
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
           </div>
           <button 
             type="button" 
@@ -200,8 +223,16 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
           <div className="student-topbar-right">
             {/* Institute Pill */}
-            <div className="student-institute-pill">
-              <Building2 size={15} className="student-inst-icon" />
+            <div className="student-institute-pill" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {schoolPhoto ? (
+                <img
+                  src={schoolPhoto}
+                  alt={schoolName}
+                  style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+                />
+              ) : (
+                <Building2 size={15} className="student-inst-icon" />
+              )}
               <span className="student-inst-name">{schoolName}</span>
               <ChevronDown size={14} className="student-inst-chevron" />
             </div>

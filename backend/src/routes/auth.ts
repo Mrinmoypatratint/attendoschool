@@ -240,7 +240,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-                 sch.name AS school_name, sch.code AS school_code
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
           FROM students st
           JOIN schools sch ON sch.id = st.school_id
           JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email) AND u.school_id = st.school_id))
@@ -281,6 +281,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
             schoolId: stu.school_id || resolvedInstituteId,
             schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
             schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            schoolPhotoUrl: stu.school_photo_url || undefined,
+            school_photo_url: stu.school_photo_url || undefined,
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
@@ -296,7 +298,24 @@ router.post('/login', loginRateLimit, async (req, res) => {
           };
 
           clearLoginAttempts(req, rawIdentifier);
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          // Keep token payload lean (< 500 bytes) - never embed base64 photos into JWT Authorization headers
+          const tokenPayload: any = {
+            id: stu.id,
+            schoolId: stu.school_id || resolvedInstituteId,
+            schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            name: stu.name,
+            email: stu.email,
+            role: 'STUDENT' as Role,
+            studentId: stu.student_id,
+            admissionNumber: stu.admission_number,
+            classId: stu.class_id,
+            sectionId: stu.section_id,
+            className: userPayload.className,
+            sectionName: userPayload.sectionName,
+            rollNumber: userPayload.rollNumber
+          };
+          const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       } else {
@@ -348,7 +367,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
             email: u.email,
             role,
             photo_url: photoUrl,
-            photoUrl: photoUrl
+            photoUrl: photoUrl,
+            schoolPhotoUrl: u.school_photo_url || undefined,
+            school_photo_url: u.school_photo_url || undefined
           };
 
           // Keep token payload lean (< 500 bytes) so HTTP Authorization header never exceeds Cloudflare/Nginx limits (16KB)

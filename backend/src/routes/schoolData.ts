@@ -1113,7 +1113,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
           date_of_birth, gender, address
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+        ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
           name = EXCLUDED.name,
           admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
           parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
@@ -1662,7 +1662,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
             )
             VALUES ${valuesChunks.join(', ')}
-            ON CONFLICT (class_id, section_id, roll_number) DO UPDATE SET
+            ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
               name = EXCLUDED.name,
               admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
               gender = COALESCE(EXCLUDED.gender, students.gender),
@@ -3440,13 +3440,14 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
   if (q.rowCount) {
     const created = { ...q.rows[0], school_id: sid };
     demoSubjects.push(created);
-    syncSubjectToFirestore(created).catch(() => {});
+    if (sid) fastCache.delete(`subjects:${sid}`);
     return res.status(201).json(created);
   }
  } catch {}
  const newSub = { id: `sub-${Date.now()}`, name: cleanName, school_id: sid };
  demoSubjects.push(newSub);
  syncSubjectToFirestore(newSub).catch(() => {});
+ if (sid) fastCache.delete(`subjects:${sid}`);
  res.status(201).json(newSub);
 });
 
@@ -3459,6 +3460,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
       await client.query('BEGIN');
       await client.query('DELETE FROM class_routines WHERE subject_id = $1', [subId]);
       await client.query('UPDATE attendance_sessions SET subject_id = NULL WHERE subject_id = $1', [subId]);
+      await client.query('DELETE FROM timetable_entries WHERE subject_id = $1', [subId]);
       await client.query('DELETE FROM subjects WHERE id = $1 AND school_id = $2', [subId, sid]);
       await client.query('COMMIT');
     } catch (delErr: any) {
@@ -3473,6 +3475,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
   if (idx >= 0) demoSubjects.splice(idx, 1);
   deleteSubjectFromFirestore(subId).catch(() => {});
   if (sid) {
+    fastCache.delete(`subjects:${sid}`);
     invalidateSchoolCache(sid);
   }
   res.json({success:true});
