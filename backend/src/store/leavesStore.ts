@@ -30,6 +30,8 @@ export interface TeacherLeaveStoreItem {
   start_date: string;
   end_date: string;
   reason: string;
+  document_url?: string | null;
+  document_name?: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   reviewed_by?: string;
   reviewer_name?: string;

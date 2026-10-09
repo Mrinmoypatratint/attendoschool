@@ -172,7 +172,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           todayAttendance: todayAtt,
           weeklyTrend,
           pendingCorrectionsCount: Number(kpi.pending_corrections) || 0,
-          pendingPhotosCount: Number(kpi.pending_photos) || 0,
+          pendingPhotosCount: 0, // Managed by teacher portal
           pendingLeavesCount: Number(kpi.pending_leaves) || 0,
           activeAcademicYear: kpi.active_academic_year || null,
           announcements: [],

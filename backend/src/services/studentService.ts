@@ -401,7 +401,7 @@ export async function updateStudentPhoto(schoolId: string, userId: string, photo
     pendingApproval: true,
     photoUrl: st.photo_url || '',
     pendingPhotoUrl: cleanPhotoUrl,
-    message: 'Profile photo submitted for review! It will appear on your profile once approved by the administrator.'
+    message: 'Profile photo submitted for review! It will appear on your profile once approved by your teacher.'
   };
 }
 

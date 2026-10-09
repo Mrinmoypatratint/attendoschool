@@ -16,9 +16,11 @@ import {
   AlertTriangle,
   FileText,
   Eye,
-  MessageSquare,
   FileSpreadsheet,
-  Download
+  Paperclip,
+  Image as ImageIcon,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
@@ -37,6 +39,8 @@ interface TeacherLeave {
   start_date: string;
   end_date: string;
   reason: string;
+  document_url?: string;
+  document_name?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   reviewed_by?: string;
   reviewer_name?: string;
@@ -76,6 +80,7 @@ export default function TeacherLeaveApprove() {
 
   // Detail Modal State
   const [viewingLeave, setViewingLeave] = useState<TeacherLeave | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ url: string; name: string } | null>(null);
 
   // Approve Modal State
   const [approvingLeave, setApprovingLeave] = useState<TeacherLeave | null>(null);
@@ -84,6 +89,37 @@ export default function TeacherLeaveApprove() {
   // Reject Modal State
   const [rejectingLeave, setRejectingLeave] = useState<TeacherLeave | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('');
+
+  const openDocumentInNewTab = (dataUrl: string) => {
+    try {
+      if (dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        return;
+      }
+      window.open(dataUrl, '_blank');
+    } catch {
+      window.open(dataUrl, '_blank');
+    }
+  };
+
+  const downloadDocument = (dataUrl: string, filename: string = 'document') => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const loadLeaves = async () => {
     try {
@@ -1219,6 +1255,35 @@ export default function TeacherLeaveApprove() {
                         <div style={{ fontSize: 11.5, color: 'var(--text-muted, #94A3B8)', marginTop: 3 }}>
                           Applied: {formatDate(l.created_at)}
                         </div>
+                        {l.document_url && (
+                          <div style={{ marginTop: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => setViewingDoc({ url: l.document_url!, name: l.document_name || `${l.applicant_name} Leave Document` })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '3px 8px',
+                                borderRadius: 5,
+                                border: '1px solid #BFDBFE',
+                                background: '#EFF6FF',
+                                color: '#1D4ED8',
+                                fontSize: 11.5,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                              title="View Supporting Document"
+                            >
+                              <Paperclip size={11} />
+                              <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {l.document_name || 'View Document'}
+                              </span>
+                              <Eye size={11} />
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -1547,6 +1612,93 @@ export default function TeacherLeaveApprove() {
                 >
                   {viewingLeave.reason}
                 </div>
+              </div>
+
+              {/* Attached Supporting Document */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #64748B)', marginBottom: 6 }}>
+                  ATTACHED SUPPORTING DOCUMENT / PROOF
+                </div>
+                {viewingLeave.document_url ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 6,
+                          background: '#2563EB',
+                          color: '#FFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        {viewingLeave.document_url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingLeave.document_url) ? (
+                          <ImageIcon size={18} />
+                        ) : (
+                          <FileText size={18} />
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#1E3A8A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {viewingLeave.document_name || 'Faculty Leave Document'}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#3B82F6', marginTop: 1 }}>
+                          Supporting proof provided by faculty member
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewingDoc({ url: viewingLeave.document_url!, name: viewingLeave.document_name || `${viewingLeave.applicant_name} Leave Document` })}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#2563EB',
+                          color: '#FFF',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={13} />
+                        <span>View Document</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'var(--background, #F8FAFC)',
+                      border: '1px solid var(--border, #E2E8F0)',
+                      fontSize: 12.5,
+                      color: 'var(--text-muted, #94A3B8)',
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    No supporting document attached for this request.
+                  </div>
+                )}
               </div>
 
               {/* Status & Review Info */}
@@ -1881,6 +2033,168 @@ export default function TeacherLeaveApprove() {
               >
                 {actionLoading === rejectingLeave.id ? 'Rejecting...' : 'Confirm Rejection'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Document Preview Modal ── */}
+      {viewingDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 16
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingDoc(null);
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface, #FFF)',
+              border: '1px solid var(--border, #E2E8F0)',
+              borderRadius: 14,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #E2E8F0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--modal-header, #F8FAFC)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <Paperclip size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {viewingDoc.name}
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => openDocumentInNewTab(viewingDoc.url)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #CBD5E1)',
+                    background: '#FFF',
+                    color: 'var(--text, #0F172A)',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Open in new window"
+                >
+                  <ExternalLink size={13} />
+                  <span>Open New Tab</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadDocument(viewingDoc.url, viewingDoc.name)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#2563EB',
+                    color: '#FFF',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Download File"
+                >
+                  <Download size={13} />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingDoc(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary, #64748B)',
+                    padding: 4,
+                    marginLeft: 4
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#F1F5F9' }}>
+              {viewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingDoc.url) ? (
+                <img
+                  src={viewingDoc.url}
+                  alt={viewingDoc.name}
+                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                />
+              ) : viewingDoc.url.startsWith('data:application/pdf') || /\.pdf$/i.test(viewingDoc.url) ? (
+                <iframe
+                  src={viewingDoc.url}
+                  title={viewingDoc.name}
+                  style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 8 }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FFF', borderRadius: 10, width: '100%', maxWidth: 420 }}>
+                  <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px', display: 'block' }} />
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>
+                    {viewingDoc.name}
+                  </div>
+                  <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
+                    Direct inline preview is not supported for this file type. Please open or download it to view.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => downloadDocument(viewingDoc.url, viewingDoc.name)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#2563EB',
+                      color: '#FFF',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} />
+                    <span>Download File</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

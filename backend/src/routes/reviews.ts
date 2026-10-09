@@ -66,6 +66,8 @@ async function ensureReviewTables() {
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS teacher_email VARCHAR(255);
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewer_name VARCHAR(255);
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS document_url TEXT;
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);
 
       ALTER TABLE student_leave_requests DROP CONSTRAINT IF EXISTS student_leave_requests_status_check;
       ALTER TABLE student_leave_requests ADD CONSTRAINT student_leave_requests_status_check CHECK (status IN ('PENDING', 'SEEN', 'APPROVED', 'REJECTED', 'CANCELLED'));
@@ -105,15 +107,16 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
     }
 
     const { status, search, role } = req.query;
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     if (isPostgresConfigured) {
       let query = `
         SELECT p.*
         FROM photo_approval_requests p
-        WHERE p.school_id = $1
+        WHERE (p.school_id = $1 OR p.school_id::text = $2)
       `;
-      const params: any[] = [schoolId];
-      let paramIdx = 2;
+      const params: any[] = [pgSchoolId || schoolId, String(schoolId)];
+      let paramIdx = 3;
 
       if (status && status !== 'ALL') {
         query += ` AND p.status = $${paramIdx++}`;
@@ -143,8 +146,8 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
           COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
           COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
         FROM photo_approval_requests
-        WHERE school_id = $1
-      `, [schoolId]);
+        WHERE (school_id = $1 OR school_id::text = $2)
+      `, [pgSchoolId || schoolId, String(schoolId)]);
 
       const counts = {
         all: parseInt(countRes.rows[0]?.total || '0', 10),
@@ -182,12 +185,13 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const reviewerName = req.user?.name || 'School Admin';
+    const reviewerName = req.user?.name || (req.user?.role === 'TEACHER' ? 'Teacher' : 'School Admin');
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     if (isPostgresConfigured) {
       const existing = await pool.query(
-        'SELECT * FROM photo_approval_requests WHERE id = $1 AND school_id = $2',
-        [id, schoolId]
+        'SELECT * FROM photo_approval_requests WHERE id = $1 AND (school_id = $2 OR school_id::text = $3)',
+        [id, pgSchoolId || schoolId, String(schoolId)]
       );
       if (existing.rowCount === 0) {
         return res.status(404).json({ success: false, message: 'Photo request not found' });
@@ -204,15 +208,15 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
             reviewed_by_name = $2,
             reviewed_at = NOW(),
             updated_at = NOW()
-        WHERE id = $3 AND school_id = $4
+        WHERE id = $3 AND (school_id = $4 OR school_id::text = $5)
         RETURNING *
-      `, [reviewerId, reviewerName, id, schoolId]);
+      `, [reviewerId, reviewerName, id, pgSchoolId || schoolId, String(schoolId)]);
 
       // Apply the photo to the student or teacher profile
       if (reqRow.applicant_type === 'STUDENT') {
         await pool.query(
-          'UPDATE students SET photo_url = $1, updated_at = NOW() WHERE id = $2 AND school_id = $3',
-          [reqRow.photo_url, reqRow.applicant_id, schoolId]
+          'UPDATE students SET photo_url = $1, updated_at = NOW() WHERE id = $2 AND (school_id = $3 OR school_id::text = $4)',
+          [reqRow.photo_url, reqRow.applicant_id, pgSchoolId || schoolId, String(schoolId)]
         );
 
         if (isFirebaseConfigured()) {
@@ -239,7 +243,10 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
 
           if (stRes.rows.length > 0) {
             const st = stRes.rows[0];
-            if (st.user_id) clearStudentDashboardCache(st.user_id);
+            if (st.user_id) {
+              await pool.query('UPDATE users SET photo_url = $1, updated_at = NOW() WHERE id = $2', [reqRow.photo_url, st.user_id]).catch(() => {});
+              clearStudentDashboardCache(st.user_id);
+            }
             const toEmail = st.student_email || st.user_email || st.parent_email;
             if (toEmail) {
               sendPhotoReviewEmail({
@@ -285,19 +292,20 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
     const { reason } = req.body;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const reviewerName = req.user?.name || 'School Admin';
+    const reviewerName = req.user?.name || (req.user?.role === 'TEACHER' ? 'Teacher' : 'School Admin');
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     if (isPostgresConfigured) {
       const existing = await pool.query(
-        'SELECT * FROM photo_approval_requests WHERE id = $1 AND school_id = $2',
-        [id, schoolId]
+        'SELECT * FROM photo_approval_requests WHERE id = $1 AND (school_id = $2 OR school_id::text = $3)',
+        [id, pgSchoolId || schoolId, String(schoolId)]
       );
       if (existing.rowCount === 0) {
         return res.status(404).json({ success: false, message: 'Photo request not found' });
       }
 
       const reqRow = existing.rows[0];
-      const rejectionReason = reason || 'Photo does not meet administrative standards';
+      const rejectionReason = reason || 'Photo does not meet standards';
 
       const updateRes = await pool.query(`
         UPDATE photo_approval_requests
@@ -307,9 +315,9 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
             reviewed_by_name = $3,
             reviewed_at = NOW(),
             updated_at = NOW()
-        WHERE id = $4 AND school_id = $5
+        WHERE id = $4 AND (school_id = $5 OR school_id::text = $6)
         RETURNING *
-      `, [rejectionReason, reviewerId, reviewerName, id, schoolId]);
+      `, [rejectionReason, reviewerId, reviewerName, id, pgSchoolId || schoolId, String(schoolId)]);
 
       // If student, dispatch rejection email
       if (reqRow.applicant_type === 'STUDENT') {
@@ -771,7 +779,7 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
-    const { startDate, endDate, leaveType, reason } = req.body;
+    const { startDate, endDate, leaveType, reason, documentUrl, documentName, document_url, document_name } = req.body;
 
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ success: false, message: 'Start date, end date, and reason are required' });
@@ -781,6 +789,8 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
     const teacherEmail = req.user?.email || '';
     const teacherId = req.user?.id;
     const cleanLeaveType = String(leaveType || 'CASUAL').toUpperCase();
+    const finalDocUrl = documentUrl || document_url || null;
+    const finalDocName = documentName || document_name || (finalDocUrl ? 'Attached Document' : null);
     const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     let savedItem: any = null;
@@ -807,10 +817,10 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
 
       const ins = await pool.query(`
         INSERT INTO teacher_leave_requests (
-          school_id, teacher_id, teacher_name, teacher_email, leave_type, start_date, end_date, reason, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+          school_id, teacher_id, teacher_name, teacher_email, leave_type, start_date, end_date, reason, status, document_url, document_name
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9, $10)
         RETURNING *
-      `, [pgSchoolId, targetTeacherId, teacherName, teacherEmail, cleanLeaveType, startDate, endDate, reason]);
+      `, [pgSchoolId, targetTeacherId, teacherName, teacherEmail, cleanLeaveType, startDate, endDate, reason, finalDocUrl, finalDocName]);
 
       return res.status(201).json({
         success: true,
@@ -829,6 +839,8 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
       start_date: startDate,
       end_date: endDate,
       reason,
+      document_url: finalDocUrl,
+      document_name: finalDocName,
       status: 'PENDING' as const,
       created_at: new Date().toISOString()
     };
@@ -866,6 +878,8 @@ router.get('/teacher-leaves/my', async (req: AuthRequest, res: Response) => {
           l.start_date,
           l.end_date,
           l.reason,
+          l.document_url,
+          l.document_name,
           l.status,
           l.reviewed_by,
           COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
@@ -1193,6 +1207,8 @@ router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
           l.start_date,
           l.end_date,
           l.reason,
+          l.document_url,
+          l.document_name,
           l.status,
           l.reviewed_by,
           COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
@@ -1397,7 +1413,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
     const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     if (isPostgresConfigured && pgSchoolId) {
-      const photosRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
+      // Photo approvals are routed to TEACHER (and SUPER_ADMIN), NOT to SCHOOL_ADMIN
+      const photosRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
         SELECT id, applicant_name, applicant_type, identifier, detail, photo_url, created_at
         FROM photo_approval_requests
         WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING'
@@ -1419,7 +1436,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       // For SCHOOL_ADMIN: teacher leaves awaiting review
       const teacherLeavesRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
         SELECT l.id, 'TEACHER' as applicant_type, COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
-               tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.created_at
+               tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.document_url, l.document_name, l.created_at
         FROM teacher_leave_requests l
         LEFT JOIN users u ON u.id = l.teacher_id
         LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
@@ -1439,7 +1456,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       const rawStudentLeavesCount = parseInt(countRes.rows[0]?.pending_student_leaves || '0', 10);
       const rawTeacherLeavesCount = parseInt(countRes.rows[0]?.pending_teacher_leaves || '0', 10);
 
-      const pendingPhotosCount = (userRole === 'TEACHER') ? 0 : rawPhotosCount;
+      // Photos go to TEACHER, not SCHOOL_ADMIN
+      const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : rawPhotosCount;
       const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') 
         ? rawTeacherLeavesCount
         : rawStudentLeavesCount;
@@ -1487,6 +1505,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           applicantType: 'TEACHER',
           leaveType: l.leave_type,
           reason: l.reason,
+          hasDocument: Boolean(l.document_url),
+          documentName: l.document_name,
           startDate: l.start_date,
           endDate: l.end_date
         }))
@@ -1506,9 +1526,10 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
 
     const memTeacherLeaves = (userRole === 'TEACHER') ? [] : inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
     const memStudentLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
-    const memPhotos = (userRole === 'TEACHER') ? [] : inMemoryPhotos.filter(p => isSameSchool(p.school_id, schoolId) && p.status === 'PENDING');
+    const memPhotos = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryPhotos.filter(p => isSameSchool(p.school_id, schoolId) && p.status === 'PENDING');
 
     const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
+    const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : memPhotos.length;
 
     const notifications: any[] = [
       ...memPhotos.map(p => ({
@@ -1549,6 +1570,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         applicantType: 'TEACHER',
         leaveType: l.leave_type,
         reason: l.reason,
+        hasDocument: Boolean(l.document_url),
+        documentName: l.document_name,
         startDate: l.start_date,
         endDate: l.end_date
       }))
@@ -1556,10 +1579,10 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
 
     return res.json({
       success: true,
-      pendingPhotosCount: memPhotos.length,
+      pendingPhotosCount,
       pendingLeavesCount,
       pendingTeacherLeavesCount: memTeacherLeaves.length,
-      totalPendingCount: memPhotos.length + pendingLeavesCount,
+      totalPendingCount: pendingPhotosCount + pendingLeavesCount,
       notifications
     });
   } catch (error: any) {
