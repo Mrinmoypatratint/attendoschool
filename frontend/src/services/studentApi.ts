@@ -116,6 +116,14 @@ export interface TimetableEntry {
   room?: string;
 }
 
+export interface AssignmentAttachment {
+  id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  created_at: string;
+}
+
 export interface Assignment {
   id: string;
   title: string;
@@ -125,9 +133,12 @@ export interface Assignment {
   due_date: string;
   max_marks: number;
   submission_status: 'PENDING' | 'SUBMITTED' | 'GRADED' | 'OVERDUE';
+  submission_id?: string;
+  submission_text?: string;
   submitted_at?: string;
   marks_obtained?: number;
   feedback?: string;
+  attachments?: AssignmentAttachment[];
 }
 
 export interface Exam {
@@ -175,8 +186,28 @@ export const studentApi = {
   getAnnouncements: () => api.get<Announcement[]>('/student/announcements').then((r) => r.data),
   replyToAnnouncement: (id: string, replyText: string) => api.post('/communication/announcements/' + id + '/reply', { replyText }).then((r) => r.data),
   getAssignments: () => api.get<Assignment[]>('/student/assignments').then((r) => r.data),
-  submitAssignment: (id: string, submissionText: string) =>
-    api.post(`/student/assignments/${id}/submit`, { submissionText }).then((r) => r.data),
+  submitAssignment: (id: string, submissionText: string, attachments?: Array<{ fileName: string; fileData: string }>) =>
+    api.post(`/student/assignments/${id}/submit`, { submissionText, attachments }).then((r) => r.data),
+  previewAttachment: async (assignmentId: string, attachmentId: string) => {
+    const res = await api.get(`/student/assignments/${assignmentId}/attachments/${attachmentId}/preview`, {
+      responseType: 'blob'
+    });
+    return res.data as Blob;
+  },
+  downloadAttachment: async (assignmentId: string, attachmentId: string, fileName: string) => {
+    const res = await api.get(`/student/assignments/${assignmentId}/attachments/${attachmentId}/download`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([res.data], { type: (res.headers['content-type'] as string) || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
   getExams: () => api.get<Exam[]>('/student/exams').then((r) => r.data),
   getLeaveRequests: () => api.get<LeaveRequest[]>('/student/leave-requests').then((r) => r.data),
   createLeaveRequest: (data: { startDate: string; endDate: string; reason: string }) =>

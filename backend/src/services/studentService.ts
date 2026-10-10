@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { pool } from '../db';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool, isTestSchool } from '../utils/tenant';
@@ -7,6 +8,7 @@ import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { validateAttachment, uploadToStorage, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/supabaseStorage';
 
 export function toDdMmYyyy(val: any): string {
   if (!val) return '';
@@ -1183,7 +1185,8 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
       `SELECT a.id, a.title, a.description, a.due_date, a.max_marks,
               sub.name AS subject_name, u.name AS teacher_name,
               COALESCE(s.status, 'PENDING') AS submission_status,
-              s.submitted_at, s.marks_obtained, s.feedback
+              s.id AS submission_id,
+              s.submitted_at, s.submission_text, s.marks_obtained, s.feedback
        FROM student_assignments a
        LEFT JOIN subjects sub ON sub.id = a.subject_id
        LEFT JOIN users u ON u.id = a.teacher_id
@@ -1192,38 +1195,137 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
        ORDER BY a.due_date ASC`,
       [schoolId, st.class_id, st.id, st.section_id]
     );
-    if (q.rowCount && q.rowCount > 0) return q.rows;
+    if (q.rowCount && q.rowCount > 0) {
+      const rows = q.rows;
+      const subIds = rows.map((r: any) => r.submission_id).filter(Boolean);
+      let attachmentsMap = new Map<string, any[]>();
+      if (subIds.length > 0) {
+        try {
+          const attQ = await pool.query(
+            `SELECT id, submission_id, assignment_id, file_name, file_size, mime_type, created_at
+             FROM student_assignment_attachments
+             WHERE school_id = $1 AND student_id = $2 AND submission_id = ANY($3::uuid[])
+             ORDER BY created_at ASC`,
+            [schoolId, st.id, subIds]
+          );
+          attQ.rows.forEach((att: any) => {
+            const list = attachmentsMap.get(att.submission_id) || [];
+            list.push(att);
+            attachmentsMap.set(att.submission_id, list);
+          });
+        } catch (_attErr) {}
+      }
+
+      return rows.map((r: any) => ({
+        ...r,
+        attachments: r.submission_id ? (attachmentsMap.get(r.submission_id) || []) : []
+      }));
+    }
   } catch (_e) {}
 
   return [];
 }
 
 /**
- * Submit assignment text
+ * Submit assignment text and optional attachments
  */
-export async function submitStudentAssignment(schoolId: string, userId: string, assignmentId: string, text: string) {
+export async function submitStudentAssignment(
+  schoolId: string,
+  userId: string,
+  assignmentId: string,
+  text: string,
+  attachments?: Array<{ fileName: string; fileData: string; mimeType?: string }>
+) {
   const st = await resolveStudentRecord(schoolId, userId);
-  try {
-    const q = await pool.query(
-      `INSERT INTO student_assignment_submissions (school_id, assignment_id, student_id, status, submitted_at, submission_text)
-       VALUES ($1, $2, $3, 'SUBMITTED', NOW(), $4)
-       ON CONFLICT (assignment_id, student_id)
-       DO UPDATE SET status = 'SUBMITTED', submitted_at = NOW(), submission_text = $4
-       RETURNING *`,
-      [schoolId, assignmentId, st.id, text]
-    );
-    clearStudentDashboardCache(userId);
-    return q.rows[0];
-  } catch (_e) {
-    clearStudentDashboardCache(userId);
-    return {
-      assignment_id: assignmentId,
-      student_id: st.id,
-      status: 'SUBMITTED',
-      submitted_at: new Date().toISOString(),
-      submission_text: text
-    };
+  if (!st) {
+    throw new Error('Student profile not found');
   }
+
+  // 1. Verify assignment exists and belongs to school
+  const asgQ = await pool.query(
+    `SELECT id, class_id, section_id, due_date FROM student_assignments WHERE id = $1 AND school_id = $2`,
+    [assignmentId, schoolId]
+  );
+  if (asgQ.rowCount === 0) {
+    throw new Error('Assignment not found or does not belong to your school');
+  }
+
+  const asg = asgQ.rows[0];
+  if (asg.class_id !== st.class_id) {
+    throw new Error('Access denied: Assignment is not assigned to your class');
+  }
+  if (asg.section_id && asg.section_id !== st.section_id) {
+    throw new Error('Access denied: Assignment is not assigned to your section');
+  }
+
+  const trimmedText = String(text || '').trim();
+  const fileList = Array.isArray(attachments) ? attachments : [];
+
+  if (!trimmedText && fileList.length === 0) {
+    throw new Error('Submission content required: please provide submission text or attach at least one file');
+  }
+
+  // 2. Validate attachments if present
+  if (fileList.length > MAX_FILES_COUNT) {
+    throw new Error(`Maximum ${MAX_FILES_COUNT} files allowed per submission`);
+  }
+
+  let totalSize = 0;
+  const validatedFiles: Array<{ id: string; fileName: string; mimeType: string; buffer: Buffer; storageKey: string }> = [];
+
+  for (const item of fileList) {
+    const valRes = validateAttachment(item.fileName, item.fileData);
+    if (!valRes.valid) {
+      throw new Error(`File validation error for "${item.fileName}": ${valRes.error}`);
+    }
+    totalSize += valRes.buffer.length;
+    if (totalSize > MAX_TOTAL_SIZE) {
+      throw new Error(`Total submission size exceeds the 25MB limit`);
+    }
+
+    const attId = crypto.randomUUID();
+    const storageKey = `schools/${schoolId}/assignments/${assignmentId}/submissions/${st.id}/${attId}_${valRes.sanitizedName}`;
+
+    validatedFiles.push({
+      id: attId,
+      fileName: valRes.sanitizedName,
+      mimeType: valRes.mimeType,
+      buffer: valRes.buffer,
+      storageKey
+    });
+  }
+
+  // 3. Upsert submission record
+  const subQ = await pool.query(
+    `INSERT INTO student_assignment_submissions (school_id, assignment_id, student_id, status, submitted_at, submission_text)
+     VALUES ($1, $2, $3, 'SUBMITTED', NOW(), $4)
+     ON CONFLICT (assignment_id, student_id)
+     DO UPDATE SET status = 'SUBMITTED', submitted_at = NOW(), submission_text = $4
+     RETURNING *`,
+    [schoolId, assignmentId, st.id, trimmedText]
+  );
+  const subRecord = subQ.rows[0];
+
+  // 4. Upload validated files to private Supabase Storage and record in student_assignment_attachments
+  const savedAttachments: any[] = [];
+  for (const file of validatedFiles) {
+    await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
+
+    const attInsert = await pool.query(
+      `INSERT INTO student_assignment_attachments
+         (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SUPABASE', $9, NOW())
+       RETURNING id, file_name, file_size, mime_type, created_at`,
+      [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
+    );
+    savedAttachments.push(attInsert.rows[0]);
+  }
+
+  clearStudentDashboardCache(userId);
+  return {
+    ...subRecord,
+    attachments: savedAttachments
+  };
 }
 
 /**

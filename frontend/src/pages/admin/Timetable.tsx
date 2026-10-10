@@ -37,6 +37,83 @@ const parseSecName = (val: any): string => {
     .toUpperCase();
 };
 
+export interface TeacherProfile {
+  id?: string;
+  teacher_id?: string;
+  name?: string;
+  role?: string;
+  [key: string]: any;
+}
+
+export interface TimetableEntryLike {
+  id?: string;
+  teacher_id?: string;
+  teacherId?: string;
+  teacher_name?: string;
+  teacherName?: string;
+  substitute_teacher_id?: string;
+  altTeacherId?: string;
+  substituteTeacherId?: string;
+  substitute_teacher_name?: string;
+  altTeacherName?: string;
+  substituteTeacherName?: string;
+  [key: string]: any;
+}
+
+export function isPrimaryTeacherForEntry(user: TeacherProfile | null | undefined, entry: TimetableEntryLike | null | undefined): boolean {
+  if (!user || user.role !== 'TEACHER' || !entry) return false;
+  const tId = String(entry.teacher_id || entry.teacherId || '').trim();
+  const uId = String(user.id || '').trim();
+  const uTeacherId = String(user.teacher_id || '').trim();
+
+  const hasEntryId = Boolean(tId);
+  const hasUserId = Boolean(uId || uTeacherId);
+
+  // Authoritative identity check using stable IDs
+  if (hasEntryId && hasUserId) {
+    return (Boolean(uId) && tId === uId) || (Boolean(uTeacherId) && tId === uTeacherId);
+  }
+
+  // Fallback: name matching ONLY when relevant IDs are unavailable.
+  // Never let a name match override conflicting IDs.
+  if (!hasEntryId || !hasUserId) {
+    const tName = (entry.teacher_name || entry.teacherName || '').toLowerCase().trim();
+    const uName = (user.name || '').toLowerCase().trim();
+    return Boolean(tName && uName && (tName === uName || tName.includes(uName) || uName.includes(tName)));
+  }
+
+  return false;
+}
+
+export function isAlternateTeacherForEntry(user: TeacherProfile | null | undefined, entry: TimetableEntryLike | null | undefined): boolean {
+  if (!user || user.role !== 'TEACHER' || !entry) return false;
+  const subId = String(entry.substitute_teacher_id || entry.altTeacherId || entry.substituteTeacherId || '').trim();
+  const uId = String(user.id || '').trim();
+  const uTeacherId = String(user.teacher_id || '').trim();
+
+  const hasSubId = Boolean(subId);
+  const hasUserId = Boolean(uId || uTeacherId);
+
+  // Authoritative identity check using stable IDs
+  if (hasSubId && hasUserId) {
+    return (Boolean(uId) && subId === uId) || (Boolean(uTeacherId) && subId === uTeacherId);
+  }
+
+  // Fallback: name matching ONLY when relevant IDs are unavailable.
+  // Never let a name match override conflicting IDs.
+  if (!hasSubId || !hasUserId) {
+    const subName = (entry.substitute_teacher_name || entry.altTeacherName || entry.substituteTeacherName || '').toLowerCase().trim();
+    const uName = (user.name || '').toLowerCase().trim();
+    return Boolean(subName && uName && (subName === uName || subName.includes(uName) || uName.includes(subName)));
+  }
+
+  return false;
+}
+
+export function isTeacherEntry(user: TeacherProfile | null | undefined, entry: TimetableEntryLike | null | undefined): boolean {
+  return isPrimaryTeacherForEntry(user, entry) || isAlternateTeacherForEntry(user, entry);
+}
+
 export default function Timetable() {
   const { user } = useAuth();
   const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -112,23 +189,10 @@ export default function Timetable() {
     }
   }, [classes, selClassId]);
 
-  // Teacher identity helper
-  const isMyEntry = (entry: any) => {
-    if (!isTeacher || !entry) return false;
-    const tId = String(entry.teacher_id || entry.teacherId || '');
-    const subId = String(entry.substitute_teacher_id || entry.altTeacherId || entry.substituteTeacherId || '');
-    const tName = (entry.teacher_name || entry.teacherName || '').toLowerCase().trim();
-    const subName = (entry.substitute_teacher_name || entry.altTeacherName || '').toLowerCase().trim();
-    const uName = (user?.name || '').toLowerCase().trim();
-    const uId = String(user?.id || '');
-    const uTeacherId = String((user as any)?.teacher_id || '');
-
-    if (tId && (tId === uId || (uTeacherId && tId === uTeacherId))) return true;
-    if (subId && (subId === uId || (uTeacherId && subId === uTeacherId))) return true;
-    if (tName && uName && (tName === uName || tName.includes(uName) || uName.includes(tName))) return true;
-    if (subName && uName && (subName === uName || subName.includes(uName) || uName.includes(subName))) return true;
-    return false;
-  };
+  // Teacher identity helpers (authoritative ID matching with fallback)
+  const isPrimaryTeacher = (entry: any) => isPrimaryTeacherForEntry(user, entry);
+  const isAlternateTeacher = (entry: any) => isAlternateTeacherForEntry(user, entry);
+  const isMyEntry = (entry: any) => isTeacherEntry(user, entry);
 
   // Auto-select the teacher's assigned class on initial load
   useEffect(() => {
@@ -644,9 +708,15 @@ export default function Timetable() {
               <tbody>
                 {myWeeklyEntries.map(e => {
                   const dayName = DAYS.find(d => d.num === Number(e.day_of_week ?? e.dayOfWeek))?.name || `Day ${e.day_of_week}`;
-                  const isSub = Boolean(e.substitute_teacher_id && String(e.substitute_teacher_id) === String(user?.id));
+                  const isAlternate = isAlternateTeacher(e) && !isPrimaryTeacher(e);
                   return (
-                    <tr key={e.id} style={{ background: 'rgba(16, 185, 129, 0.03)' }}>
+                    <tr
+                      key={e.id}
+                      style={{
+                        background: isAlternate ? 'rgba(249, 115, 22, 0.05)' : 'rgba(16, 185, 129, 0.05)',
+                        borderLeft: isAlternate ? '3px solid #ea580c' : '3px solid #10b981'
+                      }}
+                    >
                       <td><b>{dayName}</b></td>
                       <td>{e.period_name || `Period ${e.period_number || 1}`}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.start_time} – {e.end_time}</td>
@@ -654,10 +724,32 @@ export default function Timetable() {
                       <td><b>{e.subject_name || '—'}</b></td>
                       <td>{e.room_name || '—'}</td>
                       <td>
-                        {isSub ? (
-                          <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Substitute</span>
+                        {isAlternate ? (
+                          <span
+                            className="badge"
+                            style={{
+                              background: 'rgba(249, 115, 22, 0.18)',
+                              color: '#ea580c',
+                              border: '1px solid #ea580c',
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}
+                          >
+                            Alternate Teacher
+                          </span>
                         ) : (
-                          <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 11 }}>Faculty</span>
+                          <span
+                            className="badge"
+                            style={{
+                              background: '#d1fae5',
+                              color: '#065f46',
+                              border: '1px solid #10b981',
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}
+                          >
+                            Primary Faculty
+                          </span>
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
@@ -669,7 +761,7 @@ export default function Timetable() {
                             gap: 5,
                             padding: '6px 12px',
                             borderRadius: 6,
-                            background: '#10b981',
+                            background: isAlternate ? '#ea580c' : '#10b981',
                             color: '#fff',
                             textDecoration: 'none',
                             fontSize: 12,
@@ -821,20 +913,44 @@ export default function Timetable() {
                       </tr>;
                     }
                     if (entry) {
-                      const isMy = isMyEntry(entry);
+                      const isPrimary = isPrimaryTeacher(entry);
+                      const isAlternate = isAlternateTeacher(entry) && !isPrimary;
+                      const isMy = isPrimary || isAlternate;
+                      const altName = entry.substitute_teacher_name || entry.altTeacherName || '';
                       return <tr key={p.id} style={{
-                        background: isMy ? 'rgba(16, 185, 129, 0.05)' : undefined,
-                        borderLeft: isMy ? '3px solid #10b981' : undefined
+                        background: isPrimary ? 'rgba(16, 185, 129, 0.05)' : isAlternate ? 'rgba(249, 115, 22, 0.05)' : undefined,
+                        borderLeft: isPrimary ? '3px solid #10b981' : isAlternate ? '3px solid #ea580c' : undefined
                       }}>
                         <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
                         <td><b>{pName}</b></td>
                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
                         <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
                         <td>
-                          <span style={{ fontWeight: isMy ? 700 : 500 }}>{entry.teacher_name || '—'}</span>
-                          {isMy && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
+                          <span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || '—'}</span>
+                          {isPrimary && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
                         </td>
-                        <td>{entry.substitute_teacher_name ? <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>Alt: {entry.substitute_teacher_name}</span> : <span className="muted">—</span>}</td>
+                        <td>
+                          {isAlternate ? (
+                            <span
+                              className="badge"
+                              style={{
+                                background: 'rgba(249, 115, 22, 0.18)',
+                                color: '#ea580c',
+                                border: '1px solid #ea580c',
+                                fontSize: 11,
+                                fontWeight: 700
+                              }}
+                            >
+                              Alt (You){altName ? `: ${altName}` : ''}
+                            </span>
+                          ) : altName ? (
+                            <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>
+                              Alt: {altName}
+                            </span>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
                         <td>{entry.room_name || '—'}</td>
                         {(isSchoolAdmin || isTeacher) && (
                           <td style={{ textAlign: 'right' }}>
@@ -853,7 +969,7 @@ export default function Timetable() {
                                   gap: 5,
                                   padding: '6px 12px',
                                   borderRadius: 6,
-                                  background: '#10b981',
+                                  background: isAlternate ? '#ea580c' : '#10b981',
                                   color: '#fff',
                                   textDecoration: 'none',
                                   fontSize: 12,
@@ -932,7 +1048,7 @@ export default function Timetable() {
                                 gap: 4,
                                 padding: '4px 10px',
                                 borderRadius: 6,
-                                background: '#10b981',
+                                background: isAlternateTeacher(e) && !isPrimaryTeacher(e) ? '#ea580c' : '#10b981',
                                 color: '#fff',
                                 textDecoration: 'none',
                                 fontSize: 11,
