@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { BrandedWelcomeLoader } from '../BrandedWelcomeLoader';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -55,6 +56,41 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       })
       .catch(() => {});
   }, []);
+
+  // Branded Welcome Loader state - displayed only once per session per student
+  const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    if (!user || user.role !== 'STUDENT') return false;
+    if (typeof window === 'undefined') return false;
+    try {
+      return !sessionStorage.getItem(`attendo_welcome_seen_${user.id}`);
+    } catch {
+      return false;
+    }
+  });
+
+  // Ensure that if the user changes while StudentLayout remains mounted, loader state syncs immediately
+  useEffect(() => {
+    if (!user || user.role !== 'STUDENT') {
+      setShowWelcome(false);
+      return;
+    }
+    try {
+      const alreadySeen = sessionStorage.getItem(`attendo_welcome_seen_${user.id}`);
+      setShowWelcome(!alreadySeen);
+    } catch {
+      setShowWelcome(false);
+    }
+  }, [user?.id, user?.role]);
+
+  const handleWelcomeComplete = useCallback(() => {
+    if (welcomeSessionKey) {
+      try {
+        sessionStorage.setItem(welcomeSessionKey, 'true');
+      } catch {}
+    }
+    setShowWelcome(false);
+  }, [welcomeSessionKey]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -128,8 +164,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     : 'Class 10 - Section A';
   const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
 
+  const resolvedStudentName = user?.name?.trim() || 'Student';
+  const resolvedSchoolName = user?.schoolName?.trim() || 'School';
+  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+
   return (
-    <div className="student-portal-root">
+    <>
+      {showWelcome && (
+        <BrandedWelcomeLoader
+          schoolName={resolvedSchoolName}
+          userName={resolvedStudentName}
+          subtitle="Student Portal · Secure Session"
+          logoUrl={resolvedLogoUrl}
+          onComplete={handleWelcomeComplete}
+        />
+      )}
+      <div className="student-portal-root">
       {/* Mobile Backdrop */}
       {mobileNavOpen && (
         <div 
@@ -305,5 +355,6 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         </main>
       </div>
     </div>
-  );
+  </>
+);
 }

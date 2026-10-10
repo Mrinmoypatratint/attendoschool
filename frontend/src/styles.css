@@ -12244,4 +12244,262 @@ header {
   color: #94a3b8;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   BRANDED WELCOME LOADER (SCHOOL ADMIN PORTAL)
+   Lime-Green #9ee925 Triple Rotating Circular Rings & Letter-by-Letter Greeting
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.as-welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.97) 0%, rgba(2, 6, 23, 0.99) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: all;
+  user-select: none;
+}
+
+[data-theme="light"] .as-welcome-overlay {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
+}
+
+.as-welcome-overlay.as-welcome-fade-out {
+  opacity: 0;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.as-welcome-overlay .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.as-welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* ── Rings Stage ── */
+.as-welcome-rings-stage {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.as-welcome-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Outer Ring (Clockwise, 8s) */
+.as-welcome-ring-outer {
+  width: 210px;
+  height: 210px;
+  border: 2px dashed rgba(158, 233, 37, 0.65);
+  border-top-color: #9ee925;
+  border-bottom-color: #9ee925;
+  box-shadow: 0 0 20px rgba(158, 233, 37, 0.3);
+  animation: asRingSpinClockwise 8s linear infinite;
+}
+
+/* Middle Ring (Counter-Clockwise, 5.5s) */
+.as-welcome-ring-middle {
+  width: 168px;
+  height: 168px;
+  border: 2px solid transparent;
+  border-top: 2.5px solid #9ee925;
+  border-bottom: 2.5px solid #9ee925;
+  border-left: 2px solid rgba(158, 233, 37, 0.8);
+  border-right: 2px solid rgba(158, 233, 37, 0.35);
+  box-shadow: 0 0 16px rgba(158, 233, 37, 0.35);
+  animation: asRingSpinCounterClockwise 5.5s linear infinite;
+}
+
+/* Inner Ring (Clockwise, 3.6s) */
+.as-welcome-ring-inner {
+  width: 132px;
+  height: 132px;
+  border: 2.5px dashed #9ee925;
+  border-top-style: solid;
+  border-left-style: solid;
+  box-shadow: 0 0 14px rgba(158, 233, 37, 0.4), inset 0 0 10px rgba(158, 233, 37, 0.15);
+  animation: asRingSpinClockwise 3.6s linear infinite;
+}
+
+/* ── Center Logo Badge ── */
+.as-welcome-logo-badge {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid rgba(158, 233, 37, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 22px rgba(158, 233, 37, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+  z-index: 2;
+}
+
+.as-welcome-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.as-welcome-fallback-svg {
+  filter: drop-shadow(0 0 6px rgba(158, 233, 37, 0.5));
+}
+
+/* ── Greeting Text & Staggered Typography ── */
+.as-welcome-greeting-wrap {
+  text-align: center;
+  max-width: 680px;
+  padding: 0 20px;
+}
+
+.as-welcome-greeting-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0 0 10px 0;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  letter-spacing: -0.2px;
+}
+
+[data-theme="light"] .as-welcome-greeting-title {
+  color: #0f172a;
+}
+
+.as-welcome-word {
+  display: inline-block;
+  margin-right: 0.28em;
+  white-space: nowrap;
+}
+
+.as-welcome-school-word {
+  color: #9ee925;
+  font-weight: 800;
+  text-shadow: 0 0 14px rgba(158, 233, 37, 0.45);
+}
+
+[data-theme="light"] .as-welcome-school-word {
+  color: #4d8b02;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.as-welcome-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: asCharFadeIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.as-welcome-subtitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin: 0;
+  opacity: 0;
+  animation: asSubFadeIn 0.6s ease 0.4s forwards;
+}
+
+[data-theme="light"] .as-welcome-subtitle {
+  color: #64748b;
+}
+
+/* ── Keyframes ── */
+@keyframes asRingSpinClockwise {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes asRingSpinCounterClockwise {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes asCharFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes asSubFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+}
+
+/* ── Accessibility & Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .as-welcome-ring-outer,
+  .as-welcome-ring-middle,
+  .as-welcome-ring-inner {
+    animation: none !important;
+    opacity: 0.9 !important;
+  }
+  .as-welcome-char {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .as-welcome-subtitle {
+    animation: none !important;
+    opacity: 0.85 !important;
+    transform: none !important;
+  }
+  .as-welcome-overlay {
+    transition: none !important;
+  }
+}
+
+
 

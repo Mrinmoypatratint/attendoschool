@@ -55,6 +55,7 @@ import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
+import { BrandedWelcomeLoader } from './components/BrandedWelcomeLoader';
 import {
   UniversalPreviewModal,
   DestructiveConfirmModal,
@@ -1802,7 +1803,7 @@ function SuperAdminHeader({
 
 /* ────── Layout ────── */
 function Layout({children}:{children:React.ReactNode}){
-  const {user,logout}=useAuth();
+  const {user,logout,updateUser}=useAuth();
   const nav=useNavigate();
   const loc=useLocation();
   const {dark,toggle}=useTheme();
@@ -1923,7 +1924,19 @@ function Layout({children}:{children:React.ReactNode}){
     if (user) {
       loadAcademicYears();
       if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
-        api.get('/dashboard/school').then(res => setSchoolInfo(res.data)).catch(() => {});
+        api.get('/dashboard/school').then(res => {
+          setSchoolInfo(res.data);
+          if (res.data?.school?.name && updateUser && user.schoolName !== res.data.school.name) {
+            updateUser({ schoolName: res.data.school.name });
+          }
+        }).catch(() => {});
+        if (user.role === 'TEACHER' && !user.schoolName) {
+          api.get('/teacher/profile').then(res => {
+            if (res.data?.schoolName && updateUser) {
+              updateUser({ schoolName: res.data.schoolName });
+            }
+          }).catch(() => {});
+        }
       }
     }
   }, [user?.role]);
@@ -2076,6 +2089,23 @@ function Layout({children}:{children:React.ReactNode}){
 
   const hasAnyResults = searchResults.students.length > 0 || searchResults.teachers.length > 0 || searchResults.classes.length > 0;
 
+  // Dynamic browser title for School Admin & Teacher portals
+  useEffect(() => {
+    const originalTitle = 'AttendoSchool - Smart School Attendance & Cloud SIS Platform';
+    if (user?.role === 'SCHOOL_ADMIN') {
+      const resolvedName = schoolInfo?.school?.name || user?.schoolName || 'School Administration';
+      document.title = `${resolvedName} | Admin Portal`;
+    } else if (user?.role === 'TEACHER') {
+      const resolvedName = user?.schoolName || schoolInfo?.school?.name || 'School';
+      document.title = `${resolvedName} | Teacher Portal`;
+    } else {
+      document.title = originalTitle;
+    }
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [user?.role, user?.schoolName, schoolInfo?.school?.name]);
+
   if(!user) return null;
 
   const adminLinks: any[] = [
@@ -2161,7 +2191,7 @@ function Layout({children}:{children:React.ReactNode}){
     return true;
   });
 
-  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : 'School Administration');
+  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
   const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
@@ -2185,7 +2215,7 @@ function Layout({children}:{children:React.ReactNode}){
           {currentSchoolPhoto ? (
             <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
           ) : (
-            <img src="/attendo-school-logo.png" alt="AttendoSchool" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
+            <img src="/attendo-school-logo.png" alt={(user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') ? currentSchoolName : 'AttendoSchool'} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
           )}
         </div>
         <div className="school-info">
@@ -2422,7 +2452,7 @@ function Layout({children}:{children:React.ReactNode}){
                   {currentSchoolName}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Code: <b>{currentSchoolCode}</b> · AttendoSchool
+                  Code: <b>{currentSchoolCode}</b> · {currentSchoolName}
                 </div>
               </div>
             </div>
@@ -2635,20 +2665,20 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <div className="school-crest" style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 3, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
                 {currentSchoolPhoto ? (
-                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
                 ) : (
                   <School size={20} color="#1d4ed8" />
                 )}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {currentSchoolName}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.name} · {user.role.replace(/_/g,' ')}
+                <div style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {user.name} · {user.role === "TEACHER" ? "Faculty" : user.role.replace(/_/g," ")}
                 </div>
               </div>
             </div>
@@ -3267,7 +3297,30 @@ function Stat({label,value,trend,sub}:{label:string;value:any;trend?:string;sub?
     )}
   </div>
 }
-function PageHead({title,sub,button,onClick}:{title:string;sub:string;button?:string;onClick?:()=>void}){return <div className="page-head"><div><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}><img src="/attendo-school-logo.png" alt="AttendoSchool" style={{width:18,height:18,borderRadius:4,objectFit:'contain'}}/><p className="eyebrow" style={{margin:0}}>{title.includes('Admin')?'ATTENDOSCHOOL SUPER ADMIN':'ATTENDOSCHOOL ADMIN'}</p></div><h1>{title}</h1><p className="muted">{sub}</p></div>{button&&<button onClick={onClick}><Plus size={16}/>{button}</button>}</div>}
+function PageHead({title,sub,button,onClick,schoolName:customSchoolName}:{title:string;sub:string;button?:string;onClick?:()=>void;schoolName?:string}){
+  const { user } = useAuth();
+  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
+  const resolvedSchoolName = customSchoolName || user?.schoolName || (isTeacher ? 'School' : 'School Administration');
+  const eyebrowText = isSchoolAdmin
+    ? `${resolvedSchoolName.toUpperCase()} ADMIN`
+    : isTeacher
+    ? `${resolvedSchoolName.toUpperCase()} FACULTY`
+    : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
+  const logoAlt = (isSchoolAdmin || isTeacher) ? resolvedSchoolName : 'AttendoSchool';
+
+  return <div className="page-head">
+    <div>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+        <img src="/attendo-school-logo.png" alt={logoAlt} style={{width:18,height:18,borderRadius:4,objectFit:'contain'}}/>
+        <p className="eyebrow" style={{margin:0}}>{eyebrowText}</p>
+      </div>
+      <h1>{title}</h1>
+      <p className="muted">{sub}</p>
+    </div>
+    {button&&<button onClick={onClick}><Plus size={16}/>{button}</button>}
+  </div>;
+}
 function Modal({
   title,
   close,
@@ -3350,6 +3403,27 @@ function AdminHome(){
   const [loading, setLoading] = useState(!data);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
+  // Branded Welcome Loader state - displayed only once per session per school admin
+  const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    if (!user || user.role !== 'SCHOOL_ADMIN') return false;
+    if (typeof window === 'undefined') return false;
+    try {
+      return !sessionStorage.getItem(`attendo_welcome_seen_${user.id}`);
+    } catch {
+      return false;
+    }
+  });
+
+  const handleWelcomeComplete = useCallback(() => {
+    if (welcomeSessionKey) {
+      try {
+        sessionStorage.setItem(welcomeSessionKey, 'true');
+      } catch {}
+    }
+    setShowWelcome(false);
+  }, [welcomeSessionKey]);
+
   async function load(retryCount = 0) {
     if (!data) setLoading(true);
     setDashboardError(null);
@@ -3392,7 +3466,19 @@ function AdminHome(){
   const todaySchedule = data?.todaySchedule || [];
   const recentActivity = data?.recentActivity || [];
 
-  return <Layout>
+  const resolvedSchoolName = data?.school?.name || (user as any)?.schoolName || 'School Administration';
+  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || data?.school?.photo_url || '';
+
+  return (
+    <>
+      {showWelcome && (
+        <BrandedWelcomeLoader
+          schoolName={resolvedSchoolName}
+          logoUrl={resolvedLogoUrl}
+          onComplete={handleWelcomeComplete}
+        />
+      )}
+      <Layout>
     {/* Dashboard Error / Quota Notice */}
     {dashboardError && (
       <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
@@ -3782,12 +3868,36 @@ function AdminHome(){
         </div>
       </div>
     </div>
-  </Layout>
+      </Layout>
+    </>
+  );
 }
 
 function TeacherHome(){
   const {user}=useAuth();
   const nav=useNavigate();
+
+  // Branded Welcome Loader state - displayed only once per session per teacher
+  const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    if (!user || user.role !== 'TEACHER') return false;
+    if (typeof window === 'undefined') return false;
+    try {
+      return !sessionStorage.getItem(`attendo_welcome_seen_${user.id}`);
+    } catch {
+      return false;
+    }
+  });
+
+  const handleWelcomeComplete = useCallback(() => {
+    if (welcomeSessionKey) {
+      try {
+        sessionStorage.setItem(welcomeSessionKey, 'true');
+      } catch {}
+    }
+    setShowWelcome(false);
+  }, [welcomeSessionKey]);
+
   const [r,setR]=useState<any[]>([]);
   const [todaySessions,setTodaySessions]=useState<any[]>([]);
   const [notices,setNotices]=useState<any[]>([]);
@@ -3981,24 +4091,38 @@ function TeacherHome(){
     return `${diffDays} days ago`;
   };
 
+  const resolvedSchoolName = (user as any)?.schoolName || 'School';
+  const resolvedTeacherName = user?.name || 'Faculty Member';
+  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+
   return (
-    <Layout>
-      {pendingPhotos > 0 && (
-        <div className="admin-alert-banner" style={{ marginBottom: 16, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
-          <div className="alert-left">
-            <Camera size={20} color="#2563eb" />
-            <div>
-              <strong style={{ color: '#1e3a8a' }}>Student Profile Photo Submissions Pending Approval</strong>
-              <p style={{ color: '#1e40af', margin: 0, fontSize: 13 }}>
-                There {pendingPhotos === 1 ? 'is 1 photo' : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
-              </p>
-            </div>
-          </div>
-          <button className="alert-action-btn" onClick={() => nav('/photo-approvals')} style={{ background: '#2563eb', color: '#ffffff' }}>
-            Review Photos ({pendingPhotos}) →
-          </button>
-        </div>
+    <>
+      {showWelcome && (
+        <BrandedWelcomeLoader
+          schoolName={resolvedSchoolName}
+          userName={resolvedTeacherName}
+          subtitle="Faculty Portal · Secure Session"
+          logoUrl={resolvedLogoUrl}
+          onComplete={handleWelcomeComplete}
+        />
       )}
+      <Layout>
+        {pendingPhotos > 0 && (
+          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "#eff6ff", borderColor: "#bfdbfe", color: "#1e40af" }}>
+            <div className="alert-left">
+              <Camera size={20} color="#2563eb" />
+              <div>
+                <strong style={{ color: "#1e3a8a" }}>Student Profile Photo Submissions Pending Approval</strong>
+                <p style={{ color: "#1e40af", margin: 0, fontSize: 13 }}>
+                  There {pendingPhotos === 1 ? "is 1 photo" : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
+                </p>
+              </div>
+            </div>
+            <button className="alert-action-btn" onClick={() => nav("/photo-approvals")} style={{ background: "#2563eb", color: "#ffffff" }}>
+              Review Photos ({pendingPhotos}) →
+            </button>
+          </div>
+        )}
       <div className="td-container">
         
         {/* 1. Welcome Banner */}
@@ -4434,7 +4558,8 @@ function TeacherHome(){
         </div>
 
       </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }
 
