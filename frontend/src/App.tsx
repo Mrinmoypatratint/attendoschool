@@ -23,6 +23,8 @@ import PhotoApprove from './pages/admin/PhotoApprove';
 import LeaveApprove from './pages/admin/LeaveApprove';
 import TeacherLeaveApprove from './pages/admin/TeacherLeaveApprove';
 import TeacherLeaveRequest from './pages/teacher/TeacherLeaveRequest';
+import { ClassMentorWorkspace } from './pages/teacher/ClassMentorWorkspace';
+import TeacherAssignments from './pages/teacher/TeacherAssignments';
 import SmtpLogs from './pages/admin/SmtpLogs';
 import { SuperAdminModule } from './super-admin/SuperAdminModule';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -228,7 +230,7 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm.includes('tint') ||
     norm === 'adm-2025-105' ||
     norm === 'adm-2025-001' ||
-    norm === 'sweta@gmail.com' ||
+    norm === 'student@gmail.com' ||
     norm === 'teacher@tint.edu.in' ||
     norm === 'student@tint.edu.in' ||
     norm === 'admin@tint.edu.in' ||
@@ -2112,6 +2114,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/take-attendance','Take Attendance',ClipboardCheck],
     ['/teacher-history','History',CalendarDays],
     ['—','REVIEW'],
+    ['/teacher/assignments','Assignments',BookOpen],
     ['/leave-applications','Leave Review',CalendarCheck],
     ['/photo-approvals','Photo Approvals',Camera],
     ['/teacher/leave-request','Apply Leave',CalendarPlus],
@@ -2119,6 +2122,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/announcements','Announcements',Megaphone],
     ['—','ATTENDANCE'],
     ['/attendance-reports','Reports',FileText],
+    ['/teacher/mentor-workspace','Class Mentor Workspace',Users],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable','Timetable',CalendarDays],
     ['/teacher/profile','Profile',User],
@@ -3786,20 +3790,64 @@ function TeacherHome(){
   const nav=useNavigate();
   const [r,setR]=useState<any[]>([]);
   const [todaySessions,setTodaySessions]=useState<any[]>([]);
+  const [notices,setNotices]=useState<any[]>([]);
+  const [studentCount,setStudentCount]=useState<number>(0);
   const [loading,setLoading]=useState(true);
   const [pendingPhotos, setPendingPhotos] = useState(0);
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+
+  // 1-second interval timer for live digital clock widget with cleanup on unmount
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function loadSchedule(showSpinner = true) {
     if (showSpinner) setLoading(true);
     try {
-      const [routineRes, historyRes] = await Promise.all([
+      const [routineRes, historyRes, noticesRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
-        api.get('/teacher/attendance/history').catch(() => ({ data: [] }))
+        api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
+        api.get('/communication/teacher/inbox').catch(() => ({ data: [] }))
       ]);
-      setR(Array.isArray(routineRes.data) ? routineRes.data : []);
+
+      const routineData = Array.isArray(routineRes.data) ? routineRes.data : [];
+      setR(routineData);
+
       const todayStr = new Date().toISOString().slice(0, 10);
       const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
       setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
+
+      setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : []);
+
+      // Calculate distinct active students across teacher's assigned classes
+      if (routineData.length > 0) {
+        const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
+        routineData.forEach((item: any) => {
+          const key = `${item.class_id || item.class_number}_${item.section_id || item.section_name}`;
+          if (!uniqueClassSecs.has(key)) {
+            uniqueClassSecs.set(key, { classId: item.class_id || item.class_number, sectionId: item.section_id || item.section_name });
+          }
+        });
+
+        const studentRequests = Array.from(uniqueClassSecs.values()).map(cs =>
+          api.get('/teacher/students', { params: { classId: cs.classId, sectionId: cs.sectionId } }).catch(() => ({ data: [] }))
+        );
+
+        const studentResponses = await Promise.all(studentRequests);
+        const uniqueStudentIds = new Set<string>();
+        studentResponses.forEach(res => {
+          if (Array.isArray(res.data)) {
+            res.data.forEach((st: any) => {
+              const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+              if (stKey) uniqueStudentIds.add(stKey);
+            });
+          }
+        });
+        setStudentCount(uniqueStudentIds.size);
+      } else {
+        setStudentCount(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -3838,140 +3886,556 @@ function TeacherHome(){
     });
   };
 
-  return <Layout>
-    {pendingPhotos > 0 && (
-      <div className="admin-alert-banner" style={{ marginBottom: 16, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
-        <div className="alert-left">
-          <Camera size={20} color="#2563eb" />
-          <div>
-            <strong style={{ color: '#1e3a8a' }}>Student Profile Photo Submissions Pending Approval</strong>
-            <p style={{ color: '#1e40af', margin: 0, fontSize: 13 }}>
-              There {pendingPhotos === 1 ? 'is 1 photo' : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
-            </p>
+  // Helper to determine time-based period status (UPCOMING, IN_PROGRESS, COMPLETED)
+  const getPeriodTimeStatus = (item: any): 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED' => {
+    if (!item.start_time || !item.end_time) return 'UPCOMING';
+    const now = new Date();
+    const curMins = now.getHours() * 60 + now.getMinutes();
+
+    const parseTime = (tStr: string) => {
+      if (!tStr) return 0;
+      const parts = String(tStr).split(':');
+      const h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      return h * 60 + m;
+    };
+
+    const sMins = parseTime(item.start_time);
+    const eMins = parseTime(item.end_time);
+
+    if (curMins >= eMins) return 'COMPLETED';
+    if (curMins >= sMins && curMins < eMins) return 'IN_PROGRESS';
+    return 'UPCOMING';
+  };
+
+  // Helper to get dynamic greeting
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return 'Good morning';
+    if (hr < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const teacherFirstName = user?.name ? user.name.split(' ')[0] : 'Teacher';
+
+  // Metrics
+  const pendingClasses = r.filter(x => !getRoutineAttendance(x));
+  const completedClassesCount = r.filter(x => getPeriodTimeStatus(x) === 'COMPLETED' || getRoutineAttendance(x)).length;
+
+  // Next Class Calculation
+  const upcomingOrCurrentClasses = r.filter(x => getPeriodTimeStatus(x) !== 'COMPLETED');
+  upcomingOrCurrentClasses.sort((a, b) => {
+    const parseTime = (tStr: string) => {
+      const parts = String(tStr || '00:00').split(':');
+      return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+    };
+    return parseTime(a.start_time) - parseTime(b.start_time);
+  });
+  const nextClass = upcomingOrCurrentClasses[0];
+
+  const getNextClassTimerText = (item: any) => {
+    if (!item) return 'No upcoming classes';
+    const status = getPeriodTimeStatus(item);
+    if (status === 'IN_PROGRESS') return 'In progress now';
+    const now = new Date();
+    const curMins = now.getHours() * 60 + now.getMinutes();
+    const parts = String(item.start_time || '00:00').split(':');
+    const sMins = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+    const diff = sMins - curMins;
+    if (diff <= 0) return 'Starting now';
+    if (diff < 60) return `Next class in ${diff} min`;
+    const hrs = Math.floor(diff / 60);
+    const mins = diff % 60;
+    return `Next class in ${hrs}h ${mins}m`;
+  };
+
+  // Weekdays for Today at a Glance
+  const todayDate = new Date();
+  const currentDayOfWeek = todayDate.getDay(); // 0 = Sun
+  const weekDays = [];
+  const startOfWeek = new Date(todayDate);
+  startOfWeek.setDate(todayDate.getDate() - currentDayOfWeek);
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    weekDays.push({
+      dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
+      dayNum: d.getDate(),
+      isToday: i === currentDayOfWeek
+    });
+  }
+
+  const formattedTodayDateString = todayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Time ago formatter for updates
+  const formatTimeAgo = (dateStr: string) => {
+    if (!dateStr) return 'Recently';
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs} hours ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays} days ago`;
+  };
+
+  return (
+    <Layout>
+      {pendingPhotos > 0 && (
+        <div className="admin-alert-banner" style={{ marginBottom: 16, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
+          <div className="alert-left">
+            <Camera size={20} color="#2563eb" />
+            <div>
+              <strong style={{ color: '#1e3a8a' }}>Student Profile Photo Submissions Pending Approval</strong>
+              <p style={{ color: '#1e40af', margin: 0, fontSize: 13 }}>
+                There {pendingPhotos === 1 ? 'is 1 photo' : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
+              </p>
+            </div>
           </div>
-        </div>
-        <button className="alert-action-btn" onClick={() => nav('/photo-approvals')} style={{ background: '#2563eb', color: '#ffffff' }}>
-          Review Photos ({pendingPhotos}) →
-        </button>
-      </div>
-    )}
-    <div className="hero">
-      <p className="eyebrow">TODAY'S ROUTINE & ATTENDANCE</p>
-      <h1>Ready to take attendance.</h1>
-      <p>Your daily teaching schedule is synchronized directly from the school timetable. Click "Take attendance" to record classroom attendance, or view and update existing class roll calls.</p>
-    </div>
-    <div className="panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Today's Scheduled Classes ({r.length})</h3>
-          <button
-            onClick={() => fetchTodayRoutine(true)}
-            type="button"
-            title="Refresh today's routine"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
-          >
-            <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
+          <button className="alert-action-btn" onClick={() => nav('/photo-approvals')} style={{ background: '#2563eb', color: '#ffffff' }}>
+            Review Photos ({pendingPhotos}) →
           </button>
         </div>
-        <a href="#/timetable" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
-          View Full Weekly Timetable →
-        </a>
-      </div>
-      {loading ? (
-        <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's routine schedule...</p>
-      ) : r.length === 0 ? (
-        <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
-          <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
-            You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review or take attendance.
-          </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-            <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
-              View Weekly Timetable
-            </a>
-            <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
-              Open Attendance Station
-            </button>
+      )}
+      <div className="td-container">
+        
+        {/* 1. Welcome Banner */}
+        <div className="td-welcome-banner">
+          <div className="td-welcome-content">
+            <h1 className="td-welcome-title">
+              {getGreeting()}, {teacherFirstName}! ☀️
+            </h1>
+            <p className="td-welcome-subtitle">Here's your teaching overview for today.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div className="td-quote-box">
+                <span>“A great teacher inspires, guides, and creates brighter futures.”</span>
+              </div>
+              <div className="td-clock-card" title="Current Local Time & Date">
+                <div className="td-clock-time">
+                  <Clock size={15} />
+                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+                </div>
+                <div className="td-clock-date">
+                  {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="td-welcome-illustration">
+            <svg width="220" height="130" viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="20" width="120" height="85" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="3" />
+              <rect x="18" y="28" width="104" height="69" rx="4" fill="#0f172a" />
+              <text x="32" y="52" fill="#38bdf8" fontSize="11" fontWeight="700" fontFamily="sans-serif">Teach</text>
+              <text x="44" y="68" fill="#f59e0b" fontSize="11" fontWeight="700" fontFamily="sans-serif">Learn</text>
+              <text x="36" y="84" fill="#10b981" fontSize="11" fontWeight="700" fontFamily="sans-serif">Grow</text>
+              
+              <path d="M150 95C150 75 165 60 180 60C195 60 210 75 210 95V105H150V95Z" fill="#2563eb" />
+              <circle cx="180" cy="45" r="14" fill="#fdba74" />
+              <path d="M172 40C172 40 178 34 184 40" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
+
+              <path d="M140 100L155 75L170 100H140Z" fill="#3b82f6" opacity="0.3" />
+              <path d="M125 105H215" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+              <circle cx="40" cy="12" r="6" fill="#f59e0b" />
+              <path d="M190 20L205 12L198 25L190 20Z" fill="#60a5fa" />
+            </svg>
           </div>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {r.map(x => {
-            const recordedSession = getRoutineAttendance(x);
-            const uId = String(user?.id || '');
-            const uTeacherId = String((user as any)?.teacher_id || '');
-            const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
-            const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
 
-            return (
-              <div
-                className="routine-card"
-                key={x.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 12,
-                  background: recordedSession ? 'rgba(16, 185, 129, 0.03)' : 'var(--card)',
-                  border: recordedSession ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <b style={{ fontSize: 15.5 }}>Class {x.class_number}-{x.section_name}</b>
-                    {x.period_name && <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontSize: 11, fontWeight: 600 }}>{x.period_name}</span>}
-                    {isAlternate && (
-                      <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        🔄 Alternate Teacher
-                      </span>
-                    )}
-                    {recordedSession && (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#d1fae5', color: '#065f46', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        ✓ Recorded ({recordedSession.present || 0} Present{recordedSession.left_early_count ? ` · ${recordedSession.left_early_count} Left Early` : ''})
-                      </span>
-                    )}
-                  </div>
-                  <div className="muted" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span><b>{x.subject_name}</b> · {fmt(x.start_time)}–{fmt(x.end_time)} {x.room ? '· Room ' + x.room : ''}</span>
-                    {recordedSession && (
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 4 }}>
-                        Taken by: <b>{recordedSession.teacher_name || 'Faculty Member'}</b>
-                        {recordedSession.is_reattendance ? ' · (Re-attended)' : ''}
-                      </span>
-                    )}
-                  </div>
-                </div>
+        {/* 2. Four Summary Cards Grid */}
+        <div className="td-summary-grid">
+          
+          {/* Card 1: Today's Classes */}
+          <div
+            className="td-summary-card"
+            onClick={() => nav('/timetable')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/timetable'); } }}
+            tabIndex={0}
+            role="button"
+            aria-label="View today's scheduled classes timetable"
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="td-card-left">
+              <div className="td-card-icon blue">
+                <CalendarDays size={22} />
+              </div>
+              <div>
+                <div className="td-card-label">Today's Classes</div>
+                <div className="td-card-value">{loading ? '...' : r.length}</div>
+                <div className="td-card-sub">Scheduled for today</div>
+              </div>
+            </div>
+            <ChevronRight size={18} className="td-card-arrow" />
+          </div>
 
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
-                    style={{
-                      padding: '8px 18px',
-                      borderRadius: 8,
-                      background: recordedSession ? '#059669' : '#2563eb',
-                      color: '#fff',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
-                  >
-                    {recordedSession ? 'View / Re-attendance →' : 'Take attendance →'}
+          {/* Card 2: Attendance Pending */}
+          <div
+            className="td-summary-card"
+            onClick={() => nav('/take-attendance')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/take-attendance'); } }}
+            tabIndex={0}
+            role="button"
+            aria-label="Mark pending class attendance"
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="td-card-left">
+              <div className="td-card-icon amber">
+                <ClipboardCheck size={22} />
+              </div>
+              <div>
+                <div className="td-card-label">Attendance Pending</div>
+                <div className="td-card-value">{loading ? '...' : pendingClasses.length}</div>
+                <div className="td-card-sub">Classes to mark</div>
+              </div>
+            </div>
+            <ChevronRight size={18} className="td-card-arrow" />
+          </div>
+
+          {/* Card 3: Classes Completed */}
+          <div
+            className="td-summary-card"
+            onClick={() => nav('/history')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/history'); } }}
+            tabIndex={0}
+            role="button"
+            aria-label="View completed classes attendance history"
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="td-card-left">
+              <div className="td-card-icon emerald">
+                <CheckCircle2 size={22} />
+              </div>
+              <div>
+                <div className="td-card-label">Classes Completed</div>
+                <div className="td-card-value">{loading ? '...' : completedClassesCount}</div>
+                <div className="td-card-sub">Out of {r.length} today</div>
+              </div>
+            </div>
+            <ChevronRight size={18} className="td-card-arrow" />
+          </div>
+
+          {/* Card 4: Students in My Classes */}
+          <div
+            className="td-summary-card"
+            onClick={() => nav('/attendance-reports')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/attendance-reports'); } }}
+            tabIndex={0}
+            role="button"
+            aria-label="View student rosters across assigned classes"
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="td-card-left">
+              <div className="td-card-icon purple">
+                <Users size={22} />
+              </div>
+              <div>
+                <div className="td-card-label">Students in My Classes</div>
+                <div className="td-card-value">{loading ? '...' : studentCount}</div>
+                <div className="td-card-sub">Across all assigned classes</div>
+              </div>
+            </div>
+            <ChevronRight size={18} className="td-card-arrow" />
+          </div>
+
+        </div>
+
+        {/* 3. Middle Grid: Schedule Table (Left) + Today at a Glance (Right) */}
+        <div className="td-middle-grid">
+          
+          {/* Today's Teaching Schedule */}
+          <div className="td-section-card">
+            <div className="td-section-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h3 className="td-section-title">
+                  <CalendarDays size={18} style={{ color: '#2563eb' }} />
+                  Today's Teaching Schedule ({r.length})
+                </h3>
+                <button
+                  onClick={() => fetchTodayRoutine(true)}
+                  type="button"
+                  title="Refresh routine"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
+                </button>
+              </div>
+              <a href="#/timetable" className="td-link-btn">
+                View Full Timetable →
+              </a>
+            </div>
+
+            {loading ? (
+              <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's schedule...</p>
+            ) : r.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
+                <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
+                  You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review attendance.
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                  <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                    View Weekly Timetable
+                  </a>
+                  <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
+                    Open Attendance Station
                   </button>
                 </div>
               </div>
-            );
-          })}
+            ) : (
+              <div className="td-table-wrap">
+                <table className="td-table">
+                  <thead>
+                    <tr>
+                      <th>PERIOD</th>
+                      <th>TIME</th>
+                      <th>CLASS & SECTION</th>
+                      <th>SUBJECT</th>
+                      <th>ROOM</th>
+                      <th>STATUS</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.map((x, idx) => {
+                      const recordedSession = getRoutineAttendance(x);
+                      const timeStatus = getPeriodTimeStatus(x);
+                      const uId = String(user?.id || '');
+                      const uTeacherId = String((user as any)?.teacher_id || '');
+                      const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
+                      const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
+
+                      return (
+                        <tr key={x.id || idx}>
+                          <td style={{ fontWeight: 700 }}>{x.period_number || idx + 1}</td>
+                          <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                            {fmt(x.start_time)} – {fmt(x.end_time)}
+                          </td>
+                          <td>
+                            <span className="td-class-pill">
+                              Class {x.class_number}-{x.section_name}
+                            </span>
+                            {isAlternate && (
+                              <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: '#ea580c', background: '#ffedd5', padding: '2px 6px', borderRadius: 4 }}>
+                                Alt Teacher
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 600 }}>{x.subject_name || 'General'}</td>
+                          <td style={{ color: 'var(--text-muted)' }}>{x.room || '—'}</td>
+                          <td>
+                            {recordedSession ? (
+                              <span className="td-status-pill completed">
+                                <CheckCircle2 size={12} /> Completed
+                              </span>
+                            ) : timeStatus === 'IN_PROGRESS' ? (
+                              <span className="td-status-pill in-progress">
+                                <Clock size={12} /> In Progress
+                              </span>
+                            ) : timeStatus === 'COMPLETED' ? (
+                              <span className="td-status-pill completed">
+                                <CheckCircle2 size={12} /> Completed
+                              </span>
+                            ) : (
+                              <span className="td-status-pill upcoming">
+                                <Clock size={12} /> Upcoming
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
+                              className={recordedSession ? 'td-btn-secondary' : 'td-btn-primary'}
+                            >
+                              <ClipboardCheck size={13} />
+                              {recordedSession ? 'View Attendance' : 'Take Attendance'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Today at a Glance */}
+          <div className="td-section-card">
+            <div className="td-section-header">
+              <h3 className="td-section-title">
+                <Calendar size={18} style={{ color: '#2563eb' }} />
+                Today at a glance
+              </h3>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
+              {formattedTodayDateString}
+            </div>
+
+            {/* Weekday Strip */}
+            <div className="td-calendar-strip">
+              {weekDays.map((wd, i) => (
+                <div key={i} className={`td-day-col ${wd.isToday ? 'active' : ''}`}>
+                  <span className="td-day-name">{wd.dayName}</span>
+                  <span className="td-day-num">{wd.dayNum}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Next Class Box */}
+            {nextClass ? (
+              <div className="td-next-class-box">
+                <div className="td-next-timer">
+                  <div className="td-timer-icon">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      Status
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7' }}>
+                      {getNextClassTimerText(nextClass)}
+                    </div>
+                  </div>
+                </div>
+                <div className="td-next-details">
+                  <div className="td-next-class-name">
+                    Class {nextClass.class_number}-{nextClass.section_name}
+                  </div>
+                  <div className="td-next-sub">
+                    {nextClass.subject_name} · {fmt(nextClass.start_time)} - {fmt(nextClass.end_time)}
+                  </div>
+                  {nextClass.room && (
+                    <div className="td-next-sub">Room {nextClass.room}</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                <div>
+                  <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+                  <div className="td-next-class-name">All classes completed for today</div>
+                  <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
-      )}
-    </div>
-  </Layout>
+
+        {/* 4. Bottom Grid: Attendance to Finish (Left) + School Updates (Right) */}
+        <div className="td-bottom-grid">
+          
+          {/* Attendance to Finish */}
+          <div className="td-section-card">
+            <div className="td-section-header">
+              <h3 className="td-section-title">
+                <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
+                Attendance to finish ({pendingClasses.length})
+              </h3>
+              <button onClick={() => nav('/take-attendance')} className="td-link-btn" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                View All →
+              </button>
+            </div>
+
+            {loading ? (
+              <p className="muted" style={{ padding: 14 }}>Loading pending items...</p>
+            ) : pendingClasses.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 10 }}>
+                <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+                <div style={{ fontWeight: 700, fontSize: 14 }}>All attendance caught up!</div>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>You have marked attendance for all scheduled periods today.</p>
+              </div>
+            ) : (
+              <div>
+                {pendingClasses.slice(0, 4).map((item, idx) => (
+                  <div key={item.id || idx} className="td-finish-item">
+                    <div className="td-finish-left">
+                      <div className="td-finish-icon">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13.5 }}>
+                          Class {item.class_number}-{item.section_name}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          {item.period_name || `Period ${idx + 1}`} · {fmt(item.start_time)} - {fmt(item.end_time)}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span className="td-status-pill in-progress">Not Marked</span>
+                      <button
+                        onClick={() => nav(`/take-attendance?routine=${item.id}&classId=${item.class_id}&sectionId=${item.section_id}&subjectId=${item.subject_id}`)}
+                        className="td-btn-primary"
+                        style={{ padding: '5px 12px', fontSize: 12 }}
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* School Updates */}
+          <div className="td-section-card">
+            <div className="td-section-header">
+              <h3 className="td-section-title">
+                <Megaphone size={18} style={{ color: '#2563eb' }} />
+                School updates
+              </h3>
+              <a href="#/announcements" className="td-link-btn">
+                View All →
+              </a>
+            </div>
+
+            {loading ? (
+              <p className="muted" style={{ padding: 14 }}>Loading announcements...</p>
+            ) : notices.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 10 }}>
+                <Megaphone size={28} style={{ color: 'var(--text-muted)', margin: '0 auto 6px' }} />
+                <div style={{ fontWeight: 700, fontSize: 14 }}>No recent announcements</div>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>Official school notices will appear here when published.</p>
+              </div>
+            ) : (
+              <div>
+                {notices.slice(0, 3).map((notice, idx) => {
+                  const isEmergency = notice.priority === 'EMERGENCY';
+                  const isHigh = notice.priority === 'HIGH';
+                  const iconColorClass = isEmergency ? 'amber' : isHigh ? 'purple' : 'green';
+
+                  return (
+                    <div key={notice.id || idx} className="td-update-item">
+                      <div className={`td-update-icon ${iconColorClass}`}>
+                        {isEmergency ? <AlertTriangle size={18} /> : isHigh ? <Users size={18} /> : <Megaphone size={18} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {notice.title}
+                          </div>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                            {formatTimeAgo(notice.published_at || notice.created_at)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {notice.message || notice.content}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+      </div>
+    </Layout>
+  );
 }
 
 const DEFAULT_CLASSES = [
@@ -9206,11 +9670,41 @@ function formatClassTitle(classNumber: any, label?: string): string {
 
 function Classes(){
   const {user}=useAuth();
+  const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>('CLASSES');
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
   const [cid,setCid]=useState('');
   const [sn,setSn]=useState('');
   const [addingSection,setAddingSection]=useState(false);
+
+  // Class Mentors State
+  const [mentors, setMentors] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [mentorsLoading, setMentorsLoading] = useState(false);
+  const [mentorError, setMentorError] = useState<string | null>(null);
+  const [mentorSearch, setMentorSearch] = useState('');
+  
+  // Assign / Change Modal State
+  const [assignModal, setAssignModal] = useState<{
+    section_id: string;
+    class_id: string;
+    class_number: number;
+    section_name: string;
+    current_teacher_id: string | null;
+    is_change: boolean;
+  } | null>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
+  // Remove Modal State
+  const [removeModal, setRemoveModal] = useState<{
+    section_id: string;
+    class_id: string;
+    class_number: number;
+    section_name: string;
+    teacher_name: string;
+  } | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   function getSectionCount(classItem: any): number {
     const matching = s.filter(sec => 
@@ -9235,7 +9729,40 @@ function Classes(){
     }
   }
 
-  useEffect(()=>{load()},[]);
+  async function loadMentors(){
+    setMentorsLoading(true);
+    setMentorError(null);
+    try {
+      const [mRes, tRes] = await Promise.all([
+        api.get('/admin/mentors'),
+        api.get('/teachers')
+      ]);
+      const rawMentors = Array.isArray(mRes.data) ? mRes.data : [];
+      const rawTeachers = Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []);
+      
+      setMentors(rawMentors);
+      // Filter strictly active, non-archived teachers
+      const activeTeachers = rawTeachers.filter((t: any) => 
+        t && t.is_active !== false && t.status !== 'DELETED' && t.status !== 'ARCHIVED'
+      );
+      setTeachers(activeTeachers);
+    } catch (err: any) {
+      console.error('Failed to load mentors:', err);
+      setMentorError(err?.response?.data?.message || 'Failed to fetch class mentor allocations.');
+    } finally {
+      setMentorsLoading(false);
+    }
+  }
+
+  useEffect(()=>{
+    load();
+  },[]);
+
+  useEffect(() => {
+    if (activeTab === 'MENTORS') {
+      loadMentors();
+    }
+  }, [activeTab]);
 
   async function handleAddSection(e?: React.FormEvent){
     if (e) e.preventDefault();
@@ -9268,6 +9795,9 @@ function Classes(){
       }));
       setSn('');
       await load();
+      if (activeTab === 'MENTORS') {
+        await loadMentors();
+      }
     } catch(err: any){
       alert(err?.response?.data?.message || 'Could not add section');
     } finally {
@@ -9275,38 +9805,429 @@ function Classes(){
     }
   }
 
-  return <Layout>
-    <PageHead title="Classes & Sections" sub="Manage school classes and their sections."/>
-    <div className="two-col">
-      <div className="panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', marginBottom: 10 }}>
-          <h3 style={{ margin: 0 }}>All Class</h3>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>No. of sections</span>
-        </div>
-        <div className="list" style={{ marginTop: 0 }}>
-          {c.map(x=><div className="list-row" key={x.id}>
-            <b>{formatClassTitle(x.class_number, x.label)}</b>
-            <span>{getSectionCount(x)} sections</span>
-          </div>)}
-        </div>
-      </div>
+  // Mentor Assign Submit Handler
+  async function submitMentorAssign(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assignModal || !selectedTeacherId) {
+      alert('Validation Error: Please select a teacher to assign as Class Mentor.');
+      return;
+    }
+    setAssigning(true);
+    try {
+      await api.post('/admin/mentors', {
+        class_id: assignModal.class_id,
+        section_id: assignModal.section_id,
+        teacher_id: selectedTeacherId
+      });
+      setAssignModal(null);
+      setSelectedTeacherId('');
+      await loadMentors();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to assign class mentor.');
+    } finally {
+      setAssigning(false);
+    }
+  }
 
-      <div className="panel">
-        <h3>Add section</h3>
-        <form className="inline" onSubmit={handleAddSection}>
-          <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
-            {c.map(x=><option key={x.id} value={x.id}>{formatClassTitle(x.class_number, x.label)}</option>)}
-          </select>
-          <input placeholder="Section (e.g. C)" value={sn} onChange={e=>setSn(e.target.value)}/>
-          <button type="submit" disabled={addingSection}>{addingSection ? 'Adding...' : 'Add Section'}</button>
-        </form>
-        <div className="list">
-          {s.map(x=><div className="list-row" key={x.id}>
-            <b>{formatClassTitle(x.class_number, x.label)} — Section {x.name}</b>
-          </div>)}
+  // Mentor Remove Submit Handler
+  async function submitMentorRemove(e: React.FormEvent) {
+    e.preventDefault();
+    if (!removeModal) return;
+    setRemoving(true);
+    try {
+      await api.delete('/admin/mentors', {
+        data: {
+          class_id: removeModal.class_id,
+          section_id: removeModal.section_id
+        }
+      });
+      setRemoveModal(null);
+      await loadMentors();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to remove class mentor.');
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  // Combine sections with mentor details for display
+  const combinedMentors = useMemo(() => {
+    return s.map(sec => {
+      const cls = c.find(item => item.id === sec.class_id || Number(item.class_number) === Number(sec.class_number));
+      const mRec = mentors.find(m => 
+        (m.section_id === sec.id || (m.section_name === sec.name && Number(m.class_number) === Number(sec.class_number)))
+      );
+      const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
+      
+      return {
+        section_id: sec.id,
+        section_name: sec.name || sec.section_name || 'A',
+        class_id: sec.class_id || cls?.id,
+        class_number: cls?.class_number ?? sec.class_number ?? 10,
+        mentor_record_id: mRec?.mentor_record_id || mRec?.id || null,
+        teacher_id: mRec?.teacher_id || null,
+        teacher_name: teacherObj?.name || mRec?.teacher_name || null,
+        teacher_email: teacherObj?.email || mRec?.teacher_email || null,
+        employee_id: teacherObj?.employee_id || teacherObj?.savior_no || mRec?.employee_id || null,
+        assigned_at: mRec?.assigned_at || null
+      };
+    }).sort((a, b) => (Number(a.class_number) - Number(b.class_number)) || String(a.section_name).localeCompare(String(b.section_name)));
+  }, [s, c, mentors, teachers]);
+
+  const filteredMentors = useMemo(() => {
+    if (!mentorSearch.trim()) return combinedMentors;
+    const term = mentorSearch.trim().toLowerCase();
+    return combinedMentors.filter(m => 
+      `class ${m.class_number}`.includes(term) ||
+      `section ${m.section_name}`.toLowerCase().includes(term) ||
+      (m.teacher_name && m.teacher_name.toLowerCase().includes(term)) ||
+      (m.employee_id && String(m.employee_id).toLowerCase().includes(term)) ||
+      (m.teacher_email && m.teacher_email.toLowerCase().includes(term))
+    );
+  }, [combinedMentors, mentorSearch]);
+
+  const unassignedCount = combinedMentors.filter(m => !m.teacher_id).length;
+  const assignedCount = combinedMentors.filter(m => Boolean(m.teacher_id)).length;
+
+  return <Layout>
+    <PageHead title="Classes, Sections & Mentors" sub="Manage school classes, sections, and class mentor assignments."/>
+
+    {/* Tab Navigation */}
+    <div className="student-tab-bar" style={{ marginBottom: 20 }}>
+      <button
+        type="button"
+        className={`student-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
+        onClick={() => setActiveTab('CLASSES')}
+      >
+        Classes & Sections ({s.length})
+      </button>
+      <button
+        type="button"
+        className={`student-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
+        onClick={() => setActiveTab('MENTORS')}
+      >
+        Class Mentors ({assignedCount}/{combinedMentors.length})
+      </button>
+    </div>
+
+    {activeTab === 'CLASSES' ? (
+      /* TAB 1: Existing Classes & Sections View */
+      <div className="two-col">
+        <div className="panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>All Class</h3>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>No. of sections</span>
+          </div>
+          <div className="list" style={{ marginTop: 0 }}>
+            {c.map(x=><div className="list-row" key={x.id}>
+              <b>{formatClassTitle(x.class_number, x.label)}</b>
+              <span>{getSectionCount(x)} sections</span>
+            </div>)}
+          </div>
+        </div>
+
+        <div className="panel">
+          <h3>Add section</h3>
+          <form className="inline" onSubmit={handleAddSection}>
+            <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
+              {c.map(x=><option key={x.id} value={x.id}>{formatClassTitle(x.class_number, x.label)}</option>)}
+            </select>
+            <input placeholder="Section (e.g. C)" value={sn} onChange={e=>setSn(e.target.value)}/>
+            <button type="submit" disabled={addingSection}>{addingSection ? 'Adding...' : 'Add Section'}</button>
+          </form>
+          <div className="list">
+            {s.map(x=><div className="list-row" key={x.id}>
+              <b>{formatClassTitle(x.class_number, x.label)} — Section {x.name}</b>
+            </div>)}
+          </div>
         </div>
       </div>
-    </div>
+    ) : (
+      /* TAB 2: Class Mentors Management View */
+      <div className="as-mentors-view">
+        {/* Summary Metric Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+          <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Total Sections</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text-main, #f8fafc)' }}>{combinedMentors.length}</h2>
+          </div>
+          <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mentors Assigned</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: '#10b981' }}>{assignedCount}</h2>
+          </div>
+          <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? '4px solid #f59e0b' : undefined }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: unassignedCount > 0 ? '#f59e0b' : '#94a3b8', textTransform: 'uppercase' }}>
+              Unassigned Sections
+            </span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: unassignedCount > 0 ? '#f59e0b' : 'var(--text-main, #f8fafc)' }}>
+              {unassignedCount}
+            </h2>
+          </div>
+        </div>
+
+        {/* Unassigned Warning Banner */}
+        {unassignedCount > 0 && (
+          <div className="as-alert-warning" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', marginBottom: 20 }}>
+            <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 13.5, fontWeight: 500 }}>
+              <strong>{unassignedCount} Class Section{unassignedCount > 1 ? 's' : ''}</strong> currently have no assigned Class Mentor. Select a section below to assign a faculty member.
+            </span>
+          </div>
+        )}
+
+        {/* Search & Action Bar */}
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+              <Search size={16} style={{ color: '#94a3b8' }} />
+              <input
+                type="text"
+                placeholder="Search class, section, or teacher name..."
+                value={mentorSearch}
+                onChange={e => setMentorSearch(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)' }}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadMentors}
+              disabled={mentorsLoading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <RefreshCw size={14} className={mentorsLoading ? 'animate-spin' : ''} />
+              <span>Refresh Allocations</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Mentor Allocations List / Table */}
+        {mentorsLoading ? (
+          <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
+            <p>Loading Class Mentor allocations...</p>
+          </div>
+        ) : mentorError ? (
+          <div className="panel" style={{ textAlign: 'center', padding: 30, color: '#ef4444' }}>
+            <AlertCircle size={24} style={{ margin: '0 auto 10px' }} />
+            <p>{mentorError}</p>
+            <button type="button" className="btn-secondary" onClick={loadMentors} style={{ marginTop: 12 }}>Retry</button>
+          </div>
+        ) : filteredMentors.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <UserX size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+            <p>No class section allocations matching search criteria.</p>
+          </div>
+        ) : (
+          <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color, #334155)' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Class & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Assigned Class Mentor</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Employee ID</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Status</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMentors.map((item) => (
+                  <tr key={item.section_id} style={{ borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.05))' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                      {formatClassTitle(item.class_number)} — Section {item.section_name}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {item.teacher_name ? (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>{item.teacher_name}</span>
+                          {item.teacher_email && <span style={{ fontSize: 11.5, color: '#94a3b8' }}>{item.teacher_email}</span>}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>No Mentor Assigned</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#94a3b8' }}>
+                      {item.employee_id || '—'}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {item.teacher_id ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                          <Check size={12} /> Assigned
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                          <AlertTriangle size={12} /> Unassigned
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      {item.teacher_id ? (
+                        <div style={{ display: 'inline-flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setSelectedTeacherId(item.teacher_id);
+                              setAssignModal({
+                                section_id: item.section_id,
+                                class_id: item.class_id,
+                                class_number: item.class_number,
+                                section_name: item.section_name,
+                                current_teacher_id: item.teacher_id,
+                                is_change: true
+                              });
+                            }}
+                            style={{ padding: '4px 10px', fontSize: 12 }}
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, cursor: 'pointer' }}
+                            onClick={() => {
+                              setRemoveModal({
+                                section_id: item.section_id,
+                                class_id: item.class_id,
+                                class_number: item.class_number,
+                                section_name: item.section_name,
+                                teacher_name: item.teacher_name || 'Teacher'
+                              });
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => {
+                            setSelectedTeacherId(teachers[0]?.id || '');
+                            setAssignModal({
+                              section_id: item.section_id,
+                              class_id: item.class_id,
+                              class_number: item.class_number,
+                              section_name: item.section_name,
+                              current_teacher_id: null,
+                              is_change: false
+                            });
+                          }}
+                          style={{ padding: '5px 12px', fontSize: 12 }}
+                        >
+                          Assign Mentor
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Assign / Change Mentor Modal */}
+    {assignModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card, #1e293b)', border: '1px solid var(--border-color, #334155)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>
+              {assignModal.is_change ? 'Change Class Mentor' : 'Assign Class Mentor'}
+            </h3>
+            <button type="button" onClick={() => setAssignModal(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
+            Target Section: <strong style={{ color: '#38bdf8' }}>{formatClassTitle(assignModal.class_number)} — Section {assignModal.section_name}</strong>
+          </p>
+
+          <form onSubmit={submitMentorAssign}>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#cbd5e1', marginBottom: 6 }}>
+                Select Active Faculty Member <span style={{ color: '#f43f5e' }}>*</span>
+              </label>
+              <select
+                value={selectedTeacherId}
+                onChange={e => setSelectedTeacherId(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13.5 }}
+                required
+              >
+                <option value="">-- Choose Faculty Member --</option>
+                {teachers.map(t => {
+                  const emp = t.employee_id || t.savior_no || t.employeeId || 'EMP';
+                  const otherMentored = combinedMentors.filter(m => m.teacher_id === t.id && m.section_id !== assignModal.section_id);
+                  const extraTag = otherMentored.length > 0 ? ` (Mentoring ${otherMentored.map(om => `${om.class_number}-${om.section_name}`).join(', ')})` : '';
+
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.name || `${t.first_name || ''} ${t.last_name || ''}`.trim()} [{emp}]{extraTag}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Notice if teacher mentors multiple sections */}
+            {selectedTeacherId && (() => {
+              const otherMentored = combinedMentors.filter(m => m.teacher_id === selectedTeacherId && m.section_id !== assignModal.section_id);
+              if (otherMentored.length > 0) {
+                return (
+                  <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', color: '#38bdf8', fontSize: 12, marginBottom: 20 }}>
+                    <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>
+                      This teacher currently mentors <strong>{otherMentored.map(om => `Class ${om.class_number}-${om.section_name}`).join(', ')}</strong>. Multi-section mentorship is enabled.
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button type="button" className="btn-secondary" onClick={() => setAssignModal(null)} disabled={assigning}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" disabled={assigning || !selectedTeacherId}>
+                {assigning ? 'Saving...' : assignModal.is_change ? 'Update Mentor' : 'Assign Mentor'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Remove Mentor Confirmation Modal */}
+    {removeModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card, #1e293b)', border: '1px solid var(--border-color, #334155)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>Remove Class Mentor</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>Class {removeModal.class_number} — Section {removeModal.section_name}</p>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 13.5, color: '#cbd5e1', lineHeight: 1.5, marginBottom: 20 }}>
+            Are you sure you want to remove <strong>{removeModal.teacher_name}</strong> as Class Mentor for <strong>Class {removeModal.class_number} Section {removeModal.section_name}</strong>? The section will remain available but unassigned.
+          </p>
+
+          <form onSubmit={submitMentorRemove} style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" className="btn-secondary" onClick={() => setRemoveModal(null)} disabled={removing}>
+              Cancel
+            </button>
+            <button type="submit" style={{ padding: '8px 16px', background: '#ef4444', color: '#ffffff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer' }} disabled={removing}>
+              {removing ? 'Removing...' : 'Confirm Removal'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )}
   </Layout>
 }
 
@@ -13656,6 +14577,9 @@ function App(){return <Routes>
   <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
   <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
   <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
+  <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
+  <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
+  <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
   <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
   <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
   <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
