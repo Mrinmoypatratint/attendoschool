@@ -11643,3 +11643,605 @@ header {
   border-color: rgba(59, 130, 246, 0.3) !important;
   color: #93c5fd !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Teacher Portal Dashboard Enhancements (Image 2 Target Layout)
+   ═══════════════════════════════════════════════════════════════ */
+
+.td-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* ── 1. Welcome Banner ── */
+.td-welcome-banner {
+  background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #eff6ff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .td-welcome-banner {
+  background: linear-gradient(135deg, #0f2744 0%, #132d4e 50%, #173860 100%);
+  border-color: #1e40af;
+}
+
+.td-welcome-content {
+  max-width: 620px;
+  z-index: 2;
+}
+
+.td-welcome-title {
+  margin: 0 0 6px 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0369a1;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-theme="dark"] .td-welcome-title {
+  color: #38bdf8;
+}
+
+.td-welcome-subtitle {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+[data-theme="dark"] .td-welcome-subtitle {
+  color: #94a3b8;
+}
+
+.td-quote-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-left: 4px solid #0284c7;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(3, 105, 161, 0.06);
+  font-size: 13px;
+  font-weight: 500;
+  font-style: italic;
+  color: #334155;
+}
+
+[data-theme="dark"] .td-quote-box {
+  background: #0f172a;
+  border-left-color: #38bdf8;
+  color: #cbd5e1;
+}
+
+.td-welcome-illustration {
+  flex-shrink: 0;
+  width: 240px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .td-welcome-illustration {
+    display: none;
+  }
+}
+
+/* ── 2. Summary Cards Grid ── */
+.td-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .td-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 576px) {
+  .td-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.td-summary-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.td-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.td-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.td-card-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.td-card-icon.blue { background: #eff6ff; color: #2563eb; }
+.td-card-icon.amber { background: #fffbeb; color: #d97706; }
+.td-card-icon.emerald { background: #ecfdf5; color: #059669; }
+.td-card-icon.purple { background: #faf5ff; color: #9333ea; }
+
+[data-theme="dark"] .td-card-icon.blue { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+[data-theme="dark"] .td-card-icon.amber { background: rgba(217, 119, 6, 0.15); color: #fbbf24; }
+[data-theme="dark"] .td-card-icon.emerald { background: rgba(5, 150, 105, 0.15); color: #34d399; }
+[data-theme="dark"] .td-card-icon.purple { background: rgba(147, 51, 234, 0.15); color: #c084fc; }
+
+.td-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  margin-bottom: 2px;
+}
+
+.td-card-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  line-height: 1.2;
+}
+
+.td-card-sub {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+}
+
+.td-card-arrow {
+  color: var(--text-muted, #94a3b8);
+}
+
+/* ── 3. Middle Section: Schedule Table & Today at a Glance ── */
+.td-middle-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .td-middle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.td-section-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+}
+
+.td-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.td-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.td-link-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s ease;
+}
+
+.td-link-btn:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+[data-theme="dark"] .td-link-btn {
+  color: #60a5fa;
+}
+
+/* Schedule Table */
+.td-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.td-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.td-table th {
+  background: var(--gray-50, #f8fafc);
+  color: var(--text-muted, #64748b);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+[data-theme="dark"] .td-table th {
+  background: #0f172a;
+}
+
+.td-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border, #f1f5f9);
+  color: var(--text, #0f172a);
+  vertical-align: middle;
+}
+
+.td-class-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+[data-theme="dark"] .td-class-pill {
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+}
+
+.td-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.td-status-pill.upcoming {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.td-status-pill.in-progress {
+  background: #fffbeb;
+  color: #d97706;
+}
+.td-status-pill.completed {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+[data-theme="dark"] .td-status-pill.upcoming { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+[data-theme="dark"] .td-status-pill.in-progress { background: rgba(217, 119, 6, 0.15); color: #fbbf24; }
+[data-theme="dark"] .td-status-pill.completed { background: rgba(5, 150, 105, 0.15); color: #34d399; }
+
+.td-btn-primary {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s ease;
+}
+
+.td-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.td-btn-secondary {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: transparent;
+  color: #059669;
+  font-weight: 600;
+  font-size: 12px;
+  border: 1px solid #a7f3d0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.td-btn-secondary:hover {
+  background: #ecfdf5;
+  border-color: #059669;
+}
+
+[data-theme="dark"] .td-btn-secondary {
+  border-color: #047857;
+  color: #34d399;
+}
+
+/* Today at a Glance Widget */
+.td-calendar-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: var(--gray-50, #f8fafc);
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .td-calendar-strip {
+  background: #0f172a;
+}
+
+.td-day-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 8px;
+}
+
+.td-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.td-day-num {
+  font-size: 13px;
+  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text, #0f172a);
+}
+
+.td-day-col.active .td-day-num {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.td-next-class-box {
+  padding: 16px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+[data-theme="dark"] .td-next-class-box {
+  background: rgba(14, 116, 144, 0.15);
+  border-color: rgba(14, 116, 144, 0.3);
+}
+
+.td-next-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.td-timer-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
+}
+
+[data-theme="dark"] .td-timer-icon {
+  background: #0f172a;
+  color: #38bdf8;
+}
+
+.td-next-details {
+  text-align: right;
+}
+
+.td-next-class-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+.td-next-sub {
+  font-size: 11.5px;
+  color: var(--text-secondary, #475569);
+}
+
+/* ── 4. Bottom Section: Attendance to Finish & School Updates ── */
+.td-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .td-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.td-finish-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.td-finish-item:last-child {
+  margin-bottom: 0;
+}
+
+.td-finish-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.td-finish-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .td-finish-icon {
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+}
+
+.td-update-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border, #f1f5f9);
+}
+
+.td-update-item:last-child {
+  border-bottom: none;
+}
+
+.td-update-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.td-update-icon.green { background: #ecfdf5; color: #059669; }
+.td-update-icon.purple { background: #faf5ff; color: #9333ea; }
+.td-update-icon.amber { background: #fffbeb; color: #d97706; }
+
+[data-theme="dark"] .td-update-icon.green { background: rgba(5, 150, 105, 0.15); color: #34d399; }
+[data-theme="dark"] .td-update-icon.purple { background: rgba(147, 51, 234, 0.15); color: #c084fc; }
+[data-theme="dark"] .td-update-icon.amber { background: rgba(217, 119, 6, 0.15); color: #fbbf24; }
+
+/* ── Digital Clock Widget ── */
+.td-clock-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(186, 230, 253, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(3, 105, 161, 0.08);
+}
+
+[data-theme="dark"] .td-clock-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(30, 64, 175, 0.6);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.td-clock-time {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0284c7;
+  font-family: 'Share Tech Mono', monospace, sans-serif;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-theme="dark"] .td-clock-time {
+  color: #38bdf8;
+}
+
+.td-clock-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+[data-theme="dark"] .td-clock-date {
+  color: #94a3b8;
+}
+
+

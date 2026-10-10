@@ -177,6 +177,8 @@ export function persistSmtpConfigToEnv(config: {
   if (envUpdates['RESEND_API_KEY']) env.resendApiKey = envUpdates['RESEND_API_KEY'];
   if (envUpdates['GMAIL_RELAY_URL']) env.gmailRelayUrl = envUpdates['GMAIL_RELAY_URL'];
 
+  if (process.env.NODE_ENV === 'test' || process.env.SKIP_SMTP_SYNC === 'true') return;
+
   // Discover all prospective .env locations across backend and root (case-insensitive deduplicated)
   const candidateEnvPaths = [
     path.resolve(__dirname, '../../.env'),

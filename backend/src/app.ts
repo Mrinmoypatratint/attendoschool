@@ -45,6 +45,8 @@ import finalIntegration from './routes/finalIntegration';
 import student from './routes/student';
 import reviews from './routes/reviews';
 import calendar from './routes/calendar';
+import mentor from './routes/mentor';
+import teacherAssignments from './routes/teacherAssignments';
 
 const app = express();
 
@@ -204,6 +206,9 @@ app.use('/api/attendance', teacher);
 app.use('/api/notifications', notifications);
 app.use('/api/student', student);
 app.use('/api/reviews', requireAuth, reviews);
+app.use('/api', mentor);
+app.use('/api/teacher/assignments', teacherAssignments);
+
 
 // 404 handler
 app.use((_q, res) => res.status(404).json({ message: 'API route not found' }));

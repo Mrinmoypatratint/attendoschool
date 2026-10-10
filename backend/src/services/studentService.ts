@@ -1177,6 +1177,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
  */
 export async function getStudentAssignments(schoolId: string, userId: string) {
   const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) return [];
   try {
     const q = await pool.query(
       `SELECT a.id, a.title, a.description, a.due_date, a.max_marks,
@@ -1187,9 +1188,9 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
        LEFT JOIN subjects sub ON sub.id = a.subject_id
        LEFT JOIN users u ON u.id = a.teacher_id
        LEFT JOIN student_assignment_submissions s ON s.assignment_id = a.id AND s.student_id = $3
-       WHERE a.school_id = $1 AND a.class_id = $2
+       WHERE a.school_id = $1 AND a.class_id = $2 AND (a.section_id IS NULL OR a.section_id = $4)
        ORDER BY a.due_date ASC`,
-      [schoolId, st.class_id, st.id]
+      [schoolId, st.class_id, st.id, st.section_id]
     );
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}
