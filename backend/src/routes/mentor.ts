@@ -5,8 +5,8 @@ import * as attendanceSvc from '../services/attendanceReportService';
 
 const router = Router();
 
-// Require authenticated user with active school
-router.use(requireAuth, (req: AuthRequest, res: Response, next) => {
+// Require authenticated user with active school on mentor routes
+router.use(['/admin/mentors', '/teacher/mentor'], requireAuth, (req: AuthRequest, res: Response, next) => {
   if (!req.user?.schoolId) {
     return res.status(403).json({ message: 'Institutional school context required' });
   }
