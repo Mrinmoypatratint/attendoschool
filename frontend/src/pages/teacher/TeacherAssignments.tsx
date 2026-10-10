@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BookOpen, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
-  Loader2, RefreshCw, Send, Eye, X, Award, Search
+  Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download
 } from 'lucide-react';
 import { api } from '../../api';
 
@@ -36,6 +36,13 @@ interface StudentSubmission {
   submission_text: string;
   marks_obtained?: number | null;
   feedback?: string | null;
+  attachments?: Array<{
+    id: string;
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    created_at?: string;
+  }>;
 }
 
 interface EligibleOption {
@@ -84,6 +91,95 @@ export function TeacherAssignments() {
   const [gradeForm, setGradeForm] = useState({ marks_obtained: 0, feedback: '' });
   const [grading, setGrading] = useState(false);
   const [gradeFeedback, setGradeFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Teacher Attachment Preview State
+  const [teacherPreview, setTeacherPreview] = useState<{
+    isOpen: boolean;
+    fileName: string;
+    blobUrl: string | null;
+    mimeType: string;
+    assignmentId: string;
+    submissionId: string;
+    attachmentId: string;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+
+  const formatBytes = (bytes?: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const handleTeacherPreview = async (assignmentId: string, submissionId: string, att: any) => {
+    setTeacherPreview({
+      isOpen: true,
+      fileName: att.file_name,
+      blobUrl: null,
+      mimeType: att.mime_type,
+      assignmentId,
+      submissionId,
+      attachmentId: att.id,
+      loading: true,
+      error: null
+    });
+
+    try {
+      const res = await api.get(`/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${att.id}/preview`, {
+        responseType: 'blob'
+      });
+      const blob = res.data as Blob;
+      const url = URL.createObjectURL(blob);
+      setTeacherPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              blobUrl: url,
+              loading: false,
+              mimeType: blob.type || att.mime_type
+            }
+          : null
+      );
+    } catch (err: any) {
+      setTeacherPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              error: err?.response?.data?.message || 'Unable to load preview.'
+            }
+          : null
+      );
+    }
+  };
+
+  const handleTeacherDownload = async (assignmentId: string, submissionId: string, att: any) => {
+    try {
+      const res = await api.get(`/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${att.id}/download`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([res.data], { type: (res.headers['content-type'] as string) || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = att.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to download attachment.');
+    }
+  };
+
+  const closeTeacherPreview = () => {
+    if (teacherPreview?.blobUrl) {
+      URL.revokeObjectURL(teacherPreview.blobUrl);
+    }
+    setTeacherPreview(null);
+  };
 
   // 1. Fetch Teacher Assignments
   const loadAssignments = useCallback(async () => {
@@ -680,6 +776,91 @@ export function TeacherAssignments() {
                 <div style={{ background: '#fff', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, marginBottom: 12 }}>
                   <b>Submission Content:</b>
                   <p style={{ margin: '4px 0 0', color: '#334155', whiteSpace: 'pre-wrap' }}>{selectedSubmission.submission_text || 'No text provided.'}</p>
+
+                  {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+                      <b style={{ display: 'block', marginBottom: 6, color: '#334155' }}>
+                        Student Attachments ({selectedSubmission.attachments.length}):
+                      </b>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {selectedSubmission.attachments.map((att) => {
+                          const isPreviewable =
+                            att.mime_type?.startsWith('image/') ||
+                            att.mime_type === 'application/pdf' ||
+                            att.file_name.endsWith('.pdf') ||
+                            att.file_name.endsWith('.png') ||
+                            att.file_name.endsWith('.jpg') ||
+                            att.file_name.endsWith('.jpeg');
+
+                          return (
+                            <div
+                              key={att.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 6,
+                                padding: '6px 10px',
+                                fontSize: 12
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
+                                <Paperclip size={13} color="#64748b" />
+                                <span title={att.file_name} style={{ fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {att.file_name}
+                                </span>
+                                <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                                  ({formatBytes(att.file_size)})
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {isPreviewable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTeacherPreview(activeAssignment.id, selectedSubmission.id, att)}
+                                    style={{
+                                      border: '1px solid #cbd5e1',
+                                      background: '#fff',
+                                      borderRadius: 4,
+                                      padding: '3px 8px',
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      color: '#334155'
+                                    }}
+                                  >
+                                    <Eye size={12} /> Preview
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleTeacherDownload(activeAssignment.id, selectedSubmission.id, att)}
+                                  style={{
+                                    border: '1px solid #2563eb',
+                                    background: '#eff6ff',
+                                    borderRadius: 4,
+                                    padding: '3px 8px',
+                                    cursor: 'pointer',
+                                    fontSize: 11,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    color: '#1d4ed8'
+                                  }}
+                                >
+                                  <Download size={12} /> Download
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -747,6 +928,26 @@ export function TeacherAssignments() {
                       <td style={{ padding: '10px 12px', fontWeight: 600 }}>
                         {sub.student_name || 'Student'}
                         {sub.roll_number && <span style={{ color: '#64748b', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
+                        {sub.attachments && sub.attachments.length > 0 && (
+                          <span
+                            title={`${sub.attachments.length} attachment(s)`}
+                            style={{
+                              marginLeft: 6,
+                              fontSize: 11,
+                              background: '#f1f5f9',
+                              border: '1px solid #cbd5e1',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              color: '#475569',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              fontWeight: 500
+                            }}
+                          >
+                            <Paperclip size={11} /> {sub.attachments.length}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '10px 12px', color: '#64748b' }}>
                         {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
@@ -797,6 +998,172 @@ export function TeacherAssignments() {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Attachment Preview Modal */}
+      {teacherPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.75)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 1100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              width: 'min(900px, 95vw)',
+              height: 'min(85vh, 800px)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 18px',
+                borderBottom: '1px solid #e2e8f0',
+                background: '#f8fafc'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Paperclip size={16} color="#64748b" />
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {teacherPreview.fileName}
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleTeacherDownload(
+                      teacherPreview.assignmentId,
+                      teacherPreview.submissionId,
+                      { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
+                    )
+                  }
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    borderRadius: 6,
+                    padding: '5px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    color: '#1e293b'
+                  }}
+                >
+                  <Download size={13} /> Download
+                </button>
+                <button
+                  type="button"
+                  onClick={closeTeacherPreview}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: 4
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 16,
+                background: '#0f172a08',
+                overflow: 'auto'
+              }}
+            >
+              {teacherPreview.loading ? (
+                <div style={{ textAlign: 'center', color: '#64748b' }}>
+                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
+                </div>
+              ) : teacherPreview.error ? (
+                <div style={{ textAlign: 'center', color: '#ef4444', padding: 20 }}>
+                  <AlertCircle size={32} style={{ margin: '0 auto 8px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>{teacherPreview.error}</p>
+                </div>
+              ) : teacherPreview.blobUrl && teacherPreview.mimeType?.startsWith('image/') ? (
+                <img
+                  src={teacherPreview.blobUrl}
+                  alt={teacherPreview.fileName}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 4 }}
+                />
+              ) : teacherPreview.blobUrl && teacherPreview.mimeType === 'application/pdf' ? (
+                <iframe
+                  src={teacherPreview.blobUrl}
+                  title={teacherPreview.fileName}
+                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4 }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: 30, color: '#475569' }}>
+                  <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: 16 }}>Inline preview not supported for this file type</h4>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
+                    Word and Excel documents can be downloaded to view with your preferred software.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleTeacherDownload(
+                        teacherPreview.assignmentId,
+                        teacherPreview.submissionId,
+                        { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
+                      )
+                    }
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      background: '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} /> Download Document
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -95,6 +95,9 @@ export const env = {
   supabaseDatabaseUrl: cleanEnv(process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL, ''),
   enableDualDbSync: cleanEnv(process.env.ENABLE_DUAL_DB_SYNC, 'false') === 'true',
   secondaryDb: cleanEnv(process.env.SECONDARY_DB, 'none').toLowerCase(),
+  // Supabase Storage
+  supabaseUrl: cleanEnv(process.env.SUPABASE_URL, ''),
+  supabaseServiceRoleKey: cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY, ''),
 };
 
 

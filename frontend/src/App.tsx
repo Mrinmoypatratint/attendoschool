@@ -188,7 +188,7 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     bannerText: 'Enter your Admission No. or student email to automatically identify your school.',
     needsSchool: true,
     emailLabel: 'Admission No. / Student Email',
-    emailPlaceholder: 'e.g. ADM-2025-105 or sweta@gmail.com',
+    emailPlaceholder: 'e.g. ADM-2025-105 or student@gmail.com',
     defaultEmail: '',
     icon: BookOpen,
     color: '#7c3aed'
@@ -9670,6 +9670,7 @@ function formatClassTitle(classNumber: any, label?: string): string {
 
 function Classes(){
   const {user}=useAuth();
+  const {dark}=useTheme();
   const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>('CLASSES');
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
@@ -9890,7 +9891,9 @@ function Classes(){
   const assignedCount = combinedMentors.filter(m => Boolean(m.teacher_id)).length;
 
   return <Layout>
-    <PageHead title="Classes, Sections & Mentors" sub="Manage school classes, sections, and class mentor assignments."/>
+    <div style={{ '--text-muted': dark ? '#94a3b8' : 'var(--text-secondary, #475569)' } as React.CSSProperties}>
+      <PageHead title="Classes, Sections & Mentors" sub="Manage school classes, sections, and class mentor assignments."/>
+    </div>
 
     {/* Tab Navigation */}
     <div className="student-tab-bar" style={{ marginBottom: 20 }}>
@@ -9948,18 +9951,18 @@ function Classes(){
         {/* Summary Metric Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
           <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Total Sections</span>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text-main, #f8fafc)' }}>{combinedMentors.length}</h2>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sections</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text)' }}>{combinedMentors.length}</h2>
           </div>
           <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Mentors Assigned</span>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: '#10b981' }}>{assignedCount}</h2>
+            <span style={{ fontSize: 12, fontWeight: 600, color: dark ? '#10b981' : '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mentors Assigned</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: dark ? '#10b981' : '#047857' }}>{assignedCount}</h2>
           </div>
-          <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? '4px solid #f59e0b' : undefined }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: unassignedCount > 0 ? '#f59e0b' : '#94a3b8', textTransform: 'uppercase' }}>
+          <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? (dark ? '4px solid #f59e0b' : '4px solid #d97706') : undefined }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: unassignedCount > 0 ? (dark ? '#f59e0b' : '#b45309') : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Unassigned Sections
             </span>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: unassignedCount > 0 ? '#f59e0b' : 'var(--text-main, #f8fafc)' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: unassignedCount > 0 ? (dark ? '#f59e0b' : '#b45309') : 'var(--text)' }}>
               {unassignedCount}
             </h2>
           </div>
@@ -9967,7 +9970,7 @@ function Classes(){
 
         {/* Unassigned Warning Banner */}
         {unassignedCount > 0 && (
-          <div className="as-alert-warning" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', marginBottom: 20 }}>
+          <div className="as-alert-warning" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 8, background: dark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.12)', border: dark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.35)', color: dark ? '#f59e0b' : '#92400e', marginBottom: 20 }}>
             <AlertTriangle size={18} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 13.5, fontWeight: 500 }}>
               <strong>{unassignedCount} Class Section{unassignedCount > 1 ? 's' : ''}</strong> currently have no assigned Class Mentor. Select a section below to assign a faculty member.
@@ -9979,13 +9982,13 @@ function Classes(){
         <div className="panel" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-              <Search size={16} style={{ color: '#94a3b8' }} />
+              <Search size={16} style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="text"
                 placeholder="Search class, section, or teacher name..."
                 value={mentorSearch}
                 onChange={e => setMentorSearch(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)' }}
               />
             </div>
             <button
@@ -10003,7 +10006,7 @@ function Classes(){
 
         {/* Mentor Allocations List / Table */}
         {mentorsLoading ? (
-          <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+          <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
             <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
             <p>Loading Class Mentor allocations...</p>
           </div>
@@ -10014,7 +10017,7 @@ function Classes(){
             <button type="button" className="btn-secondary" onClick={loadMentors} style={{ marginTop: 12 }}>Retry</button>
           </div>
         ) : filteredMentors.length === 0 ? (
-          <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+          <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
             <UserX size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
             <p>No class section allocations matching search criteria.</p>
           </div>
@@ -10022,40 +10025,40 @@ function Classes(){
           <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color, #334155)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Class & Section</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Assigned Class Mentor</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Employee ID</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8', textAlign: 'right' }}>Actions</th>
+                <tr style={{ background: dark ? 'rgba(255,255,255,0.03)' : 'var(--bg, #f4f6fb)', borderBottom: '1px solid var(--border-strong)' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Class & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Assigned Class Mentor</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredMentors.map((item) => (
-                  <tr key={item.section_id} style={{ borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.05))' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                  <tr key={item.section_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text)' }}>
                       {formatClassTitle(item.class_number)} — Section {item.section_name}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       {item.teacher_name ? (
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>{item.teacher_name}</span>
-                          {item.teacher_email && <span style={{ fontSize: 11.5, color: '#94a3b8' }}>{item.teacher_email}</span>}
+                          <span style={{ fontWeight: 600, color: 'var(--text)' }}>{item.teacher_name}</span>
+                          {item.teacher_email && <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{item.teacher_email}</span>}
                         </div>
                       ) : (
-                        <span style={{ color: '#64748b', fontStyle: 'italic' }}>No Mentor Assigned</span>
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No Mentor Assigned</span>
                       )}
                     </td>
-                    <td style={{ padding: '14px 16px', color: '#94a3b8' }}>
+                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
                       {item.employee_id || '—'}
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       {item.teacher_id ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: dark ? '#34d399' : '#047857', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                           <Check size={12} /> Assigned
                         </span>
                       ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: dark ? '#fbbf24' : '#b45309', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
                           <AlertTriangle size={12} /> Unassigned
                         </span>
                       )}
@@ -10083,7 +10086,7 @@ function Classes(){
                           </button>
                           <button
                             type="button"
-                            style={{ padding: '4px 10px', fontSize: 12, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ padding: '4px 10px', fontSize: 12, background: dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', color: dark ? '#f87171' : '#dc2626', border: dark ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, cursor: 'pointer' }}
                             onClick={() => {
                               setRemoveModal({
                                 section_id: item.section_id,
@@ -10130,29 +10133,29 @@ function Classes(){
     {/* Assign / Change Mentor Modal */}
     {assignModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card, #1e293b)', border: '1px solid var(--border-color, #334155)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
               {assignModal.is_change ? 'Change Class Mentor' : 'Assign Class Mentor'}
             </h3>
-            <button type="button" onClick={() => setAssignModal(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+            <button type="button" onClick={() => setAssignModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }} aria-label="Close modal">
               <X size={18} />
             </button>
           </div>
 
-          <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
-            Target Section: <strong style={{ color: '#38bdf8' }}>{formatClassTitle(assignModal.class_number)} — Section {assignModal.section_name}</strong>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+            Target Section: <strong style={{ color: dark ? '#38bdf8' : 'var(--primary-600, #2563eb)' }}>{formatClassTitle(assignModal.class_number)} — Section {assignModal.section_name}</strong>
           </p>
 
           <form onSubmit={submitMentorAssign}>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#cbd5e1', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Select Active Faculty Member <span style={{ color: '#f43f5e' }}>*</span>
               </label>
               <select
                 value={selectedTeacherId}
                 onChange={e => setSelectedTeacherId(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13.5 }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13.5 }}
                 required
               >
                 <option value="">-- Choose Faculty Member --</option>
@@ -10175,7 +10178,7 @@ function Classes(){
               const otherMentored = combinedMentors.filter(m => m.teacher_id === selectedTeacherId && m.section_id !== assignModal.section_id);
               if (otherMentored.length > 0) {
                 return (
-                  <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', color: '#38bdf8', fontSize: 12, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: dark ? 'rgba(56, 189, 248, 0.1)' : 'rgba(2, 132, 199, 0.08)', border: dark ? '1px solid rgba(56, 189, 248, 0.25)' : '1px solid rgba(2, 132, 199, 0.2)', color: dark ? '#38bdf8' : '#0369a1', fontSize: 12, marginBottom: 20 }}>
                     <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
                       This teacher currently mentors <strong>{otherMentored.map(om => `Class ${om.class_number}-${om.section_name}`).join(', ')}</strong>. Multi-section mentorship is enabled.
@@ -10202,18 +10205,18 @@ function Classes(){
     {/* Remove Mentor Confirmation Modal */}
     {removeModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card, #1e293b)', border: '1px solid var(--border-color, #334155)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>Remove Class Mentor</h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>Class {removeModal.class_number} — Section {removeModal.section_name}</p>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Remove Class Mentor</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>Class {removeModal.class_number} — Section {removeModal.section_name}</p>
             </div>
           </div>
 
-          <p style={{ fontSize: 13.5, color: '#cbd5e1', lineHeight: 1.5, marginBottom: 20 }}>
+          <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 20 }}>
             Are you sure you want to remove <strong>{removeModal.teacher_name}</strong> as Class Mentor for <strong>Class {removeModal.class_number} Section {removeModal.section_name}</strong>? The section will remain available but unassigned.
           </p>
 

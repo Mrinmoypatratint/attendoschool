@@ -187,7 +187,7 @@ export function ClassMentorWorkspace() {
 
   if (loadingClasses) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: 50, color: '#94a3b8' }}>
+      <div className="panel" style={{ textAlign: 'center', padding: 50, color: 'var(--text-muted)' }}>
         <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
         <p>Loading your Class Mentor workspace...</p>
       </div>
@@ -210,13 +210,13 @@ export function ClassMentorWorkspace() {
   if (mentoredClasses.length === 0) {
     return (
       <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 640, margin: '40px auto' }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', margin: '0 auto 16px' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid var(--border-focus, rgba(56, 189, 248, 0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--sidebar-accent)', margin: '0 auto 16px' }}>
           <Users size={28} />
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-main, #f8fafc)', margin: '0 0 8px' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>
           No Class Mentor Assignments
         </h2>
-        <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, margin: '0 0 24px' }}>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 24px' }}>
           You are not currently assigned as a Class Mentor for any class or section. Class Mentors are designated by your School Administration to oversee section attendance analytics and authorize subject teacher assignment publishing.
         </p>
         <button type="button" className="btn-secondary" onClick={loadMyClasses} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -232,22 +232,22 @@ export function ClassMentorWorkspace() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-main, #f8fafc)' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
               Class Mentor Workspace
             </h1>
-            <span style={{ fontSize: 11.5, fontWeight: 700, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: 9999 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, background: 'rgba(37, 99, 235, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)', padding: '2px 8px', borderRadius: 9999 }}>
               Mentor Access
             </span>
           </div>
-          <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
             Manage subject teacher assignment-publishing permissions and inspect section attendance analytics.
           </p>
         </div>
 
         {/* Section Switcher (Supports multiple mentored sections) */}
         {mentoredClasses.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card, #1e293b)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-color, #334155)' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#94a3b8' }}>Select Section:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>Select Section:</span>
             <select
               value={`${selectedSection?.class_id}:${selectedSection?.section_id}`}
               onChange={e => {
@@ -255,7 +255,7 @@ export function ClassMentorWorkspace() {
                 const found = mentoredClasses.find(m => m.class_id === cId && m.section_id === sId);
                 if (found) setSelectedSection(found);
               }}
-              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13, fontWeight: 600 }}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600 }}
             >
               {mentoredClasses.map(m => (
                 <option key={`${m.class_id}:${m.section_id}`} value={`${m.class_id}:${m.section_id}`}>
@@ -269,14 +269,14 @@ export function ClassMentorWorkspace() {
 
       {/* Single Section Badge Banner if only 1 section mentored */}
       {mentoredClasses.length === 1 && selectedSection && (
-        <div style={{ padding: '10px 16px', borderRadius: 8, background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))', border: '1px solid rgba(56, 189, 248, 0.3)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '10px 16px', borderRadius: 8, background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))', border: '1px solid var(--border-focus, rgba(56, 189, 248, 0.3))', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ShieldCheck size={18} style={{ color: '#38bdf8' }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>
+            <ShieldCheck size={18} style={{ color: 'var(--sidebar-accent)' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
               Assigned Mentor for Class {selectedSection.class_number} — Section {selectedSection.section_name}
             </span>
           </div>
-          <span style={{ fontSize: 12, color: '#94a3b8' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             Section ID: {selectedSection.section_id.slice(0, 8)}...
           </span>
         </div>
@@ -299,7 +299,7 @@ export function ClassMentorWorkspace() {
       )}
 
       {/* Sub-Tab Navigation: Permissions vs Attendance */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border-color, #334155)', marginBottom: 20, paddingBottom: 2 }}>
+      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--border-strong)', marginBottom: 20, paddingBottom: 2 }}>
         <button
           type="button"
           onClick={() => setActiveTab('PERMISSIONS')}
@@ -310,8 +310,8 @@ export function ClassMentorWorkspace() {
             fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
-            color: activeTab === 'PERMISSIONS' ? '#38bdf8' : '#94a3b8',
-            borderBottom: activeTab === 'PERMISSIONS' ? '2px solid #38bdf8' : '2px solid transparent',
+            color: activeTab === 'PERMISSIONS' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'PERMISSIONS' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8
@@ -329,8 +329,8 @@ export function ClassMentorWorkspace() {
             fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
-            color: activeTab === 'ATTENDANCE' ? '#38bdf8' : '#94a3b8',
-            borderBottom: activeTab === 'ATTENDANCE' ? '2px solid #38bdf8' : '2px solid transparent',
+            color: activeTab === 'ATTENDANCE' ? 'var(--sidebar-accent)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'ATTENDANCE' ? '2px solid var(--sidebar-accent)' : '2px solid transparent',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8
@@ -344,9 +344,9 @@ export function ClassMentorWorkspace() {
       {activeTab === 'PERMISSIONS' && (
         <div className="as-permissions-pane">
           {/* Header Callout Notice */}
-          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color, #334155)', marginBottom: 20 }}>
-            <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>
-              <Info size={15} style={{ display: 'inline', marginRight: 6, color: '#38bdf8', verticalAlign: '-2px' }} />
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)', marginBottom: 20 }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              <Info size={15} style={{ display: 'inline', marginRight: 6, color: 'var(--sidebar-accent)', verticalAlign: '-2px' }} />
               As Class Mentor for <strong>Class {selectedSection?.class_number} Section {selectedSection?.section_name}</strong>, you decide which <strong>Primary Subject Teachers</strong> are authorized to publish assignments for this section. Alternate teachers are strictly prohibited by system rule.
             </p>
           </div>
@@ -361,10 +361,11 @@ export function ClassMentorWorkspace() {
                 padding: '10px 14px',
                 borderRadius: 8,
                 marginBottom: 16,
-                background: permissionFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                border: permissionFeedback.type === 'success' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                color: permissionFeedback.type === 'success' ? '#34d399' : '#f87171',
-                fontSize: 13
+                background: permissionFeedback.type === 'success' ? 'var(--emerald-50, rgba(16, 185, 129, 0.12))' : 'var(--rose-50, rgba(239, 68, 68, 0.12))',
+                border: permissionFeedback.type === 'success' ? '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))' : '1px solid var(--rose-border, rgba(239, 68, 68, 0.3))',
+                color: permissionFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
+                fontSize: 13,
+                fontWeight: 500
               }}
             >
               {permissionFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
@@ -373,7 +374,7 @@ export function ClassMentorWorkspace() {
           )}
 
           {loadingPermissions ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
               <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
               <p>Loading subject teacher permissions...</p>
             </div>
@@ -386,7 +387,7 @@ export function ClassMentorWorkspace() {
               </button>
             </div>
           ) : permissions.length === 0 ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
               <Users size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
               <p>No subject teaching allocations found for this class and section.</p>
             </div>
@@ -394,12 +395,12 @@ export function ClassMentorWorkspace() {
             <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color, #334155)' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Subject</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Faculty Member</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Role Type</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Publishing Permission</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8', textAlign: 'right' }}>Action</th>
+                  <tr style={{ background: 'var(--gray-50, rgba(255,255,255,0.03))', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Subject</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Faculty Member</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Role Type</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Publishing Permission</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -408,42 +409,42 @@ export function ClassMentorWorkspace() {
                     const isPending = updatingId === key;
 
                     return (
-                      <tr key={key} style={{ borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.05))' }}>
-                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                      <tr key={key} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text)' }}>
                           {item.subject_name}
                         </td>
-                        <td style={{ padding: '14px 16px', color: 'var(--text-main, #f8fafc)', fontWeight: 500 }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 500 }}>
                           {item.teacher_name}
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           {item.is_primary ? (
-                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(37, 99, 235, 0.1)', color: 'var(--sidebar-accent)', border: '1px solid var(--border-focus)' }}>
                               Primary Teacher
                             </span>
                           ) : (
-                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.25)' }}>
+                            <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--gray-100, rgba(148, 163, 184, 0.12))', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                               Alternate Teacher
                             </span>
                           )}
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           {item.is_alternate ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                            <span className="badge rejected" style={{ textTransform: 'none', borderRadius: 6, fontSize: 11.5, fontWeight: 600, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                               <Lock size={12} /> Strictly Blocked
                             </span>
                           ) : item.is_authorized ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                            <span className="badge approved" style={{ textTransform: 'none', borderRadius: 6, fontSize: 11.5, fontWeight: 600, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                               <Check size={12} /> Authorized to Publish
                             </span>
                           ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8', border: '1px solid rgba(148, 163, 184, 0.25)' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--gray-100, rgba(148, 163, 184, 0.12))', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                               <Lock size={12} /> Not Authorized
                             </span>
                           )}
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                           {item.is_alternate ? (
-                            <span style={{ fontSize: 11.5, color: '#64748b', fontStyle: 'italic' }}>Blocked by System Rule</span>
+                            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>Blocked by System Rule</span>
                           ) : (
                             <button
                               type="button"
@@ -473,21 +474,21 @@ export function ClassMentorWorkspace() {
           <div className="panel" style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Calendar size={15} /> Date Range:
                 </span>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={e => setFromDate(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13 }}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
                 />
-                <span style={{ color: '#64748b' }}>to</span>
+                <span style={{ color: 'var(--text-muted)' }}>to</span>
                 <input
                   type="date"
                   value={toDate}
                   onChange={e => setToDate(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13 }}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
                 />
                 {(fromDate || toDate) && (
                   <button
@@ -502,20 +503,20 @@ export function ClassMentorWorkspace() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 220 }}>
-                <Search size={15} style={{ color: '#94a3b8' }} />
+                <Search size={15} style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   placeholder="Filter student name or roll..."
                   value={studentSearch}
                   onChange={e => setStudentSearch(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-color, #334155)', background: 'var(--bg-main, #0f172a)', color: 'var(--text-main, #f8fafc)', fontSize: 13 }}
+                  style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13 }}
                 />
               </div>
             </div>
           </div>
 
           {loadingAttendance ? (
-            <div className="panel" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
               <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
               <p>Calculating attendance metrics for Class {selectedSection?.class_number} Section {selectedSection?.section_name}...</p>
             </div>
@@ -532,26 +533,26 @@ export function ClassMentorWorkspace() {
               {/* Summary Metric Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
                 <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Enrolled Students</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text-main, #f8fafc)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Enrolled Students</span>
+                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text)' }}>
                     {attendanceData.total_students}
                   </h2>
                 </div>
                 <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#38bdf8', textTransform: 'uppercase' }}>Overall Attendance Rate</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: '#38bdf8' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--sidebar-accent)', textTransform: 'uppercase' }}>Overall Attendance Rate</span>
+                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--sidebar-accent)' }}>
                     {attendanceData.overall_percentage}%
                   </h2>
                 </div>
                 <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase' }}>Total Present Days</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: '#10b981' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--emerald-600, #059669)', textTransform: 'uppercase' }}>Total Present Days</span>
+                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--emerald-600, #059669)' }}>
                     {attendanceData.students.reduce((acc, r) => acc + (Number(r.present_days) || 0), 0)}
                   </h2>
                 </div>
                 <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#f43f5e', textTransform: 'uppercase' }}>Total Absent Days</span>
-                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: '#f43f5e' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--rose-600, #dc2626)', textTransform: 'uppercase' }}>Total Absent Days</span>
+                  <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--rose-600, #dc2626)' }}>
                     {attendanceData.students.reduce((acc, r) => acc + (Number(r.absent_days) || 0), 0)}
                   </h2>
                 </div>
@@ -559,25 +560,25 @@ export function ClassMentorWorkspace() {
 
               {/* Student Attendance Breakdown Table */}
               <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-main, #f8fafc)' }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
                     Student Attendance Breakdown ({filteredStudents.length})
                   </h3>
                 </div>
                 {filteredStudents.length === 0 ? (
-                  <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>
                     No student attendance records matching search filter.
                   </div>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
                     <thead>
-                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color, #334155)' }}>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Roll No.</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Student Name</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Days Present</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Days Absent</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8' }}>Total Marked</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, color: '#94a3b8', textAlign: 'right' }}>Attendance %</th>
+                      <tr style={{ background: 'var(--gray-50, rgba(255,255,255,0.03))', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Roll No.</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Student Name</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Days Present</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Days Absent</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total Marked</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Attendance %</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -586,14 +587,14 @@ export function ClassMentorWorkspace() {
                         const isLow = pct < 75;
 
                         return (
-                          <tr key={st.student_id} style={{ borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.05))' }}>
-                            <td style={{ padding: '12px 16px', color: '#94a3b8', fontWeight: 600 }}>{st.roll || '—'}</td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>{st.student_name}</td>
-                            <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: 600 }}>{st.present_days}</td>
-                            <td style={{ padding: '12px 16px', color: '#f43f5e', fontWeight: 600 }}>{st.absent_days}</td>
-                            <td style={{ padding: '12px 16px', color: '#cbd5e1' }}>{st.marked_days}</td>
+                          <tr key={st.student_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontWeight: 600 }}>{st.roll || '—'}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text)' }}>{st.student_name}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--emerald-600, #059669)', fontWeight: 600 }}>{st.present_days}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--rose-600, #dc2626)', fontWeight: 600 }}>{st.absent_days}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{st.marked_days}</td>
                             <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                              <span style={{ fontWeight: 700, color: isLow ? '#f43f5e' : '#34d399' }}>
+                              <span style={{ fontWeight: 700, color: isLow ? 'var(--rose-600, #dc2626)' : 'var(--emerald-600, #059669)' }}>
                                 {pct}%
                               </span>
                             </td>

@@ -3,6 +3,7 @@ import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { pool, isPostgresConfigured } from '../db';
 import { verifyTeacherPublishingEligibility, getTeacherEligiblePublishingOptions } from '../services/mentorService';
 import { isSameSchool } from '../utils/tenant';
+import { downloadFromStorage, StorageConfigurationError } from '../utils/supabaseStorage';
 
 const router = Router();
 
@@ -232,7 +233,28 @@ router.get('/:id/submissions', async (req: AuthRequest, res: Response) => {
          ORDER BY st.roll_number, st.name`,
         [req.user!.schoolId!, assignmentId]
       );
-      return res.json(q.rows);
+
+      // Query attachments for these submissions
+      const attQ = await pool.query(
+        `SELECT id, submission_id, file_name, file_size, mime_type, created_at
+         FROM student_assignment_attachments
+         WHERE school_id = $1 AND assignment_id = $2
+         ORDER BY created_at ASC`,
+        [req.user!.schoolId!, assignmentId]
+      );
+      const attMap = new Map<string, any[]>();
+      attQ.rows.forEach(att => {
+        const list = attMap.get(att.submission_id) || [];
+        list.push(att);
+        attMap.set(att.submission_id, list);
+      });
+
+      const subsWithAtts = q.rows.map(sub => ({
+        ...sub,
+        attachments: attMap.get(sub.id) || []
+      }));
+
+      return res.json(subsWithAtts);
     }
 
     // In-memory check
@@ -249,6 +271,113 @@ router.get('/:id/submissions', async (req: AuthRequest, res: Response) => {
     res.json(subs);
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Unable to fetch submissions' });
+  }
+});
+
+/**
+ * 3a. GET /api/teacher/assignments/:id/submissions/:submissionId/attachments/:attachmentId/preview - Preview student attachment
+ */
+router.get('/:id/submissions/:submissionId/attachments/:attachmentId/preview', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId, submissionId, attachmentId } = req.params;
+
+    // Verify assignment authorization
+    const asgQ = await pool.query(
+      `SELECT * FROM student_assignments WHERE id = $1 AND school_id = $2`,
+      [assignmentId, req.user!.schoolId!]
+    );
+    if (asgQ.rowCount === 0) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+    const asg = asgQ.rows[0];
+
+    if (req.user!.role !== 'SUPER_ADMIN' && asg.teacher_id !== req.user!.id) {
+      const secCheck = asg.section_id || 'sec-a';
+      const elig = await verifyTeacherPublishingEligibility(req.user!.schoolId!, req.user!.id, asg.class_id, secCheck, asg.subject_id);
+      if (!elig.eligible) {
+        return res.status(403).json({ message: 'Access denied: You are not authorized to preview this attachment' });
+      }
+    }
+
+    // Verify attachment exists for submission
+    const attQ = await pool.query(
+      `SELECT * FROM student_assignment_attachments
+       WHERE id = $1 AND assignment_id = $2 AND submission_id = $3 AND school_id = $4`,
+      [attachmentId, assignmentId, submissionId, req.user!.schoolId!]
+    );
+    if (attQ.rowCount === 0) {
+      return res.status(404).json({ message: 'Attachment not found' });
+    }
+
+    const att = attQ.rows[0];
+    const { buffer, mimeType } = await downloadFromStorage(att.storage_key);
+
+    res.setHeader('Content-Type', att.mime_type || mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(att.file_name)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  } catch (err: any) {
+    if (err instanceof StorageConfigurationError || err?.name === 'StorageConfigurationError' || err?.code === 'STORAGE_CONFIGURATION_MISSING') {
+      return res.status(503).json({
+        error: 'STORAGE_CONFIGURATION_MISSING',
+        message: 'File attachment storage is currently unconfigured or unavailable.'
+      });
+    }
+    res.status(500).json({ message: err.message || 'Failed to preview attachment' });
+  }
+});
+
+/**
+ * 3b. GET /api/teacher/assignments/:id/submissions/:submissionId/attachments/:attachmentId/download - Download student attachment
+ */
+router.get('/:id/submissions/:submissionId/attachments/:attachmentId/download', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId, submissionId, attachmentId } = req.params;
+
+    // Verify assignment authorization
+    const asgQ = await pool.query(
+      `SELECT * FROM student_assignments WHERE id = $1 AND school_id = $2`,
+      [assignmentId, req.user!.schoolId!]
+    );
+    if (asgQ.rowCount === 0) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+    const asg = asgQ.rows[0];
+
+    if (req.user!.role !== 'SUPER_ADMIN' && asg.teacher_id !== req.user!.id) {
+      const secCheck = asg.section_id || 'sec-a';
+      const elig = await verifyTeacherPublishingEligibility(req.user!.schoolId!, req.user!.id, asg.class_id, secCheck, asg.subject_id);
+      if (!elig.eligible) {
+        return res.status(403).json({ message: 'Access denied: You are not authorized to download this attachment' });
+      }
+    }
+
+    // Verify attachment exists for submission
+    const attQ = await pool.query(
+      `SELECT * FROM student_assignment_attachments
+       WHERE id = $1 AND assignment_id = $2 AND submission_id = $3 AND school_id = $4`,
+      [attachmentId, assignmentId, submissionId, req.user!.schoolId!]
+    );
+    if (attQ.rowCount === 0) {
+      return res.status(404).json({ message: 'Attachment not found' });
+    }
+
+    const att = attQ.rows[0];
+    const { buffer, mimeType } = await downloadFromStorage(att.storage_key);
+
+    res.setHeader('Content-Type', att.mime_type || mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(att.file_name)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(buffer);
+  } catch (err: any) {
+    if (err instanceof StorageConfigurationError || err?.name === 'StorageConfigurationError' || err?.code === 'STORAGE_CONFIGURATION_MISSING') {
+      return res.status(503).json({
+        error: 'STORAGE_CONFIGURATION_MISSING',
+        message: 'File attachment storage is currently unconfigured or unavailable.'
+      });
+    }
+    res.status(500).json({ message: err.message || 'Failed to download attachment' });
   }
 });
 
