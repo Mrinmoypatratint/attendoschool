@@ -2149,6 +2149,15 @@ export async function processNotificationQueue(limit = 50) {
     // 1. Process from PostgreSQL queue if active (primary persistent queue)
     if (pool && isPostgresConfigured) {
       try {
+        // Auto-reclaim any stale jobs stuck in PROCESSING (> 2 minutes old)
+        await pool.query(
+          `UPDATE notification_logs 
+           SET status='RETRYING', scheduled_at=NOW(), last_error='Processing lease expired / worker reconnected'
+           WHERE status='PROCESSING' 
+             AND (created_at < NOW() - INTERVAL '2 minutes') 
+             AND (scheduled_at IS NULL OR scheduled_at < NOW() - INTERVAL '2 minutes')`
+        ).catch(() => {});
+
         const jobs = await pool.query(
           `SELECT * FROM notification_logs 
            WHERE status IN ('QUEUED', 'RETRYING') 
