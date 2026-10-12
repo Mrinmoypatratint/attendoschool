@@ -78,7 +78,7 @@ services:
       - key: SMTP_USER
         value: info.sahayog24x7@gmail.com
       - key: SMTP_PASS
-        sync: false  # 16-character Gmail App Password (e.g., dfokxsfhkvwlujvw)
+        value: dfokxsfhkvwlujvw
       - key: SMTP_FROM
         value: "AttendoSchool <info.sahayog24x7@gmail.com>"
       - key: SMTP_FROM_NAME
