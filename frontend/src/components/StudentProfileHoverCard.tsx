@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { formatGender } from '../utils/gender';
 import {
   GraduationCap,
   Mail,
@@ -145,8 +146,7 @@ export function StudentProfileHoverCard({
     '2025–2026 Academic Session';
 
   // Gender & DOB
-  const rawGender = student.gender ? student.gender.trim() : '';
-  const genderStr = rawGender || 'Not Specified';
+  const genderStr = formatGender(student.gender) || 'Not Specified';
   const dobRaw = student.date_of_birth || student.dob || '';
   const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
 

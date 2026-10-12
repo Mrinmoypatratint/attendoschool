@@ -28,6 +28,7 @@ import {
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
 import { invalidateSchoolCache } from '../services/tenantDataService';
+import { normalizeGender } from '../utils/gender';
 
 const isUuid = (val: any): boolean => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
@@ -654,7 +655,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         parent_email: st.parent_email,
         parent_phone: st.parent_sms_number,
         parentPhone: st.parent_sms_number,
-        gender: st.gender || 'Not Specified',
+        gender: normalizeGender(st.gender) || 'Not Specified',
         date_of_birth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
         dob: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
         address: st.address || '',
@@ -706,7 +707,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
           parent_email: dt.parent_email || dt.parentEmail || '',
           student_email: dt.student_email || dt.studentEmail || dt.email || '',
           email: dt.email || dt.student_email || '',
-          gender: dt.gender || '',
+          gender: normalizeGender(dt.gender) || '',
           class_id: dt.class_id || dt.classId || 'cls-1',
           class_number: (() => {
             const cId = String(dt.class_id || dt.classId || '');
@@ -815,7 +816,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const parentName = b.parentName || b.parent_name || b.guardianName || b.guardian_name || '';
   const parentSmsNumber = b.parentSmsNumber || b.parentPhone || b.parent_phone || b.parent_sms_number || b.phone || '';
   const dob = b.dob || b.dateOfBirth || b.date_of_birth || null;
-  const gender = b.gender || null;
+  const gender = normalizeGender(b.gender);
   const address = b.address || null;
   const classId = b.classId || b.class_id;
   const sectionId = b.sectionId || b.section_id;
@@ -1502,7 +1503,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
     const parentEmail = String(st.parentEmail || st['Parent Email'] || st.parent_email || '').trim();
     const studentEmail = String(st.studentEmail || st['Student Email'] || st.email || '').trim();
-    const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
+    const gender = normalizeGender(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '');
 
     // Class/section resolution from in-memory preloaded maps
     const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
@@ -1941,6 +1942,7 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
       const row = q.rows[0];
       return res.json({
         ...row,
+        gender: normalizeGender(row.gender) || '',
         is_active: row.is_active !== false,
         status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       });
@@ -2060,7 +2062,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
     const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
 
-    const cleanGender = gender !== undefined ? (gender || null) : null;
+    const cleanGender = gender !== undefined ? normalizeGender(gender) : null;
     const cleanDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
     const cleanAddress = address !== undefined ? (address || null) : null;
 

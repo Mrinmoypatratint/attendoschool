@@ -12,6 +12,7 @@ import { collections, isFirebaseConfigured } from '../firebase';
 import { memEntries } from './timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
+import { normalizeGender } from '../utils/gender';
 
 export interface MemAttendanceSession {
   id: string;
@@ -2749,7 +2750,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
       address: teacherData.address || 'Kolkata, West Bengal',
       qualification: teacherData.qualification || 'M.Tech / M.Sc Computer Science',
-      gender: teacherData.gender || 'Not Specified',
+      gender: normalizeGender(teacherData.gender) || 'Not Specified',
       joiningDate: teacherData.joining_date ? String(teacherData.joining_date).slice(0, 10) : '2023-08-01',
       photoUrl: teacherData.photo_url || '',
       department: 'Academic Faculty / Teaching',
@@ -2852,7 +2853,7 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
          address = COALESCE($4, teacher_profiles.address),
          qualification = COALESCE($5, teacher_profiles.qualification),
          gender = COALESCE($6, teacher_profiles.gender)`,
-      [userId, empId, phone || null, address || null, qualification || null, gender || null]
+      [userId, empId, phone || null, address || null, qualification || null, normalizeGender(gender)]
     );
 
     res.json({ success: true, message: 'Profile details updated successfully' });

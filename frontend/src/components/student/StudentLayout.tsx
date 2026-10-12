@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
+import { StudentSearchBar } from './StudentSearchBar';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -261,14 +262,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             >
               <Menu size={20} />
             </button>
-            <div className="student-search-bar">
-              <Search size={16} className="student-search-icon" />
-              <input
-                type="text"
-                placeholder="Search classes, subjects, announcements..."
-                aria-label="Search"
-              />
-            </div>
+            <StudentSearchBar />
           </div>
 
           <div className="student-topbar-right">

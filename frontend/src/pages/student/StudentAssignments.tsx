@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip,
-  Upload, X, Download, Eye, FileText, AlertCircle, Loader2
+  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
 
 interface UploadFileItem {
@@ -38,6 +38,9 @@ const formatBytes = (bytes: number) => {
 };
 
 export function StudentAssignments() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || searchParams.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(queryParam);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'SUBMITTED'>('ALL');
@@ -47,6 +50,10 @@ export function StudentAssignments() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(queryParam);
+  }, [queryParam]);
 
   // Preview Modal State
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
@@ -225,8 +232,15 @@ export function StudentAssignments() {
   };
 
   const filtered = assignments.filter((a) => {
-    if (activeTab === 'PENDING') return a.submission_status === 'PENDING';
-    if (activeTab === 'SUBMITTED') return a.submission_status === 'SUBMITTED' || a.submission_status === 'GRADED';
+    if (activeTab === 'PENDING' && a.submission_status !== 'PENDING') return false;
+    if (activeTab === 'SUBMITTED' && a.submission_status === 'PENDING') return false;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      return a.title.toLowerCase().includes(q) ||
+        (a.subject_name && a.subject_name.toLowerCase().includes(q)) ||
+        (a.description && a.description.toLowerCase().includes(q)) ||
+        (a.teacher_name && a.teacher_name.toLowerCase().includes(q));
+    }
     return true;
   });
 
@@ -250,6 +264,62 @@ export function StudentAssignments() {
           <span>{feedbackMsg}</span>
         </div>
       )}
+
+      {/* In-Page Search & Filter Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'var(--card-bg, #ffffff)',
+          border: '1px solid var(--border, #cbd5e1)',
+          borderRadius: 8,
+          padding: '6px 12px',
+          flex: 1,
+          maxWidth: 420
+        }}>
+          <Search size={15} color="var(--text-muted, #94a3b8)" />
+          <input
+            type="text"
+            placeholder="Filter assignments by title, subject, or teacher..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              if (e.target.value.trim()) {
+                setSearchParams({ q: e.target.value.trim() });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: 13,
+              width: '100%',
+              color: 'var(--text)'
+            }}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setSearchParams({});
+              }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+            Showing <b>{filtered.length}</b> of <b>{assignments.length}</b> assignments
+          </div>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="student-tab-bar">

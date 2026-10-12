@@ -8,6 +8,7 @@ import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { normalizeGender } from '../utils/gender';
 import { validateAttachment, uploadToStorage, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/supabaseStorage';
 
 export function toDdMmYyyy(val: any): string {
@@ -226,7 +227,7 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
     dateOfBirth: st.date_of_birth ? toDdMmYyyy(st.date_of_birth) : (st.dob ? toDdMmYyyy(st.dob) : ''),
-    gender: st.gender || '',
+    gender: normalizeGender(st.gender) || '',
     academicSession: academicSessionName || st.session_name || '',
     photoUrl: st.photo_url || '',
     pendingPhotoUrl,
@@ -250,7 +251,7 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
 
   if (data.gender !== undefined) {
     updates.push(`gender = $${idx++}`);
-    params.push(data.gender);
+    params.push(normalizeGender(data.gender));
   }
   if (data.dateOfBirth !== undefined) {
     updates.push(`date_of_birth = $${idx++}`);
