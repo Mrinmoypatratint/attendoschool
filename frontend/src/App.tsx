@@ -51,6 +51,7 @@ import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
+import { formatGender } from './utils/gender';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import {
@@ -62,6 +63,7 @@ import {
   PreviewSummaryCard,
   PreviewTableData
 } from './components/preview';
+import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -3167,16 +3169,16 @@ function Layout({children}:{children:React.ReactNode}){
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 999,
-                                  background: /^f/i.test(s.gender) ? '#fdf2f8' : /^m/i.test(s.gender) ? '#f0f9ff' : '#f8fafc',
-                                  color: /^f/i.test(s.gender) ? '#db2777' : /^m/i.test(s.gender) ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${/^f/i.test(s.gender) ? '#fbcfe8' : /^m/i.test(s.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                  color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                                 }}>
-                                  {s.gender}
+                                  {formatGender(s.gender)}
                                 </span>
                               )}
                             </div>
                             <span className="search-result-meta">
-                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${s.gender}` : ''} · {s.email}
+                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${formatGender(s.gender)}` : ''} · {s.email}
                             </span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
@@ -3199,15 +3201,15 @@ function Layout({children}:{children:React.ReactNode}){
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 999,
-                                  background: /^f/i.test(t.gender) ? '#fdf2f8' : /^m/i.test(t.gender) ? '#f0f9ff' : '#f8fafc',
-                                  color: /^f/i.test(t.gender) ? '#db2777' : /^m/i.test(t.gender) ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${/^f/i.test(t.gender) ? '#fbcfe8' : /^m/i.test(t.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  background: formatGender(t.gender) === 'Female' ? '#fdf2f8' : formatGender(t.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                  color: formatGender(t.gender) === 'Female' ? '#db2777' : formatGender(t.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${formatGender(t.gender) === 'Female' ? '#fbcfe8' : formatGender(t.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                                 }}>
-                                  {t.gender}
+                                  {formatGender(t.gender)}
                                 </span>
                               )}
                             </div>
-                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${t.gender} · ` : ''}{t.email}</span>
+                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${formatGender(t.gender)} · ` : ''}{t.email}</span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
@@ -4426,7 +4428,7 @@ function Students(){
           { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
           { label: 'Academic Session', value: selectedSessionStr, type: 'badge', color: 'blue' },
           { label: 'Date of Birth', value: f.dob || editingStudent?.dob || '—', type: 'date' },
-          { label: 'Gender', value: f.gender || editingStudent?.gender || '—' },
+          { label: 'Gender', value: formatGender(f.gender || editingStudent?.gender) || '—' },
         ]
       },
       {
@@ -4853,7 +4855,12 @@ function Students(){
           const parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
           const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
           const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
-          const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
+          let rawGender = String(r['Gender']||r['gender']||r['GENDER']||r['Sex']||r['sex']||r['SEX']||r['Gender (M/F)']||r['Gender(M/F)']||r['M/F']||r['MF']||r['Sex/Gender']||r['Gen']||'').trim();
+          if (!rawGender && r && typeof r === 'object') {
+            const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
+            if (gk && r[gk] !== undefined && r[gk] !== null) rawGender = String(r[gk]).trim();
+          }
+          const gender = formatGender(rawGender);
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
           // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
@@ -5631,11 +5638,11 @@ function Students(){
                     borderRadius: 999,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
-                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
-                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                   }}>
-                    {x.gender}
+                    {formatGender(x.gender)}
                   </span>
                 ) : (
                   <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -5720,7 +5727,7 @@ function Students(){
                       parentEmail: x.parent_email || '',
                       classId: x.class_id,
                       sectionId: x.section_id,
-                      gender: x.gender || '',
+                      gender: formatGender(x.gender) || '',
                       dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
                       loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
                       sendInviteEmail: true,
@@ -5958,8 +5965,8 @@ function Students(){
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>Gender
             <select
-              value={f.gender || ''}
-              onChange={e => setF({ ...f, gender: e.target.value })}
+              value={formatGender(f.gender) || ''}
+              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
             >
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
@@ -6573,7 +6580,23 @@ function Students(){
                             <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
-                            <td>{r.gender || '—'}</td>
+                            <td>
+                              {r.gender ? (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  fontSize: 11.5,
+                                  fontWeight: 500,
+                                  background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                  color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                                }}>
+                                  {formatGender(r.gender)}
+                                </span>
+                              ) : '—'}
+                            </td>
                             <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
                               {r.parentPhone || r.parentSmsNumber || '—'}
                               {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
@@ -8120,11 +8143,11 @@ function Teachers(){
                     borderRadius: 999,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
-                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
-                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                   }}>
-                    {x.gender}
+                    {formatGender(x.gender)}
                   </span>
                 ) : (
                   <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -8157,7 +8180,7 @@ function Teachers(){
                       email: x.email,
                       employeeId: x.employee_id || x.employeeId || '',
                       mobile: x.mobile || x.phone || '',
-                      gender: x.gender || '',
+                      gender: formatGender(x.gender) || '',
                       dob: toDdMmYyyy(x.dob || x.date_of_birth),
                       designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
@@ -8381,8 +8404,8 @@ function Teachers(){
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Gender
             <select
-              value={f.gender || ''}
-              onChange={e => setF({ ...f, gender: e.target.value })}
+              value={formatGender(f.gender) || ''}
+              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
             >
               <option value="">Select Gender</option>
@@ -9530,6 +9553,12 @@ function Attendance(){
   const [done,setDone]=useState(false);
   const [summary,setSummary]=useState<any>(null);
 
+  // Pagination & Last Fetched state (Matching School Admin Students Directory)
+  const [attendancePage, setAttendancePage] = useState<number>(1);
+  const [attendancePageSize, setAttendancePageSize] = useState<number>(25);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const rosterTopRef = useRef<HTMLDivElement>(null);
+
   // Existing session & Re-attendance state
   const [existingSession, setExistingSession] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -9884,42 +9913,41 @@ function Attendance(){
     return result;
   };
 
-  // Fetch students when class or section changes
-  useEffect(()=>{
+  // Fetch students helper with refresh support (Matching School Admin Students Directory)
+  const loadStudents = useCallback(async () => {
     if (!selectedClassId || !selectedSectionId) return;
-    api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
-      .then(res => {
-        const list = deduplicateStudents(res.data || []);
-        if (list.length > 0) {
-          setStudents(list);
-          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
-        } else {
-          // Primary endpoint returned empty array (200 OK) -> execute fallback to /students
-          api.get('/students').then(fallbackRes => {
-            const matched = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
-              (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
-              (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
-            ));
-            setStudents(matched);
-            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
-          }).catch(() => {
-            setStudents([]);
-            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, []);
-          });
-        }
-      })
-      .catch(() => {
-        // Fallback to /students
-        api.get('/students').then(res => {
-          const matched = deduplicateStudents((res.data || []).filter((s:any)=>
+    setLoadingStatus(true);
+    try {
+      let list: any[] = [];
+      try {
+        const res = await api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`);
+        list = deduplicateStudents(res.data || []);
+      } catch {
+        list = [];
+      }
+      if (list.length === 0) {
+        try {
+          const fallbackRes = await api.get('/students');
+          list = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
             (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
             (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
           ));
-          setStudents(matched);
-          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
-        }).catch(()=>{});
-      });
+        } catch {
+          list = [];
+        }
+      }
+      setStudents(list);
+      setLastFetchedAt(new Date());
+      setAttendancePage(1);
+      await checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+    } finally {
+      setLoadingStatus(false);
+    }
   }, [selectedClassId, selectedSectionId, attendanceDate, checkTodayStatus]);
+
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
   function switchRoutine(r: any) {
     setActiveRoutine(r);
@@ -9980,6 +10008,20 @@ function Attendance(){
     const q = search.toLowerCase();
     return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
   });
+
+  useEffect(() => {
+    setAttendancePage(1);
+  }, [search]);
+
+  const totalAttendancePages = Math.max(1, Math.ceil(filteredStudents.length / attendancePageSize));
+  const currentAttendancePage = Math.min(Math.max(1, attendancePage), totalAttendancePages);
+  const attendanceStartIdx = filteredStudents.length === 0 ? 0 : (currentAttendancePage - 1) * attendancePageSize;
+  const attendanceEndIdx = Math.min(attendanceStartIdx + attendancePageSize, filteredStudents.length);
+  const displayedStudents = filteredStudents.slice(attendanceStartIdx, attendanceEndIdx);
+
+  const scrollToRosterTop = () => {
+    rosterTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   // Early Departure Handler
   function openEarlyDeparture(student: any) {
@@ -10758,25 +10800,52 @@ function Attendance(){
         </span>
       </div>
 
-      {/* Student List */}
-      {students.length === 0 ? (
-        <div className="panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-          <h3>No students found in this section</h3>
-          <p className="muted">
-            {user?.role === 'TEACHER'
-              ? 'No students are currently enrolled in this section. Please contact your School Administrator to enroll students.'
-              : `Add students to Class ${currentClass?.class_number || ''}-${currentSection?.name || ''} in the Student Directory.`}
-          </p>
-          {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-            <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
-              + Enroll Student Now
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="attendance-list">
-          {filteredStudents.map((s: any) => {
+      {/* Student List Box with Top Sub-Toolbar & Bottom Pagination Footer (Matching School Admin Directory) */}
+      <div 
+        ref={rosterTopRef}
+        style={{
+          border: '1px solid var(--border, #cbd5e1)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          background: 'var(--bg-card, #ffffff)',
+          marginBottom: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}
+      >
+        {/* Red-Circled Sub-Toolbar: Refresh, Last fetched, Rows per page selector, Showing counts */}
+        <TableSubToolbar
+          onRefresh={loadStudents}
+          loading={loadingStatus}
+          lastFetchedAt={lastFetchedAt}
+          pageSize={attendancePageSize}
+          onPageSizeChange={sz => { setAttendancePageSize(sz); setAttendancePage(1); scrollToRosterTop(); }}
+          totalCount={students.length}
+          filteredCount={filteredStudents.length}
+          startIdx={attendanceStartIdx}
+          endIdx={attendanceEndIdx}
+          itemLabel="students"
+          pageSizeOptions={[10, 25, 50, 100, 250, 500]}
+        />
+
+        {students.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', border: 'none', background: 'transparent' }}>
+            <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
+            <h3>No students found in this section</h3>
+            <p className="muted">
+              {user?.role === 'TEACHER'
+                ? 'No students are currently enrolled in this section. Please contact your School Administrator to enroll students.'
+                : `Add students to Class ${currentClass?.class_number || ''}-${currentSection?.name || ''} in the Student Directory.`}
+            </p>
+            {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
+                + Enroll Student Now
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="attendance-list" style={{ padding: '14px 16px', margin: 0 }}>
+              {displayedStudents.map((s: any) => {
             const stObj = studentStatusMap[s.id] || {};
             const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
             const isLeftEarly = rawStatus === 'LEFT_EARLY';
@@ -10833,8 +10902,21 @@ function Attendance(){
                   </span>
                   <div>
                     <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {s.gender ? (
+                        <span style={{
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                          color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
+                          border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                        }}>
+                          {formatGender(s.gender)}
+                        </span>
+                      ) : null}
+                      <span>{s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}</span>
                     </div>
                     {/* Status Annotations for Re-attendance */}
                     {isLeftEarly && (
@@ -10956,7 +11038,22 @@ function Attendance(){
             );
           })}
         </div>
-      )}
+
+        {/* Red-Circled Bottom Pagination Footer */}
+        <TablePaginationFooter
+          currentPage={currentAttendancePage}
+          totalPages={totalAttendancePages}
+          onPageChange={p => { setAttendancePage(p); scrollToRosterTop(); }}
+          startIdx={attendanceStartIdx}
+          endIdx={attendanceEndIdx}
+          filteredCount={filteredStudents.length}
+          totalCount={students.length}
+          itemLabel="students"
+          onScrollToTop={scrollToRosterTop}
+        />
+      </>
+    )}
+  </div>
 
       {/* Bottom Submit / Re-attendance Action Bar */}
       {students.length > 0 && (

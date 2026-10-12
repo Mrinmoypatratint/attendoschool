@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 
 export function StudentAnnouncements() {
   const { user } = useAuth();
   const isStudent = !user || user.role === 'STUDENT';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || searchParams.get('search') || '';
+  const [searchFilter, setSearchFilter] = useState(queryParam);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replySuccessId, setReplySuccessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchFilter(queryParam);
+  }, [queryParam]);
 
   function load() {
     studentApi
@@ -47,6 +54,12 @@ export function StudentAnnouncements() {
     }
   }
 
+  const displayedAnnouncements = announcements.filter(a => {
+    if (!searchFilter.trim()) return true;
+    const q = searchFilter.toLowerCase();
+    return a.title.toLowerCase().includes(q) || a.message.toLowerCase().includes(q) || (a.author_name && a.author_name.toLowerCase().includes(q)) || a.priority.toLowerCase().includes(q);
+  });
+
   return (
     <div className="student-subpage">
       <div className="student-subpage-header">
@@ -61,15 +74,80 @@ export function StudentAnnouncements() {
         </div>
       </div>
 
+      {/* Search & In-Page Filter Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'var(--card-bg, #ffffff)',
+          border: '1px solid var(--border, #cbd5e1)',
+          borderRadius: 8,
+          padding: '6px 12px',
+          flex: 1,
+          maxWidth: 420
+        }}>
+          <Search size={15} color="var(--text-muted, #94a3b8)" />
+          <input
+            type="text"
+            placeholder="Filter announcements by title, keyword, or author..."
+            value={searchFilter}
+            onChange={(e) => {
+              setSearchFilter(e.target.value);
+              if (e.target.value.trim()) {
+                setSearchParams({ q: e.target.value.trim() });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: 13,
+              width: '100%',
+              color: 'var(--text)'
+            }}
+          />
+          {searchFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchFilter('');
+                setSearchParams({});
+              }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {searchFilter && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+            Showing <b>{displayedAnnouncements.length}</b> of <b>{announcements.length}</b> announcements
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <div className="student-loading-spinner">Loading announcements...</div>
-      ) : announcements.length === 0 ? (
+      ) : displayedAnnouncements.length === 0 ? (
         <div className="student-empty-state">
-          <p>No announcements at this time.</p>
+          <p>{searchFilter ? `No announcements matched "${searchFilter}".` : 'No announcements at this time.'}</p>
+          {searchFilter && (
+            <button 
+              type="button" 
+              onClick={() => { setSearchFilter(''); setSearchParams({}); }}
+              style={{ marginTop: 8, padding: '4px 12px', fontSize: 12.5, borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
+            >
+              Show all announcements
+            </button>
+          )}
         </div>
       ) : (
         <div className="student-announcements-feed">
-          {announcements.map((a) => (
+          {displayedAnnouncements.map((a) => (
             <div key={a.id} className="student-card student-notice-card" style={{ marginBottom: 16 }}>
               <div className="notice-header">
                 <div className="notice-badge-group">

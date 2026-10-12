@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { formatGender } from '../../utils/gender';
 
 function isValidDdMmYyyy(val: string): boolean {
   if (!val) return false;
@@ -68,7 +69,7 @@ export function StudentProfile() {
       .getProfile()
       .then((res) => {
         setProfile(res);
-        setEditGender(res?.gender || '');
+        setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
         setLoading(false);
       })
@@ -530,7 +531,7 @@ export function StudentProfile() {
                   type="button"
                   onClick={() => {
                     setEditingDetails(false);
-                    setEditGender(profile?.gender || '');
+                    setEditGender(formatGender(profile?.gender) || '');
                     setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
                   }}
                   style={{
@@ -597,7 +598,7 @@ export function StudentProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
-                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
+                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
             </div>
           )}
