@@ -40,6 +40,12 @@ services:
       - key: SUPABASE_DATABASE_URL
         sync: false
 
+      # ── Supabase Storage (Private Bucket for Student Assignments) ──
+      - key: SUPABASE_URL
+        value: "https://widbnephnmbufxaggflw.supabase.co"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
       # ── Email Service Gateway (Port 443 HTTPS APIs for Render Free Tier) ──
       # Render Free Tier blocks outbound TCP ports 25, 465, and 587.
       # To send emails on Render, use Brevo API Key (xkeysib-...), Resend (re_...), or Google Apps Script.

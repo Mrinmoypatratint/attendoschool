@@ -54,6 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('attendance_token');
     localStorage.removeItem('attendance_user');
+    try {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('attendo_welcome_seen_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch {}
     setUser(null);
   }, []);
 
