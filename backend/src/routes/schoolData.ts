@@ -1022,14 +1022,18 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     }
 
     // Handle Student Portal Login Account Creation
+    const studentPlainPassword = (b.password && String(b.password).trim()) || (crypto.randomBytes(8).toString('hex') + 'Aa1!');
     if (targetLoginEmail && loginOpt !== 'NONE') {
       try {
         const userCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 LIMIT 1`, [targetLoginEmail]);
         if (userCheck.rowCount && userCheck.rowCount > 0) {
           linkedUserId = userCheck.rows[0].id;
+          if (b.password && String(b.password).trim()) {
+            const updatedHash = await bcrypt.hash(studentPlainPassword, 10);
+            await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [updatedHash, linkedUserId]);
+          }
         } else {
-          const tempPass = crypto.randomBytes(8).toString('hex') + 'Aa1!';
-          const tempHash = await bcrypt.hash(tempPass, 10);
+          const tempHash = await bcrypt.hash(studentPlainPassword, 10);
           const uq = await pool.query(
             `INSERT INTO users(school_id, name, email, password_hash, role) VALUES($1, $2, $3, $4, 'STUDENT') RETURNING id`,
             [schoolId, name, targetLoginEmail, tempHash]
@@ -1049,7 +1053,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
             userId: linkedUserId || undefined,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             const isParent = loginOpt === 'PARENT';
@@ -1066,9 +1071,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
                 class_name: String(clsNum),
                 section_name: secName,
                 roll_number: String(rollNumber),
+                login_email: targetLoginEmail,
+                temporary_password: studentPlainPassword,
                 reset_link: resetInfo.resetUrl
               },
-              idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+              idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}-${Date.now()}`
             }).catch(() => {});
           }
         } catch (e: any) {
@@ -1183,13 +1190,15 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
  if (targetLoginEmail && loginOpt !== 'NONE' && sendInviteEmail) {
    try {
+     const studentPlainPassword = (b.password && String(b.password).trim()) || 'ChangeMe123!';
      resetInfo = await createAndSendPasswordReset({
        email: targetLoginEmail,
        name,
        role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
        schoolId: req.user?.schoolId || undefined,
        schoolName: req.user?.schoolName || 'School',
-       req
+       req,
+       sendEmail: false
      });
      registerDemoUser({
        id: `usr-st-${Date.now()}`,
@@ -1197,7 +1206,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
        name,
        email: targetLoginEmail,
        role: 'STUDENT',
-       password: 'ChangeMe123!'
+       password: studentPlainPassword
      });
      if (resetInfo?.resetUrl) {
        const isParent = loginOpt === 'PARENT';
@@ -1214,9 +1223,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
            class_name: String(clsNum),
            section_name: secName,
            roll_number: String(rollNumber || '—'),
+           login_email: targetLoginEmail,
+           temporary_password: studentPlainPassword,
            reset_link: resetInfo.resetUrl
          },
-         idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+         idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}-${Date.now()}`
        }).catch(() => {});
      }
    } catch {}
@@ -1740,7 +1751,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                   role: isParent ? 'PARENT' : 'STUDENT',
                   schoolId: schoolId || undefined,
                   schoolName: req.user?.schoolName || 'School',
-                  req
+                  req,
+                  sendEmail: false
                 }).then(resetInfo => {
                   if (resetInfo?.resetUrl) {
                     queueEmailNotification({
@@ -1756,6 +1768,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                         class_name: String(st.class_number || st.class_name || ''),
                         section_name: String(st.section_name || 'A'),
                         roll_number: String(st.roll_number || ''),
+                        login_email: targetLoginEmail,
+                        temporary_password: st.password || 'ChangeMe123!',
                         reset_link: resetInfo.resetUrl
                       },
                       idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
@@ -2621,7 +2635,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             userId: u.rows[0].id,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             await queueEmailNotification({
@@ -2634,6 +2649,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: name,
                 school_name: req.user?.schoolName || 'School',
                 employee_id: employeeId,
+                login_email: cleanEmail,
                 login_url: resetInfo.resetUrl,
                 temporary_password: rawPassword
               },
@@ -2687,7 +2703,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         role: 'TEACHER',
         schoolId: req.user?.schoolId || undefined,
         schoolName: req.user?.schoolName || 'School',
-        req
+        req,
+        sendEmail: false
       });
       if (resetInfo?.resetUrl) {
         await queueEmailNotification({
@@ -2700,6 +2717,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             teacher_name: name,
             school_name: req.user?.schoolName || 'School',
             employee_id: employeeId,
+            login_email: cleanEmail,
             login_url: resetInfo.resetUrl,
             temporary_password: rawPassword
           },
@@ -3027,7 +3045,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
               role: 'TEACHER',
               schoolId,
               schoolName,
-              req
+              req,
+              sendEmail: false
             }).catch(() => null);
 
             await queueEmailNotification({
@@ -3040,6 +3059,7 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: item.created.name,
                 school_name: schoolName,
                 employee_id: item.created.employee_id,
+                login_email: item.created.email,
                 login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
                 temporary_password: item.tempPassword
               },
