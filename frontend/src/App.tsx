@@ -4746,6 +4746,7 @@ function Students(){
   const [editingStudent,setEditingStudent]=useState<any|null>(null);
   const [classFilter,setClassFilter]=useState('');
   const [sectionFilter,setSectionFilter]=useState('');
+  const [genderFilter,setGenderFilter]=useState('');
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
@@ -5353,12 +5354,19 @@ function Students(){
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
     const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
     const matchesSession = studentMatchesSession(r, activeSession);
-    return matchesSearch && matchesClass && matchesSection && matchesSession;
+    const matchesGender = !genderFilter || (
+      genderFilter === 'Male'
+        ? /^m/i.test(String(r.gender || '').trim())
+        : genderFilter === 'Female'
+          ? /^f/i.test(String(r.gender || '').trim())
+          : true
+    );
+    return matchesSearch && matchesClass && matchesSection && matchesSession && matchesGender;
   });
 
   useEffect(() => {
     setDirectoryPage(1);
-  }, [search, classFilter, sectionFilter, activeSession]);
+  }, [search, classFilter, sectionFilter, genderFilter, activeSession]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
   const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
@@ -6104,12 +6112,22 @@ function Students(){
               return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
             })()}
           </select>
+          <select 
+            value={genderFilter} 
+            onChange={e => setGenderFilter(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+            aria-label="Filter by Gender"
+          >
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
         </div>
-        {(search || classFilter || sectionFilter) && (
+        {(search || classFilter || sectionFilter || genderFilter) && (
           <button 
             type="button" 
             className="btn-secondary" 
-            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); }}
+            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); setGenderFilter(''); }}
             style={{ padding: '6px 10px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             Clear Filters
@@ -9901,11 +9919,11 @@ function Teachers(){
 /* ────── Classes ────── */
 function formatClassTitle(classNumber: any, label?: string): string {
   const num = Number(classNumber);
-  if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber))) {
-    return 'Class-L-KG';
+  if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber)) || (typeof label === 'string' && /l.?kg/i.test(label))) {
+    return 'Class L KG';
   }
-  if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber))) {
-    return 'Class-U-KG';
+  if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber)) || (typeof label === 'string' && /u.?kg/i.test(label))) {
+    return 'Class U KG';
   }
   if (!isNaN(num) && num > 0) {
     return `Class ${num}`;
@@ -9916,15 +9934,41 @@ function formatClassTitle(classNumber: any, label?: string): string {
   return classNumber ? `Class ${classNumber}` : 'Class';
 }
 
+function indexToSectionLabel(num: number): string {
+  let label = '';
+  while (num > 0) {
+    const rem = (num - 1) % 26;
+    label = String.fromCharCode(65 + rem) + label;
+    num = Math.floor((num - 1) / 26);
+  }
+  return label;
+}
+
+function sectionLabelToIndex(label: string): number | null {
+  const clean = String(label || '').trim().toUpperCase();
+  if (!clean || !/^[A-Z]+$/.test(clean)) return null;
+  let num = 0;
+  for (let i = 0; i < clean.length; i++) {
+    num = num * 26 + (clean.charCodeAt(i) - 64);
+  }
+  return num;
+}
+
 function Classes(){
   const {user}=useAuth();
   const {dark}=useTheme();
   const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>('CLASSES');
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
-  const [cid,setCid]=useState('');
-  const [sn,setSn]=useState('');
-  const [addingSection,setAddingSection]=useState(false);
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [addingClassId, setAddingClassId] = useState<string | null>(null);
+  const [confirmRemoveSectionModal, setConfirmRemoveSectionModal] = useState<{
+    classItem: any;
+    section: any;
+    classTitle: string;
+    sectionLabel: string;
+  } | null>(null);
+  const [removingSection, setRemovingSection] = useState(false);
 
   // Class Mentors State
   const [mentors, setMentors] = useState<any[]>([]);
@@ -9955,12 +9999,70 @@ function Classes(){
   } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  function getSectionCount(classItem: any): number {
+  function getSectionsForClass(classItem: any): any[] {
     const matching = s.filter(sec => 
       sec.class_id === classItem.id || 
       (classItem.class_number !== undefined && Number(sec.class_number) === Number(classItem.class_number))
     );
-    return matching.length > 0 ? matching.length : (classItem.section_count || 2);
+    return matching.sort((a, b) => {
+      const idxA = sectionLabelToIndex(a.name || a.section_name || '');
+      const idxB = sectionLabelToIndex(b.name || b.section_name || '');
+      if (idxA !== null && idxB !== null) return idxA - idxB;
+      if (idxA !== null) return -1;
+      if (idxB !== null) return 1;
+      return String(a.name || a.section_name || '').localeCompare(String(b.name || b.section_name || ''));
+    });
+  }
+
+  function getSectionCount(classItem: any): number {
+    return getSectionsForClass(classItem).length;
+  }
+
+  function getNextAvailableLabel(classSections: any[]): string {
+    const existingLabels = new Set(
+      classSections.map(sec => String(sec.name || sec.section_name || '').trim().toUpperCase())
+    );
+    let idx = 1;
+    while (existingLabels.has(indexToSectionLabel(idx))) {
+      idx++;
+    }
+    return indexToSectionLabel(idx);
+  }
+
+  function getHighestSequentialSection(classSections: any[]): any | null {
+    if (!classSections || classSections.length === 0) return null;
+    const sorted = [...classSections].sort((a, b) => {
+      const labelA = String(a.name || a.section_name || '').trim().toUpperCase();
+      const labelB = String(b.name || b.section_name || '').trim().toUpperCase();
+      const idxA = sectionLabelToIndex(labelA);
+      const idxB = sectionLabelToIndex(labelB);
+      if (idxA !== null && idxB !== null) return idxB - idxA;
+      if (idxA !== null) return -1;
+      if (idxB !== null) return 1;
+      return labelB.localeCompare(labelA);
+    });
+    return sorted[0] || null;
+  }
+
+  function toggleClassExpanded(classKey: string) {
+    setExpandedClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(classKey)) {
+        next.delete(classKey);
+      } else {
+        next.add(classKey);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllClasses() {
+    if (expandedClasses.size === c.length) {
+      setExpandedClasses(new Set());
+    } else {
+      const allKeys = new Set(c.map(item => String(item.id || item.class_number)));
+      setExpandedClasses(allKeys);
+    }
   }
 
   async function load(){
@@ -9970,9 +10072,6 @@ function Classes(){
       const sectionsData = [...(sr.data || [])].sort((a: any, b: any) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       setC(classesData);
       setS(sectionsData);
-      if (classesData.length > 0 && !cid) {
-        setCid(classesData[0].id);
-      }
     } catch(err) {
       console.error('Failed to load classes and sections:', err);
     }
@@ -10013,44 +10112,88 @@ function Classes(){
     }
   }, [activeTab]);
 
-  async function handleAddSection(e?: React.FormEvent){
-    if (e) e.preventDefault();
-    const targetCid = cid || c[0]?.id;
-    if (!targetCid) {
-      alert('Validation Error: Please select a class first.');
-      return;
-    }
-    const cleanSec = sn.trim().toUpperCase();
-    if (!cleanSec) {
-      alert('Validation Error: Please enter a section name (e.g. C).');
-      return;
-    }
-    setAddingSection(true);
+  async function handleAddSectionForClass(classItem: any){
+    const classKey = String(classItem.id || classItem.class_number);
+    if (addingClassId || removingSection) return;
+
+    const classSections = getSectionsForClass(classItem);
+    const nextLabel = getNextAvailableLabel(classSections);
+    const targetCid = classItem.id || classKey;
+
+    // Immediately keep/make class expanded so admin sees immediate result
+    setExpandedClasses(prev => new Set(prev).add(classKey));
+    setAddingClassId(classKey);
+
     try {
-      const res = await api.post('/sections', { classId: targetCid, name: cleanSec });
+      const res = await api.post('/sections', { classId: targetCid, name: nextLabel });
       const created = res.data;
       setS(prev => {
         const filtered = prev.filter(x => 
           !( (x.class_id === created.class_id || Number(x.class_number) === Number(created.class_number)) && 
-             String(x.name || x.section_name).toUpperCase() === cleanSec )
+             String(x.name || x.section_name).toUpperCase() === nextLabel )
         );
         return [...filtered, created].sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       });
       setC(prev => prev.map(cls => {
-        if (cls.id === targetCid || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
-          return { ...cls, section_count: Math.max((cls.section_count || 2), (cls.section_count || 2) + 1) };
+        if (cls.id === classItem.id || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
+          return { ...cls, section_count: Math.max((cls.section_count || 1), (cls.section_count || 1) + 1) };
         }
         return cls;
       }));
-      setSn('');
       await load();
       if (activeTab === 'MENTORS') {
         await loadMentors();
       }
     } catch(err: any){
-      alert(err?.response?.data?.message || 'Could not add section');
+      alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
-      setAddingSection(false);
+      setAddingClassId(null);
+    }
+  }
+
+  function handleOpenRemoveModal(classItem: any){
+    const classSections = getSectionsForClass(classItem);
+    if (classSections.length <= 1) return; // Follow minimum section count rule (minimum 1 section)
+    const highest = getHighestSequentialSection(classSections);
+    if (!highest) return;
+
+    const classKey = String(classItem.id || classItem.class_number);
+    setExpandedClasses(prev => new Set(prev).add(classKey));
+
+    setConfirmRemoveSectionModal({
+      classItem,
+      section: highest,
+      classTitle: formatClassTitle(classItem.class_number, classItem.label),
+      sectionLabel: String(highest.name || highest.section_name || '').trim().toUpperCase()
+    });
+  }
+
+  async function handleConfirmRemoveSection(){
+    if (!confirmRemoveSectionModal) return;
+    const { classItem, section, classTitle, sectionLabel } = confirmRemoveSectionModal;
+    setRemovingSection(true);
+    try {
+      const res = await api.delete(`/sections/${section.id}`);
+      if (res.data?.success === false) {
+        alert(res.data?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
+        return;
+      }
+      setS(prev => prev.filter(x => x.id !== section.id));
+      setC(prev => prev.map(cls => {
+        if (cls.id === classItem.id || Number(cls.class_number) === Number(classItem.class_number)) {
+          return { ...cls, section_count: Math.max(1, (cls.section_count || 2) - 1) };
+        }
+        return cls;
+      }));
+      setConfirmRemoveSectionModal(null);
+      await load();
+      if (activeTab === 'MENTORS') {
+        await loadMentors();
+      }
+    } catch(err: any){
+      alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
+    } finally {
+      setRemovingSection(false);
     }
   }
 
@@ -10162,34 +10305,254 @@ function Classes(){
     </div>
 
     {activeTab === 'CLASSES' ? (
-      /* TAB 1: Existing Classes & Sections View */
-      <div className="two-col">
-        <div className="panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', marginBottom: 10 }}>
-            <h3 style={{ margin: 0 }}>All Class</h3>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>No. of sections</span>
+      /* TAB 1: Centered A4-Inspired Classes & Sections Management View */
+      <div className="as-classes-management-container">
+        <div className="as-classes-card">
+          {/* Document Header Bar */}
+          <div className="as-classes-card-header">
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                Classes & Sections Directory
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                Manage school grades, expandable sections, and sequential divisions.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: 9999,
+                  background: dark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(37, 99, 235, 0.08)',
+                  color: dark ? '#818cf8' : '#2563eb',
+                  border: dark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                {c.length} Classes · {s.length} Total Sections
+              </span>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={toggleAllClasses}
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {expandedClasses.size === c.length ? 'Collapse All' : 'Expand All'}
+              </button>
+            </div>
           </div>
-          <div className="list" style={{ marginTop: 0 }}>
-            {c.map(x=><div className="list-row" key={x.id}>
-              <b>{formatClassTitle(x.class_number, x.label)}</b>
-              <span>{getSectionCount(x)} sections</span>
-            </div>)}
-          </div>
-        </div>
 
-        <div className="panel">
-          <h3>Add section</h3>
-          <form className="inline" onSubmit={handleAddSection}>
-            <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
-              {c.map(x=><option key={x.id} value={x.id}>{formatClassTitle(x.class_number, x.label)}</option>)}
-            </select>
-            <input placeholder="Section (e.g. C)" value={sn} onChange={e=>setSn(e.target.value)}/>
-            <button type="submit" disabled={addingSection}>{addingSection ? 'Adding...' : 'Add Section'}</button>
-          </form>
-          <div className="list">
-            {s.map(x=><div className="list-row" key={x.id}>
-              <b>{formatClassTitle(x.class_number, x.label)} — Section {x.name}</b>
-            </div>)}
+          {/* Class rows */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {c.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                <Layers size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                <p>No classes available.</p>
+              </div>
+            ) : (
+              c.map((classItem, idx) => {
+                const classKey = String(classItem.id || classItem.class_number);
+                const classSections = getSectionsForClass(classItem);
+                const isExpanded = expandedClasses.has(classKey);
+                const isAdding = addingClassId === classKey;
+                const isRemoveDisabled = classSections.length <= 1 || Boolean(addingClassId) || removingSection;
+                const nextLabel = getNextAvailableLabel(classSections);
+                const highestSec = getHighestSequentialSection(classSections);
+                const classTitle = formatClassTitle(classItem.class_number, classItem.label);
+
+                return (
+                  <div
+                    key={classItem.id || classKey}
+                    style={{
+                      borderBottom: idx < c.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}
+                  >
+                    {/* Row Header */}
+                    <div
+                      className={`as-class-row-header ${isExpanded ? 'expanded' : ''}`}
+                      onClick={() => toggleClassExpanded(classKey)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleClassExpanded(classKey);
+                        }
+                      }}
+                    >
+                      {/* Left: Chevron + Class Title + Section Count Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            borderRadius: 6,
+                            background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                            color: 'var(--text-secondary)',
+                            transition: 'transform 0.2s ease',
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                          }}
+                        >
+                          <ChevronDown size={15} />
+                        </div>
+
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                          {classTitle}
+                        </span>
+
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                            background: classSections.length > 0
+                              ? (dark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0')
+                              : (dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'),
+                            color: classSections.length > 0
+                              ? (dark ? '#cbd5e1' : '#475569')
+                              : (dark ? '#f87171' : '#dc2626')
+                          }}
+                        >
+                          {classSections.length} {classSections.length === 1 ? 'section' : 'sections'}
+                        </span>
+                      </div>
+
+                      {/* Right: Action Buttons (Add Section & Remove Section) */}
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          disabled={Boolean(addingClassId) || removingSection}
+                          onClick={() => handleAddSectionForClass(classItem)}
+                          title={`Add next sequential section (${nextLabel})`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 6
+                          }}
+                        >
+                          {isAdding ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" />
+                              <span>Adding...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={14} />
+                              <span>Add Section</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isRemoveDisabled}
+                          onClick={() => handleOpenRemoveModal(classItem)}
+                          title={
+                            classSections.length === 0
+                              ? 'No sections to remove'
+                              : classSections.length === 1
+                              ? 'Minimum 1 section required per class'
+                              : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
+                          }
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 12px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            cursor: isRemoveDisabled ? 'not-allowed' : 'pointer',
+                            opacity: isRemoveDisabled ? 0.45 : 1,
+                            background: dark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)',
+                            color: dark ? '#f87171' : '#dc2626',
+                            border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Remove Section</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Collapsible Section List (Visually nested inside parent class) */}
+                    {isExpanded && (
+                      <div className="as-nested-sections-panel">
+                        {classSections.length === 0 ? (
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', padding: '6px 0' }}>
+                            No sections allocated for this class. Click <strong>Add Section</strong> above to create Section A.
+                          </div>
+                        ) : (
+                          <div className="as-sections-grid">
+                            {classSections.map(sec => {
+                              const secLabel = String(sec.name || sec.section_name || 'A').toUpperCase();
+                              // Find assigned mentor if available
+                              const mRec = mentors.find(m => 
+                                m.section_id === sec.id || (m.section_name === secLabel && Number(m.class_number) === Number(classItem.class_number))
+                              );
+                              const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
+                              const teacherName = teacherObj?.name || mRec?.teacher_name;
+
+                              return (
+                                <div
+                                  key={sec.id}
+                                  className="as-section-item-pill"
+                                >
+                                  <span
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: '50%',
+                                      background: dark ? 'rgba(37, 99, 235, 0.2)' : 'rgba(37, 99, 235, 0.1)',
+                                      color: dark ? '#60a5fa' : '#2563eb',
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {secLabel}
+                                  </span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>
+                                      Section {secLabel}
+                                    </span>
+                                    {teacherName ? (
+                                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Class Mentor: ${teacherName}`}>
+                                        Mentor: {teacherName}
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                                        No mentor
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -10476,6 +10839,75 @@ function Classes(){
               {removing ? 'Removing...' : 'Confirm Removal'}
             </button>
           </form>
+        </div>
+      </div>
+    )}
+
+    {/* Remove Section Confirmation Modal */}
+    {confirmRemoveSectionModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
+              <AlertTriangle size={22} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Confirm Section Removal</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                {confirmRemoveSectionModal.classTitle} — Section {confirmRemoveSectionModal.sectionLabel}
+              </p>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.5, marginBottom: 12 }}>
+            Are you sure you want to remove <strong>Section {confirmRemoveSectionModal.sectionLabel}</strong> from <strong>{confirmRemoveSectionModal.classTitle}</strong>?
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: dark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)', border: dark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.25)', color: dark ? '#fbbf24' : '#b45309', fontSize: 12, marginBottom: 20 }}>
+            <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>
+              If students, attendance records, or timetable schedules depend on this section, deletion will be rejected to protect academic data integrity.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setConfirmRemoveSectionModal(null)}
+              disabled={removingSection}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmRemoveSection}
+              disabled={removingSection}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: removingSection ? 'not-allowed' : 'pointer',
+                opacity: removingSection ? 0.7 : 1
+              }}
+            >
+              {removingSection ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Removing...</span>
+                </>
+              ) : (
+                <span>Confirm Removal</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     )}

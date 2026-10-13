@@ -12,7 +12,7 @@ export const getApiBaseUrl = (): string => {
       return 'https://attendoschool-backend.onrender.com/api';
     }
   }
-  return 'http://localhost:5000/api';
+  return 'http://localhost:5001/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
