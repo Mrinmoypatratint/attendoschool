@@ -717,14 +717,6 @@ AttendoSchool: ${baseUrl}`;
           </tr>
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${admissionNumber}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${admissionNumber}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               ${admissionNumber} <span style="font-size: 11px; font-weight: 600; color: #1e40af; background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 2px 6px; border-radius: 3px; margin-left: 6px;">Login ID</span>
             </td>
