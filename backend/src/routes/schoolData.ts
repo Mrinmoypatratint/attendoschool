@@ -939,6 +939,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     secName = 'A';
   }
   let resetInfo: any = null;
+  let welcomeEmailSent = false;
   let realClassId = classId;
   let realSectionId = sectionId;
   const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
@@ -1049,7 +1050,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
             userId: linkedUserId || undefined,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             const isParent = loginOpt === 'PARENT';
@@ -1070,6 +1072,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
             }).catch(() => {});
+            welcomeEmailSent = true;
           }
         } catch (e: any) {
           console.warn('[StudentEnrollment] Failed to send student reset email:', e.message);
@@ -1179,50 +1182,56 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     console.error('[StudentEnrollment] Supabase student insert error:', err.message);
   }
 
- // Demo In-Memory Fallback
- const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
- if (targetLoginEmail && loginOpt !== 'NONE' && sendInviteEmail) {
-   try {
-     resetInfo = await createAndSendPasswordReset({
-       email: targetLoginEmail,
-       name,
-       role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
-       schoolId: req.user?.schoolId || undefined,
-       schoolName: req.user?.schoolName || 'School',
-       req
-     });
-     registerDemoUser({
-       id: `usr-st-${Date.now()}`,
-       schoolId: req.user!.schoolId,
-       name,
-       email: targetLoginEmail,
-       role: 'STUDENT',
-       password: 'ChangeMe123!'
-     });
-     if (resetInfo?.resetUrl) {
-       const isParent = loginOpt === 'PARENT';
-       queueEmailNotification({
-         schoolId: req.user?.schoolId || 'school-default',
-         recipientEmail: targetLoginEmail,
-         recipientName: isParent ? (parentName || 'Parent') : name,
-         recipientType: isParent ? 'PARENT' : 'STUDENT',
-         templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
-         templateData: {
-           student_name: name,
-           school_name: req.user?.schoolName || 'School',
-           admission_number: cleanAdmissionNumber || '—',
-           class_name: String(clsNum),
-           section_name: secName,
-           roll_number: String(rollNumber || '—'),
-           reset_link: resetInfo.resetUrl
-         },
-         idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
-       }).catch(() => {});
-     }
-   } catch {}
- } else if (!targetLoginEmail) {
-   console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
- }
+  // Demo In-Memory Fallback
+  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
+  if (targetLoginEmail && loginOpt !== 'NONE') {
+    registerDemoUser({
+      id: `usr-st-${Date.now()}`,
+      schoolId: req.user!.schoolId,
+      name,
+      email: targetLoginEmail,
+      role: 'STUDENT',
+      password: 'ChangeMe123!'
+    });
+    if (!welcomeEmailSent && sendInviteEmail) {
+      try {
+        if (!resetInfo) {
+          resetInfo = await createAndSendPasswordReset({
+            email: targetLoginEmail,
+            name,
+            role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
+            schoolId: req.user?.schoolId || undefined,
+            schoolName: req.user?.schoolName || 'School',
+            req,
+            sendEmail: false
+          });
+        }
+        if (resetInfo?.resetUrl) {
+          const isParent = loginOpt === 'PARENT';
+          queueEmailNotification({
+            schoolId: req.user?.schoolId || 'school-default',
+            recipientEmail: targetLoginEmail,
+            recipientName: isParent ? (parentName || 'Parent') : name,
+            recipientType: isParent ? 'PARENT' : 'STUDENT',
+            templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+            templateData: {
+              student_name: name,
+              school_name: req.user?.schoolName || 'School',
+              admission_number: cleanAdmissionNumber || '—',
+              class_name: String(clsNum),
+              section_name: secName,
+              roll_number: String(rollNumber || '—'),
+              reset_link: resetInfo.resetUrl
+            },
+            idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+          }).catch(() => {});
+          welcomeEmailSent = true;
+        }
+      } catch {}
+    }
+  } else if (!targetLoginEmail) {
+    console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
+  }
 
  const newStudent = {
    id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1740,7 +1749,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                   role: isParent ? 'PARENT' : 'STUDENT',
                   schoolId: schoolId || undefined,
                   schoolName: req.user?.schoolName || 'School',
-                  req
+                  req,
+                  sendEmail: false
                 }).then(resetInfo => {
                   if (resetInfo?.resetUrl) {
                     queueEmailNotification({
@@ -2621,7 +2631,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             userId: u.rows[0].id,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             await queueEmailNotification({
@@ -2687,7 +2698,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         role: 'TEACHER',
         schoolId: req.user?.schoolId || undefined,
         schoolName: req.user?.schoolName || 'School',
-        req
+        req,
+        sendEmail: false
       });
       if (resetInfo?.resetUrl) {
         await queueEmailNotification({
@@ -3027,7 +3039,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
               role: 'TEACHER',
               schoolId,
               schoolName,
-              req
+              req,
+              sendEmail: false
             }).catch(() => null);
 
             await queueEmailNotification({

@@ -225,7 +225,7 @@ export default function Timetable() {
   const selClassObj = classes.find(c => c.id === selClassId);
   const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber;
   const selClassName = selClassObj?.label || (selClassNum !== undefined && selClassNum !== null
-    ? (selClassNum === -1 ? 'L-KG' : selClassNum === 0 ? 'U-KG' : `Class ${selClassNum}`)
+    ? (selClassNum === -1 ? 'Class L-KG' : selClassNum === 0 ? 'Class U-KG' : `Class ${selClassNum}`)
     : (selClassObj?.name || 'Class'));
   const displayClassLabel = selClassName.toLowerCase().startsWith('class') ? selClassName : `Class ${selClassName}`;
 
@@ -797,7 +797,7 @@ export default function Timetable() {
             >
               {classes.map(c => {
                 const cNum = c.class_number ?? c.classNumber;
-                const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                const label = c.label || (cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
                 return (
                   <option key={c.id} value={c.id}>
                     {label}
@@ -1148,7 +1148,7 @@ export default function Timetable() {
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
                     {classes.map(c => {
                       const cNum = c.class_number ?? c.classNumber;
-                      const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                      const label = c.label || (cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
                       return <option key={c.id} value={c.id}>{label}</option>;
                     })}
                   </select>

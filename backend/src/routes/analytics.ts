@@ -12,46 +12,38 @@ router.get('/platform',async(req,res)=>{
 router.get('/school',async(req,res)=>{
  const sid = u(req)?.schoolId;
  if(!sid)return res.status(401).json({message:'School context required'});
- try{res.json(await svc.schoolOverview(sid,String(req.query.from||''),String(req.query.to||'')))}catch(_e:any){
-  if (isTestSchool(sid)) {
-    res.json({
-      from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
-      to: new Date().toISOString().slice(0,10),
-      totalStudents: 10, totalTeachers: 3, attendanceSessions: 2, presentRecords: 17, absentRecords: 3,
-      attendancePercentage: 85.0,
-      daily: [
-       { snapshot_date: new Date().toISOString().slice(0,10), total_students: 10, total_teachers: 3, attendance_percentage: 90, present_records: 9, absent_records: 1 },
-       { snapshot_date: new Date(Date.now()-86400000).toISOString().slice(0,10), total_students: 10, total_teachers: 3, attendance_percentage: 80, present_records: 8, absent_records: 2 }
-      ]
-    });
-  } else {
-    res.json({
-      from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
-      to: new Date().toISOString().slice(0,10),
-      totalStudents: 0, totalTeachers: 0, attendanceSessions: 0, presentRecords: 0, absentRecords: 0,
-      attendancePercentage: 0,
-      daily: []
-    });
-  }
+ try{
+  const classId = req.query.classId ? String(req.query.classId) : undefined;
+  const sectionId = req.query.sectionId ? String(req.query.sectionId) : undefined;
+  res.json(await svc.schoolOverview(sid,String(req.query.from||''),String(req.query.to||''), classId, sectionId));
+ }catch(_e:any){
+  res.json({
+    from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
+    to: new Date().toISOString().slice(0,10),
+    totalStudents: 0, totalTeachers: 0, attendanceSessions: 0,
+    todayPresent: 0, todayAbsent: 0,
+    presentRecords: 0, absentRecords: 0,
+    attendancePercentage: 0,
+    daily: [],
+    classBreakdown: [],
+    lowAttendanceCount: 0,
+    lowAttendanceStudents: [],
+    classes: [],
+    sections: []
+  });
  }
 });
 router.get('/summary',async(req,res)=>{
  const sid = u(req)?.schoolId;
  if (!sid) return res.status(401).json({ message: 'School context required' });
  try{res.json(await svc.schoolOverview(sid,String(req.query.from||''),String(req.query.to||'')))}catch(_e:any){
-  if (isTestSchool(sid)) {
-    res.json({
-      from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
-      to: new Date().toISOString().slice(0,10),
-      totalStudents: 10, totalTeachers: 3, attendancePercentage: 85.0
-    });
-  } else {
-    res.json({
-      from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
-      to: new Date().toISOString().slice(0,10),
-      totalStudents: 0, totalTeachers: 0, attendancePercentage: 0
-    });
-  }
+  res.json({
+    from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
+    to: new Date().toISOString().slice(0,10),
+    totalStudents: 0, totalTeachers: 0, attendanceSessions: 0,
+    todayPresent: 0, todayAbsent: 0,
+    attendancePercentage: 0
+  });
  }
 });
 router.get('/',async(req,res)=>{

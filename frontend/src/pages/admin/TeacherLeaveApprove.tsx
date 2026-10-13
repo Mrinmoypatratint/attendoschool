@@ -45,6 +45,7 @@ interface TeacherLeave {
   reviewed_by?: string;
   reviewer_name?: string;
   review_notes?: string;
+  rejection_reason?: string;
   reviewed_at?: string;
   created_at: string;
   updated_at?: string;
@@ -279,10 +280,11 @@ export default function TeacherLeaveApprove() {
   };
 
   // Export Monthly Teacher Leave Report to Excel (.xlsx)
+  // Only exports teachers who have applied for leave, excluding teachers with no leaves
   const exportMonthlyLeaveReport = (targetMonth?: string) => {
     try {
       setExporting(true);
-      const ym = targetMonth || reportMonth || new Date().toISOString().slice(0, 7);
+      const ym = (monthFilter !== 'ALL' ? monthFilter : (targetMonth || reportMonth)) || new Date().toISOString().slice(0, 7);
       const [yearStr, monthStr] = ym.split('-');
       const year = parseInt(yearStr, 10) || new Date().getFullYear();
       const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
@@ -291,7 +293,46 @@ export default function TeacherLeaveApprove() {
         ? ym
         : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-      // Gather unique teachers from both teachersList and leave records
+      // Take leave applications matching the current table list that fall within the target month
+      const targetLeaves = filteredLeaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+
+      if (targetLeaves.length === 0) {
+        setFeedback({
+          type: 'error',
+          message: `No faculty leave applications found in the table list for ${monthName} to export.`
+        });
+        return;
+      }
+
+      // Sheet 1: The exact data from the Teacher Leave Review table list
+      const detailRows = targetLeaves.map((l, index) => {
+        const totalDuration = calculateDays(l.start_date, l.end_date);
+        const daysInMonth = computeLeaveDaysInMonth(l, ym);
+        const typeStyle = getLeaveTypeStyle(l.leave_type);
+        const statusLabel = l.status === 'APPROVED' ? 'Approved' : l.status === 'REJECTED' ? 'Rejected' : 'Pending Review';
+
+        return {
+          'SL No.': index + 1,
+          'Faculty Member': l.applicant_name || 'Faculty Member',
+          'Email Address': l.teacher_email || '—',
+          'Employee ID': l.identifier || '—',
+          'Leave Type': typeStyle.label || l.leave_type,
+          'Duration & Period': `${formatDate(l.start_date)} → ${formatDate(l.end_date)}`,
+          'Start Date': l.start_date || '—',
+          'End Date': l.end_date || '—',
+          'Total Duration (Days)': totalDuration,
+          'Days in Month': daysInMonth,
+          'Reason / Details': l.reason || '—',
+          'Applied Date': l.created_at ? formatDate(l.created_at) : '—',
+          'Status': statusLabel,
+          'Review Remarks': l.review_notes || l.rejection_reason || (l.status === 'APPROVED' ? 'Approved by School Administration' : '—'),
+          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
+          'Reviewed At': l.reviewed_at ? formatDate(l.reviewed_at) : '—',
+          'Supporting Document': l.document_name ? `${l.document_name}` : (l.document_url ? 'Attached' : 'None')
+        };
+      });
+
+      // Extract ONLY teachers who have applied for leave in this target month (excluding teachers who have not taken/applied for leave)
       const teacherMap = new Map<string, {
         id: string;
         name: string;
@@ -300,46 +341,25 @@ export default function TeacherLeaveApprove() {
         detail: string;
       }>();
 
-      // Seed from teachers directory
-      teachersList.forEach((t: any) => {
-        const key = String(t.id || t.email || t.name).toLowerCase();
-        if (key) {
+      targetLeaves.forEach((l) => {
+        const key = String(l.applicant_id || l.teacher_email || l.applicant_name).toLowerCase().trim();
+        if (key && !teacherMap.has(key)) {
+          const tInfo = teachersList.find((t: any) =>
+            (t.id && l.applicant_id && String(t.id).toLowerCase() === String(l.applicant_id).toLowerCase()) ||
+            (t.email && l.teacher_email && t.email.toLowerCase() === l.teacher_email.toLowerCase()) ||
+            (t.name && l.applicant_name && t.name.toLowerCase() === l.applicant_name.toLowerCase())
+          );
           teacherMap.set(key, {
-            id: t.id || '',
-            name: t.name || t.fullName || 'Faculty Member',
-            email: t.email || '',
-            identifier: t.employee_id || t.employeeId || 'FAC-EMP',
-            detail: t.designation || t.qualification || 'Faculty Member'
+            id: l.applicant_id || tInfo?.id || '',
+            name: l.applicant_name || tInfo?.name || 'Faculty Member',
+            email: l.teacher_email || tInfo?.email || '—',
+            identifier: l.identifier || tInfo?.employee_id || tInfo?.employeeId || '—',
+            detail: l.detail || tInfo?.designation || tInfo?.qualification || 'Faculty Member'
           });
         }
       });
 
-      // Also ensure all faculty who submitted leaves are present
-      leaves.forEach((l) => {
-        const key = String(l.applicant_id || l.teacher_email || l.applicant_name).toLowerCase();
-        if (!teacherMap.has(key)) {
-          teacherMap.set(key, {
-            id: l.applicant_id || '',
-            name: l.applicant_name || 'Faculty Member',
-            email: l.teacher_email || '',
-            identifier: l.identifier || 'FAC-EMP',
-            detail: l.detail || 'Faculty Member'
-          });
-        }
-      });
-
-      let facultyList = Array.from(teacherMap.values());
-
-      // If admin has actively filtered by search query, respect the query in the export
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        facultyList = facultyList.filter(
-          (f) =>
-            f.name.toLowerCase().includes(q) ||
-            f.email.toLowerCase().includes(q) ||
-            f.identifier.toLowerCase().includes(q)
-        );
-      }
+      const facultyList = Array.from(teacherMap.values());
 
       // Aggregate leaves taken per teacher for the target month
       let grandTotalTaken = 0;
@@ -354,14 +374,12 @@ export default function TeacherLeaveApprove() {
       let grandRejected = 0;
 
       const summaryRows = facultyList.map((f) => {
-        const tLeaves = leaves.filter((l) => {
+        const tLeaves = targetLeaves.filter((l) => {
           const idMatch = l.applicant_id && f.id && String(l.applicant_id).toLowerCase() === String(f.id).toLowerCase();
           const emailMatch = l.teacher_email && f.email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
           const nameMatch = l.applicant_name && f.name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
           return idMatch || emailMatch || nameMatch;
         });
-
-        const monthLeaves = tLeaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
 
         let clDays = 0;
         let slDays = 0;
@@ -376,7 +394,7 @@ export default function TeacherLeaveApprove() {
         let appPending = 0;
         let appRejected = 0;
 
-        monthLeaves.forEach((l) => {
+        tLeaves.forEach((l) => {
           const dInM = computeLeaveDaysInMonth(l, ym);
           if (l.status === 'APPROVED') {
             appApproved++;
@@ -424,24 +442,24 @@ export default function TeacherLeaveApprove() {
           'Pending Requests': appPending,
           'Rejected Requests': appRejected,
           'Total Applications': (appApproved + appPending + appRejected),
-          'Status Summary': approvedDays > 0 ? `${approvedDays} Day(s) Taken` : 'No Leaves Taken'
+          'Status Summary': approvedDays > 0 ? `${approvedDays} Day(s) Taken` : `${appPending} Pending, ${appRejected} Rejected`
         };
       });
 
-      // Sort: Teachers with leaves taken first, then alphabetically
+      // Sort: Teachers with leaves taken first, then by total applications
       summaryRows.sort((a, b) => {
         if (b['Total Leaves Taken (Days)'] !== a['Total Leaves Taken (Days)']) {
           return b['Total Leaves Taken (Days)'] - a['Total Leaves Taken (Days)'];
         }
-        return a['Teacher / Faculty Member'].localeCompare(b['Teacher / Faculty Member']);
+        return b['Total Applications'] - a['Total Applications'];
       });
 
       // Append institutional summary total row
       summaryRows.push({
-        'Teacher / Faculty Member': 'TOTAL / INSTITUTION WIDE',
+        'Teacher / Faculty Member': 'TOTAL (FACULTY WHO APPLIED)',
         'Email Address': '',
         'Employee ID': '',
-        'Designation / Department': `${facultyList.length} Faculty Members`,
+        'Designation / Department': `${facultyList.length} Faculty Member(s) Applied`,
         'Report Month': monthName,
         'Total Leaves Taken (Days)': grandTotalTaken,
         'Casual Leave (CL Days)': grandTotalCL,
@@ -454,103 +472,65 @@ export default function TeacherLeaveApprove() {
         'Pending Requests': grandPending,
         'Rejected Requests': grandRejected,
         'Total Applications': (grandApproved + grandPending + grandRejected),
-        'Status Summary': `${grandTotalTaken} Total Faculty Leave Day(s)`
+        'Status Summary': `${grandTotalTaken} Total Approved Leave Day(s)`
       } as any);
-
-      // Sheet 2: Detailed Applications for this month
-      const monthLeaves = leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
-      monthLeaves.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
-
-      const detailRows = monthLeaves.length > 0 ? monthLeaves.map((l) => {
-        const totalDuration = calculateDays(l.start_date, l.end_date);
-        const daysInMonth = computeLeaveDaysInMonth(l, ym);
-        return {
-          'Application ID': l.id.slice(0, 8),
-          'Teacher Name': l.applicant_name,
-          'Email Address': l.teacher_email || '—',
-          'Employee ID': l.identifier || '—',
-          'Leave Type': getLeaveTypeStyle(l.leave_type).label,
-          'Start Date': l.start_date,
-          'End Date': l.end_date,
-          'Total Duration (Days)': totalDuration,
-          'Days in Month': daysInMonth,
-          'Status': l.status,
-          'Reason / Details': l.reason,
-          'Applied Date': l.created_at ? l.created_at.slice(0, 10) : '—',
-          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
-          'Review Remarks': l.review_notes || '—',
-          'Reviewed At': l.reviewed_at ? l.reviewed_at.slice(0, 10) : '—'
-        };
-      }) : [{
-        'Application ID': '—',
-        'Teacher Name': 'No leave applications recorded for this month',
-        'Email Address': '',
-        'Employee ID': '',
-        'Leave Type': '',
-        'Start Date': '',
-        'End Date': '',
-        'Total Duration (Days)': 0,
-        'Days in Month': 0,
-        'Status': '—',
-        'Reason / Details': '',
-        'Applied Date': '',
-        'Reviewed By': '',
-        'Review Remarks': '',
-        'Reviewed At': ''
-      }];
 
       // Build Workbook
       const wb = XLSX.utils.book_new();
 
+      // Sheet 1: Exact table list data in Teacher Leave Review
+      const wsDetails = XLSX.utils.json_to_sheet(detailRows);
+      wsDetails['!cols'] = [
+        { wch: 8 },  // SL No.
+        { wch: 24 }, // Faculty Member
+        { wch: 28 }, // Email Address
+        { wch: 16 }, // Employee ID
+        { wch: 26 }, // Leave Type
+        { wch: 26 }, // Duration & Period
+        { wch: 14 }, // Start Date
+        { wch: 14 }, // End Date
+        { wch: 16 }, // Total Duration (Days)
+        { wch: 16 }, // Days in Month
+        { wch: 34 }, // Reason / Details
+        { wch: 16 }, // Applied Date
+        { wch: 16 }, // Status
+        { wch: 34 }, // Review Remarks
+        { wch: 24 }, // Reviewed By
+        { wch: 16 }, // Reviewed At
+        { wch: 24 }  // Supporting Document
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetails, 'Teacher Leave Review');
+
+      // Sheet 2: Monthly Summary for teachers who applied
       const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
       wsSummary['!cols'] = [
-        { wch: 25 },
+        { wch: 26 },
         { wch: 28 },
-        { wch: 15 },
-        { wch: 22 },
         { wch: 16 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 24 },
+        { wch: 20 },
         { wch: 24 },
         { wch: 20 },
         { wch: 22 },
         { wch: 20 },
-        { wch: 20 },
-        { wch: 20 },
         { wch: 22 },
         { wch: 18 },
-        { wch: 16 },
-        { wch: 16 },
+        { wch: 18 },
+        { wch: 18 },
         { wch: 18 },
         { wch: 25 }
       ];
       XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Leave Summary');
 
-      const wsDetails = XLSX.utils.json_to_sheet(detailRows);
-      wsDetails['!cols'] = [
-        { wch: 15 },
-        { wch: 24 },
-        { wch: 26 },
-        { wch: 15 },
-        { wch: 24 },
-        { wch: 14 },
-        { wch: 14 },
-        { wch: 18 },
-        { wch: 16 },
-        { wch: 14 },
-        { wch: 34 },
-        { wch: 14 },
-        { wch: 22 },
-        { wch: 32 },
-        { wch: 14 }
-      ];
-      XLSX.utils.book_append_sheet(wb, wsDetails, 'Leave Records Detail');
-
       const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `Teacher_Monthly_Leave_Report_${safeMonth}.xlsx`;
+      const filename = `Teacher_Leave_Review_${safeMonth}.xlsx`;
       XLSX.writeFile(wb, filename);
 
       setFeedback({
         type: 'success',
-        message: `Monthly Teacher Leave Report successfully downloaded for ${monthName} (${grandTotalTaken} day(s) taken across ${facultyList.length} faculty member(s)).`
+        message: `Teacher Leave Review report downloaded for ${monthName} (${targetLeaves.length} application(s) across ${facultyList.length} faculty member(s)).`
       });
     } catch (err: any) {
       console.error('Failed to export leave report:', err);
