@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { validatePassword } from '../../utils/passwordPolicy';
 import { useAuth } from '../../hooks/useAuth';
+import { formatGender } from '../../utils/gender';
 
 export interface ITeacherProfile {
   id: string;
@@ -79,7 +80,7 @@ export function TeacherProfile() {
       if (res.data) {
         setProfile(res.data);
         setEditPhone(res.data.phone || '');
-        setEditGender(res.data.gender || '');
+        setEditGender(formatGender(res.data.gender) || '');
         setEditAddress(res.data.address || '');
         setEditQualification(res.data.qualification || '');
       }
@@ -495,7 +496,7 @@ export function TeacherProfile() {
                   onClick={() => {
                     setEditing(false);
                     setEditPhone(profile?.phone || '');
-                    setEditGender(profile?.gender || '');
+                    setEditGender(formatGender(profile?.gender) || '');
                     setEditAddress(profile?.address || '');
                     setEditQualification(profile?.qualification || '');
                   }}
@@ -564,7 +565,7 @@ export function TeacherProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
-                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
+                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
               <div className="detail-item" style={{ gridColumn: 'span 2' }}>
                 <span className="detail-label">Address</span>

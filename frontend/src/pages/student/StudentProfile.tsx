@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { formatGender } from '../../utils/gender';
 
 function isValidDdMmYyyy(val: string): boolean {
   if (!val) return false;
@@ -68,7 +69,7 @@ export function StudentProfile() {
       .getProfile()
       .then((res) => {
         setProfile(res);
-        setEditGender(res?.gender || '');
+        setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
         setLoading(false);
       })
@@ -339,7 +340,7 @@ export function StudentProfile() {
                   <Clock size={13} /> Photo Pending Approval
                 </div>
                 <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1, color: '#B45309' }}>
-                  Your uploaded photo is waiting for administrator approval. Once approved, it will automatically become active on your profile.
+                  Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
                 </div>
               </div>
             </div>
@@ -530,7 +531,7 @@ export function StudentProfile() {
                   type="button"
                   onClick={() => {
                     setEditingDetails(false);
-                    setEditGender(profile?.gender || '');
+                    setEditGender(formatGender(profile?.gender) || '');
                     setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
                   }}
                   style={{
@@ -597,7 +598,7 @@ export function StudentProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
-                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
+                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
             </div>
           )}

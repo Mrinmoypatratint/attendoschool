@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, TimetableEntry, StudentProfile } from '../../services/studentApi';
 
 export function StudentTimetable() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subjectParam = searchParams.get('subject') || searchParams.get('q') || '';
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,18 @@ export function StudentTimetable() {
       });
   }, []);
 
+  // When searching for a subject, automatically jump to the day where the class is held
+  useEffect(() => {
+    if (subjectParam && entries.length > 0) {
+      const match = entries.find(
+        (e) => e.subject_name?.toLowerCase().includes(subjectParam.toLowerCase())
+      );
+      if (match && match.day_of_week) {
+        setSelectedDay(Number(match.day_of_week));
+      }
+    }
+  }, [subjectParam, entries]);
+
   const dayEntries = entries.filter((e) => Number(e.day_of_week) === selectedDay);
 
   return (
@@ -49,6 +63,40 @@ export function StudentTimetable() {
           </p>
         </div>
       </div>
+
+      {/* Subject Filter Notification Banner */}
+      {subjectParam && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 8,
+            marginBottom: 16
+          }}
+        >
+          <span style={{ fontSize: 13, color: '#1e40af' }}>
+            Showing timetable routine for subject: <b>"{subjectParam}"</b>
+          </span>
+          <button
+            type="button"
+            onClick={() => setSearchParams({})}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#1d4ed8',
+              cursor: 'pointer',
+              fontSize: 12.5,
+              fontWeight: 600
+            }}
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
 
       {/* Day Tabs */}
       <div className="student-tab-bar">
@@ -93,15 +141,31 @@ export function StudentTimetable() {
                 </tr>
               </thead>
               <tbody>
-                {dayEntries.map((e, idx) => (
-                  <tr key={e.id || idx}>
-                    <td className="period-cell">{idx + 1}</td>
-                    <td className="time-cell">{e.start_time?.slice(0, 5)} - {e.end_time?.slice(0, 5)}</td>
-                    <td className="subject-cell font-semibold">{e.subject_name}</td>
-                    <td>{e.teacher_name}</td>
-                    <td className="room-cell">{e.room || `Room ${profile?.classNumber || 10}`}</td>
-                  </tr>
-                ))}
+                {dayEntries.map((e, idx) => {
+                  const isMatch = Boolean(subjectParam && e.subject_name?.toLowerCase().includes(subjectParam.toLowerCase()));
+                  return (
+                    <tr 
+                      key={e.id || idx}
+                      style={{
+                        background: isMatch ? 'rgba(37, 99, 235, 0.08)' : undefined,
+                        borderLeft: isMatch ? '3px solid #2563eb' : undefined
+                      }}
+                    >
+                      <td className="period-cell">{idx + 1}</td>
+                      <td className="time-cell">{e.start_time?.slice(0, 5)} - {e.end_time?.slice(0, 5)}</td>
+                      <td className="subject-cell font-semibold">
+                        {e.subject_name}
+                        {isMatch && (
+                          <span style={{ marginLeft: 6, fontSize: 10, background: '#2563eb', color: '#fff', padding: '1px 5px', borderRadius: 4, verticalAlign: 'middle' }}>
+                            Matched
+                          </span>
+                        )}
+                      </td>
+                      <td>{e.teacher_name}</td>
+                      <td className="room-cell">{e.room || `Room ${profile?.classNumber || 10}`}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -84,6 +84,7 @@ export default function PhotoApprove() {
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Photo for ${photo.applicant_name} has been approved.` });
         if (previewPhoto?.id === photo.id) setPreviewPhoto(null);
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
         await loadPhotos();
       }
     } catch (err: any) {
@@ -99,13 +100,14 @@ export default function PhotoApprove() {
     try {
       setActionLoading(rejectingPhoto.id);
       const res = await api.put(`/reviews/photos/${rejectingPhoto.id}/reject`, {
-        reason: rejectReason.trim() || 'Photo does not meet administrative standards.'
+        reason: rejectReason.trim() || 'Photo does not meet standards.'
       });
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Photo for ${rejectingPhoto.applicant_name} has been rejected.` });
         setRejectingPhoto(null);
         setRejectReason('');
         if (previewPhoto?.id === rejectingPhoto.id) setPreviewPhoto(null);
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
         await loadPhotos();
       }
     } catch (err: any) {

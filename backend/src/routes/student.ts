@@ -4,6 +4,8 @@ import * as svc from '../services/studentService';
 import { memEntries } from './timetable';
 import { isSameSchool, isTestSchool } from './auth';
 import { fastCache } from '../utils/cache';
+import { pool } from '../db';
+import { downloadFromStorage, StorageConfigurationError } from '../utils/supabaseStorage';
 
 const router = Router();
 
@@ -131,15 +133,94 @@ router.get('/assignments', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/student/assignments/:id/submit - Submit assignment
+// POST /api/student/assignments/:id/submit - Submit assignment text and optional attachments
 router.post('/assignments/:id/submit', async (req: AuthRequest, res: Response) => {
   try {
-    const text = String(req.body.submissionText || req.body.text || '').trim();
-    if (!text) return res.status(400).json({ message: 'Submission content is required' });
-    const data = await svc.submitStudentAssignment(req.user!.schoolId!, req.user!.id, String(req.params.id), text);
+    const { submissionText, text, attachments } = req.body || {};
+    const contentText = String(submissionText !== undefined ? submissionText : (text || '')).trim();
+    const data = await svc.submitStudentAssignment(
+      req.user!.schoolId!,
+      req.user!.id,
+      String(req.params.id),
+      contentText,
+      attachments
+    );
     res.json({ success: true, message: 'Assignment submitted successfully', data });
   } catch (e: any) {
+    if (e instanceof StorageConfigurationError || e?.name === 'StorageConfigurationError' || e?.code === 'STORAGE_CONFIGURATION_MISSING') {
+      return res.status(503).json({
+        error: 'STORAGE_CONFIGURATION_MISSING',
+        message: 'File attachment storage is currently unconfigured or unavailable. Please contact your school administrator.'
+      });
+    }
     res.status(400).json({ message: e.message || 'Unable to submit assignment' });
+  }
+});
+
+// GET /api/student/assignments/:id/attachments/:attachmentId/preview - Preview student's own attachment
+router.get('/assignments/:id/attachments/:attachmentId/preview', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId, attachmentId } = req.params;
+    const q = await pool.query(
+      `SELECT att.* FROM student_assignment_attachments att
+       JOIN students st ON st.id = att.student_id
+       WHERE att.id = $1 AND att.assignment_id = $2 AND att.school_id = $3 AND st.user_id = $4`,
+      [attachmentId, assignmentId, req.user!.schoolId!, req.user!.id]
+    );
+
+    if (q.rowCount === 0) {
+      return res.status(404).json({ message: 'Attachment not found or access denied' });
+    }
+
+    const att = q.rows[0];
+    const { buffer, mimeType } = await downloadFromStorage(att.storage_key);
+
+    res.setHeader('Content-Type', att.mime_type || mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(att.file_name)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  } catch (err: any) {
+    if (err instanceof StorageConfigurationError || err?.name === 'StorageConfigurationError' || err?.code === 'STORAGE_CONFIGURATION_MISSING') {
+      return res.status(503).json({
+        error: 'STORAGE_CONFIGURATION_MISSING',
+        message: 'File attachment storage is currently unconfigured or unavailable.'
+      });
+    }
+    res.status(500).json({ message: err.message || 'Failed to preview attachment' });
+  }
+});
+
+// GET /api/student/assignments/:id/attachments/:attachmentId/download - Download student's own attachment
+router.get('/assignments/:id/attachments/:attachmentId/download', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId, attachmentId } = req.params;
+    const q = await pool.query(
+      `SELECT att.* FROM student_assignment_attachments att
+       JOIN students st ON st.id = att.student_id
+       WHERE att.id = $1 AND att.assignment_id = $2 AND att.school_id = $3 AND st.user_id = $4`,
+      [attachmentId, assignmentId, req.user!.schoolId!, req.user!.id]
+    );
+
+    if (q.rowCount === 0) {
+      return res.status(404).json({ message: 'Attachment not found or access denied' });
+    }
+
+    const att = q.rows[0];
+    const { buffer, mimeType } = await downloadFromStorage(att.storage_key);
+
+    res.setHeader('Content-Type', att.mime_type || mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(att.file_name)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(buffer);
+  } catch (err: any) {
+    if (err instanceof StorageConfigurationError || err?.name === 'StorageConfigurationError' || err?.code === 'STORAGE_CONFIGURATION_MISSING') {
+      return res.status(503).json({
+        error: 'STORAGE_CONFIGURATION_MISSING',
+        message: 'File attachment storage is currently unconfigured or unavailable.'
+      });
+    }
+    res.status(500).json({ message: err.message || 'Failed to download attachment' });
   }
 });
 

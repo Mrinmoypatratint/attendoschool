@@ -45,6 +45,8 @@ import finalIntegration from './routes/finalIntegration';
 import student from './routes/student';
 import reviews from './routes/reviews';
 import calendar from './routes/calendar';
+import mentor from './routes/mentor';
+import teacherAssignments from './routes/teacherAssignments';
 
 const app = express();
 
@@ -87,8 +89,8 @@ const corsOptions: cors.CorsOptions = {
 
 app.use(cors(corsOptions));
 app.use(compression());
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.json({ limit: '35mb' }));
+app.use(express.urlencoded({ extended: true, limit: '35mb' }));
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -204,6 +206,9 @@ app.use('/api/attendance', teacher);
 app.use('/api/notifications', notifications);
 app.use('/api/student', student);
 app.use('/api/reviews', requireAuth, reviews);
+app.use('/api', mentor);
+app.use('/api/teacher/assignments', teacherAssignments);
+
 
 // 404 handler
 app.use((_q, res) => res.status(404).json({ message: 'API route not found' }));
