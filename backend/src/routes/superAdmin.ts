@@ -561,8 +561,7 @@ async function dispatchSchoolCreationEmail(
       role: 'SCHOOL_ADMIN',
       schoolId,
       schoolName,
-      req,
-      sendEmail: false
+      req
     });
 
     await queueEmailNotification({

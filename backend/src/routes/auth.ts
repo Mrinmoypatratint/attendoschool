@@ -501,9 +501,8 @@ export async function createAndSendPasswordReset(params: {
   admissionNumber?: string;
   admission_number?: string;
   req?: any;
-  sendEmail?: boolean;
 }) {
-  const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req, sendEmail = true } = params;
+  const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
   let admissionNumber = params.admission_number || params.admissionNumber || '';
 
   // Resolve student admission number if missing
@@ -576,28 +575,26 @@ export async function createAndSendPasswordReset(params: {
 
   const resetUrl = `${baseUrl}/#/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
-  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML via Notification Queue (if enabled)
+  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML via Notification Queue
   let emailResult: any = null;
-  if (sendEmail) {
-    try {
-      emailResult = await queueEmailNotification({
-        schoolId: schoolId || 'school-default',
-        recipientEmail: email.toLowerCase().trim(),
-        recipientName: name,
-        recipientType: (role.toUpperCase() as any) || 'STUDENT',
-        templateKey: 'PASSWORD_RESET',
-        templateData: {
-          name,
-          school_name: schoolName,
-          reset_link: resetUrl,
-          role,
-          admission_number: admissionNumber || undefined
-        },
-        idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
-      });
-    } catch (err: any) {
-      console.warn(`[PasswordReset] Failed to queue email notification:`, err.message);
-    }
+  try {
+    emailResult = await queueEmailNotification({
+      schoolId: schoolId || 'school-default',
+      recipientEmail: email.toLowerCase().trim(),
+      recipientName: name,
+      recipientType: (role.toUpperCase() as any) || 'STUDENT',
+      templateKey: 'PASSWORD_RESET',
+      templateData: {
+        name,
+        school_name: schoolName,
+        reset_link: resetUrl,
+        role,
+        admission_number: admissionNumber || undefined
+      },
+      idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
+    });
+  } catch (err: any) {
+    console.warn(`[PasswordReset] Failed to queue email notification:`, err.message);
   }
 
   return { token, resetUrl, emailResult };
