@@ -4778,32 +4778,53 @@ function Students(){
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   const lastRegisteredStudentInfo = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('attendo_last_registered_student');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.name) return parsed;
-      }
-    } catch {}
-
-    if (!rows || rows.length === 0) return null;
-
-    const withTime = rows.filter(r => r.created_at || r.createdAt);
-    if (withTime.length > 0) {
-      const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
-      return {
-        name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
-        rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—',
-        admissionNumber: latest.admission_number || latest.admissionNumber || latest.admission_no || latest.admissionNo || '—'
-      };
+    // Ground truth: strictly evaluate active students in directory
+    if (!rows || rows.length === 0) {
+      try {
+        localStorage.removeItem('attendo_last_registered_student');
+      } catch {}
+      return null;
     }
 
-    const candidate = rows[0];
-    return {
-      name: candidate.name || candidate.full_name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Student',
-      rollNumber: candidate.roll_number || candidate.rollNumber || candidate.roll || '—',
-      admissionNumber: candidate.admission_number || candidate.admissionNumber || candidate.admission_no || candidate.admissionNo || '—'
+    // Sort to find the most recently registered student in the directory
+    const sorted = [...rows].sort((a, b) => {
+      const timeA = a.created_at || a.createdAt ? new Date(a.created_at || a.createdAt).getTime() : 0;
+      const timeB = b.created_at || b.createdAt ? new Date(b.created_at || b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+
+      // Secondary: highest numeric admission number
+      const numA = parseInt(String(a.admission_number || a.admissionNumber || '').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt(String(b.admission_number || b.admissionNumber || '').replace(/\D/g, ''), 10) || 0;
+      if (numB !== numA) return numB - numA;
+
+      // Tertiary: highest numeric roll number
+      const rollA = parseInt(String(a.roll_number || a.rollNumber || '').replace(/\D/g, ''), 10) || 0;
+      const rollB = parseInt(String(b.roll_number || b.rollNumber || '').replace(/\D/g, ''), 10) || 0;
+      if (rollB !== rollA) return rollB - rollA;
+
+      return String(b.admission_number || b.admissionNumber || '').localeCompare(String(a.admission_number || a.admissionNumber || ''));
+    });
+
+    const latest = sorted[0];
+    if (!latest) {
+      try {
+        localStorage.removeItem('attendo_last_registered_student');
+      } catch {}
+      return null;
+    }
+
+    const info = {
+      name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
+      rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—',
+      admissionNumber: latest.admission_number || latest.admissionNumber || latest.admission_no || latest.admissionNo || '—'
     };
+
+    // Keep localStorage synchronized with the real latest student in directory
+    try {
+      localStorage.setItem('attendo_last_registered_student', JSON.stringify(info));
+    } catch {}
+
+    return info;
   }, [rows]);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
@@ -5084,7 +5105,7 @@ function Students(){
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
     const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
-    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'L-KG' : cls.class_number === 0 ? 'U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L-KG' : cls.class_number === 0 ? 'Class U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
     const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
 
     const previewSections: PreviewSectionData[] = [
@@ -6061,7 +6082,7 @@ function Students(){
             style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
           >
             <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
           </select>
           <select 
             value={sectionFilter} 
@@ -6667,7 +6688,7 @@ function Students(){
             }}
           >
             <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
         <label>Section
@@ -11636,8 +11657,8 @@ function Attendance(){
                 })
                 .map(c => {
                   const num = c.class_number ?? c.classNumber;
-                  const label = num === -1 || num === '-1' ? 'Nursery / Pre-KG' :
-                    num === 0 || num === '0' ? 'Kindergarten (KG)' :
+                  const label = num === -1 || num === '-1' ? 'Class L-KG' :
+                    num === 0 || num === '0' ? 'Class U-KG' :
                     num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
                     c.name || `Class ${c.id}`;
                   return (
@@ -12711,6 +12732,38 @@ function Attendance(){
   );
 }
 
+function formatAttendanceHistoryDate(raw: any): string {
+  if (!raw) return '—';
+  try {
+    const str = String(raw).trim();
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      }
+    }
+    const parsed = new Date(raw);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    return str;
+  } catch {
+    return String(raw);
+  }
+}
+
+function formatHistoryClassLabel(classNum: any): string {
+  const n = Number(classNum);
+  if (n === -1 || classNum === '-1') return 'Class L-KG';
+  if (n === 0 || classNum === '0') return 'Class U-KG';
+  if (classNum !== undefined && classNum !== null && classNum !== '') return `Class ${classNum}`;
+  return 'Class';
+}
+
 /* ────── History ────── */
 function History(){
   const {user}=useAuth();
@@ -12733,7 +12786,8 @@ function History(){
         responseType: 'blob'
       });
 
-      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${inspectedSession.attendance_date || new Date().toISOString().slice(0, 10)}.${format}`;
+      const cleanDate = inspectedSession.attendance_date ? String(inspectedSession.attendance_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${cleanDate}.${format}`;
       const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
       if (disposition && disposition.includes('filename=')) {
         const match = disposition.match(/filename=["']?([^"';]+)["']?/);
@@ -12854,7 +12908,7 @@ function History(){
               ) : (
                 rows.map(x => {
                   const rate = x.total > 0 ? Math.round((x.present / x.total) * 100) : 0;
-                  const dateStr = x.attendance_date ? new Date(x.attendance_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+                  const dateStr = formatAttendanceHistoryDate(x.attendance_date);
                   const leftEarlyCount = Number(x.left_early_count || 0);
                   const lateCount = Number(x.late_count || 0);
                   const absentCount = Number(x.absent ?? (x.total - x.present));
@@ -12862,7 +12916,7 @@ function History(){
                   return (
                     <tr key={x.id}>
                       <td><b>{dateStr}</b></td>
-                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>Class {x.class_number}-{x.section_name}</span></td>
+                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>{formatHistoryClassLabel(x.class_number)}-{x.section_name}</span></td>
                       <td><b>{x.subject_name || 'General'}</b></td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -12913,7 +12967,7 @@ function History(){
                             Inspect & Audit
                           </button>
                           <a
-                            href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${x.attendance_date}`}
+                            href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${(x.attendance_date ? String(x.attendance_date).slice(0, 10) : '')}`}
                             className="primary"
                             style={{ fontSize: 11.5, padding: '4px 8px', textDecoration: 'none', borderRadius: 6, fontWeight: 600, whiteSpace: 'nowrap' }}
                           >
@@ -12960,10 +13014,10 @@ function History(){
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="badge" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700 }}>
-                    Class {inspectedSession.class_number}-{inspectedSession.section_name}
+                    {formatHistoryClassLabel(inspectedSession.class_number)}-{inspectedSession.section_name}
                   </span>
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-                    Session Inspection ({inspectedSession.attendance_date})
+                    Session Inspection ({formatAttendanceHistoryDate(inspectedSession.attendance_date)})
                   </h3>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -13122,7 +13176,7 @@ function History(){
             {/* Footer */}
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <a
-                href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${inspectedSession.attendance_date}`}
+                href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${(inspectedSession.attendance_date ? String(inspectedSession.attendance_date).slice(0, 10) : '')}`}
                 className="primary"
                 style={{ padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}
               >
