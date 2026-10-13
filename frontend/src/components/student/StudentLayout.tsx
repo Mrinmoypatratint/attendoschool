@@ -19,7 +19,9 @@ import {
   Sun,
   Moon,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
@@ -44,6 +46,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const [schoolNameState, setSchoolNameState] = useState<string>(
     user?.schoolName || 'AttendoSchool'
   );
+  const [schoolWebsite, setSchoolWebsite] = useState<string>(
+    (user as any)?.schoolWebsite || (user as any)?.school_website || (user as any)?.website || ''
+  );
 
   useEffect(() => {
     studentApi.getProfile()
@@ -54,8 +59,25 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         if (p?.schoolName) {
           setSchoolNameState(p.schoolName);
         }
+        if (p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website) {
+          setSchoolWebsite(p.schoolWebsite || (p as any)?.school_website || (p as any)?.website);
+        }
       })
       .catch(() => {});
+
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setSchoolWebsite(e.detail.website);
+      }
+      if (e.detail?.photo_url) {
+        setSchoolPhoto(e.detail.photo_url);
+      }
+      if (e.detail?.name) {
+        setSchoolNameState(e.detail.name);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
   }, []);
 
   // Branded Welcome Loader state - displayed only once per session per student
@@ -192,13 +214,41 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand">
-          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <div 
+            className="student-logo-wrap" 
+            onClick={() => { 
+              setMobileNavOpen(false); 
+              if (schoolWebsite) {
+                window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
+              } else {
+                nav('/student/dashboard'); 
+              }
+            }} 
+            title={schoolWebsite ? `Visit Official School Website: ${schoolWebsite}` : schoolName}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              minWidth: 0,
+              padding: '4px 6px',
+              borderRadius: 6,
+              transition: 'background-color 0.15s ease'
+            }}
+          >
             {schoolPhoto ? (
               <img src={schoolPhoto} alt={schoolName} className="student-brand-logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
             ) : (
               <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
             )}
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
+              {schoolWebsite && (
+                <span style={{ fontSize: 10, color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <Globe size={10} /> Visit Website
+                </span>
+              )}
+            </div>
           </div>
           <button 
             type="button" 
@@ -267,7 +317,16 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
           <div className="student-topbar-right">
             {/* Institute Pill */}
-            <div className="student-institute-pill" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div 
+              className="student-institute-pill" 
+              onClick={() => {
+                if (schoolWebsite) {
+                  window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              title={schoolWebsite ? `Official School Website: ${schoolWebsite}` : schoolName}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: schoolWebsite ? 'pointer' : 'default' }}
+            >
               {schoolPhoto ? (
                 <img
                   src={schoolPhoto}
@@ -278,7 +337,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                 <Building2 size={15} className="student-inst-icon" />
               )}
               <span className="student-inst-name">{schoolName}</span>
-              <ChevronDown size={14} className="student-inst-chevron" />
+              {schoolWebsite ? (
+                <ExternalLink size={12} style={{ color: '#2563eb', opacity: 0.8 }} />
+              ) : (
+                <ChevronDown size={14} className="student-inst-chevron" />
+              )}
             </div>
 
             {/* Notification Bell */}

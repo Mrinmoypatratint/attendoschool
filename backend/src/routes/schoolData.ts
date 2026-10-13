@@ -29,6 +29,8 @@ import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
 import { invalidateSchoolCache } from '../services/tenantDataService';
 import { normalizeGender } from '../utils/gender';
+import { invalidateDashboardCache } from './dashboard';
+import { clearStudentDashboardCache } from '../services/studentService';
 
 const isUuid = (val: any): boolean => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
@@ -3502,12 +3504,13 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, photo_url, created_at FROM schools WHERE id = $1', [sid]);
+  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, photo_url, website, created_at FROM schools WHERE id = $1', [sid]);
   if (q.rowCount) {
     const s = q.rows[0];
     const resolvedPhoto = adminPhotoUrl || s.photo_url || '';
     return res.json({
       ...s,
+      website: s.website || '',
       photo_url: resolvedPhoto,
       photoUrl: resolvedPhoto,
       schoolName: s.name,
@@ -3560,8 +3563,71 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
  const uid = req.user!.id;
  const { enquiryNumber, contact_number, address, website, photo_url, photoUrl, photo } = req.body || {};
- const phone = contact_number || enquiryNumber;
+ const rawPhone = contact_number !== undefined ? contact_number : enquiryNumber;
  const incomingPhoto = photo_url !== undefined ? photo_url : (photoUrl !== undefined ? photoUrl : photo);
+
+ let normalizedPhone: string | null | undefined = undefined;
+ if (rawPhone !== undefined) {
+   const trimmedPhone = String(rawPhone || '').trim();
+   if (trimmedPhone !== '') {
+     // Validate contact number: strictly numbers and standard phone formatting only (no words or alphabets)
+     const digitsOnly = trimmedPhone.replace(/\D/g, '');
+     const validPhoneFormat = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{4,18}$/.test(trimmedPhone);
+     if (!validPhoneFormat || digitsOnly.length < 6 || digitsOnly.length > 15) {
+       return res.status(400).json({
+         message: 'Invalid contact number. Must contain only numeric digits (e.g. +91 98765 43210 or 0343-2563500). Alphabets and words are not allowed.'
+       });
+     }
+     normalizedPhone = trimmedPhone;
+   } else {
+     normalizedPhone = null;
+   }
+ }
+
+ let normalizedWebsite: string | null | undefined = undefined;
+ if (website !== undefined) {
+   const trimmedWebsite = String(website || '').trim();
+   if (trimmedWebsite !== '') {
+     // Validate URL - strictly disallow plain arbitrary words (e.g. 'dav', 'school', 'test')
+     // Must be a valid domain or web URL with a recognized domain dot format
+     const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/i;
+     let isValid = urlPattern.test(trimmedWebsite);
+     if (isValid) {
+       try {
+         const withProto = trimmedWebsite.startsWith('http://') || trimmedWebsite.startsWith('https://')
+           ? trimmedWebsite
+           : `https://${trimmedWebsite}`;
+         const parsed = new URL(withProto);
+         isValid = !!parsed.hostname && parsed.hostname.includes('.');
+         normalizedWebsite = withProto;
+       } catch {
+         isValid = false;
+       }
+     }
+     if (!isValid) {
+       return res.status(400).json({
+         message: 'Invalid website link. Please enter a valid URL (e.g. https://davmodeldurgapur.org or davmodeldurgapur.org). Plain words are not allowed.'
+       });
+     }
+   } else {
+     normalizedWebsite = null;
+   }
+ }
+
+ let normalizedAddress: string | null | undefined = undefined;
+ if (address !== undefined) {
+   const trimmedAddress = String(address || '').trim();
+   if (trimmedAddress !== '') {
+     if (trimmedAddress.length < 50 || trimmedAddress.length > 1000) {
+       return res.status(400).json({
+         message: `Campus physical address word limit must be between 50 to 1000 (currently: ${trimmedAddress.length}).`
+       });
+     }
+     normalizedAddress = trimmedAddress;
+   } else {
+     normalizedAddress = null;
+   }
+ }
 
  if (incomingPhoto !== undefined) {
    updateDemoUserPhoto(uid, incomingPhoto || null);
@@ -3571,28 +3637,47 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
    } catch {}
  }
 
+ const hasPhoneUpdate = rawPhone !== undefined;
+ const hasWebsiteUpdate = website !== undefined;
+ const hasAddressUpdate = address !== undefined;
+
  try {
   const q = await pool.query(
-    'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address), photo_url = COALESCE($3, photo_url) WHERE id = $4 RETURNING id, name, code, status, enquiry_number, address, photo_url',
-    [phone, address, incomingPhoto !== undefined ? (incomingPhoto || null) : null, sid]
+    `UPDATE schools 
+     SET enquiry_number = CASE WHEN $1::boolean THEN $2::text ELSE enquiry_number END, 
+         address = CASE WHEN $3::boolean THEN $4::text ELSE address END, 
+         photo_url = COALESCE($5, photo_url),
+         website = CASE WHEN $6::boolean THEN $7::text ELSE website END,
+         updated_at = NOW() 
+     WHERE id = $8 
+     RETURNING id, name, code, status, enquiry_number, address, photo_url, website`,
+    [hasPhoneUpdate, normalizedPhone, hasAddressUpdate, normalizedAddress, incomingPhoto !== undefined ? (incomingPhoto || null) : null, hasWebsiteUpdate, normalizedWebsite, sid]
   );
   if (q.rowCount) {
-    syncSchoolToFirestore(q.rows[0]).catch(() => {});
+    const row = q.rows[0];
+    syncSchoolToFirestore(row).catch(() => {});
+    invalidateDashboardCache(sid);
+    clearStudentDashboardCache();
+    fastCache.deletePattern(`student:`);
+    fastCache.deletePattern(`teacher:`);
     return res.json({
-      ...q.rows[0],
-      photo_url: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url,
-      photoUrl: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url
+      ...row,
+      website: row.website || '',
+      photo_url: incomingPhoto !== undefined ? incomingPhoto : row.photo_url,
+      photoUrl: incomingPhoto !== undefined ? incomingPhoto : row.photo_url
     });
   }
- } catch {}
+ } catch (err: any) {
+   console.error('[SchoolProfile] Update error:', err);
+ }
 
  try {
   if (isFirebaseConfigured()) {
     const updatePayload: any = {
-      phone,
-      enquiryNumber: phone,
-      address,
-      website: website || '',
+      phone: normalizedPhone,
+      enquiryNumber: normalizedPhone,
+      address: normalizedAddress,
+      website: normalizedWebsite || '',
       updatedAt: new Date().toISOString()
     };
     if (incomingPhoto !== undefined) {
@@ -3603,13 +3688,21 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
     if (incomingPhoto !== undefined && uid) {
       await collections.users().doc(uid).set({ photo_url: incomingPhoto, photoUrl: incomingPhoto }, { merge: true }).catch(() => {});
     }
+    invalidateDashboardCache(sid);
+    clearStudentDashboardCache();
+    fastCache.deletePattern(`student:`);
+    fastCache.deletePattern(`teacher:`);
     const updated = await getFirestoreSchoolById(sid);
-    if (updated) return res.json({ ...updated, photo_url: incomingPhoto, photoUrl: incomingPhoto });
+    if (updated) return res.json({ ...updated, photo_url: incomingPhoto, photoUrl: incomingPhoto, website: (updated as any).website || '' });
   }
  } catch {}
 
- const updatedSchool = { id: sid, enquiry_number: phone, address, website, photo_url: incomingPhoto, photoUrl: incomingPhoto };
+ const updatedSchool = { id: sid, enquiry_number: normalizedPhone, address: normalizedAddress, website: normalizedWebsite || '', photo_url: incomingPhoto, photoUrl: incomingPhoto };
  syncSchoolToFirestore(updatedSchool).catch(() => {});
+ invalidateDashboardCache(sid);
+ clearStudentDashboardCache();
+ fastCache.deletePattern(`student:`);
+ fastCache.deletePattern(`teacher:`);
  res.json(updatedSchool);
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar } from 'lucide-react';
+import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Globe, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -54,6 +54,9 @@ export function StudentProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submittingPw, setSubmittingPw] = useState(false);
 
@@ -76,6 +79,14 @@ export function StudentProfile() {
       .catch(() => {
         setLoading(false);
       });
+
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setProfile((prev: IStudentProfile | null) => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website, website: e.detail.website } : prev);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
   }, []);
 
   const handleSaveDetails = async (e: React.FormEvent) => {
@@ -371,9 +382,24 @@ export function StudentProfile() {
 
           <h2 className="profile-hero-name">{profile?.name || 'Student'}</h2>
           <p className="profile-hero-role">{profile?.className} - Section {profile?.sectionName}</p>
-          <div className="profile-hero-badge">
+          <div 
+            className="profile-hero-badge"
+            onClick={() => {
+              const site = profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website;
+              if (site) {
+                window.open(site, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            style={{ 
+              cursor: (profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? 'pointer' : 'default'
+            }}
+            title={(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}` : profile?.schoolName}
+          >
             <School size={14} />
             <span>{profile?.schoolName}</span>
+            {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) && (
+              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+            )}
           </div>
         </div>
 
@@ -600,6 +626,33 @@ export function StudentProfile() {
                 <span className="detail-label">Gender</span>
                 <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
+              <div className="detail-item">
+                <span className="detail-label">Official School Website</span>
+                <span className="detail-val">
+                  {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? (
+                    <a
+                      href={profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                      title="Open official school website in new tab"
+                    >
+                      <Globe size={13} />
+                      <span style={{ textDecoration: 'underline' }}>{profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                  )}
+                </span>
+              </div>
             </div>
           )}
 
@@ -646,24 +699,48 @@ export function StudentProfile() {
           <form onSubmit={handlePasswordChange} className="student-form-vertical">
             <label>
               <span>Current Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="••••••••••••"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowCurrentPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showCurrentPassword ? "Hide password" : "Show password"}
+                >
+                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <label>
               <span>New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Enter new strong password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter new strong password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowNewPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
                 Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
               </span>
@@ -671,13 +748,25 @@ export function StudentProfile() {
 
             <label>
               <span>Confirm New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowConfirmPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <button type="submit" disabled={submittingPw} className="student-btn-primary" style={{ marginTop: 8 }}>
