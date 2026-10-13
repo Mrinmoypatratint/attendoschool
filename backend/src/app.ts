@@ -57,6 +57,7 @@ const allowedOriginsList = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5000',
+  'http://localhost:5001',
   'https://attendoschool.optinetinnovations.in',
   'http://attendoschool.optinetinnovations.in',
   'https://attendoschool.vercel.app',

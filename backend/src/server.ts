@@ -10,6 +10,17 @@ const server = app.listen(env.port, () => {
   startKeepAliveService(env.keepAliveUrl, 4);
 });
 
+// Explicit error handler for port binding errors (e.g., EADDRINUSE, EACCES)
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+    console.error(`\n[FATAL] Server failed to bind to port ${env.port} (${err.code}: ${err.message}).`);
+    console.error(`Port ${env.port} is already in use or restricted. Please check running processes or configure another PORT.\n`);
+  } else {
+    console.error(`\n[FATAL] HTTP server binding error:`, err);
+  }
+  process.exit(1);
+});
+
 // Production reverse proxy / load balancer keep-alive alignment:
 // Ensure Node.js HTTP keep-alive timeout is higher than upstream proxy timeout (e.g., Render/ALB 60s)
 // to prevent upstream proxy getting ECONNRESET or "server unreachable" 502/504 errors.

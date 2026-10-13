@@ -52,7 +52,7 @@ export function extractSenderName(raw: string | undefined, fallback: string = 'A
 }
 
 export const env = {
-  port: Number(cleanEnv(process.env.PORT, '5000')),
+  port: Number(cleanEnv(process.env.PORT, '5001')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
   jwtSecret: cleanEnv(process.env.JWT_SECRET, 'development-only-secret'),
   corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.optinetinnovations.in,http://attendoschool.optinetinnovations.in,https://attendoschool.vercel.app'),

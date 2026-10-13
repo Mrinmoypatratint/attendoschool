@@ -1,4 +1,4 @@
-const base = (process.env.BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
+const base = (process.env.BASE_URL || 'http://localhost:5001').replace(/\/$/, '');
 const paths = [
   '/api/production/health',
   '/api/production/ready',
