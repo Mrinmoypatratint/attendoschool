@@ -1943,6 +1943,22 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }, [user?.role]);
 
+  useEffect(() => {
+    const handleSchoolUpdated = (e: any) => {
+      if (e.detail) {
+        setSchoolInfo((prev: any) => ({
+          ...prev,
+          school: {
+            ...(prev?.school || {}),
+            ...e.detail
+          }
+        }));
+      }
+    };
+    window.addEventListener('school-profile-updated', handleSchoolUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleSchoolUpdated);
+  }, []);
+
   // Ctrl+K keyboard shortcut
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -2196,6 +2212,7 @@ function Layout({children}:{children:React.ReactNode}){
   const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
   const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
   const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
+  const currentSchoolWebsite = schoolInfo?.school?.website || (user as any)?.schoolWebsite || (user as any)?.school_website || '';
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2213,7 +2230,25 @@ function Layout({children}:{children:React.ReactNode}){
     )}
     <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div 
+          className="school-crest" 
+          onClick={() => {
+            if (currentSchoolWebsite) {
+              window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
+            }
+          }}
+          title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+          style={{ 
+            background: '#ffffff', 
+            border: '1px solid var(--border)', 
+            padding: 3, 
+            overflow: 'hidden', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: currentSchoolWebsite ? 'pointer' : 'default'
+          }}
+        >
           {currentSchoolPhoto ? (
             <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
           ) : (
@@ -2442,7 +2477,29 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+              <div 
+                className="school-crest" 
+                onClick={() => {
+                  if (currentSchoolWebsite) {
+                    window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+                style={{ 
+                  width: 34, 
+                  height: 34, 
+                  background: '#ffffff', 
+                  border: '1px solid var(--border)', 
+                  padding: 3, 
+                  borderRadius: 8, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  flexShrink: 0, 
+                  overflow: 'hidden',
+                  cursor: currentSchoolWebsite ? 'pointer' : 'default'
+                }}
+              >
                 {currentSchoolPhoto ? (
                   <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
                 ) : (
@@ -2668,7 +2725,29 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 3, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              <div 
+                className="school-crest" 
+                onClick={() => {
+                  if (currentSchoolWebsite) {
+                    window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+                style={{ 
+                  width: 34, 
+                  height: 34, 
+                  background: "#ffffff", 
+                  border: "1px solid var(--border)", 
+                  padding: 3, 
+                  borderRadius: 8, 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  flexShrink: 0, 
+                  overflow: "hidden",
+                  cursor: currentSchoolWebsite ? 'pointer' : 'default'
+                }}
+              >
                 {currentSchoolPhoto ? (
                   <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
                 ) : (
@@ -14217,6 +14296,9 @@ function SchoolProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
+  const [websiteError, setWebsiteError] = useState('');
+  const [contactNumberError, setContactNumberError] = useState('');
+  const [addressError, setAddressError] = useState('');
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Picture upload state
@@ -14228,6 +14310,9 @@ function SchoolProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -14358,14 +14443,66 @@ function SchoolProfile() {
 
   function initiateSaveProfile(e: React.FormEvent) {
     e.preventDefault();
+    setWebsiteError('');
+    setContactNumberError('');
+    setAddressError('');
     if (!form.contact_number && !form.address && !form.website) {
       alert('Validation Error: Please provide at least one contact coordinate to update.');
       return;
     }
 
+    let cleanContact = (form.contact_number || '').trim();
+    if (cleanContact) {
+      // Must contain only numeric digits and standard phone formatting (+, -, spaces, parentheses)
+      const digitsOnly = cleanContact.replace(/\D/g, '');
+      const validPhoneFormat = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{4,18}$/.test(cleanContact);
+      if (!validPhoneFormat || digitsOnly.length < 6 || digitsOnly.length > 15) {
+        setContactNumberError('Please enter a valid numeric contact number (e.g. +91 98765 43210 or 0343-2563500). Plain words and alphabets are not allowed.');
+        setMsg({ type: 'error', text: 'Validation Error: Contact number must be numeric only (e.g. +91 98765 43210 or 0343-2563500). Plain words or alphabets are not allowed.' });
+        return;
+      }
+    }
+
+    const cleanAddress = (form.address || '').trim();
+    if (cleanAddress) {
+      if (cleanAddress.length < 50 || cleanAddress.length > 1000) {
+        setAddressError(`Campus physical address word limit must be between 50 to 1000 (currently: ${cleanAddress.length}).`);
+        setMsg({ type: 'error', text: `Validation Error: Campus physical address word limit must be between 50 to 1000 (currently: ${cleanAddress.length}).` });
+        return;
+      }
+    }
+
+    let normalizedWebsite = (form.website || '').trim();
+    if (normalizedWebsite) {
+      // Validate: Strictly reject arbitrary plain words like 'dav', 'school', 'test', 'hello'
+      const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/i;
+      let valid = urlPattern.test(normalizedWebsite);
+      if (valid) {
+        try {
+          const withProto = normalizedWebsite.startsWith('http://') || normalizedWebsite.startsWith('https://') 
+            ? normalizedWebsite 
+            : `https://${normalizedWebsite}`;
+          const parsed = new URL(withProto);
+          valid = !!parsed.hostname && parsed.hostname.includes('.');
+          normalizedWebsite = withProto;
+        } catch {
+          valid = false;
+        }
+      }
+
+      if (!valid) {
+        setWebsiteError('Please enter a valid official website URL (e.g. https://davmodeldurgapur.org or davmodeldurgapur.org). Plain words are not allowed.');
+        setMsg({ type: 'error', text: 'Validation Error: Please enter a valid website link (e.g. https://davmodeldurgapur.org). Plain words are not allowed.' });
+        return;
+      }
+    }
+
+    const updatedForm = { ...form, contact_number: cleanContact, website: normalizedWebsite, address: cleanAddress };
+    setForm(updatedForm);
+
     const changes = calculateChanges(
       profile,
-      form,
+      updatedForm,
       {
         contact_number: 'Contact / Enquiry Phone',
         website: 'Official Website',
@@ -14377,9 +14514,9 @@ function SchoolProfile() {
       {
         title: 'Institution Contact Coordinates',
         fields: [
-          { label: 'Enquiry / Contact Number', value: form.contact_number || '—', type: 'phone' },
-          { label: 'Official Website', value: form.website || '—' },
-          { label: 'Campus Physical Address', value: form.address || '—', span: 2 }
+          { label: 'Enquiry / Contact Number', value: updatedForm.contact_number || '—', type: 'phone' },
+          { label: 'Official Website', value: updatedForm.website || '—' },
+          { label: 'Campus Physical Address', value: updatedForm.address || '—', span: 2 }
         ]
       }
     ];
@@ -14400,6 +14537,7 @@ function SchoolProfile() {
       setProfile(res.data);
       setProfilePreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setMsg({ type: 'success', text: 'School profile updated successfully!' });
+      window.dispatchEvent(new CustomEvent('school-profile-updated', { detail: res.data }));
     } catch (err: any) {
       setProfilePreview(prev => ({
         ...prev,
@@ -14613,29 +14751,82 @@ function SchoolProfile() {
               <label>
                 Enquiry / Emergency Contact Number
                 <input
-                  type="text"
-                  placeholder="+91 98765 43210"
+                  type="tel"
+                  placeholder="+91 98765 43210 or 0343-2563500"
                   value={form.contact_number}
-                  onChange={e => setForm({ ...form, contact_number: e.target.value })}
+                  onKeyDown={e => {
+                    // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
+                    if (
+                      ['Backspace', 'Tab', 'Enter', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) ||
+                      ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
+                    ) {
+                      return;
+                    }
+                    // Block any key that is not a digit (0-9) or standard phone punctuation (+, -, space, ())
+                    if (!/^[0-9+\-\s()]$/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={e => {
+                    // Strictly strip any non-phone character (words, alphabets, symbols)
+                    const sanitized = e.target.value.replace(/[^0-9+\-\s()]/g, '').slice(0, 20);
+                    setForm({ ...form, contact_number: sanitized });
+                    if (contactNumberError) setContactNumberError('');
+                  }}
+                  style={contactNumberError ? { borderColor: '#ef4444' } : {}}
                 />
+                {contactNumberError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {contactNumberError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Only numeric contact numbers allowed (e.g. <code>+91 98765 43210</code> or <code>0343-2563500</code>). Alphabetic words cannot be entered.
+                </span>
               </label>
               <label>
                 Official School Website
                 <input
                   type="text"
-                  placeholder="https://greenwood.edu"
+                  placeholder="https://davmodeldurgapur.org"
                   value={form.website}
-                  onChange={e => setForm({ ...form, website: e.target.value })}
+                  onChange={e => {
+                    setForm({ ...form, website: e.target.value });
+                    if (websiteError) setWebsiteError('');
+                  }}
+                  style={websiteError ? { borderColor: '#ef4444' } : {}}
                 />
+                {websiteError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {websiteError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Must be a valid web link (e.g. <code>https://davmodeldurgapur.org</code> or <code>davmodeldurgapur.org</code>). Arbitrary plain words are not allowed.
+                </span>
               </label>
               <label>
                 Campus Physical Address
                 <textarea
                   rows={3}
-                  placeholder="Street, City, State, PIN"
+                  minLength={50}
+                  maxLength={1000}
+                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000)"
                   value={form.address}
-                  onChange={e => setForm({ ...form, address: e.target.value })}
+                  onChange={e => {
+                    setForm({ ...form, address: e.target.value.slice(0, 1000) });
+                    if (addressError) setAddressError('');
+                  }}
+                  style={addressError ? { borderColor: '#ef4444' } : {}}
                 />
+                {addressError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {addressError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Word limit: 50 to 1000 words.
+                </span>
               </label>
               <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
                 Review & Update Profile
@@ -14734,24 +14925,48 @@ function SchoolProfile() {
               <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
                 <label>
                   Current Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••••••"
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showCurrentPw ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••••••"
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowCurrentPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showCurrentPw ? "Hide password" : "Show password"}
+                    >
+                      {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
                   New Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter new strong password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      required
+                      placeholder="Enter new strong password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowNewPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showNewPw ? "Hide password" : "Show password"}
+                    >
+                      {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                   <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
                     Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
                   </span>
@@ -14759,13 +14974,25 @@ function SchoolProfile() {
 
                 <label>
                   Confirm New Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="Confirm new password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showConfirmPw ? 'text' : 'password'}
+                      required
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowConfirmPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showConfirmPw ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 <button

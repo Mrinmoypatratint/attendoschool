@@ -194,6 +194,48 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+/* Hide native Edge / IE password reveal and clear icons so they don't clash with custom toggle eye */
+input::-ms-reveal,
+input::-ms-clear,
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Password reveal toggle button styling */
+.password-toggle-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #64748b) !important;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  z-index: 2;
+  line-height: 0;
+}
+
+.password-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: var(--text, #0f172a) !important;
+}
+
+[data-theme="dark"] .password-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+}
+
 /* Solid Professional Buttons (No AI Gimmicks) */
 button {
   background: var(--primary-600);
