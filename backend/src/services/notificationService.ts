@@ -76,10 +76,10 @@ export interface NotificationLog {
 // Global SMTP settings derived from .env with fallback defaults
 let globalSmtpConfig: GlobalSmtpConfig = {
   host: cleanEnv(env.smtpHost, 'smtp.gmail.com'),
-  port: cleanEnv(env.smtpHost, '').includes('gmail.com') ? 465 : (Number(env.smtpPort) || 465),
+  port: Number(env.smtpPort) || 465,
   username: cleanEnv(env.smtpUser, 'info.sahayog24x7@gmail.com'),
-  password: cleanSmtpPass(env.smtpPass, 'dfokxsfhkvwlujvw'),
-  encryption: (cleanEnv(env.smtpHost, '').includes('gmail.com') || Number(env.smtpPort) === 465) ? 'SSL/TLS' : 'STARTTLS',
+  password: cleanSmtpPass(env.smtpPass, ''),
+  encryption: Number(env.smtpPort) === 587 ? 'STARTTLS' : 'SSL/TLS',
   defaultSenderEmail: env.smtpFrom ? (extractEmailAddress(env.smtpFrom) || cleanEnv(env.smtpUser, 'info.sahayog24x7@gmail.com')) : cleanEnv(env.smtpUser, 'info.sahayog24x7@gmail.com'),
   defaultSenderName: env.smtpFromName || (env.smtpFrom ? extractSenderName(env.smtpFrom) : 'AttendoSchool'),
   defaultReplyTo: cleanEnv(env.smtpReplyTo || env.smtpUser, 'info.sahayog24x7@gmail.com'),
@@ -603,16 +603,16 @@ AttendoSchool Platform Operations`;
       const name = escapeHtml(data.teacher_name || data.name || 'Faculty Member');
       const role = escapeHtml(data.role || 'Teacher');
       const employeeId = escapeHtml(data.employee_id || data.employeeId || '');
-      const loginEmail = escapeHtml(data.login_email || data.email || data.loginEmail || '');
-      const tempPass = String(data.temporary_password || data.password || data.temp_password || data.tempPassword || '').trim();
-      const resetUrl = data.login_url || data.reset_link || data.resetUrl || `${baseUrl}/#/reset-password`;
+      const loginEmail = escapeHtml(data.login_email || data.email || '');
+      const resetUrl = data.reset_link || data.resetUrl || `${baseUrl}/#/reset-password`;
       const subject = `Welcome to ${data.school_name || data.schoolName || 'School'} — Faculty Portal Access`;
       const text = `Hello ${data.teacher_name || data.name || 'Faculty Member'},
 
 An account has been created for you at ${data.school_name || 'School'}.
 Role: ${data.role || 'Teacher'}
-${employeeId ? `Employee ID: ${employeeId}\n` : ''}${loginEmail ? `Login Email: ${loginEmail}\n` : ''}${tempPass ? `Temporary Password: ${tempPass}\n` : ''}
-${tempPass ? `You can log in directly using your temporary password, or set a custom password securely using the link below (valid for 24 hours):` : `Set your confidential password securely (valid for 24 hours):`}
+${employeeId ? `Employee ID: ${employeeId}\n` : ''}Login: ${data.login_email || data.email}
+
+Set your confidential password securely (valid for 24 hours):
 ${resetUrl}
 
 AttendoSchool Campus Portal: ${baseUrl}`;
@@ -647,32 +647,28 @@ AttendoSchool Campus Portal: ${baseUrl}`;
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Employee ID</td>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${employeeId}</td>
           </tr>` : ''}
-          ${loginEmail ? `<tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: ${tempPass ? '1px solid #e2e8f0' : 'none'};">Login Email</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1d4ed8; background-color: #ffffff; border-bottom: ${tempPass ? '1px solid #e2e8f0' : 'none'};">${loginEmail}</td>
-          </tr>` : ''}
-          ${tempPass ? `<tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Temporary Password</td>
-            <td style="padding: 10px 14px; font-size: 13.5px; font-weight: 700; color: #0f172a; font-family: 'Courier New', Courier, monospace; background-color: #ffffff;">${escapeHtml(tempPass)}</td>
-          </tr>` : ''}
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Login Email</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1d4ed8; background-color: #ffffff;">${loginEmail}</td>
+          </tr>
         </table>
 
         <p style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #334155; line-height: 1.5; margin: 0 0 20px 0;">
-          ${tempPass ? `You can use the temporary password above to log in immediately, or establish a new password of your choice using the link below:` : `Please activate your account and establish your password to begin taking attendance and managing classes:`}
+          Please activate your account and establish your password to begin taking attendance and managing classes:
         </p>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td align="center" style="padding: 4px 0 18px 0;">
               <a href="${resetUrl}" style="background-color: #1d4ed8; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 4px; display: inline-block; border: 1px solid #1e40af;">
-                ${tempPass ? 'Access Faculty Portal &rarr;' : 'Activate Account &amp; Set Password &rarr;'}
+                Activate Account &amp; Set Password &rarr;
               </a>
             </td>
           </tr>
         </table>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 14px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #64748b; line-height: 1.5;">
-          <strong>Notice:</strong> This secure portal activation link is valid for 24 hours.
+          <strong>Notice:</strong> This secure activation link is valid for 24 hours.
         </div>
       `);
       return { subject, text, html };
@@ -685,9 +681,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
       const className = escapeHtml(data.class_name || data.className || '8');
       const section = escapeHtml(data.section_name || data.section || 'A');
       const rollNumber = escapeHtml(data.roll_number || data.rollNumber || data.roll || '—');
-      const loginEmail = escapeHtml(data.login_email || data.email || data.loginEmail || '');
-      const tempPass = String(data.temporary_password || data.password || data.temp_password || data.tempPassword || '').trim();
-      const resetUrl = data.reset_link || data.resetUrl || data.login_url || `${baseUrl}/#/reset-password`;
+      const resetUrl = data.reset_link || data.resetUrl || `${baseUrl}/#/reset-password`;
       const subject = `Welcome to ${data.school_name || data.schoolName || 'School'} — Student Portal Access for ${data.student_name || 'Student'}`;
       const text = `Hello,
 
@@ -695,8 +689,8 @@ An official student profile has been registered for ${data.student_name || 'Stud
 Admission Number (Login ID): ${admissionNumber}
 Roll Number: ${rollNumber}
 Class & Section: Class ${className}-${section}
-${loginEmail ? `Login Email: ${loginEmail}\n` : ''}${tempPass ? `Temporary Password: ${tempPass}\n` : ''}
-${tempPass ? `To access attendance records, timetables, and academic notices in the Student Portal, log in with your credentials or change your password here:` : `To access attendance records, timetables, and academic notices in the Student Portal, set your password here:`}
+
+To access attendance records, timetables, and academic notices in the Student Portal, set your password here:
 ${resetUrl}
 
 AttendoSchool: ${baseUrl}`;
@@ -725,6 +719,14 @@ AttendoSchool: ${baseUrl}`;
           </tr>
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${admissionNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${admissionNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Admission Number</td>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               ${admissionNumber} <span style="font-size: 11px; font-weight: 600; color: #1e40af; background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 2px 6px; border-radius: 3px; margin-left: 6px;">Login ID</span>
             </td>
@@ -737,14 +739,6 @@ AttendoSchool: ${baseUrl}`;
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Class &amp; Section</td>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">Class ${className} &mdash; Section ${section}</td>
           </tr>
-          ${loginEmail ? `<tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Login Email</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1d4ed8; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${loginEmail}</td>
-          </tr>` : ''}
-          ${tempPass ? `<tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Temporary Password</td>
-            <td style="padding: 10px 14px; font-size: 13.5px; font-weight: 700; color: #0f172a; font-family: 'Courier New', Courier, monospace; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${escapeHtml(tempPass)}</td>
-          </tr>` : ''}
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Institution</td>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #0f172a; background-color: #ffffff;">${schoolName}</td>
@@ -752,7 +746,7 @@ AttendoSchool: ${baseUrl}`;
         </table>
 
         <p style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #334155; line-height: 1.5; margin: 0 0 20px 0;">
-          ${tempPass ? `To access the student portal to review attendance records and class timetables, you can log in with your credentials above or establish a custom password:` : `To access the student portal to review attendance records and class timetables, activate your credentials:`}
+          To access the student portal to review attendance records and class timetables, activate your credentials:
         </p>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -1829,9 +1823,9 @@ export async function sendMailWithDualPortFallback(
 
   // Determine primary port and encryption (For Gmail, Port 465 SSL is fastest and least prone to STARTTLS drops)
   const isGmail = host.toLowerCase().includes('gmail.com');
-  const primaryPort = isGmail ? 465 : (Number(config.port) || Number(globalSmtpConfig.port) || 587);
-  const primarySecure = primaryPort === 465;
-  const primaryEncryption = config.encryption || (primarySecure ? 'SSL/TLS' : 'STARTTLS');
+  const primaryPort = Number(config.port) || (isGmail ? 465 : (Number(globalSmtpConfig.port) || 587));
+  const primaryEncryption = config.encryption || (primaryPort === 465 ? 'SSL/TLS' : 'STARTTLS');
+  const primarySecure = primaryPort === 465 || primaryEncryption === 'SSL/TLS';
 
   // Determine fallback port (swap 465 <-> 587)
   const fallbackPort = primaryPort === 465 ? 587 : 465;
@@ -1844,9 +1838,9 @@ export async function sendMailWithDualPortFallback(
       port,
       secure,
       auth: { user, pass },
-      connectionTimeout: 10000, // 10s to establish TCP connection (safe for cross-region cloud routes)
-      greetingTimeout: 10000,   // 10s for SMTP banner
-      socketTimeout: 25000,     // 25s data stream
+      connectionTimeout: 3500, // 3.5s to establish TCP connection (fails fast on blocked cloud ports)
+      greetingTimeout: 3500,   // 3.5s for SMTP banner
+      socketTimeout: 10000,    // 10s data stream
       tls: { rejectUnauthorized: false }
     });
 
@@ -1986,7 +1980,7 @@ export async function sendMailWithDualPortFallback(
       }
 
       const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || (env.keepAliveUrl && env.keepAliveUrl.includes('render.com')));
-      if (isRender) {
+      if (isRender || isConnErr) {
         let renderNotice: string;
         if (brevoKey && brevoKey.startsWith('xsmtpsib-')) {
           renderNotice =
@@ -2002,12 +1996,8 @@ export async function sendMailWithDualPortFallback(
         }
         console.error(`[Render Egress Policy] ${renderNotice}`);
         const customErr: any = new Error(renderNotice);
-        customErr.code = 'RENDER_SMTP_BLOCKED';
+        customErr.code = isRender ? 'RENDER_SMTP_BLOCKED' : (errCode || 'ECONNFAILED');
         throw customErr;
-      }
-
-      if (isConnErr) {
-        console.error(`[SMTP Resiliency] Network connection error to ${host} on ports ${primaryPort} & ${fallbackPort}: ${errMsg}`);
       }
 
       throw primaryErr;
@@ -2049,14 +2039,12 @@ async function deliver(
     }
 
     const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
-    const isGmail = host.toLowerCase().includes('gmail.com');
-    const port = isGmail ? 465 : Number(cfg.port || env.smtpPort || 587);
+    const port = Number(cfg.port || env.smtpPort || (host.includes('gmail.com') ? 465 : 587));
     const user = cleanEnv(cfg.username || env.smtpUser, 'info.sahayog24x7@gmail.com');
-    const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'dfokxsfhkvwlujvw');
+    const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
     const rawSender = cfg.senderEmail || extractEmailAddress(env.smtpFrom) || user || 'info.sahayog24x7@gmail.com';
     const rawName = cfg.senderName || extractSenderName(env.smtpFrom) || 'AttendoSchool';
-    // For Gmail SMTP, envelope sender MUST match the authenticated user to avoid 553/554 rejection by Google
-    const from = isGmail ? `"${rawName}" <${user}>` : `"${rawName}" <${rawSender}>`;
+    const from = `"${rawName}" <${rawSender}>`;
 
     const emailSubject = subject || (emailData?.student_name ? `Attendance Notice: ${emailData.student_name}` : 'AttendoSchool Notification');
     let finalHtml = htmlBody || `<p>${message.replace(/\n/g, '<br/>')}</p>`;
@@ -2124,172 +2112,103 @@ async function deliver(
 }
 
 // ── QUEUE WORKER: CONCURRENCY LEASE & EXPONENTIAL BACKOFF ──
-const isValidUuid = (val?: any): boolean =>
-  typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
-
-let isQueueProcessing = false;
-let hasPendingQueueWork = false;
-
 export async function processNotificationQueue(limit = 50) {
-  if (isQueueProcessing) {
-    hasPendingQueueWork = true;
-    return { success: true, busy: true };
-  }
-  isQueueProcessing = true;
-  hasPendingQueueWork = false;
+  const effectiveLimit = Math.min(limit, env.emailRateLimit || 50);
+  const now = new Date();
+  let sent = 0;
+  let failed = 0;
+  let retrying = 0;
 
-  try {
-    const effectiveLimit = Math.min(limit, env.emailRateLimit || 50);
-    const now = new Date();
-    let sent = 0;
-    let failed = 0;
-    let retrying = 0;
-    let sqlHandled = false;
+  // 1. Process from in-memory queue
+  const eligibleMemJobs = memNotificationLogs.filter(j =>
+    (j.status === 'QUEUED' || j.status === 'RETRYING') &&
+    j.attempts < (j.max_attempts || 4) &&
+    (!j.scheduled_at || new Date(j.scheduled_at).getTime() <= (now.getTime() + 2000))
+  ).slice(0, effectiveLimit);
 
-    // 1. Process from PostgreSQL queue if active (primary persistent queue)
-    if (pool && isPostgresConfigured) {
-      try {
-        // Auto-reclaim any stale jobs stuck in PROCESSING (> 2 minutes old)
-        await pool.query(
-          `UPDATE notification_logs 
-           SET status='RETRYING', scheduled_at=NOW(), last_error='Processing lease expired / worker reconnected'
-           WHERE status='PROCESSING' 
-             AND (created_at < NOW() - INTERVAL '2 minutes') 
-             AND (scheduled_at IS NULL OR scheduled_at < NOW() - INTERVAL '2 minutes')`
-        ).catch(() => {});
+  for (const job of eligibleMemJobs) {
+    job.status = 'PROCESSING';
+    job.attempts++;
 
-        const jobs = await pool.query(
-          `SELECT * FROM notification_logs 
-           WHERE status IN ('QUEUED', 'RETRYING') 
-             AND attempts < max_attempts 
-             AND (scheduled_at IS NULL OR scheduled_at <= NOW())
-           ORDER BY created_at ASC 
-           LIMIT $1`,
-          [effectiveLimit]
-        );
+    try {
+      const providerId = await deliver(
+        job.channel,
+        job.recipient,
+        job.message,
+        job.school_id,
+        undefined,
+        job.subject,
+        job.html_body
+      );
+      job.status = 'SENT';
+      job.sent_at = new Date().toISOString();
+      job.provider_message_id = providerId;
+      job.last_error = null;
+      sent++;
+    } catch (err: any) {
+      job.last_error = err.message || 'Delivery failed';
 
-        sqlHandled = true;
-
-        for (const j of jobs.rows) {
-          await pool.query(`UPDATE notification_logs SET status='PROCESSING', attempts=attempts+1 WHERE id=$1`, [j.id]);
-
-          // Sync processing status to in-memory log so in-memory loop skips this job
-          const memJob = memNotificationLogs.find(m =>
-            (j.idempotency_key && m.idempotency_key === j.idempotency_key) || m.id === j.id
-          );
-          if (memJob) {
-            memJob.status = 'PROCESSING';
-            memJob.attempts = Number(j.attempts) + 1;
-          }
-
-          try {
-            const providerId = await deliver(j.channel, j.recipient, j.message, j.school_id, undefined, j.subject, j.html_body);
-            await pool.query(
-              `UPDATE notification_logs SET status='SENT', provider_message_id=$1, sent_at=NOW(), last_error=NULL WHERE id=$2`,
-              [providerId, j.id]
-            );
-            if (memJob) {
-              memJob.status = 'SENT';
-              memJob.sent_at = new Date().toISOString();
-              memJob.provider_message_id = providerId;
-              memJob.last_error = null;
-            }
-            sent++;
-          } catch (e: any) {
-            const attempts = Number(j.attempts) + 1;
-            const maxAttempts = Number(j.max_attempts) || 4;
-            if (attempts >= maxAttempts) {
-              await pool.query(
-                `UPDATE notification_logs SET status='FAILED', failed_at=NOW(), last_error=$1 WHERE id=$2`,
-                [e.message || 'Delivery failed', j.id]
-              );
-              if (memJob) {
-                memJob.status = 'FAILED';
-                memJob.failed_at = new Date().toISOString();
-                memJob.last_error = e.message || 'Delivery failed';
-              }
-              failed++;
-            } else {
-              const delays = [60, 300, 900, 1800];
-              const delaySec = delays[attempts - 1] || 1800;
-              await pool.query(
-                `UPDATE notification_logs SET status='RETRYING', scheduled_at=NOW() + INTERVAL '${delaySec} seconds', last_error=$1 WHERE id=$2`,
-                [e.message || 'Delivery error', j.id]
-              );
-              if (memJob) {
-                memJob.status = 'RETRYING';
-                memJob.scheduled_at = new Date(Date.now() + delaySec * 1000).toISOString();
-                memJob.last_error = e.message || 'Delivery error';
-              }
-              retrying++;
-            }
-          }
-        }
-      } catch (sqlErr: any) {
-        console.warn('[NotificationQueue] PostgreSQL queue fetch error, falling back to in-memory:', sqlErr.message);
-        sqlHandled = false;
+      // Permanent failure check (invalid syntax / rejected)
+      const isPermanent = err.code === 'EENVELOPE' || err.responseCode >= 500;
+      if (isPermanent || job.attempts >= (job.max_attempts || 4)) {
+        job.status = 'FAILED';
+        job.failed_at = new Date().toISOString();
+        failed++;
+      } else {
+        // Exponential backoff: 1m, 5m, 15m, 30m
+        const delays = [60, 300, 900, 1800];
+        const delaySec = delays[job.attempts - 1] || 1800;
+        job.status = 'RETRYING';
+        job.scheduled_at = new Date(Date.now() + delaySec * 1000).toISOString();
+        retrying++;
       }
     }
+  }
 
-    // 2. Process from in-memory queue ONLY for jobs NOT handled by PostgreSQL
-    // (e.g. When PostgreSQL is offline/unconfigured, or for in-memory-only demo schools without valid SQL UUID)
-    const eligibleMemJobs = memNotificationLogs.filter(j => {
-      if (j.status !== 'QUEUED' && j.status !== 'RETRYING') return false;
-      if (j.attempts >= (j.max_attempts || 4)) return false;
-      if (j.scheduled_at && new Date(j.scheduled_at).getTime() > (now.getTime() + 2000)) return false;
-      // If PostgreSQL is active and successfully processed, skip any job backed by a real SQL school tenant
-      if (sqlHandled && isValidUuid(j.school_id)) return false;
-      return true;
-    }).slice(0, effectiveLimit);
+  // 2. Process from PostgreSQL queue if active
+  try {
+    const jobs = await pool.query(
+      `SELECT * FROM notification_logs 
+       WHERE status IN ('QUEUED', 'RETRYING') 
+         AND attempts < max_attempts 
+         AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+       ORDER BY created_at ASC 
+       LIMIT $1`,
+      [effectiveLimit]
+    );
 
-    for (const job of eligibleMemJobs) {
-      job.status = 'PROCESSING';
-      job.attempts++;
-
+    for (const j of jobs.rows) {
+      await pool.query(`UPDATE notification_logs SET status='PROCESSING', attempts=attempts+1 WHERE id=$1`, [j.id]);
       try {
-        const providerId = await deliver(
-          job.channel,
-          job.recipient,
-          job.message,
-          job.school_id,
-          undefined,
-          job.subject,
-          job.html_body
+        const providerId = await deliver(j.channel, j.recipient, j.message, j.school_id, undefined, j.subject, j.html_body);
+        await pool.query(
+          `UPDATE notification_logs SET status='SENT', provider_message_id=$1, sent_at=NOW(), last_error=NULL WHERE id=$2`,
+          [providerId, j.id]
         );
-        job.status = 'SENT';
-        job.sent_at = new Date().toISOString();
-        job.provider_message_id = providerId;
-        job.last_error = null;
         sent++;
-      } catch (err: any) {
-        job.last_error = err.message || 'Delivery failed';
-
-        // Permanent failure check (invalid syntax / rejected)
-        const isPermanent = err.code === 'EENVELOPE' || err.responseCode >= 500;
-        if (isPermanent || job.attempts >= (job.max_attempts || 4)) {
-          job.status = 'FAILED';
-          job.failed_at = new Date().toISOString();
+      } catch (e: any) {
+        const attempts = Number(j.attempts) + 1;
+        const maxAttempts = Number(j.max_attempts) || 4;
+        if (attempts >= maxAttempts) {
+          await pool.query(
+            `UPDATE notification_logs SET status='FAILED', failed_at=NOW(), last_error=$1 WHERE id=$2`,
+            [e.message || 'Delivery failed', j.id]
+          );
           failed++;
         } else {
-          // Exponential backoff: 1m, 5m, 15m, 30m
           const delays = [60, 300, 900, 1800];
-          const delaySec = delays[job.attempts - 1] || 1800;
-          job.status = 'RETRYING';
-          job.scheduled_at = new Date(Date.now() + delaySec * 1000).toISOString();
+          const delaySec = delays[attempts - 1] || 1800;
+          await pool.query(
+            `UPDATE notification_logs SET status='RETRYING', scheduled_at=NOW() + INTERVAL '${delaySec} seconds', last_error=$1 WHERE id=$2`,
+            [e.message || 'Delivery error', j.id]
+          );
           retrying++;
         }
       }
     }
+  } catch {}
 
-    return { success: true, processed: sent + failed + retrying, sent, failed, retrying };
-  } finally {
-    isQueueProcessing = false;
-    if (hasPendingQueueWork) {
-      setImmediate(() => {
-        processNotificationQueue(limit).catch(() => {});
-      });
-    }
-  }
+  return { success: true, processed: eligibleMemJobs.length, sent, failed, retrying };
 }
 
 // ── LEGACY HELPER COMPATIBILITY ──
@@ -2329,10 +2248,9 @@ export async function testSmtpConnection(
   }
   const cfg = customConfig ? { ...getSchoolSmtpConfig(schoolId), ...customConfig } : getSchoolSmtpConfig(schoolId);
   const host = cleanEnv(cfg.host || env.smtpHost, 'smtp.gmail.com');
-  const isGmail = host.toLowerCase().includes('gmail.com');
-  const port = isGmail ? 465 : Number(cfg.port || env.smtpPort || 587);
-  const user = cleanEnv(cfg.username || env.smtpUser, 'info.sahayog24x7@gmail.com');
-  const pass = cleanSmtpPass(cfg.password || env.smtpPass, 'dfokxsfhkvwlujvw');
+  const port = Number(cfg.port || env.smtpPort || (host.includes('gmail.com') ? 465 : 587));
+  const user = cleanEnv(cfg.username || env.smtpUser, '');
+  const pass = cleanSmtpPass(cfg.password || env.smtpPass, '');
 
   const hasHttpApi = Boolean(
     customConfig?.brevoApiKey ||
@@ -2356,7 +2274,7 @@ export async function testSmtpConnection(
 
   const rawSender = cfg.senderEmail || extractEmailAddress(env.smtpFrom) || user || 'info.sahayog24x7@gmail.com';
   const rawName = cfg.senderName || extractSenderName(env.smtpFrom) || 'AttendoSchool Verification';
-  const from = isGmail ? `"${rawName}" <${user}>` : `"${rawName}" <${rawSender}>`;
+  const from = `"${rawName}" <${rawSender}>`;
   const testTemplate = renderEmailTemplate('TEST_EMAIL', { host, port, school_name: 'AttendoSchool Verification' });
   const logo = getLogoAttachment();
   const attachments: any[] = [];
