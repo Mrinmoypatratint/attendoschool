@@ -2110,6 +2110,7 @@ export async function processNotificationQueue(limit = 50) {
   let sent = 0;
   let failed = 0;
   let retrying = 0;
+  const dispatchedKeys = new Set<string>();
 
   // 1. Process from in-memory queue
   const eligibleMemJobs = memNotificationLogs.filter(j =>
@@ -2137,6 +2138,29 @@ export async function processNotificationQueue(limit = 50) {
       job.provider_message_id = providerId;
       job.last_error = null;
       sent++;
+      if (job.id) dispatchedKeys.add(job.id);
+      if (job.idempotency_key) dispatchedKeys.add(job.idempotency_key);
+
+      // Sync sent status to PostgreSQL to prevent duplicate dispatch from SQL queue
+      if (pool && isPostgresConfigured) {
+        try {
+          if (job.idempotency_key) {
+            await pool.query(
+              `UPDATE notification_logs 
+               SET status='SENT', provider_message_id=$1, sent_at=NOW(), attempts=attempts+1, last_error=NULL 
+               WHERE idempotency_key=$2 AND status IN ('QUEUED', 'PROCESSING')`,
+              [providerId, job.idempotency_key]
+            );
+          } else if (job.id) {
+            await pool.query(
+              `UPDATE notification_logs 
+               SET status='SENT', provider_message_id=$1, sent_at=NOW(), attempts=attempts+1, last_error=NULL 
+               WHERE id=$2 AND status IN ('QUEUED', 'PROCESSING')`,
+              [providerId, job.id]
+            );
+          }
+        } catch {}
+      }
     } catch (err: any) {
       job.last_error = err.message || 'Delivery failed';
 
@@ -2170,6 +2194,24 @@ export async function processNotificationQueue(limit = 50) {
     );
 
     for (const j of jobs.rows) {
+      // Deduplication guard: do not re-deliver if this notification was already delivered via memory
+      if ((j.id && dispatchedKeys.has(j.id)) || (j.idempotency_key && dispatchedKeys.has(j.idempotency_key))) {
+        continue;
+      }
+
+      // Check if already sent in memory log
+      const alreadySentMem = memNotificationLogs.find(m =>
+        (j.idempotency_key && m.idempotency_key === j.idempotency_key && m.status === 'SENT') ||
+        (m.id === j.id && m.status === 'SENT')
+      );
+      if (alreadySentMem) {
+        await pool.query(
+          `UPDATE notification_logs SET status='SENT', provider_message_id=$1, sent_at=NOW(), last_error=NULL WHERE id=$2`,
+          [alreadySentMem.provider_message_id || 'MEM-DEDUP', j.id]
+        ).catch(() => {});
+        continue;
+      }
+
       await pool.query(`UPDATE notification_logs SET status='PROCESSING', attempts=attempts+1 WHERE id=$1`, [j.id]);
       try {
         const providerId = await deliver(j.channel, j.recipient, j.message, j.school_id, undefined, j.subject, j.html_body);
@@ -2178,6 +2220,16 @@ export async function processNotificationQueue(limit = 50) {
           [providerId, j.id]
         );
         sent++;
+        if (j.id) dispatchedKeys.add(j.id);
+        if (j.idempotency_key) dispatchedKeys.add(j.idempotency_key);
+
+        // Sync to memory queue if present
+        const memLog = memNotificationLogs.find(m => m.id === j.id || (j.idempotency_key && m.idempotency_key === j.idempotency_key));
+        if (memLog) {
+          memLog.status = 'SENT';
+          memLog.sent_at = new Date().toISOString();
+          memLog.provider_message_id = providerId;
+        }
       } catch (e: any) {
         const attempts = Number(j.attempts) + 1;
         const maxAttempts = Number(j.max_attempts) || 4;

@@ -121,11 +121,17 @@ export default function AttendanceReports() {
           ]);
         }
 
-        const clsList = Array.isArray(clsRes.data) && clsRes.data.length > 0 ? clsRes.data : [
-          { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
-          { id: 'cls-ukg', class_number: 0, label: 'U-KG' },
+        const rawCls = Array.isArray(clsRes.data) && clsRes.data.length > 0 ? clsRes.data : [
+          { id: 'cls-lkg', class_number: -1, label: 'Class L-KG' },
+          { id: 'cls-ukg', class_number: 0, label: 'Class U-KG' },
           ...Array.from({ length: 12 }, (_, i) => ({ id: `cls-${i + 1}`, class_number: i + 1, label: `Class ${i + 1}` }))
         ];
+        const clsList = [...rawCls].sort((a: any, b: any) => {
+          const aNum = a.class_number !== undefined ? Number(a.class_number) : Number(a.id);
+          const bNum = b.class_number !== undefined ? Number(b.class_number) : Number(b.id);
+          if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+          return 0;
+        });
         setClasses(clsList);
         if (clsList.length > 0 && !importClass) {
           setImportClass(clsList[0].id || 'cls-10');
@@ -193,12 +199,14 @@ export default function AttendanceReports() {
   // Helper to extract numeric class index or normalized label
   const extractClassNumber = (val: any): number | null => {
     if (val === null || val === undefined) return null;
-    if (typeof val === 'number') return val;
+    if (typeof val === 'number') return isNaN(val) ? null : val;
     const s = String(val).trim().toLowerCase();
     if (s === 'l-kg' || s === 'lkg') return -1;
     if (s === 'u-kg' || s === 'ukg') return 0;
-    const m = s.match(/(?:class\s*|cls-?)?(\d+)/i);
-    return m ? Number(m[1]) : null;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return null;
+    if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+    const m = s.match(/^(?:class|cls|grade)[-\s]*(\d+)$/i);
+    return m ? parseInt(m[1], 10) : null;
   };
 
   // Helper to normalize section to single uppercase letter or name
@@ -209,48 +217,73 @@ export default function AttendanceReports() {
       .toUpperCase();
   };
 
+  const isClassMatch = (selectedCls: string, r: any): boolean => {
+    if (!selectedCls || selectedCls === 'ALL') return true;
+
+    const selectedClsObj = classes.find(c => c.id === selectedCls || String(c.class_number) === String(selectedCls));
+
+    // Target class number
+    let targetNum: number | null = null;
+    if (selectedClsObj?.class_number !== undefined && selectedClsObj?.class_number !== null && !isNaN(Number(selectedClsObj.class_number))) {
+      targetNum = Number(selectedClsObj.class_number);
+    } else {
+      targetNum = extractClassNumber(selectedCls);
+    }
+
+    // Row class number
+    let rowNum: number | null = null;
+    if (r.class_number !== undefined && r.class_number !== null && !isNaN(Number(r.class_number))) {
+      rowNum = Number(r.class_number);
+    } else if (r.class_id) {
+      const rowClsObj = classes.find(c => c.id === r.class_id);
+      if (rowClsObj?.class_number !== undefined && rowClsObj?.class_number !== null && !isNaN(Number(rowClsObj.class_number))) {
+        rowNum = Number(rowClsObj.class_number);
+      }
+    }
+    if (rowNum === null) {
+      rowNum = extractClassNumber(r.class_name || r.className);
+    }
+
+    // 1. Direct ID match
+    if (r.class_id && (r.class_id === selectedCls || (selectedClsObj && r.class_id === selectedClsObj.id))) {
+      return true;
+    }
+
+    // 2. Strict numeric comparison (Class 1 must never match Class 12, Class 10, etc.)
+    if (targetNum !== null && rowNum !== null) {
+      return targetNum === rowNum;
+    }
+
+    // 3. Exact normalized label match for special classes (e.g. "L-KG", "U-KG")
+    const targetLabel = (selectedClsObj?.label || (targetNum !== null ? `Class ${targetNum}` : selectedCls)).trim().toLowerCase();
+    const rowLabel = String(r.class_name || r.className || '').trim().toLowerCase();
+    if (targetLabel && rowLabel && targetLabel === rowLabel) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const isSectionMatch = (selectedSec: string, r: any): boolean => {
+    if (!selectedSec || selectedSec === 'ALL') return true;
+
+    if (r.section_id && (r.section_id === selectedSec || sections.some(s => s.id === selectedSec && s.id === r.section_id))) {
+      return true;
+    }
+
+    const targetSec = normalizeSection(selectedSec);
+    const rowSec = normalizeSection(r.section_name || r.section);
+    return targetSec !== '' && rowSec !== '' && targetSec === rowSec;
+  };
+
   // Multi-dimensional filtering logic
   const filteredRows = useMemo(() => {
     return rows.filter((r: any) => {
       // 1. Class filter
-      if (selectedClass !== 'ALL') {
-        const selectedClsObj = classes.find(c => c.id === selectedClass || String(c.class_number) === String(selectedClass));
-        const targetNum = selectedClsObj?.class_number !== undefined
-          ? Number(selectedClsObj.class_number)
-          : extractClassNumber(selectedClass);
-
-        const rowNum = r.class_number !== undefined && r.class_number !== null
-          ? Number(r.class_number)
-          : extractClassNumber(r.class_name || r.class_id);
-
-        let classMatched = false;
-        // Direct ID match
-        if (r.class_id && (r.class_id === selectedClass || (selectedClsObj && r.class_id === selectedClsObj.id))) {
-          classMatched = true;
-        } else if (targetNum !== null && rowNum !== null && targetNum === rowNum) {
-          classMatched = true;
-        } else {
-          const targetLabel = (selectedClsObj?.label || (targetNum !== null ? `class ${targetNum}` : selectedClass)).toLowerCase().replace(/\s+/g, '');
-          const rowLabel = String(r.class_name || '').toLowerCase().replace(/\s+/g, '');
-          if (rowLabel && (rowLabel === targetLabel || rowLabel.includes(targetLabel) || targetLabel.includes(rowLabel))) {
-            classMatched = true;
-          }
-        }
-        if (!classMatched) return false;
-      }
+      if (!isClassMatch(selectedClass, r)) return false;
 
       // 2. Section filter
-      if (selectedSection !== 'ALL') {
-        const targetSec = normalizeSection(selectedSection);
-        const rowSec = normalizeSection(r.section_name);
-        let secMatched = false;
-        if (r.section_id && (r.section_id === selectedSection || sections.some(s => s.id === selectedSection && s.id === r.section_id))) {
-          secMatched = true;
-        } else if (targetSec && rowSec && (targetSec === rowSec || rowSec.includes(targetSec) || targetSec.includes(rowSec))) {
-          secMatched = true;
-        }
-        if (!secMatched) return false;
-      }
+      if (!isSectionMatch(selectedSection, r)) return false;
 
       // 3. Academic Session filter
       if (selectedSession !== 'ALL') {
@@ -327,16 +360,8 @@ export default function AttendanceReports() {
     if (enrolledStudents.length > 0) {
       return enrolledStudents
         .filter(st => {
-          if (selectedClass !== 'ALL') {
-            const cMatch = String(st.class_name || st.className || '').toLowerCase();
-            const selectedClsObj = classes.find(c => c.id === selectedClass);
-            const targetLabel = (selectedClsObj?.label || selectedClsObj?.class_number?.toString() || selectedClass).toLowerCase();
-            if (!cMatch.includes(targetLabel) && st.class_id !== selectedClass && String(st.class_number) !== String(selectedClass)) return false;
-          }
-          if (selectedSection !== 'ALL') {
-            const sMatch = String(st.section_name || st.section || '').toUpperCase();
-            if (sMatch !== selectedSection.toUpperCase() && st.section_id !== selectedSection) return false;
-          }
+          if (!isClassMatch(selectedClass, st)) return false;
+          if (!isSectionMatch(selectedSection, st)) return false;
           if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase().trim();
             const nameMatch = (st.name || st.fullName || '').toLowerCase().includes(q);
@@ -810,9 +835,11 @@ export default function AttendanceReports() {
             style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, backgroundColor: '#ffffff' }}
           >
             <option value="ALL">All Classes</option>
-            {classes.map(c => (
-              <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'L-KG' : c.class_number === 0 ? 'U-KG' : `Class ${c.class_number}`)}</option>
-            ))}
+            {classes.map(c => {
+              const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : null);
+              const label = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : (c.label || (num !== null ? `Class ${num}` : c.id));
+              return <option key={c.id} value={c.id}>{label}</option>;
+            })}
           </select>
         </label>
 

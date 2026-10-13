@@ -758,7 +758,7 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
       const cleanSec = secParam.replace(/section\s*/i, '').trim();
 
       const q = await pool.query(
-        `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+        `SELECT a.*, a.attendance_date::text AS attendance_date, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
          FROM attendance_sessions a
          LEFT JOIN users u ON u.id = a.teacher_id
          LEFT JOIN classes c ON c.id = a.class_id
@@ -1031,7 +1031,7 @@ const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
     try {
       const [q, rq, aQ] = await Promise.all([
         pool.query(
-          `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+          `SELECT a.*, a.attendance_date::text AS attendance_date, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
            FROM attendance_sessions a
            LEFT JOIN users u ON u.id = a.teacher_id
            LEFT JOIN classes c ON c.id = a.class_id
@@ -1640,7 +1640,7 @@ export const auditTrailExportHandler = async (req: AuthRequest, res: any) => {
       if (isPostgresConfigured && isSessionUuid) {
         try {
           const sessQ = await pool.query(
-            `SELECT s.*, c.class_number, s2.name as section_name, sub.name as subject_name
+            `SELECT s.*, s.attendance_date::text AS attendance_date, c.class_number, s2.name as section_name, sub.name as subject_name
              FROM attendance_sessions s
              LEFT JOIN classes c ON c.id = s.class_id
              LEFT JOIN sections s2 ON s2.id = s.section_id
@@ -2514,7 +2514,7 @@ const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
   if (isPostgresConfigured) {
     try {
       const q = await pool.query(
-        `SELECT a.id, a.attendance_date, a.start_time, a.end_time,
+        `SELECT a.id, a.attendance_date::text AS attendance_date, a.start_time, a.end_time,
                 COALESCE(a.class_number, c.class_number, 10) AS class_number,
                 COALESCE(a.section_name, s.name, 'A') AS section_name,
                 COALESCE(a.subject_name, sub.name, 'General') AS subject_name,
