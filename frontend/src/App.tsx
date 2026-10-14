@@ -2466,7 +2466,7 @@ function Layout({children}:{children:React.ReactNode}){
               title="Toggle menu"
               style={{ border: '1px solid var(--border)', borderRadius: 8 }}
               onClick={() => {
-                if (window.innerWidth <= 1024) {
+                if (window.innerWidth <= 1180) {
                   setMobileSidebarOpen(prev => !prev);
                 } else {
                   setSidebarCollapsed(prev => !prev);
@@ -2478,7 +2478,7 @@ function Layout({children}:{children:React.ReactNode}){
             <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2606,7 +2606,7 @@ function Layout({children}:{children:React.ReactNode}){
             <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2847,7 +2847,7 @@ function Layout({children}:{children:React.ReactNode}){
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
             <Search size={15}/>
             <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
-            <span className="header-kbd">⌘K</span>
+            <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
@@ -4725,8 +4725,8 @@ function TeacherHome(){
 }
 
 const DEFAULT_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -5186,7 +5186,7 @@ function Students(){
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
     const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
-    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L-KG' : cls.class_number === 0 ? 'Class U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L KG' : cls.class_number === 0 ? 'Class U KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
     const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
 
     const previewSections: PreviewSectionData[] = [
@@ -6170,7 +6170,7 @@ function Students(){
             style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
           >
             <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
           <select 
             value={sectionFilter} 
@@ -6786,7 +6786,7 @@ function Students(){
             }}
           >
             <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
         <label>Section
@@ -7983,8 +7983,8 @@ function Teachers(){
     if (allocs.length > 0) {
       return allocs.map(a => {
         let clsNum = a.class_number !== undefined && a.class_number !== null ? String(a.class_number).trim() : '';
-        if (clsNum === '-1') clsNum = 'Class-L-KG';
-        else if (clsNum === '0') clsNum = 'Class-U-KG';
+        if (clsNum === '-1') clsNum = 'Class L KG';
+        else if (clsNum === '0') clsNum = 'Class U KG';
         else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
         const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
         const classSec = `${clsNum}${sec}`.trim();
@@ -7995,8 +7995,8 @@ function Teachers(){
     // 2. Check direct class_name / section_name on teacher profile (e.g. from Excel import)
     if (teacherObj?.class_name || teacherObj?.class) {
       let rawCls = String(teacherObj.class_name || teacherObj.class || '').trim();
-      if (rawCls === '-1') rawCls = 'Class-L-KG';
-      else if (rawCls === '0') rawCls = 'Class-U-KG';
+      if (rawCls === '-1') rawCls = 'Class L KG';
+      else if (rawCls === '0') rawCls = 'Class U KG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
       return `${rawCls}${sec}`;
@@ -11210,6 +11210,7 @@ function Attendance(){
   const [students,setStudents]=useState<any[]>([]);
   const [checked,setChecked]=useState<Record<string,boolean>>({});
   const [search,setSearch]=useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'roll-asc' | 'roll-desc' | 'name-asc' | 'name-desc'>('roll-asc');
   const [busy,setBusy]=useState(false);
   const [done,setDone]=useState(false);
   const [summary,setSummary]=useState<any>(null);
@@ -11664,15 +11665,35 @@ function Attendance(){
   const totalMarked = presentCount + leftEarlyCount + lateCount + absentCount;
   const ratePct = totalMarked > 0 ? Math.round((presentCount / totalMarked) * 100) : 0;
 
-  const filteredStudents = students.filter(s => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
-  });
+  const filteredStudents = useMemo(() => {
+    const list = students.filter(s => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (s.name || '').toLowerCase().includes(q) || String(s.roll_number || s.rollNumber || '').toLowerCase().includes(q);
+    });
+
+    return list.slice().sort((a, b) => {
+      const rollA = a.roll_number ?? a.rollNumber ?? '';
+      const rollB = b.roll_number ?? b.rollNumber ?? '';
+      if (sortOrder === 'roll-asc') {
+        return String(rollA).localeCompare(String(rollB), undefined, { numeric: true, sensitivity: 'base' }) || String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'roll-desc') {
+        return String(rollB).localeCompare(String(rollA), undefined, { numeric: true, sensitivity: 'base' }) || String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      if (sortOrder === 'name-asc') {
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'name-desc') {
+        return String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      return 0;
+    });
+  }, [students, search, sortOrder]);
 
   useEffect(() => {
     setAttendancePage(1);
-  }, [search]);
+  }, [search, sortOrder]);
 
   const totalAttendancePages = Math.max(1, Math.ceil(filteredStudents.length / attendancePageSize));
   const currentAttendancePage = Math.min(Math.max(1, attendancePage), totalAttendancePages);
@@ -12169,8 +12190,8 @@ function Attendance(){
                 })
                 .map(c => {
                   const num = c.class_number ?? c.classNumber;
-                  const label = num === -1 || num === '-1' ? 'Class L-KG' :
-                    num === 0 || num === '0' ? 'Class U-KG' :
+                  const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
+                    num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
                     num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
                     c.name || `Class ${c.id}`;
                   return (
@@ -12432,22 +12453,60 @@ function Attendance(){
           </button>
         </div>
 
-        <div style={{ width: 260 }}>
-          <input
-            type="text"
-            placeholder="Search students in this class..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
             style={{
-              width: '100%',
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               background: 'var(--bg)',
-              color: 'var(--text)',
-              fontSize: 12.5
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '4px 10px'
             }}
-          />
+          >
+            <ArrowUpDown size={14} style={{ color: '#2563eb' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              Sort by:
+            </span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text)',
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+              title="Sort students roster"
+            >
+              <option value="roll-asc">Roll No. (1 → 9)</option>
+              <option value="roll-desc">Roll No. (9 → 1)</option>
+              <option value="name-asc">Student Name (A → Z)</option>
+              <option value="name-desc">Student Name (Z → A)</option>
+            </select>
+          </div>
+
+          <div style={{ width: 240 }}>
+            <input
+              type="text"
+              placeholder="Search students in this class..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                fontSize: 12.5
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -13270,8 +13329,8 @@ function formatAttendanceHistoryDate(raw: any): string {
 
 function formatHistoryClassLabel(classNum: any): string {
   const n = Number(classNum);
-  if (n === -1 || classNum === '-1') return 'Class L-KG';
-  if (n === 0 || classNum === '0') return 'Class U-KG';
+  if (n === -1 || classNum === '-1') return 'Class L KG';
+  if (n === 0 || classNum === '0') return 'Class U KG';
   if (classNum !== undefined && classNum !== null && classNum !== '') return `Class ${classNum}`;
   return 'Class';
 }
@@ -13399,9 +13458,9 @@ function History(){
                 <th>Class & Section</th>
                 <th>Subject</th>
                 <th>Recorded By</th>
+                <th>Total No. of Students</th>
                 <th>Present</th>
                 <th>Left Early</th>
-                <th>Late</th>
                 <th>Absent</th>
                 <th>Turnout Rate</th>
                 <th>Action</th>
@@ -13440,20 +13499,16 @@ function History(){
                           )}
                         </div>
                       </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                          {x.total || 0}
+                        </span>
+                      </td>
                       <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
                       <td>
                         {leftEarlyCount > 0 ? (
                           <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
                             {leftEarlyCount}
-                          </span>
-                        ) : (
-                          <span className="muted">0</span>
-                        )}
-                      </td>
-                      <td>
-                        {lateCount > 0 ? (
-                          <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
-                            {lateCount}
                           </span>
                         ) : (
                           <span className="muted">0</span>

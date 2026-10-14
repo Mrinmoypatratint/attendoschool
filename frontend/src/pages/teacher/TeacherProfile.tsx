@@ -270,7 +270,7 @@ export function TeacherProfile() {
   }
 
   return (
-    <div className="student-subpage" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 60px' }}>
+    <div className="student-subpage teacher-profile-page">
       {/* ── Header ── */}
       <div className="student-subpage-header" style={{ marginBottom: 24 }}>
         <div className="student-subpage-title-row">
@@ -439,7 +439,7 @@ export function TeacherProfile() {
 
           {editing ? (
             <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="teacher-edit-grid">
                 <label style={{ display: 'grid', gap: 4 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Contact Mobile Number:
@@ -601,7 +601,7 @@ export function TeacherProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Official School Website</span>
-                <span className="detail-val">
+                <span className="detail-val" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
                   {(profile?.schoolWebsite || (profile as any)?.school_website) ? (
                     <a
                       href={profile?.schoolWebsite || (profile as any)?.school_website}
@@ -613,13 +613,16 @@ export function TeacherProfile() {
                         gap: 5,
                         color: '#2563eb',
                         fontWeight: 600,
-                        textDecoration: 'none'
+                        textDecoration: 'none',
+                        wordBreak: 'break-all',
+                        overflowWrap: 'anywhere',
+                        maxWidth: '100%'
                       }}
                       title="Open official school website in new tab"
                     >
-                      <Globe size={13} />
-                      <span style={{ textDecoration: 'underline' }}>{profile?.schoolWebsite || (profile as any)?.school_website}</span>
-                      <ExternalLink size={12} />
+                      <Globe size={13} style={{ flexShrink: 0 }} />
+                      <span style={{ textDecoration: 'underline', wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{profile?.schoolWebsite || (profile as any)?.school_website}</span>
+                      <ExternalLink size={12} style={{ flexShrink: 0 }} />
                     </a>
                   ) : (
                     <span style={{ color: '#94a3b8' }}>Not Configured</span>

@@ -6945,8 +6945,55 @@ header {
 /* Profile Layout */
 .student-profile-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 340px;
+  grid-template-columns: 280px minmax(0, 1fr) 340px;
   gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.student-profile-layout > * {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.teacher-profile-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tablet Landscape & Intermediate Desktops (<= 1240px) */
+@media (max-width: 1240px) {
+  .student-profile-layout {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    gap: 18px !important;
+  }
+  .student-profile-security-card {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Tablet Portrait & Mobile (<= 880px) */
+@media (max-width: 880px) {
+  .teacher-profile-page {
+    padding: 12px 6px 40px !important;
+  }
+  .student-profile-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .student-profile-security-card {
+    grid-column: auto !important;
+  }
+  .student-profile-hero-card,
+  .student-profile-details-card,
+  .student-profile-security-card {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 .student-profile-hero-card {
@@ -7090,6 +7137,43 @@ header {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.student-details-grid .detail-item {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.student-details-grid .detail-val {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.teacher-edit-grid,
+.student-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .student-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .student-details-grid .detail-item[style*="span 2"] {
+    grid-column: span 1 !important;
+  }
+  .teacher-edit-grid,
+  .student-edit-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .detail-item {
@@ -7288,8 +7372,8 @@ header {
   display: none;
 }
 
-/* Tablet & Mobile Viewports (<= 1024px) */
-@media (max-width: 1024px) {
+/* Tablet & Mobile Viewports (<= 1180px) */
+@media (max-width: 1180px) {
   .student-portal-root {
     overflow-x: hidden !important;
     width: 100% !important;
@@ -11146,8 +11230,8 @@ header {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ─── Tablet Optimizations (<= 1024px) ─── */
-@media (max-width: 1024px) {
+/* ─── Tablet Optimizations (<= 1180px) ─── */
+@media (max-width: 1180px) {
   .two-col,
   .dashboard-two-col {
     grid-template-columns: 1fr !important;
@@ -11159,8 +11243,8 @@ header {
   }
 }
 
-/* ─── Mobile & Tablet Responsive Engine (<= 1024px) ─── */
-@media (max-width: 1024px) {
+/* ─── Mobile & Tablet Responsive Engine (<= 1180px) ─── */
+@media (max-width: 1180px) {
   /* Prevent horizontal document shift */
   html, body {
     overflow-x: hidden !important;
