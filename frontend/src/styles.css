@@ -407,6 +407,22 @@ aside {
   color: #94a3b8;
 }
 
+.sidebar-brand-interactive {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-brand-interactive:hover {
+  opacity: 0.88;
+}
+
+.sidebar-brand-interactive:active {
+  transform: scale(0.985);
+}
+
 .sidebar-brand {
   display: flex;
   align-items: center;

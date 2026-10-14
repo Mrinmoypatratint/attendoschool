@@ -24,6 +24,8 @@ export type User = {
   photoUrl?: string;
   schoolPhotoUrl?: string;
   school_photo_url?: string;
+  schoolWebsite?: string;
+  school_website?: string;
 };
 
 type AuthContextType = {

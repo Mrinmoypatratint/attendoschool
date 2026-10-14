@@ -217,6 +217,7 @@ export const demoSchools: any[] = [
     end_date: '2028-12-31',
     computed_status: 'ACTIVE',
     photo_url: '/dav-logo.png',
+    website: 'https://davmodeldurgapur.org',
     created_at: new Date().toISOString()
   }
 ];

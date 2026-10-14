@@ -241,7 +241,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
                  COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM students st
           JOIN schools sch ON sch.id = st.school_id
           JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email) AND u.school_id = st.school_id))
@@ -299,7 +299,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
               ? (stu.class_number === -1 ? 'L-KG' : stu.class_number === 0 ? 'U-KG' : `Class ${stu.class_number}`)
               : 'Class 10',
             sectionName: stu.section_name || 'A',
-            rollNumber: stu.roll_number || '25'
+            rollNumber: stu.roll_number || '25',
+            schoolWebsite: stu.school_website || undefined,
+            school_website: stu.school_website || undefined
           };
 
           clearLoginAttempts(req, rawIdentifier);
@@ -327,7 +329,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
         // School Admin, Teacher, Super Admin, or unspecified role login
         const facultyQuery = `
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active, u.photo_url,
-                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM users u
           LEFT JOIN schools sch ON sch.id = u.school_id
           WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
@@ -374,7 +376,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
             photo_url: photoUrl,
             photoUrl: photoUrl,
             schoolPhotoUrl: u.school_photo_url || undefined,
-            school_photo_url: u.school_photo_url || undefined
+            school_photo_url: u.school_photo_url || undefined,
+            schoolWebsite: u.school_website || undefined,
+            school_website: u.school_website || undefined
           };
 
           // Keep token payload lean (< 500 bytes) so HTTP Authorization header never exceeds Cloudflare/Nginx limits (16KB)
@@ -439,7 +443,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
       role: demo.role as Role,
       photo_url: demoPhoto,
       photoUrl: demoPhoto,
-      avatarUrl: demoPhoto
+      avatarUrl: demoPhoto,
+      schoolWebsite: demoSchoolObj?.website || undefined,
+      school_website: demoSchoolObj?.website || undefined
     };
 
     if (demo.role === 'STUDENT') {

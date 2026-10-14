@@ -50,9 +50,15 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const [schoolNameState, setSchoolNameState] = useState<string>(
     user?.schoolName || 'AttendoSchool'
   );
-  const [schoolWebsite, setSchoolWebsite] = useState<string>(
-    (user as any)?.schoolWebsite || (user as any)?.school_website || (user as any)?.website || ''
-  );
+  const [schoolWebsite, setSchoolWebsite] = useState<string>(() => {
+    return (
+      (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+      (user as any)?.schoolWebsite ||
+      (user as any)?.school_website ||
+      (user as any)?.website ||
+      'https://davmodeldurgapur.org'
+    );
+  });
 
   useEffect(() => {
     studentApi.getProfile()
@@ -68,14 +74,26 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         if (p?.schoolName) {
           setSchoolNameState(p.schoolName);
         }
-        if (p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website) {
-          setSchoolWebsite(p.schoolWebsite || (p as any)?.school_website || (p as any)?.website);
+        const web = p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website;
+        if (web) {
+          setSchoolWebsite(web);
+          try {
+            localStorage.setItem('attendo_school_website', web);
+          } catch {}
         }
       })
       .catch(() => {});
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setSchoolWebsite(e.detail.website);
+        if (e.detail.website) {
+          try {
+            localStorage.setItem('attendo_school_website', e.detail.website);
+          } catch {}
+          if (updateUser) {
+            updateUser({ schoolWebsite: e.detail.website });
+          }
+        }
       }
       if (e.detail?.photo_url) {
         setSchoolPhoto(e.detail.photo_url);
@@ -84,8 +102,20 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         setSchoolNameState(e.detail.name);
       }
     };
+    const handleStorageUpdated = (e: StorageEvent) => {
+      if (e.key === 'attendo_school_website' && e.newValue) {
+        setSchoolWebsite(e.newValue);
+        if (updateUser) {
+          updateUser({ schoolWebsite: e.newValue });
+        }
+      }
+    };
     window.addEventListener('school-profile-updated', handleProfileUpdated);
-    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
+    window.addEventListener('storage', handleStorageUpdated);
+    return () => {
+      window.removeEventListener('school-profile-updated', handleProfileUpdated);
+      window.removeEventListener('storage', handleStorageUpdated);
+    };
   }, [updateUser]);
 
   useEffect(() => {
@@ -224,6 +254,30 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const displaySchoolCode = isDav ? '15582' : ((user as any)?.schoolCode || (user as any)?.school_code || '15582');
   const displaySchoolPhoto = schoolPhoto || (isDav ? '/dav-logo.png' : '/attendo-school-logo.png');
 
+  const normalizeWebsiteUrl = (url?: string | null) => {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const rawWebsite =
+    schoolWebsite ||
+    (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+    (user as any)?.schoolWebsite ||
+    (user as any)?.school_website ||
+    (user as any)?.website ||
+    (isDav ? 'https://davmodeldurgapur.org' : '');
+
+  const targetWebsiteUrl = normalizeWebsiteUrl(rawWebsite);
+
+  const handleOpenSchoolWebsite = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (targetWebsiteUrl) {
+      window.open(targetWebsiteUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const resolvedStudentName = user?.name?.trim() || 'Student';
   const resolvedSchoolName = isDav ? 'DAV MODEL SCHOOL' : (user?.schoolName?.trim() || 'School');
   const resolvedLogoUrl = displaySchoolPhoto;
@@ -255,9 +309,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             className="student-logo-wrap" 
             onClick={() => { 
               setMobileNavOpen(false); 
-              nav('/student/dashboard'); 
+              handleOpenSchoolWebsite(); 
             }} 
-            title={schoolWebsite ? `Visit Official School Website: ${schoolWebsite}` : displaySchoolName}
+            title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
             style={{ 
               cursor: 'pointer', 
               display: 'flex', 
@@ -354,13 +408,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             {/* Institute Pill */}
             <div 
               className="student-institute-pill" 
-              onClick={() => {
-                if (schoolWebsite) {
-                  window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
-                }
-              }}
-              title={schoolWebsite ? `Official School Website: ${schoolWebsite}` : schoolName}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: schoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={targetWebsiteUrl ? `Official School Website: ${targetWebsiteUrl}` : schoolName}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: targetWebsiteUrl ? 'pointer' : 'default' }}
             >
               {schoolPhoto ? (
                 <img
