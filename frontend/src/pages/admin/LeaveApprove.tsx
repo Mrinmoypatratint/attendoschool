@@ -41,6 +41,7 @@ interface LeaveRequest {
 
 export default function LeaveApprove() {
   const { user } = useAuth();
+  const isTeacher = user?.role === 'TEACHER';
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'SEEN' | 'APPROVED'>('PENDING');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, seen: 0, approved: 0, rejected: 0 });
@@ -124,13 +125,22 @@ export default function LeaveApprove() {
   // Filter leaves based on active tab, role, and search
   const filteredLeaves = useMemo(() => {
     return leaves.filter((l) => {
+      // In teacher portal, only show student leave applications
+      if (isTeacher && l.applicant_type !== 'STUDENT') return false;
+
       // Tab filter
       if (activeTab === 'PENDING' && l.status !== 'PENDING') return false;
-      if (activeTab === 'SEEN' && l.status !== 'SEEN') return false;
+      if (activeTab === 'SEEN') {
+        if (isTeacher) {
+          if (l.status !== 'SEEN' && l.status !== 'APPROVED') return false;
+        } else {
+          if (l.status !== 'SEEN') return false;
+        }
+      }
       if (activeTab === 'APPROVED' && l.status !== 'APPROVED') return false;
 
-      // Role filter
-      if (roleFilter !== 'ALL' && l.applicant_type !== roleFilter) return false;
+      // Role filter (only for non-teachers)
+      if (!isTeacher && roleFilter !== 'ALL' && l.applicant_type !== roleFilter) return false;
 
       // Search filter
       if (searchQuery.trim()) {
@@ -143,7 +153,16 @@ export default function LeaveApprove() {
 
       return true;
     });
-  }, [leaves, activeTab, roleFilter, searchQuery]);
+  }, [leaves, activeTab, roleFilter, searchQuery, isTeacher]);
+
+  const displayCounts = useMemo(() => {
+    if (!isTeacher) return counts;
+    const studentList = leaves.filter(l => l.applicant_type === 'STUDENT');
+    const all = studentList.length;
+    const pending = studentList.filter(l => l.status === 'PENDING').length;
+    const seen = studentList.filter(l => l.status === 'SEEN' || l.status === 'APPROVED').length;
+    return { all, pending, seen, approved: 0, rejected: 0 };
+  }, [isTeacher, counts, leaves]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -157,7 +176,9 @@ export default function LeaveApprove() {
             Leave Review
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
-            Review, evaluate, and approve submitted student leave applications.
+            {isTeacher
+              ? 'Review and acknowledge submitted student leave applications.'
+              : 'Review, evaluate, and approve submitted student leave applications.'}
           </p>
         </div>
 
@@ -219,7 +240,7 @@ export default function LeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          All ({counts.all})
+          All ({displayCounts.all})
         </button>
         <button
           type="button"
@@ -237,7 +258,7 @@ export default function LeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Pending ({counts.pending})
+          Pending ({displayCounts.pending})
         </button>
         <button
           type="button"
@@ -255,26 +276,28 @@ export default function LeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Seen ({counts.seen || 0})
+          Seen ({displayCounts.seen || 0})
         </button>
-        <button
-          type="button"
-          className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
-          onClick={() => setActiveTab('APPROVED')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '8px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'APPROVED' ? '2px solid #2563EB' : '2px solid transparent',
-            color: activeTab === 'APPROVED' ? '#2563EB' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
-        >
-          Approved ({counts.approved})
-        </button>
+        {!isTeacher && (
+          <button
+            type="button"
+            className={`student-tab-btn ${activeTab === 'APPROVED' ? 'active' : ''}`}
+            onClick={() => setActiveTab('APPROVED')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              padding: '8px 16px',
+              fontSize: 13.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              borderBottom: activeTab === 'APPROVED' ? '2px solid #2563EB' : '2px solid transparent',
+              color: activeTab === 'APPROVED' ? '#2563EB' : 'var(--text-secondary, #64748B)',
+              transition: 'all 0.15s'
+            }}
+          >
+            Approved ({counts.approved})
+          </button>
+        )}
       </div>
 
       {/* Search and Role Filter Bar */}
@@ -283,7 +306,7 @@ export default function LeaveApprove() {
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
-            placeholder="Search by student name, roll no, reason..."
+            placeholder={isTeacher ? "Search by student name or reason..." : "Search by student name, roll no, reason..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -306,28 +329,30 @@ export default function LeaveApprove() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Filter size={14} style={{ color: '#64748B' }} />
-          <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
-          {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
-            <button
-              key={role}
-              onClick={() => setRoleFilter(role)}
-              style={{
-                background: roleFilter === role ? '#EFF6FF' : 'transparent',
-                color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
-                border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
-                padding: '4px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
-            </button>
-          ))}
-        </div>
+        {!isTeacher && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={14} style={{ color: '#64748B' }} />
+            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
+            {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
+              <button
+                key={role}
+                onClick={() => setRoleFilter(role)}
+                style={{
+                  background: roleFilter === role ? '#EFF6FF' : 'transparent',
+                  color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
+                  border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -361,6 +386,7 @@ export default function LeaveApprove() {
             return (
               <div
                 key={leave.id}
+                onClick={leave.status === 'SEEN' || (isTeacher && leave.status === 'APPROVED') ? () => setViewingLeave(leave) : undefined}
                 style={{
                   background: 'var(--surface, #FFFFFF)',
                   border: '1px solid var(--border, #E2E8F0)',
@@ -369,7 +395,8 @@ export default function LeaveApprove() {
                   display: 'flex',
                   flexDirection: 'column',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  transition: 'box-shadow 0.2s, transform 0.2s'
+                  transition: 'box-shadow 0.2s, transform 0.2s',
+                  cursor: (leave.status === 'SEEN' || (isTeacher && leave.status === 'APPROVED')) ? 'pointer' : 'default'
                 }}
               >
                 {/* Header: Status and Submission Time */}
@@ -388,7 +415,7 @@ export default function LeaveApprove() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#92400E', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <Clock size={12} /> Pending Review
                       </span>
-                    ) : leave.status === 'SEEN' ? (
+                    ) : (isTeacher || leave.status === 'SEEN') ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EEF2FF', color: '#4338CA', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <Eye size={12} /> Seen
                       </span>
@@ -436,24 +463,26 @@ export default function LeaveApprove() {
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 3,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            background: leave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                            color: leave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
-                          }}
-                        >
-                          {leave.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
-                          {leave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
-                        </span>
-                      </div>
+                      {!isTeacher && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              background: leave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
+                              color: leave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
+                            }}
+                          >
+                            {leave.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
+                            {leave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
+                          </span>
+                        </div>
+                      )}
 
                       <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
                         {leave.applicant_name}
@@ -538,38 +567,43 @@ export default function LeaveApprove() {
                   )}
                 </div>
 
-                {/* Single View Button replacing Approve and Reject buttons */}
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderTop: '1px solid var(--border, #E2E8F0)',
-                    background: 'var(--bg-card-footer, #FAFAFA)'
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleViewLeave(leave)}
+                {/* View button is only shown for PENDING leaves; in SEEN section it is hidden */}
+                {(leave.status === 'PENDING' || (!isTeacher && leave.status !== 'SEEN')) && (
+                  <div
                     style={{
-                      width: '100%',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 7,
-                      background: '#2563EB',
-                      color: '#FFF',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '9px 16px',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'background 0.15s'
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border, #E2E8F0)',
+                      background: 'var(--bg-card-footer, #FAFAFA)'
                     }}
                   >
-                    <Eye size={15} />
-                    <span>View</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewLeave(leave);
+                      }}
+                      style={{
+                        width: '100%',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        background: '#2563EB',
+                        color: '#FFF',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '9px 16px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
+                      }}
+                    >
+                      <Eye size={15} />
+                      <span>View</span>
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -666,18 +700,20 @@ export default function LeaveApprove() {
                   <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
                     {viewingLeave.applicant_name}
                   </h4>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: 10,
-                      background: viewingLeave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                      color: viewingLeave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
-                    }}
-                  >
-                    {viewingLeave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
-                  </span>
+                  {!isTeacher && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: viewingLeave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
+                        color: viewingLeave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
+                      }}
+                    >
+                      {viewingLeave.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
                   {viewingLeave.detail || `Admission No: ${viewingLeave.identifier || 'N/A'}`}
@@ -686,7 +722,7 @@ export default function LeaveApprove() {
 
               {/* Status Badge */}
               <div>
-                {viewingLeave.status === 'SEEN' ? (
+                {(viewingLeave.status === 'SEEN' || (isTeacher && viewingLeave.status === 'APPROVED')) ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#EEF2FF', color: '#4338CA', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
                     <Eye size={13} /> Seen
                   </span>

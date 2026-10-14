@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, ArrowLeft, Send, CheckCircle2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, LeaveRequest } from '../../services/studentApi';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export function StudentLeaveRequest() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -158,12 +159,24 @@ export function StudentLeaveRequest() {
               </label>
               <label>
                 <span>Reason for Absence:</span>
-                <textarea
+                <AutoExpandingTextarea
                   required
-                  rows={4}
+                  minHeight={46}
+                  maxHeight={200}
                   placeholder="Explain the reason for leave (medical, family event, competition, etc.)..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 5,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                    outline: 'none'
+                  }}
                 />
               </label>
               <div className="modal-buttons">

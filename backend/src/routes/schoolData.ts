@@ -95,8 +95,8 @@ export function isSameSession(s1?: string | null, s2?: string | null): boolean {
 
 // Class grades: Class-L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
 export const CLASS_GRADES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 

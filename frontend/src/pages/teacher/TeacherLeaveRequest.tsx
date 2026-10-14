@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export interface TeacherLeaveItem {
   id: string;
@@ -1037,9 +1038,10 @@ export default function TeacherLeaveRequest() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
                   Reason for Absence <span style={{ color: '#DC2626' }}>*</span>
                 </label>
-                <textarea
+                <AutoExpandingTextarea
                   required
-                  rows={4}
+                  minHeight={46}
+                  maxHeight={200}
                   placeholder="Detail the purpose of leave (e.g. personal emergency, health rest, academic conference, etc.)..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -1051,8 +1053,8 @@ export default function TeacherLeaveRequest() {
                     background: 'var(--surface, #FFF)',
                     color: 'var(--text, #0F172A)',
                     fontSize: 13.5,
+                    lineHeight: 1.45,
                     outline: 'none',
-                    resize: 'vertical',
                     boxSizing: 'border-box'
                   }}
                 />

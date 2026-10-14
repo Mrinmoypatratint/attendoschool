@@ -570,6 +570,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
           if (!uniqueStudents.has(key)) uniqueStudents.set(key, s);
         }
         const list = Array.from(uniqueStudents.values());
+        list.sort((a: any, b: any) => String(a.roll_number || '').localeCompare(String(b.roll_number || ''), undefined, { numeric: true }));
         fastCache.set(cacheKey, list, 20);
         return res.json(list);
       }

@@ -122,8 +122,8 @@ export default function AttendanceReports() {
         }
 
         const rawCls = Array.isArray(clsRes.data) && clsRes.data.length > 0 ? clsRes.data : [
-          { id: 'cls-lkg', class_number: -1, label: 'Class L-KG' },
-          { id: 'cls-ukg', class_number: 0, label: 'Class U-KG' },
+          { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+          { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
           ...Array.from({ length: 12 }, (_, i) => ({ id: `cls-${i + 1}`, class_number: i + 1, label: `Class ${i + 1}` }))
         ];
         const clsList = [...rawCls].sort((a: any, b: any) => {
@@ -837,7 +837,9 @@ export default function AttendanceReports() {
             <option value="ALL">All Classes</option>
             {classes.map(c => {
               const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : null);
-              const label = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : (c.label || (num !== null ? `Class ${num}` : c.id));
+              const label = num === -1 || /l.?kg/i.test(String(c.label || c.id || '')) ? 'Class L KG' :
+                num === 0 || /u.?kg/i.test(String(c.label || c.id || '')) ? 'Class U KG' :
+                (c.label || (num !== null ? `Class ${num}` : c.id));
               return <option key={c.id} value={c.id}>{label}</option>;
             })}
           </select>

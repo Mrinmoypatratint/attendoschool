@@ -17,6 +17,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
 
 interface PhotoRequest {
   id: string;
@@ -37,7 +38,10 @@ interface PhotoRequest {
 }
 
 export default function PhotoApprove() {
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
+  const { user } = useAuth();
+  const isTeacher = user?.role === 'TEACHER';
+
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [photos, setPhotos] = useState<PhotoRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,6 +49,15 @@ export default function PhotoApprove() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const cleanIdentifier = (identifier?: string) => {
+    if (!identifier) return '';
+    return identifier
+      .replace(/Roll:\s*[^·•\n\r|]+\s*[·•|]\s*/gi, '')
+      .replace(/[·•|]\s*Roll:\s*[^·•\n\r|]+/gi, '')
+      .replace(/Roll:\s*[^·•\n\r|]+/gi, '')
+      .trim();
+  };
 
   // Lightbox Preview Modal State
   const [previewPhoto, setPreviewPhoto] = useState<PhotoRequest | null>(null);
@@ -121,25 +134,39 @@ export default function PhotoApprove() {
   // Filter photos based on active tab, role, and search query
   const filteredPhotos = useMemo(() => {
     return photos.filter((p) => {
+      // In teacher portal, only show student photos
+      if (isTeacher && p.applicant_type !== 'STUDENT') return false;
+
       // Tab filter
       if (activeTab === 'PENDING' && p.status !== 'PENDING') return false;
       if (activeTab === 'APPROVED' && p.status !== 'APPROVED') return false;
+      if (activeTab === 'REJECTED' && p.status !== 'REJECTED') return false;
 
-      // Role filter
-      if (roleFilter !== 'ALL' && p.applicant_type !== roleFilter) return false;
+      // Role filter (only for admin)
+      if (!isTeacher && roleFilter !== 'ALL' && p.applicant_type !== roleFilter) return false;
 
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const nameMatch = p.applicant_name?.toLowerCase().includes(q);
-        const idMatch = p.identifier?.toLowerCase().includes(q);
+        const idMatch = (isTeacher ? cleanIdentifier(p.identifier) : p.identifier)?.toLowerCase().includes(q);
         const detailMatch = p.detail?.toLowerCase().includes(q);
         if (!nameMatch && !idMatch && !detailMatch) return false;
       }
 
       return true;
     });
-  }, [photos, activeTab, roleFilter, searchQuery]);
+  }, [photos, activeTab, roleFilter, searchQuery, isTeacher]);
+
+  const displayCounts = useMemo(() => {
+    if (!isTeacher) return counts;
+    const studentList = photos.filter(p => p.applicant_type === 'STUDENT');
+    const all = studentList.length;
+    const pending = studentList.filter(p => p.status === 'PENDING').length;
+    const approved = studentList.filter(p => p.status === 'APPROVED').length;
+    const rejected = studentList.filter(p => p.status === 'REJECTED').length;
+    return { all, pending, approved, rejected };
+  }, [isTeacher, counts, photos]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -153,7 +180,9 @@ export default function PhotoApprove() {
             Photo Approve
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
-            Review, verify, and approve submitted student and staff profile photographs.
+            {isTeacher
+              ? 'Review, verify, and approve submitted student profile photographs.'
+              : 'Review, verify, and approve submitted student and staff profile photographs.'}
           </p>
         </div>
 
@@ -215,7 +244,7 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          All ({counts.all})
+          All ({displayCounts.all})
         </button>
         <button
           type="button"
@@ -233,7 +262,7 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Pending ({counts.pending})
+          Pending ({displayCounts.pending})
         </button>
         <button
           type="button"
@@ -251,7 +280,25 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Approved ({counts.approved})
+          Approved ({displayCounts.approved})
+        </button>
+        <button
+          type="button"
+          className={`student-tab-btn ${activeTab === 'REJECTED' ? 'active' : ''}`}
+          onClick={() => setActiveTab('REJECTED')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '8px 16px',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderBottom: activeTab === 'REJECTED' ? '2px solid #DC2626' : '2px solid transparent',
+            color: activeTab === 'REJECTED' ? '#DC2626' : 'var(--text-secondary, #64748B)',
+            transition: 'all 0.15s'
+          }}
+        >
+          Rejected ({displayCounts.rejected})
         </button>
       </div>
 
@@ -261,7 +308,7 @@ export default function PhotoApprove() {
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
-            placeholder="Search by name, roll no, or ID..."
+            placeholder={isTeacher ? "Search by name or ID..." : "Search by name, roll no, or ID..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -284,28 +331,30 @@ export default function PhotoApprove() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Filter size={14} style={{ color: '#64748B' }} />
-          <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
-          {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
-            <button
-              key={role}
-              onClick={() => setRoleFilter(role)}
-              style={{
-                background: roleFilter === role ? '#EFF6FF' : 'transparent',
-                color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
-                border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
-                padding: '4px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
-            </button>
-          ))}
-        </div>
+        {!isTeacher && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={14} style={{ color: '#64748B' }} />
+            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
+            {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
+              <button
+                key={role}
+                onClick={() => setRoleFilter(role)}
+                style={{
+                  background: roleFilter === role ? '#EFF6FF' : 'transparent',
+                  color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
+                  border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -322,7 +371,13 @@ export default function PhotoApprove() {
             No photo submissions found in this category.
           </p>
           <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
-            {activeTab === 'PENDING' ? 'All submitted student and staff photos have been processed.' : 'No photo records to display.'}
+            {activeTab === 'PENDING'
+              ? (isTeacher ? 'All submitted student photos have been processed.' : 'All submitted student and staff photos have been processed.')
+              : activeTab === 'REJECTED'
+              ? 'No rejected photo requests found.'
+              : activeTab === 'APPROVED'
+              ? 'No approved photo records to display.'
+              : 'No photo records to display.'}
           </p>
         </div>
       ) : (
@@ -427,33 +482,43 @@ export default function PhotoApprove() {
 
                 {/* Candidate Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        background: photo.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                        color: photo.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
-                      }}
-                    >
-                      {photo.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
-                      {photo.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
-                    </span>
-                  </div>
+                  {!isTeacher && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: photo.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
+                          color: photo.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
+                        }}
+                      >
+                        {photo.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
+                        {photo.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
+                      </span>
+                    </div>
+                  )}
 
                   <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {photo.applicant_name}
                   </h3>
 
-                  {photo.identifier && (
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
-                      ID / Adm: <strong style={{ color: 'var(--text, #334155)' }}>{photo.identifier}</strong>
-                    </div>
+                  {isTeacher ? (
+                    cleanIdentifier(photo.identifier) ? (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                        Adm: <strong style={{ color: 'var(--text, #334155)' }}>{cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '')}</strong>
+                      </div>
+                    ) : null
+                  ) : (
+                    photo.identifier && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                        ID / Adm: <strong style={{ color: 'var(--text, #334155)' }}>{photo.identifier}</strong>
+                      </div>
+                    )
                   )}
 
                   {photo.detail && (
@@ -588,7 +653,9 @@ export default function PhotoApprove() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>{previewPhoto.applicant_name}</h3>
-                <span style={{ fontSize: 12, color: '#64748B' }}>{previewPhoto.detail || previewPhoto.identifier}</span>
+                <span style={{ fontSize: 12, color: '#64748B' }}>
+                  {previewPhoto.detail || (isTeacher ? cleanIdentifier(previewPhoto.identifier) : previewPhoto.identifier)}
+                </span>
               </div>
               <button
                 onClick={() => setPreviewPhoto(null)}

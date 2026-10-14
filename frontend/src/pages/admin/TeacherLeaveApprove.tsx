@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface TeacherLeave {
   id: string;
@@ -1957,8 +1958,9 @@ export default function TeacherLeaveApprove() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
                   Reason for Rejection <span style={{ color: '#DC2626' }}>*</span>
                 </label>
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
+                  minHeight={42}
+                  maxHeight={180}
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="e.g. Inadequate staffing for scheduled examinations, please reschedule..."
@@ -1970,8 +1972,8 @@ export default function TeacherLeaveApprove() {
                     background: 'var(--surface, #FFF)',
                     color: 'var(--text, #0F172A)',
                     fontSize: 13,
+                    lineHeight: 1.45,
                     outline: 'none',
-                    resize: 'vertical',
                     boxSizing: 'border-box'
                   }}
                 />

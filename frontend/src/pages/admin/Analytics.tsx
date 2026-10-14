@@ -106,12 +106,12 @@ export default function Analytics() {
 
   const formatClassOptionLabel = (c: any): string => {
     const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : Number(c.id));
-    if (num === -1) return 'Class L-KG';
-    if (num === 0) return 'Class U-KG';
+    if (num === -1) return 'Class L KG';
+    if (num === 0) return 'Class U KG';
     if (!isNaN(num)) return `Class ${num}`;
     const s = String(c.label || c.name || c.id || '');
-    if (/^class\s*-1$/i.test(s) || /l.?kg/i.test(s)) return 'Class L-KG';
-    if (/^class\s*0$/i.test(s) || /u.?kg/i.test(s)) return 'Class U-KG';
+    if (/^class\s*-1$/i.test(s) || /l.?kg/i.test(s)) return 'Class L KG';
+    if (/^class\s*0$/i.test(s) || /u.?kg/i.test(s)) return 'Class U KG';
     return s.startsWith('Class') ? s : `Class ${s}`;
   };
 

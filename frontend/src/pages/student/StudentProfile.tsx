@@ -544,7 +544,7 @@ export function StudentProfile() {
 
           {editingDetails ? (
             <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="student-edit-grid">
                 <label style={{ display: 'grid', gap: 4 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Gender:

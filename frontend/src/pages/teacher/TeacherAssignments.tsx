@@ -448,18 +448,23 @@ export function TeacherAssignments() {
         <button
           type="button"
           onClick={loadAssignments}
+          disabled={loading}
           style={{
             padding: '8px 14px',
             borderRadius: 8,
             border: '1px solid #cbd5e1',
             background: '#fff',
-            cursor: 'pointer',
+            color: '#1e293b',
+            cursor: loading ? 'not-allowed' : 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}
         >
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} className={loading ? 'spin' : ''} style={{ color: '#2563eb' }} /> Refresh
         </button>
       </div>
 
@@ -695,7 +700,15 @@ export function TeacherAssignments() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#475569',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
