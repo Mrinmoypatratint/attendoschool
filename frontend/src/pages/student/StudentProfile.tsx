@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Globe, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -165,6 +165,13 @@ export function StudentProfile() {
       .catch(() => {
         setLoading(false);
       });
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setProfile((prev: IStudentProfile | null) => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website, website: e.detail.website } : prev);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
   }, [updateUser]);
 
   const handleSaveDetails = async (e: React.FormEvent) => {
@@ -464,9 +471,24 @@ export function StudentProfile() {
 
           <h2 className="profile-hero-name">{profile?.name || 'Student'}</h2>
           <p className="profile-hero-role">{profile?.className} - Section {profile?.sectionName}</p>
-          <div className="profile-hero-badge">
+          <div 
+            className="profile-hero-badge"
+            onClick={() => {
+              const site = profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website;
+              if (site) {
+                window.open(site, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            style={{ 
+              cursor: (profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? 'pointer' : 'default'
+            }}
+            title={(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}` : profile?.schoolName}
+          >
             <School size={14} />
             <span>{profile?.schoolName}</span>
+            {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) && (
+              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+            )}
           </div>
         </div>
 
@@ -682,6 +704,33 @@ export function StudentProfile() {
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
                 <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Official School Website</span>
+                <span className="detail-val">
+                  {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? (
+                    <a
+                      href={profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                      title="Open official school website in new tab"
+                    >
+                      <Globe size={13} />
+                      <span style={{ textDecoration: 'underline' }}>{profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                  )}
+                </span>
               </div>
             </div>
           )}

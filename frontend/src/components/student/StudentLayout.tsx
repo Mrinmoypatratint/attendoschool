@@ -20,7 +20,9 @@ import {
   Sun,
   Moon,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
@@ -48,6 +50,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const [schoolNameState, setSchoolNameState] = useState<string>(
     user?.schoolName || 'AttendoSchool'
   );
+  const [schoolWebsite, setSchoolWebsite] = useState<string>(
+    (user as any)?.schoolWebsite || (user as any)?.school_website || (user as any)?.website || ''
+  );
 
   useEffect(() => {
     studentApi.getProfile()
@@ -63,8 +68,24 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         if (p?.schoolName) {
           setSchoolNameState(p.schoolName);
         }
+        if (p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website) {
+          setSchoolWebsite(p.schoolWebsite || (p as any)?.school_website || (p as any)?.website);
+        }
       })
       .catch(() => {});
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setSchoolWebsite(e.detail.website);
+      }
+      if (e.detail?.photo_url) {
+        setSchoolPhoto(e.detail.photo_url);
+      }
+      if (e.detail?.name) {
+        setSchoolNameState(e.detail.name);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
   }, [updateUser]);
 
   useEffect(() => {
@@ -230,7 +251,21 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
-          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div 
+            className="student-logo-wrap" 
+            onClick={() => { 
+              setMobileNavOpen(false); 
+              nav('/student/dashboard'); 
+            }} 
+            title={schoolWebsite ? `Visit Official School Website: ${schoolWebsite}` : displaySchoolName}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 12, 
+              minWidth: 0 
+            }}
+          >
             <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 12, background: '#ffffff', border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
               <img
                 src={displaySchoolPhoto}
@@ -317,7 +352,16 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
           <div className="student-topbar-right">
             {/* Institute Pill */}
-            <div className="student-institute-pill" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div 
+              className="student-institute-pill" 
+              onClick={() => {
+                if (schoolWebsite) {
+                  window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              title={schoolWebsite ? `Official School Website: ${schoolWebsite}` : schoolName}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: schoolWebsite ? 'pointer' : 'default' }}
+            >
               {schoolPhoto ? (
                 <img
                   src={schoolPhoto}
@@ -328,7 +372,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
                 <Building2 size={15} className="student-inst-icon" />
               )}
               <span className="student-inst-name">{schoolName}</span>
-              <ChevronDown size={14} className="student-inst-chevron" />
+              {schoolWebsite ? (
+                <ExternalLink size={12} style={{ color: '#2563eb', opacity: 0.8 }} />
+              ) : (
+                <ChevronDown size={14} className="student-inst-chevron" />
+              )}
             </div>
 
             {/* Notification Bell */}

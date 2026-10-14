@@ -46,7 +46,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url
+      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url, sch.website AS school_website
        FROM students st
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
@@ -213,6 +213,16 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     console.warn('[StudentService] Error checking photo approval status:', err.message);
   }
 
+  let schoolWebsite = st.school_website || '';
+  if (!schoolWebsite && schoolId) {
+    try {
+      const sQ = await pool.query('SELECT website FROM schools WHERE id = $1', [schoolId]);
+      if (sQ.rowCount && sQ.rows[0]?.website) {
+        schoolWebsite = sQ.rows[0].website;
+      }
+    } catch {}
+  }
+
   return {
     id: st.id,
     userId: st.user_id || userId,
@@ -229,6 +239,9 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     schoolName: st.school_name || '',
     schoolPhotoUrl: st.school_photo_url || '',
     school_photo_url: st.school_photo_url || '',
+    schoolWebsite: schoolWebsite || '',
+    school_website: schoolWebsite || '',
+    website: schoolWebsite || '',
     parentName: st.parent_name || '',
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
@@ -868,6 +881,8 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       schoolName: st.school_name || '',
       schoolPhotoUrl: st.school_photo_url || '',
       school_photo_url: st.school_photo_url || '',
+      schoolWebsite: st.school_website || '',
+      school_website: st.school_website || '',
       avatarUrl: st.photo_url || ''
     },
     kpis: {

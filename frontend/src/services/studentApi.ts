@@ -21,6 +21,9 @@ export interface StudentProfile {
   schoolName: string;
   schoolPhotoUrl?: string | null;
   school_photo_url?: string | null;
+  schoolWebsite?: string | null;
+  school_website?: string | null;
+  website?: string | null;
   parentName: string;
   parentPhone: string;
   parentEmail: string;
@@ -46,6 +49,8 @@ export interface StudentDashboardData {
     schoolName: string;
     schoolPhotoUrl?: string | null;
     school_photo_url?: string | null;
+    schoolWebsite?: string | null;
+    school_website?: string | null;
     avatarUrl?: string;
   };
   kpis: {

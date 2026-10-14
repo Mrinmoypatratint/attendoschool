@@ -2689,7 +2689,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
     // 2. Fetch school info
     if (schoolId) {
       try {
-        const sQ = await pool.query(`SELECT id, name, code FROM schools WHERE id = $1`, [schoolId]);
+        const sQ = await pool.query(`SELECT id, name, code, website FROM schools WHERE id = $1`, [schoolId]);
         if (sQ.rows.length > 0) schoolData = sQ.rows[0];
       } catch {}
     }
@@ -2746,6 +2746,8 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       schoolId: schoolId,
       schoolName: schoolName,
       schoolCode: schoolCode,
+      schoolWebsite: schoolData?.website || '',
+      school_website: schoolData?.website || '',
       employeeId: teacherData.employee_id || 'TINT-TCH-001',
       phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
       address: teacherData.address || 'Kolkata, West Bengal',
