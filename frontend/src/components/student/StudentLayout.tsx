@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { BrandedWelcomeLoader } from '../BrandedWelcomeLoader';
+import { ErrorBoundary } from '../ErrorBoundary';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -32,7 +33,7 @@ interface StudentLayoutProps {
 }
 
 export function StudentLayout({ children }: StudentLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -40,34 +41,59 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     return localStorage.getItem('theme') === 'dark';
   });
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [studentPhoto, setStudentPhoto] = useState<string | null>(
+    (user as any)?.photoUrl || (user as any)?.photo_url || (user as any)?.avatarUrl || null
+  );
   const [schoolPhoto, setSchoolPhoto] = useState<string | null>(
     (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || null
   );
   const [schoolNameState, setSchoolNameState] = useState<string>(
     user?.schoolName || 'AttendoSchool'
   );
-  const [schoolWebsite, setSchoolWebsite] = useState<string>(
-    (user as any)?.schoolWebsite || (user as any)?.school_website || (user as any)?.website || ''
-  );
+  const [schoolWebsite, setSchoolWebsite] = useState<string>(() => {
+    return (
+      (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+      (user as any)?.schoolWebsite ||
+      (user as any)?.school_website ||
+      (user as any)?.website ||
+      'https://davmodeldurgapur.org'
+    );
+  });
 
   useEffect(() => {
     studentApi.getProfile()
       .then((p) => {
+        const photo = p?.photoUrl || p?.photo_url || null;
+        if (photo) {
+          setStudentPhoto(photo);
+          updateUser({ photoUrl: photo, avatarUrl: photo, photo_url: photo });
+        }
         if (p?.schoolPhotoUrl || p?.school_photo_url) {
           setSchoolPhoto(p.schoolPhotoUrl || p.school_photo_url || null);
         }
         if (p?.schoolName) {
           setSchoolNameState(p.schoolName);
         }
-        if (p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website) {
-          setSchoolWebsite(p.schoolWebsite || (p as any)?.school_website || (p as any)?.website);
+        const web = p?.schoolWebsite || (p as any)?.school_website || (p as any)?.website;
+        if (web) {
+          setSchoolWebsite(web);
+          try {
+            localStorage.setItem('attendo_school_website', web);
+          } catch {}
         }
       })
       .catch(() => {});
-
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setSchoolWebsite(e.detail.website);
+        if (e.detail.website) {
+          try {
+            localStorage.setItem('attendo_school_website', e.detail.website);
+          } catch {}
+          if (updateUser) {
+            updateUser({ schoolWebsite: e.detail.website });
+          }
+        }
       }
       if (e.detail?.photo_url) {
         setSchoolPhoto(e.detail.photo_url);
@@ -76,9 +102,42 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         setSchoolNameState(e.detail.name);
       }
     };
+    const handleStorageUpdated = (e: StorageEvent) => {
+      if (e.key === 'attendo_school_website' && e.newValue) {
+        setSchoolWebsite(e.newValue);
+        if (updateUser) {
+          updateUser({ schoolWebsite: e.newValue });
+        }
+      }
+    };
     window.addEventListener('school-profile-updated', handleProfileUpdated);
-    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
-  }, []);
+    window.addEventListener('storage', handleStorageUpdated);
+    return () => {
+      window.removeEventListener('school-profile-updated', handleProfileUpdated);
+      window.removeEventListener('storage', handleStorageUpdated);
+    };
+  }, [updateUser]);
+
+  useEffect(() => {
+    const currentPhoto = (user as any)?.photoUrl || (user as any)?.photo_url || (user as any)?.avatarUrl;
+    if (currentPhoto) {
+      setStudentPhoto(currentPhoto);
+    }
+  }, [user?.photoUrl, user?.photo_url, user?.avatarUrl]);
+
+  useEffect(() => {
+    const handlePhotoUpdated = (e: any) => {
+      const url = e?.detail?.photoUrl;
+      setStudentPhoto(url || null);
+      if (url) {
+        updateUser({ photoUrl: url, avatarUrl: url, photo_url: url });
+      } else {
+        updateUser({ photoUrl: undefined, avatarUrl: undefined, photo_url: undefined });
+      }
+    };
+    window.addEventListener('student-photo-updated', handlePhotoUpdated);
+    return () => window.removeEventListener('student-photo-updated', handlePhotoUpdated);
+  }, [updateUser]);
 
   // Branded Welcome Loader state - displayed only once per session per student
   const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
@@ -186,10 +245,42 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     ? `${user.className} - Section ${user.sectionName}` 
     : 'Class 10 - Section A';
   const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
+  const isDav =
+    String(schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+  const displaySchoolName = isDav ? 'DAV MODEL SCHOOL' : schoolName;
+  const displaySchoolCode = isDav ? '15582' : ((user as any)?.schoolCode || (user as any)?.school_code || '15582');
+  const displaySchoolPhoto = schoolPhoto || (isDav ? '/dav-logo.png' : '/attendo-school-logo.png');
+
+  const normalizeWebsiteUrl = (url?: string | null) => {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const rawWebsite =
+    schoolWebsite ||
+    (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+    (user as any)?.schoolWebsite ||
+    (user as any)?.school_website ||
+    (user as any)?.website ||
+    (isDav ? 'https://davmodeldurgapur.org' : '');
+
+  const targetWebsiteUrl = normalizeWebsiteUrl(rawWebsite);
+
+  const handleOpenSchoolWebsite = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (targetWebsiteUrl) {
+      window.open(targetWebsiteUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const resolvedStudentName = user?.name?.trim() || 'Student';
-  const resolvedSchoolName = user?.schoolName?.trim() || 'School';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+  const resolvedSchoolName = isDav ? 'DAV MODEL SCHOOL' : (user?.schoolName?.trim() || 'School');
+  const resolvedLogoUrl = displaySchoolPhoto;
 
   return (
     <>
@@ -213,41 +304,39 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
-        <div className="student-sidebar-brand">
+        <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
           <div 
             className="student-logo-wrap" 
             onClick={() => { 
               setMobileNavOpen(false); 
-              if (schoolWebsite) {
-                window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
-              } else {
-                nav('/student/dashboard'); 
-              }
+              handleOpenSchoolWebsite(); 
             }} 
-            title={schoolWebsite ? `Visit Official School Website: ${schoolWebsite}` : schoolName}
+            title={targetWebsiteUrl ? `Visit Official School Website: ${targetWebsiteUrl}` : displaySchoolName}
             style={{ 
               cursor: 'pointer', 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 8, 
-              minWidth: 0,
-              padding: '4px 6px',
-              borderRadius: 6,
-              transition: 'background-color 0.15s ease'
+              gap: 12, 
+              minWidth: 0 
             }}
           >
-            {schoolPhoto ? (
-              <img src={schoolPhoto} alt={schoolName} className="student-brand-logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
-            )}
+            <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 12, background: '#ffffff', border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
+              <img
+                src={displaySchoolPhoto}
+                alt={displaySchoolName}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  const fallback = isDav ? '/dav-logo.png' : '/attendo-school-logo.png';
+                  if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                    target.src = fallback;
+                  }
+                }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
-              {schoolWebsite && (
-                <span style={{ fontSize: 10, color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  <Globe size={10} /> Visit Website
-                </span>
-              )}
+              <span className="school-name" style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
+              <span className="school-meta" style={{ fontSize: 12, color: '#4b6b94', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>Code: {displaySchoolCode} · Affiliated</span>
             </div>
           </div>
           <button 
@@ -319,13 +408,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
             {/* Institute Pill */}
             <div 
               className="student-institute-pill" 
-              onClick={() => {
-                if (schoolWebsite) {
-                  window.open(schoolWebsite, '_blank', 'noopener,noreferrer');
-                }
-              }}
-              title={schoolWebsite ? `Official School Website: ${schoolWebsite}` : schoolName}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: schoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={targetWebsiteUrl ? `Official School Website: ${targetWebsiteUrl}` : schoolName}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: targetWebsiteUrl ? 'pointer' : 'default' }}
             >
               {schoolPhoto ? (
                 <img
@@ -374,13 +459,13 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               onClick={() => nav('/student/profile')} 
               title="View My Profile"
             >
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ position: 'absolute' }}>
                   {studentName ? studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
                 </span>
-                {user?.avatarUrl && (
+                {(studentPhoto || user?.avatarUrl || user?.photoUrl || user?.photo_url) && (
                   <img 
-                    src={user.avatarUrl} 
+                    src={studentPhoto || user?.avatarUrl || user?.photoUrl || user?.photo_url} 
                     alt={studentName}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative', zIndex: 1 }}
                     onError={(e) => {
@@ -408,7 +493,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
         {/* Page Content */}
         <main className="student-page-container">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

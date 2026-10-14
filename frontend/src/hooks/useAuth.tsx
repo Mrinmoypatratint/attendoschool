@@ -24,6 +24,8 @@ export type User = {
   photoUrl?: string;
   schoolPhotoUrl?: string;
   school_photo_url?: string;
+  schoolWebsite?: string;
+  school_website?: string;
 };
 
 type AuthContextType = {
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sessionStorage.removeItem(key);
         }
       });
+      sessionStorage.removeItem('cached_student_dashboard');
     } catch {}
     setUser(null);
   }, []);

@@ -31,6 +31,7 @@ export interface StudentProfile {
   gender?: string;
   academicSession: string;
   photoUrl?: string;
+  photo_url?: string;
   pendingPhotoUrl?: string | null;
   hasPendingPhotoApproval?: boolean;
   photoApprovalStatus?: string;

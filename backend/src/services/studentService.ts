@@ -15,6 +15,12 @@ export function toDdMmYyyy(val: any): string {
   if (!val) return '';
   const s = String(val).trim();
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const twoDigitMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+  if (twoDigitMatch) {
+    const yy = parseInt(twoDigitMatch[3], 10);
+    const fullYear = yy <= 40 ? 2000 + yy : 1900 + yy;
+    return `${twoDigitMatch[1].padStart(2, '0')}-${twoDigitMatch[2].padStart(2, '0')}-${fullYear}`;
+  }
   const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (altMatch) {
     return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;

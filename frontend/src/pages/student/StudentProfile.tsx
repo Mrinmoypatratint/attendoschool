@@ -8,22 +8,34 @@ import { formatGender } from '../../utils/gender';
 
 function isValidDdMmYyyy(val: string): boolean {
   if (!val) return false;
-  const match = val.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!match) return false;
-  const day = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const year = parseInt(match[3], 10);
+  const s = val.trim();
+  const match4 = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  const match2 = s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if (!match4 && !match2) return false;
+
+  const day = parseInt(match4 ? match4[1] : match2![1], 10);
+  const month = parseInt(match4 ? match4[2] : match2![2], 10);
+  const rawYear = parseInt(match4 ? match4[3] : match2![3], 10);
+  const year = match2 ? (rawYear <= 40 ? 2000 + rawYear : 1900 + rawYear) : rawYear;
+
+  if (day < 1 || day > 31) return false;
   if (month < 1 || month > 12) return false;
   const currentYear = new Date().getFullYear();
   if (year < 1920 || year > currentYear) return false;
   const daysInMonth = new Date(year, month, 0).getDate();
-  return day >= 1 && day <= daysInMonth;
+  return day <= daysInMonth;
 }
 
 function toDdMmYyyy(val: any): string {
   if (!val) return '';
   const s = String(val).trim();
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const twoDigitMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+  if (twoDigitMatch) {
+    const yy = parseInt(twoDigitMatch[3], 10);
+    const fullYear = yy <= 40 ? 2000 + yy : 1900 + yy;
+    return `${twoDigitMatch[1].padStart(2, '0')}-${twoDigitMatch[2].padStart(2, '0')}-${fullYear}`;
+  }
   const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (altMatch) {
     return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;
@@ -42,8 +54,78 @@ function toDdMmYyyy(val: any): string {
   return s;
 }
 
+/**
+ * Strict DD-MM-YYYY formatter:
+ * - Day cannot exceed 31
+ * - Month cannot exceed 12
+ * - Automatically inserts hyphen separator after day and month
+ * - Handles backspacing cleanly without separator lock
+ */
+function formatDobInput(rawVal: string, prevVal: string): string {
+  const isDeleting = rawVal.length < prevVal.length;
+  const digits = rawVal.replace(/\D/g, '').slice(0, 8);
+  if (!digits) return '';
+
+  let dayPart = '';
+  let monthPart = '';
+  let yearPart = '';
+
+  // 1. DAY FORMATTING
+  if (digits.length === 1) {
+    // If first digit > 3 (4-9), auto-prefix with 0: e.g. typing '5' -> '05-'
+    if (digits[0] > '3' && !isDeleting) {
+      dayPart = `0${digits[0]}`;
+      return `${dayPart}-`;
+    }
+    return digits;
+  }
+
+  // 2 or more day digits: clamp day <= 31
+  const rawDay = parseInt(digits.slice(0, 2), 10);
+  if (rawDay > 31) {
+    dayPart = '31';
+  } else if (digits.slice(0, 2) === '00') {
+    dayPart = '01';
+  } else {
+    dayPart = digits.slice(0, 2);
+  }
+
+  if (digits.length === 2) {
+    return isDeleting ? dayPart : `${dayPart}-`;
+  }
+
+  // 2. MONTH FORMATTING
+  const remAfterDay = digits.slice(2);
+  if (remAfterDay.length === 1) {
+    // If first digit of month > 1 (2-9), auto-prefix with 0: e.g. typing '6' -> '06-'
+    if (remAfterDay[0] > '1' && !isDeleting) {
+      monthPart = `0${remAfterDay[0]}`;
+      return `${dayPart}-${monthPart}-`;
+    }
+    return `${dayPart}-${remAfterDay}`;
+  }
+
+  // 2 or more month digits: clamp month <= 12
+  const rawMonth = parseInt(remAfterDay.slice(0, 2), 10);
+  if (rawMonth > 12) {
+    monthPart = '12';
+  } else if (remAfterDay.slice(0, 2) === '00') {
+    monthPart = '01';
+  } else {
+    monthPart = remAfterDay.slice(0, 2);
+  }
+
+  if (remAfterDay.length === 2) {
+    return isDeleting ? `${dayPart}-${monthPart}` : `${dayPart}-${monthPart}-`;
+  }
+
+  // 3. YEAR FORMATTING (up to 4 digits)
+  yearPart = remAfterDay.slice(2, 6);
+  return `${dayPart}-${monthPart}-${yearPart}`;
+}
+
 export function StudentProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<IStudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,9 +136,9 @@ export function StudentProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submittingPw, setSubmittingPw] = useState(false);
 
@@ -74,12 +156,15 @@ export function StudentProfile() {
         setProfile(res);
         setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
+        if (res?.photoUrl) {
+          updateUser({ photoUrl: res.photoUrl, avatarUrl: res.photoUrl, photo_url: res.photoUrl });
+          window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: res.photoUrl } }));
+        }
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
-
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setProfile((prev: IStudentProfile | null) => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website, website: e.detail.website } : prev);
@@ -87,7 +172,7 @@ export function StudentProfile() {
     };
     window.addEventListener('school-profile-updated', handleProfileUpdated);
     return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
-  }, []);
+  }, [updateUser]);
 
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,15 +182,17 @@ export function StudentProfile() {
     if (cleanDob && !isValidDdMmYyyy(cleanDob)) {
       setDetailsMsg({
         type: 'error',
-        text: 'Invalid Date of Birth. Please enter a valid date strictly in DD-MM-YYYY format (e.g. 15-06-2008).'
+        text: 'Invalid Date of Birth. Please enter a valid date strictly in DD-MM-YYYY format (Day: 01–31, Month: 01–12).'
       });
       return;
     }
 
+    const normalizedDob = toDdMmYyyy(cleanDob);
     setSavingDetails(true);
     try {
-      await studentApi.updateProfile({ gender: editGender, dateOfBirth: cleanDob });
-      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: cleanDob } : null);
+      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob });
+      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob } : null);
+      setEditDob(normalizedDob);
       setDetailsMsg({ type: 'success', text: 'Personal details updated successfully!' });
       setEditingDetails(false);
     } catch (err: any) {
@@ -194,6 +281,8 @@ export function StudentProfile() {
         photoApprovalStatus: 'NONE',
         photoRejectionReason: null
       } : null);
+      updateUser({ photoUrl: undefined, avatarUrl: undefined, photo_url: undefined });
+      window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: '' } }));
       setPhotoMsg({ type: 'success', text: 'Profile picture removed.' });
     } catch (err: any) {
       setPhotoMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to remove picture.' });
@@ -490,18 +579,8 @@ export function StudentProfile() {
                       maxLength={10}
                       value={editDob}
                       onChange={(e) => {
-                        let val = e.target.value.replace(/[^0-9-]/g, '');
-                        const rawDigits = val.replace(/-/g, '');
-                        if (rawDigits.length <= 8 && !val.includes('-')) {
-                          if (rawDigits.length > 4) {
-                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
-                          } else if (rawDigits.length > 2) {
-                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
-                          }
-                        } else if (val.length > 10) {
-                          val = val.slice(0, 10);
-                        }
-                        setEditDob(val);
+                        const formatted = formatDobInput(e.target.value, editDob);
+                        setEditDob(formatted);
                       }}
                       style={{
                         width: '100%',
@@ -699,46 +778,72 @@ export function StudentProfile() {
           <form onSubmit={handlePasswordChange} className="student-form-vertical">
             <label>
               <span>Current Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
                 <input
-                  type={showCurrentPassword ? 'text' : 'password'}
+                  type={showCurrentPw ? 'text' : 'password'}
                   required
                   placeholder="••••••••••••"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
                 />
                 <button
                   type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowCurrentPassword(s => !s)}
-                  className="password-toggle-btn"
-                  title={showCurrentPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowCurrentPw(!showCurrentPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showCurrentPw ? 'Hide password' : 'Show password'}
+                  aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
                 >
-                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </label>
 
             <label>
               <span>New Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
                 <input
-                  type={showNewPassword ? 'text' : 'password'}
+                  type={showNewPw ? 'text' : 'password'}
                   required
                   placeholder="Enter new strong password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
                 />
                 <button
                   type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowNewPassword(s => !s)}
-                  className="password-toggle-btn"
-                  title={showNewPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowNewPw(!showNewPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showNewPw ? 'Hide password' : 'Show password'}
+                  aria-label={showNewPw ? 'Hide password' : 'Show password'}
                 >
-                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
               <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
@@ -748,23 +853,36 @@ export function StudentProfile() {
 
             <label>
               <span>Confirm New Password:</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPw ? 'text' : 'password'}
                   required
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ width: '100%', paddingRight: 40 }}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
                 />
                 <button
                   type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowConfirmPassword(s => !s)}
-                  className="password-toggle-btn"
-                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowConfirmPw(!showConfirmPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showConfirmPw ? 'Hide password' : 'Show password'}
+                  aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
                 >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </label>

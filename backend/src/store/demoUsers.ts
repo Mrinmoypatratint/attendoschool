@@ -114,6 +114,27 @@ const demoUsers: DemoUser[] = [
     password: 'ChangeMe123!',
     admissionNumber: 'ADM-2025-001',
     isActive: true
+  },
+  // DAV MODEL SCHOOL Admin, Faculty & Student
+  {
+    id: 'ad69eda0-45f6-46f0-bd6f-8f78e3892a9a',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'DAV Admin',
+    email: 'admin@dav.com',
+    role: 'SCHOOL_ADMIN',
+    password: 'ChangeMe123!',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'c3737d42-6f11-4f08-9001-8e052722cc54',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Debashis Das',
+    email: 'teacher1@dav.com',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true,
+    photo_url: '/dav-logo.png'
   }
 ];
 
