@@ -117,6 +117,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
@@ -242,9 +243,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
             )}
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
+              <span className="student-sidebar-brand-name">{schoolName}</span>
               {schoolWebsite && (
-                <span style={{ fontSize: 10, color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span className="student-sidebar-website">
                   <Globe size={10} /> Visit Website
                 </span>
               )}
@@ -338,7 +339,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               )}
               <span className="student-inst-name">{schoolName}</span>
               {schoolWebsite ? (
-                <ExternalLink size={12} style={{ color: '#2563eb', opacity: 0.8 }} />
+                <ExternalLink size={12} className="student-inst-ext-icon" />
               ) : (
                 <ChevronDown size={14} className="student-inst-chevron" />
               )}
@@ -374,7 +375,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               onClick={() => nav('/student/profile')} 
               title="View My Profile"
             >
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+              <div className="user-avatar" style={{ color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
                 <span style={{ position: 'absolute' }}>
                   {studentName ? studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
                 </span>

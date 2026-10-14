@@ -326,19 +326,7 @@ export function StudentProfile() {
           )}
 
           {profile?.hasPendingPhotoApproval && (
-            <div style={{
-              margin: '12px 0 4px',
-              background: '#FEF3C7',
-              border: '1px solid #FDE68A',
-              borderRadius: 10,
-              padding: '10px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: 12.5,
-              color: '#92400E',
-              textAlign: 'left'
-            }}>
+            <div className="student-profile-pending-banner">
               {profile?.pendingPhotoUrl && (
                 <img
                   src={profile.pendingPhotoUrl}
@@ -347,10 +335,10 @@ export function StudentProfile() {
                 />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: '#92400E' }}>
+                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={13} /> Photo Pending Approval
                 </div>
-                <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1, color: '#B45309' }}>
+                <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1 }}>
                   Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
                 </div>
               </div>
@@ -358,23 +346,14 @@ export function StudentProfile() {
           )}
 
           {profile?.photoApprovalStatus === 'REJECTED' && (
-            <div style={{
-              margin: '12px 0 4px',
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
-              borderRadius: 10,
-              padding: '10px 12px',
-              fontSize: 12.5,
-              color: '#991B1B',
-              textAlign: 'left'
-            }}>
+            <div className="student-profile-rejected-banner">
               <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                 <AlertCircle size={13} /> Photo Declined by Administrator
               </div>
-              <div style={{ fontSize: 11.5, color: '#7F1D1D' }}>
+              <div style={{ fontSize: 11.5 }}>
                 Reason: "{profile.photoRejectionReason || 'Photo does not meet administrative standards.'}"
               </div>
-              <div style={{ fontSize: 11, color: '#991B1B', marginTop: 3 }}>
+              <div style={{ fontSize: 11, marginTop: 3 }}>
                 Please upload a clear, front-facing passport-style photo.
               </div>
             </div>
@@ -466,10 +445,11 @@ export function StudentProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border-strong, #cbd5e1)',
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">Select Gender</option>
@@ -507,10 +487,11 @@ export function StudentProfile() {
                         width: '100%',
                         padding: '8px 34px 8px 12px',
                         borderRadius: 6,
-                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : '#cbd5e1'}`,
+                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : 'var(--border-strong, #cbd5e1)'}`,
                         fontSize: 13,
                         outline: 'none',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #0f172a)',
                         boxSizing: 'border-box'
                       }}
                     />
