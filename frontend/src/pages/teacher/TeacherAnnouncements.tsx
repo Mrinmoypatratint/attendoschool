@@ -18,6 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export interface AnnouncementItem {
   id: string;
@@ -697,8 +698,9 @@ export function TeacherAnnouncements() {
                   {/* ── Reply Input Box (Hidden for Student profile, available for Admin & Teacher) ── */}
                   {!isStudent && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <textarea
-                        rows={2}
+                      <AutoExpandingTextarea
+                        minHeight={40}
+                        maxHeight={180}
                         value={inputValue}
                         onChange={e =>
                           setReplyInputs(prev => ({
@@ -709,14 +711,13 @@ export function TeacherAnnouncements() {
                         placeholder="Type your response, clarification, or question for administration..."
                         style={{
                           flex: 1,
-                          padding: '10px 12px',
+                          padding: '9px 12px',
                           borderRadius: 8,
                           border: '1px solid #cbd5e1',
                           backgroundColor: '#ffffff',
                           fontSize: 13,
                           lineHeight: 1.45,
                           fontFamily: 'inherit',
-                          resize: 'vertical',
                           outline: 'none',
                           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
                         }}

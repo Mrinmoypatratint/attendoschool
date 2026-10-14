@@ -2049,14 +2049,44 @@ function Layout({children}:{children:React.ReactNode}){
       if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
         api.get('/dashboard/school').then(res => {
           setSchoolInfo(res.data);
-          if (res.data?.school?.name && updateUser && user.schoolName !== res.data.school.name) {
-            updateUser({ schoolName: res.data.school.name });
+          if (res.data?.school && updateUser) {
+            const updates: any = {};
+            if (res.data.school.name && user.schoolName !== res.data.school.name) {
+              updates.schoolName = res.data.school.name;
+            }
+            if (res.data.school.code && (user as any).schoolCode !== res.data.school.code) {
+              updates.schoolCode = res.data.school.code;
+            }
+            if (res.data.school.photo_url && (user as any).schoolPhotoUrl !== res.data.school.photo_url) {
+              updates.schoolPhotoUrl = res.data.school.photo_url;
+              updates.school_photo_url = res.data.school.photo_url;
+            }
+            if (Object.keys(updates).length > 0) {
+              updateUser(updates);
+            }
           }
         }).catch(() => {});
-        if (user.role === 'TEACHER' && !user.schoolName) {
+        if (user.role === 'TEACHER') {
           api.get('/teacher/profile').then(res => {
-            if (res.data?.schoolName && updateUser) {
-              updateUser({ schoolName: res.data.schoolName });
+            const updates: any = {};
+            if (res.data?.schoolName && user.schoolName !== res.data.schoolName) {
+              updates.schoolName = res.data.schoolName;
+            }
+            if (res.data?.schoolWebsite) {
+              updates.schoolWebsite = res.data.schoolWebsite;
+              setSchoolInfo((prev: any) => ({
+                ...prev,
+                school: {
+                  ...(prev?.school || {}),
+                  website: res.data.schoolWebsite
+                }
+              }));
+              try {
+                localStorage.setItem('attendo_school_website', res.data.schoolWebsite);
+              } catch {}
+            }
+            if (Object.keys(updates).length > 0 && updateUser) {
+              updateUser(updates);
             }
           }).catch(() => {});
         }
@@ -2067,6 +2097,14 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     const handleSchoolUpdated = (e: any) => {
       if (e.detail) {
+        if (e.detail.website) {
+          try {
+            localStorage.setItem('attendo_school_website', e.detail.website);
+          } catch {}
+          if (updateUser) {
+            updateUser({ schoolWebsite: e.detail.website });
+          }
+        }
         setSchoolInfo((prev: any) => ({
           ...prev,
           school: {
@@ -2076,9 +2114,27 @@ function Layout({children}:{children:React.ReactNode}){
         }));
       }
     };
+    const handleStorageUpdated = (e: StorageEvent) => {
+      if (e.key === 'attendo_school_website' && e.newValue) {
+        setSchoolInfo((prev: any) => ({
+          ...prev,
+          school: {
+            ...(prev?.school || {}),
+            website: e.newValue
+          }
+        }));
+        if (updateUser) {
+          updateUser({ schoolWebsite: e.newValue });
+        }
+      }
+    };
     window.addEventListener('school-profile-updated', handleSchoolUpdated);
-    return () => window.removeEventListener('school-profile-updated', handleSchoolUpdated);
-  }, []);
+    window.addEventListener('storage', handleStorageUpdated);
+    return () => {
+      window.removeEventListener('school-profile-updated', handleSchoolUpdated);
+      window.removeEventListener('storage', handleStorageUpdated);
+    };
+  }, [updateUser]);
 
   // Ctrl+K keyboard shortcut
   useEffect(() => {
@@ -2330,10 +2386,46 @@ function Layout({children}:{children:React.ReactNode}){
     return true;
   });
 
-  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
-  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
-  const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
-  const currentSchoolWebsite = schoolInfo?.school?.website || (user as any)?.schoolWebsite || (user as any)?.school_website || '';
+  const isDavSchool =
+    String(schoolInfo?.school?.name || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String(schoolInfo?.school?.code || '').includes('15582') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const rawSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || (user as any)?.school_code || (isDavSchool ? '15582' : 'SCH');
+  const currentSchoolCode = (isDavSchool || rawSchoolCode === 'SCH') ? (isDavSchool ? '15582' : rawSchoolCode) : rawSchoolCode;
+
+  const rawSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
+  const currentSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : rawSchoolName;
+
+  const rawPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
+  const currentSchoolPhoto = rawPhoto || (isDavSchool ? '/dav-logo.png' : null);
+
+  const normalizeWebsiteUrl = (url?: string | null) => {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const rawWebsite =
+    schoolInfo?.school?.website ||
+    (user as any)?.schoolWebsite ||
+    (user as any)?.school_website ||
+    (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+    (isDavSchool ? 'https://davmodeldurgapur.org' : '');
+
+  const currentSchoolWebsite = normalizeWebsiteUrl(rawWebsite);
+
+  const handleOpenSchoolWebsite = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (currentSchoolWebsite) {
+      window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2352,38 +2444,42 @@ function Layout({children}:{children:React.ReactNode}){
     <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
-          className="school-crest" 
-          onClick={() => {
-            if (currentSchoolWebsite) {
-              window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
-            }
-          }}
-          title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
-          style={{ 
-            background: '#ffffff', 
-            border: '1px solid var(--border)', 
-            padding: 3, 
-            overflow: 'hidden', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            cursor: currentSchoolWebsite ? 'pointer' : 'default'
+          className="sidebar-brand-interactive"
+          onClick={handleOpenSchoolWebsite}
+          title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName)}
+          style={{
+            cursor: currentSchoolWebsite ? 'pointer' : 'default',
+            userSelect: 'none'
           }}
         >
-          {currentSchoolPhoto ? (
-            <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
-          ) : (
-            <img src="/attendo-school-logo.png" alt={(user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') ? currentSchoolName : 'AttendoSchool'} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
-          )}
-        </div>
-        <div className="school-info">
-          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
-          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
+          <div className="school-crest">
+            <img
+              src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+              alt={user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                  target.src = fallback;
+                }
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+          <div className="school-info">
+            <span className="school-name">{user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}</span>
+            <span className="school-meta">
+              {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
+            </span>
+          </div>
         </div>
         <button
           type="button"
           className="sidebar-mobile-close-btn"
-          onClick={() => setMobileSidebarOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMobileSidebarOpen(false);
+          }}
           aria-label="Close menu"
         >
           <X size={18} />
@@ -2491,7 +2587,7 @@ function Layout({children}:{children:React.ReactNode}){
               title="Toggle menu"
               style={{ border: '1px solid var(--border)', borderRadius: 8 }}
               onClick={() => {
-                if (window.innerWidth <= 1024) {
+                if (window.innerWidth <= 1180) {
                   setMobileSidebarOpen(prev => !prev);
                 } else {
                   setSidebarCollapsed(prev => !prev);
@@ -2503,7 +2599,7 @@ function Layout({children}:{children:React.ReactNode}){
             <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2597,35 +2693,27 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+            >
               <div 
                 className="school-crest" 
-                onClick={() => {
-                  if (currentSchoolWebsite) {
-                    window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
-                  }
-                }}
-                title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
-                style={{ 
-                  width: 34, 
-                  height: 34, 
-                  background: '#ffffff', 
-                  border: '1px solid var(--border)', 
-                  padding: 3, 
-                  borderRadius: 8, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  flexShrink: 0, 
-                  overflow: 'hidden',
-                  cursor: currentSchoolWebsite ? 'pointer' : 'default'
-                }}
+                style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
               >
-                {currentSchoolPhoto ? (
-                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
-                ) : (
-                  <School size={20} color="#1d4ed8" />
-                )}
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2639,7 +2727,7 @@ function Layout({children}:{children:React.ReactNode}){
             <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2845,35 +2933,27 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <div 
+              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+            >
               <div 
                 className="school-crest" 
-                onClick={() => {
-                  if (currentSchoolWebsite) {
-                    window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
-                  }
-                }}
-                title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
-                style={{ 
-                  width: 34, 
-                  height: 34, 
-                  background: "#ffffff", 
-                  border: "1px solid var(--border)", 
-                  padding: 3, 
-                  borderRadius: 8, 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center", 
-                  flexShrink: 0, 
-                  overflow: "hidden",
-                  cursor: currentSchoolWebsite ? 'pointer' : 'default'
-                }}
+                style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}
               >
-                {currentSchoolPhoto ? (
-                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
-                ) : (
-                  <School size={20} color="#1d4ed8" />
-                )}
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -2888,7 +2968,7 @@ function Layout({children}:{children:React.ReactNode}){
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
             <Search size={15}/>
             <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
-            <span className="header-kbd">⌘K</span>
+            <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
@@ -4766,8 +4846,8 @@ function TeacherHome(){
 }
 
 const DEFAULT_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -4867,6 +4947,7 @@ function Students(){
   const [editingStudent,setEditingStudent]=useState<any|null>(null);
   const [classFilter,setClassFilter]=useState('');
   const [sectionFilter,setSectionFilter]=useState('');
+  const [genderFilter,setGenderFilter]=useState('');
   const [open,setOpen]=useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
@@ -5226,7 +5307,7 @@ function Students(){
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
     const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
-    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L-KG' : cls.class_number === 0 ? 'Class U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L KG' : cls.class_number === 0 ? 'Class U KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
     const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
 
     const previewSections: PreviewSectionData[] = [
@@ -5474,12 +5555,19 @@ function Students(){
     const matchesClass = !classFilter || String(r.class_id) === classFilter || String(r.class_number) === classFilter;
     const matchesSection = !sectionFilter || String(r.section_id) === sectionFilter || String(r.section_name) === sectionFilter;
     const matchesSession = studentMatchesSession(r, activeSession);
-    return matchesSearch && matchesClass && matchesSection && matchesSession;
+    const matchesGender = !genderFilter || (
+      genderFilter === 'Male'
+        ? /^m/i.test(String(r.gender || '').trim())
+        : genderFilter === 'Female'
+          ? /^f/i.test(String(r.gender || '').trim())
+          : true
+    );
+    return matchesSearch && matchesClass && matchesSection && matchesSession && matchesGender;
   });
 
   useEffect(() => {
     setDirectoryPage(1);
-  }, [search, classFilter, sectionFilter, activeSession]);
+  }, [search, classFilter, sectionFilter, genderFilter, activeSession]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
   const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
@@ -6203,7 +6291,7 @@ function Students(){
             style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
           >
             <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
           <select 
             value={sectionFilter} 
@@ -6225,12 +6313,22 @@ function Students(){
               return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
             })()}
           </select>
+          <select 
+            value={genderFilter} 
+            onChange={e => setGenderFilter(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+            aria-label="Filter by Gender"
+          >
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
         </div>
-        {(search || classFilter || sectionFilter) && (
+        {(search || classFilter || sectionFilter || genderFilter) && (
           <button 
             type="button" 
             className="btn-secondary" 
-            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); }}
+            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); setGenderFilter(''); }}
             style={{ padding: '6px 10px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
           >
             Clear Filters
@@ -6809,7 +6907,7 @@ function Students(){
             }}
           >
             <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L-KG':c.class_number===0?'Class U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
         <label>Section
@@ -8006,8 +8104,8 @@ function Teachers(){
     if (allocs.length > 0) {
       return allocs.map(a => {
         let clsNum = a.class_number !== undefined && a.class_number !== null ? String(a.class_number).trim() : '';
-        if (clsNum === '-1') clsNum = 'Class-L-KG';
-        else if (clsNum === '0') clsNum = 'Class-U-KG';
+        if (clsNum === '-1') clsNum = 'Class L KG';
+        else if (clsNum === '0') clsNum = 'Class U KG';
         else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
         const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
         const classSec = `${clsNum}${sec}`.trim();
@@ -8018,8 +8116,8 @@ function Teachers(){
     // 2. Check direct class_name / section_name on teacher profile (e.g. from Excel import)
     if (teacherObj?.class_name || teacherObj?.class) {
       let rawCls = String(teacherObj.class_name || teacherObj.class || '').trim();
-      if (rawCls === '-1') rawCls = 'Class-L-KG';
-      else if (rawCls === '0') rawCls = 'Class-U-KG';
+      if (rawCls === '-1') rawCls = 'Class L KG';
+      else if (rawCls === '0') rawCls = 'Class U KG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
       return `${rawCls}${sec}`;
@@ -10022,11 +10120,11 @@ function Teachers(){
 /* ────── Classes ────── */
 function formatClassTitle(classNumber: any, label?: string): string {
   const num = Number(classNumber);
-  if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber))) {
-    return 'Class-L-KG';
+  if (num === -1 || classNumber === '-1' || (typeof classNumber === 'string' && /l.?kg/i.test(classNumber)) || (typeof label === 'string' && /l.?kg/i.test(label))) {
+    return 'Class L KG';
   }
-  if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber))) {
-    return 'Class-U-KG';
+  if (num === 0 || classNumber === '0' || (typeof classNumber === 'string' && /u.?kg/i.test(classNumber)) || (typeof label === 'string' && /u.?kg/i.test(label))) {
+    return 'Class U KG';
   }
   if (!isNaN(num) && num > 0) {
     return `Class ${num}`;
@@ -10037,15 +10135,41 @@ function formatClassTitle(classNumber: any, label?: string): string {
   return classNumber ? `Class ${classNumber}` : 'Class';
 }
 
+function indexToSectionLabel(num: number): string {
+  let label = '';
+  while (num > 0) {
+    const rem = (num - 1) % 26;
+    label = String.fromCharCode(65 + rem) + label;
+    num = Math.floor((num - 1) / 26);
+  }
+  return label;
+}
+
+function sectionLabelToIndex(label: string): number | null {
+  const clean = String(label || '').trim().toUpperCase();
+  if (!clean || !/^[A-Z]+$/.test(clean)) return null;
+  let num = 0;
+  for (let i = 0; i < clean.length; i++) {
+    num = num * 26 + (clean.charCodeAt(i) - 64);
+  }
+  return num;
+}
+
 function Classes(){
   const {user}=useAuth();
   const {dark}=useTheme();
   const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>('CLASSES');
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
-  const [cid,setCid]=useState('');
-  const [sn,setSn]=useState('');
-  const [addingSection,setAddingSection]=useState(false);
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [addingClassId, setAddingClassId] = useState<string | null>(null);
+  const [confirmRemoveSectionModal, setConfirmRemoveSectionModal] = useState<{
+    classItem: any;
+    section: any;
+    classTitle: string;
+    sectionLabel: string;
+  } | null>(null);
+  const [removingSection, setRemovingSection] = useState(false);
 
   // Class Mentors State
   const [mentors, setMentors] = useState<any[]>([]);
@@ -10076,12 +10200,70 @@ function Classes(){
   } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  function getSectionCount(classItem: any): number {
+  function getSectionsForClass(classItem: any): any[] {
     const matching = s.filter(sec => 
       sec.class_id === classItem.id || 
       (classItem.class_number !== undefined && Number(sec.class_number) === Number(classItem.class_number))
     );
-    return matching.length > 0 ? matching.length : (classItem.section_count || 2);
+    return matching.sort((a, b) => {
+      const idxA = sectionLabelToIndex(a.name || a.section_name || '');
+      const idxB = sectionLabelToIndex(b.name || b.section_name || '');
+      if (idxA !== null && idxB !== null) return idxA - idxB;
+      if (idxA !== null) return -1;
+      if (idxB !== null) return 1;
+      return String(a.name || a.section_name || '').localeCompare(String(b.name || b.section_name || ''));
+    });
+  }
+
+  function getSectionCount(classItem: any): number {
+    return getSectionsForClass(classItem).length;
+  }
+
+  function getNextAvailableLabel(classSections: any[]): string {
+    const existingLabels = new Set(
+      classSections.map(sec => String(sec.name || sec.section_name || '').trim().toUpperCase())
+    );
+    let idx = 1;
+    while (existingLabels.has(indexToSectionLabel(idx))) {
+      idx++;
+    }
+    return indexToSectionLabel(idx);
+  }
+
+  function getHighestSequentialSection(classSections: any[]): any | null {
+    if (!classSections || classSections.length === 0) return null;
+    const sorted = [...classSections].sort((a, b) => {
+      const labelA = String(a.name || a.section_name || '').trim().toUpperCase();
+      const labelB = String(b.name || b.section_name || '').trim().toUpperCase();
+      const idxA = sectionLabelToIndex(labelA);
+      const idxB = sectionLabelToIndex(labelB);
+      if (idxA !== null && idxB !== null) return idxB - idxA;
+      if (idxA !== null) return -1;
+      if (idxB !== null) return 1;
+      return labelB.localeCompare(labelA);
+    });
+    return sorted[0] || null;
+  }
+
+  function toggleClassExpanded(classKey: string) {
+    setExpandedClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(classKey)) {
+        next.delete(classKey);
+      } else {
+        next.add(classKey);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllClasses() {
+    if (expandedClasses.size === c.length) {
+      setExpandedClasses(new Set());
+    } else {
+      const allKeys = new Set(c.map(item => String(item.id || item.class_number)));
+      setExpandedClasses(allKeys);
+    }
   }
 
   async function load(){
@@ -10091,9 +10273,6 @@ function Classes(){
       const sectionsData = [...(sr.data || [])].sort((a: any, b: any) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       setC(classesData);
       setS(sectionsData);
-      if (classesData.length > 0 && !cid) {
-        setCid(classesData[0].id);
-      }
     } catch(err) {
       console.error('Failed to load classes and sections:', err);
     }
@@ -10134,44 +10313,88 @@ function Classes(){
     }
   }, [activeTab]);
 
-  async function handleAddSection(e?: React.FormEvent){
-    if (e) e.preventDefault();
-    const targetCid = cid || c[0]?.id;
-    if (!targetCid) {
-      alert('Validation Error: Please select a class first.');
-      return;
-    }
-    const cleanSec = sn.trim().toUpperCase();
-    if (!cleanSec) {
-      alert('Validation Error: Please enter a section name (e.g. C).');
-      return;
-    }
-    setAddingSection(true);
+  async function handleAddSectionForClass(classItem: any){
+    const classKey = String(classItem.id || classItem.class_number);
+    if (addingClassId || removingSection) return;
+
+    const classSections = getSectionsForClass(classItem);
+    const nextLabel = getNextAvailableLabel(classSections);
+    const targetCid = classItem.id || classKey;
+
+    // Immediately keep/make class expanded so admin sees immediate result
+    setExpandedClasses(prev => new Set(prev).add(classKey));
+    setAddingClassId(classKey);
+
     try {
-      const res = await api.post('/sections', { classId: targetCid, name: cleanSec });
+      const res = await api.post('/sections', { classId: targetCid, name: nextLabel });
       const created = res.data;
       setS(prev => {
         const filtered = prev.filter(x => 
           !( (x.class_id === created.class_id || Number(x.class_number) === Number(created.class_number)) && 
-             String(x.name || x.section_name).toUpperCase() === cleanSec )
+             String(x.name || x.section_name).toUpperCase() === nextLabel )
         );
         return [...filtered, created].sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       });
       setC(prev => prev.map(cls => {
-        if (cls.id === targetCid || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
-          return { ...cls, section_count: Math.max((cls.section_count || 2), (cls.section_count || 2) + 1) };
+        if (cls.id === classItem.id || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
+          return { ...cls, section_count: Math.max((cls.section_count || 1), (cls.section_count || 1) + 1) };
         }
         return cls;
       }));
-      setSn('');
       await load();
       if (activeTab === 'MENTORS') {
         await loadMentors();
       }
     } catch(err: any){
-      alert(err?.response?.data?.message || 'Could not add section');
+      alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
-      setAddingSection(false);
+      setAddingClassId(null);
+    }
+  }
+
+  function handleOpenRemoveModal(classItem: any){
+    const classSections = getSectionsForClass(classItem);
+    if (classSections.length <= 1) return; // Follow minimum section count rule (minimum 1 section)
+    const highest = getHighestSequentialSection(classSections);
+    if (!highest) return;
+
+    const classKey = String(classItem.id || classItem.class_number);
+    setExpandedClasses(prev => new Set(prev).add(classKey));
+
+    setConfirmRemoveSectionModal({
+      classItem,
+      section: highest,
+      classTitle: formatClassTitle(classItem.class_number, classItem.label),
+      sectionLabel: String(highest.name || highest.section_name || '').trim().toUpperCase()
+    });
+  }
+
+  async function handleConfirmRemoveSection(){
+    if (!confirmRemoveSectionModal) return;
+    const { classItem, section, classTitle, sectionLabel } = confirmRemoveSectionModal;
+    setRemovingSection(true);
+    try {
+      const res = await api.delete(`/sections/${section.id}`);
+      if (res.data?.success === false) {
+        alert(res.data?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
+        return;
+      }
+      setS(prev => prev.filter(x => x.id !== section.id));
+      setC(prev => prev.map(cls => {
+        if (cls.id === classItem.id || Number(cls.class_number) === Number(classItem.class_number)) {
+          return { ...cls, section_count: Math.max(1, (cls.section_count || 2) - 1) };
+        }
+        return cls;
+      }));
+      setConfirmRemoveSectionModal(null);
+      await load();
+      if (activeTab === 'MENTORS') {
+        await loadMentors();
+      }
+    } catch(err: any){
+      alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
+    } finally {
+      setRemovingSection(false);
     }
   }
 
@@ -10283,34 +10506,254 @@ function Classes(){
     </div>
 
     {activeTab === 'CLASSES' ? (
-      /* TAB 1: Existing Classes & Sections View */
-      <div className="two-col">
-        <div className="panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px', marginBottom: 10 }}>
-            <h3 style={{ margin: 0 }}>All Class</h3>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>No. of sections</span>
+      /* TAB 1: Centered A4-Inspired Classes & Sections Management View */
+      <div className="as-classes-management-container">
+        <div className="as-classes-card">
+          {/* Document Header Bar */}
+          <div className="as-classes-card-header">
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                Classes & Sections Directory
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                Manage school grades, expandable sections, and sequential divisions.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: 9999,
+                  background: dark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(37, 99, 235, 0.08)',
+                  color: dark ? '#818cf8' : '#2563eb',
+                  border: dark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                {c.length} Classes · {s.length} Total Sections
+              </span>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={toggleAllClasses}
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {expandedClasses.size === c.length ? 'Collapse All' : 'Expand All'}
+              </button>
+            </div>
           </div>
-          <div className="list" style={{ marginTop: 0 }}>
-            {c.map(x=><div className="list-row" key={x.id}>
-              <b>{formatClassTitle(x.class_number, x.label)}</b>
-              <span>{getSectionCount(x)} sections</span>
-            </div>)}
-          </div>
-        </div>
 
-        <div className="panel">
-          <h3>Add section</h3>
-          <form className="inline" onSubmit={handleAddSection}>
-            <select value={cid || (c[0]?.id || '')} onChange={e=>setCid(e.target.value)}>
-              {c.map(x=><option key={x.id} value={x.id}>{formatClassTitle(x.class_number, x.label)}</option>)}
-            </select>
-            <input placeholder="Section (e.g. C)" value={sn} onChange={e=>setSn(e.target.value)}/>
-            <button type="submit" disabled={addingSection}>{addingSection ? 'Adding...' : 'Add Section'}</button>
-          </form>
-          <div className="list">
-            {s.map(x=><div className="list-row" key={x.id}>
-              <b>{formatClassTitle(x.class_number, x.label)} — Section {x.name}</b>
-            </div>)}
+          {/* Class rows */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {c.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                <Layers size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                <p>No classes available.</p>
+              </div>
+            ) : (
+              c.map((classItem, idx) => {
+                const classKey = String(classItem.id || classItem.class_number);
+                const classSections = getSectionsForClass(classItem);
+                const isExpanded = expandedClasses.has(classKey);
+                const isAdding = addingClassId === classKey;
+                const isRemoveDisabled = classSections.length <= 1 || Boolean(addingClassId) || removingSection;
+                const nextLabel = getNextAvailableLabel(classSections);
+                const highestSec = getHighestSequentialSection(classSections);
+                const classTitle = formatClassTitle(classItem.class_number, classItem.label);
+
+                return (
+                  <div
+                    key={classItem.id || classKey}
+                    style={{
+                      borderBottom: idx < c.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}
+                  >
+                    {/* Row Header */}
+                    <div
+                      className={`as-class-row-header ${isExpanded ? 'expanded' : ''}`}
+                      onClick={() => toggleClassExpanded(classKey)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleClassExpanded(classKey);
+                        }
+                      }}
+                    >
+                      {/* Left: Chevron + Class Title + Section Count Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            borderRadius: 6,
+                            background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                            color: 'var(--text-secondary)',
+                            transition: 'transform 0.2s ease',
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                          }}
+                        >
+                          <ChevronDown size={15} />
+                        </div>
+
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                          {classTitle}
+                        </span>
+
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                            background: classSections.length > 0
+                              ? (dark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0')
+                              : (dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'),
+                            color: classSections.length > 0
+                              ? (dark ? '#cbd5e1' : '#475569')
+                              : (dark ? '#f87171' : '#dc2626')
+                          }}
+                        >
+                          {classSections.length} {classSections.length === 1 ? 'section' : 'sections'}
+                        </span>
+                      </div>
+
+                      {/* Right: Action Buttons (Add Section & Remove Section) */}
+                      <div
+                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          disabled={Boolean(addingClassId) || removingSection}
+                          onClick={() => handleAddSectionForClass(classItem)}
+                          title={`Add next sequential section (${nextLabel})`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 6
+                          }}
+                        >
+                          {isAdding ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" />
+                              <span>Adding...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={14} />
+                              <span>Add Section</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isRemoveDisabled}
+                          onClick={() => handleOpenRemoveModal(classItem)}
+                          title={
+                            classSections.length === 0
+                              ? 'No sections to remove'
+                              : classSections.length === 1
+                              ? 'Minimum 1 section required per class'
+                              : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
+                          }
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 12px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 6,
+                            cursor: isRemoveDisabled ? 'not-allowed' : 'pointer',
+                            opacity: isRemoveDisabled ? 0.45 : 1,
+                            background: dark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)',
+                            color: dark ? '#f87171' : '#dc2626',
+                            border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          <span>Remove Section</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Collapsible Section List (Visually nested inside parent class) */}
+                    {isExpanded && (
+                      <div className="as-nested-sections-panel">
+                        {classSections.length === 0 ? (
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', padding: '6px 0' }}>
+                            No sections allocated for this class. Click <strong>Add Section</strong> above to create Section A.
+                          </div>
+                        ) : (
+                          <div className="as-sections-grid">
+                            {classSections.map(sec => {
+                              const secLabel = String(sec.name || sec.section_name || 'A').toUpperCase();
+                              // Find assigned mentor if available
+                              const mRec = mentors.find(m => 
+                                m.section_id === sec.id || (m.section_name === secLabel && Number(m.class_number) === Number(classItem.class_number))
+                              );
+                              const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
+                              const teacherName = teacherObj?.name || mRec?.teacher_name;
+
+                              return (
+                                <div
+                                  key={sec.id}
+                                  className="as-section-item-pill"
+                                >
+                                  <span
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: '50%',
+                                      background: dark ? 'rgba(37, 99, 235, 0.2)' : 'rgba(37, 99, 235, 0.1)',
+                                      color: dark ? '#60a5fa' : '#2563eb',
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {secLabel}
+                                  </span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>
+                                      Section {secLabel}
+                                    </span>
+                                    {teacherName ? (
+                                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Class Mentor: ${teacherName}`}>
+                                        Mentor: {teacherName}
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                                        No mentor
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -10600,6 +11043,75 @@ function Classes(){
         </div>
       </div>
     )}
+
+    {/* Remove Section Confirmation Modal */}
+    {confirmRemoveSectionModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
+              <AlertTriangle size={22} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Confirm Section Removal</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                {confirmRemoveSectionModal.classTitle} — Section {confirmRemoveSectionModal.sectionLabel}
+              </p>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.5, marginBottom: 12 }}>
+            Are you sure you want to remove <strong>Section {confirmRemoveSectionModal.sectionLabel}</strong> from <strong>{confirmRemoveSectionModal.classTitle}</strong>?
+          </p>
+
+          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderRadius: 6, background: dark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)', border: dark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.25)', color: dark ? '#fbbf24' : '#b45309', fontSize: 12, marginBottom: 20 }}>
+            <Info size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>
+              If students, attendance records, or timetable schedules depend on this section, deletion will be rejected to protect academic data integrity.
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setConfirmRemoveSectionModal(null)}
+              disabled={removingSection}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmRemoveSection}
+              disabled={removingSection}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: removingSection ? 'not-allowed' : 'pointer',
+                opacity: removingSection ? 0.7 : 1
+              }}
+            >
+              {removingSection ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Removing...</span>
+                </>
+              ) : (
+                <span>Confirm Removal</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </Layout>
 }
 
@@ -10819,6 +11331,7 @@ function Attendance(){
   const [students,setStudents]=useState<any[]>([]);
   const [checked,setChecked]=useState<Record<string,boolean>>({});
   const [search,setSearch]=useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'roll-asc' | 'roll-desc' | 'name-asc' | 'name-desc'>('roll-asc');
   const [busy,setBusy]=useState(false);
   const [done,setDone]=useState(false);
   const [summary,setSummary]=useState<any>(null);
@@ -11273,15 +11786,35 @@ function Attendance(){
   const totalMarked = presentCount + leftEarlyCount + lateCount + absentCount;
   const ratePct = totalMarked > 0 ? Math.round((presentCount / totalMarked) * 100) : 0;
 
-  const filteredStudents = students.filter(s => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
-  });
+  const filteredStudents = useMemo(() => {
+    const list = students.filter(s => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (s.name || '').toLowerCase().includes(q) || String(s.roll_number || s.rollNumber || '').toLowerCase().includes(q);
+    });
+
+    return list.slice().sort((a, b) => {
+      const rollA = a.roll_number ?? a.rollNumber ?? '';
+      const rollB = b.roll_number ?? b.rollNumber ?? '';
+      if (sortOrder === 'roll-asc') {
+        return String(rollA).localeCompare(String(rollB), undefined, { numeric: true, sensitivity: 'base' }) || String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'roll-desc') {
+        return String(rollB).localeCompare(String(rollA), undefined, { numeric: true, sensitivity: 'base' }) || String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      if (sortOrder === 'name-asc') {
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'name-desc') {
+        return String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      return 0;
+    });
+  }, [students, search, sortOrder]);
 
   useEffect(() => {
     setAttendancePage(1);
-  }, [search]);
+  }, [search, sortOrder]);
 
   const totalAttendancePages = Math.max(1, Math.ceil(filteredStudents.length / attendancePageSize));
   const currentAttendancePage = Math.min(Math.max(1, attendancePage), totalAttendancePages);
@@ -11778,8 +12311,8 @@ function Attendance(){
                 })
                 .map(c => {
                   const num = c.class_number ?? c.classNumber;
-                  const label = num === -1 || num === '-1' ? 'Class L-KG' :
-                    num === 0 || num === '0' ? 'Class U-KG' :
+                  const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
+                    num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
                     num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
                     c.name || `Class ${c.id}`;
                   return (
@@ -12041,22 +12574,60 @@ function Attendance(){
           </button>
         </div>
 
-        <div style={{ width: 260 }}>
-          <input
-            type="text"
-            placeholder="Search students in this class..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
             style={{
-              width: '100%',
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               background: 'var(--bg)',
-              color: 'var(--text)',
-              fontSize: 12.5
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '4px 10px'
             }}
-          />
+          >
+            <ArrowUpDown size={14} style={{ color: '#2563eb' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              Sort by:
+            </span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text)',
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+              title="Sort students roster"
+            >
+              <option value="roll-asc">Roll No. (1 → 9)</option>
+              <option value="roll-desc">Roll No. (9 → 1)</option>
+              <option value="name-asc">Student Name (A → Z)</option>
+              <option value="name-desc">Student Name (Z → A)</option>
+            </select>
+          </div>
+
+          <div style={{ width: 240 }}>
+            <input
+              type="text"
+              placeholder="Search students in this class..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                fontSize: 12.5
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -12879,8 +13450,8 @@ function formatAttendanceHistoryDate(raw: any): string {
 
 function formatHistoryClassLabel(classNum: any): string {
   const n = Number(classNum);
-  if (n === -1 || classNum === '-1') return 'Class L-KG';
-  if (n === 0 || classNum === '0') return 'Class U-KG';
+  if (n === -1 || classNum === '-1') return 'Class L KG';
+  if (n === 0 || classNum === '0') return 'Class U KG';
   if (classNum !== undefined && classNum !== null && classNum !== '') return `Class ${classNum}`;
   return 'Class';
 }
@@ -13008,9 +13579,9 @@ function History(){
                 <th>Class & Section</th>
                 <th>Subject</th>
                 <th>Recorded By</th>
+                <th>Total No. of Students</th>
                 <th>Present</th>
                 <th>Left Early</th>
-                <th>Late</th>
                 <th>Absent</th>
                 <th>Turnout Rate</th>
                 <th>Action</th>
@@ -13049,20 +13620,16 @@ function History(){
                           )}
                         </div>
                       </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                          {x.total || 0}
+                        </span>
+                      </td>
                       <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
                       <td>
                         {leftEarlyCount > 0 ? (
                           <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
                             {leftEarlyCount}
-                          </span>
-                        ) : (
-                          <span className="muted">0</span>
-                        )}
-                      </td>
-                      <td>
-                        {lateCount > 0 ? (
-                          <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
-                            {lateCount}
                           </span>
                         ) : (
                           <span className="muted">0</span>
@@ -14658,6 +15225,14 @@ function SchoolProfile() {
       setProfile(res.data);
       setProfilePreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setMsg({ type: 'success', text: 'School profile updated successfully!' });
+      if (res.data?.website) {
+        try {
+          localStorage.setItem('attendo_school_website', res.data.website);
+        } catch {}
+      }
+      if (updateUser && res.data?.website) {
+        updateUser({ schoolWebsite: res.data.website });
+      }
       window.dispatchEvent(new CustomEvent('school-profile-updated', { detail: res.data }));
     } catch (err: any) {
       setProfilePreview(prev => ({

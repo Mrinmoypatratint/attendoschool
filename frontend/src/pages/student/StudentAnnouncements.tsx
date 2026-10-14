@@ -3,6 +3,7 @@ import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, Check
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export function StudentAnnouncements() {
   const { user } = useAuth();
@@ -204,8 +205,9 @@ export function StudentAnnouncements() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <CornerDownRight size={13} color="#2563eb" /> Send reply to school administrator:
                       </div>
-                      <textarea
-                        rows={2}
+                      <AutoExpandingTextarea
+                        minHeight={38}
+                        maxHeight={160}
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder="Type your response or question regarding this notice..."
@@ -214,8 +216,10 @@ export function StudentAnnouncements() {
                           padding: '8px 10px',
                           borderRadius: 5,
                           fontSize: 13,
+                          lineHeight: 1.45,
                           boxSizing: 'border-box',
-                          fontFamily: 'inherit'
+                          fontFamily: 'inherit',
+                          outline: 'none'
                         }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>

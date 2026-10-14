@@ -30,6 +30,10 @@ export function StudentDashboard() {
   const [loading, setLoading] = useState(() => !data);
   const [error, setError] = useState('');
 
+  // Dynamic Mini Calendar state - must be declared at top level to obey Rules of Hooks
+  const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+
   useEffect(() => {
     let isMounted = true;
     studentApi
@@ -88,9 +92,6 @@ export function StudentDashboard() {
   const assignments = data?.pendingAssignments || [];
   const recentAttendance = data?.recentAttendance || [];
 
-  // Dynamic Mini Calendar state
-  const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const today = new Date();
 
   const calYear = calendarViewDate.getFullYear();
