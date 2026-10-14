@@ -62,6 +62,9 @@
   --bg-card: #ffffff;
   --card: var(--bg-card);
   --card-bg: var(--bg-card);
+  --card-subtle: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
   --bg-sidebar: #ffffff;
   --bg-sidebar-hover: #f1f5f9;
   --bg-sidebar-active: #eff6ff;
@@ -102,11 +105,19 @@
 }
 
 /* ─── Enterprise Slate Dark Mode ─── */
-[data-theme="dark"] {
+[data-theme="dark"],
+.dark,
+[data-theme="dark"] :root,
+.dark :root {
   --bg: #0b0f19;
   --bg-card: #131b2e;
   --card: var(--bg-card);
   --card-bg: var(--bg-card);
+  --card-subtle: #0e1626;
+  --surface: #131b2e;
+  --surface-hover: #17223b;
+  --bg-subtle: #0e1626;
+  --bg-hover: #17223b;
   --bg-sidebar: #0e1626;
   --bg-sidebar-hover: #17223b;
   --bg-sidebar-active: #1e293b;

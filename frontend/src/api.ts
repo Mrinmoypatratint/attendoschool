@@ -8,11 +8,8 @@ export const getApiBaseUrl = (): string => {
     if (window.location.hostname === 'attendoschool.optinetinnovations.in') {
       return 'https://attendoschool-backend.onrender.com/api';
     }
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return 'https://attendoschool-backend.onrender.com/api';
-    }
   }
-  return 'http://localhost:5001/api';
+  return 'https://attendoschool-backend.onrender.com/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

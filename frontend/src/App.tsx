@@ -80,6 +80,7 @@ function useTheme(){
   });
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+    document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme',dark?'dark':'light');
   },[dark]);
   useEffect(() => {
@@ -233,7 +234,6 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm.includes('tint') ||
     norm === 'adm-2025-105' ||
     norm === 'adm-2025-001' ||
-    norm === 'student@gmail.com' ||
     norm === 'teacher@tint.edu.in' ||
     norm === 'student@tint.edu.in' ||
     norm === 'admin@tint.edu.in' ||
@@ -329,6 +329,7 @@ function Login() {
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState<string>('');
   const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
+  const [manualSchoolSelect, setManualSchoolSelect] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupNotFound, setLookupNotFound] = useState(false);
   const [email, setEmail] = useState('');
@@ -514,6 +515,7 @@ function Login() {
       setPassword('');
       setInstituteId('');
       setDetectedInstitute(null);
+      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     } else {
@@ -521,6 +523,7 @@ function Login() {
       setPassword('ChangeMe123!');
       setInstituteId('');
       setDetectedInstitute(null);
+      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     }
@@ -604,6 +607,20 @@ function Login() {
           <h1 className="as-simple-brand-title">AttendoSchool</h1>
           <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
+      </div>
+
+      {/* Floating Top-Right Theme Toggle */}
+      <div className="as-simple-top-bar">
+        <button
+          type="button"
+          onClick={toggle}
+          className="as-simple-util-btn"
+          title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          id="login-theme-toggle"
+        >
+          {dark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#93c5fd' }} />}
+          <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
       </div>
 
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
@@ -741,25 +758,76 @@ function Login() {
                     <label className="as-simple-label" style={{ margin: 0 }}>
                       School / Institute <span style={{ color: '#fb923c' }}>*</span>
                     </label>
-                    {selectedInstitute && (
-                      <span style={{ 
-                        fontSize: 10.5, 
-                        color: '#34d399', 
-                        background: 'rgba(16, 185, 129, 0.12)', 
-                        border: '1px solid rgba(16, 185, 129, 0.3)', 
-                        padding: '2px 8px', 
-                        borderRadius: 9999, 
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}>
-                        <Check size={11} strokeWidth={3} /> Auto-detected
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {selectedInstitute && !manualSchoolSelect && (
+                        <span style={{ 
+                          fontSize: 10.5, 
+                          color: '#34d399', 
+                          background: 'rgba(16, 185, 129, 0.12)', 
+                          border: '1px solid rgba(16, 185, 129, 0.3)', 
+                          padding: '2px 8px', 
+                          borderRadius: 9999, 
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}>
+                          <Check size={11} strokeWidth={3} /> Auto-detected
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setManualSchoolSelect(prev => !prev)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#38bdf8',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0
+                        }}
+                      >
+                        {manualSchoolSelect ? 'Auto-detect' : 'Choose School'}
+                      </button>
+                    </div>
                   </div>
 
-                  {selectedInstitute ? (
+                  {manualSchoolSelect ? (
+                    <div style={{ marginBottom: 4 }}>
+                      <select
+                        id="manual-institute-select"
+                        className="as-simple-input"
+                        value={instituteId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInstituteId(val);
+                          const inst = institutes.find(i => i.id === val);
+                          setDetectedInstitute(inst || null);
+                          if (val) setLookupNotFound(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: 13,
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Choose School / Institute --</option>
+                        {institutes.map(inst => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.name} ({inst.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : selectedInstitute ? (
                     <div 
                       id="detected-institute-display"
                       style={{
@@ -797,19 +865,25 @@ function Login() {
                           </span>
                         </div>
                       </div>
-                      <div style={{
-                        padding: '3px 8px',
-                        borderRadius: 6,
-                        background: 'rgba(56, 189, 248, 0.15)',
-                        border: '1px solid rgba(56, 189, 248, 0.25)',
-                        color: '#38bdf8',
-                        fontSize: 10.5,
-                        fontWeight: 700,
-                        letterSpacing: '0.04em',
-                        flexShrink: 0
-                      }}>
-                        {selectedInstitute.code || 'ACTIVE'}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setManualSchoolSelect(true)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          color: '#38bdf8',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          flexShrink: 0,
+                          cursor: 'pointer'
+                        }}
+                        title="Change selected school"
+                      >
+                        {selectedInstitute.code || 'ACTIVE'} ✎
+                      </button>
                     </div>
                   ) : lookupLoading ? (
                     <div 
@@ -834,20 +908,48 @@ function Login() {
                     <div 
                       id="not-found-institute-placeholder"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
                         padding: '11px 14px',
                         borderRadius: 10,
                         background: 'rgba(239, 68, 68, 0.05)',
                         border: '1px dashed rgba(239, 68, 68, 0.35)',
                         color: '#f87171',
-                        fontSize: 12,
-                        minHeight: 46
+                        fontSize: 12
                       }}
                     >
-                      <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                      <span>No school found for this Login ID. Please verify your credentials.</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                        <span>No school auto-detected for this Login ID. Please select your school:</span>
+                      </div>
+                      <select
+                        id="fallback-institute-select"
+                        className="as-simple-input"
+                        value={instituteId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInstituteId(val);
+                          const inst = institutes.find(i => i.id === val);
+                          setDetectedInstitute(inst || null);
+                          if (val) setLookupNotFound(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: 12.5,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Choose Your School / Institute --</option>
+                        {institutes.map(inst => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.name} ({inst.code})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ) : (
                     <div 
@@ -855,7 +957,7 @@ function Login() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
+                        justifyContent: 'space-between',
                         padding: '11px 14px',
                         borderRadius: 10,
                         background: 'rgba(255, 255, 255, 0.02)',
@@ -865,12 +967,31 @@ function Login() {
                         minHeight: 46
                       }}
                     >
-                      <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
-                      <span style={{ opacity: 0.75 }}>
-                        {loginRole === 'STUDENT'
-                          ? 'School will appear automatically when you enter your Admission No.'
-                          : 'School will appear automatically when you enter your Login ID / Email'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
+                        <span style={{ opacity: 0.75 }}>
+                          {loginRole === 'STUDENT'
+                            ? 'School will appear automatically when you enter your Admission No.'
+                            : 'School will appear automatically when you enter your Login ID / Email'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setManualSchoolSelect(true)}
+                        style={{
+                          background: 'rgba(56, 189, 248, 0.1)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          color: '#38bdf8',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Choose
+                      </button>
                     </div>
                   )}
                 </div>

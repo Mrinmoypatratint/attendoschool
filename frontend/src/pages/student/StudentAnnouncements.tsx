@@ -77,17 +77,7 @@ export function StudentAnnouncements() {
 
       {/* Search & In-Page Filter Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          background: 'var(--card-bg, #ffffff)',
-          border: '1px solid var(--border, #cbd5e1)',
-          borderRadius: 8,
-          padding: '6px 12px',
-          flex: 1,
-          maxWidth: 420
-        }}>
+        <div className="student-inpage-search-bar">
           <Search size={15} color="var(--text-muted, #94a3b8)" />
           <input
             type="text"
@@ -183,9 +173,9 @@ export function StudentAnnouncements() {
                         fontSize: 12.5,
                         fontWeight: 600,
                         borderRadius: 6,
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: activeReplyId === a.id ? '#2563eb' : '#ffffff',
-                        color: activeReplyId === a.id ? '#ffffff' : '#1e293b',
+                        border: '1px solid var(--border-strong, #cbd5e1)',
+                        backgroundColor: activeReplyId === a.id ? '#2563eb' : 'var(--card-bg, #ffffff)',
+                        color: activeReplyId === a.id ? '#ffffff' : 'var(--text, #1e293b)',
                         cursor: 'pointer'
                       }}
                     >
@@ -196,13 +186,10 @@ export function StudentAnnouncements() {
 
                   {/* Success Notification */}
                   {replySuccessId === a.id && (
-                    <div style={{
+                    <div className="student-notice-reply-success" style={{
                       marginTop: 10,
                       padding: '8px 12px',
-                      backgroundColor: '#ecfdf5',
-                      border: '1px solid #a7f3d0',
                       borderRadius: 6,
-                      color: '#065f46',
                       fontSize: 12,
                       display: 'flex',
                       alignItems: 'center',
@@ -214,8 +201,8 @@ export function StudentAnnouncements() {
 
                   {/* Inline Interactive Reply Box */}
                   {activeReplyId === a.id && (
-                    <div style={{ marginTop: 12, backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div className="student-notice-reply-box">
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <CornerDownRight size={13} color="#2563eb" /> Send reply to school administrator:
                       </div>
                       <AutoExpandingTextarea
@@ -228,7 +215,6 @@ export function StudentAnnouncements() {
                           width: '100%',
                           padding: '8px 10px',
                           borderRadius: 5,
-                          border: '1px solid #cbd5e1',
                           fontSize: 13,
                           lineHeight: 1.45,
                           boxSizing: 'border-box',
@@ -240,7 +226,8 @@ export function StudentAnnouncements() {
                         <button
                           type="button"
                           onClick={() => setActiveReplyId(null)}
-                          style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
+                          className="student-notice-reply-cancel-btn"
+                          style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>

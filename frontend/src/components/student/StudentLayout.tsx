@@ -176,6 +176,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
@@ -335,8 +336,15 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span className="school-name" style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
-              <span className="school-meta" style={{ fontSize: 12, color: '#4b6b94', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>Code: {displaySchoolCode} · Affiliated</span>
+              <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
+              <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #4b6b94)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
+                Code: {displaySchoolCode} · Affiliated
+                {schoolWebsite && (
+                  <span className="student-sidebar-website" style={{ marginLeft: 6 }}>
+                    <Globe size={10} /> Website
+                  </span>
+                )}
+              </span>
             </div>
           </div>
           <button 
@@ -423,7 +431,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               )}
               <span className="student-inst-name">{schoolName}</span>
               {schoolWebsite ? (
-                <ExternalLink size={12} style={{ color: '#2563eb', opacity: 0.8 }} />
+                <ExternalLink size={12} className="student-inst-ext-icon" />
               ) : (
                 <ChevronDown size={14} className="student-inst-chevron" />
               )}

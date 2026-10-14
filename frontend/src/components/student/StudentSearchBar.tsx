@@ -354,7 +354,7 @@ export function StudentSearchBar() {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          background: 'var(--gray-100, #F1F5F9)',
+          background: 'var(--bg-subtle, #F1F5F9)',
           border: isOpen ? '1px solid #3b82f6' : '1px solid var(--border, #E2E8F0)',
           boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
           borderRadius: 20,
@@ -418,6 +418,7 @@ export function StudentSearchBar() {
       {/* Dropdown Floating Results Menu */}
       {isOpen && (
         <div
+          className="student-search-dropdown"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',
@@ -439,6 +440,7 @@ export function StudentSearchBar() {
         >
           {/* Header indicator */}
           <div
+            className="search-dropdown-header"
             style={{
               padding: '6px 14px 10px',
               borderBottom: '1px solid var(--border, #f1f5f9)',
@@ -470,7 +472,7 @@ export function StudentSearchBar() {
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  background: 'var(--gray-100, #f1f5f9)',
+                  background: 'var(--bg-subtle, #f1f5f9)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

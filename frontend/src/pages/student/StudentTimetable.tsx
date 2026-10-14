@@ -66,19 +66,8 @@ export function StudentTimetable() {
 
       {/* Subject Filter Notification Banner */}
       {subjectParam && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 14px',
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: 8,
-            marginBottom: 16
-          }}
-        >
-          <span style={{ fontSize: 13, color: '#1e40af' }}>
+        <div className="student-timetable-filter-banner">
+          <span style={{ fontSize: 13 }}>
             Showing timetable routine for subject: <b>"{subjectParam}"</b>
           </span>
           <button
@@ -87,7 +76,6 @@ export function StudentTimetable() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#1d4ed8',
               cursor: 'pointer',
               fontSize: 12.5,
               fontWeight: 600
