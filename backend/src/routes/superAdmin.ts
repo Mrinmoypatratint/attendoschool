@@ -202,6 +202,22 @@ export const demoSchools: any[] = [
     end_date: '2027-12-31',
     computed_status: 'ACTIVE',
     created_at: new Date().toISOString()
+  },
+  {
+    id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'DAV MODEL SCHOOL',
+    code: '15582',
+    status: 'ACTIVE',
+    address: 'DAV Campus',
+    city: 'Durgapur',
+    enquiry_number: '180015582',
+    student_count: 500,
+    teacher_count: 35,
+    plan_name: 'Enterprise Tier',
+    end_date: '2028-12-31',
+    computed_status: 'ACTIVE',
+    photo_url: '/dav-logo.png',
+    created_at: new Date().toISOString()
   }
 ];
 export const demoPayments: any[] = [];

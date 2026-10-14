@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './components/Toast';
 import { PopupProvider } from './components/PopupModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import './styles.css';
 import './super-admin/super-admin.css';
@@ -18,14 +19,16 @@ if (typeof window !== 'undefined' && window.location.pathname && window.location
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HashRouter>
-      <AuthProvider>
-        <PopupProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </PopupProvider>
-      </AuthProvider>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <AuthProvider>
+          <PopupProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </PopupProvider>
+        </AuthProvider>
+      </HashRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { BrandedWelcomeLoader } from '../BrandedWelcomeLoader';
+import { ErrorBoundary } from '../ErrorBoundary';
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -30,7 +31,7 @@ interface StudentLayoutProps {
 }
 
 export function StudentLayout({ children }: StudentLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -38,6 +39,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     return localStorage.getItem('theme') === 'dark';
   });
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [studentPhoto, setStudentPhoto] = useState<string | null>(
+    (user as any)?.photoUrl || (user as any)?.photo_url || (user as any)?.avatarUrl || null
+  );
   const [schoolPhoto, setSchoolPhoto] = useState<string | null>(
     (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || null
   );
@@ -48,6 +52,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   useEffect(() => {
     studentApi.getProfile()
       .then((p) => {
+        const photo = p?.photoUrl || p?.photo_url || null;
+        if (photo) {
+          setStudentPhoto(photo);
+          updateUser({ photoUrl: photo, avatarUrl: photo, photo_url: photo });
+        }
         if (p?.schoolPhotoUrl || p?.school_photo_url) {
           setSchoolPhoto(p.schoolPhotoUrl || p.school_photo_url || null);
         }
@@ -56,7 +65,28 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [updateUser]);
+
+  useEffect(() => {
+    const currentPhoto = (user as any)?.photoUrl || (user as any)?.photo_url || (user as any)?.avatarUrl;
+    if (currentPhoto) {
+      setStudentPhoto(currentPhoto);
+    }
+  }, [user?.photoUrl, user?.photo_url, user?.avatarUrl]);
+
+  useEffect(() => {
+    const handlePhotoUpdated = (e: any) => {
+      const url = e?.detail?.photoUrl;
+      setStudentPhoto(url || null);
+      if (url) {
+        updateUser({ photoUrl: url, avatarUrl: url, photo_url: url });
+      } else {
+        updateUser({ photoUrl: undefined, avatarUrl: undefined, photo_url: undefined });
+      }
+    };
+    window.addEventListener('student-photo-updated', handlePhotoUpdated);
+    return () => window.removeEventListener('student-photo-updated', handlePhotoUpdated);
+  }, [updateUser]);
 
   // Branded Welcome Loader state - displayed only once per session per student
   const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
@@ -164,10 +194,18 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     ? `${user.className} - Section ${user.sectionName}` 
     : 'Class 10 - Section A';
   const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
+  const isDav =
+    String(schoolName || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+  const displaySchoolName = isDav ? 'DAV MODEL SCHOOL' : schoolName;
+  const displaySchoolCode = isDav ? '15582' : ((user as any)?.schoolCode || (user as any)?.school_code || '15582');
+  const displaySchoolPhoto = schoolPhoto || (isDav ? '/dav-logo.png' : '/attendo-school-logo.png');
 
   const resolvedStudentName = user?.name?.trim() || 'Student';
-  const resolvedSchoolName = user?.schoolName?.trim() || 'School';
-  const resolvedLogoUrl = (user as any)?.photo_url || (user as any)?.photoUrl || '';
+  const resolvedSchoolName = isDav ? 'DAV MODEL SCHOOL' : (user?.schoolName?.trim() || 'School');
+  const resolvedLogoUrl = displaySchoolPhoto;
 
   return (
     <>
@@ -191,14 +229,26 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
       {/* Left Sidebar */}
       <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
-        <div className="student-sidebar-brand">
-          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            {schoolPhoto ? (
-              <img src={schoolPhoto} alt={schoolName} className="student-brand-logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <img src="/attendo-school-logo.png" alt="AttendoSchool" className="student-brand-logo" />
-            )}
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{schoolName}</span>
+        <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
+          <div className="student-logo-wrap" onClick={() => { setMobileNavOpen(false); nav('/student/dashboard'); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <div className="school-crest" style={{ width: 44, height: 44, borderRadius: 12, background: '#ffffff', border: '1px solid rgba(226, 232, 240, 0.85)', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, flexShrink: 0, overflow: 'hidden' }}>
+              <img
+                src={displaySchoolPhoto}
+                alt={displaySchoolName}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  const fallback = isDav ? '/dav-logo.png' : '/attendo-school-logo.png';
+                  if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                    target.src = fallback;
+                  }
+                }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span className="school-name" style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
+              <span className="school-meta" style={{ fontSize: 12, color: '#4b6b94', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>Code: {displaySchoolCode} · Affiliated</span>
+            </div>
           </div>
           <button 
             type="button" 
@@ -311,13 +361,13 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               onClick={() => nav('/student/profile')} 
               title="View My Profile"
             >
-              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+              <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ position: 'absolute' }}>
                   {studentName ? studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'ST'}
                 </span>
-                {user?.avatarUrl && (
+                {(studentPhoto || user?.avatarUrl || user?.photoUrl || user?.photo_url) && (
                   <img 
-                    src={user.avatarUrl} 
+                    src={studentPhoto || user?.avatarUrl || user?.photoUrl || user?.photo_url} 
                     alt={studentName}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative', zIndex: 1 }}
                     onError={(e) => {
@@ -345,7 +395,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
 
         {/* Page Content */}
         <main className="student-page-container">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

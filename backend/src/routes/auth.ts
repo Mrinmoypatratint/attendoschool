@@ -238,6 +238,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
         // Dedicated student login scoped strictly to the selected school/tenant
         const studentQuery = `
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+                 COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
                  sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
@@ -276,6 +277,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
             return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
           }
 
+          const studentPhoto = stu.photo_url || undefined;
           const userPayload: any = {
             id: stu.id,
             schoolId: stu.school_id || resolvedInstituteId,
@@ -283,6 +285,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
             schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
             schoolPhotoUrl: stu.school_photo_url || undefined,
             school_photo_url: stu.school_photo_url || undefined,
+            photoUrl: studentPhoto,
+            photo_url: studentPhoto,
+            avatarUrl: studentPhoto,
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
@@ -433,7 +438,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
       email: demo.email,
       role: demo.role as Role,
       photo_url: demoPhoto,
-      photoUrl: demoPhoto
+      photoUrl: demoPhoto,
+      avatarUrl: demoPhoto
     };
 
     if (demo.role === 'STUDENT') {

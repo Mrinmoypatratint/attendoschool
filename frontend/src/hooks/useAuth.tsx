@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sessionStorage.removeItem(key);
         }
       });
+      sessionStorage.removeItem('cached_student_dashboard');
     } catch {}
     setUser(null);
   }, []);

@@ -1928,8 +1928,21 @@ function Layout({children}:{children:React.ReactNode}){
       if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
         api.get('/dashboard/school').then(res => {
           setSchoolInfo(res.data);
-          if (res.data?.school?.name && updateUser && user.schoolName !== res.data.school.name) {
-            updateUser({ schoolName: res.data.school.name });
+          if (res.data?.school && updateUser) {
+            const updates: any = {};
+            if (res.data.school.name && user.schoolName !== res.data.school.name) {
+              updates.schoolName = res.data.school.name;
+            }
+            if (res.data.school.code && (user as any).schoolCode !== res.data.school.code) {
+              updates.schoolCode = res.data.school.code;
+            }
+            if (res.data.school.photo_url && (user as any).schoolPhotoUrl !== res.data.school.photo_url) {
+              updates.schoolPhotoUrl = res.data.school.photo_url;
+              updates.school_photo_url = res.data.school.photo_url;
+            }
+            if (Object.keys(updates).length > 0) {
+              updateUser(updates);
+            }
           }
         }).catch(() => {});
         if (user.role === 'TEACHER' && !user.schoolName) {
@@ -2193,9 +2206,23 @@ function Layout({children}:{children:React.ReactNode}){
     return true;
   });
 
-  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
-  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
-  const currentSchoolPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
+  const isDavSchool =
+    String(schoolInfo?.school?.name || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String(schoolInfo?.school?.code || '').includes('15582') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const rawSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || (user as any)?.school_code || (isDavSchool ? '15582' : 'SCH');
+  const currentSchoolCode = (isDavSchool || rawSchoolCode === 'SCH') ? (isDavSchool ? '15582' : rawSchoolCode) : rawSchoolCode;
+
+  const rawSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
+  const currentSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : rawSchoolName;
+
+  const rawPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
+  const currentSchoolPhoto = rawPhoto || (isDavSchool ? '/dav-logo.png' : null);
+
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2213,16 +2240,25 @@ function Layout({children}:{children:React.ReactNode}){
     )}
     <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {currentSchoolPhoto ? (
-            <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
-          ) : (
-            <img src="/attendo-school-logo.png" alt={(user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') ? currentSchoolName : 'AttendoSchool'} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
-          )}
+        <div className="school-crest">
+          <img
+            src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+            alt={user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}
+            onError={(e) => {
+              const target = e.currentTarget;
+              const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+              if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                target.src = fallback;
+              }
+            }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
         <div className="school-info">
-          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
-          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
+          <span className="school-name">{user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}</span>
+          <span className="school-meta">
+            {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
+          </span>
         </div>
         <button
           type="button"
@@ -2442,12 +2478,19 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 3, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                {currentSchoolPhoto ? (
-                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
-                ) : (
-                  <School size={20} color="#1d4ed8" />
-                )}
+              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2668,12 +2711,19 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 3, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-                {currentSchoolPhoto ? (
-                  <img src={currentSchoolPhoto} alt={currentSchoolName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }} />
-                ) : (
-                  <School size={20} color="#1d4ed8" />
-                )}
+              <div className="school-crest" style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
