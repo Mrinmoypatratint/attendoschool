@@ -4,6 +4,7 @@ import {
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download
 } from 'lucide-react';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface AssignmentRecord {
   id: string;
@@ -668,11 +669,12 @@ export function TeacherAssignments() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Description / Instructions</label>
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
                   placeholder="Enter assignment details and instructions..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  minHeight={70}
+                  maxHeight={250}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
                 />
               </div>

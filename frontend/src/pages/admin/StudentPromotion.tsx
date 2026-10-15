@@ -331,11 +331,11 @@ export default function StudentPromotion() {
           flexWrap: 'wrap'
         }}>
           {/* Search Input */}
-          <div style={{ position: 'relative', minWidth: 220, maxWidth: 380, flex: '1 1 auto', height: 38, display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', minWidth: 260, maxWidth: 460, flex: '1 1 auto', height: 38, display: 'flex', alignItems: 'center' }}>
             <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
             <input
               type="text"
-              placeholder="Search name, roll, admission number, class..."
+              placeholder="Search name, roll no, admission no, class..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               style={{

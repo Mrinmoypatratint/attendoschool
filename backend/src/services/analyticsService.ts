@@ -25,10 +25,23 @@ export async function schoolOverview(
   classId?: string,
   sectionId?: string
 ) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const start = from || new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
-  const end = to || todayStr;
-  const fourteenDaysAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+  // Use Indian Standard Time (Asia/Kolkata) as school baseline date
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  const end = (to && to.trim()) ? to.trim() : todayStr;
+
+  // Build strictly continuous 14-day date list ending on `end` (14 days = 14 bars)
+  const [eY, eM, eD] = end.split('-').map(Number);
+  const fourteenDaysList: string[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const dt = new Date(eY, eM - 1, eD - i);
+    const yStr = dt.getFullYear();
+    const mStr = String(dt.getMonth() + 1).padStart(2, '0');
+    const dStr = String(dt.getDate()).padStart(2, '0');
+    fourteenDaysList.push(`${yStr}-${mStr}-${dStr}`);
+  }
+  const fourteenDaysAgo = fourteenDaysList[0];
+  const startDt = new Date(eY, eM - 1, eD - 29);
+  const start = (from && from.trim()) ? from.trim() : `${startDt.getFullYear()}-${String(startDt.getMonth() + 1).padStart(2, '0')}-${String(startDt.getDate()).padStart(2, '0')}`;
   const filterClass = (classId || '').trim();
   const filterSection = (sectionId || '').trim();
 
@@ -92,16 +105,31 @@ export async function schoolOverview(
 
         // 6. 14-Day Attendance Rhythm / Trend (filtered by class & section if provided)
         pool.query(`SELECT 
-          s.attendance_date::text as snapshot_date,
-          COALESCE(SUM(s.present_count), 0)::int as present_records,
-          COALESCE(SUM(s.absent_count), 0)::int as absent_records,
-          COALESCE(SUM(s.total_count), 0)::int as total_students
+          to_char(s.attendance_date, 'YYYY-MM-DD') as snapshot_date,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.present_count > 0 OR s.absent_count > 0 THEN s.present_count
+              ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND (ar.is_present = true OR ar.status = 'PRESENT'))
+            END
+          ), 0)::int as present_records,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.present_count > 0 OR s.absent_count > 0 THEN s.absent_count
+              ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND (ar.is_present = false OR ar.status = 'ABSENT') AND ar.status != 'LEFT_EARLY')
+            END
+          ), 0)::int as absent_records,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.total_count > 0 THEN s.total_count
+              ELSE (s.present_count + s.absent_count)
+            END
+          ), 0)::int as total_students
           FROM attendance_sessions s
-          WHERE s.school_id=$1 AND s.attendance_date >= $2
-            AND ($3 = '' OR s.class_id::text = $3 OR s.class_number::text = $3)
-            AND ($4 = '' OR s.section_id::text = $4 OR LOWER(s.section_name) = LOWER($4))
-          GROUP BY s.attendance_date
-          ORDER BY s.attendance_date ASC`, [schoolId, fourteenDaysAgo, filterClass, filterSection])
+          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3
+            AND ($4 = '' OR s.class_id::text = $4 OR s.class_number::text = $4)
+            AND ($5 = '' OR s.section_id::text = $5 OR LOWER(s.section_name) = LOWER($5))
+          GROUP BY to_char(s.attendance_date, 'YYYY-MM-DD')
+          ORDER BY snapshot_date ASC`, [schoolId, fourteenDaysAgo, end, filterClass, filterSection])
           .catch(() => ({ rows: [] })),
 
         // 7. Class-wise distribution
@@ -199,18 +227,41 @@ export async function schoolOverview(
         absentRecords = sessPeriod.rows[0]?.absent || 0;
       }
 
-      // Format 14-day daily rhythm
-      daily = dailyRes.rows.map(r => {
-        const p = r.present_records || 0;
-        const a = r.absent_records || 0;
-        const tot = p + a;
-        const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+      // Build date lookup map for 14-day daily rhythm from real-time DB rows
+      const dbDateMap = new Map<string, { present: number; absent: number; total: number }>();
+      for (const r of dailyRes.rows) {
+        const dStr = String(r.snapshot_date).slice(0, 10);
+        dbDateMap.set(dStr, {
+          present: Number(r.present_records || 0),
+          absent: Number(r.absent_records || 0),
+          total: Number(r.total_students || 0)
+        });
+      }
+
+      // Format 14-day daily rhythm ensuring all 14 consecutive calendar days are present (14 bars)
+      daily = fourteenDaysList.map(dateKey => {
+        const row = dbDateMap.get(dateKey);
+        if (row && (row.present > 0 || row.absent > 0 || row.total > 0)) {
+          const p = row.present;
+          const a = row.absent;
+          const tot = (p + a) > 0 ? (p + a) : row.total;
+          const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+          return {
+            snapshot_date: dateKey,
+            present_records: p,
+            absent_records: a,
+            total_students: row.total > 0 ? row.total : tot,
+            attendance_percentage: pct,
+            has_attendance: true
+          };
+        }
         return {
-          snapshot_date: r.snapshot_date,
-          present_records: p,
-          absent_records: a,
-          total_students: r.total_students || tot,
-          attendance_percentage: pct
+          snapshot_date: dateKey,
+          present_records: 0,
+          absent_records: 0,
+          total_students: 0,
+          attendance_percentage: 0,
+          has_attendance: false
         };
       });
 
@@ -286,6 +337,32 @@ export async function schoolOverview(
           todayAbsent = memTodayAbs;
         }
       }
+
+      // Reconcile daily 14-day rhythm if in-memory session has recent data
+      daily = daily.map(d => {
+        if (!d.has_attendance) {
+          const memMatch = memSchoolSessions.filter(s => 
+            (s.attendanceDate || s.attendance_date) === d.snapshot_date &&
+            (!filterClass || s.classId === filterClass || String(s.classNumber) === filterClass) &&
+            (!filterSection || s.sectionId === filterSection || s.sectionName === filterSection)
+          );
+          if (memMatch.length > 0) {
+            const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
+            const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
+            const tot = p + a;
+            const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+            return {
+              ...d,
+              present_records: p,
+              absent_records: a,
+              total_students: tot,
+              attendance_percentage: pct,
+              has_attendance: tot > 0
+            };
+          }
+        }
+        return d;
+      });
     }
   } catch {}
 

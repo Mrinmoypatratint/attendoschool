@@ -18,6 +18,7 @@ import {
   Edit2,
   RefreshCw
 } from 'lucide-react';
+import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
 
 type Row = {
   student_id: string;
@@ -69,6 +70,12 @@ export default function AttendanceReports() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(new Date());
+  const tableTopRef = useRef<HTMLDivElement>(null);
 
   // Combined Export Dropdown State
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -163,6 +170,7 @@ export default function AttendanceReports() {
       ]);
       setSummary(s.data);
       setRows(Array.isArray(r.data) ? r.data : []);
+      setLastFetchedAt(new Date());
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Unable to load report');
       setRows([]);
@@ -170,6 +178,10 @@ export default function AttendanceReports() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedClass, selectedSection, selectedSession, from, toDate]);
 
   useEffect(() => {
     load();
@@ -353,6 +365,21 @@ export default function AttendanceReports() {
     }
     return 0;
   }, [totalPresent, totalMarked]);
+
+  // Pagination Calculations
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / (pageSize || 25)));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIdx = filteredRows.length === 0 ? 0 : (safeCurrentPage - 1) * (pageSize || 25);
+  const endIdx = Math.min(startIdx + (pageSize || 25), filteredRows.length);
+  const displayedRows = useMemo(() => {
+    return filteredRows.slice(startIdx, endIdx);
+  }, [filteredRows, startIdx, endIdx]);
+
+  const scrollToTableTop = () => {
+    if (tableTopRef.current) {
+      tableTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Combined Export Handlers
   function getRowsForExport() {
@@ -1015,8 +1042,22 @@ export default function AttendanceReports() {
         </div>
       </div>
 
-      {/* ─── Table ─── */}
-      <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)' }}>
+      {/* ─── Table with Sub-Toolbar & Pagination ─── */}
+      <div ref={tableTopRef} className="directory-box" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <TableSubToolbar
+          onRefresh={load}
+          loading={loading}
+          lastFetchedAt={lastFetchedAt}
+          pageSize={pageSize}
+          onPageSizeChange={sz => { setPageSize(sz); setCurrentPage(1); scrollToTableTop(); }}
+          totalCount={rows.length}
+          filteredCount={filteredRows.length}
+          startIdx={startIdx}
+          endIdx={endIdx}
+          itemLabel="students"
+          pageSizeOptions={[10, 25, 50, 100, 250, 500]}
+        />
+        <div className="table-wrap" style={{ overflowX: 'auto', minHeight: 280 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--table-header, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
@@ -1032,7 +1073,7 @@ export default function AttendanceReports() {
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map((r, idx) => (
+            {displayedRows.map((r, idx) => (
               <tr key={r.student_id || idx} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
                 <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}>{r.student_name}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
@@ -1056,43 +1097,50 @@ export default function AttendanceReports() {
         </table>
       </div>
 
-      {/* ─── Bottom Controls below the Table (Bottom Right Corner) ─── */}
+        {/* Bottom Pagination Footer (Matching User Screenshot 2: Showing X to Y of Z, << First, < Previous, Page [1] of N, Next >, Last >>) */}
+        <TablePaginationFooter
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          onPageChange={p => { setCurrentPage(p); scrollToTableTop(); }}
+          startIdx={startIdx}
+          endIdx={endIdx}
+          filteredCount={filteredRows.length}
+          totalCount={rows.length}
+          itemLabel="students"
+          onScrollToTop={scrollToTableTop}
+        />
+      </div>
+
+      {/* ─── Bottom Action Controls ─── */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        marginTop: 18,
-        flexWrap: 'wrap',
+        marginTop: 16,
         gap: 12
       }}>
-        <div style={{ fontSize: 13, color: '#64748b' }}>
-          Showing <b>{filteredRows.length}</b> of <b>{rows.length}</b> student records
-        </div>
-
         {/* Bottom Right Submit Button: Opens Preview Pop Screen */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => setShowSubmitPop(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              padding: '8px 22px',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              borderRadius: 6,
-              border: 'none',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-            title="Open attendance preview and confirmation screen"
-          >
-            <Check size={15} /> Submit
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => setShowSubmitPop(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            padding: '8px 22px',
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            borderRadius: 6,
+            border: 'none',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+          title="Open attendance preview and confirmation screen"
+        >
+          <Check size={15} /> Submit
+        </button>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}

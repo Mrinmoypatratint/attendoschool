@@ -12,6 +12,7 @@ import {
   Filter
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface AnnouncementItem {
   id: string;
@@ -479,15 +480,16 @@ export default function Communication() {
                 }}
               />
 
-              <textarea
+              <AutoExpandingTextarea
                 placeholder="Broadcast details and instructions..."
                 value={form.message}
                 onChange={e => setForm({ ...form, message: e.target.value })}
+                minHeight={100}
+                maxHeight={360}
                 style={{
                   width: '100%',
                   maxWidth: '100%',
                   minWidth: 0,
-                  minHeight: 110,
                   padding: '10px 12px',
                   borderRadius: 6,
                   border: '1px solid #cbd5e1',

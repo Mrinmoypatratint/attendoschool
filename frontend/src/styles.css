@@ -312,6 +312,10 @@ input, select, textarea {
   font-size: 14px;
 }
 
+textarea {
+  resize: none;
+}
+
 input:focus, select:focus, textarea:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
@@ -13106,6 +13110,46 @@ header {
    School Admin — Centered Classes & Sections Management Interface
    A4-Inspired Document Management Panel
    ========================================================================== */
+
+/* Classes, Sections & Mentors Tab Buttons */
+.as-classes-tab-btn {
+  background: var(--bg-subtle, #f1f5f9) !important;
+  color: var(--text-secondary, #475569) !important;
+  border: 1px solid var(--border, #e2e8f0) !important;
+  border-radius: 8px !important;
+  padding: 8px 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: none !important;
+}
+
+.as-classes-tab-btn:hover {
+  background: var(--border, #e2e8f0) !important;
+  color: var(--text, #0f172a) !important;
+}
+
+.as-classes-tab-btn.active,
+.student-tab-bar .student-tab-btn.active.as-classes-tab-btn,
+[data-theme="dark"] .as-classes-tab-btn.active,
+[data-theme="dark"] .student-tab-bar .student-tab-btn.active.as-classes-tab-btn {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25) !important;
+}
+
+[data-theme="dark"] .as-classes-tab-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .as-classes-tab-btn:hover {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
 
 .as-classes-management-container {
   max-width: 880px;

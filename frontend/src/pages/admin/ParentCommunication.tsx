@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, Send, CheckCircle2, CornerDownRight, Clock, AlertTriangle } from 'lucide-react';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export default function ParentCommunication() {
   const { user } = useAuth();
@@ -180,11 +181,12 @@ export default function ParentCommunication() {
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <CornerDownRight size={13} color="#2563eb" /> Write a response to school administration:
                 </div>
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
                   value={replyText}
                   onChange={e => setReplyText(e.target.value)}
                   placeholder="Type your reply or acknowledgement here..."
+                  minHeight={60}
+                  maxHeight={200}
                   style={{
                     width: '100%',
                     padding: '8px 10px',
