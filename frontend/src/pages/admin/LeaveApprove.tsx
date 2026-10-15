@@ -41,13 +41,14 @@ interface LeaveRequest {
 
 export default function LeaveApprove() {
   const { user } = useAuth();
+  const isTeacher = user?.role === 'TEACHER';
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'SEEN' | 'APPROVED'>('PENDING');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, seen: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // View Details Modal State
@@ -154,10 +155,12 @@ export default function LeaveApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Leave Review
+            {isTeacher ? 'Student Leave Review' : 'Leave Review'}
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
-            Review, evaluate, and approve submitted student leave applications.
+            {isTeacher
+              ? 'Review, evaluate, and approve submitted student leave applications for your mentored class-section.'
+              : 'Review, evaluate, and approve submitted student leave applications.'}
           </p>
         </div>
 
@@ -306,28 +309,30 @@ export default function LeaveApprove() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Filter size={14} style={{ color: '#64748B' }} />
-          <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
-          {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
-            <button
-              key={role}
-              onClick={() => setRoleFilter(role)}
-              style={{
-                background: roleFilter === role ? '#EFF6FF' : 'transparent',
-                color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
-                border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
-                padding: '4px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
-            </button>
-          ))}
-        </div>
+        {!isTeacher && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={14} style={{ color: '#64748B' }} />
+            <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Role:</span>
+            {(['ALL', 'STUDENT', 'TEACHER'] as const).map((role) => (
+              <button
+                key={role}
+                onClick={() => setRoleFilter(role)}
+                style={{
+                  background: roleFilter === role ? '#EFF6FF' : 'transparent',
+                  color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
+                  border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {role === 'ALL' ? 'All Roles' : role === 'STUDENT' ? 'Students' : 'Teachers'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -341,10 +346,14 @@ export default function LeaveApprove() {
         <div className="student-empty-state" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #64748B)', fontSize: 14, background: 'var(--surface, #FFF)', border: '1px dashed var(--border, #E2E8F0)', borderRadius: 12 }}>
           <Calendar size={36} style={{ color: '#CBD5E1', marginBottom: 12 }} />
           <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--text, #334155)' }}>
-            No leave requests found in this category.
+            {isTeacher && counts.all === 0
+              ? 'No student leave applications found for your mentored class-section.'
+              : 'No leave requests found in this category.'}
           </p>
           <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
-            {activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
+            {isTeacher && counts.all === 0
+              ? 'Leave review duties are routed exclusively to assigned class mentors.'
+              : activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
           </p>
         </div>
       ) : (
