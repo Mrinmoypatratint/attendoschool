@@ -290,9 +290,9 @@ export function TeacherProfile() {
             marginBottom: 20,
             padding: '10px 16px',
             borderRadius: 8,
-            backgroundColor: detailsMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: detailsMsg.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca',
-            color: detailsMsg.type === 'success' ? '#065f46' : '#991b1b',
+            backgroundColor: detailsMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            border: detailsMsg.type === 'success' ? '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))' : '1px solid var(--rose-border, rgba(239, 68, 68, 0.3))',
+            color: detailsMsg.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
             fontSize: 13,
             display: 'flex',
             alignItems: 'center',
@@ -452,7 +452,9 @@ export function TeacherProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
                       fontSize: 13,
                       outline: 'none'
                     }}
@@ -469,10 +471,11 @@ export function TeacherProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">Select Gender</option>
@@ -495,7 +498,9 @@ export function TeacherProfile() {
                   style={{
                     padding: '8px 12px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: 13,
                     outline: 'none'
                   }}
@@ -514,7 +519,9 @@ export function TeacherProfile() {
                   style={{
                     padding: '8px 12px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: 13,
                     outline: 'none',
                     fontFamily: 'inherit'
@@ -538,9 +545,9 @@ export function TeacherProfile() {
                     gap: 6,
                     padding: '6px 14px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    color: '#334155',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--card-subtle, #f8fafc)',
+                    color: 'var(--text, #334155)',
                     fontSize: 12.5,
                     fontWeight: 600,
                     cursor: 'pointer'
