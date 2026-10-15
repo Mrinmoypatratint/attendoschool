@@ -759,7 +759,7 @@ function Login() {
                       School / Institute <span style={{ color: '#fb923c' }}>*</span>
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selectedInstitute && !manualSchoolSelect && (
+                      {selectedInstitute && (
                         <span style={{ 
                           fontSize: 10.5, 
                           color: '#34d399', 
@@ -775,22 +775,6 @@ function Login() {
                           <Check size={11} strokeWidth={3} /> Auto-detected
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(prev => !prev)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          padding: 0
-                        }}
-                      >
-                        {manualSchoolSelect ? 'Auto-detect' : 'Choose School'}
-                      </button>
                     </div>
                   </div>
 
@@ -865,11 +849,9 @@ function Login() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
+                      <span
                         style={{
-                          padding: '4px 10px',
+                          padding: '3px 8px',
                           borderRadius: 6,
                           background: 'rgba(56, 189, 248, 0.15)',
                           border: '1px solid rgba(56, 189, 248, 0.25)',
@@ -877,13 +859,11 @@ function Login() {
                           fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: '0.04em',
-                          flexShrink: 0,
-                          cursor: 'pointer'
+                          flexShrink: 0
                         }}
-                        title="Change selected school"
                       >
-                        {selectedInstitute.code || 'ACTIVE'} ✎
-                      </button>
+                        {selectedInstitute.code || 'ACTIVE'}
+                      </span>
                     </div>
                   ) : lookupLoading ? (
                     <div 
@@ -975,23 +955,6 @@ function Login() {
                             : 'School will appear automatically when you enter your Login ID / Email'}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
-                        style={{
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        Choose
-                      </button>
                     </div>
                   )}
                 </div>
@@ -2441,7 +2404,7 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
           className="sidebar-brand-interactive"
@@ -4078,13 +4041,13 @@ function AdminHome(){
                     ></div>
                   </div>
                   <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                    {t.day} {t.isToday ? '(Today)' : ''}
+                    {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
               <span>Institutional Target: <b>90% Minimum</b></span>
               <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
             </div>
@@ -4552,7 +4515,7 @@ function TeacherHome(){
           {/* Today's Teaching Schedule */}
           <div className="td-section-card">
             <div className="td-section-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
                   <CalendarDays size={18} style={{ color: '#2563eb' }} />
                   Today's Teaching Schedule ({r.length})
@@ -6337,32 +6300,6 @@ function Students(){
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load(activeSession)}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch student records from database"
-          id="students-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
@@ -8854,32 +8791,6 @@ function Teachers(){
       />
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load()}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch faculty records from database"
-          id="teachers-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
