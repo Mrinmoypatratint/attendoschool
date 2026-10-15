@@ -6,12 +6,19 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Calendar,
-  Mail,
-  Phone,
   RefreshCw,
   Filter,
   X
 } from 'lucide-react';
+
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.slice(0, 10).split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  return new Date(dateStr);
+}
 
 export default function Analytics() {
   const [data, setData] = useState<any>(null);
@@ -66,7 +73,15 @@ export default function Analytics() {
         }
 
         if (res.data?.daily?.length > 0) {
-          setSelectedDay(res.data.daily[res.data.daily.length - 1]);
+          setSelectedDay((prev: any) => {
+            if (prev) {
+              const match = res.data.daily.find((d: any) => d.snapshot_date === prev.snapshot_date);
+              if (match) return match;
+            }
+            // Prefer the latest day with attendance taken, or default to the last day (today)
+            const latestWithData = [...res.data.daily].reverse().find((d: any) => d.has_attendance);
+            return latestWithData || res.data.daily[res.data.daily.length - 1];
+          });
         } else {
           setSelectedDay(null);
         }
@@ -439,15 +454,21 @@ export default function Analytics() {
                   {data.daily.map((d: any) => {
                     const rate = Number(d.attendance_percentage || 0);
                     const isSelected = selectedDay?.snapshot_date === d.snapshot_date;
-                    const dateLabel = new Date(d.snapshot_date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                    const dateObj = parseLocalDate(d.snapshot_date);
+                    const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                    const tooltipText = `${dateLabel} (${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}): ${
+                      d.has_attendance ? `${rate}% (${d.present_records} Present, ${d.absent_records} Absent)` : 'No attendance recorded (0%)'
+                    }`;
+
                     return (
                       <div 
                         key={d.snapshot_date} 
                         className="chart-column" 
                         onClick={() => setSelectedDay(d)}
+                        title={tooltipText}
                         style={{ cursor: 'pointer' }}
                       >
-                        <div className="bar-track" style={{ border: isSelected ? '2px solid var(--primary-600)' : 'none' }}>
+                        <div className="bar-track" style={{ border: isSelected ? '2px solid var(--primary-600)' : 'none', position: 'relative' }}>
                           <div 
                             className="bar-fill" 
                             style={{ 
@@ -459,7 +480,7 @@ export default function Analytics() {
                                   : 'linear-gradient(180deg, #f59e0b 0%, #d97706 100%)'
                             }}
                           >
-                            <div className="bar-value-tooltip">{rate}%</div>
+                            {rate > 0 && <div className="bar-value-tooltip">{rate}%</div>}
                           </div>
                         </div>
                         <div className="bar-label" style={{ fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary-600)' : 'var(--text-muted)' }}>
@@ -477,7 +498,7 @@ export default function Analytics() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Calendar size={18} style={{ color: 'var(--primary-600)' }} />
                     <span style={{ fontWeight: 600, fontSize: 14 }}>
-                      Date: {new Date(selectedDay.snapshot_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      Date: {parseLocalDate(selectedDay.snapshot_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </span>
                     {(filterClass || filterSection) && (
                       <span style={{ fontSize: 12, background: 'var(--primary-50)', color: 'var(--primary-700)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
@@ -490,10 +511,15 @@ export default function Analytics() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
-                    <div>Present: <strong style={{ color: '#10b981' }}>{selectedDay.present_records}</strong></div>
-                    <div>Absent: <strong style={{ color: '#ef4444' }}>{selectedDay.absent_records}</strong></div>
-                    <div>Attendance Rate: <strong>{selectedDay.attendance_percentage}%</strong></div>
+                  <div style={{ display: 'flex', gap: 20, fontSize: 13, alignItems: 'center' }}>
+                    <div>Present: <strong style={{ color: selectedDay.present_records > 0 ? '#10b981' : 'var(--text-muted)' }}>{selectedDay.present_records}</strong></div>
+                    <div>Absent: <strong style={{ color: selectedDay.absent_records > 0 ? '#ef4444' : 'var(--text-muted)' }}>{selectedDay.absent_records}</strong></div>
+                    <div>Attendance Rate: <strong style={{ color: selectedDay.has_attendance ? 'var(--text)' : 'var(--text-muted)' }}>{selectedDay.attendance_percentage}%</strong></div>
+                    {!selectedDay.has_attendance && (
+                      <span style={{ fontSize: 11.5, background: 'var(--gray-200)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
+                        No attendance recorded
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -595,7 +621,6 @@ export default function Analytics() {
                         <th>Attendance Rate</th>
                         <th>Days Absent</th>
                         <th>Parent</th>
-                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -613,30 +638,6 @@ export default function Analytics() {
                           <td>
                             <div>{st.parent_name}</div>
                             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{st.parent_phone}</div>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              {st.parent_email && (
-                                <a 
-                                  href={`mailto:${st.parent_email}?subject=Attendance Warning for ${st.name}`}
-                                  className="table-action-btn"
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-                                  title="Send Email Alert"
-                                >
-                                  <Mail size={13} /> Email
-                                </a>
-                              )}
-                              {st.parent_phone && st.parent_phone !== '—' && (
-                                <a 
-                                  href={`tel:${st.parent_phone}`}
-                                  className="table-action-btn"
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-                                  title="Call Parent"
-                                >
-                                  <Phone size={13} /> Call
-                                </a>
-                              )}
-                            </div>
                           </td>
                         </tr>
                       ))}

@@ -926,7 +926,7 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.start_time, s.end_time,
+      `SELECT TO_CHAR(s.attendance_date, 'YYYY-MM-DD') AS attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.start_time, s.end_time,
               s.subject_name, u.name AS teacher_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id

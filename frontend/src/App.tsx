@@ -57,6 +57,7 @@ import { formatGender } from './utils/gender';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import { BrandedWelcomeLoader } from './components/BrandedWelcomeLoader';
+import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import {
   UniversalPreviewModal,
   DestructiveConfirmModal,
@@ -759,7 +760,7 @@ function Login() {
                       School / Institute <span style={{ color: '#fb923c' }}>*</span>
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selectedInstitute && !manualSchoolSelect && (
+                      {selectedInstitute && (
                         <span style={{ 
                           fontSize: 10.5, 
                           color: '#34d399', 
@@ -775,22 +776,6 @@ function Login() {
                           <Check size={11} strokeWidth={3} /> Auto-detected
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(prev => !prev)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          padding: 0
-                        }}
-                      >
-                        {manualSchoolSelect ? 'Auto-detect' : 'Choose School'}
-                      </button>
                     </div>
                   </div>
 
@@ -865,11 +850,9 @@ function Login() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
+                      <span
                         style={{
-                          padding: '4px 10px',
+                          padding: '3px 8px',
                           borderRadius: 6,
                           background: 'rgba(56, 189, 248, 0.15)',
                           border: '1px solid rgba(56, 189, 248, 0.25)',
@@ -877,13 +860,11 @@ function Login() {
                           fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: '0.04em',
-                          flexShrink: 0,
-                          cursor: 'pointer'
+                          flexShrink: 0
                         }}
-                        title="Change selected school"
                       >
-                        {selectedInstitute.code || 'ACTIVE'} ✎
-                      </button>
+                        {selectedInstitute.code || 'ACTIVE'}
+                      </span>
                     </div>
                   ) : lookupLoading ? (
                     <div 
@@ -975,23 +956,6 @@ function Login() {
                             : 'School will appear automatically when you enter your Login ID / Email'}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
-                        style={{
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        Choose
-                      </button>
                     </div>
                   )}
                 </div>
@@ -2441,7 +2405,7 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
           className="sidebar-brand-interactive"
@@ -2596,9 +2560,9 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={16} />
             </button>
-            <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
+              <input placeholder="Search schools, students, classes..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
@@ -2724,7 +2688,7 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               </div>
             </div>
-            <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
@@ -2965,7 +2929,7 @@ function Layout({children}:{children:React.ReactNode}){
               </div>
             </div>
           </div>
-          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
+          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15}/>
             <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">CTRL+K</span>
@@ -4079,13 +4043,13 @@ function AdminHome(){
                     ></div>
                   </div>
                   <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                    {t.day} {t.isToday ? '(Today)' : ''}
+                    {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
               <span>Institutional Target: <b>90% Minimum</b></span>
               <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
             </div>
@@ -4553,7 +4517,7 @@ function TeacherHome(){
           {/* Today's Teaching Schedule */}
           <div className="td-section-card">
             <div className="td-section-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
                   <CalendarDays size={18} style={{ color: '#2563eb' }} />
                   Today's Teaching Schedule ({r.length})
@@ -4950,6 +4914,7 @@ function Students(){
   const [sectionFilter,setSectionFilter]=useState('');
   const [genderFilter,setGenderFilter]=useState('');
   const [open,setOpen]=useState(false);
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
   const [importSession,setImportSession]=useState('');
@@ -6279,10 +6244,11 @@ function Students(){
           )}
         </div>
         <input 
-          placeholder="🔍 Search name, roll number, admission number, gender, email..."
+          placeholder="🔍 Search name, roll no, admission no, class, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 180px', minWidth: 160, maxWidth: 280, padding: '7px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 460, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          title="Search by student name, roll number, admission number, class, or email"
         />
         {/* Class and Section grouped together on the same line */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -6338,32 +6304,6 @@ function Students(){
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load(activeSession)}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch student records from database"
-          id="students-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
@@ -7085,13 +7025,25 @@ function Students(){
             {editingStudent
               ? 'Leave blank to retain current password, or set a new password for student portal login:'
               : 'Optional initial login password (leave empty to let student/parent activate via link):'}
-            <input
-              type="password"
-              placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
-              value={f.password || ''}
-              onChange={e => setF({ ...f, password: e.target.value })}
-              style={{ marginTop: 6, width: '100%' }}
-            />
+            <div style={{ position: 'relative', marginTop: 6, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showStudentPassword ? 'text' : 'password'}
+                placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+                value={f.password || ''}
+                onChange={e => setF({ ...f, password: e.target.value })}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowStudentPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showStudentPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -7824,6 +7776,7 @@ function Teachers(){
 
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
+  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [exportOpen,setExportOpen]=useState(false);
   const [addTeacherPreview,setAddTeacherPreview]=useState(false);
@@ -8451,8 +8404,7 @@ function Teachers(){
     return (
       r.name.toLowerCase().includes(q) || 
       r.email.toLowerCase().includes(q) ||
-      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q) ||
-      (r.gender && String(r.gender).toLowerCase().includes(q))
+      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
     );
   });
 
@@ -8848,39 +8800,13 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
-        placeholder="🔍 Search teacher name, email, employee ID, or gender..."
+        placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+        style={{ maxWidth: 460, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
       />
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load()}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch faculty records from database"
-          id="teachers-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
@@ -9452,13 +9378,25 @@ function Teachers(){
           )}
           <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
             {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
-            <input
-              type="password"
-              placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
-              value={f.password||''}
-              onChange={e => setF({...f,password:e.target.value})}
-              style={{ marginTop: 4 }}
-            />
+            <div style={{ position: 'relative', marginTop: 4, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showTeacherPassword ? 'text' : 'password'}
+                placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
+                value={f.password||''}
+                onChange={e => setF({...f,password:e.target.value})}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowTeacherPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showTeacherPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -10304,9 +10242,10 @@ function Classes(){
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     load();
-  },[]);
+    loadMentors();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'MENTORS') {
@@ -10343,9 +10282,7 @@ function Classes(){
         return cls;
       }));
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
@@ -10389,9 +10326,7 @@ function Classes(){
       }));
       setConfirmRemoveSectionModal(null);
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
     } finally {
@@ -10489,18 +10424,30 @@ function Classes(){
     </div>
 
     {/* Tab Navigation */}
-    <div className="student-tab-bar" style={{ marginBottom: 20 }}>
+    <div className="student-tab-bar" style={{ marginBottom: 20, borderBottom: 'none' }}>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
         onClick={() => setActiveTab('CLASSES')}
+        style={{
+          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Classes & Sections ({s.length})
       </button>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
         onClick={() => setActiveTab('MENTORS')}
+        style={{
+          color: activeTab === 'MENTORS' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Class Mentors ({assignedCount}/{combinedMentors.length})
       </button>
@@ -15086,12 +15033,12 @@ function SchoolProfile() {
         currentPassword,
         newPassword
       });
-      setPwMsg({ type: 'success', text: res.data?.message || 'Administrator password updated successfully!' });
+      setPwMsg({ type: 'success', text: res.data?.message || 'School Admin password updated successfully!' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update administrator password' });
+      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update School Admin password' });
     } finally {
       setChangingPw(false);
     }
@@ -15111,13 +15058,32 @@ function SchoolProfile() {
     error: null,
   });
 
+// Helper: Format school phone into 0343-2563500 (11-digit STD code with hyphen after 4 digits, 10-digit adds leading 0)
+function formatSchoolContactNumber(val: string): string {
+  if (!val) return '';
+  let digits = val.replace(/\D/g, '');
+  // If 10 digits without leading 0, prepend 0 to make it 11 digits
+  if (digits.length === 10 && !digits.startsWith('0')) {
+    digits = '0' + digits;
+  }
+  digits = digits.slice(0, 11);
+  if (digits.length > 4) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  if (digits.length === 4 && val.endsWith('-')) {
+    return `${digits}-`;
+  }
+  return digits;
+}
+
   async function load() {
     setLoading(true);
     try {
       const res = await api.get('/school-profile');
       setProfile(res.data);
+      const rawContact = res.data.contact_number || res.data.enquiry_number || res.data.phone || '';
       setForm({
-        contact_number: res.data.contact_number || res.data.enquiry_number || res.data.phone || '',
+        contact_number: formatSchoolContactNumber(rawContact),
         address: res.data.address || '',
         website: res.data.website || ''
       });
@@ -15142,14 +15108,16 @@ function SchoolProfile() {
 
     let cleanContact = (form.contact_number || '').trim();
     if (cleanContact) {
-      // Must contain only numeric digits and standard phone formatting (+, -, spaces, parentheses)
-      const digitsOnly = cleanContact.replace(/\D/g, '');
-      const validPhoneFormat = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{4,18}$/.test(cleanContact);
-      if (!validPhoneFormat || digitsOnly.length < 6 || digitsOnly.length > 15) {
-        setContactNumberError('Please enter a valid numeric contact number (e.g. +91 98765 43210 or 0343-2563500). Plain words and alphabets are not allowed.');
-        setMsg({ type: 'error', text: 'Validation Error: Contact number must be numeric only (e.g. +91 98765 43210 or 0343-2563500). Plain words or alphabets are not allowed.' });
+      let digitsOnly = cleanContact.replace(/\D/g, '');
+      if (digitsOnly.length === 10 && !digitsOnly.startsWith('0')) {
+        digitsOnly = '0' + digitsOnly;
+      }
+      if (digitsOnly.length !== 11) {
+        setContactNumberError('Contact number must be an 11-digit number in 0343-2563500 format.');
+        setMsg({ type: 'error', text: 'Validation Error: Contact number must be an 11-digit number in 0343-2563500 format (e.g. 0343-2563500).' });
         return;
       }
+      cleanContact = `${digitsOnly.slice(0, 4)}-${digitsOnly.slice(4)}`;
     }
 
     const cleanAddress = (form.address || '').trim();
@@ -15449,8 +15417,9 @@ function SchoolProfile() {
                 Enquiry / Emergency Contact Number
                 <input
                   type="tel"
-                  placeholder="+91 98765 43210 or 0343-2563500"
+                  placeholder="0343-2563500"
                   value={form.contact_number}
+                  maxLength={12}
                   onKeyDown={e => {
                     // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
                     if (
@@ -15459,16 +15428,26 @@ function SchoolProfile() {
                     ) {
                       return;
                     }
-                    // Block any key that is not a digit (0-9) or standard phone punctuation (+, -, space, ())
-                    if (!/^[0-9+\-\s()]$/.test(e.key)) {
+                    // Block any key that is not a numeric digit
+                    if (!/^[0-9]$/.test(e.key)) {
                       e.preventDefault();
                     }
                   }}
                   onChange={e => {
-                    // Strictly strip any non-phone character (words, alphabets, symbols)
-                    const sanitized = e.target.value.replace(/[^0-9+\-\s()]/g, '').slice(0, 20);
-                    setForm({ ...form, contact_number: sanitized });
+                    const formatted = formatSchoolContactNumber(e.target.value);
+                    setForm({ ...form, contact_number: formatted });
                     if (contactNumberError) setContactNumberError('');
+                  }}
+                  onBlur={() => {
+                    if (form.contact_number) {
+                      let digits = form.contact_number.replace(/\D/g, '');
+                      if (digits.length === 10 && !digits.startsWith('0')) {
+                        digits = '0' + digits;
+                      }
+                      if (digits.length > 4) {
+                        setForm((prev: any) => ({ ...prev, contact_number: `${digits.slice(0, 4)}-${digits.slice(4, 11)}` }));
+                      }
+                    }
                   }}
                   style={contactNumberError ? { borderColor: '#ef4444' } : {}}
                 />
@@ -15478,7 +15457,7 @@ function SchoolProfile() {
                   </span>
                 )}
                 <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
-                  Only numeric contact numbers allowed (e.g. <code>+91 98765 43210</code> or <code>0343-2563500</code>). Alphabetic words cannot be entered.
+                  Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
                 </span>
               </label>
               <label>
@@ -15504,17 +15483,29 @@ function SchoolProfile() {
               </label>
               <label>
                 Campus Physical Address
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
+                  minHeight={72}
+                  maxHeight={360}
                   minLength={50}
                   maxLength={1000}
-                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000)"
+                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000 words)"
                   value={form.address}
                   onChange={e => {
                     setForm({ ...form, address: e.target.value.slice(0, 1000) });
                     if (addressError) setAddressError('');
                   }}
-                  style={addressError ? { borderColor: '#ef4444' } : {}}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 'var(--radius-sm, 6px)',
+                    border: '1px solid var(--border-strong, #cbd5e1)',
+                    background: 'var(--bg, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 13.5,
+                    lineHeight: 1.5,
+                    resize: 'none',
+                    ...(addressError ? { borderColor: '#ef4444' } : {})
+                  }}
                 />
                 {addressError && (
                   <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
@@ -15616,7 +15607,7 @@ function SchoolProfile() {
             <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
               <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <KeyRound size={15} style={{ color: '#2563eb' }} />
-                Change Administrator Password
+                Change School Admin Password
               </h4>
 
               <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
