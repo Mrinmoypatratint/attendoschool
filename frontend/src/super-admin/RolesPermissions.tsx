@@ -161,7 +161,7 @@ export const RolesPermissions: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: '1px solid var(--border)' }}>
         <button
           className="btn-tab"
           style={{
@@ -170,8 +170,8 @@ export const RolesPermissions: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'matrix' ? '700' : '500',
-            color: activeTab === 'matrix' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'matrix' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'matrix' ? 'var(--sidebar-accent, #3b82f6)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'matrix' ? '2px solid var(--sidebar-accent, #3b82f6)' : '2px solid transparent'
           }}
           onClick={() => setActiveTab('matrix')}
         >
@@ -185,8 +185,8 @@ export const RolesPermissions: React.FC = () => {
             background: 'none',
             cursor: 'pointer',
             fontWeight: activeTab === 'roles' ? '700' : '500',
-            color: activeTab === 'roles' ? '#4f46e5' : '#64748b',
-            borderBottom: activeTab === 'roles' ? '2px solid #4f46e5' : '2px solid transparent'
+            color: activeTab === 'roles' ? 'var(--sidebar-accent, #3b82f6)' : 'var(--text-muted)',
+            borderBottom: activeTab === 'roles' ? '2px solid var(--sidebar-accent, #3b82f6)' : '2px solid transparent'
           }}
           onClick={() => setActiveTab('roles')}
         >
@@ -212,42 +212,42 @@ export const RolesPermissions: React.FC = () => {
                 {matrixRows.map((row, index) => (
                   <tr key={index}>
                     <td>
-                      <div style={{ fontWeight: '600', color: '#0f172a' }}>{row.module}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{row.description}</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text)' }}>{row.module}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{row.description}</div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.superAdmin ? (
                         <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>&mdash;</span>
+                        <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.schoolAdmin ? (
                         <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>&mdash;</span>
+                        <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.teacher ? (
                         <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>&mdash;</span>
+                        <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.student ? (
                         <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>&mdash;</span>
+                        <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {row.parent ? (
                         <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '16px' }}>&check;</span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>&mdash;</span>
+                        <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}>&mdash;</span>
                       )}
                     </td>
                   </tr>
@@ -261,51 +261,51 @@ export const RolesPermissions: React.FC = () => {
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="badge badge-active">SUPER_ADMIN</span>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Platform Super Administrator</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Platform Super Administrator</h3>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Global tenant manager with unrestricted authority across all database shards, payment gateways, and system infrastructure.
             </p>
-            <div style={{ fontSize: '12px', color: '#334155', marginTop: '12px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.5 }}>
               <strong>Scope:</strong> Cross-tenant, Multi-tenant global
             </div>
           </div>
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: '#f5f3ff', color: '#7c3aed' }}>SCHOOL_ADMIN</span>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>School Principal / Admin</h3>
+              <span className="badge" style={{ background: 'rgba(124, 58, 237, 0.12)', color: 'var(--purple-500, #a855f7)', border: '1px solid rgba(124, 58, 237, 0.25)' }}>SCHOOL_ADMIN</span>
+              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>School Principal / Admin</h3>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Institutional tenant administrator with authority over school enrollment, teacher assignments, routines, and fee status.
             </p>
-            <div style={{ fontSize: '12px', color: '#334155', marginTop: '12px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.5 }}>
               <strong>Scope:</strong> Single tenant (scoped to schoolId)
             </div>
           </div>
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: '#eff6ff', color: '#2563eb' }}>TEACHER</span>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Classroom Teacher</h3>
+              <span className="badge" style={{ background: 'rgba(37, 99, 235, 0.12)', color: 'var(--sidebar-accent, #3b82f6)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>TEACHER</span>
+              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Classroom Teacher</h3>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Faculty member authorized to conduct daily roll calls, manage classroom routines, and request attendance corrections.
             </p>
-            <div style={{ fontSize: '12px', color: '#334155', marginTop: '12px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.5 }}>
               <strong>Scope:</strong> Assigned classes & sections
             </div>
           </div>
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="badge" style={{ background: '#f8fafc', color: '#475569' }}>PARENT</span>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Parent</h3>
+              <span className="badge" style={{ background: 'rgba(148, 163, 184, 0.12)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>PARENT</span>
+              <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text)' }}>Parent</h3>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               Parent access to live attendance check-ins, leave applications, daily notifications, and academic notices.
             </p>
-            <div style={{ fontSize: '12px', color: '#334155', marginTop: '12px', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.5 }}>
               <strong>Scope:</strong> Enrolled wards only
             </div>
           </div>

@@ -2133,7 +2133,7 @@ export default function TeacherLeaveApprove() {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#F1F5F9' }}>
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--card-subtle, #F1F5F9)' }}>
               {viewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingDoc.url) ? (
                 <img
                   src={viewingDoc.url}

@@ -940,7 +940,7 @@ export default function SmtpLogs() {
                 <ChevronLeft size={14} /> Previous
               </button>
 
-              <span style={{ padding: '0 8px', fontWeight: 600, color: '#0f172a' }}>
+              <span style={{ padding: '0 8px', fontWeight: 600, color: 'var(--text, #0f172a)' }}>
                 Page {safeCurrentPage} of {totalPages}
               </span>
 
@@ -1046,15 +1046,15 @@ export default function SmtpLogs() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
                 {/* Admission Number */}
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Admission Number</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginTop: 4, fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4, fontFamily: 'monospace' }}>
                     {activeModalItem.admission_number || '—'}
                   </div>
                 </div>
 
                 {/* Status */}
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Current Status</div>
                   <div style={{ marginTop: 4 }}>
                     {renderStatusBadge(activeModalItem.status)}
@@ -1062,17 +1062,17 @@ export default function SmtpLogs() {
                 </div>
 
                 {/* Recipient Name */}
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Recipient Name</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text, #0f172a)', marginTop: 4 }}>
                     {activeModalItem.recipient_name || activeModalItem.student_name || '—'}
                   </div>
                 </div>
 
                 {/* Mail ID */}
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Mail ID</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4, wordBreak: 'break-all' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)', marginTop: 4, wordBreak: 'break-all' }}>
                     {activeModalItem.recipient}
                   </div>
                 </div>
@@ -1081,26 +1081,26 @@ export default function SmtpLogs() {
               {/* Subject */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Subject</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   {activeModalItem.subject || '—'}
                 </div>
               </div>
 
               {/* Delivery Attempts & Timestamps */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
-                <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11, color: '#64748b' }}>Attempts</div>
                   <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>
                     {activeModalItem.attempts} / {activeModalItem.max_attempts}
                   </div>
                 </div>
-                <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11, color: '#64748b' }}>Created At</div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
                     {activeModalItem.created_at ? new Date(activeModalItem.created_at).toLocaleTimeString() : '—'}
                   </div>
                 </div>
-                <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   <div style={{ fontSize: 11, color: '#64748b' }}>Sent At</div>
                   <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
                     {activeModalItem.sent_at ? new Date(activeModalItem.sent_at).toLocaleTimeString() : '—'}

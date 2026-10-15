@@ -1022,7 +1022,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       ⚠️ "To Date" cannot be earlier than "From Date"
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eff6ff', color: '#1e40af', padding: '4px 10px', borderRadius: 6, border: '1px solid #bfdbfe', fontWeight: 600 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(37, 99, 235, 0.25)', fontWeight: 600 }}>
                       📅 <b>Duration:</b> {holidayDurationDays} {holidayDurationDays === 1 ? 'day (Single day)' : 'days (Multi-day holiday)'} ({holidayFromDate} to {holidayToDate})
                     </span>
                   )}

@@ -605,7 +605,7 @@ export default function Analytics() {
                           <td><b>{st.name}</b></td>
                           <td>{st.class_name} - {st.section_name}</td>
                           <td>
-                            <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 14, background: '#fef2f2', padding: '3px 8px', borderRadius: 4 }}>
+                            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 14, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '3px 8px', borderRadius: 4 }}>
                               {st.attendance_rate}%
                             </span>
                           </td>

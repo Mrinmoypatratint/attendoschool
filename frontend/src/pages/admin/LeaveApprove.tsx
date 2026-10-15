@@ -338,9 +338,9 @@ export default function LeaveApprove() {
                 key={role}
                 onClick={() => setRoleFilter(role)}
                 style={{
-                  background: roleFilter === role ? '#EFF6FF' : 'transparent',
-                  color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
-                  border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
+                  background: roleFilter === role ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                  color: roleFilter === role ? '#3b82f6' : 'var(--text-secondary, #64748B)',
+                  border: roleFilter === role ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border, #E2E8F0)',
                   padding: '4px 10px',
                   borderRadius: 6,
                   fontSize: 12,
@@ -412,19 +412,19 @@ export default function LeaveApprove() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {leave.status === 'PENDING' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#92400E', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <Clock size={12} /> Pending Review
                       </span>
                     ) : (isTeacher || leave.status === 'SEEN') ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#EEF2FF', color: '#4338CA', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <Eye size={12} /> Seen
                       </span>
                     ) : leave.status === 'APPROVED' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <CheckCircle2 size={12} /> Approved
                       </span>
                     ) : (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#991B1B', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                         <XCircle size={12} /> Rejected
                       </span>
                     )}
@@ -443,14 +443,14 @@ export default function LeaveApprove() {
                         width: 44,
                         height: 44,
                         borderRadius: '50%',
-                        background: '#EFF6FF',
-                        color: '#2563EB',
+                        background: 'rgba(37, 99, 235, 0.12)',
+                        color: '#3b82f6',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: 16,
                         fontWeight: 700,
-                        border: '1px solid #DBEAFE',
+                        border: '1px solid rgba(59, 130, 246, 0.25)',
                         overflow: 'hidden',
                         flexShrink: 0
                       }}
@@ -474,8 +474,8 @@ export default function LeaveApprove() {
                               fontWeight: 700,
                               padding: '2px 6px',
                               borderRadius: 4,
-                              background: leave.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                              color: leave.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
+                              background: leave.applicant_type === 'STUDENT' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(168, 85, 247, 0.12)',
+                              color: leave.applicant_type === 'STUDENT' ? '#3b82f6' : '#a855f7'
                             }}
                           >
                             {leave.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
@@ -497,7 +497,7 @@ export default function LeaveApprove() {
                   {/* Dates Box */}
                   <div
                     style={{
-                      background: 'var(--gray-50, #F8FAFC)',
+                      background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))',
                       border: '1px solid var(--border, #E2E8F0)',
                       borderRadius: 10,
                       padding: '10px 12px',
@@ -508,9 +508,9 @@ export default function LeaveApprove() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Calendar size={16} style={{ color: '#2563EB' }} />
+                      <Calendar size={16} style={{ color: '#3b82f6' }} />
                       <div>
-                        <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>LEAVE PERIOD</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>LEAVE PERIOD</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
                           {formatDate(leave.start_date)} → {formatDate(leave.end_date)}
                         </div>
@@ -519,8 +519,8 @@ export default function LeaveApprove() {
 
                     <span
                       style={{
-                        background: '#DBEAFE',
-                        color: '#1E40AF',
+                        background: 'rgba(37, 99, 235, 0.12)',
+                        color: '#3b82f6',
                         fontSize: 12,
                         fontWeight: 700,
                         padding: '4px 8px',
@@ -540,7 +540,7 @@ export default function LeaveApprove() {
                       style={{
                         fontSize: 13,
                         color: 'var(--text, #334155)',
-                        background: 'var(--surface, #FFF)',
+                        background: 'var(--card-subtle, rgba(255, 255, 255, 0.03))',
                         padding: '8px 12px',
                         borderRadius: 8,
                         border: '1px solid var(--border, #E2E8F0)',
@@ -553,14 +553,14 @@ export default function LeaveApprove() {
 
                   {/* Approval / Rejection Notes */}
                   {leave.status === 'APPROVED' && (
-                    <div style={{ fontSize: 12, color: '#166534', background: '#F0FDF4', padding: '6px 10px', borderRadius: 6 }}>
+                    <div style={{ fontSize: 12, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 10px', borderRadius: 6 }}>
                       Approved {leave.reviewer_name ? `by ${leave.reviewer_name}` : ''}
                       {leave.review_notes ? ` · Note: ${leave.review_notes}` : ''}
                     </div>
                   )}
 
                   {leave.status === 'REJECTED' && (
-                    <div style={{ fontSize: 12, color: '#991B1B', background: '#FEF2F2', padding: '6px 10px', borderRadius: 6 }}>
+                    <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '6px 10px', borderRadius: 6 }}>
                       Rejected {leave.reviewer_name ? `by ${leave.reviewer_name}` : ''}
                       {leave.review_notes ? ` · Reason: ${leave.review_notes}` : ''}
                     </div>
@@ -628,12 +628,12 @@ export default function LeaveApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
+              background: 'var(--bg-card, #1e293b)',
               borderRadius: 16,
               maxWidth: 520,
               width: '100%',
               padding: 24,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
               border: '1px solid var(--border, #E2E8F0)'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -641,7 +641,7 @@ export default function LeaveApprove() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, borderBottom: '1px solid var(--border, #E2E8F0)', paddingBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FileText size={20} />
                 </div>
                 <div>
@@ -671,20 +671,20 @@ export default function LeaveApprove() {
             </div>
 
             {/* Applicant Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: 'var(--gray-50, #F8FAFC)', borderRadius: 12, marginBottom: 18, border: '1px solid var(--border, #E2E8F0)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))', borderRadius: 12, marginBottom: 18, border: '1px solid var(--border, #E2E8F0)' }}>
               <div
                 style={{
                   width: 48,
                   height: 48,
                   borderRadius: '50%',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#3b82f6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 18,
                   fontWeight: 700,
-                  border: '2px solid #DBEAFE',
+                  border: '2px solid rgba(59, 130, 246, 0.25)',
                   overflow: 'hidden',
                   flexShrink: 0
                 }}
@@ -723,19 +723,19 @@ export default function LeaveApprove() {
               {/* Status Badge */}
               <div>
                 {(viewingLeave.status === 'SEEN' || (isTeacher && viewingLeave.status === 'APPROVED')) ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#EEF2FF', color: '#4338CA', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
                     <Eye size={13} /> Seen
                   </span>
                 ) : viewingLeave.status === 'PENDING' ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEF3C7', color: '#92400E', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
                     <Clock size={13} /> Pending Review
                   </span>
                 ) : viewingLeave.status === 'APPROVED' ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#DCFCE7', color: '#166534', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
                     <CheckCircle2 size={13} /> Approved
                   </span>
                 ) : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#FEE2E2', color: '#991B1B', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
                     <XCircle size={13} /> Rejected
                   </span>
                 )}
@@ -746,7 +746,7 @@ export default function LeaveApprove() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
               <div
                 style={{
-                  background: 'var(--gray-50, #F8FAFC)',
+                  background: 'var(--card-subtle, rgba(255, 255, 255, 0.04))',
                   border: '1px solid var(--border, #E2E8F0)',
                   borderRadius: 10,
                   padding: '12px 14px',
@@ -756,9 +756,9 @@ export default function LeaveApprove() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Calendar size={18} style={{ color: '#2563EB' }} />
+                  <Calendar size={18} style={{ color: '#3b82f6' }} />
                   <div>
-                    <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>REQUESTED DURATION</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>REQUESTED DURATION</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
                       {formatDate(viewingLeave.start_date)} → {formatDate(viewingLeave.end_date)}
                     </div>
@@ -766,8 +766,8 @@ export default function LeaveApprove() {
                 </div>
                 <span
                   style={{
-                    background: '#DBEAFE',
-                    color: '#1E40AF',
+                    background: 'rgba(37, 99, 235, 0.12)',
+                    color: '#3b82f6',
                     fontSize: 12.5,
                     fontWeight: 700,
                     padding: '4px 10px',
@@ -779,14 +779,14 @@ export default function LeaveApprove() {
               </div>
 
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', marginBottom: 6 }}>
                   <FileText size={13} /> REASON FOR LEAVE
                 </div>
                 <div
                   style={{
                     fontSize: 13.5,
                     color: 'var(--text, #334155)',
-                    background: 'var(--surface, #FFF)',
+                    background: 'var(--card-subtle, rgba(255, 255, 255, 0.03))',
                     padding: '12px 14px',
                     borderRadius: 10,
                     border: '1px solid var(--border, #E2E8F0)',

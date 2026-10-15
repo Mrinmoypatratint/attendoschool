@@ -299,9 +299,9 @@ export default function StudentPromotion() {
           marginBottom: 16,
           padding: '12px 16px',
           borderRadius: 8,
-          background: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-          color: '#166534',
+          background: 'rgba(16, 185, 129, 0.12)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
+          color: '#10b981',
           fontSize: 13
         }}>
           {message}
@@ -493,8 +493,8 @@ export default function StudentPromotion() {
                   <td>
                     <span className="roll" style={{
                       fontWeight: 700,
-                      background: '#eff6ff',
-                      color: '#2563eb',
+                      background: 'rgba(37, 99, 235, 0.12)',
+                      color: '#3b82f6',
                       padding: '2px 8px',
                       borderRadius: 4,
                       fontSize: 12
@@ -503,7 +503,7 @@ export default function StudentPromotion() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text, #334155)', background: 'var(--card-subtle, #f1f5f9)', padding: '2px 6px', borderRadius: 4, fontSize: '0.82rem' }}>
                       {x.admission_number || x.admissionNumber || '—'}
                     </span>
                   </td>
