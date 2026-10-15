@@ -3063,7 +3063,7 @@ function Layout({children}:{children:React.ReactNode}){
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#2563eb', background: '#eff6ff', borderColor: '#bfdbfe', cursor: 'pointer' }}
+                            style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
                             title="Review Student Photos"
                             onClick={() => { setTeacherNotifOpen(false); nav('/photo-approvals'); }}
                           >
@@ -3075,7 +3075,7 @@ function Layout({children}:{children:React.ReactNode}){
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0', cursor: 'pointer' }}
+                            style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.25)', cursor: 'pointer' }}
                             title="Mark all pending leave requests as seen"
                             onClick={async () => {
                               try {
@@ -3093,7 +3093,7 @@ function Layout({children}:{children:React.ReactNode}){
                         <button
                           type="button"
                           className="super-notif-readall-btn"
-                          style={{ color: '#2563eb', background: '#eff6ff', borderColor: '#bfdbfe', cursor: 'pointer' }}
+                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
                           title="Review Leave Requests"
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
@@ -3106,7 +3106,7 @@ function Layout({children}:{children:React.ReactNode}){
                     <div className="super-notif-list">
                       {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').length === 0 ? (
                         <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
@@ -3139,10 +3139,10 @@ function Layout({children}:{children:React.ReactNode}){
                                   <img
                                     src={n.avatar}
                                     alt={n.applicantName || 'Student'}
-                                    style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid #bfdbfe', flexShrink: 0 }}
+                                    style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
                                   />
                                 ) : (
-                                  <div className="super-notif-icon-wrap notif-photo" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', color: '#2563eb', flexShrink: 0 }}>
+                                  <div className="super-notif-icon-wrap notif-photo" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', flexShrink: 0 }}>
                                     <Camera size={18} />
                                   </div>
                                 )
@@ -3171,9 +3171,9 @@ function Layout({children}:{children:React.ReactNode}){
                                 type="button"
                                 title="Mark as Seen"
                                 style={{
-                                  background: '#ecfdf5',
-                                  border: '1px solid #a7f3d0',
-                                  color: '#059669',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  color: '#10b981',
                                   borderRadius: 6,
                                   padding: '4px 7px',
                                   fontSize: 11,
@@ -3341,7 +3341,7 @@ function Layout({children}:{children:React.ReactNode}){
                       border: n.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
                       borderRadius: 8,
                       padding: 14,
-                      backgroundColor: n.read_at ? 'var(--surface-subtle, #f8fafc)' : 'var(--surface, #ffffff)',
+                      backgroundColor: n.read_at ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
                       boxShadow: n.read_at ? 'none' : '0 1px 4px rgba(0,0,0,0.06)'
                     }}
                   >
@@ -3352,8 +3352,9 @@ function Layout({children}:{children:React.ReactNode}){
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          backgroundColor: n.priority === 'EMERGENCY' ? '#fee2e2' : n.priority === 'HIGH' ? '#ffedd5' : '#eff6ff',
-                          color: n.priority === 'EMERGENCY' ? '#b91c1c' : n.priority === 'HIGH' ? '#c2410c' : '#1d4ed8'
+                          backgroundColor: n.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : n.priority === 'HIGH' ? 'rgba(249, 115, 22, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                          color: n.priority === 'EMERGENCY' ? '#ef4444' : n.priority === 'HIGH' ? '#f97316' : '#3b82f6',
+                          border: n.priority === 'EMERGENCY' ? '1px solid rgba(239, 68, 68, 0.3)' : n.priority === 'HIGH' ? '1px solid rgba(249, 115, 22, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
                         }}
                       >
                         {n.priority}
@@ -3367,7 +3368,7 @@ function Layout({children}:{children:React.ReactNode}){
                       {n.title}
                     </h4>
 
-                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #334155)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                       {n.message}
                     </p>
 
@@ -4390,12 +4391,12 @@ function TeacherHome(){
       )}
       <Layout>
         {pendingPhotos > 0 && (
-          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "#eff6ff", borderColor: "#bfdbfe", color: "#1e40af" }}>
+          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "rgba(37, 99, 235, 0.12)", borderColor: "rgba(59, 130, 246, 0.25)", color: "var(--text, #1e40af)" }}>
             <div className="alert-left">
-              <Camera size={20} color="#2563eb" />
+              <Camera size={20} color="#3b82f6" />
               <div>
-                <strong style={{ color: "#1e3a8a" }}>Student Profile Photo Submissions Pending Approval</strong>
-                <p style={{ color: "#1e40af", margin: 0, fontSize: 13 }}>
+                <strong style={{ color: "var(--text, #1e3a8a)" }}>Student Profile Photo Submissions Pending Approval</strong>
+                <p style={{ color: "var(--text-secondary, #1e40af)", margin: 0, fontSize: 13 }}>
                   There {pendingPhotos === 1 ? "is 1 photo" : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
                 </p>
               </div>
@@ -6164,18 +6165,18 @@ function Students(){
                 top: 'calc(100% + 6px)',
                 left: 0,
                 zIndex: 1000,
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
+                background: 'var(--bg-card, #ffffff)',
+                border: '1px solid var(--border, #cbd5e1)',
                 borderRadius: 8,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2)',
                 minWidth: 260,
                 overflow: 'hidden',
                 animation: 'fadeIn 0.15s ease-out'
               }}
             >
-              <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span>Switch Academic Session</span>
-                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
+                <span style={{ fontSize: 10, background: 'var(--border, #e2e8f0)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
               </div>
 
               <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
@@ -6190,14 +6191,14 @@ function Students(){
                     width: '100%',
                     padding: '8px 12px',
                     border: 'none',
-                    background: activeSession === 'All Sessions' ? '#eff6ff' : 'transparent',
-                    color: activeSession === 'All Sessions' ? '#1d4ed8' : '#334155',
+                    background: activeSession === 'All Sessions' ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                    color: activeSession === 'All Sessions' ? '#3b82f6' : 'var(--text, #334155)',
                     fontSize: 13,
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontWeight: activeSession === 'All Sessions' ? 600 : 400
                   }}
-                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
                   onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -6227,21 +6228,21 @@ function Students(){
                         width: '100%',
                         padding: '8px 12px',
                         border: 'none',
-                        background: isSelected ? '#eff6ff' : 'transparent',
-                        color: isSelected ? '#1d4ed8' : '#334155',
+                        background: isSelected ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                        color: isSelected ? '#3b82f6' : 'var(--text, #334155)',
                         fontSize: 13,
                         textAlign: 'left',
                         cursor: 'pointer',
                         fontWeight: isSelected ? 600 : 400
                       }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CalendarDays size={14} style={{ opacity: 0.6 }} />
                         <span>{sessName}</span>
                         {sess.is_active && (
-                          <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
+                          <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
                         )}
                       </div>
                       {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
@@ -6251,7 +6252,7 @@ function Students(){
               </div>
 
               {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                <div style={{ borderTop: '1px solid #e2e8f0', padding: '6px 8px', background: '#f8fafc' }}>
+                <div style={{ borderTop: '1px solid var(--border, #e2e8f0)', padding: '6px 8px', background: 'var(--card-subtle, #f8fafc)' }}>
                   <a
                     href="#/academic-years"
                     onClick={() => setSessionPickerOpen(false)}
@@ -6768,21 +6769,21 @@ function Students(){
         {/* Last Registered Student Banner in Red */}
         {lastRegisteredStudentInfo && (
           <div style={{
-            color: '#dc2626',
+            color: '#ef4444',
             fontSize: 12.5,
             fontWeight: 600,
             padding: '8px 12px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 6,
             marginBottom: 12,
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
             <span>
-              Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+              Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
             </span>
           </div>
         )}
@@ -6833,12 +6834,12 @@ function Students(){
         </div>
 
         {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: '#64748b', fontSize: 12 }}>
+        <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
           Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
           <input
             readOnly
             tabIndex={-1}
-            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
             value={[f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : ''), f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')].filter(Boolean).join(' ') || f.name || ''}
             placeholder="Full name will appear here automatically"
           />
@@ -7177,12 +7178,12 @@ function Students(){
           {/* Last Registered Student Banner in Red */}
           {lastRegisteredStudentInfo && (
             <div style={{
-              color: '#dc2626',
+              color: '#ef4444',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: 6,
               marginBottom: 14,
               display: 'flex',
@@ -7190,9 +7191,9 @@ function Students(){
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
               <span>
-                Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
               </span>
             </div>
           )}
@@ -7209,12 +7210,12 @@ function Students(){
                     <div style={{
                       width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 12, fontWeight: 700, flexShrink: 0,
-                      background: done ? '#10b981' : active ? '#2563eb' : '#e2e8f0',
-                      color: (done || active) ? '#fff' : '#94a3b8'
+                      background: done ? '#10b981' : active ? '#2563eb' : 'var(--border, #e2e8f0)',
+                      color: (done || active) ? '#fff' : 'var(--text-secondary, #94a3b8)'
                     }}>{done ? '✓' : step}</div>
-                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : '#94a3b8', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
+                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : 'var(--text-secondary, #94a3b8)', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
                   </div>
-                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : '#e2e8f0', flex: 1, margin: '0 8px' }} />}
+                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : 'var(--border, #e2e8f0)', flex: 1, margin: '0 8px' }} />}
                 </div>
               );
             })}
@@ -7259,7 +7260,7 @@ function Students(){
           {/* ── STEP 2: Upload File ── */}
           {importStep === 2 && (
             <div style={{ maxWidth: 760, width: '100%', margin: '16px auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 14, padding: '12px 18px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13.5, color: '#166534' }}>
+              <div style={{ marginBottom: 14, padding: '12px 18px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13.5, color: '#10b981' }}>
                 📋 Session: <b>{importSession}</b>
               </div>
               <label className="dropzone" style={{ padding: '36px 24px' }}>
@@ -7285,22 +7286,22 @@ function Students(){
           {/* ── STEP 3: Preview & Confirm ── */}
           {importStep === 3 && previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: 10, padding: '10px 16px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ marginBottom: 10, padding: '10px 16px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13, color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <span>✅ <b>{previewRows.length} students</b> parsed · Session: <b>{importSession}</b> · <b>{studentValidCount} valid</b></span>
-                <span style={{ fontSize: 12, color: '#15803d' }}>Review parsed records below before finalizing import</span>
+                <span style={{ fontSize: 12, color: '#10b981' }}>Review parsed records below before finalizing import</span>
               </div>
 
               {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Re-upload ── */}
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {studentErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -7309,9 +7310,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
                       >
@@ -7325,9 +7326,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
                       >
@@ -7341,9 +7342,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
                       >
@@ -7485,7 +7486,7 @@ function Students(){
                             <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
                               <span className="roll">{r.rollNumber}</span>
                             </td>
-                            <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                            <td><span style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
                             <td>
@@ -7497,9 +7498,9 @@ function Students(){
                                   borderRadius: 999,
                                   fontSize: 11.5,
                                   fontWeight: 500,
-                                  background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                                  color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                                  background: formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.12)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.12)' : 'var(--card-subtle)',
+                                  color: formatGender(r.gender) === 'Female' ? '#ec4899' : formatGender(r.gender) === 'Male' ? '#38bdf8' : 'var(--text-secondary, #64748b)',
+                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.25)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.25)' : 'var(--border)'}`
                                 }}>
                                   {formatGender(r.gender)}
                                 </span>
@@ -9226,21 +9227,21 @@ function Teachers(){
         {/* Last Registered Teacher Banner in Red */}
         {lastRegisteredTeacherInfo && (
           <div style={{
-            color: '#dc2626',
+            color: '#ef4444',
             fontSize: 12.5,
             fontWeight: 600,
             padding: '8px 12px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 6,
             marginBottom: 12,
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
             <span>
-              Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+              Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
             </span>
           </div>
         )}
@@ -9550,12 +9551,12 @@ function Teachers(){
           {/* Last Registered Teacher Banner in Red */}
           {lastRegisteredTeacherInfo && (
             <div style={{
-              color: '#dc2626',
+              color: '#ef4444',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: 6,
               marginBottom: 14,
               display: 'flex',
@@ -9563,9 +9564,9 @@ function Teachers(){
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
               <span>
-                Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
               </span>
             </div>
           )}
@@ -9588,8 +9589,8 @@ function Teachers(){
                 <input 
                   type="file" 
                   accept=".xlsx, .xls, .csv" 
-                  onChange={handleFile}
-                  style={{ display: 'none' }}
+                  onChange={handleFile} 
+                  style={{ display: 'none' }} 
                 />
                 <div className="dropzone-icon">
                   <UploadCloud size={28} />
@@ -9621,11 +9622,11 @@ function Teachers(){
               <div style={{
                 marginBottom: 10,
                 padding: '10px 16px',
-                background: teacherErrorCount > 0 ? '#fffbeb' : '#f0fdf4',
+                background: teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
                 borderRadius: 8,
-                border: `1px solid ${teacherErrorCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                border: `1px solid ${teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
                 fontSize: 13,
-                color: teacherErrorCount > 0 ? '#92400e' : '#166534',
+                color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -9634,10 +9635,10 @@ function Teachers(){
                 <span>
                   {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
                   {teacherErrorCount > 0 && (
-                    <> · <b style={{ color: '#dc2626' }}>{teacherErrorCount} with validation errors</b></>
+                    <> · <b style={{ color: '#ef4444' }}>{teacherErrorCount} with validation errors</b></>
                   )}
                 </span>
-                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#b45309' : '#15803d' }}>
+                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981' }}>
                   {teacherErrorCount > 0
                     ? 'Review and resolve highlighted errors below before importing'
                     : 'All records valid and ready for database import'}
@@ -9648,13 +9649,13 @@ function Teachers(){
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {teacherErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -9663,9 +9664,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
                       >
@@ -9679,9 +9680,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
                       >
@@ -9695,9 +9696,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
                       >
@@ -12437,9 +12438,9 @@ function Attendance(){
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              color: '#1d4ed8',
+              background: 'rgba(37, 99, 235, 0.12)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              color: 'var(--primary-600, #3b82f6)',
               borderRadius: 20,
               padding: '4px 12px',
               fontSize: 12.5,
@@ -12451,8 +12452,8 @@ function Attendance(){
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 18 }}>
             {/* Filter Target */}
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
                 Target Attendance Group
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -12490,8 +12491,8 @@ function Attendance(){
             </div>
 
             {/* Recipient Contacts */}
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
                 Recipient Contact Addresses
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -12517,7 +12518,7 @@ function Attendance(){
 
           {/* Action Row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ fontSize: 12.5, color: '#64748b' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
               ℹ️ Individual MIME emails are delivered separately. Contact privacy is strictly preserved.
             </div>
             <button
@@ -12552,9 +12553,9 @@ function Attendance(){
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              background: emailResult.success ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${emailResult.success ? '#bbf7d0' : '#fecaca'}`,
-              color: emailResult.success ? '#166534' : '#991b1b'
+              background: emailResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              border: emailResult.success ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+              color: emailResult.success ? '#10b981' : '#ef4444'
             }}>
               {emailResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <span>{emailResult.message}</span>
@@ -14722,9 +14723,9 @@ function SubscriptionPage(){
          const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
          const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
          return (
-           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', background: isCurrent ? '#f8faff' : '#ffffff', position: 'relative' }}>
+           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)', borderRadius: '10px', padding: '16px', background: isCurrent ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>{p.name}</h4>
+               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #0f172a)' }}>{p.name}</h4>
                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                  {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
                  {hasDiscount && (
@@ -14737,7 +14738,7 @@ function SubscriptionPage(){
              <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
              <div style={{ margin: '8px 0 12px' }}>
                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                 <span style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
+                 <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #0f172a)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
                  {hasDiscount && (
                    <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
                  )}
@@ -14747,7 +14748,7 @@ function SubscriptionPage(){
                  ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
                </div>
              </div>
-             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '12px', color: '#334155' }}>
+             <div style={{ borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #334155)' }}>
                <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
              </div>
            </div>

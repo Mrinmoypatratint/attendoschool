@@ -382,7 +382,7 @@ export default function Communication() {
         </div>
 
         {/* Tab switch */}
-        <div style={{ display: 'flex', gap: 8, backgroundColor: '#f1f5f9', padding: 4, borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8 }}>
           <button
             type="button"
             onClick={() => setActiveTab('announcements')}
@@ -690,10 +690,10 @@ export default function Communication() {
           </div>
 
           {/* Announcements Table */}
-          <div className="table-wrap" style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
                   <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>TITLE</th>
                   <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>AUDIENCE</th>
                   <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>PRIORITY</th>
@@ -890,7 +890,7 @@ export default function Communication() {
                   }}>
                     {r.author_role}
                   </span>
-                  <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>{r.author_name}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text, #0f172a)', fontSize: 14 }}>{r.author_name}</span>
                   {r.author_email && <span style={{ fontSize: 12, color: '#64748b', marginLeft: 6 }}>({r.author_email})</span>}
                 </div>
                 <span style={{ fontSize: 11.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -918,7 +918,7 @@ export default function Communication() {
             </div>
           ))}
           {!allReplies.length && (
-            <div style={{ padding: 40, textAlign: 'center', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, color: '#94a3b8' }}>
+            <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, color: 'var(--text-secondary, #94a3b8)' }}>
               No threaded replies received from parents or students yet.
             </div>
           )}
@@ -962,7 +962,7 @@ export default function Communication() {
                 }}>
                   {selectedNoticeForReplies.audience_type}
                 </span>
-                <h2 style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                <h2 style={{ margin: '6px 0 0', fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                   {selectedNoticeForReplies.title}
                 </h2>
               </div>
@@ -976,12 +976,12 @@ export default function Communication() {
             </div>
 
             {/* Notice Message Card */}
-            <div style={{ backgroundColor: '#f8fafc', padding: 14, borderRadius: 6, marginBottom: 20, fontSize: 13, color: '#334155', border: '1px solid #e2e8f0' }}>
+            <div style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 14, borderRadius: 6, marginBottom: 20, fontSize: 13, color: 'var(--text, #334155)', border: '1px solid var(--border, #e2e8f0)' }}>
               <div style={{ fontWeight: 600, color: '#64748b', fontSize: 11, marginBottom: 4 }}>NOTICE BODY</div>
               {selectedNoticeForReplies.message}
             </div>
 
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <MessageCircle size={16} color="#2563eb" /> Threaded Responses ({noticeReplies.length})
             </h3>
 
@@ -994,7 +994,7 @@ export default function Communication() {
             ) : (
               <div style={{ display: 'grid', gap: 14, overflowY: 'auto', flex: 1 }}>
                 {noticeReplies.map(r => (
-                  <div key={r.id} style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: 12, backgroundColor: '#ffffff' }}>
+                  <div key={r.id} style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 6, padding: 12, backgroundColor: 'var(--card-subtle, #ffffff)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div>
                         <span style={{
