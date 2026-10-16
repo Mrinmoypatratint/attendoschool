@@ -24,12 +24,36 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+function paginateResults(req: Request, res: Response, allRows: any[], maxLimit = 500) {
+  const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+  const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+  const isExplicitPagination = Boolean(req.query.page || req.query.limit || req.query.paginated === 'true');
+  const total = allRows.length;
+  const limit = rawLimit && rawLimit > 0 ? Math.min(rawLimit, maxLimit) : (isExplicitPagination ? 50 : total || 50);
+  const totalPages = Math.ceil(total / (limit || 1)) || 1;
+  const pagedRows = isExplicitPagination ? allRows.slice((page - 1) * limit, page * limit) : allRows;
+
+  res.setHeader('X-Total-Count', String(total));
+  res.setHeader('X-Page', String(page));
+  res.setHeader('X-Per-Page', String(limit));
+  res.setHeader('X-Total-Pages', String(totalPages));
+
+  if (req.query.paginated === 'true' || req.query.format === 'object') {
+    return res.json({
+      data: pagedRows,
+      pagination: { total, page, limit, totalPages }
+    });
+  }
+  return res.json(pagedRows);
+}
+
 router.get('/students', async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
-    res.json(await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true'));
+    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true');
+    return paginateResults(req, res, students || [], 1000);
   } catch(_e:any){
-    res.json([]);
+    return paginateResults(req, res, []);
   }
 });
 
@@ -56,9 +80,9 @@ router.get('/teachers', async (req: Request,res: Response)=>{
       const sid = effectiveSid(req);
       teachers = demoTeachers.filter(t => !t.school_id || t.school_id === sid || (t.schoolId && t.schoolId === sid));
     }
-    res.json(teachers);
+    return paginateResults(req, res, teachers || [], 500);
   } catch(_e:any){
-    res.json([]);
+    return paginateResults(req, res, []);
   }
 });
 

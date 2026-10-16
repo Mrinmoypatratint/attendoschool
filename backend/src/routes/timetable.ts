@@ -12,9 +12,26 @@ import {
   clearTimetableEntriesFromFirestore
 } from '../services/firestoreSync';
 import { pool, isPostgresConfigured } from '../db';
+import { fastCache } from '../utils/cache';
 
 const router = Router();
 const u = (r: Request) => (r as any).user;
+
+// Auto-invalidate timetable cache on any mutations
+router.use((req, res, next) => {
+  if (req.method !== 'GET') {
+    res.on('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        const sid = u(req)?.schoolId;
+        if (sid) {
+          fastCache.invalidatePattern(`timetable:${sid}`);
+          fastCache.invalidatePattern('timetable');
+        }
+      }
+    });
+  }
+  next();
+});
 
 router.use((req, res, next) => {
   if (!u(req)?.schoolId && !['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(u(req)?.role)) {
@@ -166,11 +183,19 @@ function getTeacherAvailability(teacherId: string, dayOfWeek: number) {
 // ── PERIODS ──
 router.get('/periods', async (req, res) => {
   const sid = u(req).schoolId;
+  const cacheKey = sid ? `timetable:${sid}:periods` : null;
+  if (cacheKey) {
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+  }
 
   // 1. Try DB first (Postgres)
   try {
     const rows = await svc.periods(sid);
-    if (rows?.length) return res.json(rows);
+    if (rows?.length) {
+      if (cacheKey) fastCache.set(cacheKey, rows, 60);
+      return res.json(rows);
+    }
   } catch (_e) {}
 
   // 2. Query Firestore directly
@@ -211,6 +236,7 @@ router.get('/periods', async (req, res) => {
             if (idx >= 0) memPeriods[idx] = item;
             else memPeriods.push(item);
           }
+          if (cacheKey) fastCache.set(cacheKey, list, 60);
           return res.json(list);
         }
       }
@@ -221,7 +247,10 @@ router.get('/periods', async (req, res) => {
 
   // 3. Fallback to memory
   const schoolPeriods = memPeriods.filter(p => p.school_id && isSameSchool(p.school_id, sid));
-  if (schoolPeriods.length > 0) return res.json(schoolPeriods);
+  if (schoolPeriods.length > 0) {
+    if (cacheKey) fastCache.set(cacheKey, schoolPeriods, 30);
+    return res.json(schoolPeriods);
+  }
 
   if (isTestSchool(sid)) {
     return res.json(memPeriods);
@@ -490,7 +519,17 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
 // ── ENTRIES ──
 router.get('/entries', async (req, res) => {
   const sid = u(req).schoolId;
+  const qKey = JSON.stringify(req.query || {});
+  const cacheKey = sid ? `timetable:${sid}:entries:${qKey}` : null;
+  if (cacheKey) {
+    const cached = fastCache.get<any>(cacheKey);
+    if (cached) return res.json(cached);
+  }
+
   const list = await fetchTimetableEntries(sid, req.query);
+  if (cacheKey && list) {
+    fastCache.set(cacheKey, list, 45);
+  }
   res.json(list);
 });
 

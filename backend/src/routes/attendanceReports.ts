@@ -413,18 +413,36 @@ router.post('/import-offline', async (req: Request, res: Response) => {
           [sid]
         )).rows;
 
+        const recordsToInsert: { studentId: string; isPresent: boolean; status: string }[] = [];
         for (const nr of normalizedRecords) {
           const st = enrolledStudents.find(s =>
             (nr.admissionNumber && (s.admission_number === nr.admissionNumber || s.roll_number === nr.admissionNumber)) ||
             (nr.rollNumber && s.roll_number === nr.rollNumber) ||
             (nr.studentName && s.name && s.name.toLowerCase() === nr.studentName.toLowerCase())
           ) || { id: `st-off-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+          recordsToInsert.push({
+            studentId: st.id,
+            isPresent: Boolean(nr.isPresent),
+            status: nr.status || (nr.isPresent ? 'PRESENT' : 'ABSENT')
+          });
+        }
 
+        const CHUNK_SIZE = 50;
+        for (let c = 0; c < recordsToInsert.length; c += CHUNK_SIZE) {
+          const chunk = recordsToInsert.slice(c, c + CHUNK_SIZE);
+          const clauses: string[] = [];
+          const params: any[] = [];
+          for (let i = 0; i < chunk.length; i++) {
+            const r = chunk[i];
+            const offset = i * 4;
+            clauses.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
+            params.push(sessionId, r.studentId, r.isPresent, r.status);
+          }
           await client.query(
             `INSERT INTO attendance_records (attendance_session_id, student_id, is_present, status)
-             VALUES ($1, $2, $3, $4)
+             VALUES ${clauses.join(', ')}
              ON CONFLICT (attendance_session_id, student_id) DO UPDATE SET is_present=EXCLUDED.is_present, status=EXCLUDED.status`,
-            [sessionId, st.id, nr.isPresent, nr.status]
+            params
           );
         }
 

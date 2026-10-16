@@ -3,6 +3,7 @@ import app from './app';
 import { env } from './config/env';
 import { pool } from './db';
 import { startKeepAliveService } from './services/keepAliveService';
+import { startNotificationWorker, stopNotificationWorker } from './workers/notificationQueueWorker';
 
 const server = http.createServer({ maxHeaderSize: 1024 * 1024 }, app);
 server.listen(env.port, () => {
@@ -10,6 +11,9 @@ server.listen(env.port, () => {
 
   // Keep-alive auto-pinger (prevents cloud container idle hibernation - 4 min interval)
   startKeepAliveService(env.keepAliveUrl, 4);
+
+  // Auto-start asynchronous notification queue worker
+  startNotificationWorker(3000);
 });
 
 // Explicit error handler for port binding errors (e.g., EADDRINUSE, EACCES)
@@ -31,6 +35,7 @@ server.headersTimeout = 66000;   // 66 seconds (> keepAliveTimeout)
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, starting graceful shutdown...`);
+  stopNotificationWorker();
   server.close(async () => {
     try {
       await pool.end();

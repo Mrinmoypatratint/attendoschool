@@ -133,22 +133,48 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
 }
 
 import { requireRoles } from '../middleware/auth';
+import { fastCache } from '../utils/cache';
 
 const router = Router();
 const schoolId = (req: Request) => (req as any).user?.schoolId;
 const staffOrAdmin = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
 const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
 
+// Auto-invalidate academic year cache on mutations
+router.use((req, res, next) => {
+  if (req.method !== 'GET') {
+    res.on('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 400) {
+        const sid = schoolId(req) || 'default';
+        fastCache.invalidatePattern(`academic_years:${sid}`);
+        fastCache.invalidatePattern('academic_years');
+      }
+    });
+  }
+  next();
+});
+
 // GET /api/academic-years - Query real database records (Staff and Admin)
 router.get('/', staffOrAdmin, async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
+  const cacheKey = `academic_years:${sid}:list`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     const rows = await listAcademicYears(sid);
-    return res.json(rows);
+    if (rows && rows.length > 0) {
+      fastCache.set(cacheKey, rows, 120);
+      return res.json(rows);
+    }
+    const memRows = getInMemoryAcademicYears(sid);
+    fastCache.set(cacheKey, memRows, 60);
+    return res.json(memRows);
   } catch (_e: any) {
-    return res.json(getInMemoryAcademicYears(sid));
+    const memRows = getInMemoryAcademicYears(sid);
+    return res.json(memRows);
   }
 });
 
@@ -157,12 +183,19 @@ router.get('/active', async (req, res) => {
   const user = (req as any).user;
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
+  const cacheKey = `academic_years:${sid}:active`;
+  const cached = fastCache.get<any>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     const row = await getActiveAcademicYear(sid);
     if (row) {
+      fastCache.set(cacheKey, row, 120);
       return res.json(row);
     }
-    return res.json(getInMemoryActiveAcademicYear(sid));
+    const memActive = getInMemoryActiveAcademicYear(sid);
+    if (memActive) fastCache.set(cacheKey, memActive, 60);
+    return res.json(memActive);
   } catch (_e: any) {
     return res.json(getInMemoryActiveAcademicYear(sid));
   }

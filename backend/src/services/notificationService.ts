@@ -6,6 +6,7 @@ import { pool, isPostgresConfigured } from '../db';
 import { env, cleanEnv, cleanSmtpPass, extractEmailAddress, extractSenderName } from '../config/env';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool } from '../utils/tenant';
+import { queueService } from './queueService';
 
 export type Channel = 'SMS' | 'WHATSAPP' | 'EMAIL';
 export type RecipientType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | 'ADMIN' | 'SUPER_ADMIN' | 'OTHER';
@@ -1268,12 +1269,21 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     } catch {}
   }
 
-  // Trigger background queue processing immediately
-  setImmediate(() => {
-    processNotificationQueue(env.emailRateLimit || 50).catch(err => {
-      console.warn('[QueueEmailWorker] Background processing notice:', err.message);
+  // Offload to Redis background queue worker (with instant non-blocking fallback)
+  queueService.enqueueNotificationJob({
+    type: 'EMAIL',
+    id: logId,
+    schoolId: schoolId || undefined,
+    timestamp: Date.now()
+  }).catch(() => {});
+
+  if (!queueService.isDistributed()) {
+    setImmediate(() => {
+      processNotificationQueue(env.emailRateLimit || 50).catch(err => {
+        console.warn('[QueueEmailWorker] Background processing notice:', err.message);
+      });
     });
-  });
+  }
 
   return { id: logId, status: 'QUEUED', message: 'Email successfully queued for delivery' };
 }
@@ -1520,12 +1530,21 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
     }
   }
 
-  // Trigger non-blocking worker processing
-  setImmediate(() => {
-    processNotificationQueue(env.emailRateLimit || 50).catch(err => {
-      console.warn('[AttendanceEmailWorker] Background processing notice:', err.message);
+  // Offload to Redis background queue worker (with non-blocking fallback)
+  queueService.enqueueNotificationJob({
+    type: 'BATCH',
+    sessionId,
+    schoolId,
+    timestamp: Date.now()
+  }).catch(() => {});
+
+  if (!queueService.isDistributed()) {
+    setImmediate(() => {
+      processNotificationQueue(env.emailRateLimit || 50).catch(err => {
+        console.warn('[AttendanceEmailWorker] Background processing notice:', err.message);
+      });
     });
-  });
+  }
 
   return {
     success: true,

@@ -621,11 +621,39 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
  const sessionFilter=String(req.query.session||req.query.sessionId||req.query.academic_year_id||'').trim();
  const userSchoolId = req.user?.schoolId;
+ const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+ const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+ const isExplicitPagination = Boolean(req.query.page || req.query.limit || req.query.paginated === 'true');
+
+ const sendPaginatedStudents = (allRows: any[]) => {
+   const total = allRows.length;
+   const limit = rawLimit && rawLimit > 0 ? Math.min(rawLimit, 1000) : (isExplicitPagination ? 50 : total || 50);
+   const totalPages = Math.ceil(total / (limit || 1)) || 1;
+   const pagedRows = isExplicitPagination ? allRows.slice((page - 1) * limit, page * limit) : allRows;
+
+   res.setHeader('X-Total-Count', String(total));
+   res.setHeader('X-Page', String(page));
+   res.setHeader('X-Per-Page', String(limit));
+   res.setHeader('X-Total-Pages', String(totalPages));
+
+   if (req.query.paginated === 'true' || req.query.format === 'object') {
+     return res.json({
+       data: pagedRows,
+       pagination: {
+         total,
+         page,
+         limit,
+         totalPages
+       }
+     });
+   }
+   return res.json(pagedRows);
+ };
 
  const cacheKey = !search && !sessionFilter && userSchoolId ? `students:${userSchoolId}` : null;
  if (cacheKey) {
    const cached = fastCache.get<any>(cacheKey);
-   if (cached) return res.json(cached);
+   if (cached) return sendPaginatedStudents(cached);
  }
 
  try {
@@ -683,7 +711,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
       });
     }
     if (cacheKey) fastCache.set(cacheKey, rows, 15);
-    return res.json(rows);
+    return sendPaginatedStudents(rows);
   }
  } catch {}
 
@@ -756,7 +784,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         if (!isAllSessions) {
           filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
         }
-        return res.json(filtered);
+        return sendPaginatedStudents(filtered);
       }
     }
   } catch (e: any) {
@@ -781,11 +809,11 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
    if (!isAllSessions) {
      list = list.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id, sessionFilter));
    }
-   return res.json(list);
+   return sendPaginatedStudents(list);
  }
 
  // Return empty array if school has no registered students
- res.json([]);
+ return sendPaginatedStudents([]);
 });
 
 // GET /students/template — download standardized Excel import template
@@ -2482,10 +2510,39 @@ r.get('/teachers/template', ...reader, (_req, res) => {
 
 r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
+ const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+ const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+ const isExplicitPagination = Boolean(req.query.page || req.query.limit || req.query.paginated === 'true');
+
+ const sendPaginatedTeachers = (allRows: any[]) => {
+   const total = allRows.length;
+   const limit = rawLimit && rawLimit > 0 ? Math.min(rawLimit, 500) : (isExplicitPagination ? 50 : total || 50);
+   const totalPages = Math.ceil(total / (limit || 1)) || 1;
+   const pagedRows = isExplicitPagination ? allRows.slice((page - 1) * limit, page * limit) : allRows;
+
+   res.setHeader('X-Total-Count', String(total));
+   res.setHeader('X-Page', String(page));
+   res.setHeader('X-Per-Page', String(limit));
+   res.setHeader('X-Total-Pages', String(totalPages));
+
+   if (req.query.paginated === 'true' || req.query.format === 'object') {
+     return res.json({
+       data: pagedRows,
+       pagination: {
+         total,
+         page,
+         limit,
+         totalPages
+       }
+     });
+   }
+   return res.json(pagedRows);
+ };
+
  const cacheKey = userSchoolId ? `teachers:${userSchoolId}` : null;
  if (cacheKey) {
    const cached = fastCache.get<any>(cacheKey);
-   if (cached) return res.json(cached);
+   if (cached) return sendPaginatedTeachers(cached);
  }
 
  try {
@@ -2494,7 +2551,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
     if (cacheKey) fastCache.set(cacheKey, q.rows, 30);
-    return res.json(q.rows);
+    return sendPaginatedTeachers(q.rows);
   }
  } catch {}
 
@@ -2534,7 +2591,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           }
         }
       }
-      if (list.length > 0) return res.json(list);
+      if (list.length > 0) return sendPaginatedTeachers(list);
     }
   } catch {}
  }
@@ -2542,17 +2599,17 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   // Check in-memory teachers registered for this specific school
   const memSchoolTeachers = demoTeachers.filter(t => t.school_id && userSchoolId && isSameSchool(t.school_id, userSchoolId));
   if (memSchoolTeachers.length > 0) {
-    return res.json(memSchoolTeachers);
+    return sendPaginatedTeachers(memSchoolTeachers);
   }
 
   // Only Greenwood test school can access demo teachers
   if (isTestSchool(userSchoolId)) {
    const schoolTeachers = demoTeachers.filter(t => isSameSchool(t.school_id, userSchoolId));
-   return res.json(schoolTeachers.length ? schoolTeachers : demoTeachers);
+   return sendPaginatedTeachers(schoolTeachers.length ? schoolTeachers : demoTeachers);
  }
 
  // Other schools start with 0 teachers before manual entry
- res.json([]);
+ return sendPaginatedTeachers([]);
 });
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
