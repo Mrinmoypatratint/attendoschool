@@ -1,33 +1,35 @@
-import {useEffect,useState,useRef,useCallback,useMemo} from 'react';
+import {useEffect,useState,useRef,useCallback,useMemo,lazy,Suspense} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
-import AttendanceReports from './pages/admin/AttendanceReports';
-import AttendanceCorrections from './pages/admin/AttendanceCorrections';
-import AcademicYears from './pages/admin/AcademicYears';
-import StudentPromotion from './pages/admin/StudentPromotion';
-import Permissions from './pages/admin/Permissions';
-import SubscriptionEnforcement from './pages/admin/SubscriptionEnforcement';
-import Security from './pages/admin/Security';
-import Backup from './pages/admin/Backup';
-import Timetable from './pages/admin/Timetable';
-import OfflineAttendance from './pages/admin/OfflineAttendance';
-import Analytics from './pages/admin/Analytics';
-import Communication from './pages/admin/Communication';
-import ParentCommunication from './pages/admin/ParentCommunication';
-import ParentPortal from './pages/parent/ParentPortal';
-import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
-import TeacherProfile from './pages/teacher/TeacherProfile';
-import PhotoApprove from './pages/admin/PhotoApprove';
-import LeaveApprove from './pages/admin/LeaveApprove';
-import TeacherLeaveApprove from './pages/admin/TeacherLeaveApprove';
-import TeacherLeaveRequest from './pages/teacher/TeacherLeaveRequest';
-import { ClassMentorWorkspace } from './pages/teacher/ClassMentorWorkspace';
-import TeacherAssignments from './pages/teacher/TeacherAssignments';
-import SmtpLogs from './pages/admin/SmtpLogs';
-import { SuperAdminModule } from './super-admin/SuperAdminModule';
-import ResetPassword from './pages/auth/ResetPassword';
+
+// Route Code-Splitting via React.lazy()
+const AttendanceReports = lazy(() => import('./pages/admin/AttendanceReports'));
+const AttendanceCorrections = lazy(() => import('./pages/admin/AttendanceCorrections'));
+const AcademicYears = lazy(() => import('./pages/admin/AcademicYears'));
+const StudentPromotion = lazy(() => import('./pages/admin/StudentPromotion'));
+const Permissions = lazy(() => import('./pages/admin/Permissions'));
+const SubscriptionEnforcement = lazy(() => import('./pages/admin/SubscriptionEnforcement'));
+const Security = lazy(() => import('./pages/admin/Security'));
+const Backup = lazy(() => import('./pages/admin/Backup'));
+const Timetable = lazy(() => import('./pages/admin/Timetable'));
+const OfflineAttendance = lazy(() => import('./pages/admin/OfflineAttendance'));
+const Analytics = lazy(() => import('./pages/admin/Analytics'));
+const Communication = lazy(() => import('./pages/admin/Communication'));
+const ParentCommunication = lazy(() => import('./pages/admin/ParentCommunication'));
+const ParentPortal = lazy(() => import('./pages/parent/ParentPortal'));
+const TeacherAnnouncements = lazy(() => import('./pages/teacher/TeacherAnnouncements'));
+const TeacherProfile = lazy(() => import('./pages/teacher/TeacherProfile'));
+const PhotoApprove = lazy(() => import('./pages/admin/PhotoApprove'));
+const LeaveApprove = lazy(() => import('./pages/admin/LeaveApprove'));
+const TeacherLeaveApprove = lazy(() => import('./pages/admin/TeacherLeaveApprove'));
+const TeacherLeaveRequest = lazy(() => import('./pages/teacher/TeacherLeaveRequest'));
+const ClassMentorWorkspace = lazy(() => import('./pages/teacher/ClassMentorWorkspace').then(m => ({ default: m.ClassMentorWorkspace })));
+const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments'));
+const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
+const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
@@ -43,14 +45,15 @@ import {
 import { studentApi, Institute } from './services/studentApi';
 import { validatePassword } from './utils/passwordPolicy';
 import { StudentLayout } from './components/student/StudentLayout';
-import { StudentDashboard } from './pages/student/StudentDashboard';
-import { StudentAttendance } from './pages/student/StudentAttendance';
-import { StudentTimetable } from './pages/student/StudentTimetable';
-import { StudentAssignments } from './pages/student/StudentAssignments';
-import { StudentExams } from './pages/student/StudentExams';
-import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
-import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
-import { StudentProfile } from './pages/student/StudentProfile';
+
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const StudentAttendance = lazy(() => import('./pages/student/StudentAttendance').then(m => ({ default: m.StudentAttendance })));
+const StudentTimetable = lazy(() => import('./pages/student/StudentTimetable').then(m => ({ default: m.StudentTimetable })));
+const StudentAssignments = lazy(() => import('./pages/student/StudentAssignments').then(m => ({ default: m.StudentAssignments })));
+const StudentExams = lazy(() => import('./pages/student/StudentExams').then(m => ({ default: m.StudentExams })));
+const StudentAnnouncements = lazy(() => import('./pages/student/StudentAnnouncements').then(m => ({ default: m.StudentAnnouncements })));
+const StudentLeaveRequest = lazy(() => import('./pages/student/StudentLeaveRequest').then(m => ({ default: m.StudentLeaveRequest })));
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
@@ -5129,8 +5132,9 @@ function Students(){
         api.get('/academic-years').catch(()=>({data:[]})) as any
       ]);
       setLoadProgress(95);
-      if (Array.isArray(a.data)) {
-        setRows(a.data);
+      const studentData = Array.isArray(a.data) ? a.data : (Array.isArray(a.data?.data) ? a.data.data : null);
+      if (studentData) {
+        setRows(studentData);
       }
       if (Array.isArray(b.data) && b.data.length > 0) {
         setClasses(b.data);
@@ -15730,87 +15734,119 @@ function ProfileRedirect() {
   return <Navigate to="/school-profile" replace />;
 }
 
+/* ────── Route Fallback Loader ────── */
+function RouteFallbackLoader() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '70vh',
+      gap: 16
+    }}>
+      <div style={{
+        width: 40,
+        height: 40,
+        border: '3px solid rgba(59, 130, 246, 0.18)',
+        borderTopColor: '#2563eb',
+        borderRadius: '50%',
+        animation: 'spin 0.75s linear infinite'
+      }} />
+      <span style={{ fontSize: 13, color: 'var(--muted-text, #64748b)', fontWeight: 500, letterSpacing: '0.01em' }}>
+        Loading module...
+      </span>
+    </div>
+  );
+}
+
 /* ────── Routes ────── */
-function App(){return <Routes>
-  <Route path="/login" element={<Login/>}/>
-  <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
-  <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
-  <Route path="/reset-password" element={<ResetPassword/>}/>
-  <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
-  <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
-  <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
-  <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
-  <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
-  <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
-  <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
-  <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
-  <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
-  <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
-  <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
-  <Route path="/history" element={<Guard><History/></Guard>}/>
-  <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
-  <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
-  <Route path="/people" element={<Navigate to="/students" replace />}/>
-  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
-  <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
-  <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-  <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
-  <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-  <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
-  <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
-  <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
-  <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
-  <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
-  <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
-  <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
-  <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
-  <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-  <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
-  <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
-  <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
-  <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
-  <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
-  <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
-  <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
-  <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
-  <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-  <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
-  <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-  <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
-  <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
-  <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
-  <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
-  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
-  <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
-  {/* Student Portal Routes */}
-  <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
-  <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
-  <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
-</Routes>}
+function App(){
+  return (
+    <Suspense fallback={<RouteFallbackLoader />}>
+      <Routes>
+        <Route path="/login" element={<Login/>}/>
+        <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
+        <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
+        <Route path="/reset-password" element={<ResetPassword/>}/>
+        <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
+        <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
+        <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
+        <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
+        <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
+        <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
+        <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+        <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
+        <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
+        <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
+        <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
+        <Route path="/history" element={<Guard><History/></Guard>}/>
+        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
+        <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
+        <Route path="/people" element={<Navigate to="/students" replace />}/>
+        <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+        <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
+        <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+        <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
+        <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+        <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
+        <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
+        <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
+        <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
+        <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
+        <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
+        <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
+        <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
+        <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
+        <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
+        <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
+        <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+        <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
+        <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
+        <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
+        <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
+        <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
+        <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
+        <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
+        <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
+        <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
+        <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
+        <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
+        <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
+        <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
+        <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
+        <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+        {/* Student Portal Routes */}
+        <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
+        <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
+        <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
+      </Routes>
+    </Suspense>
+  );
+}
 
 export default App;

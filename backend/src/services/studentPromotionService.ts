@@ -169,15 +169,27 @@ export async function promoteStudents(
       throw new Error('Invalid academic session specified');
     }
 
-    // Resolve valid actor user UUID
-    let validActorId = actorId;
-    const userCheck = await client.query('SELECT id FROM users WHERE id::text = $1 LIMIT 1', [actorId]);
-    if (!userCheck.rowCount) {
+    // Resolve valid actor user UUID from users table
+    let safeCreatedBy: string | null = null;
+    if (actorId) {
+      const userCheck = await client.query('SELECT id FROM users WHERE id::text = $1 LIMIT 1', [actorId]);
+      if (userCheck.rowCount) {
+        safeCreatedBy = userCheck.rows[0].id;
+      }
+    }
+    if (!safeCreatedBy) {
       const adminUser = await client.query(
         `SELECT id FROM users WHERE (school_id::text = $1 OR school_id::text = $2) AND role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN') LIMIT 1`,
         [pgSchoolId, schoolId]
       );
-      if (adminUser.rowCount) validActorId = adminUser.rows[0].id;
+      if (adminUser.rowCount) {
+        safeCreatedBy = adminUser.rows[0].id;
+      } else {
+        const superAdmin = await client.query(`SELECT id FROM users WHERE role = 'SUPER_ADMIN' LIMIT 1`);
+        if (superAdmin.rowCount) {
+          safeCreatedBy = superAdmin.rows[0].id;
+        }
+      }
     }
 
     const results = [];
@@ -265,7 +277,7 @@ export async function promoteStudents(
           targetSection,
           outcome,
           item.note || null,
-          validActorId
+          safeCreatedBy
         ]
       );
 
