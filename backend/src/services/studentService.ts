@@ -8,12 +8,19 @@ import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
+import { normalizeGender } from '../utils/gender';
 import { validateAttachment, uploadToStorage, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/supabaseStorage';
 
 export function toDdMmYyyy(val: any): string {
   if (!val) return '';
   const s = String(val).trim();
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const twoDigitMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+  if (twoDigitMatch) {
+    const yy = parseInt(twoDigitMatch[3], 10);
+    const fullYear = yy <= 40 ? 2000 + yy : 1900 + yy;
+    return `${twoDigitMatch[1].padStart(2, '0')}-${twoDigitMatch[2].padStart(2, '0')}-${fullYear}`;
+  }
   const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (altMatch) {
     return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;
@@ -39,7 +46,7 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name
+      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url, sch.website AS school_website
        FROM students st
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
@@ -206,6 +213,16 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     console.warn('[StudentService] Error checking photo approval status:', err.message);
   }
 
+  let schoolWebsite = st.school_website || '';
+  if (!schoolWebsite && schoolId) {
+    try {
+      const sQ = await pool.query('SELECT website FROM schools WHERE id = $1', [schoolId]);
+      if (sQ.rowCount && sQ.rows[0]?.website) {
+        schoolWebsite = sQ.rows[0].website;
+      }
+    } catch {}
+  }
+
   return {
     id: st.id,
     userId: st.user_id || userId,
@@ -220,11 +237,16 @@ export async function getStudentProfile(schoolId: string, userId: string) {
     classNumber: st.class_number ?? 0,
     sectionName: st.section_name || '',
     schoolName: st.school_name || '',
+    schoolPhotoUrl: st.school_photo_url || '',
+    school_photo_url: st.school_photo_url || '',
+    schoolWebsite: schoolWebsite || '',
+    school_website: schoolWebsite || '',
+    website: schoolWebsite || '',
     parentName: st.parent_name || '',
     parentPhone: st.parent_sms_number || '',
     parentEmail: st.parent_email || '',
     dateOfBirth: st.date_of_birth ? toDdMmYyyy(st.date_of_birth) : (st.dob ? toDdMmYyyy(st.dob) : ''),
-    gender: st.gender || '',
+    gender: normalizeGender(st.gender) || '',
     academicSession: academicSessionName || st.session_name || '',
     photoUrl: st.photo_url || '',
     pendingPhotoUrl,
@@ -248,7 +270,7 @@ export async function updateStudentProfile(schoolId: string, userId: string, dat
 
   if (data.gender !== undefined) {
     updates.push(`gender = $${idx++}`);
-    params.push(data.gender);
+    params.push(normalizeGender(data.gender));
   }
   if (data.dateOfBirth !== undefined) {
     updates.push(`date_of_birth = $${idx++}`);
@@ -401,7 +423,7 @@ export async function updateStudentPhoto(schoolId: string, userId: string, photo
     pendingApproval: true,
     photoUrl: st.photo_url || '',
     pendingPhotoUrl: cleanPhotoUrl,
-    message: 'Profile photo submitted for review! It will appear on your profile once approved by the administrator.'
+    message: 'Profile photo submitted for review! It will appear on your profile once approved by your teacher.'
   };
 }
 
@@ -857,6 +879,10 @@ export async function getStudentDashboard(schoolId: string, userId: string) {
       rollNumber: st.roll_number || '',
       admissionNumber: st.admission_number || '',
       schoolName: st.school_name || '',
+      schoolPhotoUrl: st.school_photo_url || '',
+      school_photo_url: st.school_photo_url || '',
+      schoolWebsite: st.school_website || '',
+      school_website: st.school_website || '',
       avatarUrl: st.photo_url || ''
     },
     kpis: {
@@ -900,7 +926,7 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT s.attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.start_time, s.end_time,
+      `SELECT TO_CHAR(s.attendance_date, 'YYYY-MM-DD') AS attendance_date, COALESCE(ar.status, CASE WHEN ar.is_present THEN 'PRESENT' ELSE 'ABSENT' END) AS status, s.start_time, s.end_time,
               s.subject_name, u.name AS teacher_name
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id

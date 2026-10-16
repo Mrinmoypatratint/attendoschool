@@ -18,6 +18,7 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export interface AnnouncementItem {
   id: string;
@@ -292,8 +293,8 @@ export function TeacherAnnouncements() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 border: 'none',
-                backgroundColor: priorityFilter === 'UNREAD' ? '#0284c7' : '#e0f2fe',
-                color: priorityFilter === 'UNREAD' ? '#ffffff' : '#0369a1',
+                backgroundColor: priorityFilter === 'UNREAD' ? '#0284c7' : 'rgba(2, 132, 199, 0.15)',
+                color: priorityFilter === 'UNREAD' ? '#ffffff' : 'var(--sidebar-accent, #0284c7)',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -312,8 +313,8 @@ export function TeacherAnnouncements() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 border: 'none',
-                backgroundColor: priorityFilter === 'EMERGENCY' ? '#dc2626' : '#fee2e2',
-                color: priorityFilter === 'EMERGENCY' ? '#ffffff' : '#b91c1c',
+                backgroundColor: priorityFilter === 'EMERGENCY' ? '#dc2626' : 'rgba(220, 38, 38, 0.15)',
+                color: priorityFilter === 'EMERGENCY' ? '#ffffff' : '#ef4444',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -332,8 +333,8 @@ export function TeacherAnnouncements() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 border: 'none',
-                backgroundColor: priorityFilter === 'HIGH' ? '#ea580c' : '#ffedd5',
-                color: priorityFilter === 'HIGH' ? '#ffffff' : '#c2410c',
+                backgroundColor: priorityFilter === 'HIGH' ? '#ea580c' : 'rgba(234, 88, 12, 0.15)',
+                color: priorityFilter === 'HIGH' ? '#ffffff' : '#f97316',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -355,7 +356,8 @@ export function TeacherAnnouncements() {
               padding: '6px 12px 6px 32px',
               borderRadius: 6,
               border: '1px solid var(--border, #cbd5e1)',
-              backgroundColor: 'var(--surface, #ffffff)',
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              color: 'var(--text, #0f172a)',
               fontSize: 13,
               outline: 'none',
               boxSizing: 'border-box'
@@ -441,16 +443,16 @@ export function TeacherAnnouncements() {
                         borderRadius: 5,
                         backgroundColor:
                           notice.priority === 'EMERGENCY'
-                            ? '#fee2e2'
+                            ? 'rgba(239, 68, 68, 0.15)'
                             : notice.priority === 'HIGH'
-                            ? '#ffedd5'
-                            : '#eff6ff',
+                            ? 'rgba(249, 115, 22, 0.15)'
+                            : 'rgba(37, 99, 235, 0.15)',
                         color:
                           notice.priority === 'EMERGENCY'
-                            ? '#b91c1c'
+                            ? '#ef4444'
                             : notice.priority === 'HIGH'
-                            ? '#c2410c'
-                            : '#1d4ed8'
+                            ? '#f97316'
+                            : 'var(--sidebar-accent, #3b82f6)'
                       }}
                     >
                       {notice.priority}
@@ -498,9 +500,9 @@ export function TeacherAnnouncements() {
                           fontSize: 12,
                           fontWeight: 600,
                           borderRadius: 6,
-                          border: '1px solid #bfdbfe',
-                          backgroundColor: '#eff6ff',
-                          color: '#2563eb',
+                          border: '1px solid var(--border-focus, #3b82f6)',
+                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                          color: 'var(--sidebar-accent, #3b82f6)',
                           cursor: 'pointer'
                         }}
                       >
@@ -580,10 +582,10 @@ export function TeacherAnnouncements() {
                         <div
                           key={rep.id}
                           style={{
-                            backgroundColor: '#ffffff',
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
                             borderRadius: 8,
                             padding: '10px 14px',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border, #e2e8f0)',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                           }}
                         >
@@ -596,7 +598,7 @@ export function TeacherAnnouncements() {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                                 {rep.author_name || 'Faculty Member'}
                               </span>
                               <span
@@ -607,12 +609,12 @@ export function TeacherAnnouncements() {
                                   borderRadius: 4,
                                   backgroundColor:
                                     rep.author_role === 'SCHOOL_ADMIN' || rep.author_role === 'SUPER_ADMIN'
-                                      ? '#dbeafe'
-                                      : '#ecfdf5',
+                                      ? 'rgba(37, 99, 235, 0.15)'
+                                      : 'rgba(16, 185, 129, 0.15)',
                                   color:
                                     rep.author_role === 'SCHOOL_ADMIN' || rep.author_role === 'SUPER_ADMIN'
-                                      ? '#1d4ed8'
-                                      : '#047857'
+                                      ? '#60a5fa'
+                                      : '#34d399'
                                 }}
                               >
                                 {rep.author_role === 'SCHOOL_ADMIN'
@@ -623,7 +625,7 @@ export function TeacherAnnouncements() {
                               </span>
                             </div>
 
-                            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
                               {rep.created_at
                                 ? new Date(rep.created_at).toLocaleDateString('en-GB', {
                                     day: 'numeric',
@@ -635,7 +637,7 @@ export function TeacherAnnouncements() {
                             </span>
                           </div>
 
-                          <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #334155)', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                             {rep.reply_text}
                           </p>
                         </div>
@@ -649,10 +651,10 @@ export function TeacherAnnouncements() {
                       style={{
                         marginBottom: 12,
                         padding: '8px 12px',
-                        backgroundColor: '#ecfdf5',
-                        border: '1px solid #a7f3d0',
+                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                        border: '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))',
                         borderRadius: 6,
-                        color: '#065f46',
+                        color: 'var(--emerald-600, #059669)',
                         fontSize: 12.5,
                         display: 'flex',
                         alignItems: 'center',
@@ -667,7 +669,7 @@ export function TeacherAnnouncements() {
                   {/* ── Quick Acknowledgment Options (Hidden for Student profile, available for Admin & Teacher) ── */}
                   {!isStudent && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>Quick Replies:</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>Quick Replies:</span>
                       {[
                         '👍 Acknowledged and noted.',
                         '✅ Received with thanks.',
@@ -681,9 +683,9 @@ export function TeacherAnnouncements() {
                             padding: '3px 9px',
                             fontSize: 11.5,
                             borderRadius: 14,
-                            border: '1px solid #cbd5e1',
-                            backgroundColor: '#ffffff',
-                            color: '#334155',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            backgroundColor: 'var(--card-subtle, #f8fafc)',
+                            color: 'var(--text, #334155)',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease'
                           }}
@@ -697,8 +699,9 @@ export function TeacherAnnouncements() {
                   {/* ── Reply Input Box (Hidden for Student profile, available for Admin & Teacher) ── */}
                   {!isStudent && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                      <textarea
-                        rows={2}
+                      <AutoExpandingTextarea
+                        minHeight={40}
+                        maxHeight={180}
                         value={inputValue}
                         onChange={e =>
                           setReplyInputs(prev => ({
@@ -709,14 +712,14 @@ export function TeacherAnnouncements() {
                         placeholder="Type your response, clarification, or question for administration..."
                         style={{
                           flex: 1,
-                          padding: '10px 12px',
+                          padding: '9px 12px',
                           borderRadius: 8,
-                          border: '1px solid #cbd5e1',
-                          backgroundColor: '#ffffff',
+                          border: '1px solid var(--border, #cbd5e1)',
+                          backgroundColor: 'var(--bg-card, #ffffff)',
+                          color: 'var(--text, #0f172a)',
                           fontSize: 13,
                           lineHeight: 1.45,
                           fontFamily: 'inherit',
-                          resize: 'vertical',
                           outline: 'none',
                           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
                         }}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 type Item = {
   id: string;
@@ -363,8 +364,7 @@ export default function AttendanceCorrections() {
             <form onSubmit={confirmReview} className="modal-form">
               <label>
                 {dialog.decision === 'APPROVED' ? 'Approval Note (Optional)' : 'Rejection Reason (Required)'}
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
                   required={dialog.decision === 'REJECTED'}
                   placeholder={
                     dialog.decision === 'APPROVED'
@@ -373,6 +373,8 @@ export default function AttendanceCorrections() {
                   }
                   value={dialog.note}
                   onChange={e => setDialog({ ...dialog, note: e.target.value })}
+                  minHeight={65}
+                  maxHeight={200}
                 />
               </label>
 

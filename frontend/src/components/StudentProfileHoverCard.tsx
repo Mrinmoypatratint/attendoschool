@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { formatGender } from '../utils/gender';
 import {
   GraduationCap,
   Mail,
@@ -145,8 +146,7 @@ export function StudentProfileHoverCard({
     '2025–2026 Academic Session';
 
   // Gender & DOB
-  const rawGender = student.gender ? student.gender.trim() : '';
-  const genderStr = rawGender || 'Not Specified';
+  const genderStr = formatGender(student.gender) || 'Not Specified';
   const dobRaw = student.date_of_birth || student.dob || '';
   const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
 
@@ -223,11 +223,11 @@ export function StudentProfileHoverCard({
               style={{
                 width: '100%',
                 maxWidth: 440,
-                backgroundColor: '#ffffff',
+                backgroundColor: 'var(--bg-card, #ffffff)',
                 borderRadius: 20,
                 boxShadow:
                   '0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8), 0 10px 25px -5px rgba(0, 0, 0, 0.06)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border, #e2e8f0)',
                 overflow: 'hidden',
                 zIndex: 100000,
                 fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
@@ -382,7 +382,7 @@ export function StudentProfileHoverCard({
                         width: 66,
                         height: 66,
                         borderRadius: '50%',
-                        border: '3.5px solid #ffffff',
+                        border: '3.5px solid var(--bg-card, #ffffff)',
                         boxShadow: '0 8px 22px -3px rgba(37, 99, 235, 0.35), 0 2px 6px rgba(0, 0, 0, 0.08)',
                         backgroundColor: '#2563eb',
                         background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%)',
@@ -426,7 +426,7 @@ export function StudentProfileHoverCard({
                         height: 14,
                         borderRadius: '50%',
                         backgroundColor: '#10b981',
-                        border: '2.5px solid #ffffff',
+                        border: '2.5px solid var(--bg-card, #ffffff)',
                         boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
                       }}
                       title="Enrolled & Active"
@@ -440,9 +440,9 @@ export function StudentProfileHoverCard({
                         style={{
                           fontSize: 11.5,
                           fontWeight: 750,
-                          color: '#1d4ed8',
-                          backgroundColor: '#eff6ff',
-                          border: '1px solid #bfdbfe',
+                          color: '#3b82f6',
+                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
                           padding: '3px 9px',
                           borderRadius: 8,
                           display: 'inline-flex',
@@ -452,7 +452,7 @@ export function StudentProfileHoverCard({
                         }}
                         title="Student Roll Number"
                       >
-                        <Hash size={12} color="#2563eb" />
+                        <Hash size={12} color="#3b82f6" />
                         <span>Roll: {roll}</span>
                       </div>
                     )}
@@ -461,9 +461,9 @@ export function StudentProfileHoverCard({
                         style={{
                           fontSize: 11.5,
                           fontWeight: 650,
-                          color: '#334155',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          color: 'var(--text, #334155)',
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          border: '1px solid var(--border, #e2e8f0)',
                           padding: '3px 9px',
                           borderRadius: 8,
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -485,7 +485,7 @@ export function StudentProfileHoverCard({
                       margin: '0 0 4px 0',
                       fontSize: 18,
                       fontWeight: 800,
-                      color: '#0f172a',
+                      color: 'var(--text, #0f172a)',
                       letterSpacing: '-0.02em',
                       lineHeight: 1.25
                     }}
@@ -498,9 +498,9 @@ export function StudentProfileHoverCard({
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#4338ca',
-                        backgroundColor: '#eef2ff',
-                        border: '1px solid #c7d2fe',
+                        color: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                        border: '1px solid rgba(99, 102, 241, 0.25)',
                         padding: '2px 8px',
                         borderRadius: 6
                       }}
@@ -511,7 +511,7 @@ export function StudentProfileHoverCard({
                     <span
                       style={{
                         fontSize: 11.5,
-                        color: '#64748b',
+                        color: 'var(--text-muted, #64748b)',
                         fontWeight: 500,
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -536,17 +536,17 @@ export function StudentProfileHoverCard({
                   {/* Gender Card */}
                   <div
                     style={{
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
                       padding: '8px 12px',
                       borderRadius: 10,
-                      border: '1px solid #e2e8f0'
+                      border: '1px solid var(--border, #e2e8f0)'
                     }}
                   >
                     <div
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: '#64748b',
+                        color: 'var(--text-muted, #64748b)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}
@@ -560,16 +560,16 @@ export function StudentProfileHoverCard({
                           fontWeight: 700,
                           color:
                             genderStr.toLowerCase() === 'female'
-                              ? '#be185d'
+                              ? '#ec4899'
                               : genderStr.toLowerCase() === 'male'
-                              ? '#0284c7'
-                              : '#334155',
+                              ? '#3b82f6'
+                              : 'var(--text, #334155)',
                           backgroundColor:
                             genderStr.toLowerCase() === 'female'
-                              ? '#fdf2f8'
+                              ? 'rgba(236, 72, 153, 0.12)'
                               : genderStr.toLowerCase() === 'male'
-                              ? '#f0f9ff'
-                              : '#f1f5f9',
+                              ? 'rgba(59, 130, 246, 0.12)'
+                              : 'var(--bg-card, #f1f5f9)',
                           padding: '1px 6px',
                           borderRadius: 4,
                           display: 'inline-block'
@@ -583,17 +583,17 @@ export function StudentProfileHoverCard({
                   {/* Date of Birth Card */}
                   <div
                     style={{
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
                       padding: '8px 12px',
                       borderRadius: 10,
-                      border: '1px solid #e2e8f0'
+                      border: '1px solid var(--border, #e2e8f0)'
                     }}
                   >
                     <div
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: '#64748b',
+                        color: 'var(--text-muted, #64748b)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                         display: 'flex',
@@ -608,7 +608,7 @@ export function StudentProfileHoverCard({
                       style={{
                         fontSize: 12,
                         fontWeight: dobStr ? 650 : 500,
-                        color: dobStr ? '#0f172a' : '#94a3b8',
+                        color: dobStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
                         fontStyle: dobStr ? 'normal' : 'italic',
                         marginTop: 2
                       }}
@@ -621,8 +621,8 @@ export function StudentProfileHoverCard({
                 {/* Contact & Family Information Cards */}
                 <div
                   style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: 'var(--bg-card, #ffffff)',
+                    border: '1px solid var(--border, #e2e8f0)',
                     borderRadius: 12,
                     padding: '8px 10px',
                     display: 'grid',
@@ -638,7 +638,7 @@ export function StudentProfileHoverCard({
                         justifyContent: 'space-between',
                         padding: '4px 6px',
                         borderRadius: 6,
-                        backgroundColor: '#f8fafc'
+                        backgroundColor: 'var(--card-subtle, #f8fafc)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -647,21 +647,21 @@ export function StudentProfileHoverCard({
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            backgroundColor: '#eff6ff',
+                            backgroundColor: 'rgba(37, 99, 235, 0.12)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}
                         >
-                          <Mail size={12} color="#2563eb" />
+                          <Mail size={12} color="#3b82f6" />
                         </div>
                         <a
                           href={`mailto:${studentEmail}`}
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: '#1d4ed8',
+                            color: '#3b82f6',
                             textDecoration: 'none',
                             textOverflow: 'ellipsis',
                             overflow: 'hidden',
@@ -683,7 +683,7 @@ export function StudentProfileHoverCard({
                           border: 'none',
                           cursor: 'pointer',
                           padding: 3,
-                          color: copiedKey === 'student_email' ? '#16a34a' : '#94a3b8',
+                          color: copiedKey === 'student_email' ? '#10b981' : '#94a3b8',
                           display: 'flex',
                           alignItems: 'center'
                         }}
@@ -701,7 +701,7 @@ export function StudentProfileHoverCard({
                       gap: 8,
                       padding: '4px 6px',
                       borderRadius: 6,
-                      backgroundColor: '#f8fafc'
+                      backgroundColor: 'var(--card-subtle, #f8fafc)'
                     }}
                   >
                     <div
@@ -709,18 +709,18 @@ export function StudentProfileHoverCard({
                         width: 22,
                         height: 22,
                         borderRadius: '50%',
-                        backgroundColor: '#f5f3ff',
+                        backgroundColor: 'rgba(139, 92, 246, 0.12)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}
                     >
-                      <User size={12} color="#7c3aed" />
+                      <User size={12} color="#8b5cf6" />
                     </div>
-                    <div style={{ fontSize: 12, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{ color: '#64748b' }}>Parent: </span>
-                      <b style={{ color: '#0f172a' }}>{parentName}</b>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #334155)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: 'var(--text-muted, #64748b)' }}>Parent: </span>
+                      <b style={{ color: 'var(--text, #0f172a)' }}>{parentName}</b>
                     </div>
                   </div>
 
@@ -733,7 +733,7 @@ export function StudentProfileHoverCard({
                         justifyContent: 'space-between',
                         padding: '4px 6px',
                         borderRadius: 6,
-                        backgroundColor: '#f8fafc'
+                        backgroundColor: 'var(--card-subtle, #f8fafc)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -742,14 +742,14 @@ export function StudentProfileHoverCard({
                             width: 22,
                             height: 22,
                             borderRadius: '50%',
-                            backgroundColor: '#f0fdf4',
+                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}
                         >
-                          <Phone size={12} color="#16a34a" />
+                          <Phone size={12} color="#10b981" />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                           {parentPhone && parentPhone !== '—' && (
@@ -758,7 +758,7 @@ export function StudentProfileHoverCard({
                               style={{
                                 fontSize: 12,
                                 fontWeight: 700,
-                                color: '#15803d',
+                                color: '#10b981',
                                 textDecoration: 'none',
                                 fontFamily: 'ui-monospace, SFMono-Regular, monospace'
                               }}
@@ -772,7 +772,7 @@ export function StudentProfileHoverCard({
                             <span
                               style={{
                                 fontSize: 11,
-                                color: '#64748b',
+                                color: 'var(--text-muted, #64748b)',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -795,7 +795,7 @@ export function StudentProfileHoverCard({
                             border: 'none',
                             cursor: 'pointer',
                             padding: 3,
-                            color: copiedKey === 'parent_phone' ? '#16a34a' : '#94a3b8',
+                            color: copiedKey === 'parent_phone' ? '#10b981' : '#94a3b8',
                             display: 'flex',
                             alignItems: 'center'
                           }}
@@ -815,7 +815,7 @@ export function StudentProfileHoverCard({
                         gap: 8,
                         padding: '4px 6px',
                         borderRadius: 6,
-                        backgroundColor: '#f8fafc'
+                        backgroundColor: 'var(--card-subtle, #f8fafc)'
                       }}
                     >
                       <div
@@ -823,19 +823,19 @@ export function StudentProfileHoverCard({
                           width: 22,
                           height: 22,
                           borderRadius: '50%',
-                          backgroundColor: '#fffbeb',
+                          backgroundColor: 'rgba(245, 158, 11, 0.12)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0
                         }}
                       >
-                        <MapPin size={12} color="#d97706" />
+                        <MapPin size={12} color="#f59e0b" />
                       </div>
                       <span
                         style={{
                           fontSize: 11.5,
-                          color: '#475569',
+                          color: 'var(--text-secondary, #475569)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -852,17 +852,17 @@ export function StudentProfileHoverCard({
               {/* Bottom Premium Status Stripe */}
               <div
                 style={{
-                  backgroundColor: '#f8fafc',
-                  borderTop: '1px solid #e2e8f0',
+                  backgroundColor: 'var(--card-subtle, #f8fafc)',
+                  borderTop: '1px solid var(--border, #e2e8f0)',
                   padding: '9px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: 11,
-                  color: '#64748b'
+                  color: 'var(--text-muted, #64748b)'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#15803d', fontWeight: 700 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontWeight: 700 }}>
                   <span
                     style={{
                       width: 7,
@@ -876,8 +876,8 @@ export function StudentProfileHoverCard({
                   <span>Enrolled Student</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: '#475569', fontWeight: 600 }}>
-                  <ShieldCheck size={13} color="#2563eb" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4.5, color: 'var(--text-muted, #475569)', fontWeight: 600 }}>
+                  <ShieldCheck size={13} color="#3b82f6" />
                   <span>Verified Record</span>
                 </div>
               </div>

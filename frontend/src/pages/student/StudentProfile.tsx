@@ -1,28 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar } from 'lucide-react';
+import { User, Lock, ArrowLeft, CheckCircle2, ShieldCheck, School, Users, Camera, Trash2, Loader2, AlertCircle, Edit3, Save, X, Clock, Calendar, Globe, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, StudentProfile as IStudentProfile } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePassword } from '../../utils/passwordPolicy';
+import { formatGender } from '../../utils/gender';
 
 function isValidDdMmYyyy(val: string): boolean {
   if (!val) return false;
-  const match = val.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!match) return false;
-  const day = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const year = parseInt(match[3], 10);
+  const s = val.trim();
+  const match4 = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  const match2 = s.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if (!match4 && !match2) return false;
+
+  const day = parseInt(match4 ? match4[1] : match2![1], 10);
+  const month = parseInt(match4 ? match4[2] : match2![2], 10);
+  const rawYear = parseInt(match4 ? match4[3] : match2![3], 10);
+  const year = match2 ? (rawYear <= 40 ? 2000 + rawYear : 1900 + rawYear) : rawYear;
+
+  if (day < 1 || day > 31) return false;
   if (month < 1 || month > 12) return false;
   const currentYear = new Date().getFullYear();
   if (year < 1920 || year > currentYear) return false;
   const daysInMonth = new Date(year, month, 0).getDate();
-  return day >= 1 && day <= daysInMonth;
+  return day <= daysInMonth;
 }
 
 function toDdMmYyyy(val: any): string {
   if (!val) return '';
   const s = String(val).trim();
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  const twoDigitMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})$/);
+  if (twoDigitMatch) {
+    const yy = parseInt(twoDigitMatch[3], 10);
+    const fullYear = yy <= 40 ? 2000 + yy : 1900 + yy;
+    return `${twoDigitMatch[1].padStart(2, '0')}-${twoDigitMatch[2].padStart(2, '0')}-${fullYear}`;
+  }
   const altMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (altMatch) {
     return `${altMatch[1].padStart(2, '0')}-${altMatch[2].padStart(2, '0')}-${altMatch[3]}`;
@@ -41,8 +54,78 @@ function toDdMmYyyy(val: any): string {
   return s;
 }
 
+/**
+ * Strict DD-MM-YYYY formatter:
+ * - Day cannot exceed 31
+ * - Month cannot exceed 12
+ * - Automatically inserts hyphen separator after day and month
+ * - Handles backspacing cleanly without separator lock
+ */
+function formatDobInput(rawVal: string, prevVal: string): string {
+  const isDeleting = rawVal.length < prevVal.length;
+  const digits = rawVal.replace(/\D/g, '').slice(0, 8);
+  if (!digits) return '';
+
+  let dayPart = '';
+  let monthPart = '';
+  let yearPart = '';
+
+  // 1. DAY FORMATTING
+  if (digits.length === 1) {
+    // If first digit > 3 (4-9), auto-prefix with 0: e.g. typing '5' -> '05-'
+    if (digits[0] > '3' && !isDeleting) {
+      dayPart = `0${digits[0]}`;
+      return `${dayPart}-`;
+    }
+    return digits;
+  }
+
+  // 2 or more day digits: clamp day <= 31
+  const rawDay = parseInt(digits.slice(0, 2), 10);
+  if (rawDay > 31) {
+    dayPart = '31';
+  } else if (digits.slice(0, 2) === '00') {
+    dayPart = '01';
+  } else {
+    dayPart = digits.slice(0, 2);
+  }
+
+  if (digits.length === 2) {
+    return isDeleting ? dayPart : `${dayPart}-`;
+  }
+
+  // 2. MONTH FORMATTING
+  const remAfterDay = digits.slice(2);
+  if (remAfterDay.length === 1) {
+    // If first digit of month > 1 (2-9), auto-prefix with 0: e.g. typing '6' -> '06-'
+    if (remAfterDay[0] > '1' && !isDeleting) {
+      monthPart = `0${remAfterDay[0]}`;
+      return `${dayPart}-${monthPart}-`;
+    }
+    return `${dayPart}-${remAfterDay}`;
+  }
+
+  // 2 or more month digits: clamp month <= 12
+  const rawMonth = parseInt(remAfterDay.slice(0, 2), 10);
+  if (rawMonth > 12) {
+    monthPart = '12';
+  } else if (remAfterDay.slice(0, 2) === '00') {
+    monthPart = '01';
+  } else {
+    monthPart = remAfterDay.slice(0, 2);
+  }
+
+  if (remAfterDay.length === 2) {
+    return isDeleting ? `${dayPart}-${monthPart}` : `${dayPart}-${monthPart}-`;
+  }
+
+  // 3. YEAR FORMATTING (up to 4 digits)
+  yearPart = remAfterDay.slice(2, 6);
+  return `${dayPart}-${monthPart}-${yearPart}`;
+}
+
 export function StudentProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<IStudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +136,9 @@ export function StudentProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submittingPw, setSubmittingPw] = useState(false);
 
@@ -68,14 +154,25 @@ export function StudentProfile() {
       .getProfile()
       .then((res) => {
         setProfile(res);
-        setEditGender(res?.gender || '');
+        setEditGender(formatGender(res?.gender) || '');
         setEditDob(toDdMmYyyy(res?.dateOfBirth));
+        if (res?.photoUrl) {
+          updateUser({ photoUrl: res.photoUrl, avatarUrl: res.photoUrl, photo_url: res.photoUrl });
+          window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: res.photoUrl } }));
+        }
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
-  }, []);
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setProfile((prev: IStudentProfile | null) => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website, website: e.detail.website } : prev);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
+  }, [updateUser]);
 
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,15 +182,17 @@ export function StudentProfile() {
     if (cleanDob && !isValidDdMmYyyy(cleanDob)) {
       setDetailsMsg({
         type: 'error',
-        text: 'Invalid Date of Birth. Please enter a valid date strictly in DD-MM-YYYY format (e.g. 15-06-2008).'
+        text: 'Invalid Date of Birth. Please enter a valid date strictly in DD-MM-YYYY format (Day: 01–31, Month: 01–12).'
       });
       return;
     }
 
+    const normalizedDob = toDdMmYyyy(cleanDob);
     setSavingDetails(true);
     try {
-      await studentApi.updateProfile({ gender: editGender, dateOfBirth: cleanDob });
-      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: cleanDob } : null);
+      await studentApi.updateProfile({ gender: editGender, dateOfBirth: normalizedDob });
+      setProfile((prev) => prev ? { ...prev, gender: editGender, dateOfBirth: normalizedDob } : null);
+      setEditDob(normalizedDob);
       setDetailsMsg({ type: 'success', text: 'Personal details updated successfully!' });
       setEditingDetails(false);
     } catch (err: any) {
@@ -182,6 +281,8 @@ export function StudentProfile() {
         photoApprovalStatus: 'NONE',
         photoRejectionReason: null
       } : null);
+      updateUser({ photoUrl: undefined, avatarUrl: undefined, photo_url: undefined });
+      window.dispatchEvent(new CustomEvent('student-photo-updated', { detail: { photoUrl: '' } }));
       setPhotoMsg({ type: 'success', text: 'Profile picture removed.' });
     } catch (err: any) {
       setPhotoMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to remove picture.' });
@@ -314,19 +415,7 @@ export function StudentProfile() {
           )}
 
           {profile?.hasPendingPhotoApproval && (
-            <div style={{
-              margin: '12px 0 4px',
-              background: '#FEF3C7',
-              border: '1px solid #FDE68A',
-              borderRadius: 10,
-              padding: '10px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              fontSize: 12.5,
-              color: '#92400E',
-              textAlign: 'left'
-            }}>
+            <div className="student-profile-pending-banner">
               {profile?.pendingPhotoUrl && (
                 <img
                   src={profile.pendingPhotoUrl}
@@ -335,34 +424,25 @@ export function StudentProfile() {
                 />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: '#92400E' }}>
+                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={13} /> Photo Pending Approval
                 </div>
-                <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1, color: '#B45309' }}>
-                  Your uploaded photo is waiting for administrator approval. Once approved, it will automatically become active on your profile.
+                <div style={{ fontSize: 11.5, opacity: 0.95, marginTop: 1 }}>
+                  Your uploaded photo is waiting for teacher approval. Once approved, it will automatically become active on your profile.
                 </div>
               </div>
             </div>
           )}
 
           {profile?.photoApprovalStatus === 'REJECTED' && (
-            <div style={{
-              margin: '12px 0 4px',
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
-              borderRadius: 10,
-              padding: '10px 12px',
-              fontSize: 12.5,
-              color: '#991B1B',
-              textAlign: 'left'
-            }}>
+            <div className="student-profile-rejected-banner">
               <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                 <AlertCircle size={13} /> Photo Declined by Administrator
               </div>
-              <div style={{ fontSize: 11.5, color: '#7F1D1D' }}>
+              <div style={{ fontSize: 11.5 }}>
                 Reason: "{profile.photoRejectionReason || 'Photo does not meet administrative standards.'}"
               </div>
-              <div style={{ fontSize: 11, color: '#991B1B', marginTop: 3 }}>
+              <div style={{ fontSize: 11, marginTop: 3 }}>
                 Please upload a clear, front-facing passport-style photo.
               </div>
             </div>
@@ -370,9 +450,24 @@ export function StudentProfile() {
 
           <h2 className="profile-hero-name">{profile?.name || 'Student'}</h2>
           <p className="profile-hero-role">{profile?.className} - Section {profile?.sectionName}</p>
-          <div className="profile-hero-badge">
+          <div 
+            className="profile-hero-badge"
+            onClick={() => {
+              const site = profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website;
+              if (site) {
+                window.open(site, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            style={{ 
+              cursor: (profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? 'pointer' : 'default'
+            }}
+            title={(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}` : profile?.schoolName}
+          >
             <School size={14} />
             <span>{profile?.schoolName}</span>
+            {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) && (
+              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+            )}
           </div>
         </div>
 
@@ -428,7 +523,7 @@ export function StudentProfile() {
 
           {editingDetails ? (
             <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="student-edit-grid">
                 <label style={{ display: 'grid', gap: 4 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Gender:
@@ -439,10 +534,11 @@ export function StudentProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border-strong, #cbd5e1)',
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">Select Gender</option>
@@ -463,27 +559,18 @@ export function StudentProfile() {
                       maxLength={10}
                       value={editDob}
                       onChange={(e) => {
-                        let val = e.target.value.replace(/[^0-9-]/g, '');
-                        const rawDigits = val.replace(/-/g, '');
-                        if (rawDigits.length <= 8 && !val.includes('-')) {
-                          if (rawDigits.length > 4) {
-                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}-${rawDigits.slice(4, 8)}`;
-                          } else if (rawDigits.length > 2) {
-                            val = `${rawDigits.slice(0, 2)}-${rawDigits.slice(2, 4)}`;
-                          }
-                        } else if (val.length > 10) {
-                          val = val.slice(0, 10);
-                        }
-                        setEditDob(val);
+                        const formatted = formatDobInput(e.target.value, editDob);
+                        setEditDob(formatted);
                       }}
                       style={{
                         width: '100%',
                         padding: '8px 34px 8px 12px',
                         borderRadius: 6,
-                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : '#cbd5e1'}`,
+                        border: `1px solid ${editDob && !isValidDdMmYyyy(editDob) ? '#ef4444' : 'var(--border-strong, #cbd5e1)'}`,
                         fontSize: 13,
                         outline: 'none',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--card-bg, #ffffff)',
+                        color: 'var(--text, #0f172a)',
                         boxSizing: 'border-box'
                       }}
                     />
@@ -530,7 +617,7 @@ export function StudentProfile() {
                   type="button"
                   onClick={() => {
                     setEditingDetails(false);
-                    setEditGender(profile?.gender || '');
+                    setEditGender(formatGender(profile?.gender) || '');
                     setEditDob(profile?.dateOfBirth ? toDdMmYyyy(profile.dateOfBirth) : '');
                   }}
                   style={{
@@ -597,7 +684,34 @@ export function StudentProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
-                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
+                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Official School Website</span>
+                <span className="detail-val">
+                  {(profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website) ? (
+                    <a
+                      href={profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        textDecoration: 'none'
+                      }}
+                      title="Open official school website in new tab"
+                    >
+                      <Globe size={13} />
+                      <span style={{ textDecoration: 'underline' }}>{profile?.schoolWebsite || (profile as any)?.school_website || (profile as any)?.website}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                  )}
+                </span>
               </div>
             </div>
           )}
@@ -645,24 +759,74 @@ export function StudentProfile() {
           <form onSubmit={handlePasswordChange} className="student-form-vertical">
             <label>
               <span>Current Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="••••••••••••"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showCurrentPw ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPw(!showCurrentPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showCurrentPw ? 'Hide password' : 'Show password'}
+                  aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+                >
+                  {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <label>
               <span>New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Enter new strong password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showNewPw ? 'text' : 'password'}
+                  required
+                  placeholder="Enter new strong password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPw(!showNewPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showNewPw ? 'Hide password' : 'Show password'}
+                  aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                >
+                  {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
                 Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
               </span>
@@ -670,13 +834,38 @@ export function StudentProfile() {
 
             <label>
               <span>Confirm New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type={showConfirmPw ? 'text' : 'password'}
+                  required
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 38, boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(!showConfirmPw)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showConfirmPw ? 'Hide password' : 'Show password'}
+                  aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <button type="submit" disabled={submittingPw} className="student-btn-primary" style={{ marginTop: 8 }}>

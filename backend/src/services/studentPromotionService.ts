@@ -7,7 +7,9 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
     ? '00000000-0000-0000-0000-000000000002'
     : (isGreenwoodSchool(schoolId) ? '00000000-0000-0000-0000-000000000001' : schoolId);
 
-  let resolvedYearId = fromYearId;
+  const matchedYearIds = new Set<string>();
+  if (fromYearId) matchedYearIds.add(fromYearId);
+
   try {
     const ayQ = await pool.query(
       `SELECT id, name, is_active FROM academic_years WHERE (school_id::text = $1 OR school_id::text = $2)`,
@@ -20,10 +22,19 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
         (fromYearId && r.name.toLowerCase().includes(fromYearId.toLowerCase()))
       );
       if (match) {
-        resolvedYearId = match.id;
+        matchedYearIds.add(match.id);
+        const normName = match.name.replace(/[^0-9]/g, '');
+        for (const r of ayQ.rows) {
+          const rNorm = r.name.replace(/[^0-9]/g, '');
+          if (rNorm && normName && (rNorm === normName || (normName.length >= 4 && rNorm.startsWith(normName.slice(0, 4))))) {
+            matchedYearIds.add(r.id);
+          }
+        }
       }
     }
   } catch {}
+
+  const yearIdArray = Array.from(matchedYearIds);
 
   const query = `
     SELECT st.id, st.name, st.roll_number AS roll, st.roll_number, st.admission_number,
@@ -39,19 +50,19 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
            EXISTS(
              SELECT 1 FROM student_promotions sp
              WHERE sp.student_id = st.id 
-               AND sp.from_academic_year_id::text = $2::text
+               AND (sp.from_academic_year_id::text = ANY($2::text[]))
                AND sp.status = 'CONFIRMED'
            ) AS already_processed
     FROM students st
     LEFT JOIN classes c ON c.id = st.class_id
     LEFT JOIN sections sec ON sec.id = st.section_id
     WHERE (st.school_id::text = $1::text OR st.school_id::text = $3::text)
-      AND (st.academic_year_id::text = $2::text OR (st.academic_year_id IS NULL AND $2 = ''))
+      AND (st.academic_year_id::text = ANY($2::text[]) OR ($2 = '{}' AND st.academic_year_id IS NULL))
     ORDER BY c.class_number NULLS LAST, sec.name, st.roll_number, st.name
   `;
 
   try {
-    const { rows } = await pool.query(query, [pgSchoolId, resolvedYearId, schoolId]);
+    const { rows } = await pool.query(query, [pgSchoolId, yearIdArray, schoolId]);
     if (rows && rows.length > 0) {
       return rows;
     }
@@ -72,9 +83,9 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id
        WHERE (st.school_id::text = $1::text OR st.school_id::text = $2::text)
-         AND (st.academic_year_id::text = $3::text)
+         AND (st.academic_year_id IS NULL OR st.academic_year_id::text = ANY($3::text[]))
        ORDER BY c.class_number NULLS LAST, sec.name, st.roll_number, st.name`,
-      [pgSchoolId, schoolId, resolvedYearId]
+      [pgSchoolId, schoolId, yearIdArray]
     );
     if (fallbackQ.rowCount && fallbackQ.rows.length > 0) {
       return fallbackQ.rows;
@@ -86,7 +97,7 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
   // Fallback to in-memory demoStudents if database had 0 rows or errored
   const memoryCandidates = demoStudents
     .filter(s => (isSameSchool(s.school_id, schoolId) || isSameSchool(s.schoolId, schoolId)))
-    .filter(s => !resolvedYearId || s.academic_year_id === resolvedYearId || s.session_id === resolvedYearId || (s.session_name && s.session_name.includes(fromYearId)))
+    .filter(s => yearIdArray.length === 0 || yearIdArray.includes(s.academic_year_id) || yearIdArray.includes(s.session_id) || (s.session_name && s.session_name.includes(fromYearId)))
     .map(s => ({
       id: s.id,
       name: s.name,
@@ -138,9 +149,11 @@ export async function promoteStudents(
       [pgSchoolId, schoolId]
     );
     if (ayQ.rowCount && ayQ.rows.length > 0) {
-      const fFound = ayQ.rows.find((r: any) => r.id === fromYearId || r.name === fromYearId || (fromYearId && r.name.toLowerCase().includes(fromYearId.toLowerCase())));
+      const strFrom = String(fromYearId || '').toLowerCase();
+      const strTo = String(toYearId || '').toLowerCase();
+      const fFound = ayQ.rows.find((r: any) => r.id === fromYearId || r.name === fromYearId || (strFrom && r.name && r.name.toLowerCase().includes(strFrom)));
       if (fFound) resolvedFromId = fFound.id;
-      const tFound = ayQ.rows.find((r: any) => r.id === toYearId || r.name === toYearId || (toYearId && r.name.toLowerCase().includes(toYearId.toLowerCase())));
+      const tFound = ayQ.rows.find((r: any) => r.id === toYearId || r.name === toYearId || (strTo && r.name && r.name.toLowerCase().includes(strTo)));
       if (tFound) resolvedToId = tFound.id;
     }
 
@@ -256,18 +269,46 @@ export async function promoteStudents(
         ]
       );
 
+      // Resolve target roll number: if item specifies roll, or keep currentStudent.roll_number
+      let targetRoll: string | null = item.toRollNumber || item.targetRollNumber || item.rollNumber || item.roll || null;
+      let finalRollNumber = targetRoll || currentStudent.roll_number;
+
+      // Ensure roll number does not conflict with existing students in the same target academic year, class, and section
+      const effectiveClass = targetClass || currentStudent.class_id;
+      const effectiveSection = targetSection || currentStudent.section_id;
+
+      if (effectiveClass && effectiveSection && finalRollNumber) {
+        const rollDupQ = await client.query(
+          `SELECT roll_number FROM students
+           WHERE academic_year_id = $1::uuid AND class_id = $2::uuid AND section_id = $3::uuid
+             AND id != $4::uuid`,
+          [resolvedToId, effectiveClass, effectiveSection, studentId]
+        );
+        const existingRolls = new Set(rollDupQ.rows.map(r => String(r.roll_number).trim()));
+        if (existingRolls.has(String(finalRollNumber).trim())) {
+          // Find next available integer roll number in this section for this academic year
+          let nextRoll = 1;
+          while (existingRolls.has(String(nextRoll))) {
+            nextRoll++;
+          }
+          finalRollNumber = String(nextRoll);
+        }
+      }
+
       await client.query(
         `UPDATE students
          SET academic_year_id = $1::uuid,
              class_id = COALESCE($2::uuid, class_id),
              section_id = COALESCE($3::uuid, section_id),
-             enrollment_status = $4,
+             roll_number = COALESCE($4, roll_number),
+             enrollment_status = $5,
              updated_at = NOW()
-         WHERE id::text = $5`,
+         WHERE id::text = $6`,
         [
           resolvedToId,
           targetClass,
           targetSection,
+          finalRollNumber,
           outcome === 'GRADUATED' ? 'GRADUATED' : (outcome === 'TRANSFERRED' ? 'TRANSFERRED' : 'ACTIVE'),
           studentId
         ]
@@ -280,6 +321,7 @@ export async function promoteStudents(
         demoStu.session_id = resolvedToId;
         if (targetClass) demoStu.class_id = targetClass;
         if (targetSection) demoStu.section_id = targetSection;
+        if (finalRollNumber) demoStu.roll_number = finalRollNumber;
         demoStu.enrollment_status = outcome === 'GRADUATED' ? 'GRADUATED' : (outcome === 'TRANSFERRED' ? 'TRANSFERRED' : 'ACTIVE');
       }
 

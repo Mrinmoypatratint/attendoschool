@@ -1,9 +1,11 @@
+import http from 'http';
 import app from './app';
 import { env } from './config/env';
 import { pool } from './db';
 import { startKeepAliveService } from './services/keepAliveService';
 
-const server = app.listen(env.port, () => {
+const server = http.createServer({ maxHeaderSize: 1024 * 1024 }, app);
+server.listen(env.port, () => {
   console.log(`School Attendance API running on http://localhost:${env.port}`);
 
   // Keep-alive auto-pinger (prevents cloud container idle hibernation - 4 min interval)

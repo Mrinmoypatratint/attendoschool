@@ -53,9 +53,11 @@ import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
+import { formatGender } from './utils/gender';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import { BrandedWelcomeLoader } from './components/BrandedWelcomeLoader';
+import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import {
   UniversalPreviewModal,
   DestructiveConfirmModal,
@@ -65,6 +67,7 @@ import {
   PreviewSummaryCard,
   PreviewTableData
 } from './components/preview';
+import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -78,6 +81,7 @@ function useTheme(){
   });
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+    document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme',dark?'dark':'light');
   },[dark]);
   useEffect(() => {
@@ -231,7 +235,6 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm.includes('tint') ||
     norm === 'adm-2025-105' ||
     norm === 'adm-2025-001' ||
-    norm === 'student@gmail.com' ||
     norm === 'teacher@tint.edu.in' ||
     norm === 'student@tint.edu.in' ||
     norm === 'admin@tint.edu.in' ||
@@ -305,8 +308,20 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 /* ────── Login ────── */
 function Login() {
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { dark, toggle } = useTheme();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'STUDENT') {
+        nav('/student/dashboard', { replace: true });
+      } else if (user.role === 'SUPER_ADMIN') {
+        nav('/super-admin', { replace: true });
+      } else {
+        nav('/dashboard', { replace: true });
+      }
+    }
+  }, [user, nav]);
 
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [institutesLoading, setInstitutesLoading] = useState(false);
@@ -315,6 +330,7 @@ function Login() {
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState<string>('');
   const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
+  const [manualSchoolSelect, setManualSchoolSelect] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupNotFound, setLookupNotFound] = useState(false);
   const [email, setEmail] = useState('');
@@ -500,6 +516,7 @@ function Login() {
       setPassword('');
       setInstituteId('');
       setDetectedInstitute(null);
+      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     } else {
@@ -507,6 +524,7 @@ function Login() {
       setPassword('ChangeMe123!');
       setInstituteId('');
       setDetectedInstitute(null);
+      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     }
@@ -590,6 +608,20 @@ function Login() {
           <h1 className="as-simple-brand-title">AttendoSchool</h1>
           <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
+      </div>
+
+      {/* Floating Top-Right Theme Toggle */}
+      <div className="as-simple-top-bar">
+        <button
+          type="button"
+          onClick={toggle}
+          className="as-simple-util-btn"
+          title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          id="login-theme-toggle"
+        >
+          {dark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#93c5fd' }} />}
+          <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
       </div>
 
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
@@ -727,25 +759,60 @@ function Login() {
                     <label className="as-simple-label" style={{ margin: 0 }}>
                       School / Institute <span style={{ color: '#fb923c' }}>*</span>
                     </label>
-                    {selectedInstitute && (
-                      <span style={{ 
-                        fontSize: 10.5, 
-                        color: '#34d399', 
-                        background: 'rgba(16, 185, 129, 0.12)', 
-                        border: '1px solid rgba(16, 185, 129, 0.3)', 
-                        padding: '2px 8px', 
-                        borderRadius: 9999, 
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}>
-                        <Check size={11} strokeWidth={3} /> Auto-detected
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {selectedInstitute && (
+                        <span style={{ 
+                          fontSize: 10.5, 
+                          color: '#34d399', 
+                          background: 'rgba(16, 185, 129, 0.12)', 
+                          border: '1px solid rgba(16, 185, 129, 0.3)', 
+                          padding: '2px 8px', 
+                          borderRadius: 9999, 
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}>
+                          <Check size={11} strokeWidth={3} /> Auto-detected
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {selectedInstitute ? (
+                  {manualSchoolSelect ? (
+                    <div style={{ marginBottom: 4 }}>
+                      <select
+                        id="manual-institute-select"
+                        className="as-simple-input"
+                        value={instituteId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInstituteId(val);
+                          const inst = institutes.find(i => i.id === val);
+                          setDetectedInstitute(inst || null);
+                          if (val) setLookupNotFound(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: 13,
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Choose School / Institute --</option>
+                        {institutes.map(inst => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.name} ({inst.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : selectedInstitute ? (
                     <div 
                       id="detected-institute-display"
                       style={{
@@ -783,19 +850,21 @@ function Login() {
                           </span>
                         </div>
                       </div>
-                      <div style={{
-                        padding: '3px 8px',
-                        borderRadius: 6,
-                        background: 'rgba(56, 189, 248, 0.15)',
-                        border: '1px solid rgba(56, 189, 248, 0.25)',
-                        color: '#38bdf8',
-                        fontSize: 10.5,
-                        fontWeight: 700,
-                        letterSpacing: '0.04em',
-                        flexShrink: 0
-                      }}>
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          color: '#38bdf8',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          flexShrink: 0
+                        }}
+                      >
                         {selectedInstitute.code || 'ACTIVE'}
-                      </div>
+                      </span>
                     </div>
                   ) : lookupLoading ? (
                     <div 
@@ -820,20 +889,48 @@ function Login() {
                     <div 
                       id="not-found-institute-placeholder"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
                         padding: '11px 14px',
                         borderRadius: 10,
                         background: 'rgba(239, 68, 68, 0.05)',
                         border: '1px dashed rgba(239, 68, 68, 0.35)',
                         color: '#f87171',
-                        fontSize: 12,
-                        minHeight: 46
+                        fontSize: 12
                       }}
                     >
-                      <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                      <span>No school found for this Login ID. Please verify your credentials.</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                        <span>No school auto-detected for this Login ID. Please select your school:</span>
+                      </div>
+                      <select
+                        id="fallback-institute-select"
+                        className="as-simple-input"
+                        value={instituteId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInstituteId(val);
+                          const inst = institutes.find(i => i.id === val);
+                          setDetectedInstitute(inst || null);
+                          if (val) setLookupNotFound(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          fontSize: 12.5,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: '#0f172a',
+                          color: '#f8fafc',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Choose Your School / Institute --</option>
+                        {institutes.map(inst => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.name} ({inst.code})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ) : (
                     <div 
@@ -841,7 +938,7 @@ function Login() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
+                        justifyContent: 'space-between',
                         padding: '11px 14px',
                         borderRadius: 10,
                         background: 'rgba(255, 255, 255, 0.02)',
@@ -851,12 +948,14 @@ function Login() {
                         minHeight: 46
                       }}
                     >
-                      <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
-                      <span style={{ opacity: 0.75 }}>
-                        {loginRole === 'STUDENT'
-                          ? 'School will appear automatically when you enter your Admission No.'
-                          : 'School will appear automatically when you enter your Login ID / Email'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
+                        <span style={{ opacity: 0.75 }}>
+                          {loginRole === 'STUDENT'
+                            ? 'School will appear automatically when you enter your Admission No.'
+                            : 'School will appear automatically when you enter your Login ID / Email'}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1911,22 +2010,95 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user) {
       loadAcademicYears();
-      if (user.role === 'SCHOOL_ADMIN') {
+      if (user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') {
         api.get('/dashboard/school').then(res => {
           setSchoolInfo(res.data);
-          if (res.data?.school?.name && updateUser && user.schoolName !== res.data.school.name) {
-            updateUser({ schoolName: res.data.school.name });
+          if (res.data?.school && updateUser) {
+            const updates: any = {};
+            if (res.data.school.name && user.schoolName !== res.data.school.name) {
+              updates.schoolName = res.data.school.name;
+            }
+            if (res.data.school.code && (user as any).schoolCode !== res.data.school.code) {
+              updates.schoolCode = res.data.school.code;
+            }
+            if (res.data.school.photo_url && (user as any).schoolPhotoUrl !== res.data.school.photo_url) {
+              updates.schoolPhotoUrl = res.data.school.photo_url;
+              updates.school_photo_url = res.data.school.photo_url;
+            }
+            if (Object.keys(updates).length > 0) {
+              updateUser(updates);
+            }
           }
         }).catch(() => {});
-      } else if (user.role === 'TEACHER' && !user.schoolName) {
-        api.get('/teacher/profile').then(res => {
-          if (res.data?.schoolName && updateUser) {
-            updateUser({ schoolName: res.data.schoolName });
-          }
-        }).catch(() => {});
+        if (user.role === 'TEACHER') {
+          api.get('/teacher/profile').then(res => {
+            const updates: any = {};
+            if (res.data?.schoolName && user.schoolName !== res.data.schoolName) {
+              updates.schoolName = res.data.schoolName;
+            }
+            if (res.data?.schoolWebsite) {
+              updates.schoolWebsite = res.data.schoolWebsite;
+              setSchoolInfo((prev: any) => ({
+                ...prev,
+                school: {
+                  ...(prev?.school || {}),
+                  website: res.data.schoolWebsite
+                }
+              }));
+              try {
+                localStorage.setItem('attendo_school_website', res.data.schoolWebsite);
+              } catch {}
+            }
+            if (Object.keys(updates).length > 0 && updateUser) {
+              updateUser(updates);
+            }
+          }).catch(() => {});
+        }
       }
     }
   }, [user?.role]);
+
+  useEffect(() => {
+    const handleSchoolUpdated = (e: any) => {
+      if (e.detail) {
+        if (e.detail.website) {
+          try {
+            localStorage.setItem('attendo_school_website', e.detail.website);
+          } catch {}
+          if (updateUser) {
+            updateUser({ schoolWebsite: e.detail.website });
+          }
+        }
+        setSchoolInfo((prev: any) => ({
+          ...prev,
+          school: {
+            ...(prev?.school || {}),
+            ...e.detail
+          }
+        }));
+      }
+    };
+    const handleStorageUpdated = (e: StorageEvent) => {
+      if (e.key === 'attendo_school_website' && e.newValue) {
+        setSchoolInfo((prev: any) => ({
+          ...prev,
+          school: {
+            ...(prev?.school || {}),
+            website: e.newValue
+          }
+        }));
+        if (updateUser) {
+          updateUser({ schoolWebsite: e.newValue });
+        }
+      }
+    };
+    window.addEventListener('school-profile-updated', handleSchoolUpdated);
+    window.addEventListener('storage', handleStorageUpdated);
+    return () => {
+      window.removeEventListener('school-profile-updated', handleSchoolUpdated);
+      window.removeEventListener('storage', handleStorageUpdated);
+    };
+  }, [updateUser]);
 
   // Ctrl+K keyboard shortcut
   useEffect(() => {
@@ -2114,7 +2286,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
-    ['/photo-approvals', 'Photo Approvals', Camera],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
@@ -2170,6 +2341,7 @@ function Layout({children}:{children:React.ReactNode}){
     if (user.role === 'SCHOOL_ADMIN') {
       if (item[0] === '/notifications' || item[1] === 'Parent Communication') return false;
       if (item[0] === '/leave-applications' || item[1] === 'Leave Applications' || item[1] === 'Leave Review') return false;
+      if (item[0] === '/photo-approvals' || item[1] === 'Photo Approvals') return false;
       if (item[0] === '/offline-attendance' || item[1] === 'Offline Mode') return false;
     }
     if (user.role === 'TEACHER') {
@@ -2178,8 +2350,46 @@ function Layout({children}:{children:React.ReactNode}){
     return true;
   });
 
-  const currentSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
-  const currentSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || 'SCH';
+  const isDavSchool =
+    String(schoolInfo?.school?.name || '').toUpperCase().includes('DAV') ||
+    String((user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+    String(schoolInfo?.school?.code || '').includes('15582') ||
+    String((user as any)?.schoolCode || '').includes('15582') ||
+    String((user as any)?.email || '').toLowerCase().includes('@dav.') ||
+    (user as any)?.schoolId === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  const rawSchoolCode = schoolInfo?.school?.code || (user as any)?.schoolCode || (user as any)?.school_code || (isDavSchool ? '15582' : 'SCH');
+  const currentSchoolCode = (isDavSchool || rawSchoolCode === 'SCH') ? (isDavSchool ? '15582' : rawSchoolCode) : rawSchoolCode;
+
+  const rawSchoolName = schoolInfo?.school?.name || (user as any)?.schoolName || (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : user.role === 'TEACHER' ? 'School' : 'School Administration');
+  const currentSchoolName = isDavSchool ? 'DAV MODEL SCHOOL' : rawSchoolName;
+
+  const rawPhoto = schoolInfo?.school?.photo_url || schoolInfo?.school?.photoUrl || (user as any)?.school_photo_url || (user as any)?.schoolPhotoUrl || (user.role === 'SCHOOL_ADMIN' ? ((user as any)?.photo_url || (user as any)?.photoUrl) : null);
+  const currentSchoolPhoto = rawPhoto || (isDavSchool ? '/dav-logo.png' : null);
+
+  const normalizeWebsiteUrl = (url?: string | null) => {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const rawWebsite =
+    schoolInfo?.school?.website ||
+    (user as any)?.schoolWebsite ||
+    (user as any)?.school_website ||
+    (typeof window !== 'undefined' ? localStorage.getItem('attendo_school_website') : '') ||
+    (isDavSchool ? 'https://davmodeldurgapur.org' : '');
+
+  const currentSchoolWebsite = normalizeWebsiteUrl(rawWebsite);
+
+  const handleOpenSchoolWebsite = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (currentSchoolWebsite) {
+      window.open(currentSchoolWebsite, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
@@ -2195,19 +2405,45 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div className="school-crest" style={{ background: '#ffffff', border: '1px solid var(--border)', padding: 3, overflow: 'hidden' }}>
-          <img src="/attendo-school-logo.png" alt={(user.role === 'SCHOOL_ADMIN' || user.role === 'TEACHER') ? currentSchoolName : 'AttendoSchool'} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 'inherit' }} />
-        </div>
-        <div className="school-info">
-          <span className="school-name">{user.role==='SUPER_ADMIN'?'AttendoSchool':currentSchoolName}</span>
-          <span className="school-meta">{user.role==='SUPER_ADMIN'?'Platform Administration':`Code: ${currentSchoolCode} · Affiliated`}</span>
+        <div 
+          className="sidebar-brand-interactive"
+          onClick={handleOpenSchoolWebsite}
+          title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName)}
+          style={{
+            cursor: currentSchoolWebsite ? 'pointer' : 'default',
+            userSelect: 'none'
+          }}
+        >
+          <div className="school-crest">
+            <img
+              src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+              alt={user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}
+              onError={(e) => {
+                const target = e.currentTarget;
+                const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                  target.src = fallback;
+                }
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          </div>
+          <div className="school-info">
+            <span className="school-name">{user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName}</span>
+            <span className="school-meta">
+              {user.role === 'SUPER_ADMIN' ? 'Platform Administration' : `Code: ${currentSchoolCode} · Affiliated`}
+            </span>
+          </div>
         </div>
         <button
           type="button"
           className="sidebar-mobile-close-btn"
-          onClick={() => setMobileSidebarOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMobileSidebarOpen(false);
+          }}
           aria-label="Close menu"
         >
           <X size={18} />
@@ -2315,7 +2551,7 @@ function Layout({children}:{children:React.ReactNode}){
               title="Toggle menu"
               style={{ border: '1px solid var(--border)', borderRadius: 8 }}
               onClick={() => {
-                if (window.innerWidth <= 1024) {
+                if (window.innerWidth <= 1180) {
                   setMobileSidebarOpen(prev => !prev);
                 } else {
                   setSidebarCollapsed(prev => !prev);
@@ -2324,10 +2560,10 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={16} />
             </button>
-            <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <input placeholder="Search schools, students, classes..." readOnly style={{ cursor: 'pointer' }} />
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2421,9 +2657,27 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <div className="school-crest" style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 4, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <School size={20} color="#1d4ed8" />
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+            >
+              <div 
+                className="school-crest" 
+                style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
+              >
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -2434,10 +2688,10 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               </div>
             </div>
-            <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
-              <span className="header-kbd">Ctrl + K</span>
+              <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
           <div className="header-right">
@@ -2497,7 +2751,7 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            {/* Connected Review Notifications Bell & Popover (Admin Photo Approvals & Teacher Leaves) */}
+            {/* Connected Review Notifications Bell & Popover (Teacher Leaves) */}
             <div className="super-notif-wrap" ref={adminNotifRef} style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -2507,9 +2761,9 @@ function Layout({children}:{children:React.ReactNode}){
                 style={{ position: 'relative' }}
               >
                 <Bell size={16} />
-                {(pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
+                {(pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0) > 0) && (
                   <span className="header-badge-num" style={{ background: '#ef4444' }}>
-                    {pendingPhotoCount + pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
+                    {pendingLeaveCount + (schoolInfo?.pendingCorrectionsCount || 0)}
                   </span>
                 )}
               </button>
@@ -2519,22 +2773,13 @@ function Layout({children}:{children:React.ReactNode}){
                   <div className="super-notif-header">
                     <div className="super-notif-title-row">
                       <h4 className="super-notif-title">Notifications</h4>
-                      {(pendingPhotoCount + pendingLeaveCount) > 0 && (
+                      {pendingLeaveCount > 0 && (
                         <span className="super-notif-count-pill">
-                          {pendingPhotoCount + pendingLeaveCount} pending
+                          {pendingLeaveCount} pending
                         </span>
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button
-                        type="button"
-                        className="super-notif-readall-btn"
-                        title="Review Submitted Photos"
-                        onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
-                      >
-                        <Camera size={12} />
-                        <span>Photos</span>
-                      </button>
                       <button
                         type="button"
                         className="super-notif-readall-btn"
@@ -2549,39 +2794,27 @@ function Layout({children}:{children:React.ReactNode}){
                   </div>
 
                   <div className="super-notif-list">
-                    {adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL' || n.type === 'TEACHER_LEAVE_REQUEST').length === 0 ? (
+                    {adminNotifs.filter((n: any) => n.type === 'TEACHER_LEAVE_REQUEST').length === 0 ? (
                       <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                           <CheckCircle2 size={24} />
                         </div>
                         <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending photo or leave approval requests.</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending teacher leave requests.</div>
                       </div>
                     ) : (
-                      adminNotifs.filter((n: any) => n.type === 'PHOTO_APPROVAL' || n.type === 'TEACHER_LEAVE_REQUEST').map((n: any) => (
+                      adminNotifs.filter((n: any) => n.type === 'TEACHER_LEAVE_REQUEST').map((n: any) => (
                         <div
                           key={n.id}
                           className="super-notif-item unread"
                           onClick={() => {
                             setAdminNotifOpen(false);
-                            nav(n.link || (n.type === 'TEACHER_LEAVE_REQUEST' ? '/teacher-leave-approvals' : '/photo-approvals'));
+                            nav(n.link || '/teacher-leave-approvals');
                           }}
                         >
-                          {n.type === 'TEACHER_LEAVE_REQUEST' ? (
-                            <div className="super-notif-icon-wrap notif-leave" style={{ background: '#fef3c7', color: '#d97706', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <CalendarCheck size={18} />
-                            </div>
-                          ) : n.avatar ? (
-                            <img
-                              src={n.avatar}
-                              alt={n.applicantName || 'Applicant'}
-                              style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid #bfdbfe', flexShrink: 0 }}
-                            />
-                          ) : (
-                            <div className="super-notif-icon-wrap notif-photo">
-                              <Camera size={17} />
-                            </div>
-                          )}
+                          <div className="super-notif-icon-wrap notif-leave" style={{ background: '#fef3c7', color: '#d97706', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <CalendarCheck size={18} />
+                          </div>
 
                           <div className="super-notif-body">
                             <div className="super-notif-item-title">
@@ -2592,7 +2825,7 @@ function Layout({children}:{children:React.ReactNode}){
                             </div>
                             <p className="super-notif-msg">{n.message}</p>
                             <span className="super-notif-action-tag">
-                              {n.type === 'TEACHER_LEAVE_REQUEST' ? "Review Faculty Leave →" : "Review & Verify →"}
+                              Review Faculty Leave →
                             </span>
                           </div>
                         </div>
@@ -2608,14 +2841,6 @@ function Layout({children}:{children:React.ReactNode}){
                     >
                       <CalendarCheck size={13} />
                       <span>Teacher's Leaves</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="super-notif-footer-link"
-                      onClick={() => { setAdminNotifOpen(false); nav('/photo-approvals'); }}
-                    >
-                      <Camera size={13} />
-                      <span>Photo Reviews</span>
                     </button>
                     {user?.role !== 'SCHOOL_ADMIN' && (
                       <button
@@ -2672,20 +2897,42 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div className="header-meta" style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="/attendo-school-logo.png" alt={user.role === 'TEACHER' ? currentSchoolName : 'AttendoSchool'} style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', flexShrink: 0 }} />
-                <p className="eyebrow" style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.role === 'TEACHER' ? `${currentSchoolName.toUpperCase()} · TEACHER` : `ATTENDOSCHOOL · ${user.role.replace(/_/g,' ')}`}
-                </p>
+            <div 
+              style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
+              onClick={handleOpenSchoolWebsite}
+              title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
+            >
+              <div 
+                className="school-crest" 
+                style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}
+              >
+                <img
+                  src={currentSchoolPhoto || (isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png')}
+                  alt={currentSchoolName}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    const fallback = isDavSchool ? '/dav-logo.png' : '/attendo-school-logo.png';
+                    if (target.src !== fallback && !target.src.endsWith(fallback)) {
+                      target.src = fallback;
+                    }
+                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
               </div>
-              <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 18 }}>{user.name}</h2>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {currentSchoolName}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {user.name} · {user.role === "TEACHER" ? "Faculty" : user.role.replace(/_/g," ")}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
+          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15}/>
             <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
-            <span className="header-kbd">⌘K</span>
+            <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
             {/* Connected Academic Session Selector Dropdown */}
@@ -2752,7 +2999,7 @@ function Layout({children}:{children:React.ReactNode}){
                 <button
                   type="button"
                   className="header-icon-btn"
-                  title="Class Review Notifications (Leaves & Photos)"
+                  title="Student Reviews & Photo Approvals"
                   onClick={() => { setTeacherNotifOpen(prev => !prev); if (!teacherNotifOpen) loadAdminNotifications(); }}
                   style={{ position: 'relative' }}
                 >
@@ -2776,11 +3023,23 @@ function Layout({children}:{children:React.ReactNode}){
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {pendingPhotoCount > 0 && (
+                          <button
+                            type="button"
+                            className="super-notif-readall-btn"
+                            style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
+                            title="Review Student Photos"
+                            onClick={() => { setTeacherNotifOpen(false); nav('/photo-approvals'); }}
+                          >
+                            <Camera size={12} />
+                            <span>Photos ({pendingPhotoCount})</span>
+                          </button>
+                        )}
                         {pendingLeaveCount > 0 && (
                           <button
                             type="button"
                             className="super-notif-readall-btn"
-                            style={{ color: '#059669', background: '#ecfdf5', borderColor: '#a7f3d0', cursor: 'pointer' }}
+                            style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.25)', cursor: 'pointer' }}
                             title="Mark all pending leave requests as seen"
                             onClick={async () => {
                               try {
@@ -2798,22 +3057,12 @@ function Layout({children}:{children:React.ReactNode}){
                         <button
                           type="button"
                           className="super-notif-readall-btn"
-                          style={{ color: '#2563eb', background: '#eff6ff', borderColor: '#bfdbfe', cursor: 'pointer' }}
+                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.25)', cursor: 'pointer' }}
                           title="Review Leave Requests"
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
-                          <Calendar size={12} />
+                          <CalendarCheck size={12} />
                           <span>Leaves{pendingLeaveCount > 0 ? ` (${pendingLeaveCount})` : ''}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="super-notif-readall-btn"
-                          style={{ color: '#7c3aed', background: '#f5f3ff', borderColor: '#ddd6fe', cursor: 'pointer' }}
-                          title="Review Photo Approvals"
-                          onClick={() => { setTeacherNotifOpen(false); nav('/photo-approvals'); }}
-                        >
-                          <Camera size={12} />
-                          <span>Photos{pendingPhotoCount > 0 ? ` (${pendingPhotoCount})` : ''}</span>
                         </button>
                       </div>
                     </div>
@@ -2821,7 +3070,7 @@ function Layout({children}:{children:React.ReactNode}){
                     <div className="super-notif-list">
                       {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').length === 0 ? (
                         <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
@@ -2835,7 +3084,9 @@ function Layout({children}:{children:React.ReactNode}){
                             style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', cursor: 'pointer' }}
                             onClick={async () => {
                               setTeacherNotifOpen(false);
-                              if (n.type === 'LEAVE_REQUEST') {
+                              if (n.type === 'PHOTO_APPROVAL') {
+                                nav('/photo-approvals');
+                              } else {
                                 if (n.rawId) {
                                   api.put(`/reviews/leaves/${n.rawId}/seen`).catch(() => {});
                                   setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
@@ -2843,15 +3094,27 @@ function Layout({children}:{children:React.ReactNode}){
                                   window.dispatchEvent(new CustomEvent('reviews-updated'));
                                 }
                                 nav('/leave-applications');
-                              } else {
-                                nav('/photo-approvals');
                               }
                             }}
                           >
                             <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
-                              <div className={`super-notif-icon-wrap ${n.type === 'PHOTO_APPROVAL' ? 'notif-photo' : 'notif-leave'}`}>
-                                {n.type === 'PHOTO_APPROVAL' ? <Camera size={17} /> : <Calendar size={17} />}
-                              </div>
+                              {n.type === 'PHOTO_APPROVAL' ? (
+                                n.avatar ? (
+                                  <img
+                                    src={n.avatar}
+                                    alt={n.applicantName || 'Student'}
+                                    style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
+                                  />
+                                ) : (
+                                  <div className="super-notif-icon-wrap notif-photo" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', flexShrink: 0 }}>
+                                    <Camera size={18} />
+                                  </div>
+                                )
+                              ) : (
+                                <div className="super-notif-icon-wrap notif-leave">
+                                  <Calendar size={17} />
+                                </div>
+                              )}
 
                               <div className="super-notif-body">
                                 <div className="super-notif-item-title">
@@ -2872,9 +3135,9 @@ function Layout({children}:{children:React.ReactNode}){
                                 type="button"
                                 title="Mark as Seen"
                                 style={{
-                                  background: '#ecfdf5',
-                                  border: '1px solid #a7f3d0',
-                                  color: '#059669',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  color: '#10b981',
                                   borderRadius: 6,
                                   padding: '4px 7px',
                                   fontSize: 11,
@@ -2914,7 +3177,7 @@ function Layout({children}:{children:React.ReactNode}){
                         onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                       >
                         <CalendarCheck size={13} />
-                        <span>Review Leaves</span>
+                        <span>Leave Applications</span>
                       </button>
                       <button
                         type="button"
@@ -3042,7 +3305,7 @@ function Layout({children}:{children:React.ReactNode}){
                       border: n.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
                       borderRadius: 8,
                       padding: 14,
-                      backgroundColor: n.read_at ? 'var(--surface-subtle, #f8fafc)' : 'var(--surface, #ffffff)',
+                      backgroundColor: n.read_at ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
                       boxShadow: n.read_at ? 'none' : '0 1px 4px rgba(0,0,0,0.06)'
                     }}
                   >
@@ -3053,8 +3316,9 @@ function Layout({children}:{children:React.ReactNode}){
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          backgroundColor: n.priority === 'EMERGENCY' ? '#fee2e2' : n.priority === 'HIGH' ? '#ffedd5' : '#eff6ff',
-                          color: n.priority === 'EMERGENCY' ? '#b91c1c' : n.priority === 'HIGH' ? '#c2410c' : '#1d4ed8'
+                          backgroundColor: n.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : n.priority === 'HIGH' ? 'rgba(249, 115, 22, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                          color: n.priority === 'EMERGENCY' ? '#ef4444' : n.priority === 'HIGH' ? '#f97316' : '#3b82f6',
+                          border: n.priority === 'EMERGENCY' ? '1px solid rgba(239, 68, 68, 0.3)' : n.priority === 'HIGH' ? '1px solid rgba(249, 115, 22, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
                         }}
                       >
                         {n.priority}
@@ -3068,7 +3332,7 @@ function Layout({children}:{children:React.ReactNode}){
                       {n.title}
                     </h4>
 
-                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-muted, #334155)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                       {n.message}
                     </p>
 
@@ -3184,16 +3448,16 @@ function Layout({children}:{children:React.ReactNode}){
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 999,
-                                  background: /^f/i.test(s.gender) ? '#fdf2f8' : /^m/i.test(s.gender) ? '#f0f9ff' : '#f8fafc',
-                                  color: /^f/i.test(s.gender) ? '#db2777' : /^m/i.test(s.gender) ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${/^f/i.test(s.gender) ? '#fbcfe8' : /^m/i.test(s.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                  color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                                 }}>
-                                  {s.gender}
+                                  {formatGender(s.gender)}
                                 </span>
                               )}
                             </div>
                             <span className="search-result-meta">
-                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${s.gender}` : ''} · {s.email}
+                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${formatGender(s.gender)}` : ''} · {s.email}
                             </span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
@@ -3216,15 +3480,15 @@ function Layout({children}:{children:React.ReactNode}){
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 999,
-                                  background: /^f/i.test(t.gender) ? '#fdf2f8' : /^m/i.test(t.gender) ? '#f0f9ff' : '#f8fafc',
-                                  color: /^f/i.test(t.gender) ? '#db2777' : /^m/i.test(t.gender) ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${/^f/i.test(t.gender) ? '#fbcfe8' : /^m/i.test(t.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  background: formatGender(t.gender) === 'Female' ? '#fdf2f8' : formatGender(t.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                  color: formatGender(t.gender) === 'Female' ? '#db2777' : formatGender(t.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                  border: `1px solid ${formatGender(t.gender) === 'Female' ? '#fbcfe8' : formatGender(t.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                                 }}>
-                                  {t.gender}
+                                  {formatGender(t.gender)}
                                 </span>
                               )}
                             </div>
-                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${t.gender} · ` : ''}{t.email}</span>
+                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${formatGender(t.gender)} · ` : ''}{t.email}</span>
                           </div>
                           <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
@@ -3510,23 +3774,6 @@ function AdminHome(){
       </div>
     </div>
 
-    {/* Alert Banner if Pending Photo Approvals */}
-    {(data?.pendingPhotosCount > 0) && (
-      <div className="admin-alert-banner" style={{ marginBottom: 14, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
-        <div className="alert-left">
-          <Camera size={20} color="#2563eb" />
-          <div>
-            <strong style={{ color: '#1e3a8a' }}>Student Profile Photo Submissions Pending Approval</strong>
-            <p style={{ color: '#1e40af', margin: 0, fontSize: 13 }}>
-              There {data.pendingPhotosCount === 1 ? 'is 1 photo' : `are ${data.pendingPhotosCount} photos`} submitted by students waiting for your verification.
-            </p>
-          </div>
-        </div>
-        <button className="alert-action-btn" onClick={() => nav('/review/photos')} style={{ background: '#2563eb', color: '#ffffff' }}>
-          Review Photos ({data.pendingPhotosCount}) →
-        </button>
-      </div>
-    )}
 
     {/* Alert Banner if Pending Corrections */}
     {pendingCorrections > 0 && (
@@ -3796,13 +4043,13 @@ function AdminHome(){
                     ></div>
                   </div>
                   <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                    {t.day} {t.isToday ? '(Today)' : ''}
+                    {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
               <span>Institutional Target: <b>90% Minimum</b></span>
               <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
             </div>
@@ -3903,6 +4150,7 @@ function TeacherHome(){
   const [notices,setNotices]=useState<any[]>([]);
   const [studentCount,setStudentCount]=useState<number>(0);
   const [loading,setLoading]=useState(true);
+  const [pendingPhotos, setPendingPhotos] = useState(0);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
@@ -3969,6 +4217,17 @@ function TeacherHome(){
     const onFocus = () => loadSchedule(false);
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  useEffect(() => {
+    const loadPhotoCount = () => {
+      api.get('/reviews/notifications').then(res => {
+        if (res.data?.success) setPendingPhotos(res.data.pendingPhotosCount || 0);
+      }).catch(() => {});
+    };
+    loadPhotoCount();
+    window.addEventListener('reviews-updated', loadPhotoCount);
+    return () => window.removeEventListener('reviews-updated', loadPhotoCount);
   }, []);
 
   // Helper to find if routine class has already had attendance taken today
@@ -4095,6 +4354,22 @@ function TeacherHome(){
         />
       )}
       <Layout>
+        {pendingPhotos > 0 && (
+          <div className="admin-alert-banner" style={{ marginBottom: 16, background: "rgba(37, 99, 235, 0.12)", borderColor: "rgba(59, 130, 246, 0.25)", color: "var(--text, #1e40af)" }}>
+            <div className="alert-left">
+              <Camera size={20} color="#3b82f6" />
+              <div>
+                <strong style={{ color: "var(--text, #1e3a8a)" }}>Student Profile Photo Submissions Pending Approval</strong>
+                <p style={{ color: "var(--text-secondary, #1e40af)", margin: 0, fontSize: 13 }}>
+                  There {pendingPhotos === 1 ? "is 1 photo" : `are ${pendingPhotos} photos`} submitted by students waiting for your verification.
+                </p>
+              </div>
+            </div>
+            <button className="alert-action-btn" onClick={() => nav("/photo-approvals")} style={{ background: "#2563eb", color: "#ffffff" }}>
+              Review Photos ({pendingPhotos}) →
+            </button>
+          </div>
+        )}
       <div className="td-container">
         
         {/* 1. Welcome Banner */}
@@ -4242,7 +4517,7 @@ function TeacherHome(){
           {/* Today's Teaching Schedule */}
           <div className="td-section-card">
             <div className="td-section-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
                   <CalendarDays size={18} style={{ color: '#2563eb' }} />
                   Today's Teaching Schedule ({r.length})
@@ -4536,8 +4811,8 @@ function TeacherHome(){
 }
 
 const DEFAULT_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -4639,6 +4914,7 @@ function Students(){
   const [sectionFilter,setSectionFilter]=useState('');
   const [genderFilter,setGenderFilter]=useState('');
   const [open,setOpen]=useState(false);
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
   const [importSession,setImportSession]=useState('');
@@ -4670,32 +4946,53 @@ function Students(){
   const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
 
   const lastRegisteredStudentInfo = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('attendo_last_registered_student');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.name) return parsed;
-      }
-    } catch {}
-
-    if (!rows || rows.length === 0) return null;
-
-    const withTime = rows.filter(r => r.created_at || r.createdAt);
-    if (withTime.length > 0) {
-      const latest = [...withTime].sort((a, b) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime())[0];
-      return {
-        name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
-        rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—',
-        admissionNumber: latest.admission_number || latest.admissionNumber || latest.admission_no || latest.admissionNo || '—'
-      };
+    // Ground truth: strictly evaluate active students in directory
+    if (!rows || rows.length === 0) {
+      try {
+        localStorage.removeItem('attendo_last_registered_student');
+      } catch {}
+      return null;
     }
 
-    const candidate = rows[0];
-    return {
-      name: candidate.name || candidate.full_name || `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Student',
-      rollNumber: candidate.roll_number || candidate.rollNumber || candidate.roll || '—',
-      admissionNumber: candidate.admission_number || candidate.admissionNumber || candidate.admission_no || candidate.admissionNo || '—'
+    // Sort to find the most recently registered student in the directory
+    const sorted = [...rows].sort((a, b) => {
+      const timeA = a.created_at || a.createdAt ? new Date(a.created_at || a.createdAt).getTime() : 0;
+      const timeB = b.created_at || b.createdAt ? new Date(b.created_at || b.createdAt).getTime() : 0;
+      if (timeB !== timeA) return timeB - timeA;
+
+      // Secondary: highest numeric admission number
+      const numA = parseInt(String(a.admission_number || a.admissionNumber || '').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt(String(b.admission_number || b.admissionNumber || '').replace(/\D/g, ''), 10) || 0;
+      if (numB !== numA) return numB - numA;
+
+      // Tertiary: highest numeric roll number
+      const rollA = parseInt(String(a.roll_number || a.rollNumber || '').replace(/\D/g, ''), 10) || 0;
+      const rollB = parseInt(String(b.roll_number || b.rollNumber || '').replace(/\D/g, ''), 10) || 0;
+      if (rollB !== rollA) return rollB - rollA;
+
+      return String(b.admission_number || b.admissionNumber || '').localeCompare(String(a.admission_number || a.admissionNumber || ''));
+    });
+
+    const latest = sorted[0];
+    if (!latest) {
+      try {
+        localStorage.removeItem('attendo_last_registered_student');
+      } catch {}
+      return null;
+    }
+
+    const info = {
+      name: latest.name || latest.full_name || `${latest.first_name || ''} ${latest.last_name || ''}`.trim() || 'Student',
+      rollNumber: latest.roll_number || latest.rollNumber || latest.roll || '—',
+      admissionNumber: latest.admission_number || latest.admissionNumber || latest.admission_no || latest.admissionNo || '—'
     };
+
+    // Keep localStorage synchronized with the real latest student in directory
+    try {
+      localStorage.setItem('attendo_last_registered_student', JSON.stringify(info));
+    } catch {}
+
+    return info;
   }, [rows]);
 
   const directoryTopRef = useRef<HTMLDivElement>(null);
@@ -4976,7 +5273,7 @@ function Students(){
 
     const cls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
     const sec = sections.find(s => s.id === finalSectionId || s.name === finalSectionId);
-    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'L-KG' : cls.class_number === 0 ? 'U-KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
+    const classLabel = cls ? (cls.label || (cls.class_number === -1 ? 'Class L KG' : cls.class_number === 0 ? 'Class U KG' : `Class ${cls.class_number}`)) : `Class ${f.classId}`;
     const secLabel = sec ? `Section ${sec.name}` : `Section ${finalSectionId || 'A'}`;
 
     const previewSections: PreviewSectionData[] = [
@@ -4988,7 +5285,7 @@ function Students(){
           { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
           { label: 'Academic Session', value: selectedSessionStr, type: 'badge', color: 'blue' },
           { label: 'Date of Birth', value: f.dob || editingStudent?.dob || '—', type: 'date' },
-          { label: 'Gender', value: f.gender || editingStudent?.gender || '—' },
+          { label: 'Gender', value: formatGender(f.gender || editingStudent?.gender) || '—' },
         ]
       },
       {
@@ -5422,7 +5719,12 @@ function Students(){
           const parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
           const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
           const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
-          const gender = String(r['Gender']||r['gender']||r['Sex']||r['sex']||'').trim();
+          let rawGender = String(r['Gender']||r['gender']||r['GENDER']||r['Sex']||r['sex']||r['SEX']||r['Gender (M/F)']||r['Gender(M/F)']||r['M/F']||r['MF']||r['Sex/Gender']||r['Gen']||'').trim();
+          if (!rawGender && r && typeof r === 'object') {
+            const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
+            if (gk && r[gk] !== undefined && r[gk] !== null) rawGender = String(r[gk]).trim();
+          }
+          const gender = formatGender(rawGender);
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
           // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
@@ -5828,18 +6130,18 @@ function Students(){
                 top: 'calc(100% + 6px)',
                 left: 0,
                 zIndex: 1000,
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
+                background: 'var(--bg-card, #ffffff)',
+                border: '1px solid var(--border, #cbd5e1)',
                 borderRadius: 8,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2)',
                 minWidth: 260,
                 overflow: 'hidden',
                 animation: 'fadeIn 0.15s ease-out'
               }}
             >
-              <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span>Switch Academic Session</span>
-                <span style={{ fontSize: 10, background: '#e2e8f0', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
+                <span style={{ fontSize: 10, background: 'var(--border, #e2e8f0)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
               </div>
 
               <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
@@ -5854,14 +6156,14 @@ function Students(){
                     width: '100%',
                     padding: '8px 12px',
                     border: 'none',
-                    background: activeSession === 'All Sessions' ? '#eff6ff' : 'transparent',
-                    color: activeSession === 'All Sessions' ? '#1d4ed8' : '#334155',
+                    background: activeSession === 'All Sessions' ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                    color: activeSession === 'All Sessions' ? '#3b82f6' : 'var(--text, #334155)',
                     fontSize: 13,
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontWeight: activeSession === 'All Sessions' ? 600 : 400
                   }}
-                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = '#f8fafc'; }}
+                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
                   onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -5891,21 +6193,21 @@ function Students(){
                         width: '100%',
                         padding: '8px 12px',
                         border: 'none',
-                        background: isSelected ? '#eff6ff' : 'transparent',
-                        color: isSelected ? '#1d4ed8' : '#334155',
+                        background: isSelected ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                        color: isSelected ? '#3b82f6' : 'var(--text, #334155)',
                         fontSize: 13,
                         textAlign: 'left',
                         cursor: 'pointer',
                         fontWeight: isSelected ? 600 : 400
                       }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CalendarDays size={14} style={{ opacity: 0.6 }} />
                         <span>{sessName}</span>
                         {sess.is_active && (
-                          <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
+                          <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
                         )}
                       </div>
                       {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
@@ -5915,7 +6217,7 @@ function Students(){
               </div>
 
               {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                <div style={{ borderTop: '1px solid #e2e8f0', padding: '6px 8px', background: '#f8fafc' }}>
+                <div style={{ borderTop: '1px solid var(--border, #e2e8f0)', padding: '6px 8px', background: 'var(--card-subtle, #f8fafc)' }}>
                   <a
                     href="#/academic-years"
                     onClick={() => setSessionPickerOpen(false)}
@@ -5942,10 +6244,11 @@ function Students(){
           )}
         </div>
         <input 
-          placeholder="🔍 Search name, roll number, admission number, gender, email..."
+          placeholder="🔍 Search name, roll no, admission no, class, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 180px', minWidth: 160, maxWidth: 280, padding: '7px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 460, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          title="Search by student name, roll number, admission number, class, or email"
         />
         {/* Class and Section grouped together on the same line */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -5955,7 +6258,7 @@ function Students(){
             style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
           >
             <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
           <select 
             value={sectionFilter} 
@@ -6001,32 +6304,6 @@ function Students(){
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load(activeSession)}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch student records from database"
-          id="students-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
@@ -6210,11 +6487,11 @@ function Students(){
                     borderRadius: 999,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
-                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
-                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                   }}>
-                    {x.gender}
+                    {formatGender(x.gender)}
                   </span>
                 ) : (
                   <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -6299,7 +6576,7 @@ function Students(){
                       parentEmail: x.parent_email || '',
                       classId: x.class_id,
                       sectionId: x.section_id,
-                      gender: x.gender || '',
+                      gender: formatGender(x.gender) || '',
                       dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
                       loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
                       sendInviteEmail: true,
@@ -6432,21 +6709,21 @@ function Students(){
         {/* Last Registered Student Banner in Red */}
         {lastRegisteredStudentInfo && (
           <div style={{
-            color: '#dc2626',
+            color: '#ef4444',
             fontSize: 12.5,
             fontWeight: 600,
             padding: '8px 12px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 6,
             marginBottom: 12,
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
             <span>
-              Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+              Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
             </span>
           </div>
         )}
@@ -6497,12 +6774,12 @@ function Students(){
         </div>
 
         {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: '#64748b', fontSize: 12 }}>
+        <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
           Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
           <input
             readOnly
             tabIndex={-1}
-            style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+            style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
             value={[f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : ''), f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')].filter(Boolean).join(' ') || f.name || ''}
             placeholder="Full name will appear here automatically"
           />
@@ -6537,8 +6814,8 @@ function Students(){
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>Gender
             <select
-              value={f.gender || ''}
-              onChange={e => setF({ ...f, gender: e.target.value })}
+              value={formatGender(f.gender) || ''}
+              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
             >
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
@@ -6571,7 +6848,7 @@ function Students(){
             }}
           >
             <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'L-KG':c.class_number===0?'U-KG':`Class ${c.class_number}`)}</option>)}
+            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
         <label>Section
@@ -6748,13 +7025,25 @@ function Students(){
             {editingStudent
               ? 'Leave blank to retain current password, or set a new password for student portal login:'
               : 'Optional initial login password (leave empty to let student/parent activate via link):'}
-            <input
-              type="password"
-              placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
-              value={f.password || ''}
-              onChange={e => setF({ ...f, password: e.target.value })}
-              style={{ marginTop: 6, width: '100%' }}
-            />
+            <div style={{ position: 'relative', marginTop: 6, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showStudentPassword ? 'text' : 'password'}
+                placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+                value={f.password || ''}
+                onChange={e => setF({ ...f, password: e.target.value })}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowStudentPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showStudentPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -6841,12 +7130,12 @@ function Students(){
           {/* Last Registered Student Banner in Red */}
           {lastRegisteredStudentInfo && (
             <div style={{
-              color: '#dc2626',
+              color: '#ef4444',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: 6,
               marginBottom: 14,
               display: 'flex',
@@ -6854,9 +7143,9 @@ function Students(){
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
               <span>
-                Last registered student: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#b91c1c' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
               </span>
             </div>
           )}
@@ -6873,12 +7162,12 @@ function Students(){
                     <div style={{
                       width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 12, fontWeight: 700, flexShrink: 0,
-                      background: done ? '#10b981' : active ? '#2563eb' : '#e2e8f0',
-                      color: (done || active) ? '#fff' : '#94a3b8'
+                      background: done ? '#10b981' : active ? '#2563eb' : 'var(--border, #e2e8f0)',
+                      color: (done || active) ? '#fff' : 'var(--text-secondary, #94a3b8)'
                     }}>{done ? '✓' : step}</div>
-                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : '#94a3b8', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
+                    <span style={{ color: active ? 'var(--text, #1e293b)' : done ? '#10b981' : 'var(--text-secondary, #94a3b8)', fontWeight: active ? 700 : 500, whiteSpace: 'nowrap' }}>{label}</span>
                   </div>
-                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : '#e2e8f0', flex: 1, margin: '0 8px' }} />}
+                  {step < 3 && <div style={{ height: 2, background: done ? '#10b981' : 'var(--border, #e2e8f0)', flex: 1, margin: '0 8px' }} />}
                 </div>
               );
             })}
@@ -6923,7 +7212,7 @@ function Students(){
           {/* ── STEP 2: Upload File ── */}
           {importStep === 2 && (
             <div style={{ maxWidth: 760, width: '100%', margin: '16px auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 14, padding: '12px 18px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13.5, color: '#166534' }}>
+              <div style={{ marginBottom: 14, padding: '12px 18px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13.5, color: '#10b981' }}>
                 📋 Session: <b>{importSession}</b>
               </div>
               <label className="dropzone" style={{ padding: '36px 24px' }}>
@@ -6949,22 +7238,22 @@ function Students(){
           {/* ── STEP 3: Preview & Confirm ── */}
           {importStep === 3 && previewRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: 10, padding: '10px 16px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, color: '#166534', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ marginBottom: 10, padding: '10px 16px', background: 'rgba(16, 185, 129, 0.12)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: 13, color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <span>✅ <b>{previewRows.length} students</b> parsed · Session: <b>{importSession}</b> · <b>{studentValidCount} valid</b></span>
-                <span style={{ fontSize: 12, color: '#15803d' }}>Review parsed records below before finalizing import</span>
+                <span style={{ fontSize: 12, color: '#10b981' }}>Review parsed records below before finalizing import</span>
               </div>
 
               {/* ── TOP TOOLBAR: Search, Filter Tabs, Page Size & Re-upload ── */}
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {studentErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -6973,9 +7262,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
                       >
@@ -6989,9 +7278,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
                       >
@@ -7005,9 +7294,9 @@ function Students(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
                       >
@@ -7149,10 +7438,26 @@ function Students(){
                             <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
                               <span className="roll">{r.rollNumber}</span>
                             </td>
-                            <td><span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
+                            <td><span style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
-                            <td>{r.gender || '—'}</td>
+                            <td>
+                              {r.gender ? (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  fontSize: 11.5,
+                                  fontWeight: 500,
+                                  background: formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.12)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.12)' : 'var(--card-subtle)',
+                                  color: formatGender(r.gender) === 'Female' ? '#ec4899' : formatGender(r.gender) === 'Male' ? '#38bdf8' : 'var(--text-secondary, #64748b)',
+                                  border: `1px solid ${formatGender(r.gender) === 'Female' ? 'rgba(236, 72, 153, 0.25)' : formatGender(r.gender) === 'Male' ? 'rgba(2, 132, 199, 0.25)' : 'var(--border)'}`
+                                }}>
+                                  {formatGender(r.gender)}
+                                </span>
+                              ) : '—'}
+                            </td>
                             <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
                               {r.parentPhone || r.parentSmsNumber || '—'}
                               {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
@@ -7471,6 +7776,7 @@ function Teachers(){
 
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
+  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [exportOpen,setExportOpen]=useState(false);
   const [addTeacherPreview,setAddTeacherPreview]=useState(false);
@@ -7752,8 +8058,8 @@ function Teachers(){
     if (allocs.length > 0) {
       return allocs.map(a => {
         let clsNum = a.class_number !== undefined && a.class_number !== null ? String(a.class_number).trim() : '';
-        if (clsNum === '-1') clsNum = 'Class-L-KG';
-        else if (clsNum === '0') clsNum = 'Class-U-KG';
+        if (clsNum === '-1') clsNum = 'Class L KG';
+        else if (clsNum === '0') clsNum = 'Class U KG';
         else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
         const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
         const classSec = `${clsNum}${sec}`.trim();
@@ -7764,8 +8070,8 @@ function Teachers(){
     // 2. Check direct class_name / section_name on teacher profile (e.g. from Excel import)
     if (teacherObj?.class_name || teacherObj?.class) {
       let rawCls = String(teacherObj.class_name || teacherObj.class || '').trim();
-      if (rawCls === '-1') rawCls = 'Class-L-KG';
-      else if (rawCls === '0') rawCls = 'Class-U-KG';
+      if (rawCls === '-1') rawCls = 'Class L KG';
+      else if (rawCls === '0') rawCls = 'Class U KG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
       return `${rawCls}${sec}`;
@@ -8098,8 +8404,7 @@ function Teachers(){
     return (
       r.name.toLowerCase().includes(q) || 
       r.email.toLowerCase().includes(q) ||
-      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q) ||
-      (r.gender && String(r.gender).toLowerCase().includes(q))
+      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
     );
   });
 
@@ -8495,39 +8800,13 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
-        placeholder="🔍 Search teacher name, email, employee ID, or gender..."
+        placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+        style={{ maxWidth: 460, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
       />
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load()}
-          disabled={loading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch faculty records from database"
-          id="teachers-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-
         {/* Last Fetched Time Badge */}
         <div style={{
           display: 'inline-flex',
@@ -8699,11 +8978,11 @@ function Teachers(){
                     borderRadius: 999,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    background: /^f/i.test(x.gender) ? '#fdf2f8' : /^m/i.test(x.gender) ? '#f0f9ff' : '#f8fafc',
-                    color: /^f/i.test(x.gender) ? '#db2777' : /^m/i.test(x.gender) ? '#0284c7' : '#64748b',
-                    border: `1px solid ${/^f/i.test(x.gender) ? '#fbcfe8' : /^m/i.test(x.gender) ? '#bae6fd' : '#e2e8f0'}`
+                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                   }}>
-                    {x.gender}
+                    {formatGender(x.gender)}
                   </span>
                 ) : (
                   <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -8736,7 +9015,7 @@ function Teachers(){
                       email: x.email,
                       employeeId: x.employee_id || x.employeeId || '',
                       mobile: x.mobile || x.phone || '',
-                      gender: x.gender || '',
+                      gender: formatGender(x.gender) || '',
                       dob: toDdMmYyyy(x.dob || x.date_of_birth),
                       designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
@@ -8874,21 +9153,21 @@ function Teachers(){
         {/* Last Registered Teacher Banner in Red */}
         {lastRegisteredTeacherInfo && (
           <div style={{
-            color: '#dc2626',
+            color: '#ef4444',
             fontSize: 12.5,
             fontWeight: 600,
             padding: '8px 12px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 6,
             marginBottom: 12,
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
             <span>
-              Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+              Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
             </span>
           </div>
         )}
@@ -8960,8 +9239,8 @@ function Teachers(){
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Gender
             <select
-              value={f.gender || ''}
-              onChange={e => setF({ ...f, gender: e.target.value })}
+              value={formatGender(f.gender) || ''}
+              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
             >
               <option value="">Select Gender</option>
@@ -9099,13 +9378,25 @@ function Teachers(){
           )}
           <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
             {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
-            <input
-              type="password"
-              placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
-              value={f.password||''}
-              onChange={e => setF({...f,password:e.target.value})}
-              style={{ marginTop: 4 }}
-            />
+            <div style={{ position: 'relative', marginTop: 4, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showTeacherPassword ? 'text' : 'password'}
+                placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
+                value={f.password||''}
+                onChange={e => setF({...f,password:e.target.value})}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowTeacherPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showTeacherPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -9198,12 +9489,12 @@ function Teachers(){
           {/* Last Registered Teacher Banner in Red */}
           {lastRegisteredTeacherInfo && (
             <div style={{
-              color: '#dc2626',
+              color: '#ef4444',
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 14px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: 6,
               marginBottom: 14,
               display: 'flex',
@@ -9211,9 +9502,9 @@ function Teachers(){
               gap: 6,
               flexShrink: 0
             }}>
-              <Info size={15} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
               <span>
-                Last registered teacher: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#b91c1c' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
               </span>
             </div>
           )}
@@ -9236,8 +9527,8 @@ function Teachers(){
                 <input 
                   type="file" 
                   accept=".xlsx, .xls, .csv" 
-                  onChange={handleFile}
-                  style={{ display: 'none' }}
+                  onChange={handleFile} 
+                  style={{ display: 'none' }} 
                 />
                 <div className="dropzone-icon">
                   <UploadCloud size={28} />
@@ -9269,11 +9560,11 @@ function Teachers(){
               <div style={{
                 marginBottom: 10,
                 padding: '10px 16px',
-                background: teacherErrorCount > 0 ? '#fffbeb' : '#f0fdf4',
+                background: teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)',
                 borderRadius: 8,
-                border: `1px solid ${teacherErrorCount > 0 ? '#fde68a' : '#bbf7d0'}`,
+                border: `1px solid ${teacherErrorCount > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
                 fontSize: 13,
-                color: teacherErrorCount > 0 ? '#92400e' : '#166534',
+                color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -9282,10 +9573,10 @@ function Teachers(){
                 <span>
                   {teacherErrorCount > 0 ? '⚠️' : '✅'} <b>{previewRows.length} faculty</b> parsed · <b>{teacherValidCount} valid</b>
                   {teacherErrorCount > 0 && (
-                    <> · <b style={{ color: '#dc2626' }}>{teacherErrorCount} with validation errors</b></>
+                    <> · <b style={{ color: '#ef4444' }}>{teacherErrorCount} with validation errors</b></>
                   )}
                 </span>
-                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#b45309' : '#15803d' }}>
+                <span style={{ fontSize: 12, color: teacherErrorCount > 0 ? '#f59e0b' : '#10b981' }}>
                   {teacherErrorCount > 0
                     ? 'Review and resolve highlighted errors below before importing'
                     : 'All records valid and ready for database import'}
@@ -9296,13 +9587,13 @@ function Teachers(){
               <div className="preview-toolbar">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <strong style={{ fontSize: 15 }}>Preview Data</strong>
-                  <span style={{ fontSize: 12, padding: '2px 8px', background: '#e0f2fe', color: '#0369a1', borderRadius: 10, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, padding: '2px 8px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', borderRadius: 10, fontWeight: 600 }}>
                     {previewRows.length} records
                   </span>
 
                   {/* Filter tabs if validation errors exist */}
                   {teacherErrorCount > 0 && (
-                    <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
+                    <div style={{ display: 'inline-flex', background: 'var(--card-subtle, #f1f5f9)', borderRadius: 6, padding: 2, fontSize: 12, marginLeft: 4 }}>
                       <button
                         type="button"
                         onClick={() => { setImportPreviewErrorFilter('all'); setImportPreviewPage(1); }}
@@ -9311,9 +9602,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'all' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'all' ? '#0f172a' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'all' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'all' ? 'var(--text, #0f172a)' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'all' ? 600 : 400
                         }}
                       >
@@ -9327,9 +9618,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'valid' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'valid' ? '#166534' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'valid' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'valid' ? '#10b981' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'valid' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'valid' ? 600 : 400
                         }}
                       >
@@ -9343,9 +9634,9 @@ function Teachers(){
                           borderRadius: 4,
                           border: 'none',
                           cursor: 'pointer',
-                          background: importPreviewErrorFilter === 'errors' ? '#ffffff' : 'transparent',
-                          color: importPreviewErrorFilter === 'errors' ? '#dc2626' : '#64748b',
-                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: importPreviewErrorFilter === 'errors' ? 'var(--bg-card, #ffffff)' : 'transparent',
+                          color: importPreviewErrorFilter === 'errors' ? '#ef4444' : 'var(--text-secondary, #64748b)',
+                          boxShadow: importPreviewErrorFilter === 'errors' ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
                           fontWeight: importPreviewErrorFilter === 'errors' ? 600 : 400
                         }}
                       >
@@ -9951,9 +10242,10 @@ function Classes(){
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     load();
-  },[]);
+    loadMentors();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'MENTORS') {
@@ -9990,9 +10282,7 @@ function Classes(){
         return cls;
       }));
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
@@ -10036,9 +10326,7 @@ function Classes(){
       }));
       setConfirmRemoveSectionModal(null);
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
     } finally {
@@ -10136,18 +10424,30 @@ function Classes(){
     </div>
 
     {/* Tab Navigation */}
-    <div className="student-tab-bar" style={{ marginBottom: 20 }}>
+    <div className="student-tab-bar" style={{ marginBottom: 20, borderBottom: 'none' }}>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
         onClick={() => setActiveTab('CLASSES')}
+        style={{
+          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Classes & Sections ({s.length})
       </button>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
         onClick={() => setActiveTab('MENTORS')}
+        style={{
+          color: activeTab === 'MENTORS' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Class Mentors ({assignedCount}/{combinedMentors.length})
       </button>
@@ -10777,6 +11077,14 @@ function Subjects(){
     error: string | null;
   }>({ isOpen: false, loading: false, error: null });
 
+  const [deleteSubjectDialog, setDeleteSubjectDialog] = useState<{
+    isOpen: boolean;
+    subjectId?: string;
+    subjectName?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
   async function load(){
     try {
       const res = await api.get('/subjects');
@@ -10821,6 +11129,32 @@ function Subjects(){
     }
   }
 
+  function promptDeleteSubject(sub: any) {
+    setDeleteSubjectDialog({
+      isOpen: true,
+      subjectId: sub.id,
+      subjectName: sub.name,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmDeleteSubject() {
+    if (!deleteSubjectDialog.subjectId) return;
+    setDeleteSubjectDialog(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await api.delete(`/subjects/${deleteSubjectDialog.subjectId}`);
+      setRows(prev => prev.filter(r => r.id !== deleteSubjectDialog.subjectId));
+      setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setDeleteSubjectDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not delete subject'
+      }));
+    }
+  }
+
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
@@ -10829,9 +11163,31 @@ function Subjects(){
         <button type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add subject'}</button>
       </form>
       <div className="list">
-        {rows.map(x=><div className="list-row" key={x.id}>
+        {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
+          <button
+            type="button"
+            className="table-action-btn danger"
+            onClick={() => promptDeleteSubject(x)}
+            title={`Delete ${x.name}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 12.5
+            }}
+          >
+            <Trash2 size={13} />
+            <span>Delete</span>
+          </button>
         </div>)}
+        {rows.length === 0 && (
+          <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>No subjects added yet.</p>
+        )}
       </div>
     </div>
 
@@ -10857,6 +11213,24 @@ function Subjects(){
       ]}
       loading={subjectPreview.loading}
       error={subjectPreview.error}
+    />
+
+    {/* Destructive Confirm Modal for Subject Deletion */}
+    <DestructiveConfirmModal
+      isOpen={deleteSubjectDialog.isOpen}
+      onClose={() => setDeleteSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+      onConfirm={executeConfirmDeleteSubject}
+      title={`Confirm Deletion — ${deleteSubjectDialog.subjectName || 'Subject'}`}
+      entityName={deleteSubjectDialog.subjectName || ''}
+      entityType="Subject"
+      details={[
+        { label: 'Subject Name', value: deleteSubjectDialog.subjectName || '—' },
+        { label: 'Impact', value: 'Will remove subject from class routines & schedules' }
+      ]}
+      warningMessage="Deleting this subject will remove it from all class routines and unassign it from timetable schedules. This action cannot be reversed."
+      confirmText="Confirm & Delete Subject"
+      loading={deleteSubjectDialog.loading}
+      error={deleteSubjectDialog.error}
     />
   </Layout>
 }
@@ -10905,9 +11279,16 @@ function Attendance(){
   const [students,setStudents]=useState<any[]>([]);
   const [checked,setChecked]=useState<Record<string,boolean>>({});
   const [search,setSearch]=useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'roll-asc' | 'roll-desc' | 'name-asc' | 'name-desc'>('roll-asc');
   const [busy,setBusy]=useState(false);
   const [done,setDone]=useState(false);
   const [summary,setSummary]=useState<any>(null);
+
+  // Pagination & Last Fetched state (Matching School Admin Students Directory)
+  const [attendancePage, setAttendancePage] = useState<number>(1);
+  const [attendancePageSize, setAttendancePageSize] = useState<number>(25);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const rosterTopRef = useRef<HTMLDivElement>(null);
 
   // Existing session & Re-attendance state
   const [existingSession, setExistingSession] = useState<any>(null);
@@ -11263,42 +11644,41 @@ function Attendance(){
     return result;
   };
 
-  // Fetch students when class or section changes
-  useEffect(()=>{
+  // Fetch students helper with refresh support (Matching School Admin Students Directory)
+  const loadStudents = useCallback(async () => {
     if (!selectedClassId || !selectedSectionId) return;
-    api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`)
-      .then(res => {
-        const list = deduplicateStudents(res.data || []);
-        if (list.length > 0) {
-          setStudents(list);
-          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
-        } else {
-          // Primary endpoint returned empty array (200 OK) -> execute fallback to /students
-          api.get('/students').then(fallbackRes => {
-            const matched = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
-              (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
-              (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
-            ));
-            setStudents(matched);
-            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
-          }).catch(() => {
-            setStudents([]);
-            checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, []);
-          });
-        }
-      })
-      .catch(() => {
-        // Fallback to /students
-        api.get('/students').then(res => {
-          const matched = deduplicateStudents((res.data || []).filter((s:any)=>
+    setLoadingStatus(true);
+    try {
+      let list: any[] = [];
+      try {
+        const res = await api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`);
+        list = deduplicateStudents(res.data || []);
+      } catch {
+        list = [];
+      }
+      if (list.length === 0) {
+        try {
+          const fallbackRes = await api.get('/students');
+          list = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
             (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
             (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
           ));
-          setStudents(matched);
-          checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, matched);
-        }).catch(()=>{});
-      });
+        } catch {
+          list = [];
+        }
+      }
+      setStudents(list);
+      setLastFetchedAt(new Date());
+      setAttendancePage(1);
+      await checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, list);
+    } finally {
+      setLoadingStatus(false);
+    }
   }, [selectedClassId, selectedSectionId, attendanceDate, checkTodayStatus]);
+
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
   function switchRoutine(r: any) {
     setActiveRoutine(r);
@@ -11354,11 +11734,45 @@ function Attendance(){
   const totalMarked = presentCount + leftEarlyCount + lateCount + absentCount;
   const ratePct = totalMarked > 0 ? Math.round((presentCount / totalMarked) * 100) : 0;
 
-  const filteredStudents = students.filter(s => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return s.name.toLowerCase().includes(q) || String(s.roll_number || '').toLowerCase().includes(q);
-  });
+  const filteredStudents = useMemo(() => {
+    const list = students.filter(s => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (s.name || '').toLowerCase().includes(q) || String(s.roll_number || s.rollNumber || '').toLowerCase().includes(q);
+    });
+
+    return list.slice().sort((a, b) => {
+      const rollA = a.roll_number ?? a.rollNumber ?? '';
+      const rollB = b.roll_number ?? b.rollNumber ?? '';
+      if (sortOrder === 'roll-asc') {
+        return String(rollA).localeCompare(String(rollB), undefined, { numeric: true, sensitivity: 'base' }) || String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'roll-desc') {
+        return String(rollB).localeCompare(String(rollA), undefined, { numeric: true, sensitivity: 'base' }) || String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      if (sortOrder === 'name-asc') {
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      }
+      if (sortOrder === 'name-desc') {
+        return String(b.name || '').localeCompare(String(a.name || ''));
+      }
+      return 0;
+    });
+  }, [students, search, sortOrder]);
+
+  useEffect(() => {
+    setAttendancePage(1);
+  }, [search, sortOrder]);
+
+  const totalAttendancePages = Math.max(1, Math.ceil(filteredStudents.length / attendancePageSize));
+  const currentAttendancePage = Math.min(Math.max(1, attendancePage), totalAttendancePages);
+  const attendanceStartIdx = filteredStudents.length === 0 ? 0 : (currentAttendancePage - 1) * attendancePageSize;
+  const attendanceEndIdx = Math.min(attendanceStartIdx + attendancePageSize, filteredStudents.length);
+  const displayedStudents = filteredStudents.slice(attendanceStartIdx, attendanceEndIdx);
+
+  const scrollToRosterTop = () => {
+    rosterTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   // Early Departure Handler
   function openEarlyDeparture(student: any) {
@@ -11845,8 +12259,8 @@ function Attendance(){
                 })
                 .map(c => {
                   const num = c.class_number ?? c.classNumber;
-                  const label = num === -1 || num === '-1' ? 'Nursery / Pre-KG' :
-                    num === 0 || num === '0' ? 'Kindergarten (KG)' :
+                  const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
+                    num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
                     num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
                     c.name || `Class ${c.id}`;
                   return (
@@ -11971,9 +12385,9 @@ function Attendance(){
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              color: '#1d4ed8',
+              background: 'rgba(37, 99, 235, 0.12)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              color: 'var(--primary-600, #3b82f6)',
               borderRadius: 20,
               padding: '4px 12px',
               fontSize: 12.5,
@@ -11985,8 +12399,8 @@ function Attendance(){
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 18 }}>
             {/* Filter Target */}
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
                 Target Attendance Group
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -12024,8 +12438,8 @@ function Attendance(){
             </div>
 
             {/* Recipient Contacts */}
-            <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 8 }}>
+            <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
                 Recipient Contact Addresses
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -12051,7 +12465,7 @@ function Attendance(){
 
           {/* Action Row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ fontSize: 12.5, color: '#64748b' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)' }}>
               ℹ️ Individual MIME emails are delivered separately. Contact privacy is strictly preserved.
             </div>
             <button
@@ -12086,9 +12500,9 @@ function Attendance(){
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              background: emailResult.success ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${emailResult.success ? '#bbf7d0' : '#fecaca'}`,
-              color: emailResult.success ? '#166534' : '#991b1b'
+              background: emailResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              border: emailResult.success ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+              color: emailResult.success ? '#10b981' : '#ef4444'
             }}>
               {emailResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <span>{emailResult.message}</span>
@@ -12108,22 +12522,60 @@ function Attendance(){
           </button>
         </div>
 
-        <div style={{ width: 260 }}>
-          <input
-            type="text"
-            placeholder="Search students in this class..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
             style={{
-              width: '100%',
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               background: 'var(--bg)',
-              color: 'var(--text)',
-              fontSize: 12.5
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '4px 10px'
             }}
-          />
+          >
+            <ArrowUpDown size={14} style={{ color: '#2563eb' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              Sort by:
+            </span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text)',
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+              title="Sort students roster"
+            >
+              <option value="roll-asc">Roll No. (1 → 9)</option>
+              <option value="roll-desc">Roll No. (9 → 1)</option>
+              <option value="name-asc">Student Name (A → Z)</option>
+              <option value="name-desc">Student Name (Z → A)</option>
+            </select>
+          </div>
+
+          <div style={{ width: 240 }}>
+            <input
+              type="text"
+              placeholder="Search students in this class..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                fontSize: 12.5
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -12137,25 +12589,52 @@ function Attendance(){
         </span>
       </div>
 
-      {/* Student List */}
-      {students.length === 0 ? (
-        <div className="panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-          <h3>No students found in this section</h3>
-          <p className="muted">
-            {user?.role === 'TEACHER'
-              ? 'No students are currently enrolled in this section. Please contact your School Administrator to enroll students.'
-              : `Add students to Class ${currentClass?.class_number || ''}-${currentSection?.name || ''} in the Student Directory.`}
-          </p>
-          {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-            <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
-              + Enroll Student Now
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="attendance-list">
-          {filteredStudents.map((s: any) => {
+      {/* Student List Box with Top Sub-Toolbar & Bottom Pagination Footer (Matching School Admin Directory) */}
+      <div 
+        ref={rosterTopRef}
+        style={{
+          border: '1px solid var(--border, #cbd5e1)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          background: 'var(--bg-card, #ffffff)',
+          marginBottom: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}
+      >
+        {/* Red-Circled Sub-Toolbar: Refresh, Last fetched, Rows per page selector, Showing counts */}
+        <TableSubToolbar
+          onRefresh={loadStudents}
+          loading={loadingStatus}
+          lastFetchedAt={lastFetchedAt}
+          pageSize={attendancePageSize}
+          onPageSizeChange={sz => { setAttendancePageSize(sz); setAttendancePage(1); scrollToRosterTop(); }}
+          totalCount={students.length}
+          filteredCount={filteredStudents.length}
+          startIdx={attendanceStartIdx}
+          endIdx={attendanceEndIdx}
+          itemLabel="students"
+          pageSizeOptions={[10, 25, 50, 100, 250, 500]}
+        />
+
+        {students.length === 0 ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', border: 'none', background: 'transparent' }}>
+            <Users size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
+            <h3>No students found in this section</h3>
+            <p className="muted">
+              {user?.role === 'TEACHER'
+                ? 'No students are currently enrolled in this section. Please contact your School Administrator to enroll students.'
+                : `Add students to Class ${currentClass?.class_number || ''}-${currentSection?.name || ''} in the Student Directory.`}
+            </p>
+            {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              <button onClick={() => nav('/students?enroll=true')} style={{ marginTop: 12 }}>
+                + Enroll Student Now
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="attendance-list" style={{ padding: '14px 16px', margin: 0 }}>
+              {displayedStudents.map((s: any) => {
             const stObj = studentStatusMap[s.id] || {};
             const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
             const isLeftEarly = rawStatus === 'LEFT_EARLY';
@@ -12212,8 +12691,21 @@ function Attendance(){
                   </span>
                   <div>
                     <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {s.gender ? (
+                        <span style={{
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                          color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
+                          border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                        }}>
+                          {formatGender(s.gender)}
+                        </span>
+                      ) : null}
+                      <span>{s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}</span>
                     </div>
                     {/* Status Annotations for Re-attendance */}
                     {isLeftEarly && (
@@ -12335,7 +12827,22 @@ function Attendance(){
             );
           })}
         </div>
-      )}
+
+        {/* Red-Circled Bottom Pagination Footer */}
+        <TablePaginationFooter
+          currentPage={currentAttendancePage}
+          totalPages={totalAttendancePages}
+          onPageChange={p => { setAttendancePage(p); scrollToRosterTop(); }}
+          startIdx={attendanceStartIdx}
+          endIdx={attendanceEndIdx}
+          filteredCount={filteredStudents.length}
+          totalCount={students.length}
+          itemLabel="students"
+          onScrollToTop={scrollToRosterTop}
+        />
+      </>
+    )}
+  </div>
 
       {/* Bottom Submit / Re-attendance Action Bar */}
       {students.length > 0 && (
@@ -12865,6 +13372,38 @@ function Attendance(){
   );
 }
 
+function formatAttendanceHistoryDate(raw: any): string {
+  if (!raw) return '—';
+  try {
+    const str = String(raw).trim();
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      }
+    }
+    const parsed = new Date(raw);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    return str;
+  } catch {
+    return String(raw);
+  }
+}
+
+function formatHistoryClassLabel(classNum: any): string {
+  const n = Number(classNum);
+  if (n === -1 || classNum === '-1') return 'Class L KG';
+  if (n === 0 || classNum === '0') return 'Class U KG';
+  if (classNum !== undefined && classNum !== null && classNum !== '') return `Class ${classNum}`;
+  return 'Class';
+}
+
 /* ────── History ────── */
 function History(){
   const {user}=useAuth();
@@ -12887,7 +13426,8 @@ function History(){
         responseType: 'blob'
       });
 
-      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${inspectedSession.attendance_date || new Date().toISOString().slice(0, 10)}.${format}`;
+      const cleanDate = inspectedSession.attendance_date ? String(inspectedSession.attendance_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+      let filename = `attendance-audit-session-${inspectedSession.id.slice(0, 8)}-${cleanDate}.${format}`;
       const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
       if (disposition && disposition.includes('filename=')) {
         const match = disposition.match(/filename=["']?([^"';]+)["']?/);
@@ -12987,9 +13527,9 @@ function History(){
                 <th>Class & Section</th>
                 <th>Subject</th>
                 <th>Recorded By</th>
+                <th>Total No. of Students</th>
                 <th>Present</th>
                 <th>Left Early</th>
-                <th>Late</th>
                 <th>Absent</th>
                 <th>Turnout Rate</th>
                 <th>Action</th>
@@ -13008,7 +13548,7 @@ function History(){
               ) : (
                 rows.map(x => {
                   const rate = x.total > 0 ? Math.round((x.present / x.total) * 100) : 0;
-                  const dateStr = x.attendance_date ? new Date(x.attendance_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+                  const dateStr = formatAttendanceHistoryDate(x.attendance_date);
                   const leftEarlyCount = Number(x.left_early_count || 0);
                   const lateCount = Number(x.late_count || 0);
                   const absentCount = Number(x.absent ?? (x.total - x.present));
@@ -13016,7 +13556,7 @@ function History(){
                   return (
                     <tr key={x.id}>
                       <td><b>{dateStr}</b></td>
-                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>Class {x.class_number}-{x.section_name}</span></td>
+                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 600 }}>{formatHistoryClassLabel(x.class_number)}-{x.section_name}</span></td>
                       <td><b>{x.subject_name || 'General'}</b></td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -13028,20 +13568,16 @@ function History(){
                           )}
                         </div>
                       </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+                          {x.total || 0}
+                        </span>
+                      </td>
                       <td><span style={{ color: '#10b981', fontWeight: 600 }}>{x.present}</span></td>
                       <td>
                         {leftEarlyCount > 0 ? (
                           <span className="badge" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 700 }}>
                             {leftEarlyCount}
-                          </span>
-                        ) : (
-                          <span className="muted">0</span>
-                        )}
-                      </td>
-                      <td>
-                        {lateCount > 0 ? (
-                          <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
-                            {lateCount}
                           </span>
                         ) : (
                           <span className="muted">0</span>
@@ -13067,7 +13603,7 @@ function History(){
                             Inspect & Audit
                           </button>
                           <a
-                            href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${x.attendance_date}`}
+                            href={`#/take-attendance?classId=${x.class_id}&sectionId=${x.section_id}&date=${(x.attendance_date ? String(x.attendance_date).slice(0, 10) : '')}`}
                             className="primary"
                             style={{ fontSize: 11.5, padding: '4px 8px', textDecoration: 'none', borderRadius: 6, fontWeight: 600, whiteSpace: 'nowrap' }}
                           >
@@ -13114,10 +13650,10 @@ function History(){
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="badge" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700 }}>
-                    Class {inspectedSession.class_number}-{inspectedSession.section_name}
+                    {formatHistoryClassLabel(inspectedSession.class_number)}-{inspectedSession.section_name}
                   </span>
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-                    Session Inspection ({inspectedSession.attendance_date})
+                    Session Inspection ({formatAttendanceHistoryDate(inspectedSession.attendance_date)})
                   </h3>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -13276,7 +13812,7 @@ function History(){
             {/* Footer */}
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <a
-                href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${inspectedSession.attendance_date}`}
+                href={`#/take-attendance?classId=${inspectedSession.class_id}&sectionId=${inspectedSession.section_id}&date=${(inspectedSession.attendance_date ? String(inspectedSession.attendance_date).slice(0, 10) : '')}`}
                 className="primary"
                 style={{ padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: 13 }}
               >
@@ -14134,9 +14670,9 @@ function SubscriptionPage(){
          const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
          const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
          return (
-           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', background: isCurrent ? '#f8faff' : '#ffffff', position: 'relative' }}>
+           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)', borderRadius: '10px', padding: '16px', background: isCurrent ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>{p.name}</h4>
+               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #0f172a)' }}>{p.name}</h4>
                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                  {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
                  {hasDiscount && (
@@ -14149,7 +14685,7 @@ function SubscriptionPage(){
              <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
              <div style={{ margin: '8px 0 12px' }}>
                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                 <span style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
+                 <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #0f172a)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
                  {hasDiscount && (
                    <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
                  )}
@@ -14159,7 +14695,7 @@ function SubscriptionPage(){
                  ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
                </div>
              </div>
-             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '12px', color: '#334155' }}>
+             <div style={{ borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #334155)' }}>
                <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
              </div>
            </div>
@@ -14396,6 +14932,9 @@ function SchoolProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({ contact_number: '', address: '', website: '' });
+  const [websiteError, setWebsiteError] = useState('');
+  const [contactNumberError, setContactNumberError] = useState('');
+  const [addressError, setAddressError] = useState('');
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Picture upload state
@@ -14407,6 +14946,9 @@ function SchoolProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -14491,12 +15033,12 @@ function SchoolProfile() {
         currentPassword,
         newPassword
       });
-      setPwMsg({ type: 'success', text: res.data?.message || 'Administrator password updated successfully!' });
+      setPwMsg({ type: 'success', text: res.data?.message || 'School Admin password updated successfully!' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update administrator password' });
+      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update School Admin password' });
     } finally {
       setChangingPw(false);
     }
@@ -14516,13 +15058,32 @@ function SchoolProfile() {
     error: null,
   });
 
+// Helper: Format school phone into 0343-2563500 (11-digit STD code with hyphen after 4 digits, 10-digit adds leading 0)
+function formatSchoolContactNumber(val: string): string {
+  if (!val) return '';
+  let digits = val.replace(/\D/g, '');
+  // If 10 digits without leading 0, prepend 0 to make it 11 digits
+  if (digits.length === 10 && !digits.startsWith('0')) {
+    digits = '0' + digits;
+  }
+  digits = digits.slice(0, 11);
+  if (digits.length > 4) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  if (digits.length === 4 && val.endsWith('-')) {
+    return `${digits}-`;
+  }
+  return digits;
+}
+
   async function load() {
     setLoading(true);
     try {
       const res = await api.get('/school-profile');
       setProfile(res.data);
+      const rawContact = res.data.contact_number || res.data.enquiry_number || res.data.phone || '';
       setForm({
-        contact_number: res.data.contact_number || res.data.enquiry_number || res.data.phone || '',
+        contact_number: formatSchoolContactNumber(rawContact),
         address: res.data.address || '',
         website: res.data.website || ''
       });
@@ -14537,14 +15098,68 @@ function SchoolProfile() {
 
   function initiateSaveProfile(e: React.FormEvent) {
     e.preventDefault();
+    setWebsiteError('');
+    setContactNumberError('');
+    setAddressError('');
     if (!form.contact_number && !form.address && !form.website) {
       alert('Validation Error: Please provide at least one contact coordinate to update.');
       return;
     }
 
+    let cleanContact = (form.contact_number || '').trim();
+    if (cleanContact) {
+      let digitsOnly = cleanContact.replace(/\D/g, '');
+      if (digitsOnly.length === 10 && !digitsOnly.startsWith('0')) {
+        digitsOnly = '0' + digitsOnly;
+      }
+      if (digitsOnly.length !== 11) {
+        setContactNumberError('Contact number must be an 11-digit number in 0343-2563500 format.');
+        setMsg({ type: 'error', text: 'Validation Error: Contact number must be an 11-digit number in 0343-2563500 format (e.g. 0343-2563500).' });
+        return;
+      }
+      cleanContact = `${digitsOnly.slice(0, 4)}-${digitsOnly.slice(4)}`;
+    }
+
+    const cleanAddress = (form.address || '').trim();
+    if (cleanAddress) {
+      if (cleanAddress.length < 50 || cleanAddress.length > 1000) {
+        setAddressError(`Campus physical address word limit must be between 50 to 1000 (currently: ${cleanAddress.length}).`);
+        setMsg({ type: 'error', text: `Validation Error: Campus physical address word limit must be between 50 to 1000 (currently: ${cleanAddress.length}).` });
+        return;
+      }
+    }
+
+    let normalizedWebsite = (form.website || '').trim();
+    if (normalizedWebsite) {
+      // Validate: Strictly reject arbitrary plain words like 'dav', 'school', 'test', 'hello'
+      const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/i;
+      let valid = urlPattern.test(normalizedWebsite);
+      if (valid) {
+        try {
+          const withProto = normalizedWebsite.startsWith('http://') || normalizedWebsite.startsWith('https://') 
+            ? normalizedWebsite 
+            : `https://${normalizedWebsite}`;
+          const parsed = new URL(withProto);
+          valid = !!parsed.hostname && parsed.hostname.includes('.');
+          normalizedWebsite = withProto;
+        } catch {
+          valid = false;
+        }
+      }
+
+      if (!valid) {
+        setWebsiteError('Please enter a valid official website URL (e.g. https://davmodeldurgapur.org or davmodeldurgapur.org). Plain words are not allowed.');
+        setMsg({ type: 'error', text: 'Validation Error: Please enter a valid website link (e.g. https://davmodeldurgapur.org). Plain words are not allowed.' });
+        return;
+      }
+    }
+
+    const updatedForm = { ...form, contact_number: cleanContact, website: normalizedWebsite, address: cleanAddress };
+    setForm(updatedForm);
+
     const changes = calculateChanges(
       profile,
-      form,
+      updatedForm,
       {
         contact_number: 'Contact / Enquiry Phone',
         website: 'Official Website',
@@ -14556,9 +15171,9 @@ function SchoolProfile() {
       {
         title: 'Institution Contact Coordinates',
         fields: [
-          { label: 'Enquiry / Contact Number', value: form.contact_number || '—', type: 'phone' },
-          { label: 'Official Website', value: form.website || '—' },
-          { label: 'Campus Physical Address', value: form.address || '—', span: 2 }
+          { label: 'Enquiry / Contact Number', value: updatedForm.contact_number || '—', type: 'phone' },
+          { label: 'Official Website', value: updatedForm.website || '—' },
+          { label: 'Campus Physical Address', value: updatedForm.address || '—', span: 2 }
         ]
       }
     ];
@@ -14579,6 +15194,15 @@ function SchoolProfile() {
       setProfile(res.data);
       setProfilePreview(prev => ({ ...prev, isOpen: false, loading: false }));
       setMsg({ type: 'success', text: 'School profile updated successfully!' });
+      if (res.data?.website) {
+        try {
+          localStorage.setItem('attendo_school_website', res.data.website);
+        } catch {}
+      }
+      if (updateUser && res.data?.website) {
+        updateUser({ schoolWebsite: res.data.website });
+      }
+      window.dispatchEvent(new CustomEvent('school-profile-updated', { detail: res.data }));
     } catch (err: any) {
       setProfilePreview(prev => ({
         ...prev,
@@ -14792,29 +15416,105 @@ function SchoolProfile() {
               <label>
                 Enquiry / Emergency Contact Number
                 <input
-                  type="text"
-                  placeholder="+91 98765 43210"
+                  type="tel"
+                  placeholder="0343-2563500"
                   value={form.contact_number}
-                  onChange={e => setForm({ ...form, contact_number: e.target.value })}
+                  maxLength={12}
+                  onKeyDown={e => {
+                    // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
+                    if (
+                      ['Backspace', 'Tab', 'Enter', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) ||
+                      ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
+                    ) {
+                      return;
+                    }
+                    // Block any key that is not a numeric digit
+                    if (!/^[0-9]$/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={e => {
+                    const formatted = formatSchoolContactNumber(e.target.value);
+                    setForm({ ...form, contact_number: formatted });
+                    if (contactNumberError) setContactNumberError('');
+                  }}
+                  onBlur={() => {
+                    if (form.contact_number) {
+                      let digits = form.contact_number.replace(/\D/g, '');
+                      if (digits.length === 10 && !digits.startsWith('0')) {
+                        digits = '0' + digits;
+                      }
+                      if (digits.length > 4) {
+                        setForm((prev: any) => ({ ...prev, contact_number: `${digits.slice(0, 4)}-${digits.slice(4, 11)}` }));
+                      }
+                    }
+                  }}
+                  style={contactNumberError ? { borderColor: '#ef4444' } : {}}
                 />
+                {contactNumberError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {contactNumberError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
+                </span>
               </label>
               <label>
                 Official School Website
                 <input
                   type="text"
-                  placeholder="https://greenwood.edu"
+                  placeholder="https://davmodeldurgapur.org"
                   value={form.website}
-                  onChange={e => setForm({ ...form, website: e.target.value })}
+                  onChange={e => {
+                    setForm({ ...form, website: e.target.value });
+                    if (websiteError) setWebsiteError('');
+                  }}
+                  style={websiteError ? { borderColor: '#ef4444' } : {}}
                 />
+                {websiteError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {websiteError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Must be a valid web link (e.g. <code>https://davmodeldurgapur.org</code> or <code>davmodeldurgapur.org</code>). Arbitrary plain words are not allowed.
+                </span>
               </label>
               <label>
                 Campus Physical Address
-                <textarea
-                  rows={3}
-                  placeholder="Street, City, State, PIN"
+                <AutoExpandingTextarea
+                  minHeight={72}
+                  maxHeight={360}
+                  minLength={50}
+                  maxLength={1000}
+                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000 words)"
                   value={form.address}
-                  onChange={e => setForm({ ...form, address: e.target.value })}
+                  onChange={e => {
+                    setForm({ ...form, address: e.target.value.slice(0, 1000) });
+                    if (addressError) setAddressError('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 'var(--radius-sm, 6px)',
+                    border: '1px solid var(--border-strong, #cbd5e1)',
+                    background: 'var(--bg, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 13.5,
+                    lineHeight: 1.5,
+                    resize: 'none',
+                    ...(addressError ? { borderColor: '#ef4444' } : {})
+                  }}
                 />
+                {addressError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                    {addressError}
+                  </span>
+                )}
+                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                  Word limit: 50 to 1000 words.
+                </span>
               </label>
               <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
                 Review & Update Profile
@@ -14907,30 +15607,54 @@ function SchoolProfile() {
             <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
               <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <KeyRound size={15} style={{ color: '#2563eb' }} />
-                Change Administrator Password
+                Change School Admin Password
               </h4>
 
               <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
                 <label>
                   Current Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••••••"
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showCurrentPw ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••••••"
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowCurrentPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showCurrentPw ? "Hide password" : "Show password"}
+                    >
+                      {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
                   New Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter new strong password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      required
+                      placeholder="Enter new strong password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowNewPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showNewPw ? "Hide password" : "Show password"}
+                    >
+                      {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                   <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
                     Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
                   </span>
@@ -14938,13 +15662,25 @@ function SchoolProfile() {
 
                 <label>
                   Confirm New Password
-                  <input
-                    type="password"
-                    required
-                    placeholder="Confirm new password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showConfirmPw ? 'text' : 'password'}
+                      required
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowConfirmPw(s => !s)}
+                      className="password-toggle-btn"
+                      title={showConfirmPw ? "Hide password" : "Show password"}
+                    >
+                      {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 <button

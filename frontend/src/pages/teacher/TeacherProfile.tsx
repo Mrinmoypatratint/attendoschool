@@ -20,12 +20,17 @@ import {
   Layers,
   Edit3,
   Save,
-  X
+  X,
+  Globe,
+  ExternalLink,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { validatePassword } from '../../utils/passwordPolicy';
 import { useAuth } from '../../hooks/useAuth';
+import { formatGender } from '../../utils/gender';
 
 export interface ITeacherProfile {
   id: string;
@@ -37,6 +42,8 @@ export interface ITeacherProfile {
   schoolCode: string;
   employeeId: string;
   phone: string;
+  schoolWebsite?: string;
+  school_website?: string;
   address: string;
   qualification: string;
   joiningDate: string;
@@ -70,6 +77,9 @@ export function TeacherProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submittingPw, setSubmittingPw] = useState(false);
 
@@ -79,7 +89,7 @@ export function TeacherProfile() {
       if (res.data) {
         setProfile(res.data);
         setEditPhone(res.data.phone || '');
-        setEditGender(res.data.gender || '');
+        setEditGender(formatGender(res.data.gender) || '');
         setEditAddress(res.data.address || '');
         setEditQualification(res.data.qualification || '');
       }
@@ -92,6 +102,14 @@ export function TeacherProfile() {
 
   useEffect(() => {
     loadProfile();
+
+    const handleProfileUpdated = (e: any) => {
+      if (e.detail?.website !== undefined) {
+        setProfile(prev => prev ? { ...prev, schoolWebsite: e.detail.website, school_website: e.detail.website } : prev);
+      }
+    };
+    window.addEventListener('school-profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('school-profile-updated', handleProfileUpdated);
   }, []);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,7 +270,7 @@ export function TeacherProfile() {
   }
 
   return (
-    <div className="student-subpage" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 60px' }}>
+    <div className="student-subpage teacher-profile-page">
       {/* ── Header ── */}
       <div className="student-subpage-header" style={{ marginBottom: 24 }}>
         <div className="student-subpage-title-row">
@@ -272,9 +290,9 @@ export function TeacherProfile() {
             marginBottom: 20,
             padding: '10px 16px',
             borderRadius: 8,
-            backgroundColor: detailsMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: detailsMsg.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca',
-            color: detailsMsg.type === 'success' ? '#065f46' : '#991b1b',
+            backgroundColor: detailsMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            border: detailsMsg.type === 'success' ? '1px solid var(--emerald-border, rgba(16, 185, 129, 0.3))' : '1px solid var(--rose-border, rgba(239, 68, 68, 0.3))',
+            color: detailsMsg.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
             fontSize: 13,
             display: 'flex',
             alignItems: 'center',
@@ -348,9 +366,24 @@ export function TeacherProfile() {
 
           <h2 className="profile-hero-name">{profile?.name || 'Faculty Teacher'}</h2>
           <p className="profile-hero-role">{profile?.designation} · {profile?.department}</p>
-          <div className="profile-hero-badge">
+          <div 
+            className="profile-hero-badge"
+            onClick={() => {
+              const site = profile?.schoolWebsite || (profile as any)?.school_website;
+              if (site) {
+                window.open(site, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            style={{ 
+              cursor: (profile?.schoolWebsite || (profile as any)?.school_website) ? 'pointer' : 'default'
+            }}
+            title={(profile?.schoolWebsite || (profile as any)?.school_website) ? `Visit Official Website: ${profile?.schoolWebsite || (profile as any)?.school_website}` : profile?.schoolName}
+          >
             <School size={14} />
             <span>{profile?.schoolName}</span>
+            {(profile?.schoolWebsite || (profile as any)?.school_website) && (
+              <ExternalLink size={12} style={{ marginLeft: 4, opacity: 0.8 }} />
+            )}
           </div>
 
           <div
@@ -406,7 +439,7 @@ export function TeacherProfile() {
 
           {editing ? (
             <form onSubmit={handleSaveDetails} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="teacher-edit-grid">
                 <label style={{ display: 'grid', gap: 4 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Contact Mobile Number:
@@ -419,7 +452,9 @@ export function TeacherProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
                       fontSize: 13,
                       outline: 'none'
                     }}
@@ -436,10 +471,11 @@ export function TeacherProfile() {
                     style={{
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       outline: 'none',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">Select Gender</option>
@@ -462,7 +498,9 @@ export function TeacherProfile() {
                   style={{
                     padding: '8px 12px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: 13,
                     outline: 'none'
                   }}
@@ -481,7 +519,9 @@ export function TeacherProfile() {
                   style={{
                     padding: '8px 12px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: 13,
                     outline: 'none',
                     fontFamily: 'inherit'
@@ -495,7 +535,7 @@ export function TeacherProfile() {
                   onClick={() => {
                     setEditing(false);
                     setEditPhone(profile?.phone || '');
-                    setEditGender(profile?.gender || '');
+                    setEditGender(formatGender(profile?.gender) || '');
                     setEditAddress(profile?.address || '');
                     setEditQualification(profile?.qualification || '');
                   }}
@@ -505,9 +545,9 @@ export function TeacherProfile() {
                     gap: 6,
                     padding: '6px 14px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    color: '#334155',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--card-subtle, #f8fafc)',
+                    color: 'var(--text, #334155)',
                     fontSize: 12.5,
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -564,7 +604,37 @@ export function TeacherProfile() {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Gender</span>
-                <span className="detail-val">{profile?.gender || 'Not Specified'}</span>
+                <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Official School Website</span>
+                <span className="detail-val" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                  {(profile?.schoolWebsite || (profile as any)?.school_website) ? (
+                    <a
+                      href={profile?.schoolWebsite || (profile as any)?.school_website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: '#2563eb',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        wordBreak: 'break-all',
+                        overflowWrap: 'anywhere',
+                        maxWidth: '100%'
+                      }}
+                      title="Open official school website in new tab"
+                    >
+                      <Globe size={13} style={{ flexShrink: 0 }} />
+                      <span style={{ textDecoration: 'underline', wordBreak: 'break-all', overflowWrap: 'anywhere' }}>{profile?.schoolWebsite || (profile as any)?.school_website}</span>
+                      <ExternalLink size={12} style={{ flexShrink: 0 }} />
+                    </a>
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>Not Configured</span>
+                  )}
+                </span>
               </div>
               <div className="detail-item" style={{ gridColumn: 'span 2' }}>
                 <span className="detail-label">Address</span>
@@ -623,24 +693,48 @@ export function TeacherProfile() {
           <form onSubmit={handlePasswordChange} className="student-form-vertical">
             <label>
               <span>Current Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="••••••••••••"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••••••"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowCurrentPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showCurrentPassword ? "Hide password" : "Show password"}
+                >
+                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <label>
               <span>New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Enter new strong password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter new strong password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowNewPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
                 Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
               </span>
@@ -648,13 +742,25 @@ export function TeacherProfile() {
 
             <label>
               <span>Confirm New Password:</span>
-              <input
-                type="password"
-                required
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowConfirmPassword(s => !s)}
+                  className="password-toggle-btn"
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             <button

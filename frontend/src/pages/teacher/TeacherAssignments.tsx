@@ -4,6 +4,7 @@ import {
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download
 } from 'lucide-react';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface AssignmentRecord {
   id: string;
@@ -409,18 +410,18 @@ export function TeacherAssignments() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
-          <div style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>TOTAL PUBLISHED</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>{assignments.length}</div>
+        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>TOTAL PUBLISHED</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4 }}>{assignments.length}</div>
         </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
-          <div style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>SUBMISSIONS RECEIVED</div>
+        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>SUBMISSIONS RECEIVED</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
             {assignments.reduce((acc, a) => acc + (a.submission_count || 0), 0)}
           </div>
         </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
-          <div style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>PUBLISHING ELIGIBILITY</div>
+        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>PUBLISHING ELIGIBILITY</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#16a34a', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
             <CheckCircle2 size={16} /> Server Scoped & Authorized
           </div>
@@ -430,7 +431,7 @@ export function TeacherAssignments() {
       {/* Search Bar */}
       <div style={{ marginBottom: 20, display: 'flex', gap: 12 }}>
         <div style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#94a3b8' }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted, #94a3b8)' }} />
           <input
             type="text"
             placeholder="Search assignments by title or subject..."
@@ -440,26 +441,34 @@ export function TeacherAssignments() {
               width: '100%',
               padding: '8px 12px 8px 36px',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              fontSize: 14
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--bg-card, #ffffff)',
+              color: 'var(--text, #0f172a)',
+              fontSize: 14,
+              outline: 'none'
             }}
           />
         </div>
         <button
           type="button"
           onClick={loadAssignments}
+          disabled={loading}
           style={{
             padding: '8px 14px',
             borderRadius: 8,
-            border: '1px solid #cbd5e1',
-            background: '#fff',
-            cursor: 'pointer',
+            border: '1px solid var(--border, #cbd5e1)',
+            background: 'var(--bg-card, #fff)',
+            color: 'var(--text, #1e293b)',
+            cursor: loading ? 'not-allowed' : 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}
         >
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} className={loading ? 'spin' : ''} style={{ color: '#2563eb' }} /> Refresh
         </button>
       </div>
 
@@ -489,7 +498,8 @@ export function TeacherAssignments() {
               style={{
                 padding: 20,
                 borderRadius: 12,
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--bg-card, #ffffff)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -498,19 +508,19 @@ export function TeacherAssignments() {
             >
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#3730a3' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
                     {asg.subject_name || 'Subject'}
                   </span>
-                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>
                     Class {asg.class_number || '10'} {asg.section_name ? `- ${asg.section_name}` : ''}
                   </span>
                 </div>
-                <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#0f172a' }}>{asg.title}</h3>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{asg.title}</h3>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary, #64748b)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                   {asg.description}
                 </p>
 
-                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#475569', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Clock size={14} style={{ color: '#0284c7' }} />
                     <span>Due: <b>{asg.due_date}</b></span>
@@ -522,8 +532,8 @@ export function TeacherAssignments() {
                 </div>
               </div>
 
-              <div style={{ paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#64748b' }}>
+              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
                   Submissions: <b>{asg.submission_count || 0}</b>
                 </span>
                 <button
@@ -532,9 +542,9 @@ export function TeacherAssignments() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    background: '#f8fafc',
-                    color: '#1e293b',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card-subtle, #f8fafc)',
+                    color: 'var(--text, #1e293b)',
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -553,11 +563,11 @@ export function TeacherAssignments() {
 
       {/* Create Assignment Modal */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 540, padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, width: '100%', maxWidth: 540, padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)', color: 'var(--text, #0f172a)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Publish New Assignment</h2>
-              <button type="button" onClick={() => setShowCreateModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Publish New Assignment</h2>
+              <button type="button" onClick={() => setShowCreateModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}>
                 <X size={20} />
               </button>
             </div>
@@ -573,9 +583,9 @@ export function TeacherAssignments() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: createFeedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                  color: createFeedback.type === 'success' ? '#166534' : '#991b1b',
-                  border: `1px solid ${createFeedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+                  background: createFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  color: createFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
+                  border: `1px solid ${createFeedback.type === 'success' ? 'var(--emerald-border, rgba(16, 185, 129, 0.3))' : 'var(--rose-border, rgba(239, 68, 68, 0.3))'}`
                 }}
               >
                 {createFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
@@ -584,12 +594,12 @@ export function TeacherAssignments() {
             )}
 
             {loadingOptions ? (
-              <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8' }}>
+              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #94a3b8)' }}>
                 <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
                 <p>Checking mentor-authorized publishing options...</p>
               </div>
             ) : eligibleOptions.length === 0 ? (
-              <div style={{ padding: 16, borderRadius: 8, background: '#fffbe3', border: '1px solid #fcd34d', color: '#b45309', fontSize: 13.5, marginBottom: 16, lineHeight: 1.5 }}>
+              <div style={{ padding: 16, borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: 13.5, marginBottom: 16, lineHeight: 1.5 }}>
                 <AlertTriangle size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: '-3px' }} />
                 <strong>No Mentor-Authorized Allocations:</strong> You do not currently have any class and subject allocations authorized for assignment publishing by the Class Mentor. Please contact your Class Mentor to authorize your subject.
               </div>
@@ -599,7 +609,7 @@ export function TeacherAssignments() {
               {/* Dynamic Target Class & Section Dropdown + Subject Dropdown */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
                     Target Class & Section *
                   </label>
                   <select
@@ -607,7 +617,7 @@ export function TeacherAssignments() {
                     disabled={loadingOptions || uniqueClassSections.length === 0}
                     value={createForm.class_id && createForm.section_id ? `${createForm.class_id}:${createForm.section_id}` : ''}
                     onChange={(e) => handleClassSectionChange(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14, background: '#fff' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 14, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
                   >
                     {uniqueClassSections.length === 0 ? (
                       <option value="">No authorized classes</option>
@@ -622,7 +632,7 @@ export function TeacherAssignments() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
                     Subject *
                   </label>
                   <select
@@ -630,7 +640,7 @@ export function TeacherAssignments() {
                     disabled={loadingOptions || availableSubjects.length === 0}
                     value={createForm.subject_id}
                     onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14, background: '#fff' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 14, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
                   >
                     {availableSubjects.length === 0 ? (
                       <option value="">No authorized subjects</option>
@@ -646,47 +656,48 @@ export function TeacherAssignments() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Title *</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Chapter 4 Calculus Homework"
                   value={createForm.title}
                   onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14 }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Description / Instructions</label>
-                <textarea
-                  rows={3}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Description / Instructions</label>
+                <AutoExpandingTextarea
                   placeholder="Enter assignment details and instructions..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14 }}
+                  minHeight={70}
+                  maxHeight={250}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Due Date *</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Due Date *</label>
                   <input
                     type="date"
                     required
                     value={createForm.due_date}
                     onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14 }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#334155' }}>Max Marks</label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Max Marks</label>
                   <input
                     type="number"
                     min={1}
                     value={createForm.max_marks}
                     onChange={(e) => setCreateForm({ ...createForm, max_marks: Number(e.target.value) })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 14 }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
                   />
                 </div>
               </div>
@@ -695,7 +706,15 @@ export function TeacherAssignments() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card-subtle, #fff)',
+                    color: 'var(--text, #475569)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
@@ -725,18 +744,18 @@ export function TeacherAssignments() {
 
       {/* Submissions & Grading Modal */}
       {activeAssignment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', padding: 24, color: 'var(--text, #0f172a)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border, #f1f5f9)', paddingBottom: 12 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                   Submissions: {activeAssignment.title}
                 </h2>
-                <span style={{ fontSize: 13, color: '#64748b' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
                   Max Marks: <b>{activeAssignment.max_marks}</b> | Due: <b>{activeAssignment.due_date}</b>
                 </span>
               </div>
-              <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}>
                 <X size={20} />
               </button>
             </div>
@@ -752,8 +771,8 @@ export function TeacherAssignments() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: gradeFeedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                  color: gradeFeedback.type === 'success' ? '#166534' : '#991b1b'
+                  background: gradeFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  color: gradeFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)'
                 }}
               >
                 {gradeFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
@@ -763,23 +782,23 @@ export function TeacherAssignments() {
 
             {/* Grading Form Modal section if submission selected */}
             {selectedSubmission ? (
-              <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid #cbd5e1', marginBottom: 20 }}>
+              <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 16, borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', marginBottom: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                     Grade Submission for {selectedSubmission.student_name || 'Student'} (Roll #{selectedSubmission.roll_number || '—'})
                   </h3>
-                  <button type="button" onClick={() => setSelectedSubmission(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#64748b' }}>
+                  <button type="button" onClick={() => setSelectedSubmission(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
                     Cancel Grading
                   </button>
                 </div>
 
-                <div style={{ background: '#fff', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, marginBottom: 12 }}>
-                  <b>Submission Content:</b>
-                  <p style={{ margin: '4px 0 0', color: '#334155', whiteSpace: 'pre-wrap' }}>{selectedSubmission.submission_text || 'No text provided.'}</p>
+                <div style={{ background: 'var(--bg-card, #fff)', padding: 12, borderRadius: 6, border: '1px solid var(--border, #e2e8f0)', fontSize: 13, marginBottom: 12 }}>
+                  <b style={{ color: 'var(--text)' }}>Submission Content:</b>
+                  <p style={{ margin: '4px 0 0', color: 'var(--text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>{selectedSubmission.submission_text || 'No text provided.'}</p>
 
                   {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
-                      <b style={{ display: 'block', marginBottom: 6, color: '#334155' }}>
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border, #f1f5f9)' }}>
+                      <b style={{ display: 'block', marginBottom: 6, color: 'var(--text, #334155)' }}>
                         Student Attachments ({selectedSubmission.attachments.length}):
                       </b>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -799,19 +818,19 @@ export function TeacherAssignments() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
+                                background: 'var(--card-subtle, #f8fafc)',
+                                border: '1px solid var(--border, #cbd5e1)',
                                 borderRadius: 6,
                                 padding: '6px 10px',
                                 fontSize: 12
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
-                                <Paperclip size={13} color="#64748b" />
-                                <span title={att.file_name} style={{ fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <Paperclip size={13} color="var(--text-muted, #64748b)" />
+                                <span title={att.file_name} style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {att.file_name}
                                 </span>
-                                <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                                <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
                                   ({formatBytes(att.file_size)})
                                 </span>
                               </div>
@@ -821,8 +840,8 @@ export function TeacherAssignments() {
                                     type="button"
                                     onClick={() => handleTeacherPreview(activeAssignment.id, selectedSubmission.id, att)}
                                     style={{
-                                      border: '1px solid #cbd5e1',
-                                      background: '#fff',
+                                      border: '1px solid var(--border, #cbd5e1)',
+                                      background: 'var(--bg-card, #fff)',
                                       borderRadius: 4,
                                       padding: '3px 8px',
                                       cursor: 'pointer',
@@ -830,7 +849,7 @@ export function TeacherAssignments() {
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: 4,
-                                      color: '#334155'
+                                      color: 'var(--text, #334155)'
                                     }}
                                   >
                                     <Eye size={12} /> Preview
@@ -841,7 +860,7 @@ export function TeacherAssignments() {
                                   onClick={() => handleTeacherDownload(activeAssignment.id, selectedSubmission.id, att)}
                                   style={{
                                     border: '1px solid #2563eb',
-                                    background: '#eff6ff',
+                                    background: 'rgba(37, 99, 235, 0.12)',
                                     borderRadius: 4,
                                     padding: '3px 8px',
                                     cursor: 'pointer',
@@ -849,7 +868,7 @@ export function TeacherAssignments() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 4,
-                                    color: '#1d4ed8'
+                                    color: 'var(--sidebar-accent, #3b82f6)'
                                   }}
                                 >
                                   <Download size={12} /> Download
@@ -866,7 +885,7 @@ export function TeacherAssignments() {
                 <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Marks Obtained *</label>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Marks Obtained *</label>
                       <input
                         type="number"
                         min={0}
@@ -874,17 +893,17 @@ export function TeacherAssignments() {
                         required
                         value={gradeForm.marks_obtained}
                         onChange={(e) => setGradeForm({ ...gradeForm, marks_obtained: Number(e.target.value) })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Feedback / Evaluation Comments</label>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Feedback / Evaluation Comments</label>
                       <input
                         type="text"
                         placeholder="e.g. Excellent solution structure!"
                         value={gradeForm.feedback}
                         onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
                       />
                     </div>
                   </div>
@@ -899,7 +918,7 @@ export function TeacherAssignments() {
             ) : null}
 
             {loadingSubmissions ? (
-              <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8' }}>
+              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #94a3b8)' }}>
                 <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
                 <p>Loading student submissions...</p>
               </div>
@@ -908,37 +927,37 @@ export function TeacherAssignments() {
                 <p>{submissionsError}</p>
               </div>
             ) : submissions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
+              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #64748b)' }}>
                 <p>No student submissions received for this assignment yet.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px' }}>Student</th>
-                    <th style={{ padding: '10px 12px' }}>Submitted Date</th>
-                    <th style={{ padding: '10px 12px' }}>Status</th>
-                    <th style={{ padding: '10px 12px' }}>Score</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>Action</th>
+                  <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '2px solid var(--border, #e2e8f0)', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Student</th>
+                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Submitted Date</th>
+                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Status</th>
+                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {submissions.map((sub) => (
-                    <tr key={sub.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                    <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
                         {sub.student_name || 'Student'}
-                        {sub.roll_number && <span style={{ color: '#64748b', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
+                        {sub.roll_number && <span style={{ color: 'var(--text-muted, #64748b)', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
                         {sub.attachments && sub.attachments.length > 0 && (
                           <span
                             title={`${sub.attachments.length} attachment(s)`}
                             style={{
                               marginLeft: 6,
                               fontSize: 11,
-                              background: '#f1f5f9',
-                              border: '1px solid #cbd5e1',
+                              background: 'var(--card-subtle, #f1f5f9)',
+                              border: '1px solid var(--border, #cbd5e1)',
                               padding: '1px 6px',
                               borderRadius: 4,
-                              color: '#475569',
+                              color: 'var(--text-secondary, #475569)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 3,
@@ -949,7 +968,7 @@ export function TeacherAssignments() {
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-muted, #64748b)' }}>
                         {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
@@ -959,14 +978,14 @@ export function TeacherAssignments() {
                             fontWeight: 700,
                             padding: '2px 8px',
                             borderRadius: 4,
-                            background: sub.status === 'GRADED' ? '#dcfce7' : '#fef9c3',
-                            color: sub.status === 'GRADED' ? '#15803d' : '#a16207'
+                            background: sub.status === 'GRADED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: sub.status === 'GRADED' ? '#34d399' : '#fbbf24'
                           }}
                         >
                           {sub.status}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
                         {sub.status === 'GRADED' ? `${sub.marks_obtained} / ${activeAssignment.max_marks}` : '—'}
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>
@@ -983,8 +1002,8 @@ export function TeacherAssignments() {
                             padding: '4px 10px',
                             borderRadius: 6,
                             border: '1px solid #2563eb',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
+                            background: 'rgba(37, 99, 235, 0.12)',
+                            color: 'var(--sidebar-accent, #3b82f6)',
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: 'pointer'
@@ -1019,13 +1038,14 @@ export function TeacherAssignments() {
         >
           <div
             style={{
-              background: '#fff',
+              background: 'var(--bg-card, #fff)',
+              border: '1px solid var(--border, #e2e8f0)',
               borderRadius: 12,
               width: 'min(900px, 95vw)',
               height: 'min(85vh, 800px)',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
               overflow: 'hidden'
             }}
           >
@@ -1035,18 +1055,18 @@ export function TeacherAssignments() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '12px 18px',
-                borderBottom: '1px solid #e2e8f0',
-                background: '#f8fafc'
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--card-subtle, #f8fafc)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="#64748b" />
+                <Paperclip size={16} color="var(--text-muted, #64748b)" />
                 <h3
                   style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 700,
-                    color: '#0f172a',
+                    color: 'var(--text, #0f172a)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'

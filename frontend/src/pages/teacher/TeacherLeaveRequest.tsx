@@ -12,10 +12,16 @@ import {
   Calendar,
   UserCheck,
   Info,
-  X
+  X,
+  Paperclip,
+  Image as ImageIcon,
+  Download,
+  ExternalLink,
+  Eye
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export interface TeacherLeaveItem {
   id: string;
@@ -27,6 +33,8 @@ export interface TeacherLeaveItem {
   start_date: string;
   end_date: string;
   reason: string;
+  document_url?: string;
+  document_name?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   reviewed_by?: string;
   reviewer_name?: string;
@@ -37,13 +45,13 @@ export interface TeacherLeaveItem {
 }
 
 const LEAVE_TYPES = [
-  { value: 'CASUAL', label: 'Casual Leave (CL)', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-  { value: 'SICK', label: 'Sick / Medical Leave (SL)', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  { value: 'EARNED', label: 'Earned / Privilege Leave (EL)', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  { value: 'EMERGENCY', label: 'Emergency Leave', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  { value: 'DUTY', label: 'On Official Duty (OD)', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  { value: 'MATERNITY', label: 'Maternity / Paternity Leave', color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
-  { value: 'OTHER', label: 'Other Leave', color: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB' }
+  { value: 'CASUAL', label: 'Casual Leave (CL)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.25)' },
+  { value: 'SICK', label: 'Sick / Medical Leave (SL)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)' },
+  { value: 'EARNED', label: 'Earned / Privilege Leave (EL)', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.25)' },
+  { value: 'EMERGENCY', label: 'Emergency Leave', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)' },
+  { value: 'DUTY', label: 'On Official Duty (OD)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)' },
+  { value: 'MATERNITY', label: 'Maternity / Paternity Leave', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.25)' },
+  { value: 'OTHER', label: 'Other Leave', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.25)' }
 ];
 
 export default function TeacherLeaveRequest() {
@@ -55,8 +63,85 @@ export default function TeacherLeaveRequest() {
   const [endDate, setEndDate] = useState('');
   const [leaveType, setLeaveType] = useState('CASUAL');
   const [reason, setReason] = useState('');
+  const [documentUrl, setDocumentUrl] = useState<string>('');
+  const [documentName, setDocumentName] = useState<string>('');
+  const [documentSize, setDocumentSize] = useState<string>('');
+  const [fileError, setFileError] = useState<string>('');
+  const [previewingDoc, setPreviewingDoc] = useState<{ url: string; name: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileError('');
+
+    // Limit 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('File size exceeds the 10MB limit. Please choose a smaller document.');
+      return;
+    }
+
+    const formatBytes = (bytes: number) => {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
+
+    setDocumentName(file.name);
+    setDocumentSize(formatBytes(file.size));
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setDocumentUrl(reader.result);
+      }
+    };
+    reader.onerror = () => {
+      setFileError('Failed to read the selected file. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveDocument = () => {
+    setDocumentUrl('');
+    setDocumentName('');
+    setDocumentSize('');
+    setFileError('');
+  };
+
+  const openDocumentInNewTab = (dataUrl: string) => {
+    try {
+      if (dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        return;
+      }
+      window.open(dataUrl, '_blank');
+    } catch {
+      window.open(dataUrl, '_blank');
+    }
+  };
+
+  const downloadDocument = (dataUrl: string, filename: string = 'document') => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const loadMyLeaves = async () => {
     try {
@@ -122,7 +207,9 @@ export default function TeacherLeaveRequest() {
         startDate,
         endDate,
         leaveType,
-        reason: reason.trim()
+        reason: reason.trim(),
+        documentUrl: documentUrl || undefined,
+        documentName: documentName || undefined
       });
 
       if (res.data?.success) {
@@ -135,6 +222,10 @@ export default function TeacherLeaveRequest() {
         setEndDate('');
         setLeaveType('CASUAL');
         setReason('');
+        setDocumentUrl('');
+        setDocumentName('');
+        setDocumentSize('');
+        setFileError('');
         await loadMyLeaves();
 
         // Notify app-level listeners to refresh notification badge immediately
@@ -315,8 +406,8 @@ export default function TeacherLeaveRequest() {
               width: 44,
               height: 44,
               borderRadius: 10,
-              background: '#EFF6FF',
-              color: '#2563EB',
+              background: 'rgba(37, 99, 235, 0.12)',
+              color: '#3b82f6',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -339,10 +430,10 @@ export default function TeacherLeaveRequest() {
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Pending Review
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#B45309', marginTop: 4 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#d97706', marginTop: 4 }}>
               {counts.pending}
             </div>
           </div>
@@ -351,8 +442,8 @@ export default function TeacherLeaveRequest() {
               width: 44,
               height: 44,
               borderRadius: 10,
-              background: '#FEF3C7',
-              color: '#D97706',
+              background: 'rgba(245, 158, 11, 0.15)',
+              color: '#f59e0b',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -375,10 +466,10 @@ export default function TeacherLeaveRequest() {
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Approved
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D', marginTop: 4 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#059669', marginTop: 4 }}>
               {counts.approved}
             </div>
           </div>
@@ -387,8 +478,8 @@ export default function TeacherLeaveRequest() {
               width: 44,
               height: 44,
               borderRadius: 10,
-              background: '#DCFCE7',
-              color: '#16A34A',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10b981',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -411,10 +502,10 @@ export default function TeacherLeaveRequest() {
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Rejected
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#B91C1C', marginTop: 4 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
               {counts.rejected}
             </div>
           </div>
@@ -423,8 +514,8 @@ export default function TeacherLeaveRequest() {
               width: 44,
               height: 44,
               borderRadius: 10,
-              background: '#FEE2E2',
-              color: '#DC2626',
+              background: 'rgba(239, 68, 68, 0.15)',
+              color: '#ef4444',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -652,6 +743,35 @@ export default function TeacherLeaveRequest() {
                         <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text, #0F172A)', lineHeight: 1.45 }}>
                           {r.reason}
                         </p>
+                        {r.document_url && (
+                          <div style={{ marginTop: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewingDoc({ url: r.document_url!, name: r.document_name || 'Attached Document' })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '4px 9px',
+                                borderRadius: 6,
+                                border: '1px solid #BFDBFE',
+                                background: '#EFF6FF',
+                                color: '#1D4ED8',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                              title="View Attached Document"
+                            >
+                              <Paperclip size={12} />
+                              <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {r.document_name || 'View Document'}
+                              </span>
+                              <Eye size={12} />
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       <td style={{ padding: '14px 18px', verticalAlign: 'top', fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
@@ -669,9 +789,9 @@ export default function TeacherLeaveRequest() {
                               borderRadius: 6,
                               fontSize: 12,
                               fontWeight: 700,
-                              background: '#FEF3C7',
-                              color: '#B45309',
-                              border: '1px solid #FDE68A'
+                              background: 'rgba(245, 158, 11, 0.12)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245, 158, 11, 0.3)'
                             }}
                           >
                             <Clock size={12} />
@@ -688,9 +808,9 @@ export default function TeacherLeaveRequest() {
                               borderRadius: 6,
                               fontSize: 12,
                               fontWeight: 700,
-                              background: '#DCFCE7',
-                              color: '#15803D',
-                              border: '1px solid #BBF7D0'
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              color: '#10b981',
+                              border: '1px solid rgba(16, 185, 129, 0.3)'
                             }}
                           >
                             <CheckCircle2 size={12} />
@@ -707,9 +827,9 @@ export default function TeacherLeaveRequest() {
                               borderRadius: 6,
                               fontSize: 12,
                               fontWeight: 700,
-                              background: '#FEE2E2',
-                              color: '#B91C1C',
-                              border: '1px solid #FECACA'
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#ef4444',
+                              border: '1px solid rgba(239, 68, 68, 0.3)'
                             }}
                           >
                             <XCircle size={12} />
@@ -918,9 +1038,10 @@ export default function TeacherLeaveRequest() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
                   Reason for Absence <span style={{ color: '#DC2626' }}>*</span>
                 </label>
-                <textarea
+                <AutoExpandingTextarea
                   required
-                  rows={4}
+                  minHeight={46}
+                  maxHeight={200}
                   placeholder="Detail the purpose of leave (e.g. personal emergency, health rest, academic conference, etc.)..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -932,11 +1053,133 @@ export default function TeacherLeaveRequest() {
                     background: 'var(--surface, #FFF)',
                     color: 'var(--text, #0F172A)',
                     fontSize: 13.5,
+                    lineHeight: 1.45,
                     outline: 'none',
-                    resize: 'vertical',
                     boxSizing: 'border-box'
                   }}
                 />
+              </div>
+
+              {/* Add Document (Optional) */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}>
+                    Add Document / Attachment <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary, #64748B)' }}>(Optional)</span>
+                  </label>
+                  {documentUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveDocument}
+                      style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {!documentUrl ? (
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      padding: '16px 14px',
+                      borderRadius: 8,
+                      border: '1.5px dashed var(--border, #CBD5E1)',
+                      background: 'var(--card-subtle, #F8FAFC)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Paperclip size={18} />
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}>
+                      Click to upload or attach document
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)' }}>
+                      Medical certificate, application slip, or proof (PDF, PNG, JPG up to 10MB)
+                    </div>
+                  </label>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #BFDBFE)',
+                      background: 'var(--card-subtle, #EFF6FF)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 6, background: '#2563EB', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {documentUrl.startsWith('data:image/') ? <ImageIcon size={17} /> : <FileText size={17} />}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #1E3A8A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {documentName || 'Attached Document'}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #3B82F6)', marginTop: 1 }}>
+                          {documentSize} · Ready to submit
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewingDoc({ url: documentUrl, name: documentName || 'Document Preview' })}
+                        style={{
+                          padding: '5px 9px',
+                          borderRadius: 6,
+                          border: '1px solid var(--border, #93C5FD)',
+                          background: 'var(--surface, #FFF)',
+                          color: 'var(--text, #1D4ED8)',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        <Eye size={12} />
+                        <span>Preview</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDocument}
+                        style={{
+                          padding: '5px 7px',
+                          borderRadius: 6,
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          background: 'rgba(239, 68, 68, 0.12)',
+                          color: '#ef4444',
+                          cursor: 'pointer'
+                        }}
+                        title="Remove Document"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {fileError && (
+                  <div style={{ fontSize: 12, color: '#DC2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} />
+                    <span>{fileError}</span>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -981,6 +1224,168 @@ export default function TeacherLeaveRequest() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Document Preview Modal ── */}
+      {previewingDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 16
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewingDoc(null);
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface, #FFF)',
+              border: '1px solid var(--border, #E2E8F0)',
+              borderRadius: 14,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #E2E8F0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--modal-header, #F8FAFC)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <Paperclip size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {previewingDoc.name}
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => openDocumentInNewTab(previewingDoc.url)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #CBD5E1)',
+                    background: 'var(--surface, #FFF)',
+                    color: 'var(--text, #0F172A)',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Open in new window"
+                >
+                  <ExternalLink size={13} />
+                  <span>Open New Tab</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadDocument(previewingDoc.url, previewingDoc.name)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#2563EB',
+                    color: '#FFF',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Download File"
+                >
+                  <Download size={13} />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewingDoc(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary, #64748B)',
+                    padding: 4,
+                    marginLeft: 4
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--card-subtle, #F1F5F9)' }}>
+              {previewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(previewingDoc.url) ? (
+                <img
+                  src={previewingDoc.url}
+                  alt={previewingDoc.name}
+                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                />
+              ) : previewingDoc.url.startsWith('data:application/pdf') || /\.pdf$/i.test(previewingDoc.url) ? (
+                <iframe
+                  src={previewingDoc.url}
+                  title={previewingDoc.name}
+                  style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 8 }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--surface, #FFF)', border: '1px solid var(--border, #E2E8F0)', borderRadius: 10, width: '100%', maxWidth: 420 }}>
+                  <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px', display: 'block' }} />
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text, #0F172A)', marginBottom: 4 }}>
+                    {previewingDoc.name}
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)', marginBottom: 16 }}>
+                    Direct inline preview is not supported for this file type. Please open or download it to view.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => downloadDocument(previewingDoc.url, previewingDoc.name)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#2563EB',
+                      color: '#FFF',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} />
+                    <span>Download File</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

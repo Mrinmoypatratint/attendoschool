@@ -578,7 +578,8 @@ async function dispatchSchoolCreationEmail(
       role: 'SCHOOL_ADMIN',
       schoolId,
       schoolName,
-      req
+      req,
+      sendEmail: false
     });
 
     await queueEmailNotification({

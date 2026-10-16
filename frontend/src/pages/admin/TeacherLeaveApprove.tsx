@@ -16,9 +16,15 @@ import {
   AlertTriangle,
   FileText,
   Eye,
-  MessageSquare
+  FileSpreadsheet,
+  Paperclip,
+  Image as ImageIcon,
+  Download,
+  ExternalLink
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../api';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface TeacherLeave {
   id: string;
@@ -34,10 +40,13 @@ interface TeacherLeave {
   start_date: string;
   end_date: string;
   reason: string;
+  document_url?: string;
+  document_name?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   reviewed_by?: string;
   reviewer_name?: string;
   review_notes?: string;
+  rejection_reason?: string;
   reviewed_at?: string;
   created_at: string;
   updated_at?: string;
@@ -55,17 +64,27 @@ const LEAVE_TYPES = [
 ];
 
 export default function TeacherLeaveApprove() {
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [leaves, setLeaves] = useState<TeacherLeave[]>([]);
-  const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [reportMonth, setReportMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [teachersList, setTeachersList] = useState<any[]>([]);
+  const [exporting, setExporting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Detail Modal State
   const [viewingLeave, setViewingLeave] = useState<TeacherLeave | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ url: string; name: string } | null>(null);
 
   // Approve Modal State
   const [approvingLeave, setApprovingLeave] = useState<TeacherLeave | null>(null);
@@ -75,15 +94,53 @@ export default function TeacherLeaveApprove() {
   const [rejectingLeave, setRejectingLeave] = useState<TeacherLeave | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('');
 
+  const openDocumentInNewTab = (dataUrl: string) => {
+    try {
+      if (dataUrl.startsWith('data:')) {
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        return;
+      }
+      window.open(dataUrl, '_blank');
+    } catch {
+      window.open(dataUrl, '_blank');
+    }
+  };
+
+  const downloadDocument = (dataUrl: string, filename: string = 'document') => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const loadLeaves = async () => {
     try {
       setLoading(true);
       const res = await api.get('/reviews/teacher-leaves');
       if (res.data?.success) {
         setLeaves(res.data.data || []);
-        if (res.data.counts) {
-          setCounts(res.data.counts);
+      }
+
+      // Also silently load all faculty members for institution-wide monthly reporting
+      try {
+        const teachersRes = await api.get('/teachers');
+        if (Array.isArray(teachersRes.data)) {
+          setTeachersList(teachersRes.data);
         }
+      } catch (_tErr) {
+        // Non-blocking fallback
       }
     } catch (err: any) {
       console.error('Failed to load faculty leave requests:', err);
@@ -163,6 +220,62 @@ export default function TeacherLeaveApprove() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
+  // Helper to calculate exact days of a leave that fall within a given YYYY-MM month
+  const computeLeaveDaysInMonth = (l: { start_date: string; end_date?: string }, yearMonthStr: string) => {
+    if (!l.start_date || !yearMonthStr || yearMonthStr === 'ALL') return 0;
+    const endDateStr = l.end_date || l.start_date;
+    const [y, m] = yearMonthStr.split('-').map(Number);
+    if (!y || !m) return 0;
+    const monthStart = new Date(y, m - 1, 1);
+    const monthEnd = new Date(y, m, 0, 23, 59, 59, 999);
+    const s = new Date(l.start_date);
+    const e = new Date(endDateStr);
+    if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+    if (e < monthStart || s > monthEnd) return 0;
+
+    const overlapStart = s < monthStart ? monthStart : s;
+    const overlapEnd = e > monthEnd ? monthEnd : e;
+    const diff = overlapEnd.getTime() - overlapStart.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const formatMonthDisplay = (ym: string) => {
+    if (!ym || ym === 'ALL') return 'All Months';
+    const [y, m] = ym.split('-').map(Number);
+    if (!y || !m) return ym;
+    const d = new Date(y, m - 1, 1);
+    return isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    const cur = new Date().toISOString().slice(0, 7);
+    set.add(cur);
+    leaves.forEach((l) => {
+      if (l.start_date) set.add(l.start_date.slice(0, 7));
+      if (l.end_date) set.add(l.end_date.slice(0, 7));
+      if (l.created_at) set.add(l.created_at.slice(0, 7));
+    });
+    return Array.from(set).filter(Boolean).sort().reverse();
+  }, [leaves]);
+
+  // Real-time month-filtered leaves for KPI cards and tab badges
+  const monthScopedLeaves = useMemo(() => {
+    if (!monthFilter || monthFilter === 'ALL') {
+      return leaves;
+    }
+    return leaves.filter((l) => computeLeaveDaysInMonth(l, monthFilter) > 0);
+  }, [leaves, monthFilter]);
+
+  // Dynamic real-time counts calculated directly from real-time data
+  const dynamicCounts = useMemo(() => {
+    const pending = monthScopedLeaves.filter((l) => l.status === 'PENDING').length;
+    const approved = monthScopedLeaves.filter((l) => l.status === 'APPROVED').length;
+    const rejected = monthScopedLeaves.filter((l) => l.status === 'REJECTED').length;
+    const all = monthScopedLeaves.length;
+    return { all, pending, approved, rejected };
+  }, [monthScopedLeaves]);
+
   const formatDate = (val: string) => {
     if (!val) return '—';
     const d = new Date(val);
@@ -185,8 +298,285 @@ export default function TeacherLeaveApprove() {
     };
   };
 
+  // Export Monthly Teacher Leave Report to Excel (.xlsx)
+  // Only exports teachers who have applied for leave, excluding teachers with no leaves
+  const exportMonthlyLeaveReport = (targetMonth?: string) => {
+    try {
+      setExporting(true);
+      const ym = (monthFilter !== 'ALL' ? monthFilter : (targetMonth || reportMonth)) || 'ALL';
+      const isAllMonths = ym === 'ALL' || !ym;
+
+      let monthName = 'All Months';
+      if (!isAllMonths) {
+        const [yearStr, monthStr] = ym.split('-');
+        const year = parseInt(yearStr, 10) || new Date().getFullYear();
+        const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+        const monthDate = new Date(year, monthNum - 1, 1);
+        monthName = isNaN(monthDate.getTime())
+          ? ym
+          : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      // Candidate leaves for export based on the selected month
+      const monthLeaves = isAllMonths
+        ? leaves
+        : leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+
+      // If activeTab is a specific status (e.g. APPROVED/REJECTED/PENDING) and has matching leaves, export them,
+      // otherwise export all month leaves
+      const targetLeaves = (activeTab !== 'ALL' && monthLeaves.some((l) => l.status === activeTab))
+        ? monthLeaves.filter((l) => l.status === activeTab)
+        : monthLeaves;
+
+      if (targetLeaves.length === 0) {
+        setFeedback({
+          type: 'error',
+          message: `No faculty leave applications found for ${monthName} to export.`
+        });
+        return;
+      }
+
+      // Sheet 1: The exact data from the Teacher Leave Review table list
+      const detailRows = targetLeaves.map((l, index) => {
+        const totalDuration = calculateDays(l.start_date, l.end_date);
+        const daysInMonth = computeLeaveDaysInMonth(l, ym);
+        const typeStyle = getLeaveTypeStyle(l.leave_type);
+        const statusLabel = l.status === 'APPROVED' ? 'Approved' : l.status === 'REJECTED' ? 'Rejected' : 'Pending Review';
+
+        return {
+          'SL No.': index + 1,
+          'Faculty Member': l.applicant_name || 'Faculty Member',
+          'Email Address': l.teacher_email || '—',
+          'Employee ID': l.identifier || '—',
+          'Leave Type': typeStyle.label || l.leave_type,
+          'Duration & Period': `${formatDate(l.start_date)} → ${formatDate(l.end_date)}`,
+          'Start Date': l.start_date || '—',
+          'End Date': l.end_date || '—',
+          'Total Duration (Days)': totalDuration,
+          'Days in Month': daysInMonth,
+          'Reason / Details': l.reason || '—',
+          'Applied Date': l.created_at ? formatDate(l.created_at) : '—',
+          'Status': statusLabel,
+          'Review Remarks': l.review_notes || l.rejection_reason || (l.status === 'APPROVED' ? 'Approved by School Administration' : '—'),
+          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
+          'Reviewed At': l.reviewed_at ? formatDate(l.reviewed_at) : '—',
+          'Supporting Document': l.document_name ? `${l.document_name}` : (l.document_url ? 'Attached' : 'None')
+        };
+      });
+
+      // Extract ONLY teachers who have applied for leave in this target month (excluding teachers who have not taken/applied for leave)
+      const teacherMap = new Map<string, {
+        id: string;
+        name: string;
+        email: string;
+        identifier: string;
+        detail: string;
+      }>();
+
+      targetLeaves.forEach((l) => {
+        const key = String(l.applicant_id || l.teacher_email || l.applicant_name).toLowerCase().trim();
+        if (key && !teacherMap.has(key)) {
+          const tInfo = teachersList.find((t: any) =>
+            (t.id && l.applicant_id && String(t.id).toLowerCase() === String(l.applicant_id).toLowerCase()) ||
+            (t.email && l.teacher_email && t.email.toLowerCase() === l.teacher_email.toLowerCase()) ||
+            (t.name && l.applicant_name && t.name.toLowerCase() === l.applicant_name.toLowerCase())
+          );
+          teacherMap.set(key, {
+            id: l.applicant_id || tInfo?.id || '',
+            name: l.applicant_name || tInfo?.name || 'Faculty Member',
+            email: l.teacher_email || tInfo?.email || '—',
+            identifier: l.identifier || tInfo?.employee_id || tInfo?.employeeId || '—',
+            detail: l.detail || tInfo?.designation || tInfo?.qualification || 'Faculty Member'
+          });
+        }
+      });
+
+      const facultyList = Array.from(teacherMap.values());
+
+      // Aggregate leaves taken per teacher for the target month
+      let grandTotalTaken = 0;
+      let grandTotalCL = 0;
+      let grandTotalSL = 0;
+      let grandTotalEL = 0;
+      let grandTotalEmergency = 0;
+      let grandTotalOD = 0;
+      let grandTotalOther = 0;
+      let grandApproved = 0;
+      let grandPending = 0;
+      let grandRejected = 0;
+
+      const summaryRows = facultyList.map((f) => {
+        const tLeaves = targetLeaves.filter((l) => {
+          const idMatch = l.applicant_id && f.id && String(l.applicant_id).toLowerCase() === String(f.id).toLowerCase();
+          const emailMatch = l.teacher_email && f.email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
+          const nameMatch = l.applicant_name && f.name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
+          return idMatch || emailMatch || nameMatch;
+        });
+
+        let clDays = 0;
+        let slDays = 0;
+        let elDays = 0;
+        let emergencyDays = 0;
+        let odDays = 0;
+        let maternityDays = 0;
+        let otherDays = 0;
+        let approvedDays = 0;
+
+        let appApproved = 0;
+        let appPending = 0;
+        let appRejected = 0;
+
+        tLeaves.forEach((l) => {
+          const dInM = computeLeaveDaysInMonth(l, ym);
+          if (l.status === 'APPROVED') {
+            appApproved++;
+            approvedDays += dInM;
+            const norm = String(l.leave_type || 'CASUAL').toUpperCase();
+            if (norm === 'CASUAL') clDays += dInM;
+            else if (norm === 'SICK') slDays += dInM;
+            else if (norm === 'EARNED') elDays += dInM;
+            else if (norm === 'EMERGENCY') emergencyDays += dInM;
+            else if (norm === 'DUTY') odDays += dInM;
+            else if (norm === 'MATERNITY') maternityDays += dInM;
+            else otherDays += dInM;
+          } else if (l.status === 'PENDING') {
+            appPending++;
+          } else if (l.status === 'REJECTED') {
+            appRejected++;
+          }
+        });
+
+        grandTotalTaken += approvedDays;
+        grandTotalCL += clDays;
+        grandTotalSL += slDays;
+        grandTotalEL += elDays;
+        grandTotalEmergency += emergencyDays;
+        grandTotalOD += odDays;
+        grandTotalOther += (maternityDays + otherDays);
+        grandApproved += appApproved;
+        grandPending += appPending;
+        grandRejected += appRejected;
+
+        return {
+          'Teacher / Faculty Member': f.name,
+          'Email Address': f.email || '—',
+          'Employee ID': f.identifier || '—',
+          'Designation / Department': f.detail || 'Faculty Member',
+          'Report Month': monthName,
+          'Total Leaves Taken (Days)': approvedDays,
+          'Casual Leave (CL Days)': clDays,
+          'Sick / Medical Leave (SL Days)': slDays,
+          'Earned Leave (EL Days)': elDays,
+          'Emergency Leave (Days)': emergencyDays,
+          'Official Duty (OD Days)': odDays,
+          'Maternity / Other (Days)': (maternityDays + otherDays),
+          'Approved Requests': appApproved,
+          'Pending Requests': appPending,
+          'Rejected Requests': appRejected,
+          'Total Applications': (appApproved + appPending + appRejected),
+          'Status Summary': approvedDays > 0 ? `${approvedDays} Day(s) Taken` : `${appPending} Pending, ${appRejected} Rejected`
+        };
+      });
+
+      // Sort: Teachers with leaves taken first, then by total applications
+      summaryRows.sort((a, b) => {
+        if (b['Total Leaves Taken (Days)'] !== a['Total Leaves Taken (Days)']) {
+          return b['Total Leaves Taken (Days)'] - a['Total Leaves Taken (Days)'];
+        }
+        return b['Total Applications'] - a['Total Applications'];
+      });
+
+      // Append institutional summary total row
+      summaryRows.push({
+        'Teacher / Faculty Member': 'TOTAL (FACULTY WHO APPLIED)',
+        'Email Address': '',
+        'Employee ID': '',
+        'Designation / Department': `${facultyList.length} Faculty Member(s) Applied`,
+        'Report Month': monthName,
+        'Total Leaves Taken (Days)': grandTotalTaken,
+        'Casual Leave (CL Days)': grandTotalCL,
+        'Sick / Medical Leave (SL Days)': grandTotalSL,
+        'Earned Leave (EL Days)': grandTotalEL,
+        'Emergency Leave (Days)': grandTotalEmergency,
+        'Official Duty (OD Days)': grandTotalOD,
+        'Maternity / Other (Days)': grandTotalOther,
+        'Approved Requests': grandApproved,
+        'Pending Requests': grandPending,
+        'Rejected Requests': grandRejected,
+        'Total Applications': (grandApproved + grandPending + grandRejected),
+        'Status Summary': `${grandTotalTaken} Total Approved Leave Day(s)`
+      } as any);
+
+      // Build Workbook
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Exact table list data in Teacher Leave Review
+      const wsDetails = XLSX.utils.json_to_sheet(detailRows);
+      wsDetails['!cols'] = [
+        { wch: 8 },  // SL No.
+        { wch: 24 }, // Faculty Member
+        { wch: 28 }, // Email Address
+        { wch: 16 }, // Employee ID
+        { wch: 26 }, // Leave Type
+        { wch: 26 }, // Duration & Period
+        { wch: 14 }, // Start Date
+        { wch: 14 }, // End Date
+        { wch: 16 }, // Total Duration (Days)
+        { wch: 16 }, // Days in Month
+        { wch: 34 }, // Reason / Details
+        { wch: 16 }, // Applied Date
+        { wch: 16 }, // Status
+        { wch: 34 }, // Review Remarks
+        { wch: 24 }, // Reviewed By
+        { wch: 16 }, // Reviewed At
+        { wch: 24 }  // Supporting Document
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetails, 'Teacher Leave Review');
+
+      // Sheet 2: Monthly Summary for teachers who applied
+      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+      wsSummary['!cols'] = [
+        { wch: 26 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 24 },
+        { wch: 20 },
+        { wch: 24 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 25 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Leave Summary');
+
+      const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Teacher_Leave_Review_${safeMonth}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      setFeedback({
+        type: 'success',
+        message: `Teacher Leave Review report downloaded for ${monthName} (${targetLeaves.length} application(s) across ${facultyList.length} faculty member(s)).`
+      });
+    } catch (err: any) {
+      console.error('Failed to export leave report:', err);
+      setFeedback({
+        type: 'error',
+        message: `Export failed: ${err.message || 'Unknown error during Excel generation'}`
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filteredLeaves = useMemo(() => {
-    return leaves.filter((l) => {
+    return monthScopedLeaves.filter((l) => {
       // Status Tab filter
       if (activeTab !== 'ALL' && l.status !== activeTab) {
         return false;
@@ -209,7 +599,7 @@ export default function TeacherLeaveApprove() {
 
       return true;
     });
-  }, [leaves, activeTab, typeFilter, searchQuery]);
+  }, [monthScopedLeaves, activeTab, typeFilter, searchQuery]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -240,27 +630,116 @@ export default function TeacherLeaveApprove() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadLeaves}
-          className="student-btn-secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border, #E2E8F0)',
-            background: 'var(--surface, #FFF)',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text, #0F172A)'
-          }}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>Refresh</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Report Month Selector */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #E2E8F0)',
+              background: 'var(--surface, #FFF)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}
+            title="Select month to filter leave applications and Excel report"
+          >
+            <Calendar size={14} color="#64748B" />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748B)' }}>
+              Month:
+            </span>
+            <input
+              type="month"
+              value={monthFilter === 'ALL' ? '' : monthFilter}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMonthFilter(val || 'ALL');
+                setReportMonth(val || new Date().toISOString().slice(0, 7));
+              }}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text, #0F172A)',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            />
+            {monthFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setMonthFilter('ALL')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563EB',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  display: 'inline-flex',
+                  alignItems: 'center'
+                }}
+                title="Show all months"
+              >
+                All Months
+              </button>
+            )}
+          </div>
+
+          {/* Export Excel Button */}
+          <button
+            type="button"
+            onClick={() => exportMonthlyLeaveReport(reportMonth)}
+            disabled={exporting}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '8px 15px',
+              borderRadius: 8,
+              border: '1px solid #16A34A',
+              background: '#16A34A',
+              color: '#FFFFFF',
+              cursor: exporting ? 'wait' : 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              boxShadow: '0 1px 3px rgba(22, 163, 74, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+            title={`Download monthly leave report for ${formatMonthDisplay(reportMonth)}`}
+          >
+            <FileSpreadsheet size={15} />
+            <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={loadLeaves}
+            className="student-btn-secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #E2E8F0)',
+              background: 'var(--surface, #FFF)',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text, #0F172A)'
+            }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Feedback Banner ── */}
@@ -318,7 +797,7 @@ export default function TeacherLeaveApprove() {
               Pending Review
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#B45309', marginTop: 4 }}>
-              {counts.pending}
+              {dynamicCounts.pending}
             </div>
           </div>
           <div
@@ -354,7 +833,7 @@ export default function TeacherLeaveApprove() {
               Approved
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D', marginTop: 4 }}>
-              {counts.approved}
+              {dynamicCounts.approved}
             </div>
           </div>
           <div
@@ -390,7 +869,7 @@ export default function TeacherLeaveApprove() {
               Rejected
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#B91C1C', marginTop: 4 }}>
-              {counts.rejected}
+              {dynamicCounts.rejected}
             </div>
           </div>
           <div
@@ -426,7 +905,7 @@ export default function TeacherLeaveApprove() {
               Total Submissions
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0F172A)', marginTop: 4 }}>
-              {counts.all}
+              {dynamicCounts.all}
             </div>
           </div>
           <div
@@ -458,24 +937,6 @@ export default function TeacherLeaveApprove() {
       >
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
-          onClick={() => setActiveTab('PENDING')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
-        >
-          Pending Review ({counts.pending})
-        </button>
-        <button
-          type="button"
           className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
           onClick={() => setActiveTab('ALL')}
           style={{
@@ -490,7 +951,25 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          All ({counts.all})
+          All ({dynamicCounts.all})
+        </button>
+        <button
+          type="button"
+          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+          onClick={() => setActiveTab('PENDING')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '9px 18px',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
+            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
+            transition: 'all 0.15s'
+          }}
+        >
+          Pending Review ({dynamicCounts.pending})
         </button>
         <button
           type="button"
@@ -508,7 +987,7 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Approved ({counts.approved})
+          Approved ({dynamicCounts.approved})
         </button>
         <button
           type="button"
@@ -526,7 +1005,7 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Rejected ({counts.rejected})
+          Rejected ({dynamicCounts.rejected})
         </button>
       </div>
 
@@ -561,31 +1040,69 @@ export default function TeacherLeaveApprove() {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
-            <Filter size={14} />
-            <span>Type:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {/* Month Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+              <Calendar size={14} />
+              <span>Month:</span>
+            </div>
+            <select
+              value={monthFilter}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMonthFilter(val);
+                if (val !== 'ALL') {
+                  setReportMonth(val);
+                }
+              }}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border, #E2E8F0)',
+                background: 'var(--surface, #FFF)',
+                fontSize: 13,
+                color: 'var(--text, #0F172A)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">All Months</option>
+              {availableMonths.map((ym) => (
+                <option key={ym} value={ym}>
+                  {formatMonthDisplay(ym)}
+                </option>
+              ))}
+            </select>
           </div>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            style={{
-              padding: '7px 12px',
-              borderRadius: 8,
-              border: '1px solid var(--border, #E2E8F0)',
-              background: 'var(--surface, #FFF)',
-              fontSize: 13,
-              color: 'var(--text, #0F172A)',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {LEAVE_TYPES.map((lt) => (
-              <option key={lt.value} value={lt.value}>
-                {lt.label}
-              </option>
-            ))}
-          </select>
+
+          {/* Type Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+              <Filter size={14} />
+              <span>Type:</span>
+            </div>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              style={{
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border, #E2E8F0)',
+                background: 'var(--surface, #FFF)',
+                fontSize: 13,
+                color: 'var(--text, #0F172A)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {LEAVE_TYPES.map((lt) => (
+                <option key={lt.value} value={lt.value}>
+                  {lt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -766,6 +1283,35 @@ export default function TeacherLeaveApprove() {
                         <div style={{ fontSize: 11.5, color: 'var(--text-muted, #94A3B8)', marginTop: 3 }}>
                           Applied: {formatDate(l.created_at)}
                         </div>
+                        {l.document_url && (
+                          <div style={{ marginTop: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => setViewingDoc({ url: l.document_url!, name: l.document_name || `${l.applicant_name} Leave Document` })}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '3px 8px',
+                                borderRadius: 5,
+                                border: '1px solid #BFDBFE',
+                                background: '#EFF6FF',
+                                color: '#1D4ED8',
+                                fontSize: 11.5,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                              title="View Supporting Document"
+                            >
+                              <Paperclip size={11} />
+                              <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {l.document_name || 'View Document'}
+                              </span>
+                              <Eye size={11} />
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -1096,6 +1642,93 @@ export default function TeacherLeaveApprove() {
                 </div>
               </div>
 
+              {/* Attached Supporting Document */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #64748B)', marginBottom: 6 }}>
+                  ATTACHED SUPPORTING DOCUMENT / PROOF
+                </div>
+                {viewingLeave.document_url ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 6,
+                          background: '#2563EB',
+                          color: '#FFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        {viewingLeave.document_url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingLeave.document_url) ? (
+                          <ImageIcon size={18} />
+                        ) : (
+                          <FileText size={18} />
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#1E3A8A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {viewingLeave.document_name || 'Faculty Leave Document'}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#3B82F6', marginTop: 1 }}>
+                          Supporting proof provided by faculty member
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewingDoc({ url: viewingLeave.document_url!, name: viewingLeave.document_name || `${viewingLeave.applicant_name} Leave Document` })}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#2563EB',
+                          color: '#FFF',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={13} />
+                        <span>View Document</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'var(--background, #F8FAFC)',
+                      border: '1px solid var(--border, #E2E8F0)',
+                      fontSize: 12.5,
+                      color: 'var(--text-muted, #94A3B8)',
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    No supporting document attached for this request.
+                  </div>
+                )}
+              </div>
+
               {/* Status & Review Info */}
               <div
                 style={{
@@ -1372,8 +2005,9 @@ export default function TeacherLeaveApprove() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
                   Reason for Rejection <span style={{ color: '#DC2626' }}>*</span>
                 </label>
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
+                  minHeight={42}
+                  maxHeight={180}
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="e.g. Inadequate staffing for scheduled examinations, please reschedule..."
@@ -1385,8 +2019,8 @@ export default function TeacherLeaveApprove() {
                     background: 'var(--surface, #FFF)',
                     color: 'var(--text, #0F172A)',
                     fontSize: 13,
+                    lineHeight: 1.45,
                     outline: 'none',
-                    resize: 'vertical',
                     boxSizing: 'border-box'
                   }}
                 />
@@ -1428,6 +2062,168 @@ export default function TeacherLeaveApprove() {
               >
                 {actionLoading === rejectingLeave.id ? 'Rejecting...' : 'Confirm Rejection'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Document Preview Modal ── */}
+      {viewingDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 16
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewingDoc(null);
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface, #FFF)',
+              border: '1px solid var(--border, #E2E8F0)',
+              borderRadius: 14,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #E2E8F0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--modal-header, #F8FAFC)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <Paperclip size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {viewingDoc.name}
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => openDocumentInNewTab(viewingDoc.url)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #CBD5E1)',
+                    background: '#FFF',
+                    color: 'var(--text, #0F172A)',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Open in new window"
+                >
+                  <ExternalLink size={13} />
+                  <span>Open New Tab</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadDocument(viewingDoc.url, viewingDoc.name)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#2563EB',
+                    color: '#FFF',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Download File"
+                >
+                  <Download size={13} />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingDoc(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary, #64748B)',
+                    padding: 4,
+                    marginLeft: 4
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--card-subtle, #F1F5F9)' }}>
+              {viewingDoc.url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(viewingDoc.url) ? (
+                <img
+                  src={viewingDoc.url}
+                  alt={viewingDoc.name}
+                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                />
+              ) : viewingDoc.url.startsWith('data:application/pdf') || /\.pdf$/i.test(viewingDoc.url) ? (
+                <iframe
+                  src={viewingDoc.url}
+                  title={viewingDoc.name}
+                  style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 8 }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FFF', borderRadius: 10, width: '100%', maxWidth: 420 }}>
+                  <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px', display: 'block' }} />
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>
+                    {viewingDoc.name}
+                  </div>
+                  <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
+                    Direct inline preview is not supported for this file type. Please open or download it to view.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => downloadDocument(viewingDoc.url, viewingDoc.name)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#2563EB',
+                      color: '#FFF',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Download size={14} />
+                    <span>Download File</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

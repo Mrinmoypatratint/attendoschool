@@ -18,9 +18,14 @@ export type User = {
   sectionName?: string;
   rollNumber?: string;
   schoolName?: string;
+  schoolCode?: string;
   avatarUrl?: string;
   photo_url?: string;
   photoUrl?: string;
+  schoolPhotoUrl?: string;
+  school_photo_url?: string;
+  schoolWebsite?: string;
+  school_website?: string;
 };
 
 type AuthContextType = {
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sessionStorage.removeItem(key);
         }
       });
+      sessionStorage.removeItem('cached_student_dashboard');
     } catch {}
     setUser(null);
   }, []);

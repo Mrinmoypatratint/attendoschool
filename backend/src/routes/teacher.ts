@@ -12,6 +12,7 @@ import { collections, isFirebaseConfigured } from '../firebase';
 import { memEntries } from './timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
+import { normalizeGender } from '../utils/gender';
 
 export interface MemAttendanceSession {
   id: string;
@@ -569,6 +570,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
           if (!uniqueStudents.has(key)) uniqueStudents.set(key, s);
         }
         const list = Array.from(uniqueStudents.values());
+        list.sort((a: any, b: any) => String(a.roll_number || '').localeCompare(String(b.roll_number || ''), undefined, { numeric: true }));
         fastCache.set(cacheKey, list, 20);
         return res.json(list);
       }
@@ -757,7 +759,7 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
       const cleanSec = secParam.replace(/section\s*/i, '').trim();
 
       const q = await pool.query(
-        `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+        `SELECT a.*, a.attendance_date::text AS attendance_date, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
          FROM attendance_sessions a
          LEFT JOIN users u ON u.id = a.teacher_id
          LEFT JOIN classes c ON c.id = a.class_id
@@ -1030,7 +1032,7 @@ const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
     try {
       const [q, rq, aQ] = await Promise.all([
         pool.query(
-          `SELECT a.*, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
+          `SELECT a.*, a.attendance_date::text AS attendance_date, u.name AS teacher_name, c.class_number, s.name AS section_name, sub.name AS subject_name
            FROM attendance_sessions a
            LEFT JOIN users u ON u.id = a.teacher_id
            LEFT JOIN classes c ON c.id = a.class_id
@@ -1639,7 +1641,7 @@ export const auditTrailExportHandler = async (req: AuthRequest, res: any) => {
       if (isPostgresConfigured && isSessionUuid) {
         try {
           const sessQ = await pool.query(
-            `SELECT s.*, c.class_number, s2.name as section_name, sub.name as subject_name
+            `SELECT s.*, s.attendance_date::text AS attendance_date, c.class_number, s2.name as section_name, sub.name as subject_name
              FROM attendance_sessions s
              LEFT JOIN classes c ON c.id = s.class_id
              LEFT JOIN sections s2 ON s2.id = s.section_id
@@ -2513,7 +2515,7 @@ const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
   if (isPostgresConfigured) {
     try {
       const q = await pool.query(
-        `SELECT a.id, a.attendance_date, a.start_time, a.end_time,
+        `SELECT a.id, a.attendance_date::text AS attendance_date, a.start_time, a.end_time,
                 COALESCE(a.class_number, c.class_number, 10) AS class_number,
                 COALESCE(a.section_name, s.name, 'A') AS section_name,
                 COALESCE(a.subject_name, sub.name, 'General') AS subject_name,
@@ -2688,7 +2690,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
     // 2. Fetch school info
     if (schoolId) {
       try {
-        const sQ = await pool.query(`SELECT id, name, code FROM schools WHERE id = $1`, [schoolId]);
+        const sQ = await pool.query(`SELECT id, name, code, website FROM schools WHERE id = $1`, [schoolId]);
         if (sQ.rows.length > 0) schoolData = sQ.rows[0];
       } catch {}
     }
@@ -2745,11 +2747,13 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       schoolId: schoolId,
       schoolName: schoolName,
       schoolCode: schoolCode,
+      schoolWebsite: schoolData?.website || '',
+      school_website: schoolData?.website || '',
       employeeId: teacherData.employee_id || 'TINT-TCH-001',
       phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
       address: teacherData.address || 'Kolkata, West Bengal',
       qualification: teacherData.qualification || 'M.Tech / M.Sc Computer Science',
-      gender: teacherData.gender || 'Not Specified',
+      gender: normalizeGender(teacherData.gender) || 'Not Specified',
       joiningDate: teacherData.joining_date ? String(teacherData.joining_date).slice(0, 10) : '2023-08-01',
       photoUrl: teacherData.photo_url || '',
       department: 'Academic Faculty / Teaching',
@@ -2852,7 +2856,7 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
          address = COALESCE($4, teacher_profiles.address),
          qualification = COALESCE($5, teacher_profiles.qualification),
          gender = COALESCE($6, teacher_profiles.gender)`,
-      [userId, empId, phone || null, address || null, qualification || null, gender || null]
+      [userId, empId, phone || null, address || null, qualification || null, normalizeGender(gender)]
     );
 
     res.json({ success: true, message: 'Profile details updated successfully' });
