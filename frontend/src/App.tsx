@@ -3065,7 +3065,7 @@ function Layout({children}:{children:React.ReactNode}){
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
                           <CalendarCheck size={12} />
-                          <span>Leaves</span>
+                          <span>Leaves{pendingLeaveCount > 0 ? ` (${pendingLeaveCount})` : ''}</span>
                         </button>
                       </div>
                     </div>
@@ -3077,7 +3077,7 @@ function Layout({children}:{children:React.ReactNode}){
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student photo or leave approval requests.</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student leaves or photo approvals for your class.</div>
                         </div>
                       ) : (
                         adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').map((n: any) => (
@@ -3128,7 +3128,7 @@ function Layout({children}:{children:React.ReactNode}){
                                 </div>
                                 <p className="super-notif-msg">{n.message}</p>
                                 <span className="super-notif-action-tag">
-                                  {n.type === 'PHOTO_APPROVAL' ? "Approve Photo →" : "Review & Verify →"}
+                                  {n.type === 'PHOTO_APPROVAL' ? 'Review Photo →' : 'Review & Verify →'}
                                 </span>
                               </div>
                             </div>
@@ -15801,7 +15801,7 @@ function App(){
         <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
         <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
         <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
-        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
         <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>

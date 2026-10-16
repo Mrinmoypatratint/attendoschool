@@ -40,14 +40,13 @@ interface PhotoRequest {
 export default function PhotoApprove() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'TEACHER';
-
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [photos, setPhotos] = useState<PhotoRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const cleanIdentifier = (identifier?: string) => {
@@ -177,11 +176,11 @@ export default function PhotoApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Photo Approve
+            {isTeacher ? 'Student Photo Approvals' : 'Photo Approve'}
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
             {isTeacher
-              ? 'Review, verify, and approve submitted student profile photographs.'
+              ? 'Review, verify, and approve submitted student profile photographs for your mentored class-section.'
               : 'Review, verify, and approve submitted student and staff profile photographs.'}
           </p>
         </div>
@@ -368,10 +367,14 @@ export default function PhotoApprove() {
         <div className="student-empty-state" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #64748B)', fontSize: 14, background: 'var(--surface, #FFF)', border: '1px dashed var(--border, #E2E8F0)', borderRadius: 12 }}>
           <Camera size={36} style={{ color: '#CBD5E1', marginBottom: 12 }} />
           <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--text, #334155)' }}>
-            No photo submissions found in this category.
+            {isTeacher && counts.all === 0
+              ? 'No student photo approval requests found for your mentored class-section.'
+              : 'No photo submissions found in this category.'}
           </p>
           <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
-            {activeTab === 'PENDING'
+            {isTeacher && counts.all === 0
+              ? 'Photo approval duties are routed exclusively to assigned class mentors.'
+              : activeTab === 'PENDING'
               ? (isTeacher ? 'All submitted student photos have been processed.' : 'All submitted student and staff photos have been processed.')
               : activeTab === 'REJECTED'
               ? 'No rejected photo requests found.'
