@@ -62,9 +62,6 @@ const allowedOriginsList = [
   'https://www.attendoschool.online',
   'http://attendoschool.online',
   'http://www.attendoschool.online',
-  'https://attendoschool.optinetinnovations.in',
-  'http://attendoschool.optinetinnovations.in',
-  'https://attendoschool.vercel.app',
   ...(env.corsOrigin && env.corsOrigin !== '*'
     ? (env.corsOrigin.includes(',') ? env.corsOrigin.split(',').map((s) => s.trim()) : [env.corsOrigin.trim()])
     : [])
@@ -78,14 +75,12 @@ const corsOptions: cors.CorsOptions = {
       env.corsOrigin === '*' ||
       allowedOriginsList.includes(requestOrigin) ||
       /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?attendoschool\.online(?::\d+)?$/.test(requestOrigin) ||
-      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?optinetinnovations\.in(?::\d+)?$/.test(requestOrigin) ||
-      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?vercel\.app(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/localhost(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(requestOrigin)
     ) {
       return callback(null, true);
     }
-    return callback(null, true);
+    return callback(new Error('Blocked by CORS policy: Origin not permitted'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

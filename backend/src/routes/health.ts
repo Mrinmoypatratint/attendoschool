@@ -1,26 +1,27 @@
 import { Router } from 'express';
 import { checkPostgresHealth, isPostgresConfigured } from '../db';
+import { checkFirestoreHealth, isFirebaseConfigured } from '../firebase';
 import { env } from '../config/env';
 import { testSmtpConnection, getGlobalSmtpConfig, isEmailServiceEnabled } from '../services/notificationService';
 
 const r = Router();
 
 r.get('/', async (_req, res) => {
-  let pgOk = false;
-  let latency: number | undefined;
+  let fsOk = false;
   try {
-    const pgHealth = await checkPostgresHealth();
-    pgOk = pgHealth.ok;
-    latency = pgHealth.latency;
+    const fsHealth = await checkFirestoreHealth();
+    fsOk = fsHealth.ok;
   } catch {}
 
   res.status(200).json({
     status: 'ok',
     database: {
-      supabase: pgOk ? 'connected' : (isPostgresConfigured ? 'connecting' : 'disconnected'),
-      mode: 'supabase_postgres',
-      ...(latency !== undefined ? { latency: `${latency}ms` } : {})
+      firestore: fsOk ? 'connected' : (isFirebaseConfigured() ? 'ready' : 'configured'),
+      projectId: env.firebaseProjectId || 'attendoschool-2d0fb',
+      mode: 'cloud_firestore'
     },
+    domain: 'attendoschool.online',
+    hosting: 'hostinger_vps',
     version: 'production',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()

@@ -16,7 +16,10 @@ if (fs.existsSync(path)) {
   c = setEnvVar(c, 'FRONTEND_URL', 'https://attendoschool.online');
   c = setEnvVar(c, 'APP_BASE_URL', 'https://attendoschool.online');
   c = setEnvVar(c, 'VITE_API_URL', '/api');
-  c = setEnvVar(c, 'CORS_ORIGIN', 'https://attendoschool.online,https://www.attendoschool.online,http://localhost:5173,https://attendoschool.optinetinnovations.in');
+  c = setEnvVar(c, 'CORS_ORIGIN', 'https://attendoschool.online,https://www.attendoschool.online,http://localhost:5173');
+  c = setEnvVar(c, 'FIREBASE_PROJECT_ID', 'attendoschool-2d0fb');
+  c = setEnvVar(c, 'FIREBASE_SERVICE_ACCOUNT_PATH', '/home/attendoschool/htdocs/attendoschool.online/backend/serviceAccountKey.json');
+  c = setEnvVar(c, 'DB_DRIVER', 'firebase');
   fs.writeFileSync(path, c);
   fs.writeFileSync(backendPath, c);
 

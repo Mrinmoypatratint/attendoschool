@@ -4,6 +4,11 @@ import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
 
+// Canonical domain enforcement: Redirect from legacy domains
+if (typeof window !== 'undefined' && (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app'))) {
+  window.location.replace('https://attendoschool.online' + window.location.pathname + window.location.search + window.location.hash);
+}
+
 // Route Code-Splitting via React.lazy()
 const AttendanceReports = lazy(() => import('./pages/admin/AttendanceReports'));
 const AttendanceCorrections = lazy(() => import('./pages/admin/AttendanceCorrections'));

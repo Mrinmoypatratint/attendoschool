@@ -2,9 +2,9 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export const getApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    // Both frontend and backend are hosted on the Hostinger VPS.
-    // If accessed via another domain, route to the Hostinger VPS production backend API:
-    if (window.location.hostname === 'attendoschool.optinetinnovations.in') {
+    // Enforce canonical domain: Redirect legacy domains to https://attendoschool.online
+    if (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app')) {
+      window.location.replace('https://attendoschool.online' + window.location.pathname + window.location.search + window.location.hash);
       return 'https://attendoschool.online/api';
     }
     // For attendoschool.online, www.attendoschool.online, or any public hostname:

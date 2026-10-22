@@ -55,7 +55,7 @@ export const env = {
   port: Number(cleanEnv(process.env.PORT, '5001')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
   jwtSecret: cleanEnv(process.env.JWT_SECRET, 'development-only-secret'),
-  corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.optinetinnovations.in,http://attendoschool.optinetinnovations.in,https://attendoschool.vercel.app'),
+  corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.online,https://www.attendoschool.online'),
   razorpayKeyId: cleanEnv(process.env.RAZORPAY_KEY_ID, ''),
   razorpayKeySecret: cleanEnv(process.env.RAZORPAY_KEY_SECRET, ''),
   razorpayWebhookSecret: cleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET, ''),
@@ -70,14 +70,14 @@ export const env = {
   companyPhone: cleanEnv(process.env.COMPANY_PHONE, ''),
   companyGstRate: Number(cleanEnv(process.env.COMPANY_GST_RATE, '18')),
   // Firebase configuration
-  firebaseProjectId: cleanEnv(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT, 'attendoschool-saas'),
+  firebaseProjectId: cleanEnv(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT, 'attendoschool-2d0fb'),
   firebaseClientEmail: cleanEnv(process.env.FIREBASE_CLIENT_EMAIL, ''),
   firebasePrivateKey: cleanEnv(process.env.FIREBASE_PRIVATE_KEY)?.replace(/\\n/g, '\n') || '',
   firebaseServiceAccountPath: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, ''),
   firebaseServiceAccount: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_KEY, ''),
   firestoreEmulatorHost: cleanEnv(process.env.FIRESTORE_EMULATOR_HOST, ''),
-  dbDriver: cleanEnv(process.env.DB_DRIVER, 'postgres').toLowerCase(), // 'firebase' | 'postgres'
-  keepAliveUrl: cleanEnv(process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL, ''),
+  dbDriver: cleanEnv(process.env.DB_DRIVER, 'firebase').toLowerCase(), // 'firebase' | 'postgres'
+  keepAliveUrl: cleanEnv(process.env.KEEP_ALIVE_URL, ''),
   // Email & deliverability settings
   emailEnabled: cleanEnv(process.env.EMAIL_ENABLED, 'true') !== 'false',
   emailRateLimit: Number(cleanEnv(process.env.EMAIL_RATE_LIMIT, '50')),
@@ -90,7 +90,7 @@ export const env = {
   brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, 'info.sahayog24x7@gmail.com'),
   brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
-  appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),
+  appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.online'),
   // Database Architecture (100% Supabase PostgreSQL Only)
   supabaseDatabaseUrl: cleanEnv(process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL, ''),
   enableDualDbSync: cleanEnv(process.env.ENABLE_DUAL_DB_SYNC, 'false') === 'true',

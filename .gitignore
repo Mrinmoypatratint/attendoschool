@@ -21,3 +21,4 @@ backend/serviceAccountKey.json
 .vercel/
 .vercel
 *.zip
+supabase-export/
