@@ -13,7 +13,7 @@ export const getApiBaseUrl = (): string => {
     }
   }
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && !envUrl.includes('onrender.com')) {
+  if (envUrl) {
     return envUrl;
   }
   return '/api';

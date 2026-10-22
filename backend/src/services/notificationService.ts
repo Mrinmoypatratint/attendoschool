@@ -1990,24 +1990,10 @@ export async function sendMailWithDualPortFallback(
         }
       }
 
-      const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || (env.keepAliveUrl && env.keepAliveUrl.includes('render.com')));
-      if (isRender || isConnErr) {
-        let renderNotice: string;
-        if (brevoKey && brevoKey.startsWith('xsmtpsib-')) {
-          renderNotice =
-            `Render Free Tier blocks outbound SMTP on ports 25, 465, and 587. ` +
-            `Your current BREVO_API_KEY is an SMTP password ('xsmtpsib-...'). ` +
-            `To deliver emails over Port 443 on Render: Log in to Brevo -> Settings -> SMTP & API -> click 'API Keys' tab -> click 'Generate a new API key' (starts with 'xkeysib-') and update BREVO_API_KEY in Render.`;
-        } else {
-          renderNotice =
-            `Render Free Tier web services block outbound SMTP traffic on ports 25, 465, and 587. ` +
-            `To fix this on Render for 100% FREE without paying: ` +
-            `(1) Add BREVO_API_KEY to your Render Environment Variables (starts with 'xkeysib-' from Brevo -> SMTP & API -> API Keys tab), or ` +
-            `(2) Add GMAIL_RELAY_URL to your Render Environment Variables (free Google Apps Script Web App sending directly from ${user}).`;
-        }
-        console.error(`[Render Egress Policy] ${renderNotice}`);
-        const customErr: any = new Error(renderNotice);
-        customErr.code = isRender ? 'RENDER_SMTP_BLOCKED' : (errCode || 'ECONNFAILED');
+      if (isConnErr) {
+        console.error(`[SMTP Egress] Outbound SMTP connection error: ${errMsg}`);
+        const customErr: any = new Error(`Outbound SMTP connection failed: ${errMsg}`);
+        customErr.code = errCode || 'ECONNFAILED';
         throw customErr;
       }
 
