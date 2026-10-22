@@ -223,6 +223,14 @@ app.use('/api', mentor);
 app.use('/api/teacher/assignments', teacherAssignments);
 
 
+// Block sensitive hidden dotfiles (.env, .git, etc.)
+app.use((req, res, next) => {
+  if (/\/\./.test(req.path)) {
+    return res.status(404).json({ message: 'Resource not found' });
+  }
+  next();
+});
+
 // SPA client-side routing fallback for non-API paths (Express 5 compatible)
 if (fs.existsSync(frontendIndexHtml)) {
   app.use((req, res, next) => {
