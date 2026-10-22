@@ -18,12 +18,25 @@ import {
   Award
 } from 'lucide-react';
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
+import { useAuth } from '../../hooks/useAuth';
 
 export function StudentDashboard() {
+  const { user: authUser } = useAuth();
+  const cacheKey = authUser?.id ? `cached_student_dashboard_${authUser.id}` : null;
+
   const [data, setData] = useState<StudentDashboardData | null>(() => {
     try {
-      const cached = sessionStorage.getItem('cached_student_dashboard');
-      if (cached) return JSON.parse(cached);
+      if (!cacheKey) return null;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Validate cached data belongs to the current user
+        if (parsed?.student?.id && authUser?.studentId && parsed.student.id !== authUser.studentId) {
+          sessionStorage.removeItem(cacheKey);
+          return null;
+        }
+        return parsed;
+      }
     } catch { }
     return null;
   });
@@ -42,7 +55,15 @@ export function StudentDashboard() {
         if (!isMounted) return;
         setData(res);
         try {
-          sessionStorage.setItem('cached_student_dashboard', JSON.stringify(res));
+          if (cacheKey) {
+            // Clear any stale caches from other students
+            Object.keys(sessionStorage).forEach(key => {
+              if (key.startsWith('cached_student_dashboard_') && key !== cacheKey) {
+                sessionStorage.removeItem(key);
+              }
+            });
+            sessionStorage.setItem(cacheKey, JSON.stringify(res));
+          }
         } catch { }
         setLoading(false);
       })
@@ -57,7 +78,9 @@ export function StudentDashboard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [cacheKey]);
+
+
 
   if (loading) {
     return (
@@ -202,12 +225,12 @@ export function StudentDashboard() {
         <div className="student-hero-content">
           <div className="student-greeting-row">
             <h1 className="student-greeting-title">
-              {greetingText}, <span className="student-greeting-name">{student?.name || 'Rohan Sharma'}</span> {greetingEmoji}
+              {greetingText}, <span className="student-greeting-name">{student?.name || authUser?.name || 'Student'}</span> {greetingEmoji}
             </h1>
           </div>
           <div className="student-greeting-meta">
-            <span className="student-meta-pill">{student?.className || 'Class 10'} · Section {student?.sectionName || 'A'}</span>
-            <span className="student-meta-pill">Roll #{student?.rollNumber || '25'}</span>
+            <span className="student-meta-pill">{(student?.className || authUser?.className) ? `${student?.className || authUser?.className} · Section ${student?.sectionName || authUser?.sectionName || 'A'}` : 'Enrolled'}</span>
+            <span className="student-meta-pill">Roll #{student?.rollNumber || authUser?.rollNumber || '—'}</span>
             {student?.admissionNumber && (
               <span className="student-meta-pill" style={{ letterSpacing: '0.02em', fontWeight: 600 }}>Adm: {student.admissionNumber}</span>
             )}

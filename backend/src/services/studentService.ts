@@ -42,22 +42,27 @@ export function toDdMmYyyy(val: any): string {
 /**
  * Resolves student record by authenticated user ID and school ID
  */
-async function resolveStudentRecord(schoolId: string, userId: string) {
+async function resolveStudentRecord(schoolId: string, userId: string, studentId?: string) {
   // 1. Try PostgreSQL
   try {
     const q = await pool.query(
-      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url, sch.website AS school_website
+      `SELECT st.*, c.class_number, sec.name AS section_name, sch.name AS school_name, sch.photo_url AS school_photo_url, sch.website AS school_website,
+              CASE WHEN $3::text IS NOT NULL AND st.id::text = $3::text THEN 0
+                   WHEN st.user_id::text = $2 THEN 1
+                   WHEN st.email IS NOT NULL AND LOWER(st.email) = (SELECT LOWER(email) FROM users WHERE id::text = $2) THEN 2
+                   ELSE 3 END AS match_priority
        FROM students st
        JOIN schools sch ON sch.id = st.school_id
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id
        WHERE st.school_id = $1 AND (
-         st.user_id::text = $2 
-         OR st.id::text = $2
+         ($3::text IS NOT NULL AND st.id::text = $3::text)
+         OR st.user_id::text = $2 
          OR (st.email IS NOT NULL AND LOWER(st.email) = (SELECT LOWER(email) FROM users WHERE id::text = $2))
        )
+       ORDER BY match_priority ASC, st.is_active DESC NULLS LAST
        LIMIT 1`,
-      [schoolId, userId]
+      [schoolId, userId, studentId || null]
     );
     if (q.rowCount && q.rowCount > 0) {
       return q.rows[0];
@@ -157,8 +162,8 @@ async function resolveStudentRecord(schoolId: string, userId: string) {
 /**
  * Returns full profile details for the authenticated student
  */
-export async function getStudentProfile(schoolId: string, userId: string) {
-  const st = await resolveStudentRecord(schoolId, userId);
+export async function getStudentProfile(schoolId: string, userId: string, studentId?: string) {
+  const st = await resolveStudentRecord(schoolId, userId, studentId);
   if (!st) throw new Error('Student record not found');
 
   let academicSessionName = '';
@@ -514,14 +519,14 @@ export function clearStudentDashboardCache(userId?: string) {
 /**
  * Returns aggregated student dashboard KPIs, timetable, announcements, and tasks
  */
-export async function getStudentDashboard(schoolId: string, userId: string) {
+export async function getStudentDashboard(schoolId: string, userId: string, studentId?: string) {
   const cacheKey = `${schoolId}:${userId}`;
   const cached = dashboardCache.get(cacheKey);
   if (cached && Date.now() < cached.expiresAt) {
     return cached.data;
   }
 
-  const st = await resolveStudentRecord(schoolId, userId);
+  const st = await resolveStudentRecord(schoolId, userId, studentId);
   if (!st) throw new Error('Student record not found');
   const now = new Date();
   const todayDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...

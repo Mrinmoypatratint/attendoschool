@@ -341,7 +341,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
             schoolId: canonicalSchoolId(fUser.school_id || fUser.schoolId) || resolvedInstituteId,
             schoolName: selectedSchoolName || 'Institutional Campus',
             schoolCode: selectedSchoolCode || 'SCH',
-            name: fUser.name,
+            name: matchedStudent?.name || matchedStudent?.fullName || fUser.name,
             email: fUser.email,
             role: 'STUDENT' as Role,
             studentId: matchedStudent?.id || fUser.id,
@@ -418,7 +418,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
       if (isStudentLogin) {
         // Dedicated student login scoped strictly to the selected school/tenant
         const studentQuery = `
-          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+          SELECT u.id, u.school_id, COALESCE(st.name, u.name) AS name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
                  COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,

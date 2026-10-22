@@ -64,9 +64,32 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     studentApi.getProfile()
       .then((p) => {
         const photo = p?.photoUrl || p?.photo_url || null;
+        // Sync core student identity fields from authoritative DB profile
+        // This ensures navbar matches the dashboard (both reflect DB truth)
+        const identityUpdates: Record<string, any> = {};
         if (photo) {
           setStudentPhoto(photo);
-          updateUser({ photoUrl: photo, avatarUrl: photo, photo_url: photo });
+          identityUpdates.photoUrl = photo;
+          identityUpdates.avatarUrl = photo;
+          identityUpdates.photo_url = photo;
+        }
+        if (p?.name) {
+          identityUpdates.name = p.name;
+        }
+        if (p?.className) {
+          identityUpdates.className = p.className;
+        }
+        if (p?.sectionName) {
+          identityUpdates.sectionName = p.sectionName;
+        }
+        if (p?.rollNumber) {
+          identityUpdates.rollNumber = p.rollNumber;
+        }
+        if (p?.id) {
+          identityUpdates.studentId = p.id;
+        }
+        if (Object.keys(identityUpdates).length > 0) {
+          updateUser(identityUpdates);
         }
         if (p?.schoolPhotoUrl || p?.school_photo_url) {
           setSchoolPhoto(p.schoolPhotoUrl || p.school_photo_url || null);
@@ -83,6 +106,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         }
       })
       .catch(() => {});
+
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setSchoolWebsite(e.detail.website);
@@ -241,10 +265,10 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     nav('/login');
   };
 
-  const studentName = user?.name || 'Rohan Sharma';
-  const studentClass = user?.className && user?.sectionName 
-    ? `${user.className} - Section ${user.sectionName}` 
-    : 'Class 10 - Section A';
+  const studentName = user?.name || 'Student';
+  const studentClass = user?.className 
+    ? (user?.sectionName ? `${user.className} · Section ${user.sectionName}` : user.className) 
+    : '';
   const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
   const isDav =
     String(schoolName || '').toUpperCase().includes('DAV') ||
