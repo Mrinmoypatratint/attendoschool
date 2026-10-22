@@ -755,14 +755,24 @@ export async function createAndSendPasswordReset(params: {
     used: false
   });
 
-  // 3. Construct clean destination URL using client's actual origin
-  let baseUrl = env.appBaseUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+  // 3. Construct clean destination URL using an approved whitelist of trusted domains
+  const ALLOWED_RESET_HOSTS = [
+    'attendoschool.online',
+    'www.attendoschool.online',
+    'localhost:5173',
+    'localhost:3000',
+    '127.0.0.1:5173',
+    '127.0.0.1:3000'
+  ];
+  let baseUrl = env.appBaseUrl || 'https://attendoschool.online';
   if (req) {
     const origin = req.get('origin') || req.get('referer');
     if (origin) {
       try {
         const u = new URL(origin);
-        baseUrl = `${u.protocol}//${u.host}`;
+        if (ALLOWED_RESET_HOSTS.includes(u.host)) {
+          baseUrl = `${u.protocol}//${u.host}`;
+        }
       } catch {}
     }
   }
@@ -944,6 +954,33 @@ router.post('/reset-password', async (req, res) => {
     }
   } catch (err: any) {
     console.warn(`[ResetPassword] Error updating SQL password:`, err.message);
+  }
+
+  // Update password in Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      if (targetUserId) {
+        await collections.users().doc(targetUserId).set({
+          password_hash: newHash,
+          passwordHash: newHash,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } else {
+        const uSnap = await collections.users().where('email', '==', targetEmail.toLowerCase().trim()).get();
+        if (!uSnap.empty) {
+          for (const doc of uSnap.docs) {
+            await doc.ref.set({
+              password_hash: newHash,
+              passwordHash: newHash,
+              updated_at: new Date().toISOString()
+            }, { merge: true });
+          }
+        }
+      }
+      console.log(`[ResetPassword] Updated password in Cloud Firestore for: ${targetEmail}`);
+    } catch (fsErr: any) {
+      console.warn(`[ResetPassword] Error updating Cloud Firestore password:`, fsErr.message);
+    }
   }
 
   // Update demo user if applicable

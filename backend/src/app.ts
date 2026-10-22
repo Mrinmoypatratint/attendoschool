@@ -49,8 +49,9 @@ import mentor from './routes/mentor';
 import teacherAssignments from './routes/teacherAssignments';
 
 const app = express();
+app.disable('x-powered-by');
 
-// Trust reverse proxy (Render ALB/Envoy, Cloudflare) for accurate client IP
+// Trust reverse proxy (Nginx on VPS) for accurate client IP
 app.set('trust proxy', 1);
 
 const allowedOriginsList = [
@@ -93,6 +94,11 @@ app.use(compression());
 app.use(express.json({ limit: '35mb' }));
 app.use(express.urlencoded({ extended: true, limit: '35mb' }));
 
+// Global security middleware applied to all endpoints
+app.use(securityHeaders);
+app.use(requestContext);
+app.use(apiRateLimit);
+
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
@@ -111,18 +117,13 @@ app.get('/attendo-school-logo.png', (_req, res) => {
   res.status(404).send('Logo not found');
 });
 
-// Public integration endpoints
+// Operational integration endpoints
 app.use('/api/parent-onboarding', parentOnboarding);
 app.use('/api/parent-onboarding-v27', parentOnboarding);
 app.use('/api/final-integration', finalIntegration);
 app.use('/api/final-v28', finalIntegration);
 app.use('/api/production', production);
 app.use('/api/production-v26', production);
-
-// Global security middleware
-app.use(securityHeaders);
-app.use(requestContext);
-app.use(apiRateLimit);
 
 // Authenticated operational routes (mounted on clean paths + backward-compatible aliases)
 app.use('/api/communication', requireAuth, communication);

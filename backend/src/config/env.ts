@@ -51,10 +51,46 @@ export function extractSenderName(raw: string | undefined, fallback: string = 'A
   return fallback;
 }
 
+function resolveJwtSecret(): string {
+  const secret = cleanEnv(process.env.JWT_SECRET, '');
+  if (process.env.NODE_ENV === 'production') {
+    if (!secret || secret === 'development-only-secret' || secret.length < 32) {
+      throw new Error('[Security Exception] In production, JWT_SECRET must be configured with a cryptographically strong secret of at least 32 characters.');
+    }
+    return secret;
+  }
+  return secret || 'development-only-secret';
+}
+
+export function validateSecurityConfig(): { valid: boolean; warnings: string[] } {
+  const warnings: string[] = [];
+  const INSECURE_DEFAULTS = [
+    'development-only-secret',
+    'supersecret_change_in_production_key',
+    'super-secret-jwt-key-for-local-testing-12345',
+    'change-me-in-production'
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    const secret = process.env.JWT_SECRET?.trim() || '';
+    if (!secret || secret.length < 32) {
+      throw new Error('[Security Exception] Critical: Insecure or missing JWT_SECRET in production. JWT_SECRET must be at least 32 characters.');
+    }
+    if (INSECURE_DEFAULTS.includes(secret)) {
+      throw new Error('[Security Exception] Critical: JWT_SECRET must not be left as default placeholder in production.');
+    }
+  } else {
+    if (!process.env.JWT_SECRET || env.jwtSecret === 'development-only-secret') {
+      warnings.push('Warning: Using default development JWT secret. Configure JWT_SECRET in .env before deploying to production.');
+    }
+  }
+  return { valid: true, warnings };
+}
+
 export const env = {
   port: Number(cleanEnv(process.env.PORT, '5001')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
-  jwtSecret: cleanEnv(process.env.JWT_SECRET, 'development-only-secret'),
+  jwtSecret: resolveJwtSecret(),
   corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.online,https://www.attendoschool.online'),
   razorpayKeyId: cleanEnv(process.env.RAZORPAY_KEY_ID, ''),
   razorpayKeySecret: cleanEnv(process.env.RAZORPAY_KEY_SECRET, ''),

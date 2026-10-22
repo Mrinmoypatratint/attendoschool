@@ -22,7 +22,7 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
   if(!token) return res.status(401).json({message:'Authentication required', code: 'AUTH_REQUIRED'});
 
   try {
-    req.user=jwt.verify(token,env.jwtSecret) as AuthUser;
+    req.user = jwt.verify(token, env.jwtSecret, { algorithms: ['HS256'] }) as AuthUser;
     return next();
   } catch (primaryErr: any) {
     // Only try fallback secrets in development (never in production — security risk + CPU waste)
@@ -34,7 +34,7 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
 
       for (const secret of fallbackSecrets) {
         try {
-          req.user=jwt.verify(token, secret) as AuthUser;
+          req.user = jwt.verify(token, secret, { algorithms: ['HS256'] }) as AuthUser;
           return next();
         } catch {}
       }
