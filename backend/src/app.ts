@@ -174,20 +174,27 @@ app.use('/api/attendance-reports-v12', requireAuth, attendanceReports);
 
 app.use('/api/calendar', requireAuth, calendar);
 
-// Info endpoints
-app.get('/', (_q, res) => res.json({
-  name: 'School Attendance SaaS Backend API',
-  version: 'production',
-  status: 'running',
-  frontendUrl: 'http://localhost:5173',
-  endpoints: {
-    baseApi: '/api',
-    health: '/api/health',
-    productionHealth: '/api/production/health',
-    ready: '/api/production/ready',
-    dbCheck: '/api/final-integration/db-check'
-  }
-}));
+// Unified VPS static frontend serving
+const frontendDistDir = path.resolve(__dirname, '../../frontend/dist');
+const frontendIndexHtml = path.join(frontendDistDir, 'index.html');
+if (fs.existsSync(frontendIndexHtml)) {
+  app.use(express.static(frontendDistDir, { maxAge: '7d', index: false }));
+  app.get('/', (_req, res) => res.sendFile(frontendIndexHtml));
+} else {
+  // Info endpoints
+  app.get('/', (_q, res) => res.json({
+    name: 'School Attendance SaaS Backend API',
+    version: 'production',
+    status: 'running',
+    endpoints: {
+      baseApi: '/api',
+      health: '/api/health',
+      productionHealth: '/api/production/health',
+      ready: '/api/production/ready',
+      dbCheck: '/api/final-integration/db-check'
+    }
+  }));
+}
 
 app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', version: 'production' }));
 
@@ -216,7 +223,15 @@ app.use('/api', mentor);
 app.use('/api/teacher/assignments', teacherAssignments);
 
 
-// 404 handler
+// SPA client-side routing fallback for non-API paths
+if (fs.existsSync(frontendIndexHtml)) {
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path === '/health') return next();
+    res.sendFile(frontendIndexHtml);
+  });
+}
+
+// 404 handler for unmatched API routes
 app.use((_q, res) => res.status(404).json({ message: 'API route not found' }));
 
 // Centralized error handler
