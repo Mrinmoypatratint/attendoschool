@@ -1,9 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export const getApiBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
   if (typeof window !== 'undefined') {
     if (window.location.hostname === 'attendoschool.optinetinnovations.in') {
       return 'https://attendoschool-backend.onrender.com/api';
@@ -14,6 +11,12 @@ export const getApiBaseUrl = (): string => {
     ) {
       return '/api';
     }
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '/api';
+    }
+  }
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
   return '/api';
 };
