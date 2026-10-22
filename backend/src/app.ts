@@ -58,6 +58,10 @@ const allowedOriginsList = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001',
+  'https://attendoschool.online',
+  'https://www.attendoschool.online',
+  'http://attendoschool.online',
+  'http://www.attendoschool.online',
   'https://attendoschool.optinetinnovations.in',
   'http://attendoschool.optinetinnovations.in',
   'https://attendoschool.vercel.app',
@@ -73,6 +77,7 @@ const corsOptions: cors.CorsOptions = {
     if (
       env.corsOrigin === '*' ||
       allowedOriginsList.includes(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?attendoschool\.online(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?optinetinnovations\.in(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?vercel\.app(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/localhost(?::\d+)?$/.test(requestOrigin) ||
