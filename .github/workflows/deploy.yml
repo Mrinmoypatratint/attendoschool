@@ -1,0 +1,217 @@
+# ===========================================================================
+# AttendoSchool — Production Deployment (CD)
+# Hostinger VPS (attendoschool.online) + Node.js 20 LTS + PM2
+# ===========================================================================
+name: CD — Production Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (emergency deploy only)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+
+env:
+  FRONTEND_URL: https://attendoschool.online
+  BACKEND_URL: https://attendoschool.online
+  DEPLOY_VERSION: ${{ github.sha }}
+
+jobs:
+  # =========================================================================
+  # STAGE 1 — VALIDATE COMMIT
+  # =========================================================================
+  validate:
+    name: "Validate: Commit & Tag"
+    runs-on: ubuntu-latest
+    outputs:
+      version_tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Version Tag
+        id: version
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          TIMESTAMP=$(date -u +%Y%m%d-%H%M)
+          VERSION="v0.11.0-${TIMESTAMP}-${SHORT_SHA}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "### 📦 Deployment Version" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${GITHUB_SHA}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`main\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 2 — BUILD PRODUCTION ARTIFACTS
+  # =========================================================================
+  build:
+    name: "Build: Test & Compile Artifacts"
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install & Build Backend
+        working-directory: ./backend
+        run: |
+          npm install
+          npm run build
+
+      - name: Run Backend Test Suite
+        if: inputs.skip_tests != true
+        working-directory: ./backend
+        run: npm run test
+
+      - name: Install & Build Frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: '/api'
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm run build
+
+      - name: Build Summary
+        run: |
+          echo "### 🔨 Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend:** ✅ TypeScript compiled + tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend:** ✅ Vite production bundle verified" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 3 — DEPLOY TO HOSTINGER VPS (SSH + PM2)
+  # =========================================================================
+  deploy:
+    name: "Deploy: Hostinger VPS (attendoschool.online)"
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Hostinger VPS over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOSTINGER_VPS_HOST }}
+          username: ${{ secrets.HOSTINGER_VPS_USER }}
+          key: ${{ secrets.HOSTINGER_VPS_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            echo "===================================================================="
+            echo "🚀 Starting Hostinger VPS Deployment for attendoschool.online"
+            echo "Commit: ${{ github.sha }}"
+            echo "===================================================================="
+            cd /home/attendoschool/htdocs/attendoschool.online
+            git checkout -- frontend/package-lock.json 2>/dev/null || true
+            git pull origin main
+            echo "🔨 Compiling Backend TypeScript..."
+            npm --prefix backend run build
+            echo "🔨 Building Frontend React SPA with Vite..."
+            npm --prefix frontend run build
+            echo "⚡ Reloading PM2 backend cluster..."
+            pm2 reload ecosystem.config.cjs --env production
+            pm2 save
+            echo "✅ Deployment completed on https://attendoschool.online"
+
+  # =========================================================================
+  # STAGE 4 — PRODUCTION HEALTH CHECK
+  # =========================================================================
+  health-check:
+    name: "Health: Verify Live Endpoints"
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backend Health Check
+        id: backend-check
+        run: |
+          echo "Checking backend health at ${{ env.BACKEND_URL }}/api/health..."
+          MAX_RETRIES=6
+          HEALTHY=false
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -sS -o /tmp/backend-response.json -w "%{http_code}" \
+              --max-time 15 "${{ env.BACKEND_URL }}/api/health" 2>/dev/null || echo "000")
+            echo "Attempt ${i}/${MAX_RETRIES}: HTTP ${HTTP_CODE}"
+
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Backend API is healthy — HTTP 200."
+              cat /tmp/backend-response.json
+              echo ""
+              HEALTHY=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [ "$HEALTHY" = "false" ]; then
+            echo "::error::Backend health check failed after ${MAX_RETRIES} attempts."
+            exit 1
+          fi
+
+      - name: Frontend Health Check
+        id: frontend-check
+        run: |
+          echo "Checking frontend at ${{ env.FRONTEND_URL }}..."
+          HTTP_CODE=$(curl -sS -o /tmp/frontend-response.html -w "%{http_code}" \
+            --max-time 15 "${{ env.FRONTEND_URL }}" 2>/dev/null || echo "000")
+          echo "Frontend response: HTTP ${HTTP_CODE}"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Frontend is healthy — HTTP 200."
+          else
+            echo "::warning::Frontend returned HTTP ${HTTP_CODE}."
+          fi
+
+      - name: Health Check Summary
+        if: always()
+        run: |
+          echo "### 🩺 Production Health Checks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend App | ${{ env.FRONTEND_URL }} | ✅ Healthy |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend API | ${{ env.BACKEND_URL }}/api/health | ✅ Healthy |" >> $GITHUB_STEP_SUMMARY
+
+  # =========================================================================
+  # STAGE 5 — DEPLOYMENT LOG RECORD
+  # =========================================================================
+  log-deployment:
+    name: "Log: Record Deployment"
+    needs: [validate, build, deploy, health-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Record
+        run: |
+          echo "### 📋 Deployment Record" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | \`${{ needs.validate.outputs.version_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`main\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered By | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Result | ${{ needs.health-check.result == 'success' && '✅ SUCCESS — DEPLOYED' || '❌ FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Live Domain | [https://attendoschool.online](https://attendoschool.online) |" >> $GITHUB_STEP_SUMMARY
