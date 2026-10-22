@@ -223,9 +223,10 @@ app.use('/api', mentor);
 app.use('/api/teacher/assignments', teacherAssignments);
 
 
-// SPA client-side routing fallback for non-API paths
+// SPA client-side routing fallback for non-API paths (Express 5 compatible)
 if (fs.existsSync(frontendIndexHtml)) {
-  app.get('*', (req, res, next) => {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
     if (req.path.startsWith('/api') || req.path === '/health') return next();
     res.sendFile(frontendIndexHtml);
   });
