@@ -338,7 +338,6 @@ function Login() {
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState<string>('');
   const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
-  const [manualSchoolSelect, setManualSchoolSelect] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupNotFound, setLookupNotFound] = useState(false);
   const [email, setEmail] = useState('');
@@ -524,7 +523,6 @@ function Login() {
       setPassword('');
       setInstituteId('');
       setDetectedInstitute(null);
-      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     } else {
@@ -532,7 +530,6 @@ function Login() {
       setPassword('ChangeMe123!');
       setInstituteId('');
       setDetectedInstitute(null);
-      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     }
@@ -787,40 +784,7 @@ function Login() {
                     </div>
                   </div>
 
-                  {manualSchoolSelect ? (
-                    <div style={{ marginBottom: 4 }}>
-                      <select
-                        id="manual-institute-select"
-                        className="as-simple-input"
-                        value={instituteId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setInstituteId(val);
-                          const inst = institutes.find(i => i.id === val);
-                          setDetectedInstitute(inst || null);
-                          if (val) setLookupNotFound(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          fontSize: 13,
-                          padding: '10px 14px',
-                          borderRadius: 10,
-                          background: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="">-- Choose School / Institute --</option>
-                        {institutes.map(inst => (
-                          <option key={inst.id} value={inst.id}>
-                            {inst.name} ({inst.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : selectedInstitute ? (
+                  {selectedInstitute ? (
                     <div 
                       id="detected-institute-display"
                       style={{
@@ -905,40 +869,10 @@ function Login() {
                         fontSize: 12
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                        <span>No school auto-detected for this Login ID. Please select your school:</span>
+                        <span>No school detected for this Login ID.</span>
                       </div>
-                      <select
-                        id="fallback-institute-select"
-                        className="as-simple-input"
-                        value={instituteId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setInstituteId(val);
-                          const inst = institutes.find(i => i.id === val);
-                          setDetectedInstitute(inst || null);
-                          if (val) setLookupNotFound(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          fontSize: 12.5,
-                          padding: '8px 10px',
-                          borderRadius: 8,
-                          background: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid rgba(239, 68, 68, 0.35)',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="">-- Choose Your School / Institute --</option>
-                        {institutes.map(inst => (
-                          <option key={inst.id} value={inst.id}>
-                            {inst.name} ({inst.code})
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   ) : (
                     <div 
