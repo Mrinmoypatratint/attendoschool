@@ -51,18 +51,25 @@ router.get('/',async(req,res)=>{
   }
 });
 
-router.post('/process',async(req:Request,res:Response)=>{
+const handlePromoteExecution = async (req: Request, res: Response) => {
   try {
-    if(!sid(req)) return res.status(403).json({message:'School access required'});
-    if(!['SCHOOL_ADMIN','SUPER_ADMIN'].includes((req as any).user?.role))
-      return res.status(403).json({message:'School Admin access required'});
-    const {fromYearId,toYearId,items}=req.body||{};
-    if(!fromYearId||!toYearId||!Array.isArray(items))
-      return res.status(400).json({message:'fromYearId, toYearId and items are required'});
-    res.json(await promoteStudents(sid(req),uid(req),fromYearId,toYearId,items));
+    if (!sid(req)) return res.status(403).json({ message: 'School access required' });
+    if (!['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes((req as any).user?.role))
+      return res.status(403).json({ message: 'School Admin access required' });
+    const { fromYearId, toYearId, items } = req.body || {};
+    if (!fromYearId || !toYearId || !Array.isArray(items))
+      return res.status(400).json({ message: 'fromYearId, toYearId and items are required' });
+    res.json(await promoteStudents(sid(req), uid(req), fromYearId, toYearId, items));
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message || 'Promotion processing failed. Operation rolled back; no student records were updated.' });
+    const status = typeof err.status === 'number' ? err.status : 400;
+    res.status(status).json({
+      success: false,
+      message: err.message || 'Promotion processing failed. Operation rolled back; no student records were updated.'
+    });
   }
-});
+};
+
+router.post('/process', handlePromoteExecution);
+router.post('/execute', handlePromoteExecution);
 
 export default router;
