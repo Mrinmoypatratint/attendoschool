@@ -256,6 +256,33 @@ export async function promoteStudents(
         targetSection = toSafeUuid(currentStudent.section_id);
       }
 
+      const finalClass = targetClass || currentStudent.class_id;
+      const finalSection = targetSection || currentStudent.section_id;
+      const finalRoll = currentStudent.roll_number;
+
+      if (['PROMOTED', 'RETAINED'].includes(outcome) && finalClass && finalSection && finalRoll) {
+        const rollConflictQ = await client.query(
+          `SELECT id, name FROM students
+           WHERE (school_id::text = $1 OR school_id::text = $2)
+             AND academic_year_id = $3::uuid
+             AND class_id = $4::uuid
+             AND section_id = $5::uuid
+             AND LOWER(TRIM(roll_number)) = LOWER(TRIM($6))
+             AND id != $7::uuid
+           LIMIT 1`,
+          [pgSchoolId, schoolId, resolvedToId, finalClass, finalSection, String(finalRoll), studentId]
+        );
+
+        if (rollConflictQ.rowCount && rollConflictQ.rowCount > 0) {
+          const conflictingStudent = rollConflictQ.rows[0];
+          const err: any = new Error(
+            `Promotion roll conflict: Student '${currentStudent.name}' (Roll: ${finalRoll}) cannot be placed into the target class/section because Roll ${finalRoll} is already assigned to '${conflictingStudent.name}' in the target session.`
+          );
+          err.status = 409;
+          throw err;
+        }
+      }
+
       await client.query(
         `INSERT INTO student_promotions
          (school_id, from_academic_year_id, to_academic_year_id, student_id,
@@ -342,8 +369,18 @@ export async function promoteStudents(
 
     await client.query('COMMIT');
     return results;
-  } catch (e) {
+  } catch (e: any) {
     await client.query('ROLLBACK');
+    if (e.code === '23505') {
+      const constraint = e.constraint || '';
+      let msg = 'Duplicate record conflict during student promotion.';
+      if (constraint.includes('roll') || e.detail?.includes('roll_number')) {
+        msg = 'A roll number collision occurred in the target class and section for the selected academic session.';
+      }
+      const err: any = new Error(msg);
+      err.status = 409;
+      throw err;
+    }
     throw e;
   } finally {
     client.release();

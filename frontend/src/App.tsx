@@ -5196,6 +5196,48 @@ function Students(){
       return;
     }
 
+    // Client-side uniqueness pre-checks against loaded student directory
+    const cleanAdm = String(f.admissionNumber || f.admission_number || '').trim();
+    if (cleanAdm) {
+      const dupAdm = rows.find(r => 
+        (!editingStudent || r.id !== editingStudent.id) &&
+        (r.admission_number || r.admissionNumber || '').trim().toLowerCase() === cleanAdm.toLowerCase()
+      );
+      if (dupAdm) {
+        alert(`Validation Error: Admission number '${cleanAdm}' is already assigned to student '${dupAdm.name || dupAdm.full_name || 'Existing Student'}'.`);
+        return;
+      }
+    }
+
+    const cleanStuEmail = String(f.studentEmail || f.email || '').trim().toLowerCase();
+    if (cleanStuEmail) {
+      const dupEmail = rows.find(r =>
+        (!editingStudent || r.id !== editingStudent.id) &&
+        (r.email || r.student_email || '').trim().toLowerCase() === cleanStuEmail
+      );
+      if (dupEmail) {
+        alert(`Validation Error: Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
+        return;
+      }
+    }
+
+    const cleanRoll = String(f.rollNumber || f.roll_number || '').trim();
+    if (cleanRoll && f.classId && finalSectionId) {
+      const dupRoll = rows.find(r => {
+        if (editingStudent && r.id === editingStudent.id) return false;
+        const rSession = r.session || r.session_name || r.academic_year_id || r.session_id;
+        const sameSess = isSameSession(rSession, selectedSessionStr);
+        const sameClass = r.class_id === f.classId || r.classId === f.classId || String(r.class_number || r.classNumber) === String(f.classId);
+        const sameSec = r.section_id === finalSectionId || r.sectionId === finalSectionId;
+        const sameRoll = String(r.roll_number || r.rollNumber || '').trim().toLowerCase() === cleanRoll.toLowerCase();
+        return sameSess && sameClass && sameSec && sameRoll && r.is_active !== false;
+      });
+      if (dupRoll) {
+        alert(`Validation Error: Roll number '${cleanRoll}' is already assigned to student '${dupRoll.name || dupRoll.full_name || 'Existing Student'}' in this class and section for session ${selectedSessionStr}.`);
+        return;
+      }
+    }
+
     const payload = {
       ...f,
       is_active: f.is_active !== false,
@@ -5643,7 +5685,9 @@ function Students(){
         }
 
         const rowErrors: {row:number;field:string;message:string}[] = [];
-        const seenAdm = new Set<string>();
+        const seenAdm = new Map<string, number>();
+        const seenRoll = new Map<string, number>();
+        const seenEmails = new Map<string, number>();
 
         const mapped = json.map((r, idx) => {
           const rowNum = idx + 1;
@@ -5711,12 +5755,59 @@ function Students(){
           const rowErrs: {row:number;field:string;message:string}[] = [];
           if (!firstName)       rowErrs.push({row:rowNum,field:'First Name',message:'First Name is required'});
           if (!lastName)        rowErrs.push({row:rowNum,field:'Last Name',message:'Last Name is required'});
-          if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
-          if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
           if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
           if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
-          if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
-          if (admissionNumber) seenAdm.add(admissionNumber);
+
+          const normAdm = admissionNumber.toLowerCase();
+          if (!admissionNumber) {
+            rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
+          } else if (seenAdm.has(normAdm)) {
+            rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate admission number in file: '${admissionNumber}' (row ${seenAdm.get(normAdm)})`});
+          } else {
+            seenAdm.set(normAdm, rowNum);
+            const dbDupAdm = rows.find(dr => (dr.admission_number || dr.admissionNumber || '').trim().toLowerCase() === normAdm);
+            if (dbDupAdm) {
+              rowErrs.push({row:rowNum,field:'Admission Number',message:`Admission number '${admissionNumber}' already exists in database`});
+            }
+          }
+
+          const normRoll = rollNumber.toLowerCase();
+          if (!rollNumber) {
+            rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
+          } else if (parsedCls.valid) {
+            const rollKey = `${classNumber}_${sectionName}_${normRoll}`;
+            if (seenRoll.has(rollKey)) {
+              rowErrs.push({row:rowNum,field:'Roll Number',message:`Duplicate roll '${rollNumber}' for ${classLabel} ${sectionName} in file (row ${seenRoll.get(rollKey)})`});
+            } else {
+              seenRoll.set(rollKey, rowNum);
+              const dbDupRoll = rows.find(dr => {
+                const rSess = dr.session || dr.session_name || dr.academic_year_id || dr.session_id;
+                const sameSess = isSameSession(rSess, session);
+                const sameClass = String(dr.class_number || dr.classNumber) === String(classNumber);
+                const sameSec = (dr.section_name || 'A').toUpperCase() === sectionName;
+                const sameRoll = String(dr.roll_number || dr.rollNumber || '').trim().toLowerCase() === normRoll;
+                return sameSess && sameClass && sameSec && sameRoll && dr.is_active !== false;
+              });
+              if (dbDupRoll) {
+                rowErrs.push({row:rowNum,field:'Roll Number',message:`Roll number '${rollNumber}' already exists in database for this class/section`});
+              }
+            }
+          }
+
+          const normEmail = studentEmail.toLowerCase();
+          if (studentEmail) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+              rowErrs.push({row:rowNum,field:'Student Email',message:`Invalid student email format '${studentEmail}'`});
+            } else if (seenEmails.has(normEmail)) {
+              rowErrs.push({row:rowNum,field:'Student Email',message:`Duplicate student email in file (row ${seenEmails.get(normEmail)})`});
+            } else {
+              seenEmails.set(normEmail, rowNum);
+              const dbDupEmail = rows.find(dr => (dr.email || dr.student_email || '').trim().toLowerCase() === normEmail);
+              if (dbDupEmail) {
+                rowErrs.push({row:rowNum,field:'Student Email',message:`Student email '${studentEmail}' already in use in database`});
+              }
+            }
+          }
 
           rowErrors.push(...rowErrs);
           return { firstName, lastName, name:fullName, admissionNumber, rollNumber, gender, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
