@@ -184,8 +184,8 @@ export async function studentAttendanceReport(
            c.class_number,
            COALESCE(
              CASE 
-               WHEN c.class_number = -1 THEN 'L-KG'
-               WHEN c.class_number = 0 THEN 'U-KG'
+               WHEN c.class_number = -1 THEN 'Class L-KG'
+               WHEN c.class_number = 0 THEN 'Class U-KG'
                WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
                ELSE NULL
              END,

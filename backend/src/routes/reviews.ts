@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import * as XLSX from 'xlsx';
 import { AuthRequest } from '../middleware/auth';
 import { pool, isPostgresConfigured } from '../db';
 import { collections, isFirebaseConfigured } from '../firebase';
@@ -65,6 +66,8 @@ async function ensureReviewTables() {
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS teacher_email VARCHAR(255);
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewer_name VARCHAR(255);
       ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS document_url TEXT;
+      ALTER TABLE teacher_leave_requests ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);
 
       ALTER TABLE student_leave_requests DROP CONSTRAINT IF EXISTS student_leave_requests_status_check;
       ALTER TABLE student_leave_requests ADD CONSTRAINT student_leave_requests_status_check CHECK (status IN ('PENDING', 'SEEN', 'APPROVED', 'REJECTED', 'CANCELLED'));
@@ -322,7 +325,10 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
 
           if (stRes.rows.length > 0) {
             const st = stRes.rows[0];
-            if (st.user_id) clearStudentDashboardCache(st.user_id);
+            if (st.user_id) {
+              await pool.query('UPDATE users SET photo_url = $1, updated_at = NOW() WHERE id = $2', [reqRow.photo_url, st.user_id]).catch(() => {});
+              clearStudentDashboardCache(st.user_id);
+            }
             const toEmail = st.student_email || st.user_email || st.parent_email;
             if (toEmail) {
               sendPhotoReviewEmail({
@@ -1090,7 +1096,7 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
     const schoolId = req.user?.schoolId;
-    const { startDate, endDate, leaveType, reason } = req.body;
+    const { startDate, endDate, leaveType, reason, documentUrl, documentName, document_url, document_name } = req.body;
 
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ success: false, message: 'Start date, end date, and reason are required' });
@@ -1100,6 +1106,8 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
     const teacherEmail = req.user?.email || '';
     const teacherId = req.user?.id;
     const cleanLeaveType = String(leaveType || 'CASUAL').toUpperCase();
+    const finalDocUrl = documentUrl || document_url || null;
+    const finalDocName = documentName || document_name || (finalDocUrl ? 'Attached Document' : null);
     const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     let savedItem: any = null;
@@ -1126,10 +1134,10 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
 
       const ins = await pool.query(`
         INSERT INTO teacher_leave_requests (
-          school_id, teacher_id, teacher_name, teacher_email, leave_type, start_date, end_date, reason, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+          school_id, teacher_id, teacher_name, teacher_email, leave_type, start_date, end_date, reason, status, document_url, document_name
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9, $10)
         RETURNING *
-      `, [pgSchoolId, targetTeacherId, teacherName, teacherEmail, cleanLeaveType, startDate, endDate, reason]);
+      `, [pgSchoolId, targetTeacherId, teacherName, teacherEmail, cleanLeaveType, startDate, endDate, reason, finalDocUrl, finalDocName]);
 
       return res.status(201).json({
         success: true,
@@ -1148,6 +1156,8 @@ router.post('/teacher-leaves', async (req: AuthRequest, res: Response) => {
       start_date: startDate,
       end_date: endDate,
       reason,
+      document_url: finalDocUrl,
+      document_name: finalDocName,
       status: 'PENDING' as const,
       created_at: new Date().toISOString()
     };
@@ -1185,6 +1195,8 @@ router.get('/teacher-leaves/my', async (req: AuthRequest, res: Response) => {
           l.start_date,
           l.end_date,
           l.reason,
+          l.document_url,
+          l.document_name,
           l.status,
           l.reviewed_by,
           COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
@@ -1214,6 +1226,280 @@ router.get('/teacher-leaves/my', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /api/reviews/teacher-leaves/export-excel - School Admin downloads Excel report of teacher leaves
+router.get('/teacher-leaves/export-excel', async (req: AuthRequest, res: Response) => {
+  try {
+    await ensureReviewTables();
+    const schoolId = req.user?.schoolId;
+    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const targetMonth = String(req.query.month || new Date().toISOString().slice(0, 7));
+    const [yearStr, monthStr] = targetMonth.split('-');
+    const year = parseInt(yearStr, 10) || new Date().getFullYear();
+    const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+    const monthDate = new Date(year, monthNum - 1, 1);
+    const monthName = isNaN(monthDate.getTime())
+      ? targetMonth
+      : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    let leavesData: any[] = [];
+    let facultyData: any[] = [];
+
+    if (isPostgresConfigured && pgSchoolId) {
+      const qLeaves = await pool.query(`
+        SELECT
+          l.id,
+          l.school_id,
+          l.teacher_id,
+          COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
+          COALESCE(l.teacher_email, u.email, '') as teacher_email,
+          tp.employee_id as identifier,
+          COALESCE(tp.qualification, tp.designation, 'Faculty Member') as detail,
+          l.leave_type,
+          l.start_date,
+          l.end_date,
+          l.reason,
+          l.status,
+          COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
+          l.review_notes,
+          l.reviewed_at,
+          l.created_at
+        FROM teacher_leave_requests l
+        LEFT JOIN users u ON u.id = l.teacher_id
+        LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
+        LEFT JOIN users ru ON ru.id = l.reviewed_by
+        WHERE (l.school_id = $1 OR l.school_id::text = $2)
+        ORDER BY l.start_date DESC
+      `, [pgSchoolId, String(schoolId)]);
+      leavesData = qLeaves.rows;
+
+      const qTeachers = await pool.query(`
+        SELECT u.id, u.name, u.email, tp.employee_id, COALESCE(tp.designation, tp.qualification, 'Faculty Member') as designation
+        FROM users u
+        LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+        WHERE (u.school_id = $1 OR u.school_id::text = $2) AND u.role = 'TEACHER' AND u.is_active
+        ORDER BY u.name
+      `, [pgSchoolId, String(schoolId)]);
+      facultyData = qTeachers.rows;
+    } else {
+      const filtered = inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId));
+      leavesData = filtered.map(m => ({
+        ...m,
+        applicant_name: m.teacher_name || 'Faculty Member',
+        applicant_id: m.teacher_id,
+        identifier: 'FAC-EMP',
+        detail: 'Faculty Member'
+      }));
+    }
+
+    // Date range helper for month
+    const monthStart = new Date(year, monthNum - 1, 1);
+    const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999);
+
+    const computeDaysInMonth = (sDate: any, eDate: any) => {
+      if (!sDate || !eDate) return 0;
+      const s = new Date(sDate);
+      const e = new Date(eDate);
+      if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+      if (e < monthStart || s > monthEnd) return 0;
+      const overlapStart = s < monthStart ? monthStart : s;
+      const overlapEnd = e > monthEnd ? monthEnd : e;
+      const diff = overlapEnd.getTime() - overlapStart.getTime();
+      return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    const calcTotalDays = (sDate: any, eDate: any) => {
+      if (!sDate || !eDate) return 0;
+      const s = new Date(sDate);
+      const e = new Date(eDate);
+      if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+      const diff = e.getTime() - s.getTime();
+      return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    // Teacher mapping
+    const teacherMap = new Map<string, any>();
+    facultyData.forEach(t => {
+      const key = String(t.id || t.email || t.name).toLowerCase();
+      teacherMap.set(key, {
+        id: t.id,
+        name: t.name,
+        email: t.email,
+        identifier: t.employee_id || 'FAC-EMP',
+        detail: t.designation || 'Faculty Member'
+      });
+    });
+    leavesData.forEach(l => {
+      const key = String(l.teacher_id || l.teacher_email || l.applicant_name).toLowerCase();
+      if (!teacherMap.has(key)) {
+        teacherMap.set(key, {
+          id: l.teacher_id,
+          name: l.applicant_name,
+          email: l.teacher_email || '',
+          identifier: l.identifier || 'FAC-EMP',
+          detail: l.detail || 'Faculty Member'
+        });
+      }
+    });
+
+    const facultyList = Array.from(teacherMap.values());
+    let grandTaken = 0, grandCL = 0, grandSL = 0, grandEL = 0, grandEmerg = 0, grandOD = 0, grandOther = 0;
+    let grandApp = 0, grandPend = 0, grandRej = 0;
+
+    const summaryRows = facultyList.map(f => {
+      const tLeaves = leavesData.filter(l => {
+        const idMatch = l.teacher_id && f.id && String(l.teacher_id).toLowerCase() === String(f.id).toLowerCase();
+        const emailMatch = l.teacher_email && f.email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
+        const nameMatch = l.applicant_name && f.name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
+        return idMatch || emailMatch || nameMatch;
+      });
+
+      let cl = 0, sl = 0, el = 0, emerg = 0, od = 0, maternity = 0, other = 0, approved = 0;
+      let appCount = 0, pendCount = 0, rejCount = 0;
+
+      tLeaves.forEach(l => {
+        const d = computeDaysInMonth(l.start_date, l.end_date);
+        if (d > 0) {
+          if (l.status === 'APPROVED') {
+            appCount++;
+            approved += d;
+            const norm = String(l.leave_type || 'CASUAL').toUpperCase();
+            if (norm === 'CASUAL') cl += d;
+            else if (norm === 'SICK') sl += d;
+            else if (norm === 'EARNED') el += d;
+            else if (norm === 'EMERGENCY') emerg += d;
+            else if (norm === 'DUTY') od += d;
+            else if (norm === 'MATERNITY') maternity += d;
+            else other += d;
+          } else if (l.status === 'PENDING') {
+            pendCount++;
+          } else if (l.status === 'REJECTED') {
+            rejCount++;
+          }
+        }
+      });
+
+      grandTaken += approved;
+      grandCL += cl;
+      grandSL += sl;
+      grandEL += el;
+      grandEmerg += emerg;
+      grandOD += od;
+      grandOther += (maternity + other);
+      grandApp += appCount;
+      grandPend += pendCount;
+      grandRej += rejCount;
+
+      return {
+        'Teacher / Faculty Member': f.name,
+        'Email Address': f.email || '—',
+        'Employee ID': f.identifier || '—',
+        'Designation / Department': f.detail || 'Faculty Member',
+        'Report Month': monthName,
+        'Total Leaves Taken (Days)': approved,
+        'Casual Leave (CL Days)': cl,
+        'Sick / Medical Leave (SL Days)': sl,
+        'Earned Leave (EL Days)': el,
+        'Emergency Leave (Days)': emerg,
+        'Official Duty (OD Days)': od,
+        'Maternity / Other (Days)': (maternity + other),
+        'Approved Requests': appCount,
+        'Pending Requests': pendCount,
+        'Rejected Requests': rejCount,
+        'Total Applications': (appCount + pendCount + rejCount),
+        'Status Summary': approved > 0 ? `${approved} Day(s) Taken` : 'No Leaves Taken'
+      };
+    });
+
+    summaryRows.sort((a, b) => {
+      if (b['Total Leaves Taken (Days)'] !== a['Total Leaves Taken (Days)']) {
+        return b['Total Leaves Taken (Days)'] - a['Total Leaves Taken (Days)'];
+      }
+      return a['Teacher / Faculty Member'].localeCompare(b['Teacher / Faculty Member']);
+    });
+
+    summaryRows.push({
+      'Teacher / Faculty Member': 'TOTAL / INSTITUTION WIDE',
+      'Email Address': '',
+      'Employee ID': '',
+      'Designation / Department': `${facultyList.length} Faculty Members`,
+      'Report Month': monthName,
+      'Total Leaves Taken (Days)': grandTaken,
+      'Casual Leave (CL Days)': grandCL,
+      'Sick / Medical Leave (SL Days)': grandSL,
+      'Earned Leave (EL Days)': grandEL,
+      'Emergency Leave (Days)': grandEmerg,
+      'Official Duty (OD Days)': grandOD,
+      'Maternity / Other (Days)': grandOther,
+      'Approved Requests': grandApp,
+      'Pending Requests': grandPend,
+      'Rejected Requests': grandRej,
+      'Total Applications': (grandApp + grandPend + grandRej),
+      'Status Summary': `${grandTaken} Total Faculty Leave Day(s)`
+    } as any);
+
+    const monthLeaves = leavesData.filter(l => computeDaysInMonth(l.start_date, l.end_date) > 0);
+    const detailRows = monthLeaves.length > 0 ? monthLeaves.map(l => ({
+      'Application ID': String(l.id || '').slice(0, 8),
+      'Teacher Name': l.applicant_name,
+      'Email Address': l.teacher_email || '—',
+      'Employee ID': l.identifier || '—',
+      'Leave Type': String(l.leave_type || 'CASUAL'),
+      'Start Date': l.start_date ? String(l.start_date).slice(0, 10) : '—',
+      'End Date': l.end_date ? String(l.end_date).slice(0, 10) : '—',
+      'Total Duration (Days)': calcTotalDays(l.start_date, l.end_date),
+      'Days in Month': computeDaysInMonth(l.start_date, l.end_date),
+      'Status': l.status,
+      'Reason / Details': l.reason,
+      'Applied Date': l.created_at ? String(l.created_at).slice(0, 10) : '—',
+      'Reviewed By': l.reviewer_name || 'School Administration',
+      'Review Remarks': l.review_notes || '—',
+      'Reviewed At': l.reviewed_at ? String(l.reviewed_at).slice(0, 10) : '—'
+    })) : [{
+      'Application ID': '—',
+      'Teacher Name': 'No leave applications recorded for this month',
+      'Email Address': '',
+      'Employee ID': '',
+      'Leave Type': '',
+      'Start Date': '',
+      'End Date': '',
+      'Total Duration (Days)': 0,
+      'Days in Month': 0,
+      'Status': '—',
+      'Reason / Details': '',
+      'Applied Date': '',
+      'Reviewed By': '',
+      'Review Remarks': '',
+      'Reviewed At': ''
+    }];
+
+    const wb = XLSX.utils.book_new();
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    wsSummary['!cols'] = [
+      { wch: 25 }, { wch: 28 }, { wch: 15 }, { wch: 22 }, { wch: 16 }, { wch: 24 },
+      { wch: 20 }, { wch: 22 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 22 },
+      { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 25 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Leave Summary');
+
+    const wsDetails = XLSX.utils.json_to_sheet(detailRows);
+    wsDetails['!cols'] = [
+      { wch: 15 }, { wch: 24 }, { wch: 26 }, { wch: 15 }, { wch: 24 }, { wch: 14 },
+      { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 34 }, { wch: 14 },
+      { wch: 22 }, { wch: 32 }, { wch: 14 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsDetails, 'Leave Records Detail');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Teacher_Monthly_Leave_Report_${safeMonth}.xlsx"`);
+    return res.send(buf);
+  } catch (error: any) {
+    console.error('Error exporting teacher leaves excel:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/reviews/teacher-leaves - School Admin views all teacher leaves
 router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
   try {
@@ -1238,6 +1524,8 @@ router.get('/teacher-leaves', async (req: AuthRequest, res: Response) => {
           l.start_date,
           l.end_date,
           l.reason,
+          l.document_url,
+          l.document_name,
           l.status,
           l.reviewed_by,
           COALESCE(l.reviewer_name, ru.name, 'School Administration') as reviewer_name,
@@ -1529,7 +1817,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
 
         teacherLeavesRes = await pool.query(`
           SELECT l.id, 'TEACHER' as applicant_type, COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
-                 tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.created_at
+                 tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.document_url, l.document_name, l.created_at
           FROM teacher_leave_requests l
           LEFT JOIN users u ON u.id = l.teacher_id
           LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
@@ -1550,7 +1838,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       const rawStudentLeavesCount = parseInt(countRes.rows[0]?.pending_student_leaves || '0', 10);
       const rawTeacherLeavesCount = parseInt(countRes.rows[0]?.pending_teacher_leaves || '0', 10);
 
-      const pendingPhotosCount = rawPhotosCount;
+      // Photos go to TEACHER, not SCHOOL_ADMIN
+      const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : rawPhotosCount;
       const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') 
         ? rawTeacherLeavesCount
         : rawStudentLeavesCount;
@@ -1598,6 +1887,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           applicantType: 'TEACHER',
           leaveType: l.leave_type,
           reason: l.reason,
+          hasDocument: Boolean(l.document_url),
+          documentName: l.document_name,
           startDate: l.start_date,
           endDate: l.end_date
         }))
@@ -1632,7 +1923,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       return true;
     });
 
-    const pendingPhotosCount = memPhotos.length;
+    const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : memPhotos.length;
     const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
     const pendingTeacherLeavesCount = isTeacher ? 0 : memTeacherLeaves.length;
 
@@ -1675,6 +1966,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         applicantType: 'TEACHER',
         leaveType: l.leave_type,
         reason: l.reason,
+        hasDocument: Boolean(l.document_url),
+        documentName: l.document_name,
         startDate: l.start_date,
         endDate: l.end_date
       }))
@@ -1682,10 +1975,10 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
 
     return res.json({
       success: true,
-      pendingPhotosCount: memPhotos.length,
+      pendingPhotosCount,
       pendingLeavesCount,
       pendingTeacherLeavesCount: memTeacherLeaves.length,
-      totalPendingCount: memPhotos.length + pendingLeavesCount,
+      totalPendingCount: pendingPhotosCount + pendingLeavesCount,
       notifications
     });
   } catch (error: any) {

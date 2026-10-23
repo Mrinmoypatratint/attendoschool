@@ -40,7 +40,7 @@ interface PhotoRequest {
 export default function PhotoApprove() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'TEACHER';
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [photos, setPhotos] = useState<PhotoRequest[]>([]);
   const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
@@ -48,6 +48,15 @@ export default function PhotoApprove() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const cleanIdentifier = (identifier?: string) => {
+    if (!identifier) return '';
+    return identifier
+      .replace(/Roll:\s*[^·•\n\r|]+\s*[·•|]\s*/gi, '')
+      .replace(/[·•|]\s*Roll:\s*[^·•\n\r|]+/gi, '')
+      .replace(/Roll:\s*[^·•\n\r|]+/gi, '')
+      .trim();
+  };
 
   // Lightbox Preview Modal State
   const [previewPhoto, setPreviewPhoto] = useState<PhotoRequest | null>(null);
@@ -87,6 +96,7 @@ export default function PhotoApprove() {
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Photo for ${photo.applicant_name} has been approved.` });
         if (previewPhoto?.id === photo.id) setPreviewPhoto(null);
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
         await loadPhotos();
       }
     } catch (err: any) {
@@ -102,13 +112,14 @@ export default function PhotoApprove() {
     try {
       setActionLoading(rejectingPhoto.id);
       const res = await api.put(`/reviews/photos/${rejectingPhoto.id}/reject`, {
-        reason: rejectReason.trim() || 'Photo does not meet administrative standards.'
+        reason: rejectReason.trim() || 'Photo does not meet standards.'
       });
       if (res.data?.success) {
         setFeedback({ type: 'success', message: `Photo for ${rejectingPhoto.applicant_name} has been rejected.` });
         setRejectingPhoto(null);
         setRejectReason('');
         if (previewPhoto?.id === rejectingPhoto.id) setPreviewPhoto(null);
+        window.dispatchEvent(new CustomEvent('reviews-updated'));
         await loadPhotos();
       }
     } catch (err: any) {
@@ -122,25 +133,39 @@ export default function PhotoApprove() {
   // Filter photos based on active tab, role, and search query
   const filteredPhotos = useMemo(() => {
     return photos.filter((p) => {
+      // In teacher portal, only show student photos
+      if (isTeacher && p.applicant_type !== 'STUDENT') return false;
+
       // Tab filter
       if (activeTab === 'PENDING' && p.status !== 'PENDING') return false;
       if (activeTab === 'APPROVED' && p.status !== 'APPROVED') return false;
+      if (activeTab === 'REJECTED' && p.status !== 'REJECTED') return false;
 
-      // Role filter
-      if (roleFilter !== 'ALL' && p.applicant_type !== roleFilter) return false;
+      // Role filter (only for admin)
+      if (!isTeacher && roleFilter !== 'ALL' && p.applicant_type !== roleFilter) return false;
 
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const nameMatch = p.applicant_name?.toLowerCase().includes(q);
-        const idMatch = p.identifier?.toLowerCase().includes(q);
+        const idMatch = (isTeacher ? cleanIdentifier(p.identifier) : p.identifier)?.toLowerCase().includes(q);
         const detailMatch = p.detail?.toLowerCase().includes(q);
         if (!nameMatch && !idMatch && !detailMatch) return false;
       }
 
       return true;
     });
-  }, [photos, activeTab, roleFilter, searchQuery]);
+  }, [photos, activeTab, roleFilter, searchQuery, isTeacher]);
+
+  const displayCounts = useMemo(() => {
+    if (!isTeacher) return counts;
+    const studentList = photos.filter(p => p.applicant_type === 'STUDENT');
+    const all = studentList.length;
+    const pending = studentList.filter(p => p.status === 'PENDING').length;
+    const approved = studentList.filter(p => p.status === 'APPROVED').length;
+    const rejected = studentList.filter(p => p.status === 'REJECTED').length;
+    return { all, pending, approved, rejected };
+  }, [isTeacher, counts, photos]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -218,7 +243,7 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          All ({counts.all})
+          All ({displayCounts.all})
         </button>
         <button
           type="button"
@@ -236,7 +261,7 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Pending ({counts.pending})
+          Pending ({displayCounts.pending})
         </button>
         <button
           type="button"
@@ -254,7 +279,25 @@ export default function PhotoApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Approved ({counts.approved})
+          Approved ({displayCounts.approved})
+        </button>
+        <button
+          type="button"
+          className={`student-tab-btn ${activeTab === 'REJECTED' ? 'active' : ''}`}
+          onClick={() => setActiveTab('REJECTED')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '8px 16px',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderBottom: activeTab === 'REJECTED' ? '2px solid #DC2626' : '2px solid transparent',
+            color: activeTab === 'REJECTED' ? '#DC2626' : 'var(--text-secondary, #64748B)',
+            transition: 'all 0.15s'
+          }}
+        >
+          Rejected ({displayCounts.rejected})
         </button>
       </div>
 
@@ -264,7 +307,7 @@ export default function PhotoApprove() {
           <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
             type="text"
-            placeholder="Search by name, roll no, or ID..."
+            placeholder={isTeacher ? "Search by name or ID..." : "Search by name, roll no, or ID..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -296,9 +339,9 @@ export default function PhotoApprove() {
                 key={role}
                 onClick={() => setRoleFilter(role)}
                 style={{
-                  background: roleFilter === role ? '#EFF6FF' : 'transparent',
-                  color: roleFilter === role ? '#2563EB' : 'var(--text-secondary, #64748B)',
-                  border: roleFilter === role ? '1px solid #BFDBFE' : '1px solid var(--border, #E2E8F0)',
+                  background: roleFilter === role ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                  color: roleFilter === role ? '#3b82f6' : 'var(--text-secondary, #64748B)',
+                  border: roleFilter === role ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border, #E2E8F0)',
                   padding: '4px 10px',
                   borderRadius: 6,
                   fontSize: 12,
@@ -331,7 +374,13 @@ export default function PhotoApprove() {
           <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
             {isTeacher && counts.all === 0
               ? 'Photo approval duties are routed exclusively to assigned class mentors.'
-              : activeTab === 'PENDING' ? 'All submitted student photos have been processed.' : 'No photo records to display.'}
+              : activeTab === 'PENDING'
+              ? (isTeacher ? 'All submitted student photos have been processed.' : 'All submitted student and staff photos have been processed.')
+              : activeTab === 'REJECTED'
+              ? 'No rejected photo requests found.'
+              : activeTab === 'APPROVED'
+              ? 'No approved photo records to display.'
+              : 'No photo records to display.'}
           </p>
         </div>
       ) : (
@@ -370,15 +419,15 @@ export default function PhotoApprove() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {photo.status === 'PENDING' ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEF3C7', color: '#92400E', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                       <Clock size={12} /> Pending Review
                     </span>
                   ) : photo.status === 'APPROVED' ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                       <CheckCircle2 size={12} /> Approved
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#FEE2E2', color: '#991B1B', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: 12, fontSize: 11.5, fontWeight: 700 }}>
                       <XCircle size={12} /> Rejected
                     </span>
                   )}
@@ -399,7 +448,7 @@ export default function PhotoApprove() {
                     height: 100,
                     borderRadius: 12,
                     overflow: 'hidden',
-                    background: '#F1F5F9',
+                    background: 'var(--card-subtle, #F1F5F9)',
                     flexShrink: 0,
                     border: '1px solid var(--border, #E2E8F0)',
                     cursor: 'pointer'
@@ -436,33 +485,43 @@ export default function PhotoApprove() {
 
                 {/* Candidate Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        background: photo.applicant_type === 'STUDENT' ? '#EFF6FF' : '#F3E8FF',
-                        color: photo.applicant_type === 'STUDENT' ? '#1D4ED8' : '#7E22CE'
-                      }}
-                    >
-                      {photo.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
-                      {photo.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
-                    </span>
-                  </div>
+                  {!isTeacher && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: photo.applicant_type === 'STUDENT' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(168, 85, 247, 0.12)',
+                          color: photo.applicant_type === 'STUDENT' ? '#3b82f6' : '#a855f7'
+                        }}
+                      >
+                        {photo.applicant_type === 'STUDENT' ? <User size={11} /> : <GraduationCap size={11} />}
+                        {photo.applicant_type === 'STUDENT' ? 'Student' : 'Teacher'}
+                      </span>
+                    </div>
+                  )}
 
                   <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {photo.applicant_name}
                   </h3>
 
-                  {photo.identifier && (
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
-                      ID / Adm: <strong style={{ color: 'var(--text, #334155)' }}>{photo.identifier}</strong>
-                    </div>
+                  {isTeacher ? (
+                    cleanIdentifier(photo.identifier) ? (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                        Adm: <strong style={{ color: 'var(--text, #334155)' }}>{cleanIdentifier(photo.identifier).replace(/^Adm:\s*/i, '')}</strong>
+                      </div>
+                    ) : null
+                  ) : (
+                    photo.identifier && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                        ID / Adm: <strong style={{ color: 'var(--text, #334155)' }}>{photo.identifier}</strong>
+                      </div>
+                    )
                   )}
 
                   {photo.detail && (
@@ -486,13 +545,13 @@ export default function PhotoApprove() {
 
               {/* Status details / Rejection reason */}
               {photo.status === 'REJECTED' && photo.rejection_reason && (
-                <div style={{ margin: '0 16px 12px', padding: '8px 12px', background: '#FEF2F2', borderRadius: 8, border: '1px solid #FECACA', fontSize: 12, color: '#991B1B' }}>
+                <div style={{ margin: '0 16px 12px', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.25)', fontSize: 12, color: '#ef4444' }}>
                   <strong>Reason:</strong> {photo.rejection_reason}
                 </div>
               )}
 
               {photo.status === 'APPROVED' && photo.reviewed_by_name && (
-                <div style={{ margin: '0 16px 12px', fontSize: 11.5, color: '#166534', background: '#F0FDF4', padding: '6px 10px', borderRadius: 6 }}>
+                <div style={{ margin: '0 16px 12px', fontSize: 11.5, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 10px', borderRadius: 6 }}>
                   Approved by {photo.reviewed_by_name} {photo.reviewed_at ? `on ${new Date(photo.reviewed_at).toLocaleDateString()}` : ''}
                 </div>
               )}
@@ -547,8 +606,8 @@ export default function PhotoApprove() {
                       justifyContent: 'center',
                       gap: 6,
                       background: 'transparent',
-                      color: '#DC2626',
-                      border: '1px solid #FCA5A5',
+                      color: '#ef4444',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
                       borderRadius: 8,
                       padding: '8px 14px',
                       fontSize: 13,
@@ -584,12 +643,13 @@ export default function PhotoApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
+              background: 'var(--bg-card, #1e293b)',
               borderRadius: 16,
               maxWidth: 520,
               width: '100%',
               overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+              border: '1px solid var(--border)',
               position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -597,17 +657,19 @@ export default function PhotoApprove() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>{previewPhoto.applicant_name}</h3>
-                <span style={{ fontSize: 12, color: '#64748B' }}>{previewPhoto.detail || previewPhoto.identifier}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                  {previewPhoto.detail || (isTeacher ? cleanIdentifier(previewPhoto.identifier) : previewPhoto.identifier)}
+                </span>
               </div>
               <button
                 onClick={() => setPreviewPhoto(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary, #64748B)', padding: 4 }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ padding: 20, textAlign: 'center', background: '#F8FAFC' }}>
+            <div style={{ padding: 20, textAlign: 'center', background: 'var(--card-subtle, rgba(0,0,0,0.2))' }}>
               <img
                 src={previewPhoto.photo_url}
                 alt={previewPhoto.applicant_name}
@@ -615,21 +677,21 @@ export default function PhotoApprove() {
                   maxHeight: 360,
                   maxWidth: '100%',
                   borderRadius: 10,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                   objectFit: 'contain'
                 }}
               />
             </div>
 
             {previewPhoto.status === 'PENDING' && (
-              <div style={{ display: 'flex', gap: 12, padding: 16, borderTop: '1px solid var(--border, #E2E8F0)', justifyContent: 'flex-end', background: 'var(--surface, #FFF)' }}>
+              <div style={{ display: 'flex', gap: 12, padding: 16, borderTop: '1px solid var(--border, #E2E8F0)', justifyContent: 'flex-end', background: 'var(--bg-card, #1e293b)' }}>
                 <button
                   type="button"
                   onClick={() => {
                     setRejectingPhoto(previewPhoto);
                     setRejectReason('');
                   }}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #FCA5A5', color: '#DC2626', background: '#FFF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.4)', color: '#ef4444', background: 'transparent', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
                 >
                   <X size={15} /> Reject
                 </button>
@@ -663,20 +725,21 @@ export default function PhotoApprove() {
         >
           <div
             style={{
-              background: 'var(--surface, #FFF)',
+              background: 'var(--bg-card, #1e293b)',
               borderRadius: 16,
               maxWidth: 440,
               width: '100%',
               padding: 22,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+              border: '1px solid var(--border)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#991B1B' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#ef4444' }}>
               Reject Photo Submission
             </h3>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#64748B' }}>
-              Please provide a reason for rejecting the photograph for <strong>{rejectingPhoto.applicant_name}</strong>.
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
+              Please provide a reason for rejecting the photograph for <strong style={{ color: 'var(--text)' }}>{rejectingPhoto.applicant_name}</strong>.
             </p>
 
             {/* Quick Reason Chips */}
@@ -692,9 +755,9 @@ export default function PhotoApprove() {
                   type="button"
                   onClick={() => setRejectReason(chip)}
                   style={{
-                    background: rejectReason === chip ? '#FEE2E2' : '#F1F5F9',
-                    color: rejectReason === chip ? '#991B1B' : '#475569',
-                    border: '1px solid transparent',
+                    background: rejectReason === chip ? 'rgba(239, 68, 68, 0.15)' : 'var(--card-subtle, rgba(255, 255, 255, 0.05))',
+                    color: rejectReason === chip ? '#ef4444' : 'var(--text-secondary, #94a3b8)',
+                    border: rejectReason === chip ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '4px 8px',
                     fontSize: 11.5,
@@ -716,7 +779,7 @@ export default function PhotoApprove() {
                 padding: '10px 12px',
                 borderRadius: 8,
                 border: '1px solid var(--border, #E2E8F0)',
-                background: 'var(--surface, #FFF)',
+                background: 'var(--card-subtle, rgba(0,0,0,0.2))',
                 color: 'var(--text, #0F172A)',
                 fontSize: 13,
                 resize: 'none',
@@ -733,7 +796,7 @@ export default function PhotoApprove() {
                   borderRadius: 8,
                   border: '1px solid var(--border, #E2E8F0)',
                   background: 'transparent',
-                  color: '#64748B',
+                  color: 'var(--text-secondary, #64748B)',
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer'

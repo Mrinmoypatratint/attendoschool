@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, CheckCircle2, Eye, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Info, RefreshCw, Clock, Loader2 } from 'lucide-react';
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
+import { formatGender } from '../../utils/gender';
 
 /* ────── Teacher DOB Validation & Formatting Helpers ────── */
 function isValidDdMmYyyy(val: string): boolean {
@@ -906,11 +907,11 @@ export default function PeopleManagement() {
                           borderRadius: 999,
                           fontSize: 11.5,
                           fontWeight: 500,
-                          background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
-                          color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
-                          border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                          background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                          color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                          border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                         }}>
-                          {r.gender}
+                          {formatGender(r.gender)}
                         </span>
                       ) : (
                         <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -995,11 +996,11 @@ export default function PeopleManagement() {
                           borderRadius: 999,
                           fontSize: 11.5,
                           fontWeight: 500,
-                          background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
-                          color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
-                          border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                          background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                          color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                          border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                         }}>
-                          {r.gender}
+                          {formatGender(r.gender)}
                         </span>
                       ) : (
                         <span className="muted" style={{ fontSize: 12 }}>—</span>
@@ -1244,8 +1245,8 @@ export default function PeopleManagement() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <label>Gender
                     <select
-                      value={teacherForm.gender || ''}
-                      onChange={e => setTeacherForm({ ...teacherForm, gender: e.target.value })}
+                      value={formatGender(teacherForm.gender) || ''}
+                      onChange={e => setTeacherForm({ ...teacherForm, gender: formatGender(e.target.value) })}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
                       <option value="">Select Gender</option>
@@ -1818,11 +1819,11 @@ export default function PeopleManagement() {
                                     borderRadius: 999,
                                     fontSize: 11,
                                     fontWeight: 500,
-                                    background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
-                                    color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
-                                    border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                    background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                                    color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                                    border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
                                   }}>
-                                    {r.gender}
+                                    {formatGender(r.gender)}
                                   </span>
                                 ) : '—'}
                               </td>
@@ -2022,8 +2023,8 @@ export default function PeopleManagement() {
                       <td>{r['Email_id']}</td>
                       <td>
                         {r['Gender'] ? (
-                          <span className={`badge ${String(r['Gender']).toLowerCase() === 'female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
-                            {r['Gender']}
+                          <span className={`badge ${formatGender(r['Gender']) === 'Female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
+                            {formatGender(r['Gender'])}
                           </span>
                         ) : '—'}
                       </td>

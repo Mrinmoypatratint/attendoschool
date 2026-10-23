@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip,
-  Upload, X, Download, Eye, FileText, AlertCircle, Loader2
+  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface UploadFileItem {
   file: File;
@@ -38,6 +39,9 @@ const formatBytes = (bytes: number) => {
 };
 
 export function StudentAssignments() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || searchParams.get('search') || '';
+  const [searchTerm, setSearchTerm] = useState(queryParam);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'SUBMITTED'>('ALL');
@@ -47,6 +51,10 @@ export function StudentAssignments() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(queryParam);
+  }, [queryParam]);
 
   // Preview Modal State
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
@@ -225,8 +233,15 @@ export function StudentAssignments() {
   };
 
   const filtered = assignments.filter((a) => {
-    if (activeTab === 'PENDING') return a.submission_status === 'PENDING';
-    if (activeTab === 'SUBMITTED') return a.submission_status === 'SUBMITTED' || a.submission_status === 'GRADED';
+    if (activeTab === 'PENDING' && a.submission_status !== 'PENDING') return false;
+    if (activeTab === 'SUBMITTED' && a.submission_status === 'PENDING') return false;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      return a.title.toLowerCase().includes(q) ||
+        (a.subject_name && a.subject_name.toLowerCase().includes(q)) ||
+        (a.description && a.description.toLowerCase().includes(q)) ||
+        (a.teacher_name && a.teacher_name.toLowerCase().includes(q));
+    }
     return true;
   });
 
@@ -250,6 +265,52 @@ export function StudentAssignments() {
           <span>{feedbackMsg}</span>
         </div>
       )}
+
+      {/* In-Page Search & Filter Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="student-inpage-search-bar">
+          <Search size={15} color="var(--text-muted, #94a3b8)" />
+          <input
+            type="text"
+            placeholder="Filter assignments by title, subject, or teacher..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              if (e.target.value.trim()) {
+                setSearchParams({ q: e.target.value.trim() });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: 13,
+              width: '100%',
+              color: 'var(--text)'
+            }}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setSearchParams({});
+              }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+            Showing <b>{filtered.length}</b> of <b>{assignments.length}</b> assignments
+          </div>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="student-tab-bar">
@@ -307,12 +368,12 @@ export function StudentAssignments() {
 
               {/* Submitted Information Box */}
               {a.submission_status !== 'PENDING' && (
-                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0', margin: '12px 0', fontSize: 13 }}>
-                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="student-submission-info-box">
+                  <div className="submission-header" style={{ fontWeight: 600, color: 'var(--text, #334155)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <CheckCircle2 size={14} color="#16a34a" /> Your Submission:
                   </div>
                   {a.submission_text ? (
-                    <p style={{ margin: '0 0 8px', color: '#475569', whiteSpace: 'pre-wrap', fontSize: 12.5 }}>
+                    <p style={{ margin: '0 0 8px', color: 'var(--text-secondary, #475569)', whiteSpace: 'pre-wrap', fontSize: 12.5 }}>
                       {a.submission_text}
                     </p>
                   ) : null}
@@ -320,7 +381,7 @@ export function StudentAssignments() {
                   {/* Attachments List */}
                   {a.attachments && a.attachments.length > 0 && (
                     <div style={{ marginTop: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
                         Attachments ({a.attachments.length}):
                       </span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
@@ -336,23 +397,14 @@ export function StudentAssignments() {
                           return (
                             <div
                               key={att.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: '#ffffff',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: 6,
-                                padding: '6px 10px',
-                                fontSize: 12
-                              }}
+                              className="student-attachment-card-item"
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>
-                                <Paperclip size={13} color="#64748b" />
-                                <span title={att.file_name} style={{ fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <Paperclip size={13} color="var(--text-muted, #64748b)" />
+                                <span title={att.file_name} className="file-name" style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {att.file_name}
                                 </span>
-                                <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                                <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
                                   ({formatBytes(att.file_size)})
                                 </span>
                               </div>
@@ -361,18 +413,7 @@ export function StudentAssignments() {
                                   <button
                                     type="button"
                                     onClick={() => openPreview(a.id, att)}
-                                    style={{
-                                      border: '1px solid #cbd5e1',
-                                      background: '#f1f5f9',
-                                      borderRadius: 4,
-                                      padding: '3px 8px',
-                                      cursor: 'pointer',
-                                      fontSize: 11,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                      color: '#334155'
-                                    }}
+                                    className="student-attachment-preview-btn"
                                   >
                                     <Eye size={12} /> Preview
                                   </button>
@@ -380,18 +421,7 @@ export function StudentAssignments() {
                                 <button
                                   type="button"
                                   onClick={() => handleDownload(a.id, att)}
-                                  style={{
-                                    border: '1px solid #2563eb',
-                                    background: '#eff6ff',
-                                    borderRadius: 4,
-                                    padding: '3px 8px',
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    color: '#1d4ed8'
-                                  }}
+                                  className="student-attachment-download-btn"
                                 >
                                   <Download size={12} /> Download
                                 </button>
@@ -469,11 +499,13 @@ export function StudentAssignments() {
 
               <label>
                 <span>Submission Notes / Solution Proof:</span>
-                <textarea
-                  rows={4}
+                <AutoExpandingTextarea
                   placeholder="Enter your solution notes or explanation..."
                   value={submissionText}
                   onChange={(e) => setSubmissionText(e.target.value)}
+                  minHeight={70}
+                  maxHeight={250}
+                  style={{ width: '100%' }}
                 />
               </label>
 
@@ -489,14 +521,7 @@ export function StudentAssignments() {
                 </div>
 
                 <div
-                  style={{
-                    border: '2px dashed #cbd5e1',
-                    borderRadius: 8,
-                    padding: '16px',
-                    textAlign: 'center',
-                    background: '#f8fafc',
-                    cursor: 'pointer'
-                  }}
+                  className="student-file-dropzone"
                   onClick={() => document.getElementById('assignment-file-input')?.click()}
                 >
                   <input
@@ -508,11 +533,11 @@ export function StudentAssignments() {
                     onChange={handleFileChange}
                     disabled={selectedFiles.length >= MAX_FILE_COUNT}
                   />
-                  <Upload size={22} color="#64748b" style={{ margin: '0 auto 6px' }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                  <Upload size={22} color="var(--text-muted, #64748b)" style={{ margin: '0 auto 6px' }} />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
                     Click to select files
                   </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#64748b' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
                     PDF, PNG, JPG, XLSX, DOC, DOCX up to 10MB each
                   </p>
                 </div>
@@ -523,23 +548,14 @@ export function StudentAssignments() {
                     {selectedFiles.map((f, idx) => (
                       <div
                         key={idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          background: '#fff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontSize: 12
-                        }}
+                        className="student-selected-file-item"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                           <FileText size={14} color="#3b82f6" />
-                          <span style={{ fontWeight: 500, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {f.name}
                           </span>
-                          <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                          <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
                             ({formatBytes(f.size)})
                           </span>
                         </div>
@@ -598,49 +614,17 @@ export function StudentAssignments() {
 
       {/* Attachment Preview Modal */}
       {previewState && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15,23,42,0.75)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              width: 'min(900px, 95vw)',
-              height: 'min(85vh, 800px)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              overflow: 'hidden'
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 18px',
-                borderBottom: '1px solid #e2e8f0',
-                background: '#f8fafc'
-              }}
-            >
+        <div className="student-preview-modal-overlay">
+          <div className="student-preview-modal">
+            <div className="student-preview-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="#64748b" />
+                <Paperclip size={16} color="var(--text-muted, #64748b)" />
                 <h3
                   style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 700,
-                    color: '#0f172a',
+                    color: 'var(--text, #0f172a)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
@@ -659,19 +643,8 @@ export function StudentAssignments() {
                       previewState.fileName
                     )
                   }
-                  style={{
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    borderRadius: 6,
-                    padding: '5px 10px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    color: '#1e293b'
-                  }}
+                  className="student-attachment-download-btn"
+                  style={{ padding: '5px 10px', fontSize: 12, fontWeight: 600 }}
                 >
                   <Download size={13} /> Download
                 </button>
@@ -682,7 +655,7 @@ export function StudentAssignments() {
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    color: '#64748b',
+                    color: 'var(--text-muted, #64748b)',
                     padding: 4
                   }}
                 >
@@ -691,17 +664,7 @@ export function StudentAssignments() {
               </div>
             </div>
 
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 16,
-                background: '#0f172a08',
-                overflow: 'auto'
-              }}
-            >
+            <div className="student-preview-modal-body">
               {previewState.loading ? (
                 <div style={{ textAlign: 'center', color: '#64748b' }}>
                   <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />

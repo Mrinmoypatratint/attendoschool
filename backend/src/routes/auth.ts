@@ -238,9 +238,10 @@ router.post('/login', loginRateLimit, async (req, res) => {
         // Dedicated student login scoped strictly to the selected school/tenant
         const studentQuery = `
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+                 COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
-                 sch.name AS school_name, sch.code AS school_code
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM students st
           JOIN schools sch ON sch.id = st.school_id
           JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email) AND u.school_id = st.school_id))
@@ -276,11 +277,17 @@ router.post('/login', loginRateLimit, async (req, res) => {
             return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
           }
 
+          const studentPhoto = stu.photo_url || undefined;
           const userPayload: any = {
             id: stu.id,
             schoolId: stu.school_id || resolvedInstituteId,
             schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
             schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            schoolPhotoUrl: stu.school_photo_url || undefined,
+            school_photo_url: stu.school_photo_url || undefined,
+            photoUrl: studentPhoto,
+            photo_url: studentPhoto,
+            avatarUrl: studentPhoto,
             name: stu.name,
             email: stu.email,
             role: 'STUDENT' as Role,
@@ -292,18 +299,37 @@ router.post('/login', loginRateLimit, async (req, res) => {
               ? (stu.class_number === -1 ? 'L-KG' : stu.class_number === 0 ? 'U-KG' : `Class ${stu.class_number}`)
               : 'Class 10',
             sectionName: stu.section_name || 'A',
-            rollNumber: stu.roll_number || '25'
+            rollNumber: stu.roll_number || '25',
+            schoolWebsite: stu.school_website || undefined,
+            school_website: stu.school_website || undefined
           };
 
           clearLoginAttempts(req, rawIdentifier);
-          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          // Keep token payload lean (< 500 bytes) - never embed base64 photos into JWT Authorization headers
+          const tokenPayload: any = {
+            id: stu.id,
+            schoolId: stu.school_id || resolvedInstituteId,
+            schoolName: stu.school_name || selectedSchoolName || 'Institutional Campus',
+            schoolCode: stu.school_code || selectedSchoolCode || 'SCH',
+            name: stu.name,
+            email: stu.email,
+            role: 'STUDENT' as Role,
+            studentId: stu.student_id,
+            admissionNumber: stu.admission_number,
+            classId: stu.class_id,
+            sectionId: stu.section_id,
+            className: userPayload.className,
+            sectionName: userPayload.sectionName,
+            rollNumber: userPayload.rollNumber
+          };
+          const token = jwt.sign(tokenPayload, env.jwtSecret, { expiresIn: '30d' });
           return res.json({ token, user: userPayload, provider: 'supabase' });
         }
       } else {
         // School Admin, Teacher, Super Admin, or unspecified role login
         const facultyQuery = `
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active, u.photo_url,
-                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url
+                 sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM users u
           LEFT JOIN schools sch ON sch.id = u.school_id
           WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
@@ -348,7 +374,11 @@ router.post('/login', loginRateLimit, async (req, res) => {
             email: u.email,
             role,
             photo_url: photoUrl,
-            photoUrl: photoUrl
+            photoUrl: photoUrl,
+            schoolPhotoUrl: u.school_photo_url || undefined,
+            school_photo_url: u.school_photo_url || undefined,
+            schoolWebsite: u.school_website || undefined,
+            school_website: u.school_website || undefined
           };
 
           // Keep token payload lean (< 500 bytes) so HTTP Authorization header never exceeds Cloudflare/Nginx limits (16KB)
@@ -412,7 +442,10 @@ router.post('/login', loginRateLimit, async (req, res) => {
       email: demo.email,
       role: demo.role as Role,
       photo_url: demoPhoto,
-      photoUrl: demoPhoto
+      photoUrl: demoPhoto,
+      avatarUrl: demoPhoto,
+      schoolWebsite: demoSchoolObj?.website || undefined,
+      school_website: demoSchoolObj?.website || undefined
     };
 
     if (demo.role === 'STUDENT') {
@@ -480,6 +513,7 @@ export async function createAndSendPasswordReset(params: {
   admissionNumber?: string;
   admission_number?: string;
   req?: any;
+  sendEmail?: boolean;
 }) {
   const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
   let admissionNumber = params.admission_number || params.admissionNumber || '';
@@ -554,26 +588,28 @@ export async function createAndSendPasswordReset(params: {
 
   const resetUrl = `${baseUrl}/#/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
-  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML via Notification Queue
+  // 4. Dispatch Email with Anti-Spam Headers and Multipart Text+HTML via Notification Queue (unless caller set sendEmail: false)
   let emailResult: any = null;
-  try {
-    emailResult = await queueEmailNotification({
-      schoolId: schoolId || 'school-default',
-      recipientEmail: email.toLowerCase().trim(),
-      recipientName: name,
-      recipientType: (role.toUpperCase() as any) || 'STUDENT',
-      templateKey: 'PASSWORD_RESET',
-      templateData: {
-        name,
-        school_name: schoolName,
-        reset_link: resetUrl,
-        role,
-        admission_number: admissionNumber || undefined
-      },
-      idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
-    });
-  } catch (err: any) {
-    console.warn(`[PasswordReset] Failed to queue email notification:`, err.message);
+  if (params.sendEmail !== false) {
+    try {
+      emailResult = await queueEmailNotification({
+        schoolId: schoolId || 'school-default',
+        recipientEmail: email.toLowerCase().trim(),
+        recipientName: name,
+        recipientType: (role.toUpperCase() as any) || 'STUDENT',
+        templateKey: 'PASSWORD_RESET',
+        templateData: {
+          name,
+          school_name: schoolName,
+          reset_link: resetUrl,
+          role,
+          admission_number: admissionNumber || undefined
+        },
+        idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
+      });
+    } catch (err: any) {
+      console.warn(`[PasswordReset] Failed to queue email notification:`, err.message);
+    }
   }
 
   return { token, resetUrl, emailResult };

@@ -1,7 +1,7 @@
-import {pool} from '../db';
-import { isTestSchool, isSameSchool } from '../utils/tenant';
+import { pool, isPostgresConfigured } from '../db';
+import { isSameSchool } from '../utils/tenant';
 import { collections, isFirebaseConfigured } from '../firebase';
-import { calculateWorkingCalendar } from './calendarService';
+import { memAttendanceSessions } from '../routes/teacher';
 
 export async function platformOverview(){
  const [schools,students,activeSubs,revenue,expired]=await Promise.all([
@@ -18,205 +18,380 @@ export async function platformOverview(){
  };
 }
 
-export async function schoolOverview(schoolId:string,from?:string,to?:string){
- const start=from||new Date(Date.now()-29*86400000).toISOString().slice(0,10);
- const end=to||new Date().toISOString().slice(0,10);
- const isTest = isTestSchool(schoolId);
+export async function schoolOverview(
+  schoolId: string, 
+  from?: string, 
+  to?: string,
+  classId?: string,
+  sectionId?: string
+) {
+  // Use Indian Standard Time (Asia/Kolkata) as school baseline date
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  const end = (to && to.trim()) ? to.trim() : todayStr;
 
- try {
-  const [daily,students,teachers,sessions,records]=await Promise.all([
-   pool.query(`SELECT snapshot_date,total_students,total_teachers,attendance_percentage,present_records,absent_records
-    FROM analytics_daily_snapshots WHERE school_id=$1 AND snapshot_date BETWEEN $2 AND $3 ORDER BY snapshot_date`,[schoolId,start,end]),
-   pool.query(`SELECT COUNT(*)::int count FROM students WHERE school_id=$1 AND is_active=true`,[schoolId]),
-   pool.query(`SELECT COUNT(*)::int count FROM users WHERE school_id=$1 AND role='TEACHER' AND is_active=true`,[schoolId]),
-   pool.query(`SELECT COUNT(*)::int count FROM attendance_sessions WHERE school_id=$1 AND attendance_date BETWEEN $2 AND $3`,[schoolId,start,end]),
-   pool.query(`SELECT COUNT(*) FILTER(WHERE ar.is_present=true)::int present, COUNT(*) FILTER(WHERE ar.is_present=false)::int absent
-    FROM attendance_records ar JOIN attendance_sessions s ON s.id=ar.attendance_session_id
-    WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3`,[schoolId,start,end])
-  ]);
-  const p=records.rows[0]; const total=(p?.present||0)+(p?.absent||0);
-  const pct = total ? Number(((p.present/total)*100).toFixed(1)) : 0;
-
-  if ((daily?.rowCount || 0) > 0 || total > 0 || (((students.rows[0]?.count as number) || 0) > 0 && !isTest)) {
-    return {
-      from: start,
-      to: end,
-      totalStudents: students.rows[0]?.count || 0,
-      totalTeachers: teachers.rows[0]?.count || 0,
-      attendanceSessions: sessions.rows[0]?.count || 0,
-      presentRecords: p?.present || 0,
-      absentRecords: p?.absent || 0,
-      attendancePercentage: pct,
-      daily: daily.rows || [],
-      classBreakdown: [],
-      lowAttendanceCount: 0,
-      lowAttendanceStudents: []
-    };
+  // Build strictly continuous 14-day date list ending on `end` (14 days = 14 bars)
+  const [eY, eM, eD] = end.split('-').map(Number);
+  const fourteenDaysList: string[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const dt = new Date(eY, eM - 1, eD - i);
+    const yStr = dt.getFullYear();
+    const mStr = String(dt.getMonth() + 1).padStart(2, '0');
+    const dStr = String(dt.getDate()).padStart(2, '0');
+    fourteenDaysList.push(`${yStr}-${mStr}-${dStr}`);
   }
+  const fourteenDaysAgo = fourteenDaysList[0];
+  const startDt = new Date(eY, eM - 1, eD - 29);
+  const start = (from && from.trim()) ? from.trim() : `${startDt.getFullYear()}-${String(startDt.getMonth() + 1).padStart(2, '0')}-${String(startDt.getDate()).padStart(2, '0')}`;
+  const filterClass = (classId || '').trim();
+  const filterSection = (sectionId || '').trim();
 
-  if (!isTest) {
-    throw new Error('Fallback to clean multi-tenant response');
-  }
+  let totalStudents = 0;
+  let totalTeachers = 0;
+  let attendanceSessions = 0;
+  let todayPresent = 0;
+  let todayAbsent = 0;
+  let presentRecords = 0;
+  let absentRecords = 0;
+  let attendancePercentage = 0;
+  let daily: any[] = [];
+  let classBreakdown: any[] = [];
+  let lowAttendanceStudents: any[] = [];
+  let classes: any[] = [];
+  let sections: any[] = [];
 
-  const mockDaily = [];
-  try {
-    const fourteenDaysAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const cal = await calculateWorkingCalendar(schoolId, fourteenDaysAgo, todayStr);
-    for (let i = 0; i < cal.breakdown.length; i++) {
-      const day = cal.breakdown[i];
-      if (day.workingWeight > 0) { // Only instructional working days
-        const basePresent = 42 + Math.floor(Math.sin(i) * 5);
-        const baseAbsent = Math.max(1, 5 - Math.floor(Math.sin(i) * 2));
-        const pTotal = basePresent + baseAbsent;
-        mockDaily.push({
-          snapshot_date: day.date,
-          present_records: basePresent,
-          absent_records: baseAbsent,
-          total_students: 50,
-          total_teachers: 5,
-          attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
-        });
-      }
-    }
-  } catch {
-    // Fallback if calendar lookup fails
-  }
-
-  const classBreakdown = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
-    classNumber: n,
-    className: `Class ${n}`,
-    present: 45 + (n % 4) * 2,
-    absent: 3 + (n % 3),
-    percentage: Number((88 + (n % 10) * 1.1).toFixed(1))
-  }));
-
-  const lowAttendanceStudents = [
-    { id: 'st-04', name: 'Ananya Sen', roll_number: '4', class_name: 'Class 8', section_name: 'B', attendance_rate: 68.5, absent_days: 7, parent_name: 'Subhash Sen', parent_phone: '9876543213', parent_email: 'subhash.sen@example.com' },
-    { id: 'st-07', name: 'Karan Patel', roll_number: '7', class_name: 'Class 9', section_name: 'A', attendance_rate: 71.0, absent_days: 6, parent_name: 'Vijay Patel', parent_phone: '9876543216', parent_email: 'vijay.p@example.com' }
-  ];
-
-  return {
-    from: start,
-    to: end,
-    totalStudents: students.rows[0]?.count || 10,
-    totalTeachers: teachers.rows[0]?.count || 2,
-    attendanceSessions: sessions.rows[0]?.count || 12,
-    presentRecords: p?.present || 88,
-    absentRecords: p?.absent || 10,
-    attendancePercentage: total ? pct : 89.8,
-    daily: daily.rowCount ? daily.rows : mockDaily,
-    classBreakdown,
-    lowAttendanceCount: lowAttendanceStudents.length,
-    lowAttendanceStudents
-  };
- } catch {
-  // Try Firestore for real school data
-  let studentCount = 0;
-  let teacherCount = 0;
-  let sessionCount = 0;
-
-  if (isFirebaseConfigured() && schoolId) {
+  if (isPostgresConfigured && schoolId) {
     try {
-      const [stSnap, tchSnap, sessSnap] = await Promise.all([
-        collections.students().get(),
-        collections.teachers().get(),
-        collections.attendanceSessions().get()
+      const [
+        studentsRes,
+        teachersRes,
+        sessionsCountRes,
+        recordsRes,
+        todayAttendanceRes,
+        dailyRes,
+        classRes,
+        atRiskRes,
+        classesRes,
+        sectionsRes
+      ] = await Promise.all([
+        // 1. Total Active Students
+        pool.query(`SELECT COUNT(*)::int count FROM students WHERE school_id=$1 AND is_active=true`, [schoolId])
+          .catch(() => ({ rows: [{ count: 0 }] })),
+
+        // 2. Total Active Teachers
+        pool.query(`SELECT COUNT(*)::int count FROM users WHERE school_id=$1 AND role='TEACHER' AND is_active=true`, [schoolId])
+          .catch(() => ({ rows: [{ count: 0 }] })),
+
+        // 3. Attendance Sessions in requested period
+        pool.query(`SELECT COUNT(*)::int count FROM attendance_sessions WHERE school_id=$1 AND attendance_date BETWEEN $2 AND $3`, [schoolId, start, end])
+          .catch(() => ({ rows: [{ count: 0 }] })),
+
+        // 4. Period records: present vs absent
+        pool.query(`SELECT 
+          COUNT(*) FILTER(WHERE ar.is_present=true OR ar.status='PRESENT')::int present, 
+          COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent
+          FROM attendance_records ar 
+          JOIN attendance_sessions s ON s.id=ar.attendance_session_id
+          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3`, [schoolId, start, end])
+          .catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
+
+        // 5. Today's attendance (Real-time live metric)
+        pool.query(`SELECT 
+          COUNT(*) FILTER(WHERE ar.is_present=true OR ar.status='PRESENT')::int present, 
+          COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent
+          FROM attendance_records ar 
+          JOIN attendance_sessions s ON s.id=ar.attendance_session_id
+          WHERE s.school_id=$1 AND s.attendance_date = $2`, [schoolId, todayStr])
+          .catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
+
+        // 6. 14-Day Attendance Rhythm / Trend (filtered by class & section if provided)
+        pool.query(`SELECT 
+          to_char(s.attendance_date, 'YYYY-MM-DD') as snapshot_date,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.present_count > 0 OR s.absent_count > 0 THEN s.present_count
+              ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND (ar.is_present = true OR ar.status = 'PRESENT'))
+            END
+          ), 0)::int as present_records,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.present_count > 0 OR s.absent_count > 0 THEN s.absent_count
+              ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND (ar.is_present = false OR ar.status = 'ABSENT') AND ar.status != 'LEFT_EARLY')
+            END
+          ), 0)::int as absent_records,
+          COALESCE(SUM(
+            CASE 
+              WHEN s.total_count > 0 THEN s.total_count
+              ELSE (s.present_count + s.absent_count)
+            END
+          ), 0)::int as total_students
+          FROM attendance_sessions s
+          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3
+            AND ($4 = '' OR s.class_id::text = $4 OR s.class_number::text = $4)
+            AND ($5 = '' OR s.section_id::text = $5 OR LOWER(s.section_name) = LOWER($5))
+          GROUP BY to_char(s.attendance_date, 'YYYY-MM-DD')
+          ORDER BY snapshot_date ASC`, [schoolId, fourteenDaysAgo, end, filterClass, filterSection])
+          .catch(() => ({ rows: [] })),
+
+        // 7. Class-wise distribution
+        pool.query(`SELECT 
+          s.class_number,
+          COALESCE(s.class_number::text, 'Class') as class_name,
+          COALESCE(SUM(s.present_count), 0)::int as present,
+          COALESCE(SUM(s.absent_count), 0)::int as absent,
+          COALESCE(SUM(s.total_count), 0)::int as total
+          FROM attendance_sessions s
+          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3 AND s.class_number IS NOT NULL
+          GROUP BY s.class_number
+          ORDER BY s.class_number ASC`, [schoolId, start, end])
+          .catch(() => ({ rows: [] })),
+
+        // 8. At-risk students (< 75% attendance in 14-day window, filtered by class & section)
+        pool.query(`SELECT 
+          st.id,
+          st.name,
+          st.roll_number,
+          c.class_number,
+          sec.name as section_name,
+          st.parent_name,
+          st.parent_sms_number as parent_phone,
+          st.parent_email,
+          COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int as present_days,
+          COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int as absent_days,
+          COUNT(*)::int as total_sessions
+          FROM students st
+          LEFT JOIN classes c ON c.id = st.class_id
+          LEFT JOIN sections sec ON sec.id = st.section_id
+          JOIN attendance_records ar ON ar.student_id = st.id
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          WHERE st.school_id = $1 AND st.is_active = true
+            AND s.attendance_date >= $2
+            AND ($3 = '' OR s.class_id::text = $3 OR s.class_number::text = $3 OR st.class_id::text = $3 OR c.class_number::text = $3)
+            AND ($4 = '' OR s.section_id::text = $4 OR LOWER(s.section_name) = LOWER($4) OR st.section_id::text = $4 OR LOWER(sec.name) = LOWER($4))
+          GROUP BY st.id, st.name, st.roll_number, c.class_number, sec.name, st.parent_name, st.parent_sms_number, st.parent_email`, [schoolId, fourteenDaysAgo, filterClass, filterSection])
+          .catch(() => ({ rows: [] })),
+
+        // 9. All classes in school
+        pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 ORDER BY class_number ASC`, [schoolId])
+          .catch(() => ({ rows: [] })),
+
+        // 10. All sections in school
+        pool.query(`SELECT id, class_id, name FROM sections WHERE school_id=$1 ORDER BY name ASC`, [schoolId])
+          .catch(() => ({ rows: [] }))
       ]);
-      if (!stSnap.empty) {
-        studentCount = stSnap.docs.filter(d => {
-          const dt = d.data();
-          const sid = dt.school_id || dt.schoolId;
-          return sid && isSameSchool(sid, schoolId) && dt.is_active !== false;
-        }).length;
-      }
-      if (!tchSnap.empty) {
-        teacherCount = tchSnap.docs.filter(d => {
-          const dt = d.data();
-          const sid = dt.school_id || dt.schoolId;
-          return sid && isSameSchool(sid, schoolId) && dt.is_active !== false;
-        }).length;
-      }
-      if (!sessSnap.empty) {
-        sessionCount = sessSnap.docs.filter(d => {
-          const dt = d.data();
-          const sid = dt.school_id || dt.schoolId;
-          return sid && isSameSchool(sid, schoolId);
-        }).length;
-      }
-    } catch {}
-  }
 
-  if (!isTest) {
-    return {
-      from: start,
-      to: end,
-      totalStudents: studentCount,
-      totalTeachers: teacherCount,
-      attendanceSessions: sessionCount,
-      presentRecords: 0,
-      absentRecords: 0,
-      attendancePercentage: 0,
-      daily: [],
-      classBreakdown: [],
-      lowAttendanceCount: 0,
-      lowAttendanceStudents: []
-    };
-  }
+      classes = classesRes.rows || [];
+      sections = sectionsRes.rows || [];
 
-  const mockDaily = [];
-  try {
-    const fourteenDaysAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const cal = await calculateWorkingCalendar(schoolId, fourteenDaysAgo, todayStr);
-    for (let i = 0; i < cal.breakdown.length; i++) {
-      const day = cal.breakdown[i];
-      if (day.workingWeight > 0) { // Only instructional working days
-        const basePresent = 44 + Math.floor(Math.cos(i) * 4);
-        const baseAbsent = Math.max(1, 4 - Math.floor(Math.cos(i) * 2));
-        const pTotal = basePresent + baseAbsent;
-        mockDaily.push({
-          snapshot_date: day.date,
-          present_records: basePresent,
-          absent_records: baseAbsent,
-          total_students: 50,
-          total_teachers: 4,
-          attendance_percentage: Number(((basePresent / pTotal) * 100).toFixed(1))
+      if (classes.length === 0) {
+        const distinctClasses = await pool.query(
+          `SELECT DISTINCT class_id as id, class_number FROM attendance_sessions WHERE school_id=$1 AND class_number IS NOT NULL ORDER BY class_number ASC`,
+          [schoolId]
+        ).catch(() => ({ rows: [] }));
+        classes = distinctClasses.rows || [];
+      }
+      if (sections.length === 0) {
+        const distinctSections = await pool.query(
+          `SELECT DISTINCT section_id as id, class_id, section_name as name FROM attendance_sessions WHERE school_id=$1 AND section_name IS NOT NULL ORDER BY section_name ASC`,
+          [schoolId]
+        ).catch(() => ({ rows: [] }));
+        sections = distinctSections.rows || [];
+      }
+
+      totalStudents = studentsRes.rows[0]?.count || 0;
+      totalTeachers = teachersRes.rows[0]?.count || 0;
+      attendanceSessions = sessionsCountRes.rows[0]?.count || 0;
+      presentRecords = recordsRes.rows[0]?.present || 0;
+      absentRecords = recordsRes.rows[0]?.absent || 0;
+      todayPresent = todayAttendanceRes.rows[0]?.present || 0;
+      todayAbsent = todayAttendanceRes.rows[0]?.absent || 0;
+
+      // If today records in attendance_records were 0, check if attendance_sessions has counts for today
+      if (todayPresent === 0 && todayAbsent === 0) {
+        const sessToday = await pool.query(
+          `SELECT COALESCE(SUM(present_count), 0)::int as present, COALESCE(SUM(absent_count), 0)::int as absent 
+           FROM attendance_sessions WHERE school_id=$1 AND attendance_date=$2`,
+          [schoolId, todayStr]
+        ).catch(() => ({ rows: [{ present: 0, absent: 0 }] }));
+        todayPresent = sessToday.rows[0]?.present || 0;
+        todayAbsent = sessToday.rows[0]?.absent || 0;
+      }
+
+      // If period records were 0, check attendance_sessions
+      if (presentRecords === 0 && absentRecords === 0) {
+        const sessPeriod = await pool.query(
+          `SELECT COALESCE(SUM(present_count), 0)::int as present, COALESCE(SUM(absent_count), 0)::int as absent 
+           FROM attendance_sessions WHERE school_id=$1 AND attendance_date BETWEEN $2 AND $3`,
+          [schoolId, start, end]
+        ).catch(() => ({ rows: [{ present: 0, absent: 0 }] }));
+        presentRecords = sessPeriod.rows[0]?.present || 0;
+        absentRecords = sessPeriod.rows[0]?.absent || 0;
+      }
+
+      // Build date lookup map for 14-day daily rhythm from real-time DB rows
+      const dbDateMap = new Map<string, { present: number; absent: number; total: number }>();
+      for (const r of dailyRes.rows) {
+        const dStr = String(r.snapshot_date).slice(0, 10);
+        dbDateMap.set(dStr, {
+          present: Number(r.present_records || 0),
+          absent: Number(r.absent_records || 0),
+          total: Number(r.total_students || 0)
         });
       }
+
+      // Format 14-day daily rhythm ensuring all 14 consecutive calendar days are present (14 bars)
+      daily = fourteenDaysList.map(dateKey => {
+        const row = dbDateMap.get(dateKey);
+        if (row && (row.present > 0 || row.absent > 0 || row.total > 0)) {
+          const p = row.present;
+          const a = row.absent;
+          const tot = (p + a) > 0 ? (p + a) : row.total;
+          const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+          return {
+            snapshot_date: dateKey,
+            present_records: p,
+            absent_records: a,
+            total_students: row.total > 0 ? row.total : tot,
+            attendance_percentage: pct,
+            has_attendance: true
+          };
+        }
+        return {
+          snapshot_date: dateKey,
+          present_records: 0,
+          absent_records: 0,
+          total_students: 0,
+          attendance_percentage: 0,
+          has_attendance: false
+        };
+      });
+
+      // Format class breakdown
+      classBreakdown = classRes.rows.map(r => {
+        const p = r.present || 0;
+        const a = r.absent || 0;
+        const tot = p + a;
+        const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+        const cNum = Number(r.class_number);
+        const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : `Class ${r.class_number}`;
+        return {
+          classNumber: r.class_number,
+          className: cName,
+          present: p,
+          absent: a,
+          total: tot,
+          percentage: pct
+        };
+      });
+
+      // Format at-risk students
+      lowAttendanceStudents = atRiskRes.rows
+        .map(st => {
+          const rate = st.total_sessions > 0
+            ? Number(((st.present_days / st.total_sessions) * 100).toFixed(1))
+            : 0;
+          const cNum = st.class_number !== null && st.class_number !== undefined ? Number(st.class_number) : null;
+          const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : (cNum !== null ? `Class ${cNum}` : '—');
+          return {
+            id: st.id,
+            name: st.name,
+            roll_number: st.roll_number || '—',
+            class_name: cName,
+            section_name: st.section_name || 'A',
+            attendance_rate: rate,
+            absent_days: st.absent_days || 0,
+            total_sessions: st.total_sessions || 0,
+            parent_name: st.parent_name || 'Parent/Guardian',
+            parent_phone: st.parent_phone || '—',
+            parent_email: st.parent_email || ''
+          };
+        })
+        .filter(st => st.total_sessions > 0 && st.attendance_rate < 75)
+        .sort((a, b) => a.attendance_rate - b.attendance_rate);
+
+      classes = (classes.length > 0 ? classes : classesRes.rows || []).map((c: any) => {
+        const num = Number(c.class_number);
+        const lbl = num === -1 ? 'Class L-KG' : num === 0 ? 'Class U-KG' : `Class ${c.class_number}`;
+        return {
+          ...c,
+          name: lbl,
+          label: lbl
+        };
+      });
+
+    } catch (err: any) {
+      console.warn('[AnalyticsService] Postgres query error:', err.message);
     }
-  } catch {
-    // Fallback if calendar lookup fails
   }
 
-  const classBreakdown = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({
-    classNumber: n,
-    className: `Class ${n}`,
-    present: 42 + (n % 4) * 2,
-    absent: 3 + (n % 3),
-    percentage: Number((88 + (n % 8) * 1.2).toFixed(1))
-  }));
+  // Also integrate / reconcile with in-memory sessions if any exist (e.g. freshly taken attendance or memory mode)
+  try {
+    const memSchoolSessions = memAttendanceSessions.filter(s => isSameSchool(s.schoolId || s.school_id, schoolId));
+    if (memSchoolSessions.length > 0) {
+      const memTodaySessions = memSchoolSessions.filter(s => (s.attendanceDate || s.attendance_date) === todayStr);
+      if (memTodaySessions.length > 0) {
+        const memTodayPres = memTodaySessions.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
+        const memTodayAbs = memTodaySessions.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
+        // If Postgres didn't have today's sessions yet or memory has newer
+        if (todayPresent === 0 && todayAbsent === 0) {
+          todayPresent = memTodayPres;
+          todayAbsent = memTodayAbs;
+        }
+      }
 
-  const lowAttendanceStudents = [
-    { id: 'st-04', name: 'Ananya Sen', roll_number: '4', class_name: 'Class 8', section_name: 'B', attendance_rate: 68.5, absent_days: 7, parent_name: 'Subhash Sen', parent_phone: '9876543213', parent_email: 'subhash.sen@example.com' },
-    { id: 'st-07', name: 'Karan Patel', roll_number: '7', class_name: 'Class 9', section_name: 'A', attendance_rate: 71.0, absent_days: 6, parent_name: 'Vijay Patel', parent_phone: '9876543216', parent_email: 'vijay.p@example.com' }
-  ];
+      // Reconcile daily 14-day rhythm if in-memory session has recent data
+      daily = daily.map(d => {
+        if (!d.has_attendance) {
+          const memMatch = memSchoolSessions.filter(s => 
+            (s.attendanceDate || s.attendance_date) === d.snapshot_date &&
+            (!filterClass || s.classId === filterClass || String(s.classNumber) === filterClass) &&
+            (!filterSection || s.sectionId === filterSection || s.sectionName === filterSection)
+          );
+          if (memMatch.length > 0) {
+            const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
+            const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
+            const tot = p + a;
+            const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+            return {
+              ...d,
+              present_records: p,
+              absent_records: a,
+              total_students: tot,
+              attendance_percentage: pct,
+              has_attendance: tot > 0
+            };
+          }
+        }
+        return d;
+      });
+    }
+  } catch {}
+
+  // Calculate real average attendance percentage
+  const totalRecords = presentRecords + absentRecords;
+  attendancePercentage = totalRecords > 0
+    ? Number(((presentRecords / totalRecords) * 100).toFixed(1))
+    : 0;
 
   return {
     from: start,
     to: end,
-    totalStudents: studentCount || 10,
-    totalTeachers: teacherCount || 2,
-    attendanceSessions: sessionCount || 14,
-    presentRecords: 92,
-    absentRecords: 8,
-    attendancePercentage: 92.0,
-    daily: mockDaily,
+    totalStudents,
+    totalTeachers,
+    attendanceSessions,
+    todayPresent,
+    todayAbsent,
+    presentRecords,
+    absentRecords,
+    attendancePercentage,
+    daily,
     classBreakdown,
     lowAttendanceCount: lowAttendanceStudents.length,
-    lowAttendanceStudents
+    lowAttendanceStudents,
+    classes,
+    sections,
+    filterClass,
+    filterSection
   };
- }
 }
 
 export async function schoolRankings(limit=20){
@@ -237,7 +412,7 @@ export async function buildDailySnapshot(schoolId:string,date:string){
  const activeStudents=(await pool.query(`SELECT COUNT(*)::int count FROM students WHERE school_id=$1 AND COALESCE(is_active,TRUE)=TRUE`,[schoolId])).rows[0].count;
  const teachers=(await pool.query(`SELECT COUNT(*)::int count FROM users WHERE school_id=$1 AND role='TEACHER'`,[schoolId])).rows[0].count;
  const sessions=(await pool.query(`SELECT COUNT(*)::int count FROM attendance_sessions WHERE school_id=$1 AND attendance_date=$2`,[schoolId,date])).rows[0].count;
- const rec=(await pool.query(`SELECT COUNT(*) FILTER(WHERE ar.status='PRESENT')::int present,COUNT(*) FILTER(WHERE ar.status='ABSENT')::int absent
+ const rec=(await pool.query(`SELECT COUNT(*) FILTER(WHERE ar.status='PRESENT' OR ar.is_present=true)::int present,COUNT(*) FILTER(WHERE ar.status='ABSENT' OR ar.is_present=false)::int absent
   FROM attendance_records ar JOIN attendance_sessions s ON s.id=ar.attendance_session_id WHERE s.school_id=$1 AND s.attendance_date=$2`,[schoolId,date])).rows[0];
  const total=(rec.present||0)+(rec.absent||0), pct=total?Number(((rec.present/total)*100).toFixed(2)):0;
  const sub=(await pool.query(`SELECT EXISTS(SELECT 1 FROM school_subscriptions WHERE school_id=$1 AND status IN ('ACTIVE','GRACE')) ok`,[schoolId])).rows[0].ok;

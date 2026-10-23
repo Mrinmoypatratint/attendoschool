@@ -35,6 +35,9 @@ import {
   normalizeRollNumber,
   normalizeEmail
 } from '../utils/studentValidation';
+import { normalizeGender } from '../utils/gender';
+import { invalidateDashboardCache } from './dashboard';
+import { clearStudentDashboardCache } from '../services/studentService';
 
 const isUuid = (val: any): boolean => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
@@ -99,8 +102,8 @@ export function isSameSession(s1?: string | null, s2?: string | null): boolean {
 
 // Class grades: Class-L-KG (id: cls-lkg, class_number: -1), U-KG (id: cls-ukg, class_number: 0), Class 1-12
 export const CLASS_GRADES = [
-  { id: 'cls-lkg', class_number: -1, label: 'Class-L-KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class-U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
   ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
@@ -661,7 +664,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         parent_email: st.parent_email,
         parent_phone: st.parent_sms_number,
         parentPhone: st.parent_sms_number,
-        gender: st.gender || 'Not Specified',
+        gender: normalizeGender(st.gender) || 'Not Specified',
         date_of_birth: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
         dob: st.date_of_birth ? new Date(st.date_of_birth).toISOString().slice(0, 10) : '',
         address: st.address || '',
@@ -713,7 +716,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
           parent_email: dt.parent_email || dt.parentEmail || '',
           student_email: dt.student_email || dt.studentEmail || dt.email || '',
           email: dt.email || dt.student_email || '',
-          gender: dt.gender || '',
+          gender: normalizeGender(dt.gender) || '',
           class_id: dt.class_id || dt.classId || 'cls-1',
           class_number: (() => {
             const cId = String(dt.class_id || dt.classId || '');
@@ -822,7 +825,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const parentName = b.parentName || b.parent_name || b.guardianName || b.guardian_name || '';
   const parentSmsNumber = b.parentSmsNumber || b.parentPhone || b.parent_phone || b.parent_sms_number || b.phone || '';
   const dob = b.dob || b.dateOfBirth || b.date_of_birth || null;
-  const gender = b.gender || null;
+  const gender = normalizeGender(b.gender);
   const address = b.address || null;
   const classId = b.classId || b.class_id;
   const sectionId = b.sectionId || b.section_id;
@@ -926,6 +929,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     secName = 'A';
   }
   let resetInfo: any = null;
+  let welcomeEmailSent = false;
   let realClassId = classId;
   let realSectionId = sectionId;
   const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(classId));
@@ -1036,7 +1040,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
             userId: linkedUserId || undefined,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             const isParent = loginOpt === 'PARENT';
@@ -1057,6 +1062,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
             }).catch(() => {});
+            welcomeEmailSent = true;
           }
         } catch (e: any) {
           console.warn('[StudentEnrollment] Failed to send student reset email:', e.message);
@@ -1119,6 +1125,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
           date_of_birth, gender, address
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+
         RETURNING *`,
         [
           schoolId,
@@ -1189,50 +1196,56 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     }
   }
 
- // Demo In-Memory Fallback
- const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
- if (targetLoginEmail && loginOpt !== 'NONE' && sendInviteEmail) {
-   try {
-     resetInfo = await createAndSendPasswordReset({
-       email: targetLoginEmail,
-       name,
-       role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
-       schoolId: req.user?.schoolId || undefined,
-       schoolName: req.user?.schoolName || 'School',
-       req
-     });
-     registerDemoUser({
-       id: `usr-st-${Date.now()}`,
-       schoolId: req.user!.schoolId,
-       name,
-       email: targetLoginEmail,
-       role: 'STUDENT',
-       password: 'ChangeMe123!'
-     });
-     if (resetInfo?.resetUrl) {
-       const isParent = loginOpt === 'PARENT';
-       queueEmailNotification({
-         schoolId: req.user?.schoolId || 'school-default',
-         recipientEmail: targetLoginEmail,
-         recipientName: isParent ? (parentName || 'Parent') : name,
-         recipientType: isParent ? 'PARENT' : 'STUDENT',
-         templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
-         templateData: {
-           student_name: name,
-           school_name: req.user?.schoolName || 'School',
-           admission_number: cleanAdmissionNumber || '—',
-           class_name: String(clsNum),
-           section_name: secName,
-           roll_number: String(rollNumber || '—'),
-           reset_link: resetInfo.resetUrl
-         },
-         idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
-       }).catch(() => {});
-     }
-   } catch {}
- } else if (!targetLoginEmail) {
-   console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
- }
+  // Demo In-Memory Fallback
+  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
+  if (targetLoginEmail && loginOpt !== 'NONE') {
+    registerDemoUser({
+      id: `usr-st-${Date.now()}`,
+      schoolId: req.user!.schoolId,
+      name,
+      email: targetLoginEmail,
+      role: 'STUDENT',
+      password: 'ChangeMe123!'
+    });
+    if (!welcomeEmailSent && sendInviteEmail) {
+      try {
+        if (!resetInfo) {
+          resetInfo = await createAndSendPasswordReset({
+            email: targetLoginEmail,
+            name,
+            role: loginOpt === 'PARENT' ? 'PARENT' : 'STUDENT',
+            schoolId: req.user?.schoolId || undefined,
+            schoolName: req.user?.schoolName || 'School',
+            req,
+            sendEmail: false
+          });
+        }
+        if (resetInfo?.resetUrl) {
+          const isParent = loginOpt === 'PARENT';
+          queueEmailNotification({
+            schoolId: req.user?.schoolId || 'school-default',
+            recipientEmail: targetLoginEmail,
+            recipientName: isParent ? (parentName || 'Parent') : name,
+            recipientType: isParent ? 'PARENT' : 'STUDENT',
+            templateKey: isParent ? 'PARENT_CREATED' : 'STUDENT_CREATED',
+            templateData: {
+              student_name: name,
+              school_name: req.user?.schoolName || 'School',
+              admission_number: cleanAdmissionNumber || '—',
+              class_name: String(clsNum),
+              section_name: secName,
+              roll_number: String(rollNumber || '—'),
+              reset_link: resetInfo.resetUrl
+            },
+            idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
+          }).catch(() => {});
+          welcomeEmailSent = true;
+        }
+      } catch {}
+    }
+  } else if (!targetLoginEmail) {
+    console.log(`[StudentEnrollment] SKIPPED email notification - No email address provided for student "${name}" (Roll: ${rollNumber})`);
+  }
 
  const newStudent = {
    id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1514,7 +1527,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
     const parentEmail = String(st.parentEmail || st['Parent Email'] || st.parent_email || '').trim();
     const studentEmail = String(st.studentEmail || st['Student Email'] || st.email || '').trim();
-    const gender = String(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '').trim() || null;
+    const gender = normalizeGender(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '');
 
     // Class/section resolution from in-memory preloaded maps
     const rawClassVal = (st.classNumber !== undefined && st.classNumber !== null && st.classNumber !== '') 
@@ -1644,6 +1657,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
             )
             VALUES ${valuesChunks.join(', ')}
+
             RETURNING *
           `;
 
@@ -1710,7 +1724,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                   role: isParent ? 'PARENT' : 'STUDENT',
                   schoolId: schoolId || undefined,
                   schoolName: req.user?.schoolName || 'School',
-                  req
+                  req,
+                  sendEmail: false
                 }).then(resetInfo => {
                   if (resetInfo?.resetUrl) {
                     queueEmailNotification({
@@ -1925,6 +1940,7 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
       const row = q.rows[0];
       return res.json({
         ...row,
+        gender: normalizeGender(row.gender) || '',
         is_active: row.is_active !== false,
         status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       });
@@ -2078,7 +2094,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
       }
     }
 
-    const cleanGender = gender !== undefined ? (gender || null) : null;
+    const cleanGender = gender !== undefined ? normalizeGender(gender) : null;
     const cleanDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
     const cleanAddress = address !== undefined ? (address || null) : null;
 
@@ -2674,7 +2690,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             userId: u.rows[0].id,
             schoolId: req.user?.schoolId || undefined,
             schoolName: req.user?.schoolName || 'School',
-            req
+            req,
+            sendEmail: false
           });
           if (resetInfo?.resetUrl) {
             await queueEmailNotification({
@@ -2740,7 +2757,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         role: 'TEACHER',
         schoolId: req.user?.schoolId || undefined,
         schoolName: req.user?.schoolName || 'School',
-        req
+        req,
+        sendEmail: false
       });
       if (resetInfo?.resetUrl) {
         await queueEmailNotification({
@@ -3080,7 +3098,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
               role: 'TEACHER',
               schoolId,
               schoolName,
-              req
+              req,
+              sendEmail: false
             }).catch(() => null);
 
             await queueEmailNotification({
@@ -3495,13 +3514,14 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
   if (q.rowCount) {
     const created = { ...q.rows[0], school_id: sid };
     demoSubjects.push(created);
-    syncSubjectToFirestore(created).catch(() => {});
+    if (sid) fastCache.delete(`subjects:${sid}`);
     return res.status(201).json(created);
   }
  } catch {}
  const newSub = { id: `sub-${Date.now()}`, name: cleanName, school_id: sid };
  demoSubjects.push(newSub);
  syncSubjectToFirestore(newSub).catch(() => {});
+ if (sid) fastCache.delete(`subjects:${sid}`);
  res.status(201).json(newSub);
 });
 
@@ -3514,6 +3534,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
       await client.query('BEGIN');
       await client.query('DELETE FROM class_routines WHERE subject_id = $1', [subId]);
       await client.query('UPDATE attendance_sessions SET subject_id = NULL WHERE subject_id = $1', [subId]);
+      await client.query('DELETE FROM timetable_entries WHERE subject_id = $1', [subId]);
       await client.query('DELETE FROM subjects WHERE id = $1 AND school_id = $2', [subId, sid]);
       await client.query('COMMIT');
     } catch (delErr: any) {
@@ -3528,6 +3549,7 @@ r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
   if (idx >= 0) demoSubjects.splice(idx, 1);
   deleteSubjectFromFirestore(subId).catch(() => {});
   if (sid) {
+    fastCache.delete(`subjects:${sid}`);
     invalidateSchoolCache(sid);
   }
   res.json({success:true});
@@ -3552,12 +3574,13 @@ r.get('/school-profile',...admin,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, photo_url, created_at FROM schools WHERE id = $1', [sid]);
+  const q = await pool.query('SELECT id, name, code, status, enquiry_number, address, photo_url, website, created_at FROM schools WHERE id = $1', [sid]);
   if (q.rowCount) {
     const s = q.rows[0];
     const resolvedPhoto = adminPhotoUrl || s.photo_url || '';
     return res.json({
       ...s,
+      website: s.website || '',
       photo_url: resolvedPhoto,
       photoUrl: resolvedPhoto,
       schoolName: s.name,
@@ -3610,8 +3633,71 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
  const sid = req.user!.schoolId!;
  const uid = req.user!.id;
  const { enquiryNumber, contact_number, address, website, photo_url, photoUrl, photo } = req.body || {};
- const phone = contact_number || enquiryNumber;
+ const rawPhone = contact_number !== undefined ? contact_number : enquiryNumber;
  const incomingPhoto = photo_url !== undefined ? photo_url : (photoUrl !== undefined ? photoUrl : photo);
+
+ let normalizedPhone: string | null | undefined = undefined;
+ if (rawPhone !== undefined) {
+   const trimmedPhone = String(rawPhone || '').trim();
+   if (trimmedPhone !== '') {
+     // Validate contact number: strictly numbers and standard phone formatting only (no words or alphabets)
+     const digitsOnly = trimmedPhone.replace(/\D/g, '');
+     const validPhoneFormat = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{4,18}$/.test(trimmedPhone);
+     if (!validPhoneFormat || digitsOnly.length < 6 || digitsOnly.length > 15) {
+       return res.status(400).json({
+         message: 'Invalid contact number. Must contain only numeric digits (e.g. +91 98765 43210 or 0343-2563500). Alphabets and words are not allowed.'
+       });
+     }
+     normalizedPhone = trimmedPhone;
+   } else {
+     normalizedPhone = null;
+   }
+ }
+
+ let normalizedWebsite: string | null | undefined = undefined;
+ if (website !== undefined) {
+   const trimmedWebsite = String(website || '').trim();
+   if (trimmedWebsite !== '') {
+     // Validate URL - strictly disallow plain arbitrary words (e.g. 'dav', 'school', 'test')
+     // Must be a valid domain or web URL with a recognized domain dot format
+     const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/i;
+     let isValid = urlPattern.test(trimmedWebsite);
+     if (isValid) {
+       try {
+         const withProto = trimmedWebsite.startsWith('http://') || trimmedWebsite.startsWith('https://')
+           ? trimmedWebsite
+           : `https://${trimmedWebsite}`;
+         const parsed = new URL(withProto);
+         isValid = !!parsed.hostname && parsed.hostname.includes('.');
+         normalizedWebsite = withProto;
+       } catch {
+         isValid = false;
+       }
+     }
+     if (!isValid) {
+       return res.status(400).json({
+         message: 'Invalid website link. Please enter a valid URL (e.g. https://davmodeldurgapur.org or davmodeldurgapur.org). Plain words are not allowed.'
+       });
+     }
+   } else {
+     normalizedWebsite = null;
+   }
+ }
+
+ let normalizedAddress: string | null | undefined = undefined;
+ if (address !== undefined) {
+   const trimmedAddress = String(address || '').trim();
+   if (trimmedAddress !== '') {
+     if (trimmedAddress.length < 50 || trimmedAddress.length > 1000) {
+       return res.status(400).json({
+         message: `Campus physical address word limit must be between 50 to 1000 (currently: ${trimmedAddress.length}).`
+       });
+     }
+     normalizedAddress = trimmedAddress;
+   } else {
+     normalizedAddress = null;
+   }
+ }
 
  if (incomingPhoto !== undefined) {
    updateDemoUserPhoto(uid, incomingPhoto || null);
@@ -3621,28 +3707,47 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
    } catch {}
  }
 
+ const hasPhoneUpdate = rawPhone !== undefined;
+ const hasWebsiteUpdate = website !== undefined;
+ const hasAddressUpdate = address !== undefined;
+
  try {
   const q = await pool.query(
-    'UPDATE schools SET enquiry_number = COALESCE($1, enquiry_number), address = COALESCE($2, address), photo_url = COALESCE($3, photo_url) WHERE id = $4 RETURNING id, name, code, status, enquiry_number, address, photo_url',
-    [phone, address, incomingPhoto !== undefined ? (incomingPhoto || null) : null, sid]
+    `UPDATE schools 
+     SET enquiry_number = CASE WHEN $1::boolean THEN $2::text ELSE enquiry_number END, 
+         address = CASE WHEN $3::boolean THEN $4::text ELSE address END, 
+         photo_url = COALESCE($5, photo_url),
+         website = CASE WHEN $6::boolean THEN $7::text ELSE website END,
+         updated_at = NOW() 
+     WHERE id = $8 
+     RETURNING id, name, code, status, enquiry_number, address, photo_url, website`,
+    [hasPhoneUpdate, normalizedPhone, hasAddressUpdate, normalizedAddress, incomingPhoto !== undefined ? (incomingPhoto || null) : null, hasWebsiteUpdate, normalizedWebsite, sid]
   );
   if (q.rowCount) {
-    syncSchoolToFirestore(q.rows[0]).catch(() => {});
+    const row = q.rows[0];
+    syncSchoolToFirestore(row).catch(() => {});
+    invalidateDashboardCache(sid);
+    clearStudentDashboardCache();
+    fastCache.deletePattern(`student:`);
+    fastCache.deletePattern(`teacher:`);
     return res.json({
-      ...q.rows[0],
-      photo_url: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url,
-      photoUrl: incomingPhoto !== undefined ? incomingPhoto : q.rows[0].photo_url
+      ...row,
+      website: row.website || '',
+      photo_url: incomingPhoto !== undefined ? incomingPhoto : row.photo_url,
+      photoUrl: incomingPhoto !== undefined ? incomingPhoto : row.photo_url
     });
   }
- } catch {}
+ } catch (err: any) {
+   console.error('[SchoolProfile] Update error:', err);
+ }
 
  try {
   if (isFirebaseConfigured()) {
     const updatePayload: any = {
-      phone,
-      enquiryNumber: phone,
-      address,
-      website: website || '',
+      phone: normalizedPhone,
+      enquiryNumber: normalizedPhone,
+      address: normalizedAddress,
+      website: normalizedWebsite || '',
       updatedAt: new Date().toISOString()
     };
     if (incomingPhoto !== undefined) {
@@ -3653,13 +3758,21 @@ r.put('/school-profile',...admin,async(req:AuthRequest,res)=>{
     if (incomingPhoto !== undefined && uid) {
       await collections.users().doc(uid).set({ photo_url: incomingPhoto, photoUrl: incomingPhoto }, { merge: true }).catch(() => {});
     }
+    invalidateDashboardCache(sid);
+    clearStudentDashboardCache();
+    fastCache.deletePattern(`student:`);
+    fastCache.deletePattern(`teacher:`);
     const updated = await getFirestoreSchoolById(sid);
-    if (updated) return res.json({ ...updated, photo_url: incomingPhoto, photoUrl: incomingPhoto });
+    if (updated) return res.json({ ...updated, photo_url: incomingPhoto, photoUrl: incomingPhoto, website: (updated as any).website || '' });
   }
  } catch {}
 
- const updatedSchool = { id: sid, enquiry_number: phone, address, website, photo_url: incomingPhoto, photoUrl: incomingPhoto };
+ const updatedSchool = { id: sid, enquiry_number: normalizedPhone, address: normalizedAddress, website: normalizedWebsite || '', photo_url: incomingPhoto, photoUrl: incomingPhoto };
  syncSchoolToFirestore(updatedSchool).catch(() => {});
+ invalidateDashboardCache(sid);
+ clearStudentDashboardCache();
+ fastCache.deletePattern(`student:`);
+ fastCache.deletePattern(`teacher:`);
  res.json(updatedSchool);
 });
 

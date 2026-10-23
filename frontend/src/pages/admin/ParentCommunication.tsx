@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, Send, CheckCircle2, CornerDownRight, Clock, AlertTriangle } from 'lucide-react';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export default function ParentCommunication() {
   const { user } = useAuth();
@@ -70,7 +71,7 @@ export default function ParentCommunication() {
       </div>
 
       {msg && (
-        <div style={{ padding: '10px 14px', marginBottom: 16, backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#b91c1c', fontSize: 13 }}>
+        <div style={{ padding: '10px 14px', marginBottom: 16, backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, color: '#ef4444', fontSize: 13 }}>
           {msg}
         </div>
       )}
@@ -104,18 +105,18 @@ export default function ParentCommunication() {
                   {x.priority === 'EMERGENCY' && <AlertTriangle size={12} />}
                   {x.priority}
                 </span>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>{x.title}</h3>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{x.title}</h3>
               </div>
               <span style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Clock size={12} /> {x.published_at ? new Date(x.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
               </span>
             </div>
 
-            <p style={{ margin: '10px 0 16px', lineHeight: 1.6, fontSize: 14, color: '#334155', whiteSpace: 'pre-wrap' }}>
+            <p style={{ margin: '10px 0 16px', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #334155)', whiteSpace: 'pre-wrap' }}>
               {x.message}
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: 12 }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 {!x.read_at && (
                   <button
@@ -169,22 +170,23 @@ export default function ParentCommunication() {
 
             {/* Success toast after reply */}
             {replySuccessId === x.id && (
-              <div style={{ marginTop: 12, padding: '8px 12px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 6, color: '#047857', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ marginTop: 12, padding: '8px 12px', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, color: '#10b981', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <CheckCircle2 size={14} /> Reply submitted successfully to school administration.
               </div>
             )}
 
             {/* Inline Interactive Reply Box */}
             {activeReplyId === x.id && (
-              <div style={{ marginTop: 14, backgroundColor: '#f8fafc', padding: 14, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+              <div style={{ marginTop: 14, backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 14, borderRadius: 6, border: '1px solid var(--border, #e2e8f0)' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <CornerDownRight size={13} color="#2563eb" /> Write a response to school administration:
                 </div>
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
                   value={replyText}
                   onChange={e => setReplyText(e.target.value)}
                   placeholder="Type your reply or acknowledgement here..."
+                  minHeight={60}
+                  maxHeight={200}
                   style={{
                     width: '100%',
                     padding: '8px 10px',
@@ -199,7 +201,7 @@ export default function ParentCommunication() {
                   <button
                     type="button"
                     onClick={() => setActiveReplyId(null)}
-                    style={{ padding: '6px 12px', fontSize: 12, borderRadius: 5, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', fontSize: 12, borderRadius: 5, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #ffffff)', color: 'var(--text)', cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
@@ -232,7 +234,7 @@ export default function ParentCommunication() {
       </div>
 
       {!items.length && !msg && (
-        <div style={{ padding: 40, textAlign: 'center', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, color: '#94a3b8' }}>
+        <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, color: 'var(--text-secondary, #94a3b8)' }}>
           No messages or announcements received yet.
         </div>
       )}

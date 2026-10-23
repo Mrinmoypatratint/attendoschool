@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
+import { normalizeGender } from '../utils/gender';
 
 export async function listStudents(schoolId: string, search = '', activeOnly = true) {
   const params: any[] = [schoolId];
@@ -19,7 +20,7 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
      ORDER BY c.name, sec.name, st.roll_number, st.name`,
     params
   );
-  return rows;
+  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '' }));
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {
@@ -81,7 +82,9 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   const fields: string[] = [];
   const values: any[] = [];
   for (const [k, v] of Object.entries(fieldMap)) {
-    values.push(v);
+    let val = v;
+    if (k === 'gender') val = normalizeGender(v);
+    values.push(val);
     fields.push(`${k}=$${values.length}`);
   }
 
@@ -174,7 +177,7 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
      ORDER BY u.name`,
     params
   );
-  return rows;
+  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '' }));
 }
 
 export async function updateTeacher(schoolId: string, id: string, body: any) {
@@ -205,7 +208,9 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     const values: any[] = [];
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(body, key)) {
-        values.push(body[key] === '' ? null : body[key]);
+        let val = body[key] === '' ? null : body[key];
+        if (key === 'gender') val = normalizeGender(val);
+        values.push(val);
         fields.push(`${key}=$${values.length}`);
       }
     }

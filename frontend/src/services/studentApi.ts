@@ -19,6 +19,11 @@ export interface StudentProfile {
   classNumber: number;
   sectionName: string;
   schoolName: string;
+  schoolPhotoUrl?: string | null;
+  school_photo_url?: string | null;
+  schoolWebsite?: string | null;
+  school_website?: string | null;
+  website?: string | null;
   parentName: string;
   parentPhone: string;
   parentEmail: string;
@@ -26,6 +31,7 @@ export interface StudentProfile {
   gender?: string;
   academicSession: string;
   photoUrl?: string;
+  photo_url?: string;
   pendingPhotoUrl?: string | null;
   hasPendingPhotoApproval?: boolean;
   photoApprovalStatus?: string;
@@ -41,6 +47,10 @@ export interface StudentDashboardData {
     rollNumber: string;
     admissionNumber?: string;
     schoolName: string;
+    schoolPhotoUrl?: string | null;
+    school_photo_url?: string | null;
+    schoolWebsite?: string | null;
+    school_website?: string | null;
     avatarUrl?: string;
   };
   kpis: {

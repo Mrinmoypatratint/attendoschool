@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 export function StudentAnnouncements() {
   const { user } = useAuth();
   const isStudent = !user || user.role === 'STUDENT';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryParam = searchParams.get('q') || searchParams.get('search') || '';
+  const [searchFilter, setSearchFilter] = useState(queryParam);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replySuccessId, setReplySuccessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSearchFilter(queryParam);
+  }, [queryParam]);
 
   function load() {
     studentApi
@@ -47,6 +55,12 @@ export function StudentAnnouncements() {
     }
   }
 
+  const displayedAnnouncements = announcements.filter(a => {
+    if (!searchFilter.trim()) return true;
+    const q = searchFilter.toLowerCase();
+    return a.title.toLowerCase().includes(q) || a.message.toLowerCase().includes(q) || (a.author_name && a.author_name.toLowerCase().includes(q)) || a.priority.toLowerCase().includes(q);
+  });
+
   return (
     <div className="student-subpage">
       <div className="student-subpage-header">
@@ -61,15 +75,70 @@ export function StudentAnnouncements() {
         </div>
       </div>
 
+      {/* Search & In-Page Filter Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="student-inpage-search-bar">
+          <Search size={15} color="var(--text-muted, #94a3b8)" />
+          <input
+            type="text"
+            placeholder="Filter announcements by title, keyword, or author..."
+            value={searchFilter}
+            onChange={(e) => {
+              setSearchFilter(e.target.value);
+              if (e.target.value.trim()) {
+                setSearchParams({ q: e.target.value.trim() });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: 13,
+              width: '100%',
+              color: 'var(--text)'
+            }}
+          />
+          {searchFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchFilter('');
+                setSearchParams({});
+              }}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {searchFilter && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+            Showing <b>{displayedAnnouncements.length}</b> of <b>{announcements.length}</b> announcements
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <div className="student-loading-spinner">Loading announcements...</div>
-      ) : announcements.length === 0 ? (
+      ) : displayedAnnouncements.length === 0 ? (
         <div className="student-empty-state">
-          <p>No announcements at this time.</p>
+          <p>{searchFilter ? `No announcements matched "${searchFilter}".` : 'No announcements at this time.'}</p>
+          {searchFilter && (
+            <button 
+              type="button" 
+              onClick={() => { setSearchFilter(''); setSearchParams({}); }}
+              style={{ marginTop: 8, padding: '4px 12px', fontSize: 12.5, borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
+            >
+              Show all announcements
+            </button>
+          )}
         </div>
       ) : (
         <div className="student-announcements-feed">
-          {announcements.map((a) => (
+          {displayedAnnouncements.map((a) => (
             <div key={a.id} className="student-card student-notice-card" style={{ marginBottom: 16 }}>
               <div className="notice-header">
                 <div className="notice-badge-group">
@@ -104,9 +173,9 @@ export function StudentAnnouncements() {
                         fontSize: 12.5,
                         fontWeight: 600,
                         borderRadius: 6,
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: activeReplyId === a.id ? '#2563eb' : '#ffffff',
-                        color: activeReplyId === a.id ? '#ffffff' : '#1e293b',
+                        border: '1px solid var(--border-strong, #cbd5e1)',
+                        backgroundColor: activeReplyId === a.id ? '#2563eb' : 'var(--card-bg, #ffffff)',
+                        color: activeReplyId === a.id ? '#ffffff' : 'var(--text, #1e293b)',
                         cursor: 'pointer'
                       }}
                     >
@@ -117,13 +186,10 @@ export function StudentAnnouncements() {
 
                   {/* Success Notification */}
                   {replySuccessId === a.id && (
-                    <div style={{
+                    <div className="student-notice-reply-success" style={{
                       marginTop: 10,
                       padding: '8px 12px',
-                      backgroundColor: '#ecfdf5',
-                      border: '1px solid #a7f3d0',
                       borderRadius: 6,
-                      color: '#065f46',
                       fontSize: 12,
                       display: 'flex',
                       alignItems: 'center',
@@ -135,12 +201,13 @@ export function StudentAnnouncements() {
 
                   {/* Inline Interactive Reply Box */}
                   {activeReplyId === a.id && (
-                    <div style={{ marginTop: 12, backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div className="student-notice-reply-box">
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                         <CornerDownRight size={13} color="#2563eb" /> Send reply to school administrator:
                       </div>
-                      <textarea
-                        rows={2}
+                      <AutoExpandingTextarea
+                        minHeight={38}
+                        maxHeight={160}
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder="Type your response or question regarding this notice..."
@@ -148,17 +215,19 @@ export function StudentAnnouncements() {
                           width: '100%',
                           padding: '8px 10px',
                           borderRadius: 5,
-                          border: '1px solid #cbd5e1',
                           fontSize: 13,
+                          lineHeight: 1.45,
                           boxSizing: 'border-box',
-                          fontFamily: 'inherit'
+                          fontFamily: 'inherit',
+                          outline: 'none'
                         }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                         <button
                           type="button"
                           onClick={() => setActiveReplyId(null)}
-                          style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
+                          className="student-notice-reply-cancel-btn"
+                          style={{ padding: '5px 12px', fontSize: 12, borderRadius: 5, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>

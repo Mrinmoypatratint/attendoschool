@@ -13,8 +13,8 @@ const DAYS = [
 ];
 
 const STANDARD_FALLBACK_CLASSES = [
-  { id: 'cls-lkg', class_number: -1, label: 'L-KG' },
-  { id: 'cls-ukg', class_number: 0, label: 'U-KG' },
+  { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
+  { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` }))
 ];
 
@@ -224,9 +224,11 @@ export default function Timetable() {
   // ── Derived ──
   const selClassObj = classes.find(c => c.id === selClassId);
   const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber;
-  const selClassName = selClassObj?.label || (selClassNum !== undefined && selClassNum !== null
-    ? (selClassNum === -1 ? 'L-KG' : selClassNum === 0 ? 'U-KG' : `Class ${selClassNum}`)
-    : (selClassObj?.name || 'Class'));
+  const selClassName = (selClassNum === -1 || /l.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
+    ? 'Class L KG'
+    : (selClassNum === 0 || /u.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
+    ? 'Class U KG'
+    : (selClassObj?.label || (selClassNum !== undefined && selClassNum !== null ? `Class ${selClassNum}` : (selClassObj?.name || 'Class')));
   const displayClassLabel = selClassName.toLowerCase().startsWith('class') ? selClassName : `Class ${selClassName}`;
 
   const filteredSections = useMemo(() => {
@@ -797,7 +799,11 @@ export default function Timetable() {
             >
               {classes.map(c => {
                 const cNum = c.class_number ?? c.classNumber;
-                const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
+                  ? 'Class L KG'
+                  : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
+                  ? 'Class U KG'
+                  : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
                 return (
                   <option key={c.id} value={c.id}>
                     {label}
@@ -1093,7 +1099,7 @@ export default function Timetable() {
         </div>
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {teachingPeriods.length === 0 ? (
-            <div style={{ padding: '14px 16px', borderRadius: 8, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 13 }}>
+            <div style={{ padding: '14px 16px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)', color: '#f59e0b', fontSize: 13 }}>
               <strong>⚠️ No period slots configured</strong>
               <p style={{ margin: '6px 0 10px', fontSize: 12, lineHeight: 1.5 }}>You must define period time slots before assigning faculty and subjects.</p>
               <button onClick={() => { setAddOpen(false); setPeriodOpen(true); }}
@@ -1148,7 +1154,11 @@ export default function Timetable() {
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, marginTop: 4 }}>
                     {classes.map(c => {
                       const cNum = c.class_number ?? c.classNumber;
-                      const label = c.label || (cNum === -1 ? 'L-KG' : cNum === 0 ? 'U-KG' : cNum !== undefined ? `Class ${cNum}` : c.name || 'Class');
+                      const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
+                        ? 'Class L KG'
+                        : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
+                        ? 'Class U KG'
+                        : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
                       return <option key={c.id} value={c.id}>{label}</option>;
                     })}
                   </select>
@@ -1226,7 +1236,7 @@ export default function Timetable() {
 
               {/* Conflict warnings */}
               {conflicts.length > 0 && (
-                <div style={{ padding: 10, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12 }}>
+                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', fontSize: 12 }}>
                   <AlertTriangle size={14} style={{ color: '#dc2626', marginRight: 4 }} />
                   <b>Scheduling Conflicts:</b>
                   <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>

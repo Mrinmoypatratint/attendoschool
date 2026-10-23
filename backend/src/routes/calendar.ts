@@ -5,6 +5,7 @@ import {
   updateSchoolWorkingDays,
   listSchoolHolidays,
   addSchoolHoliday,
+  addSchoolHolidayRange,
   updateSchoolHoliday,
   deleteSchoolHoliday,
   calculateWorkingCalendar,
@@ -117,7 +118,7 @@ router.get('/holidays', staffOrAdmin, async (req: Request, res: Response) => {
 
 /**
  * POST /api/calendar/holidays
- * Create or declare a new holiday for the school
+ * Create or declare a single-day or multi-day holiday (From Date to To Date) for the school
  */
 router.post('/holidays', adminOnly, async (req: Request, res: Response) => {
   const schoolId = getAuthenticatedSchoolId(req);
@@ -125,28 +126,58 @@ router.post('/holidays', adminOnly, async (req: Request, res: Response) => {
     return res.status(403).json({ success: false, message: 'Institutional school context required.' });
   }
 
-  const { name, holiday_date, holiday_type, description } = req.body;
+  const { name, holiday_date, from_date, to_date, start_date, end_date, holiday_type, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: 'Holiday name is mandatory.' });
   }
 
-  if (!holiday_date || !/^\d{4}-\d{2}-\d{2}$/.test(holiday_date.trim())) {
-    return res.status(400).json({ success: false, message: 'Valid holiday_date in YYYY-MM-DD format is mandatory.' });
+  const effectiveFrom = (from_date || start_date || holiday_date || '').trim();
+  const effectiveTo = (to_date || end_date || effectiveFrom).trim();
+
+  if (!effectiveFrom || !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) {
+    return res.status(400).json({ success: false, message: 'Valid From date in YYYY-MM-DD format is mandatory.' });
+  }
+
+  if (!effectiveTo || !/^\d{4}-\d{2}-\d{2}$/.test(effectiveTo)) {
+    return res.status(400).json({ success: false, message: 'Valid To date in YYYY-MM-DD format is mandatory.' });
+  }
+
+  if (effectiveFrom > effectiveTo) {
+    return res.status(400).json({ success: false, message: 'From date cannot be after To date.' });
   }
 
   try {
-    const created = await addSchoolHoliday(schoolId, {
-      name: name.trim(),
-      holiday_date: holiday_date.trim(),
-      holiday_type: holiday_type || 'GAZETTED',
-      description
-    });
-    return res.status(201).json({
-      success: true,
-      message: `Declared holiday '${created.name}' on ${created.holiday_date}.`,
-      data: created
-    });
+    if (effectiveFrom === effectiveTo) {
+      const created = await addSchoolHoliday(schoolId, {
+        name: name.trim(),
+        holiday_date: effectiveFrom,
+        holiday_type: holiday_type || 'GAZETTED',
+        description
+      });
+      return res.status(201).json({
+        success: true,
+        message: `Declared holiday '${created.name}' on ${created.holiday_date}.`,
+        data: created,
+        items: [created],
+        count: 1
+      });
+    } else {
+      const createdList = await addSchoolHolidayRange(schoolId, {
+        name: name.trim(),
+        from_date: effectiveFrom,
+        to_date: effectiveTo,
+        holiday_type: holiday_type || 'GAZETTED',
+        description
+      });
+      return res.status(201).json({
+        success: true,
+        message: `Declared holiday '${name.trim()}' for ${createdList.length} days (${effectiveFrom} to ${effectiveTo}).`,
+        data: createdList[0],
+        items: createdList,
+        count: createdList.length
+      });
+    }
   } catch (err: any) {
     return res.status(400).json({ success: false, message: err.message || 'Failed to add holiday.' });
   }
@@ -198,13 +229,17 @@ router.delete('/holidays/:id', adminOnly, async (req: Request, res: Response) =>
   }
 
   const holidayId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
+  const deleteAllSeries = req.query.allSeries === 'true' || req.query.deleteAll === 'true';
 
   try {
-    const deleted = await deleteSchoolHoliday(schoolId, holidayId);
+    const deleted = await deleteSchoolHoliday(schoolId, holidayId, deleteAllSeries);
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Holiday not found or already removed.' });
     }
-    return res.json({ success: true, message: 'Holiday removed successfully.' });
+    return res.json({
+      success: true,
+      message: deleteAllSeries ? 'Holiday series removed successfully.' : 'Holiday removed successfully.'
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message || 'Failed to delete holiday.' });
   }
