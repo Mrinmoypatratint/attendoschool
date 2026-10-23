@@ -694,39 +694,74 @@ export async function createAndSendPasswordReset(params: {
   schoolName?: string;
   admissionNumber?: string;
   admission_number?: string;
+  employeeId?: string;
+  employee_id?: string;
+  rollNumber?: string;
+  roll_number?: string;
   req?: any;
   sendEmail?: boolean;
 }) {
   const { email, name, role, userId, studentId, schoolId, schoolName = 'Greenwood International School', req } = params;
   let admissionNumber = params.admission_number || params.admissionNumber || '';
+  let employeeId = params.employee_id || params.employeeId || '';
+  let rollNumber = params.roll_number || params.rollNumber || '';
 
-  // Resolve student admission number if missing
-  if (!admissionNumber && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
+  // Resolve student admission number and roll number if missing
+  if ((!admissionNumber || !rollNumber) && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
     try {
       const { demoStudents } = await import('./schoolData');
       const memStu = demoStudents.find((s: any) =>
         (userId && (s.user_id === userId || s.id === userId)) ||
         (s.email && s.email.toLowerCase() === email.toLowerCase().trim()) ||
-        (s.student_email && s.student_email.toLowerCase() === email.toLowerCase().trim()) ||
         (s.parent_email && s.parent_email.toLowerCase() === email.toLowerCase().trim())
       );
-      if (memStu?.admission_number) {
+      if (memStu?.admission_number && !admissionNumber) {
         admissionNumber = memStu.admission_number;
+      }
+      if (memStu?.roll_number && !rollNumber) {
+        rollNumber = memStu.roll_number;
       }
     } catch {}
 
-    if (!admissionNumber && pool && isPostgresConfigured) {
+    if ((!admissionNumber || !rollNumber) && pool && isPostgresConfigured) {
       try {
         const q = await pool.query(
-          `SELECT admission_number FROM students
-           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(student_email) = $2 OR LOWER(parent_email) = $2)
+          `SELECT admission_number, roll_number FROM students
+           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(parent_email) = $2)
+           ORDER BY (user_id = $1) DESC
            LIMIT 1`,
           [userId || null, email.toLowerCase().trim()]
         );
-        if (q.rowCount && q.rows[0]?.admission_number) {
-          admissionNumber = q.rows[0].admission_number;
+        if (q.rowCount && q.rows[0]) {
+          if (!admissionNumber && q.rows[0].admission_number) {
+            admissionNumber = q.rows[0].admission_number;
+          }
+          if (!rollNumber && q.rows[0].roll_number) {
+            rollNumber = q.rows[0].roll_number;
+          }
         }
-      } catch {}
+      } catch (err: any) {
+        console.warn('[PasswordReset] Student resolution error:', err?.message);
+      }
+    }
+  }
+
+  // Resolve teacher employee_id if missing
+  if (!employeeId && String(role).toUpperCase() === 'TEACHER' && pool && isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT tp.employee_id 
+         FROM users u 
+         JOIN teacher_profiles tp ON tp.user_id = u.id 
+         WHERE (u.id = $1 OR LOWER(u.email) = $2)
+         LIMIT 1`,
+        [userId || null, email.toLowerCase().trim()]
+      );
+      if (q.rowCount && q.rows[0]?.employee_id) {
+        employeeId = q.rows[0].employee_id;
+      }
+    } catch (err: any) {
+      console.warn('[PasswordReset] Teacher employee_id resolution notice:', err?.message);
     }
   }
   const token = crypto.randomBytes(32).toString('hex');
@@ -760,6 +795,7 @@ export async function createAndSendPasswordReset(params: {
   const ALLOWED_RESET_HOSTS = [
     'attendoschool.online',
     'www.attendoschool.online',
+    'attendoschool.optinetinnovations.in',
     'localhost:5173',
     'localhost:3000',
     '127.0.0.1:5173',
@@ -771,7 +807,13 @@ export async function createAndSendPasswordReset(params: {
     if (origin) {
       try {
         const u = new URL(origin);
-        if (ALLOWED_RESET_HOSTS.includes(u.host)) {
+        if (
+          ALLOWED_RESET_HOSTS.includes(u.host) ||
+          u.host.includes('optinetinnovations.in') ||
+          u.host.includes('attendoschool.online') ||
+          u.host.includes('localhost') ||
+          u.host.includes('127.0.0.1')
+        ) {
           baseUrl = `${u.protocol}//${u.host}`;
         }
       } catch {}
@@ -784,8 +826,26 @@ export async function createAndSendPasswordReset(params: {
   let emailResult: any = null;
   if (params.sendEmail !== false) {
     try {
+      let resolvedSchoolId = schoolId;
+      if ((!resolvedSchoolId || resolvedSchoolId === 'school-default') && pool && isPostgresConfigured) {
+        try {
+          if (userId) {
+            const uRes = await pool.query(`SELECT school_id FROM users WHERE id = $1 LIMIT 1`, [userId]);
+            if (uRes.rows[0]?.school_id) resolvedSchoolId = uRes.rows[0].school_id;
+          }
+          if (!resolvedSchoolId && email) {
+            const uRes = await pool.query(`SELECT school_id FROM users WHERE LOWER(email) = $1 LIMIT 1`, [email.toLowerCase().trim()]);
+            if (uRes.rows[0]?.school_id) resolvedSchoolId = uRes.rows[0].school_id;
+          }
+          if (!resolvedSchoolId) {
+            const sRes = await pool.query(`SELECT id FROM schools LIMIT 1`);
+            if (sRes.rows[0]?.id) resolvedSchoolId = sRes.rows[0].id;
+          }
+        } catch {}
+      }
+
       emailResult = await queueEmailNotification({
-        schoolId: schoolId || 'school-default',
+        schoolId: resolvedSchoolId || 'school-default',
         recipientEmail: email.toLowerCase().trim(),
         recipientName: name,
         recipientType: (role.toUpperCase() as any) || 'STUDENT',
@@ -797,7 +857,9 @@ export async function createAndSendPasswordReset(params: {
           school_name: schoolName,
           reset_link: resetUrl,
           role,
-          admission_number: admissionNumber || undefined
+          admission_number: admissionNumber || undefined,
+          employee_id: employeeId || undefined,
+          roll_number: rollNumber || undefined
         },
         idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
       });
@@ -1022,23 +1084,23 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
   let studentAdmissionNumber = '';
+  let studentRollNumber = '';
 
   // 1. Check PostgreSQL (by email or student admission_number)
   try {
     let q = await pool.query(
       `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
-              st.id AS student_id, st.admission_number
+              st.id AS student_id, st.admission_number, st.roll_number
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
        LEFT JOIN LATERAL (
-         SELECT s.id, s.name, s.admission_number
+         SELECT s.id, s.name, s.admission_number, s.roll_number
          FROM students s
          WHERE s.school_id = u.school_id
            AND (
              s.user_id = u.id
              OR (s.user_id IS NULL AND (
                LOWER(s.email) = LOWER(u.email)
-               OR LOWER(s.student_email) = LOWER(u.email)
                OR LOWER(s.parent_email) = LOWER(u.email)
              ))
            )
@@ -1054,7 +1116,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       // Try resolving student by admission number
       q = await pool.query(
         `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
-                st.id AS student_id, st.admission_number
+                st.id AS student_id, st.admission_number, st.roll_number
          FROM students st
          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
          LEFT JOIN schools sch ON sch.id = st.school_id
@@ -1076,8 +1138,11 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
       if (u.admission_number) studentAdmissionNumber = u.admission_number;
+      if (u.roll_number) studentRollNumber = u.roll_number;
     }
-  } catch (err) {}
+  } catch (err: any) {
+    console.warn('[RequestPasswordReset] User lookup error:', err?.message);
+  }
 
   // 3. Check demoUsers store if not found
   if (!userFound) {
@@ -1104,6 +1169,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       schoolId,
       schoolName,
       admissionNumber: studentAdmissionNumber || undefined,
+      rollNumber: studentRollNumber || undefined,
       req
     });
 

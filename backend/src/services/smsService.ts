@@ -72,25 +72,29 @@ export async function queueAbsentSms(sessionId:string){
 }
 
 export async function processSmsQueue(limit=20){
-  const q=await pool.query(
-    `SELECT * FROM sms_logs
-     WHERE status IN ('QUEUED','FAILED') AND attempts < 3
-     ORDER BY created_at LIMIT $1`,[limit]);
-  let sent=0,failed=0;
-  for(const row of q.rows){
-    await pool.query(`UPDATE sms_logs SET status='PROCESSING',attempts=attempts+1 WHERE id=$1`,[row.id]);
-    const result=await sendSms(row.provider,row.parent_number,row.message);
-    if(result.success){
-      await pool.query(
-        `UPDATE sms_logs SET status='SENT',provider_message_id=$2,sent_at=NOW(),last_error=NULL WHERE id=$1`,
-        [row.id,result.providerMessageId||null]);
-      sent++;
-    }else{
-      await pool.query(
-        `UPDATE sms_logs SET status='FAILED',last_error=$2 WHERE id=$1`,
-        [row.id,result.error||'Unknown SMS error']);
-      failed++;
+  try {
+    const q=await pool.query(
+      `SELECT * FROM sms_logs
+       WHERE status IN ('QUEUED','FAILED') AND COALESCE(attempts, 0) < 3
+       ORDER BY created_at LIMIT $1`,[limit]);
+    let sent=0,failed=0;
+    for(const row of q.rows){
+      await pool.query(`UPDATE sms_logs SET status='PROCESSING',attempts=COALESCE(attempts, 0)+1 WHERE id=$1`,[row.id]);
+      const result=await sendSms(row.provider,row.parent_number,row.message);
+      if(result.success){
+        await pool.query(
+          `UPDATE sms_logs SET status='SENT',provider_message_id=$2,sent_at=NOW(),last_error=NULL WHERE id=$1`,
+          [row.id,result.providerMessageId||null]);
+        sent++;
+      }else{
+        await pool.query(
+          `UPDATE sms_logs SET status='FAILED',last_error=$2 WHERE id=$1`,
+          [row.id,result.error||'Unknown SMS error']);
+        failed++;
+      }
     }
+    return {processed:q.rows.length,sent,failed};
+  } catch (err: any) {
+    return {processed: 0, sent: 0, failed: 0};
   }
-  return {processed:q.rows.length,sent,failed};
 }
