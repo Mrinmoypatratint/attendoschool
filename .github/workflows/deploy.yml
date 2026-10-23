@@ -9,6 +9,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      deploy_sha:
+        description: 'Exact main commit to deploy (set automatically by CI)'
+        required: false
+        type: string
       skip_tests:
         description: 'Skip tests (emergency deploy only)'
         required: false
@@ -27,7 +31,7 @@ permissions:
 env:
   FRONTEND_URL: https://attendoschool.online
   BACKEND_URL: https://attendoschool.online
-  DEPLOY_VERSION: ${{ github.sha }}
+  DEPLOY_VERSION: ${{ inputs.deploy_sha || github.sha }}
 
 jobs:
   # =========================================================================
@@ -41,17 +45,19 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_VERSION }}
 
       - name: Generate Version Tag
         id: version
         run: |
-          SHORT_SHA="${GITHUB_SHA:0:8}"
+          SHORT_SHA="${DEPLOY_VERSION:0:8}"
           TIMESTAMP=$(date -u +%Y%m%d-%H%M)
           VERSION="v0.11.0-${TIMESTAMP}-${SHORT_SHA}"
           echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           echo "### 📦 Deployment Version" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** \`${GITHUB_SHA}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${DEPLOY_VERSION}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** \`main\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
 
@@ -65,6 +71,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_VERSION }}
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -121,11 +129,16 @@ jobs:
             set -e
             echo "===================================================================="
             echo "🚀 Starting Hostinger VPS Deployment for attendoschool.online"
-            echo "Commit: ${{ github.sha }}"
+            echo "Commit: ${{ env.DEPLOY_VERSION }}"
             echo "===================================================================="
             cd /home/attendoschool/htdocs/attendoschool.online
             git checkout -- frontend/package-lock.json 2>/dev/null || true
-            git pull origin main
+            git fetch origin main:refs/remotes/origin/main
+            if ! git merge-base --is-ancestor "${{ env.DEPLOY_VERSION }}" origin/main; then
+              echo "Refusing deployment: requested commit is not on origin/main"
+              exit 1
+            fi
+            git checkout --detach "${{ env.DEPLOY_VERSION }}"
             echo "🔨 Compiling Backend TypeScript..."
             npm --prefix backend run build
             echo "🔨 Building Frontend React SPA with Vite..."

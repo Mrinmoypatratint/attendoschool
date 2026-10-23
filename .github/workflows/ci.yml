@@ -179,6 +179,11 @@ jobs:
     name: "Merge Safety: Conflict Detection & Auto-PR"
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
+    concurrency:
+      # All developer branches target main. Serialize the final merge decision
+      # so two green runs cannot both validate against an outdated main.
+      group: merge-to-main
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -314,6 +319,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          TESTED_HEAD="${GITHUB_SHA}"
           PR_NUM="${{ steps.create_pr.outputs.pr_number }}"
           if [ -z "$PR_NUM" ]; then
             PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
@@ -337,32 +343,60 @@ jobs:
               exit 0
             fi
 
-            echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
-            MERGED=false
-            if gh pr merge "$PR_NUM" --merge --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
-              echo "✅ Successfully merged PR #${PR_NUM} into main!"
-              echo "- **Auto-Merge:** ✅ Successfully merged PR #${PR_NUM} into main" >> $GITHUB_STEP_SUMMARY
-              MERGED=true
-            elif gh pr merge "$PR_NUM" --auto --merge 2>&1; then
-              echo "✅ GitHub Auto-Merge queued for PR #${PR_NUM}"
-              echo "- **Auto-Merge:** ⏳ GitHub Auto-Merge queued for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
-              sleep 5
-              MERGED=true
-            else
-              echo "::warning::Direct merge and auto-merge failed. PR ready for manual review."
-              echo "- **Auto-Merge:** ⚠️ Manual review required" >> $GITHUB_STEP_SUMMARY
+            CURRENT_HEAD=$(gh pr view "$PR_NUM" --json headRefOid -q '.headRefOid')
+            if [ "$CURRENT_HEAD" != "$TESTED_HEAD" ]; then
+              echo "::error::Branch changed after CI started (${TESTED_HEAD:0:8} -> ${CURRENT_HEAD:0:8}). Refusing to merge untested code."
+              exit 1
             fi
 
-            if [ "$MERGED" = "true" ]; then
-              echo "🚀 Triggering CD — Production Deployment on Hostinger VPS (deploy.yml)..."
-              if gh workflow run deploy.yml --ref main 2>&1; then
-                echo "✅ Successfully triggered production deployment for main!"
-                echo "- **CD Deployment:** 🚀 Triggered automatically on Hostinger VPS" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "::warning::Could not trigger deploy.yml workflow automatically."
-                echo "- **CD Deployment:** ⚠️ Failed to trigger automatically — check Actions tab" >> $GITHUB_STEP_SUMMARY
-              fi
+            echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
+            if ! gh pr merge "$PR_NUM" --merge --match-head-commit "$TESTED_HEAD" \
+              --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
+              echo "::error::GitHub did not complete the merge. Deployment will not run for an unmerged commit."
+              echo "- **Auto-Merge:** ❌ GitHub rejected the merge; inspect branch protection/checks" >> $GITHUB_STEP_SUMMARY
+              exit 1
             fi
+
+            # Obtain the actual merge commit before synchronizing or deploying.
+            MERGE_SHA=""
+            for ATTEMPT in $(seq 1 24); do
+              PR_DATA=$(gh pr view "$PR_NUM" --json state,headRefOid,mergeCommit)
+              PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+              CURRENT_HEAD=$(echo "$PR_DATA" | jq -r '.headRefOid')
+              if [ "$CURRENT_HEAD" != "$TESTED_HEAD" ]; then
+                echo "::error::PR head changed while waiting for merge."
+                exit 1
+              fi
+              if [ "$PR_STATE" = "MERGED" ]; then
+                MERGE_SHA=$(echo "$PR_DATA" | jq -r '.mergeCommit.oid // empty')
+                break
+              fi
+              sleep 5
+            done
+
+            if [ -z "$MERGE_SHA" ]; then
+              echo "::error::PR #${PR_NUM} did not reach MERGED state. Deployment was skipped."
+              exit 1
+            fi
+
+            echo "✅ PR #${PR_NUM} merged as ${MERGE_SHA}."
+            echo "- **Auto-Merge:** ✅ Merged as \`${MERGE_SHA:0:8}\`" >> $GITHUB_STEP_SUMMARY
+
+            # Keep the developer branch at the merge result. This fast-forward
+            # safely fails instead of overwriting concurrent developer work.
+            git fetch origin \
+              "main:refs/remotes/origin/main" \
+              "${BRANCH}:refs/remotes/origin/${BRANCH}"
+            if git push origin "${MERGE_SHA}:refs/heads/${BRANCH}"; then
+              echo "- **Branch Sync:** ✅ \`${BRANCH}\` fast-forwarded to merged main" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "::warning::The branch changed after merge; skipped branch sync without overwriting new work."
+              echo "- **Branch Sync:** ⚠️ Skipped because new work was pushed" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "🚀 Triggering deployment of confirmed merge ${MERGE_SHA:0:8}..."
+            gh workflow run deploy.yml --ref main -f deploy_sha="$MERGE_SHA"
+            echo "- **CD Deployment:** 🚀 Triggered for \`${MERGE_SHA:0:8}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ No open PR found for branch ${BRANCH}."
           fi
