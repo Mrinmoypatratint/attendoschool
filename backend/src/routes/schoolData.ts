@@ -1098,7 +1098,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
                 class_name: String(clsNum),
                 section_name: secName,
                 roll_number: String(rollNumber),
-                reset_link: resetInfo.resetUrl
+                login_email: targetLoginEmail,
+                reset_link: resetInfo.resetUrl,
+                login_url: resetInfo.resetUrl
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
             }).catch(() => {});
@@ -1251,7 +1253,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               class_name: String(clsNum),
               section_name: secName,
               roll_number: String(rollNumber || '—'),
-              reset_link: resetInfo.resetUrl
+              login_email: targetLoginEmail,
+              reset_link: resetInfo.resetUrl,
+              login_url: resetInfo.resetUrl
             },
             idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
           }).catch(() => {});
@@ -1796,7 +1800,9 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                         class_name: String(st.class_number || st.class_name || ''),
                         section_name: String(st.section_name || 'A'),
                         roll_number: String(st.roll_number || ''),
-                        reset_link: resetInfo.resetUrl
+                        login_email: targetLoginEmail,
+                        reset_link: resetInfo.resetUrl,
+                        login_url: resetInfo.resetUrl
                       },
                       idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
                     }).catch(err => {
@@ -2309,17 +2315,30 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
   let studentName = 'Student';
   let role = 'STUDENT';
   let userId: string | undefined = undefined;
+  let admissionNumber = '';
+  let rollNumber = '';
+  let className = '';
+  let sectionName = '';
 
   try {
     const q = await pool.query(
-      `SELECT st.id, st.name, st.email, st.parent_email, st.user_id, st.parent_name
-       FROM students st WHERE st.id = $1 AND st.school_id = $2 LIMIT 1`,
+      `SELECT st.id, st.name, st.email, st.parent_email, st.user_id, st.parent_name,
+              st.admission_number, st.roll_number,
+              c.class_number, sec.name as section_name
+       FROM students st 
+       LEFT JOIN classes c ON c.id = st.class_id
+       LEFT JOIN sections sec ON sec.id = st.section_id
+       WHERE st.id = $1 AND st.school_id = $2 LIMIT 1`,
       [studentId, req.user!.schoolId]
     );
     if (q.rowCount && q.rowCount > 0) {
       const st = q.rows[0];
       studentName = st.name;
       userId = st.user_id;
+      admissionNumber = st.admission_number || '';
+      rollNumber = st.roll_number ? String(st.roll_number) : '';
+      className = st.class_number ? String(st.class_number) : '';
+      sectionName = st.section_name || '';
       if (st.email) {
         targetEmail = st.email;
       } else if (st.parent_email) {
@@ -2336,6 +2355,10 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
         studentName = dt.name || dt.fullName || studentName;
         targetEmail = dt.student_email || dt.studentEmail || dt.email || dt.parent_email || dt.parentEmail || '';
         userId = dt.user_id || dt.userId || userId;
+        admissionNumber = dt.admission_number || dt.admissionNumber || admissionNumber;
+        rollNumber = dt.roll_number || dt.rollNumber || rollNumber;
+        className = dt.class_name || dt.className || className;
+        sectionName = dt.section_name || dt.section || sectionName;
       }
     } catch {}
   }
@@ -2345,6 +2368,10 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     if (demo) {
       studentName = demo.name;
       targetEmail = demo.email || demo.student_email || demo.parent_email;
+      admissionNumber = demo.admission_number || admissionNumber;
+      rollNumber = demo.roll_number || rollNumber;
+      className = demo.class_name || className;
+      sectionName = demo.section_name || sectionName;
     }
   }
 
@@ -2357,9 +2384,33 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     name: studentName,
     role: 'STUDENT',
     userId,
+    schoolId: req.user?.schoolId,
     schoolName: req.user?.schoolName,
-    req
+    req,
+    sendEmail: false
   });
+
+  if (resetResult?.resetUrl) {
+    await queueEmailNotification({
+      schoolId: req.user?.schoolId || 'school-default',
+      recipientEmail: targetEmail,
+      recipientName: studentName,
+      recipientType: 'STUDENT',
+      templateKey: 'STUDENT_CREATED',
+      templateData: {
+        student_name: studentName,
+        school_name: req.user?.schoolName || 'School',
+        admission_number: admissionNumber || '—',
+        class_name: className || '8',
+        section_name: sectionName || 'A',
+        roll_number: rollNumber || '—',
+        login_email: targetEmail,
+        reset_link: resetResult.resetUrl,
+        login_url: resetResult.resetUrl
+      },
+      idempotencyKey: `stu-invite-${req.user?.schoolId || 'default'}-${targetEmail}-${Date.now()}`
+    });
+  }
 
   return res.json({
     success: true,
@@ -2704,10 +2755,12 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: name,
                 school_name: req.user?.schoolName || 'School',
                 employee_id: employeeId,
+                login_email: cleanEmail,
+                reset_link: resetInfo.resetUrl,
                 login_url: resetInfo.resetUrl,
                 temporary_password: rawPassword
               },
-              idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+              idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
             });
             emailDeliveryStatus = 'Sent';
           }
@@ -2771,10 +2824,12 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             teacher_name: name,
             school_name: req.user?.schoolName || 'School',
             employee_id: employeeId,
+            login_email: cleanEmail,
+            reset_link: resetInfo.resetUrl,
             login_url: resetInfo.resetUrl,
             temporary_password: rawPassword
           },
-          idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+          idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
         });
         emailDeliveryStatus = 'Sent';
       }
@@ -2823,16 +2878,21 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
   let teacherEmail = '';
   let teacherName = 'Teacher';
   let userId: string | undefined = undefined;
+  let employeeId = '';
 
   try {
     const q = await pool.query(
-      `SELECT u.id, u.name, u.email FROM users u WHERE u.id = $1 AND u.school_id = $2 AND u.role = 'TEACHER' LIMIT 1`,
+      `SELECT u.id, u.name, u.email, tp.employee_id 
+       FROM users u 
+       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       WHERE (u.id = $1 OR tp.id = $1) AND u.school_id = $2 AND u.role = 'TEACHER' LIMIT 1`,
       [teacherId, req.user!.schoolId]
     );
     if (q.rowCount && q.rowCount > 0) {
       userId = q.rows[0].id;
       teacherName = q.rows[0].name;
       teacherEmail = q.rows[0].email;
+      employeeId = q.rows[0].employee_id || '';
     }
   } catch {}
 
@@ -2844,6 +2904,7 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
         teacherName = dt.name || dt.fullName || teacherName;
         teacherEmail = dt.email || '';
         userId = dt.user_id || dt.userId || userId;
+        employeeId = dt.employee_id || dt.employeeId || employeeId;
       }
     } catch {}
   }
@@ -2853,6 +2914,7 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     if (demo) {
       teacherEmail = demo.email;
       teacherName = demo.name;
+      employeeId = demo.employee_id || '';
     }
   }
 
@@ -2865,9 +2927,30 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     name: teacherName,
     role: 'TEACHER',
     userId,
+    schoolId: req.user?.schoolId,
     schoolName: req.user?.schoolName,
-    req
+    req,
+    sendEmail: false
   });
+
+  if (resetResult?.resetUrl) {
+    await queueEmailNotification({
+      schoolId: req.user?.schoolId || 'school-default',
+      recipientEmail: teacherEmail,
+      recipientName: teacherName,
+      recipientType: 'TEACHER',
+      templateKey: 'TEACHER_CREATED',
+      templateData: {
+        teacher_name: teacherName,
+        school_name: req.user?.schoolName || 'School',
+        employee_id: employeeId || '',
+        login_email: teacherEmail,
+        reset_link: resetResult.resetUrl,
+        login_url: resetResult.resetUrl
+      },
+      idempotencyKey: `tch-invite-${req.user?.schoolId || 'default'}-${teacherEmail}-${Date.now()}`
+    });
+  }
 
   return res.json({
     success: true,
@@ -3112,10 +3195,12 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: item.created.name,
                 school_name: schoolName,
                 employee_id: item.created.employee_id,
-                login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+                login_email: item.created.email,
+                reset_link: resetInfo?.resetUrl,
+                login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/#/reset-password`,
                 temporary_password: item.tempPassword
               },
-              idempotencyKey: `tch-import-${schoolId}-${item.created.email}-${Date.now()}`
+              idempotencyKey: `tch-import-${schoolId}-${item.created.email}`
             }).catch(err => {
               console.warn(`[TeacherBulkImport] SMTP dispatch warning for ${item.created.email}:`, err.message);
             });
