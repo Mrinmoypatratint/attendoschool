@@ -227,10 +227,17 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
     const countSql = `
       SELECT COUNT(*)::int AS total
       FROM notification_logs n
-      LEFT JOIN students st ON (
-        (st.id = n.student_id AND st.school_id = n.school_id)
-        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
-      )
+      LEFT JOIN LATERAL (
+        SELECT s.* FROM students s
+        WHERE s.school_id = n.school_id AND (
+          s.id = n.student_id
+          OR (n.student_id IS NULL AND
+              (LOWER(s.email) = LOWER(n.recipient) OR LOWER(s.parent_email) = LOWER(n.recipient)))
+        )
+        ORDER BY (s.id = n.student_id) DESC,
+                 s.created_at DESC
+        LIMIT 1
+      ) st ON TRUE
       LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
       ${whereClause}
     `;
@@ -259,15 +266,27 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
         n.sent_at,
         n.failed_at,
         n.scheduled_at,
-        COALESCE(st.admission_number, '') AS admission_number,
+        COALESCE(
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Admission Number \(Login ID\):[[:space:]]*([^\r\n]+)')), ''),
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Admission Number:[[:space:]]*([^\r\n]+)')), ''),
+          st.admission_number,
+          ''
+        ) AS admission_number,
         COALESCE(st.name, u.name, '—') AS recipient_name,
         COALESCE(st.name, '—') AS student_name,
         st.roll_number
       FROM notification_logs n
-      LEFT JOIN students st ON (
-        (st.id = n.student_id AND st.school_id = n.school_id)
-        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
-      )
+      LEFT JOIN LATERAL (
+        SELECT s.* FROM students s
+        WHERE s.school_id = n.school_id AND (
+          s.id = n.student_id
+          OR (n.student_id IS NULL AND
+              (LOWER(s.email) = LOWER(n.recipient) OR LOWER(s.parent_email) = LOWER(n.recipient)))
+        )
+        ORDER BY (s.id = n.student_id) DESC,
+                 s.created_at DESC
+        LIMIT 1
+      ) st ON TRUE
       LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
       ${whereClause}
       ORDER BY n.created_at DESC

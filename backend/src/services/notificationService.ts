@@ -54,6 +54,8 @@ export interface NotificationLog {
   student_id?: string | null;
   studentId?: string | null;
   student_name?: string;
+  recipient_name?: string;
+  admission_number?: string;
   channel: Channel;
   recipient: string;
   recipient_type?: RecipientType;
@@ -1175,7 +1177,9 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
   }
 
   const rendered = renderEmailTemplate(templateKey, templateData);
-  const logId = `notif-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  // Use the same UUID in memory, PostgreSQL, Firestore, and workers so provider
+  // responses always update the exact audit record that initiated the send.
+  const logId = crypto.randomUUID();
   const now = new Date().toISOString();
 
   const logEntry: NotificationLog = {
@@ -1187,6 +1191,8 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     student_id: studentId,
     studentId,
     student_name: studentName,
+    recipient_name: recipientName || studentName,
+    admission_number: templateData.admission_number || templateData.admissionNumber,
     channel: 'EMAIL',
     recipient: cleanRecipient,
     recipient_type: recipientType,
@@ -1234,16 +1240,18 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     if (safeSchoolId) {
       await pool.query(
         `INSERT INTO notification_logs(
-          id, school_id, attendance_session_id, student_id, channel, recipient,
+          id, school_id, attendance_session_id, student_id, recipient_name, admission_number, channel, recipient,
           recipient_type, template_key, subject, message, html_body, status,
           attempts, max_attempts, scheduled_at, idempotency_key, created_at
-        ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,'QUEUED',0,$11,NOW(),$12,NOW())
+        ) VALUES($1,$2,$3,$4,$5,$6,'EMAIL',$7,$8,$9,$10,$11,$12,'QUEUED',0,$13,NOW(),$14,NOW())
         ON CONFLICT(idempotency_key) DO NOTHING`,
         [
-          crypto.randomUUID(),
+          logId,
           safeSchoolId,
           safeSessionId,
           safeStudentId,
+          recipientName || studentName || null,
+          templateData.admission_number || templateData.admissionNumber || null,
           cleanRecipient,
           recipientType,
           templateKey,
@@ -1256,7 +1264,30 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
       );
     }
   } catch (_sqlErr: any) {
-    console.warn('[NotificationQueue] Error saving to notification_logs SQL:', _sqlErr?.message || _sqlErr);
+    // Rolling-deployment compatibility: keep logging on an older schema until
+    // migration 040 has run. Never allow a successful email to have no SQL log.
+    try {
+      const isValidUuid = (val?: any) =>
+        typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+      const legacySchoolId = isValidUuid(schoolId) ? schoolId.trim() : null;
+      const legacySessionId = isValidUuid(attendanceSessionId) ? attendanceSessionId!.trim() : null;
+      const legacyStudentId = isValidUuid(studentId) ? studentId!.trim() : null;
+      if (legacySchoolId) {
+        await pool.query(
+          `INSERT INTO notification_logs(
+            id, school_id, attendance_session_id, student_id, channel, recipient,
+            recipient_type, template_key, subject, message, html_body, status,
+            attempts, max_attempts, scheduled_at, idempotency_key, created_at
+          ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,'QUEUED',0,$11,NOW(),$12,NOW())
+          ON CONFLICT(idempotency_key) DO NOTHING`,
+          [logId, legacySchoolId, legacySessionId, legacyStudentId, cleanRecipient,
+            recipientType, templateKey, rendered.subject, rendered.text, rendered.html,
+            env.emailMaxRetries || 4, idempotencyKey]
+        );
+      }
+    } catch (legacyErr: any) {
+      console.error('[NotificationQueue] Failed to persist email audit log:', legacyErr?.message || legacyErr);
+    }
   }
 
   // 3. Mirror to Firestore if configured
@@ -2182,6 +2213,21 @@ export async function processNotificationQueue(limit = 50) {
         job.status = 'RETRYING';
         job.scheduled_at = new Date(Date.now() + delaySec * 1000).toISOString();
         retrying++;
+      }
+
+      // Persist the provider-derived failure/retry state just as SENT is
+      // persisted above. The UI reads this backend state verbatim.
+      if (pool && isPostgresConfigured) {
+        try {
+          await pool.query(
+            `UPDATE notification_logs
+             SET status=$1, attempts=$2, last_error=$3,
+                 failed_at=CASE WHEN $1='FAILED' THEN NOW() ELSE failed_at END,
+                 scheduled_at=CASE WHEN $1='RETRYING' THEN $4::timestamptz ELSE scheduled_at END
+             WHERE id=$5`,
+            [job.status, job.attempts, job.last_error, job.scheduled_at || null, job.id]
+          );
+        } catch {}
       }
     }
   }

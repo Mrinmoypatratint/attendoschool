@@ -689,6 +689,7 @@ export async function createAndSendPasswordReset(params: {
   name: string;
   role: 'STUDENT' | 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | string;
   userId?: string;
+  studentId?: string;
   schoolId?: string;
   schoolName?: string;
   admissionNumber?: string;
@@ -696,7 +697,7 @@ export async function createAndSendPasswordReset(params: {
   req?: any;
   sendEmail?: boolean;
 }) {
-  const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
+  const { email, name, role, userId, studentId, schoolId, schoolName = 'Greenwood International School', req } = params;
   let admissionNumber = params.admission_number || params.admissionNumber || '';
 
   // Resolve student admission number if missing
@@ -788,6 +789,8 @@ export async function createAndSendPasswordReset(params: {
         recipientEmail: email.toLowerCase().trim(),
         recipientName: name,
         recipientType: (role.toUpperCase() as any) || 'STUDENT',
+        studentId: studentId || null,
+        studentName: name,
         templateKey: 'PASSWORD_RESET',
         templateData: {
           name,
@@ -1015,6 +1018,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   let userName = 'User';
   let userRole = 'STUDENT';
   let userId: string | undefined = undefined;
+  let studentId: string | undefined = undefined;
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
   let studentAdmissionNumber = '';
@@ -1022,10 +1026,25 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   // 1. Check PostgreSQL (by email or student admission_number)
   try {
     let q = await pool.query(
-      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
+      `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
+              st.id AS student_id, st.admission_number
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
-       LEFT JOIN students st ON (st.user_id = u.id OR (st.email IS NOT NULL AND LOWER(st.email) = LOWER(st.email)))
+       LEFT JOIN LATERAL (
+         SELECT s.id, s.name, s.admission_number
+         FROM students s
+         WHERE s.school_id = u.school_id
+           AND (
+             s.user_id = u.id
+             OR (s.user_id IS NULL AND (
+               LOWER(s.email) = LOWER(u.email)
+               OR LOWER(s.student_email) = LOWER(u.email)
+               OR LOWER(s.parent_email) = LOWER(u.email)
+             ))
+           )
+         ORDER BY (s.user_id = u.id) DESC, s.created_at DESC
+         LIMIT 1
+       ) st ON TRUE
        WHERE LOWER(u.email) = LOWER($1)
        LIMIT 1`,
       [cleanEmail]
@@ -1034,7 +1053,8 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
     if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
       // Try resolving student by admission number
       q = await pool.query(
-        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
+        `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
+                st.id AS student_id, st.admission_number
          FROM students st
          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
          LEFT JOIN schools sch ON sch.id = st.school_id
@@ -1052,6 +1072,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       userName = u.name;
       userRole = u.role;
       userId = u.id;
+      studentId = u.student_id || undefined;
       schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
       if (u.admission_number) studentAdmissionNumber = u.admission_number;
@@ -1079,6 +1100,7 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       name: userName,
       role: userRole,
       userId,
+      studentId,
       schoolId,
       schoolName,
       admissionNumber: studentAdmissionNumber || undefined,

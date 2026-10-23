@@ -101,6 +101,8 @@ export default function SmtpLogs() {
 
   useEffect(() => {
     fetchLogs();
+    const refreshTimer = window.setInterval(() => fetchLogs(true), 5000);
+    return () => window.clearInterval(refreshTimer);
   }, [fetchLogs]);
 
   // Copy email or ID to clipboard
