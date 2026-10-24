@@ -1,15 +1,23 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export const getApiBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'attendoschool.optinetinnovations.in') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const customLocal = import.meta.env.VITE_API_URL;
+      if (customLocal && !customLocal.includes('onrender.com')) {
+        return customLocal;
+      }
+      return 'http://localhost:5001/api';
+    }
+    if (host === 'attendoschool.optinetinnovations.in') {
       return 'https://attendoschool-backend.onrender.com/api';
     }
   }
-  return 'https://attendoschool-backend.onrender.com/api';
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  return 'http://localhost:5001/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

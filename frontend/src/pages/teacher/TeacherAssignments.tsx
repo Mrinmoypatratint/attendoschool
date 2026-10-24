@@ -1094,7 +1094,7 @@ export function TeacherAssignments() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 5,
-                    color: '#1e293b'
+                    color: 'var(--text, #1e293b)'
                   }}
                 >
                   <Download size={13} /> Download

@@ -167,6 +167,18 @@ router.get('/lookup-institute', async (req, res) => {
     }
   }
 
+  if (email.includes('dav') || email.includes('15582')) {
+    const dav = demoSchools.find(s => s.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3');
+    if (dav) {
+      return res.json({
+        found: true,
+        instituteId: String(dav.id),
+        instituteName: dav.name,
+        instituteCode: dav.code || '15582'
+      });
+    }
+  }
+
   return res.json({ found: false });
 });
 

@@ -49,8 +49,8 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
         <div
           style={{
             padding: '20px 24px 16px',
-            borderBottom: '1px solid #fee2e2',
-            background: '#fef2f2',
+            borderBottom: '1px solid rgba(239, 68, 68, 0.25)',
+            background: 'rgba(239, 68, 68, 0.12)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -62,8 +62,8 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: '#fee2e2',
-                color: '#dc2626',
+                background: 'rgba(239, 68, 68, 0.22)',
+                color: '#ef4444',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -73,10 +73,10 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
               <AlertTriangle size={22} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#991b1b' }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#ef4444' }}>
                 {title || `Delete ${entityType}`}
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#b91c1c' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-secondary, #fca5a5)' }}>
                 Destructive operation confirmation
               </p>
             </div>
@@ -89,7 +89,7 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
               background: 'transparent',
               border: 'none',
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#991b1b',
+              color: '#ef4444',
               padding: 4
             }}
           >
@@ -104,9 +104,9 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
               style={{
                 padding: '10px 14px',
                 borderRadius: 8,
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                color: '#dc2626',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                color: '#fca5a5',
                 fontSize: 13,
                 marginBottom: 14
               }}
@@ -119,9 +119,9 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
             style={{
               padding: '12px 16px',
               borderRadius: 10,
-              background: '#fff1f2',
-              border: '1px solid #ffe4e6',
-              color: '#9f1239',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: 'var(--text, #fca5a5)',
               fontSize: 13.5,
               marginBottom: 16,
               lineHeight: 1.5
@@ -188,15 +188,13 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
             type="button"
             onClick={onClose}
             disabled={loading}
+            className="btn-secondary"
             style={{
               padding: '9px 16px',
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              border: '1px solid var(--border, #cbd5e1)',
-              background: '#ffffff',
-              color: 'var(--text, #334155)'
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
             Cancel

@@ -129,11 +129,11 @@ export default function ResetPassword() {
             style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }}
             onError={(e)=>{ (e.target as HTMLElement).style.display = 'none'; }}
           />
-          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: '#0f172a' }}>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text, #0f172a)' }}>
             Attendo<span style={{ color: '#2563eb' }}>School</span>
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
           {tokenData?.schoolName || 'Institutional Campus Management Portal'}
         </p>
       </div>
@@ -142,17 +142,17 @@ export default function ResetPassword() {
       <div style={{
         width: '100%',
         maxWidth: 480,
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--bg-card, #ffffff)',
         borderRadius: 12,
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--border, #e2e8f0)',
         boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
         overflow: 'hidden'
       }}>
         {/* Card Header Strip */}
         <div style={{
           padding: '20px 24px',
-          borderBottom: '1px solid #f1f5f9',
-          backgroundColor: '#ffffff',
+          borderBottom: '1px solid var(--border, #f1f5f9)',
+          backgroundColor: 'var(--bg-card, #ffffff)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
@@ -169,7 +169,7 @@ export default function ResetPassword() {
             }}>
               Account Activation
             </span>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
               Set Your Password
             </h2>
           </div>
@@ -326,10 +326,10 @@ export default function ResetPassword() {
                   {tokenData?.name ? tokenData.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
                     {tokenData?.name || tokenData?.email}
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                     {tokenData?.email}
                   </div>
                 </div>
@@ -355,7 +355,7 @@ export default function ResetPassword() {
 
               {/* New Password Input */}
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}>
                   Choose New Password
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -369,10 +369,10 @@ export default function ResetPassword() {
                       width: '100%',
                       padding: '10px 40px 10px 14px',
                       borderRadius: 6,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border, #cbd5e1)',
                       fontSize: 14,
-                      color: '#0f172a',
-                      backgroundColor: '#ffffff',
+                      color: 'var(--text, #0f172a)',
+                      backgroundColor: 'var(--bg, #ffffff)',
                       outline: 'none',
                       boxSizing: 'border-box'
                     }}
@@ -402,7 +402,7 @@ export default function ResetPassword() {
 
               {/* Confirm Password Input */}
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}>
                   Confirm New Password
                 </label>
                 <input
@@ -415,10 +415,10 @@ export default function ResetPassword() {
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: 6,
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--border, #cbd5e1)',
                     fontSize: 14,
-                    color: '#0f172a',
-                    backgroundColor: '#ffffff',
+                    color: 'var(--text, #0f172a)',
+                    backgroundColor: 'var(--bg, #ffffff)',
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -427,8 +427,8 @@ export default function ResetPassword() {
 
               {/* Security Checklist */}
               <div style={{
-                backgroundColor: '#f8fafc',
-                border: '1px solid #f1f5f9',
+                backgroundColor: 'var(--card-subtle, #f8fafc)',
+                border: '1px solid var(--border, #f1f5f9)',
                 borderRadius: 6,
                 padding: '12px 14px',
                 marginBottom: 24,

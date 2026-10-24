@@ -2147,12 +2147,12 @@ export default function TeacherLeaveApprove() {
                   style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 8 }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FFF', borderRadius: 10, width: '100%', maxWidth: 420 }}>
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card, #FFF)', borderRadius: 10, width: '100%', maxWidth: 420, border: '1px solid var(--border, #e2e8f0)' }}>
                   <FileText size={48} color="#2563EB" style={{ margin: '0 auto 12px', display: 'block' }} />
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#0F172A', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text, #0F172A)', marginBottom: 4 }}>
                     {viewingDoc.name}
                   </div>
-                  <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-muted, #64748B)', marginBottom: 16 }}>
                     Direct inline preview is not supported for this file type. Please open or download it to view.
                   </p>
                   <button

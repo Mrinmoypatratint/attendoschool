@@ -327,9 +327,9 @@ export default function SmtpLogs() {
               fontSize: 13.5,
               fontWeight: 600,
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#1e293b',
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--bg-card, #ffffff)',
+              color: 'var(--text, #1e293b)',
               cursor: refreshing || loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s ease',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -362,7 +362,7 @@ export default function SmtpLogs() {
             </span>
             <Mail size={16} color="#64748b" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginTop: 6 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', marginTop: 6 }}>
             {loading ? '—' : metrics.total}
           </div>
           <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>School records fetched</div>
@@ -625,7 +625,7 @@ export default function SmtpLogs() {
                         <Mail size={26} />
                       </div>
                       <div style={{ maxWidth: 420 }}>
-                        <h4 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                        <h4 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                           {searchQuery || statusFilter !== 'ALL'
                             ? 'No matching email activity records'
                             : 'No SMTP email activity logs found'}
@@ -650,8 +650,8 @@ export default function SmtpLogs() {
                             fontSize: 12.5,
                             fontWeight: 600,
                             borderRadius: 6,
-                            border: '1px solid #cbd5e1',
-                            background: '#ffffff',
+                            border: '1px solid var(--border, #cbd5e1)',
+                            background: 'var(--bg-card, #ffffff)',
                             color: '#2563eb',
                             cursor: 'pointer'
                           }}
@@ -680,10 +680,10 @@ export default function SmtpLogs() {
                   <tr
                     key={item.id}
                     style={{
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--border, #f1f5f9)',
                       transition: 'background 0.15s ease'
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover, #f8fafc)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     {/* 1. Admission No. */}
@@ -695,9 +695,9 @@ export default function SmtpLogs() {
                           fontWeight: 700,
                           padding: '3px 8px',
                           borderRadius: 6,
-                          background: '#f1f5f9',
-                          color: '#0f172a',
-                          border: '1px solid #e2e8f0',
+                          background: 'var(--card-subtle, #f1f5f9)',
+                          color: 'var(--text, #0f172a)',
+                          border: '1px solid var(--border, #e2e8f0)',
                           display: 'inline-block'
                         }}>
                           {admNumber}
@@ -714,8 +714,8 @@ export default function SmtpLogs() {
                           width: 32,
                           height: 32,
                           borderRadius: '50%',
-                          background: admNumber ? '#eff6ff' : '#f1f5f9',
-                          color: admNumber ? '#2563eb' : '#64748b',
+                          background: admNumber ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)',
+                          color: admNumber ? '#3b82f6' : 'var(--text-secondary, #64748b)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -726,7 +726,7 @@ export default function SmtpLogs() {
                           {displayName ? displayName.charAt(0).toUpperCase() : <User size={14} />}
                         </div>
                         <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
                             {displayName || <span style={{ color: '#94a3b8' }}>—</span>}
                           </div>
                           <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -751,8 +751,9 @@ export default function SmtpLogs() {
                         <code style={{
                           fontSize: 12.5,
                           fontFamily: 'monospace',
-                          color: '#1e293b',
-                          background: '#f8fafc',
+                          color: 'var(--text, #1e293b)',
+                          background: 'var(--card-subtle, #f8fafc)',
+                          border: '1px solid var(--border, transparent)',
                           padding: '2px 6px',
                           borderRadius: 4
                         }}>
@@ -787,7 +788,7 @@ export default function SmtpLogs() {
                       <div style={{
                         fontSize: 13,
                         fontWeight: 500,
-                        color: '#0f172a',
+                        color: 'var(--text, #0f172a)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
@@ -801,7 +802,7 @@ export default function SmtpLogs() {
 
                     {/* 6. Timestamp */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontSize: 12.5, color: '#334155', fontWeight: 500 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
                         {item.created_at ? new Date(item.created_at).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
@@ -855,9 +856,9 @@ export default function SmtpLogs() {
                             fontSize: 12,
                             fontWeight: 600,
                             borderRadius: 6,
-                            background: '#f8fafc',
-                            color: '#334155',
-                            border: '1px solid #cbd5e1',
+                            background: 'var(--card-subtle, #f8fafc)',
+                            color: 'var(--text-secondary, #334155)',
+                            border: '1px solid var(--border, #cbd5e1)',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1001,12 +1002,12 @@ export default function SmtpLogs() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '18px 24px',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc'
+              borderBottom: '1px solid var(--border, #e2e8f0)',
+              background: 'var(--modal-header, #f8fafc)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Mail size={20} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
                   Email Delivery Log Details
                 </h3>
               </div>
@@ -1016,7 +1017,7 @@ export default function SmtpLogs() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--text-muted, #64748b)',
                   cursor: 'pointer',
                   padding: 4,
                   display: 'flex',
@@ -1081,7 +1082,7 @@ export default function SmtpLogs() {
               {/* Subject */}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Subject</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text, #0f172a)', background: 'var(--card-subtle, #f8fafc)', padding: 10, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
                   {activeModalItem.subject || '—'}
                 </div>
               </div>
@@ -1139,11 +1140,11 @@ export default function SmtpLogs() {
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>Message Snippet</div>
                   <div style={{
                     fontSize: 12.5,
-                    color: '#334155',
-                    background: '#f8fafc',
+                    color: 'var(--text, #334155)',
+                    background: 'var(--card-subtle, #f8fafc)',
                     padding: 12,
                     borderRadius: 8,
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border, #e2e8f0)',
                     maxHeight: 140,
                     overflowY: 'auto',
                     whiteSpace: 'pre-wrap'
