@@ -1,9 +1,12 @@
 
-import {Router} from 'express';
+import { Router } from 'express';
 import * as svc from '../services/parentOnboardingService';
-const router=Router();
+import { requireAuth, requireRoles } from '../middleware/auth';
 
-router.get('/',async(_req,res)=>{
+const router = Router();
+router.use(requireAuth, requireRoles('SUPER_ADMIN', 'SCHOOL_ADMIN'));
+
+router.get('/', async(_req, res)=>{
  try{res.json(await svc.listParents())}catch(e:any){res.status(500).json({message:e.message})}
 });
 router.post('/',async(req,res)=>{

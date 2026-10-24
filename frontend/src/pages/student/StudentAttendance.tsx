@@ -3,6 +3,36 @@ import { CalendarCheck, Filter, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { studentApi, AttendanceData } from '../../services/studentApi';
 
+function formatDateDDMMYYYY(raw: any): string {
+  if (!raw) return '—';
+  try {
+    const str = String(raw).trim();
+    if (str.includes('T') || str.includes(':')) {
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+      }
+    }
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[3]}-${match[2]}-${match[1]}`;
+    }
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+    return str;
+  } catch {
+    return String(raw);
+  }
+}
+
 export function StudentAttendance() {
   const [data, setData] = useState<AttendanceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,7 +148,7 @@ export function StudentAttendance() {
               <tbody>
                 {records.map((r, i) => (
                   <tr key={i}>
-                    <td className="font-semibold">{r.attendance_date}</td>
+                    <td className="font-semibold">{formatDateDDMMYYYY(r.attendance_date)}</td>
                     <td>{r.start_time?.slice(0, 5)} - {r.end_time?.slice(0, 5)}</td>
                     <td>{r.subject_name || 'Academic Class'}</td>
                     <td>{r.teacher_name || 'Class Teacher'}</td>

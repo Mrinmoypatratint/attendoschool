@@ -480,7 +480,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         gap: 8,
         borderBottom: '2px solid var(--border, #e2e8f0)',
         marginBottom: 24,
-        overflowX: 'auto'
+        flexWrap: 'wrap'
       }}>
         <button
           type="button"

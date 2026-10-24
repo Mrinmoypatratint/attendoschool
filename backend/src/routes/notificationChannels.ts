@@ -9,7 +9,8 @@ import {
   getSchoolSmtpConfig,
   saveSchoolSmtpConfig,
   memNotificationLogs,
-  isValidEmail
+  isValidEmail,
+  isSyntheticOrDummyEmail
 } from '../services/notificationService';
 import { isTestSchool, isSameSchool } from '../utils/tenant';
 import { env } from '../config/env';
@@ -203,19 +204,21 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
     }
 
     // Status filter
-    if (statusFilter && ['SENT', 'FAILED', 'QUEUED', 'PROCESSING', 'RETRYING', 'SKIPPED'].includes(statusFilter)) {
+    if (statusFilter && ['SENT', 'FAILED', 'QUEUED', 'PROCESSING', 'RETRYING', 'SKIPPED', 'UNSENT'].includes(statusFilter)) {
       whereConditions.push(`n.status = $${pIdx++}`);
       queryParams.push(statusFilter);
     }
 
-    // Search query: search across admission number, recipient name, student name, recipient email, subject
+    // Search query: search across admission number, employee ID, recipient name, student name, recipient email, subject
     if (searchQuery) {
       whereConditions.push(`(
         COALESCE(st.admission_number, '') ILIKE $${pIdx} OR
+        COALESCE(tp.employee_id, '') ILIKE $${pIdx} OR
         COALESCE(st.name, '') ILIKE $${pIdx} OR
         COALESCE(u.name, '') ILIKE $${pIdx} OR
         n.recipient ILIKE $${pIdx} OR
-        COALESCE(n.subject, '') ILIKE $${pIdx}
+        COALESCE(n.subject, '') ILIKE $${pIdx} OR
+        COALESCE(n.message, '') ILIKE $${pIdx}
       )`);
       queryParams.push(`%${searchQuery}%`);
       pIdx++;
@@ -227,17 +230,25 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
     const countSql = `
       SELECT COUNT(*)::int AS total
       FROM notification_logs n
-      LEFT JOIN students st ON (
-        (st.id = n.student_id AND st.school_id = n.school_id)
-        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
-      )
+      LEFT JOIN LATERAL (
+        SELECT s.* FROM students s
+        WHERE s.school_id = n.school_id AND (
+          s.id = n.student_id
+          OR (n.student_id IS NULL AND
+              (LOWER(s.email) = LOWER(n.recipient) OR LOWER(s.parent_email) = LOWER(n.recipient)))
+        )
+        ORDER BY (s.id = n.student_id) DESC,
+                 s.created_at DESC
+        LIMIT 1
+      ) st ON TRUE
       LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
+      LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
       ${whereClause}
     `;
     const countRes = await pool.query(countSql, queryParams);
     const totalCount = countRes.rows[0]?.total || 0;
 
-    // Main records query with student admission_number and recipient details mapping
+    // Main records query with student admission_number, teacher employee_id, and recipient details mapping
     const dataSql = `
       SELECT 
         n.id,
@@ -259,16 +270,49 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
         n.sent_at,
         n.failed_at,
         n.scheduled_at,
-        COALESCE(st.admission_number, '') AS admission_number,
-        COALESCE(st.name, u.name, '—') AS recipient_name,
-        COALESCE(st.name, '—') AS student_name,
-        st.roll_number
+        COALESCE(
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Admission Number \\(Login ID\\):[[:space:]]*([^\\r\\n]+)')), ''),
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Admission Number:[[:space:]]*([^\\r\\n]+)')), ''),
+          st.admission_number,
+          ''
+        ) AS admission_number,
+        COALESCE(
+          tp.employee_id,
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Employee ID:[[:space:]]*([^\\r\\n<]+)')), ''),
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Employee No:[[:space:]]*([^\\r\\n<]+)')), ''),
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Employee Number:[[:space:]]*([^\\r\\n<]+)')), ''),
+          ''
+        ) AS employee_id,
+        COALESCE(
+          st.name,
+          u.name,
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'registered for[[:space:]]+([^\\r\\n]+?)[[:space:]]+at')), ''),
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Hello[[:space:]]+([^,\\r\\n]+),')), ''),
+          '—'
+        ) AS recipient_name,
+        COALESCE(
+          st.name,
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'registered for[[:space:]]+([^\\r\\n]+?)[[:space:]]+at')), ''),
+          '—'
+        ) AS student_name,
+        COALESCE(
+          st.roll_number,
+          NULLIF(BTRIM(SUBSTRING(n.message FROM 'Roll Number:[[:space:]]*([^\\r\\n]+)')), '')
+        ) AS roll_number
       FROM notification_logs n
-      LEFT JOIN students st ON (
-        (st.id = n.student_id AND st.school_id = n.school_id)
-        OR (n.student_id IS NULL AND st.school_id = n.school_id AND (LOWER(st.email) = LOWER(n.recipient) OR LOWER(st.parent_email) = LOWER(n.recipient)))
-      )
+      LEFT JOIN LATERAL (
+        SELECT s.* FROM students s
+        WHERE s.school_id = n.school_id AND (
+          s.id = n.student_id
+          OR (n.student_id IS NULL AND
+              (LOWER(s.email) = LOWER(n.recipient) OR LOWER(s.parent_email) = LOWER(n.recipient)))
+        )
+        ORDER BY (s.id = n.student_id) DESC,
+                 s.created_at DESC
+        LIMIT 1
+      ) st ON TRUE
       LEFT JOIN users u ON (u.school_id = n.school_id AND LOWER(u.email) = LOWER(n.recipient))
+      LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
       ${whereClause}
       ORDER BY n.created_at DESC
       LIMIT $${pIdx++} OFFSET $${pIdx++}
@@ -310,7 +354,9 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
         const matchesRec = (l.recipient || '').toLowerCase().includes(sq);
         const matchesSub = (l.subject || '').toLowerCase().includes(sq);
         const matchesName = (l.student_name || '').toLowerCase().includes(sq);
-        if (!matchesRec && !matchesSub && !matchesName) return false;
+        const matchesAdm = ((l as any).admission_number || '').toLowerCase().includes(sq);
+        const matchesEmp = ((l as any).employee_id || '').toLowerCase().includes(sq);
+        if (!matchesRec && !matchesSub && !matchesName && !matchesAdm && !matchesEmp) return false;
       }
       return true;
     })
@@ -318,6 +364,7 @@ const handleGetLogs = async (req: AuthRequest, res: any) => {
     .map(l => ({
       ...l,
       admission_number: (l as any).admission_number || '',
+      employee_id: (l as any).employee_id || '',
       recipient_name: (l as any).recipient_name || l.student_name || '—'
     }));
 
@@ -346,6 +393,22 @@ r.post('/logs/:id/retry', ...adminOnly, async (req: AuthRequest, res) => {
   const schoolId = req.user!.schoolId;
 
   try {
+    const checkLog = await pool.query(
+      `SELECT id, recipient FROM notification_logs WHERE id=$1 ${isSuperAdmin ? '' : 'AND school_id=$2'}`,
+      isSuperAdmin ? [id] : [id, schoolId]
+    );
+
+    if (!checkLog.rowCount) {
+      return res.status(404).json({ success: false, message: 'Email log not found or unauthorized.' });
+    }
+
+    if (isSyntheticOrDummyEmail(checkLog.rows[0].recipient)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot retry transmission: recipient is a placeholder/dummy email address.'
+      });
+    }
+
     const q = await pool.query(
       `UPDATE notification_logs 
        SET status='QUEUED', attempts=0, scheduled_at=NOW(), last_error=NULL 
@@ -353,10 +416,6 @@ r.post('/logs/:id/retry', ...adminOnly, async (req: AuthRequest, res) => {
        RETURNING *`,
       isSuperAdmin ? [id] : [id, schoolId]
     );
-
-    if (!q.rowCount) {
-      return res.status(404).json({ success: false, message: 'Email log not found or unauthorized.' });
-    }
 
     // Trigger queue processing asynchronously
     processNotificationQueue(20).catch(() => {});

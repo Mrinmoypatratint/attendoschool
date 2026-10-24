@@ -11,20 +11,50 @@ import { sendPasswordResetEmail } from '../services/emailService';
 import { queueEmailNotification } from '../services/notificationService';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { loginRateLimit, clearLoginAttempts } from '../middleware/security';
+import { isFirebaseConfigured, collections, firestore } from '../firebase';
+import { findFirestoreUserByEmail, getFirestoreSchools, getFirestoreSchoolById } from '../services/firestoreService';
 
 const router = Router();
 
 export { isSameSchool, canonicalSchoolId, isTestSchool, GREENWOOD_TEST_ALIASES } from '../utils/tenant';
 import { isSameSchool, canonicalSchoolId, isTestSchool, isTintSchool } from '../utils/tenant';
 
-// GET /api/auth/institutes - Public active institutes strictly from Database (Supabase / Firestore)
+// GET /api/auth/institutes - Public active institutes strictly from Database (Cloud Firestore / Database)
 router.get('/institutes', async (_req, res) => {
   let list: any[] = [];
   const existingIds = new Set<string>();
   const existingCodes = new Set<string>();
 
-  // 1. Supabase / PostgreSQL Database (Live SQL query)
-  if (isPostgresConfigured) {
+  // 1. Primary: Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const fsSnap = await collections.schools().get();
+      if (!fsSnap.empty) {
+        fsSnap.docs.forEach((doc) => {
+          const s = doc.data();
+          if (s.status !== 'SUSPENDED' && s.status !== 'DELETED') {
+            const sid = String(s.id || doc.id);
+            const scode = String(s.code || 'SCH001').toUpperCase();
+            if (!existingIds.has(sid) && !existingCodes.has(scode)) {
+              existingIds.add(sid);
+              existingCodes.add(scode);
+              list.push({
+                id: sid,
+                name: String(s.name),
+                code: scode,
+                address: String(s.address || 'Main Campus')
+              });
+            }
+          }
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Auth] Database error fetching schools from Cloud Firestore:', err.message);
+    }
+  }
+
+  // 2. Secondary: Supabase / PostgreSQL Database (Live SQL query)
+  if (isPostgresConfigured && list.length === 0) {
     try {
       const q = await pool.query(
         `SELECT id, name, code, COALESCE(address, 'Main Campus') AS address
@@ -71,7 +101,41 @@ router.get('/lookup-institute', async (req, res) => {
     return res.status(400).json({ found: false, message: 'Email or identifier is required' });
   }
 
-  // 1. Primary: PostgreSQL / Supabase
+  // 1. Primary: Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      const userSnap = await collections.users().where('email', '==', email).limit(1).get();
+      if (!userSnap.empty) {
+        const u = userSnap.docs[0].data();
+        const schoolDoc = await collections.schools().doc(String(u.school_id || u.schoolId)).get();
+        const sch = schoolDoc.exists ? schoolDoc.data() : null;
+        return res.json({
+          found: true,
+          instituteId: String(u.school_id || u.schoolId),
+          instituteName: sch?.name || u.school_name || u.schoolName,
+          instituteCode: sch?.code || u.school_code || u.schoolCode
+        });
+      }
+
+      // Check students collection
+      const stuSnap = await collections.students().where('student_email', '==', email).limit(1).get();
+      if (!stuSnap.empty) {
+        const st = stuSnap.docs[0].data();
+        const schoolDoc = await collections.schools().doc(String(st.school_id || st.schoolId)).get();
+        const sch = schoolDoc.exists ? schoolDoc.data() : null;
+        return res.json({
+          found: true,
+          instituteId: String(st.school_id || st.schoolId),
+          instituteName: sch?.name || st.school_name || st.schoolName,
+          instituteCode: sch?.code || st.school_code || st.schoolCode
+        });
+      }
+    } catch (fsErr: any) {
+      console.warn('[Auth] Firestore lookup error:', fsErr.message);
+    }
+  }
+
+  // 2. Secondary: PostgreSQL / Supabase
   if (isPostgresConfigured) {
     try {
       const q = await pool.query(
@@ -243,13 +307,130 @@ router.post('/login', loginRateLimit, async (req, res) => {
     }
   }
 
-  // 1. PRIMARY: Try Supabase PostgreSQL Database
+  // 1. PRIMARY: Try Cloud Firestore Database
+  if (isFirebaseConfigured()) {
+    try {
+      if (isStudentLogin) {
+        let matchedStudent: any = null;
+        let fUser: any = null;
+
+        const studentQueryRef = resolvedInstituteId
+          ? collections.students().where('school_id', '==', resolvedInstituteId)
+          : collections.students();
+        const sSnap = await studentQueryRef.get();
+        for (const sDoc of sSnap.docs) {
+          const sd = sDoc.data();
+          const docSid = sd.school_id || sd.schoolId;
+          if (resolvedInstituteId && docSid && !isSameSchool(docSid, resolvedInstituteId)) continue;
+          const admMatch = (sd.admission_number && String(sd.admission_number).toLowerCase() === rawIdentifier.toLowerCase()) ||
+                           (sd.admissionNumber && String(sd.admissionNumber).toLowerCase() === rawIdentifier.toLowerCase());
+          const emailMatch = (sd.email && String(sd.email).toLowerCase() === rawIdentifier.toLowerCase()) ||
+                             (sd.student_email && String(sd.student_email).toLowerCase() === rawIdentifier.toLowerCase());
+          if (admMatch || emailMatch) {
+            matchedStudent = { id: sDoc.id, ...sd };
+            break;
+          }
+        }
+
+        if (matchedStudent) {
+          const targetUserId = matchedStudent.user_id || matchedStudent.userId;
+          if (targetUserId) {
+            const uDoc = await collections.users().doc(targetUserId).get();
+            if (uDoc.exists) fUser = { id: uDoc.id, ...uDoc.data() };
+          }
+          if (!fUser && (matchedStudent.email || matchedStudent.student_email)) {
+            fUser = await findFirestoreUserByEmail(matchedStudent.email || matchedStudent.student_email);
+          }
+        }
+
+        if (fUser && (fUser.status === 'ACTIVE' || fUser.is_active !== false) && (await bcrypt.compare(password, fUser.password_hash || fUser.passwordHash))) {
+          const cNum = matchedStudent?.class_number ?? matchedStudent?.classNumber ?? 10;
+          const sName = matchedStudent?.section_name || matchedStudent?.sectionName || 'A';
+          const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+
+          const userPayload: any = {
+            id: fUser.id,
+            schoolId: canonicalSchoolId(fUser.school_id || fUser.schoolId) || resolvedInstituteId,
+            schoolName: selectedSchoolName || 'Institutional Campus',
+            schoolCode: selectedSchoolCode || 'SCH',
+            name: matchedStudent?.name || matchedStudent?.fullName || fUser.name,
+            email: fUser.email,
+            role: 'STUDENT' as Role,
+            studentId: matchedStudent?.id || fUser.id,
+            admissionNumber: matchedStudent?.admission_number || matchedStudent?.admissionNumber || rawIdentifier,
+            classId: matchedStudent?.class_id || matchedStudent?.classId || `cls-${cNum}`,
+            sectionId: matchedStudent?.section_id || matchedStudent?.sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
+            className: `Class ${cNum}`,
+            sectionName: `Section ${cleanSName}`,
+            rollNumber: String(matchedStudent?.roll_number || matchedStudent?.rollNumber || '1')
+          };
+
+          clearLoginAttempts(req, rawIdentifier);
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'firestore' });
+        }
+      } else {
+        const fUser = await findFirestoreUserByEmail(rawIdentifier);
+        if (fUser && (fUser.status === 'ACTIVE' || (fUser as any).is_active !== false) && (await bcrypt.compare(password, fUser.passwordHash || (fUser as any).password_hash))) {
+          if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
+            return res.status(401).json({ message: 'Account is not authorized for the selected role' });
+          }
+
+          const fUserSid = String(fUser.schoolId || (fUser as any).school_id || '');
+          if (instituteId && fUser.role !== 'SUPER_ADMIN' && fUserSid) {
+            const matches =
+              fUserSid === resolvedInstituteId ||
+              fUserSid === String(instituteId) ||
+              isSameSchool(fUserSid, resolvedInstituteId) ||
+              isSameSchool(fUserSid, String(instituteId));
+
+            if (!matches) {
+              return res.status(401).json({ message: 'Account does not belong to the selected institute' });
+            }
+          }
+
+          let schoolName = fUser.schoolName;
+          let schoolCode = fUser.schoolCode;
+          if (fUserSid) {
+            try {
+              const fsSch = await getFirestoreSchoolById(fUserSid);
+              if (fsSch) {
+                schoolName = fsSch.name;
+                schoolCode = fsSch.code;
+              }
+            } catch {}
+          }
+
+          const fsPhoto = (fUser as any).photo_url || (fUser as any).photoUrl || undefined;
+          const userPayload: any = {
+            id: fUser.id,
+            schoolId: canonicalSchoolId(fUserSid) || resolvedInstituteId,
+            schoolName: schoolName || selectedSchoolName || 'Institutional Campus',
+            schoolCode: schoolCode || selectedSchoolCode || 'SCH',
+            name: fUser.name,
+            email: fUser.email,
+            role: fUser.role as Role,
+            photo_url: fsPhoto,
+            photoUrl: fsPhoto
+          };
+
+          clearLoginAttempts(req, rawIdentifier);
+          const token = jwt.sign(userPayload, env.jwtSecret, { expiresIn: '30d' });
+          return res.json({ token, user: userPayload, provider: 'firestore' });
+        }
+      }
+    } catch (fsErr: any) {
+      console.warn('[Login] Firestore query error:', fsErr.message);
+    }
+  }
+
+  // 2. SECONDARY: Try Supabase PostgreSQL Database
   if (isPostgresConfigured) {
     try {
       if (isStudentLogin) {
         // Dedicated student login scoped strictly to the selected school/tenant
         const studentQuery = `
-          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+          SELECT u.id, u.school_id, COALESCE(st.name, u.name) AS name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
                  COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
@@ -520,43 +701,79 @@ export async function createAndSendPasswordReset(params: {
   name: string;
   role: 'STUDENT' | 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | string;
   userId?: string;
+  studentId?: string;
   schoolId?: string;
   schoolName?: string;
   admissionNumber?: string;
   admission_number?: string;
+  employeeId?: string;
+  employee_id?: string;
+  rollNumber?: string;
+  roll_number?: string;
   req?: any;
   sendEmail?: boolean;
 }) {
-  const { email, name, role, userId, schoolId, schoolName = 'Greenwood International School', req } = params;
+  const { email, name, role, userId, studentId, schoolId, schoolName = 'Greenwood International School', req } = params;
   let admissionNumber = params.admission_number || params.admissionNumber || '';
+  let employeeId = params.employee_id || params.employeeId || '';
+  let rollNumber = params.roll_number || params.rollNumber || '';
 
-  // Resolve student admission number if missing
-  if (!admissionNumber && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
+  // Resolve student admission number and roll number if missing
+  if ((!admissionNumber || !rollNumber) && (String(role).toUpperCase() === 'STUDENT' || String(role).toUpperCase() === 'PARENT')) {
     try {
       const { demoStudents } = await import('./schoolData');
       const memStu = demoStudents.find((s: any) =>
         (userId && (s.user_id === userId || s.id === userId)) ||
         (s.email && s.email.toLowerCase() === email.toLowerCase().trim()) ||
-        (s.student_email && s.student_email.toLowerCase() === email.toLowerCase().trim()) ||
         (s.parent_email && s.parent_email.toLowerCase() === email.toLowerCase().trim())
       );
-      if (memStu?.admission_number) {
+      if (memStu?.admission_number && !admissionNumber) {
         admissionNumber = memStu.admission_number;
+      }
+      if (memStu?.roll_number && !rollNumber) {
+        rollNumber = memStu.roll_number;
       }
     } catch {}
 
-    if (!admissionNumber && pool && isPostgresConfigured) {
+    if ((!admissionNumber || !rollNumber) && pool && isPostgresConfigured) {
       try {
         const q = await pool.query(
-          `SELECT admission_number FROM students
-           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(student_email) = $2 OR LOWER(parent_email) = $2)
+          `SELECT admission_number, roll_number FROM students
+           WHERE (user_id = $1 OR LOWER(email) = $2 OR LOWER(parent_email) = $2)
+           ORDER BY (user_id = $1) DESC
            LIMIT 1`,
           [userId || null, email.toLowerCase().trim()]
         );
-        if (q.rowCount && q.rows[0]?.admission_number) {
-          admissionNumber = q.rows[0].admission_number;
+        if (q.rowCount && q.rows[0]) {
+          if (!admissionNumber && q.rows[0].admission_number) {
+            admissionNumber = q.rows[0].admission_number;
+          }
+          if (!rollNumber && q.rows[0].roll_number) {
+            rollNumber = q.rows[0].roll_number;
+          }
         }
-      } catch {}
+      } catch (err: any) {
+        console.warn('[PasswordReset] Student resolution error:', err?.message);
+      }
+    }
+  }
+
+  // Resolve teacher employee_id if missing
+  if (!employeeId && String(role).toUpperCase() === 'TEACHER' && pool && isPostgresConfigured) {
+    try {
+      const q = await pool.query(
+        `SELECT tp.employee_id 
+         FROM users u 
+         JOIN teacher_profiles tp ON tp.user_id = u.id 
+         WHERE (u.id = $1 OR LOWER(u.email) = $2)
+         LIMIT 1`,
+        [userId || null, email.toLowerCase().trim()]
+      );
+      if (q.rowCount && q.rows[0]?.employee_id) {
+        employeeId = q.rows[0].employee_id;
+      }
+    } catch (err: any) {
+      console.warn('[PasswordReset] Teacher employee_id resolution notice:', err?.message);
     }
   }
   const token = crypto.randomBytes(32).toString('hex');
@@ -586,14 +803,31 @@ export async function createAndSendPasswordReset(params: {
     used: false
   });
 
-  // 3. Construct clean destination URL using client's actual origin
-  let baseUrl = env.appBaseUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+  // 3. Construct clean destination URL using an approved whitelist of trusted domains
+  const ALLOWED_RESET_HOSTS = [
+    'attendoschool.online',
+    'www.attendoschool.online',
+    'attendoschool.optinetinnovations.in',
+    'localhost:5173',
+    'localhost:3000',
+    '127.0.0.1:5173',
+    '127.0.0.1:3000'
+  ];
+  let baseUrl = env.appBaseUrl || 'https://attendoschool.online';
   if (req) {
     const origin = req.get('origin') || req.get('referer');
     if (origin) {
       try {
         const u = new URL(origin);
-        baseUrl = `${u.protocol}//${u.host}`;
+        if (
+          ALLOWED_RESET_HOSTS.includes(u.host) ||
+          u.host.includes('optinetinnovations.in') ||
+          u.host.includes('attendoschool.online') ||
+          u.host.includes('localhost') ||
+          u.host.includes('127.0.0.1')
+        ) {
+          baseUrl = `${u.protocol}//${u.host}`;
+        }
       } catch {}
     }
   }
@@ -604,18 +838,40 @@ export async function createAndSendPasswordReset(params: {
   let emailResult: any = null;
   if (params.sendEmail !== false) {
     try {
+      let resolvedSchoolId = schoolId;
+      if ((!resolvedSchoolId || resolvedSchoolId === 'school-default') && pool && isPostgresConfigured) {
+        try {
+          if (userId) {
+            const uRes = await pool.query(`SELECT school_id FROM users WHERE id = $1 LIMIT 1`, [userId]);
+            if (uRes.rows[0]?.school_id) resolvedSchoolId = uRes.rows[0].school_id;
+          }
+          if (!resolvedSchoolId && email) {
+            const uRes = await pool.query(`SELECT school_id FROM users WHERE LOWER(email) = $1 LIMIT 1`, [email.toLowerCase().trim()]);
+            if (uRes.rows[0]?.school_id) resolvedSchoolId = uRes.rows[0].school_id;
+          }
+          if (!resolvedSchoolId) {
+            const sRes = await pool.query(`SELECT id FROM schools LIMIT 1`);
+            if (sRes.rows[0]?.id) resolvedSchoolId = sRes.rows[0].id;
+          }
+        } catch {}
+      }
+
       emailResult = await queueEmailNotification({
-        schoolId: schoolId || 'school-default',
+        schoolId: resolvedSchoolId || 'school-default',
         recipientEmail: email.toLowerCase().trim(),
         recipientName: name,
         recipientType: (role.toUpperCase() as any) || 'STUDENT',
+        studentId: studentId || null,
+        studentName: name,
         templateKey: 'PASSWORD_RESET',
         templateData: {
           name,
           school_name: schoolName,
           reset_link: resetUrl,
           role,
-          admission_number: admissionNumber || undefined
+          admission_number: admissionNumber || undefined,
+          employee_id: employeeId || undefined,
+          roll_number: rollNumber || undefined
         },
         idempotencyKey: `pwd-reset-${email.toLowerCase().trim()}-${token.slice(0, 10)}`
       });
@@ -777,6 +1033,33 @@ router.post('/reset-password', async (req, res) => {
     console.warn(`[ResetPassword] Error updating SQL password:`, err.message);
   }
 
+  // Update password in Cloud Firestore
+  if (isFirebaseConfigured()) {
+    try {
+      if (targetUserId) {
+        await collections.users().doc(targetUserId).set({
+          password_hash: newHash,
+          passwordHash: newHash,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } else {
+        const uSnap = await collections.users().where('email', '==', targetEmail.toLowerCase().trim()).get();
+        if (!uSnap.empty) {
+          for (const doc of uSnap.docs) {
+            await doc.ref.set({
+              password_hash: newHash,
+              passwordHash: newHash,
+              updated_at: new Date().toISOString()
+            }, { merge: true });
+          }
+        }
+      }
+      console.log(`[ResetPassword] Updated password in Cloud Firestore for: ${targetEmail}`);
+    } catch (fsErr: any) {
+      console.warn(`[ResetPassword] Error updating Cloud Firestore password:`, fsErr.message);
+    }
+  }
+
   // Update demo user if applicable
   const demoUser = findDemoUser(targetEmail);
   if (demoUser) {
@@ -809,17 +1092,33 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
   let userName = 'User';
   let userRole = 'STUDENT';
   let userId: string | undefined = undefined;
+  let studentId: string | undefined = undefined;
   let schoolId: string | undefined = undefined;
   let schoolName = 'Greenwood International School';
   let studentAdmissionNumber = '';
+  let studentRollNumber = '';
 
   // 1. Check PostgreSQL (by email or student admission_number)
   try {
     let q = await pool.query(
-      `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
+      `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
+              st.id AS student_id, st.admission_number, st.roll_number
        FROM users u
        LEFT JOIN schools sch ON sch.id = u.school_id
-       LEFT JOIN students st ON (st.user_id = u.id OR (st.email IS NOT NULL AND LOWER(st.email) = LOWER(st.email)))
+       LEFT JOIN LATERAL (
+         SELECT s.id, s.name, s.admission_number, s.roll_number
+         FROM students s
+         WHERE s.school_id = u.school_id
+           AND (
+             s.user_id = u.id
+             OR (s.user_id IS NULL AND (
+               LOWER(s.email) = LOWER(u.email)
+               OR LOWER(s.parent_email) = LOWER(u.email)
+             ))
+           )
+         ORDER BY (s.user_id = u.id) DESC, s.created_at DESC
+         LIMIT 1
+       ) st ON TRUE
        WHERE LOWER(u.email) = LOWER($1)
        LIMIT 1`,
       [cleanEmail]
@@ -828,7 +1127,8 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
     if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
       // Try resolving student by admission number
       q = await pool.query(
-        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name, st.admission_number
+        `SELECT u.id, COALESCE(st.name, u.name) AS name, u.role, u.school_id, u.email, sch.name AS school_name,
+                st.id AS student_id, st.admission_number, st.roll_number
          FROM students st
          JOIN users u ON (u.id = st.user_id OR (st.email IS NOT NULL AND LOWER(u.email) = LOWER(st.email)))
          LEFT JOIN schools sch ON sch.id = st.school_id
@@ -846,11 +1146,15 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       userName = u.name;
       userRole = u.role;
       userId = u.id;
+      studentId = u.student_id || undefined;
       schoolId = u.school_id;
       schoolName = u.school_name || schoolName;
       if (u.admission_number) studentAdmissionNumber = u.admission_number;
+      if (u.roll_number) studentRollNumber = u.roll_number;
     }
-  } catch (err) {}
+  } catch (err: any) {
+    console.warn('[RequestPasswordReset] User lookup error:', err?.message);
+  }
 
   // 3. Check demoUsers store if not found
   if (!userFound) {
@@ -873,9 +1177,11 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
       name: userName,
       role: userRole,
       userId,
+      studentId,
       schoolId,
       schoolName,
       admissionNumber: studentAdmissionNumber || undefined,
+      rollNumber: studentRollNumber || undefined,
       req
     });
 

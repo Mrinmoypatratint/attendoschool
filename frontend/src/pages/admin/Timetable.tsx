@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { Calendar, Plus, Trash2, AlertTriangle, Clock, BookOpen, Users, User, RefreshCw, ChevronDown, Check, X, Layers, GraduationCap, ClipboardCheck, Sparkles, Pencil } from 'lucide-react';
 
 const DAYS = [
@@ -932,7 +933,7 @@ export default function Timetable() {
                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
                         <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
                         <td>
-                          <span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || '—'}</span>
+                          <PersonProfileLink kind="teacher" id={entry.teacher_id || entry.teacherId} name={entry.teacher_name || entry.teacherName || '—'} person={entry as any}><span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span></PersonProfileLink>
                           {isPrimary && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
                         </td>
                         <td>
@@ -1039,8 +1040,8 @@ export default function Timetable() {
                       <td>{e.period_name || '—'}</td>
                       <td style={{ fontSize: 12 }}>{e.start_time} – {e.end_time}</td>
                       <td><b>{e.subject_name || '—'}</b></td>
-                      <td>{e.teacher_name || '—'}</td>
-                      <td>{e.substitute_teacher_name || '—'}</td>
+                      <td><PersonProfileLink kind="teacher" id={e.teacher_id || e.teacherId} name={e.teacher_name || e.teacherName || '—'} person={e as any} /></td>
+                      <td>{e.substitute_teacher_name ? <PersonProfileLink kind="teacher" id={e.substitute_teacher_id || e.altTeacherId} name={e.substitute_teacher_name} person={e as any} /> : '—'}</td>
                       <td>{e.room_name || '—'}</td>
                       <td><span className={`badge ${e.status === 'PUBLISHED' ? 'sent' : 'queued'}`}>{e.status}</span></td>
                       {(isSchoolAdmin || isTeacher) && (

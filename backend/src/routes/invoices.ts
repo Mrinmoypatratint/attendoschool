@@ -147,13 +147,31 @@ r.get('/', async (req: AuthRequest, res) => {
   return res.json(Array.from(memoryInvoices.values()));
 });
 
+function canAccessInvoice(inv: InvoicePdfData, req: AuthRequest): boolean {
+  if (req.user?.role === 'SUPER_ADMIN') return true;
+  if (req.user?.role === 'SCHOOL_ADMIN') {
+    const sid = req.user.schoolId;
+    if (!sid) return false;
+    return Boolean(
+      (inv.school_code && isSameSchool(inv.school_code, sid)) ||
+      ((inv as any).school_id && isSameSchool((inv as any).school_id, sid)) ||
+      ((inv as any).schoolId && isSameSchool((inv as any).schoolId, sid)) ||
+      (isTestSchool(sid) && (isSameSchool(inv.school_code, 'GWIS-2025') || isSameSchool(inv.school_code, sid)))
+    );
+  }
+  return false;
+}
+
 r.get('/:id', async (req: AuthRequest, res) => {
   const id = String(req.params.id);
   const inv = await fetchInvoiceDetails(id);
+  if (!canAccessInvoice(inv, req)) {
+    return res.status(403).json({ message: 'Access denied: Invoice belongs to another institution' });
+  }
   res.json(inv);
 });
 
-r.put('/:id', async (req: AuthRequest, res) => {
+r.put('/:id', requireRoles('SUPER_ADMIN'), async (req: AuthRequest, res) => {
   const id = String(req.params.id);
   const body = req.body || {};
 
@@ -210,6 +228,9 @@ r.get('/:id/pdf', async (req: AuthRequest, res) => {
   try {
     const id = String(req.params.id);
     const inv = await fetchInvoiceDetails(id);
+    if (!canAccessInvoice(inv, req)) {
+      return res.status(403).json({ message: 'Access denied: Invoice belongs to another institution' });
+    }
     const pdf = await buildInvoicePdf(id, inv);
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -226,6 +247,9 @@ r.post('/:id/email', async (req: AuthRequest, res) => {
   try {
     const id = String(req.params.id);
     const inv = await fetchInvoiceDetails(id);
+    if (!canAccessInvoice(inv, req)) {
+      return res.status(403).json({ message: 'Access denied: Invoice belongs to another institution' });
+    }
     const recipient = String(req.body?.email || '').trim();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {

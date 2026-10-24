@@ -28,6 +28,13 @@ import {
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
 import { invalidateSchoolCache } from '../services/tenantDataService';
+import {
+  validateStudentUniqueness,
+  preValidateBulkImport,
+  normalizeAdmissionNumber,
+  normalizeRollNumber,
+  normalizeEmail
+} from '../utils/studentValidation';
 import { normalizeGender } from '../utils/gender';
 import { invalidateDashboardCache } from './dashboard';
 import { clearStudentDashboardCache } from '../services/studentService';
@@ -621,11 +628,39 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
  const search=String(req.query.search||'').trim().toLowerCase();
  const sessionFilter=String(req.query.session||req.query.sessionId||req.query.academic_year_id||'').trim();
  const userSchoolId = req.user?.schoolId;
+ const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+ const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+ const isExplicitPagination = Boolean(req.query.page || req.query.limit || req.query.paginated === 'true');
+
+ const sendPaginatedStudents = (allRows: any[]) => {
+   const total = allRows.length;
+   const limit = rawLimit && rawLimit > 0 ? Math.min(rawLimit, 1000) : (isExplicitPagination ? 50 : total || 50);
+   const totalPages = Math.ceil(total / (limit || 1)) || 1;
+   const pagedRows = isExplicitPagination ? allRows.slice((page - 1) * limit, page * limit) : allRows;
+
+   res.setHeader('X-Total-Count', String(total));
+   res.setHeader('X-Page', String(page));
+   res.setHeader('X-Per-Page', String(limit));
+   res.setHeader('X-Total-Pages', String(totalPages));
+
+   if (req.query.paginated === 'true' || req.query.format === 'object') {
+     return res.json({
+       data: pagedRows,
+       pagination: {
+         total,
+         page,
+         limit,
+         totalPages
+       }
+     });
+   }
+   return res.json(pagedRows);
+ };
 
  const cacheKey = !search && !sessionFilter && userSchoolId ? `students:${userSchoolId}` : null;
  if (cacheKey) {
    const cached = fastCache.get<any>(cacheKey);
-   if (cached) return res.json(cached);
+   if (cached) return sendPaginatedStudents(cached);
  }
 
  try {
@@ -683,7 +718,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
       });
     }
     if (cacheKey) fastCache.set(cacheKey, rows, 15);
-    return res.json(rows);
+    return sendPaginatedStudents(rows);
   }
  } catch {}
 
@@ -756,7 +791,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         if (!isAllSessions) {
           filtered = filtered.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id || s.session_id, sessionFilter));
         }
-        return res.json(filtered);
+        return sendPaginatedStudents(filtered);
       }
     }
   } catch (e: any) {
@@ -781,11 +816,11 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
    if (!isAllSessions) {
      list = list.filter(s => isSameSession(s.session_name || s.session || s.academic_year_id, sessionFilter));
    }
-   return res.json(list);
+   return sendPaginatedStudents(list);
  }
 
  // Return empty array if school has no registered students
- res.json([]);
+ return sendPaginatedStudents([]);
 });
 
 // GET /students/template — download standardized Excel import template
@@ -873,43 +908,24 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
  const cleanAdmissionNumber = String(admissionNumber || '').trim();
  const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
 
- // Unique admission number constraint — check at application level
- if (cleanAdmissionNumber) {
-   try {
-     const admChk = await pool.query(`SELECT id FROM students WHERE school_id=$1 AND admission_number=$2 AND is_active=true LIMIT 1`, [schoolId, cleanAdmissionNumber]);
-     if (admChk.rowCount && admChk.rowCount > 0) {
-       return res.status(400).json({ message: `Admission number '${cleanAdmissionNumber}' already exists for this school.` });
-     }
-   } catch {}
-   // Also check in-memory
-   const dup = demoStudents.find(s => s.school_id === schoolId && s.admission_number === cleanAdmissionNumber);
-   if (dup) return res.status(400).json({ message: `Admission number '${cleanAdmissionNumber}' already exists (in-memory).` });
- }
-
- // Duplicate Roll Number check in same section
- if (rollNumber) {
-   try {
-     const rollChk = await pool.query(
-       `SELECT id FROM students 
-        WHERE school_id = $1 
-          AND (section_id = $2 OR section_id::text = $2) 
-          AND (roll_number = $3 OR roll_number::text = $3) 
-          AND is_active = true 
-        LIMIT 1`,
-       [schoolId, sectionId, String(rollNumber)]
+ // In-memory demo store uniqueness validation (used when running purely in-memory)
+ if (!isPostgresConfigured) {
+   if (cleanAdmissionNumber) {
+     const dup = demoStudents.find(s => s.school_id === schoolId && s.admission_number?.toLowerCase() === cleanAdmissionNumber.toLowerCase());
+     if (dup) return res.status(409).json({ message: `Admission number '${cleanAdmissionNumber}' already exists for this school.` });
+   }
+   if (cleanStudentEmail) {
+     const dupEmail = demoStudents.find(s => s.school_id === schoolId && (s.email?.toLowerCase() === cleanStudentEmail || s.student_email?.toLowerCase() === cleanStudentEmail));
+     if (dupEmail) return res.status(409).json({ message: `Student email '${cleanStudentEmail}' is already registered in this school.` });
+   }
+   if (rollNumber) {
+     const dupRoll = demoStudents.find(s => 
+       s.school_id === schoolId && 
+       (s.section_id === sectionId || s.sectionId === sectionId) && 
+       String(s.roll_number || s.rollNumber).trim().toLowerCase() === String(rollNumber).trim().toLowerCase() && 
+       s.is_active !== false
      );
-     if (rollChk.rowCount && rollChk.rowCount > 0) {
-       return res.status(400).json({ message: `Roll number ${rollNumber} is already assigned in this section.` });
-     }
-   } catch {}
-   const dupRoll = demoStudents.find(s => 
-     s.school_id === schoolId && 
-     (s.section_id === sectionId || s.sectionId === sectionId) && 
-     String(s.roll_number || s.rollNumber) === String(rollNumber) && 
-     s.is_active !== false
-   );
-   if (dupRoll) {
-     return res.status(400).json({ message: `Roll number ${rollNumber} is already assigned in this section.` });
+     if (dupRoll) return res.status(409).json({ message: `Roll number '${rollNumber}' is already assigned in this section.` });
    }
  }
 
@@ -1070,7 +1086,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
                 class_name: String(clsNum),
                 section_name: secName,
                 roll_number: String(rollNumber),
-                reset_link: resetInfo.resetUrl
+                login_email: targetLoginEmail,
+                reset_link: resetInfo.resetUrl,
+                login_url: resetInfo.resetUrl
               },
               idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
             }).catch(() => {});
@@ -1112,6 +1130,24 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         }
       }
 
+      if (isPostgresConfigured) {
+        const uniquenessResult = await validateStudentUniqueness({
+          schoolId,
+          academicYearId: pgAyId || resolvedSessionId,
+          classId: realClassId,
+          sectionId: realSectionId,
+          admissionNumber: cleanAdmissionNumber || null,
+          rollNumber: rollNumber ? String(rollNumber) : null,
+          studentEmail: cleanStudentEmail || null
+        });
+        if (!uniquenessResult.valid) {
+          return res.status(409).json({
+            message: uniquenessResult.errors[0]?.message || 'Student validation failed.',
+            errors: uniquenessResult.errors
+          });
+        }
+      }
+
       const safeParentSms = parentSmsNumber ? String(parentSmsNumber).trim() : '';
       const q = await pool.query(
         `INSERT INTO students(
@@ -1119,18 +1155,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
           date_of_birth, gender, address
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
-          name = EXCLUDED.name,
-          admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
-          parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
-          parent_sms_number = EXCLUDED.parent_sms_number,
-          email = COALESCE(EXCLUDED.email, students.email),
-          parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
-          date_of_birth = COALESCE(EXCLUDED.date_of_birth, students.date_of_birth),
-          gender = COALESCE(EXCLUDED.gender, students.gender),
-          address = COALESCE(EXCLUDED.address, students.address),
-          is_active = true,
-          updated_at = NOW()
+
         RETURNING *`,
         [
           schoolId,
@@ -1182,6 +1207,23 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     }
   } catch (err: any) {
     console.error('[StudentEnrollment] Supabase student insert error:', err.message);
+    if (isPostgresConfigured) {
+      if (err.code === '23505') {
+        const constraint = err.constraint || '';
+        let msg = 'Duplicate record conflict.';
+        if (constraint.includes('admission') || err.detail?.includes('admission_number')) {
+          msg = `Admission number '${cleanAdmissionNumber}' already exists for this school.`;
+        } else if (constraint.includes('roll') || err.detail?.includes('roll_number')) {
+          msg = `Roll number '${rollNumber}' is already assigned in this section for the selected academic session.`;
+        } else if (constraint.includes('email') || err.detail?.includes('email')) {
+          msg = `Student email '${cleanStudentEmail}' is already registered in this school.`;
+        } else if (constraint.includes('user_id') || err.detail?.includes('user_id')) {
+          msg = `This user account is already linked to another student.`;
+        }
+        return res.status(409).json({ message: msg });
+      }
+      return res.status(400).json({ message: `Failed to enroll student: ${err.message}` });
+    }
   }
 
   // Demo In-Memory Fallback
@@ -1223,7 +1265,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
               class_name: String(clsNum),
               section_name: secName,
               roll_number: String(rollNumber || '—'),
-              reset_link: resetInfo.resetUrl
+              login_email: targetLoginEmail,
+              reset_link: resetInfo.resetUrl,
+              login_url: resetInfo.resetUrl
             },
             idempotencyKey: `stu-welcome-${req.user?.schoolId || 'default'}-${targetLoginEmail}`
           }).catch(() => {});
@@ -1492,8 +1536,9 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   // Validate rows and collect errors (100% in-memory pre-validation)
   const validRows: any[] = [];
   const errors: { row: number; field: string; message: string }[] = [];
-  const seenAdmNums = new Set<string>();
-  const seenRollKeys = new Set<string>();
+  const seenAdmNums = new Map<string, number>();
+  const seenRollKeys = new Map<string, number>();
+  const seenStudentEmails = new Map<string, number>();
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   for (let i = 0; i < students.length; i++) {
@@ -1532,29 +1577,47 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
     if (!firstName) errors.push({ row: rowNum, field: 'First Name', message: 'First Name is required' });
     if (!lastName)  errors.push({ row: rowNum, field: 'Last Name', message: 'Last Name is required' });
-    if (!rollNumber) errors.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
-    if (!admissionNumber) errors.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
     if (!parentPhone) errors.push({ row: rowNum, field: 'Parent Phone', message: 'Parent Phone is required' });
     if (!parsedCls.valid) errors.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid class' });
-    if (admissionNumber && seenAdmNums.has(admissionNumber)) errors.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number '${admissionNumber}' in this batch` });
-    if (admissionNumber) seenAdmNums.add(admissionNumber);
 
-    const rollKey = `${classNumber}_${sectionName}_${rollNumber}`;
-    if (seenRollKeys.has(rollKey)) {
-      errors.push({ row: rowNum, field: 'Roll Number', message: `Duplicate roll number '${rollNumber}' for ${classLabel} Section ${sectionName} in this file` });
-    } else {
-      seenRollKeys.add(rollKey);
+    const normAdm = normalizeAdmissionNumber(admissionNumber)?.toLowerCase();
+    if (!admissionNumber) {
+      errors.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
+    } else if (normAdm && seenAdmNums.has(normAdm)) {
+      errors.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number '${admissionNumber}' in this batch (already used in row ${seenAdmNums.get(normAdm)})` });
+    } else if (normAdm) {
+      seenAdmNums.set(normAdm, rowNum);
     }
 
-    if (studentEmail && !EMAIL_REGEX.test(studentEmail)) {
-      errors.push({ row: rowNum, field: 'Student Email', message: `Invalid student email format '${studentEmail}'` });
+    const normRoll = normalizeRollNumber(rollNumber)?.toLowerCase();
+    if (!rollNumber) {
+      errors.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
+    } else if (normRoll && parsedCls.valid) {
+      const rollKey = `${classNumber}_${sectionName}_${normRoll}`;
+      if (seenRollKeys.has(rollKey)) {
+        errors.push({ row: rowNum, field: 'Roll Number', message: `Duplicate roll number '${rollNumber}' for ${classLabel} Section ${sectionName} in this file (already used in row ${seenRollKeys.get(rollKey)})` });
+      } else {
+        seenRollKeys.set(rollKey, rowNum);
+      }
     }
+
+    const normEmail = normalizeEmail(studentEmail);
+    if (studentEmail) {
+      if (!EMAIL_REGEX.test(studentEmail)) {
+        errors.push({ row: rowNum, field: 'Student Email', message: `Invalid student email format '${studentEmail}'` });
+      } else if (normEmail && seenStudentEmails.has(normEmail)) {
+        errors.push({ row: rowNum, field: 'Student Email', message: `Duplicate student email '${studentEmail}' in this batch (already used in row ${seenStudentEmails.get(normEmail)})` });
+      } else if (normEmail) {
+        seenStudentEmails.set(normEmail, rowNum);
+      }
+    }
+
     if (parentEmail && !EMAIL_REGEX.test(parentEmail)) {
       errors.push({ row: rowNum, field: 'Parent Email', message: `Invalid parent email format '${parentEmail}'` });
     }
 
     if (errors.filter(e => e.row === rowNum).length === 0) {
-      validRows.push({ firstName, lastName, name, rollNumber, admissionNumber, gender, parentName, parentPhone, parentEmail, studentEmail, classId, classNumber, classLabel, sectionId, sectionName });
+      validRows.push({ rowNum, firstName, lastName, name, rollNumber, admissionNumber, gender, parentName, parentPhone, parentEmail, studentEmail, classId, classNumber, classLabel, sectionId, sectionName });
     }
   }
 
@@ -1565,6 +1628,22 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       errors,
       message: `Validation failed for ${errors.length} record(s). The entire import has been cancelled and no data was stored in the database.`
     });
+  }
+
+  // Pre-validate all rows against database records (admission numbers, student emails, roll numbers)
+  if (isPostgresConfigured) {
+    const dbConflictErrors = await preValidateBulkImport({
+      schoolId,
+      academicYearId: bulkSessionId,
+      rows: validRows
+    });
+    if (dbConflictErrors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        errors: dbConflictErrors,
+        message: `Validation failed against existing database records for ${dbConflictErrors.length} record(s). The entire import has been cancelled and no data was stored in the database.`
+      });
+    }
   }
 
   const createdList: any[] = [];
@@ -1578,75 +1657,11 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
       const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bulkSessionId));
       const safeAyId = isAyUuid ? bulkSessionId : null;
 
-      // 1. Pre-fetch existing students ONLY for admission numbers in the current batch
-      const existingAdmMap = new Map<string, string>();
-      const batchAdmNums = validRows.map(r => r.admissionNumber).filter(Boolean);
-      if (batchAdmNums.length > 0) {
-        const existStudentsQ = await client.query(
-          `SELECT id, admission_number FROM students WHERE school_id = $1 AND admission_number = ANY($2::text[])`,
-          [schoolId, batchAdmNums]
-        );
-        for (const row of existStudentsQ.rows) {
-          if (row.admission_number) existingAdmMap.set(row.admission_number, row.id);
-        }
-      }
-
-      // 2. Partition into updates (existing admission number) and inserts (new records)
-      const toUpdate: any[] = [];
-      const toInsert: any[] = [];
-      for (const st of validRows) {
-        if (st.admissionNumber && existingAdmMap.has(st.admissionNumber)) {
-          toUpdate.push(st);
-        } else {
-          toInsert.push(st);
-        }
-      }
-
-      // 3. Process existing record updates (atomic — any failure aborts entire transaction)
-      for (const st of toUpdate) {
-        const existId = existingAdmMap.get(st.admissionNumber);
-        const upQ = await client.query(
-          `UPDATE students SET
-             name = $1,
-             gender = COALESCE($2, gender),
-             class_id = $3,
-             section_id = $4,
-             roll_number = $5,
-             parent_name = COALESCE($6, parent_name),
-             parent_sms_number = $7,
-             email = COALESCE($8, email),
-             parent_email = COALESCE($9, parent_email),
-             academic_year_id = COALESCE($10, academic_year_id),
-             is_active = true,
-             updated_at = NOW()
-           WHERE id = $11
-           RETURNING *`,
-          [st.name, st.gender || null, st.classId, st.sectionId, String(st.rollNumber), st.parentName || null, st.parentPhone, st.studentEmail || null, st.parentEmail || null, safeAyId, existId]
-        );
-        if (upQ.rowCount && upQ.rows.length > 0) {
-          createdList.push({
-            ...upQ.rows[0],
-            gender: upQ.rows[0].gender || st.gender || null,
-            academic_year_id: bulkSessionId,
-            session_id: bulkSessionId,
-            session_name: bulkSessionName,
-            session: bulkSessionName || bulkSessionId,
-            full_name: st.name,
-            class_number: st.classNumber,
-            class_label: st.classLabel,
-            section_name: st.sectionName,
-            is_active: true
-          });
-        } else {
-          throw new Error(`Failed to update student with admission number ${st.admissionNumber}`);
-        }
-      }
-
-      // 4. Fast Bulk Multi-Row Insert for new records
-      if (toInsert.length > 0) {
+      // Fast Bulk Multi-Row Direct Insert for all validated records (all-or-nothing)
+      if (validRows.length > 0) {
         const CHUNK_SIZE = 500;
-        for (let c = 0; c < toInsert.length; c += CHUNK_SIZE) {
-          const chunk = toInsert.slice(c, c + CHUNK_SIZE);
+        for (let c = 0; c < validRows.length; c += CHUNK_SIZE) {
+          const chunk = validRows.slice(c, c + CHUNK_SIZE);
           const valuesChunks: string[] = [];
           const params: any[] = [schoolId, safeAyId];
           let pIdx = 3;
@@ -1674,17 +1689,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
             )
             VALUES ${valuesChunks.join(', ')}
-            ON CONFLICT (academic_year_id, class_id, section_id, roll_number) DO UPDATE SET
-              name = EXCLUDED.name,
-              admission_number = COALESCE(EXCLUDED.admission_number, students.admission_number),
-              gender = COALESCE(EXCLUDED.gender, students.gender),
-              parent_name = COALESCE(EXCLUDED.parent_name, students.parent_name),
-              parent_sms_number = EXCLUDED.parent_sms_number,
-              email = COALESCE(EXCLUDED.email, students.email),
-              parent_email = COALESCE(EXCLUDED.parent_email, students.parent_email),
-              academic_year_id = COALESCE(EXCLUDED.academic_year_id, students.academic_year_id),
-              is_active = true,
-              updated_at = NOW()
+
             RETURNING *
           `;
 
@@ -1768,7 +1773,9 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
                         class_name: String(st.class_number || st.class_name || ''),
                         section_name: String(st.section_name || 'A'),
                         roll_number: String(st.roll_number || ''),
-                        reset_link: resetInfo.resetUrl
+                        login_email: targetLoginEmail,
+                        reset_link: resetInfo.resetUrl,
+                        login_url: resetInfo.resetUrl
                       },
                       idempotencyKey: `stu-welcome-${schoolId || 'default'}-${targetLoginEmail}-${st.admission_number || Date.now()}`
                     }).catch(err => {
@@ -1788,9 +1795,22 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     } catch (txErr: any) {
       await client.query('ROLLBACK');
       client.release();
-      return res.status(400).json({
+      const isUniqueErr = txErr.code === '23505';
+      const status = isUniqueErr ? 409 : 400;
+      let msg = txErr.message || 'Database transaction error';
+      if (isUniqueErr) {
+        const constraint = txErr.constraint || '';
+        if (constraint.includes('admission') || txErr.detail?.includes('admission_number')) {
+          msg = 'An admission number in this import already exists in the school database.';
+        } else if (constraint.includes('roll') || txErr.detail?.includes('roll_number')) {
+          msg = 'A roll number in this import is already assigned in the class and section for this session.';
+        } else if (constraint.includes('email') || txErr.detail?.includes('email')) {
+          msg = 'A student email in this import already exists in the database.';
+        }
+      }
+      return res.status(status).json({
         success: false,
-        message: `Student bulk import failed: ${txErr.message || 'Database transaction error'}. The entire operation was cancelled and no student records were stored in the database.`
+        message: `Student bulk import failed: ${msg}. The entire operation was cancelled and no student records were stored in the database.`
       });
     }
   } else {
@@ -2047,12 +2067,23 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
 
   // Try PostgreSQL if available
   try {
-    let realPutClassId = resolvedClassId;
-    let realPutSectionId = resolvedSectionId;
-    const isPutClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedClassId);
-    const isPutSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSectionId);
+    const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
+    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
 
-    if (!isPutClassUuid || !isPutSecUuid) {
+    let existStu: any = null;
+    if (isStudentUuid) {
+      const existQ = await pool.query('SELECT * FROM students WHERE id=$1 AND school_id=$2', [studentId, schoolId]);
+      if (existQ.rowCount && existQ.rows.length > 0) {
+        existStu = existQ.rows[0];
+      }
+    }
+
+    let realPutClassId = resolvedClassId || existStu?.class_id || '';
+    let realPutSectionId = resolvedSectionId || existStu?.section_id || '';
+    const isPutClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(realPutClassId);
+    const isPutSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(realPutSectionId);
+
+    if ((resolvedClassId && !isPutClassUuid) || (resolvedSectionId && !isPutSecUuid)) {
       try {
         const v = await pool.query(
           `SELECT s.id AS section_id, c.id AS class_id 
@@ -2062,17 +2093,40 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
              AND (c.id = $2::uuid OR c.class_number = $3)
              AND UPPER(s.name) = UPPER($4)
            LIMIT 1`,
-          [schoolId, isPutClassUuid ? resolvedClassId : '00000000-0000-0000-0000-000000000000', putClsNum, putSecName]
+          [schoolId, isPutClassUuid ? realPutClassId : '00000000-0000-0000-0000-000000000000', putClsNum, putSecName]
         );
         if (v.rowCount && v.rows.length > 0) {
-          realPutClassId = v.rows[0].class_id;
-          realPutSectionId = v.rows[0].section_id;
+          if (!isPutClassUuid) realPutClassId = v.rows[0].class_id;
+          if (!isPutSecUuid) realPutSectionId = v.rows[0].section_id;
         }
       } catch {}
     }
 
-    const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
-    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
+    const effectiveClassId = (isPutClassUuid ? realPutClassId : null) || existStu?.class_id || null;
+    const effectiveSectionId = (isPutSecUuid ? realPutSectionId : null) || existStu?.section_id || null;
+    const effectiveAyId = isAyUuid ? resolvedSession : (existStu?.academic_year_id || null);
+    const effectiveAdmNum = cleanAdmissionNumber || existStu?.admission_number || null;
+    const effectiveRollNum = cleanRollNumber || existStu?.roll_number || null;
+    const effectiveEmail = cleanStudentEmail || existStu?.email || null;
+
+    if (isPostgresConfigured) {
+      const uniquenessResult = await validateStudentUniqueness({
+        schoolId,
+        academicYearId: effectiveAyId,
+        classId: effectiveClassId,
+        sectionId: effectiveSectionId,
+        admissionNumber: effectiveAdmNum,
+        rollNumber: effectiveRollNum,
+        studentEmail: effectiveEmail,
+        excludeStudentId: studentId
+      });
+      if (!uniquenessResult.valid) {
+        return res.status(409).json({
+          message: uniquenessResult.errors[0]?.message || 'Student validation conflict.',
+          errors: uniquenessResult.errors
+        });
+      }
+    }
 
     const cleanGender = gender !== undefined ? normalizeGender(gender) : null;
     const cleanDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
@@ -2081,15 +2135,15 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     if (isStudentUuid) {
       const q = await pool.query(
         `UPDATE students SET
-           name=$1,
-           roll_number=$2,
-           admission_number=$3,
-           parent_name=$4,
-           parent_sms_number=$5,
-           email=$6,
-           parent_email=$7,
-           class_id=$8,
-           section_id=$9,
+           name=COALESCE(NULLIF($1, ''), name),
+           roll_number=COALESCE(NULLIF($2, ''), roll_number),
+           admission_number=COALESCE(NULLIF($3, ''), admission_number),
+           parent_name=COALESCE(NULLIF($4, ''), parent_name),
+           parent_sms_number=COALESCE(NULLIF($5, ''), parent_sms_number),
+           email=COALESCE(NULLIF($6, ''), email),
+           parent_email=COALESCE(NULLIF($7, ''), parent_email),
+           class_id=COALESCE($8, class_id),
+           section_id=COALESCE($9, section_id),
            academic_year_id=COALESCE($10, academic_year_id),
            gender=COALESCE($13, gender),
            date_of_birth=COALESCE($14, date_of_birth),
@@ -2097,7 +2151,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            is_active=$16,
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name, cleanRollNumber, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || '', cleanStudentEmail || null, cleanParentEmail || null, realPutClassId, realPutSectionId, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress, resolvedIsActive]
+        [fullName || name || null, cleanRollNumber || null, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, isPutClassUuid ? realPutClassId : null, isPutSecUuid ? realPutSectionId : null, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress, resolvedIsActive]
       );
       if (q.rowCount && q.rows.length > 0) {
         let studentUserId = q.rows[0].user_id;
@@ -2211,7 +2265,44 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
       }
     }
   } catch (err: any) {
-    console.warn('[UpdateStudent] Database update warning:', err.message);
+    console.warn('[UpdateStudent] Database update error:', err.message);
+    if (isPostgresConfigured) {
+      if (err.code === '23505') {
+        const constraint = err.constraint || '';
+        let msg = 'Duplicate record conflict during student update.';
+        if (constraint.includes('admission') || err.detail?.includes('admission_number')) {
+          msg = `Admission number '${cleanAdmissionNumber}' already exists for this school.`;
+        } else if (constraint.includes('roll') || err.detail?.includes('roll_number')) {
+          msg = `Roll number '${cleanRollNumber}' is already assigned in this section for the selected academic session.`;
+        } else if (constraint.includes('email') || err.detail?.includes('email')) {
+          msg = `Student email '${cleanStudentEmail}' is already registered in this school.`;
+        }
+        return res.status(409).json({ message: msg });
+      }
+      return res.status(400).json({ message: `Student update failed: ${err.message}` });
+    }
+  }
+
+  // Pure in-memory fallback uniqueness validation
+  if (!isPostgresConfigured) {
+    if (cleanAdmissionNumber) {
+      const dup = demoStudents.find(s => s.id !== studentId && s.school_id === schoolId && s.admission_number?.toLowerCase() === cleanAdmissionNumber.toLowerCase());
+      if (dup) return res.status(409).json({ message: `Admission number '${cleanAdmissionNumber}' already exists for this school.` });
+    }
+    if (cleanStudentEmail) {
+      const dupEmail = demoStudents.find(s => s.id !== studentId && s.school_id === schoolId && (s.email?.toLowerCase() === cleanStudentEmail || s.student_email?.toLowerCase() === cleanStudentEmail));
+      if (dupEmail) return res.status(409).json({ message: `Student email '${cleanStudentEmail}' is already registered in this school.` });
+    }
+    if (cleanRollNumber) {
+      const dupRoll = demoStudents.find(s => 
+        s.id !== studentId &&
+        s.school_id === schoolId && 
+        (s.section_id === resolvedSectionId || s.sectionId === resolvedSectionId) && 
+        String(s.roll_number || s.rollNumber).trim().toLowerCase() === cleanRollNumber.toLowerCase() && 
+        s.is_active !== false
+      );
+      if (dupRoll) return res.status(409).json({ message: `Roll number '${cleanRollNumber}' is already assigned in this section.` });
+    }
   }
 
   // Pure in-memory fallback
@@ -2281,17 +2372,30 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
   let studentName = 'Student';
   let role = 'STUDENT';
   let userId: string | undefined = undefined;
+  let admissionNumber = '';
+  let rollNumber = '';
+  let className = '';
+  let sectionName = '';
 
   try {
     const q = await pool.query(
-      `SELECT st.id, st.name, st.email, st.parent_email, st.user_id, st.parent_name
-       FROM students st WHERE st.id = $1 AND st.school_id = $2 LIMIT 1`,
+      `SELECT st.id, st.name, st.email, st.parent_email, st.user_id, st.parent_name,
+              st.admission_number, st.roll_number,
+              c.class_number, sec.name as section_name
+       FROM students st 
+       LEFT JOIN classes c ON c.id = st.class_id
+       LEFT JOIN sections sec ON sec.id = st.section_id
+       WHERE st.id = $1 AND st.school_id = $2 LIMIT 1`,
       [studentId, req.user!.schoolId]
     );
     if (q.rowCount && q.rowCount > 0) {
       const st = q.rows[0];
       studentName = st.name;
       userId = st.user_id;
+      admissionNumber = st.admission_number || '';
+      rollNumber = st.roll_number ? String(st.roll_number) : '';
+      className = st.class_number ? String(st.class_number) : '';
+      sectionName = st.section_name || '';
       if (st.email) {
         targetEmail = st.email;
       } else if (st.parent_email) {
@@ -2308,6 +2412,10 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
         studentName = dt.name || dt.fullName || studentName;
         targetEmail = dt.student_email || dt.studentEmail || dt.email || dt.parent_email || dt.parentEmail || '';
         userId = dt.user_id || dt.userId || userId;
+        admissionNumber = dt.admission_number || dt.admissionNumber || admissionNumber;
+        rollNumber = dt.roll_number || dt.rollNumber || rollNumber;
+        className = dt.class_name || dt.className || className;
+        sectionName = dt.section_name || dt.section || sectionName;
       }
     } catch {}
   }
@@ -2317,6 +2425,10 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     if (demo) {
       studentName = demo.name;
       targetEmail = demo.email || demo.student_email || demo.parent_email;
+      admissionNumber = demo.admission_number || admissionNumber;
+      rollNumber = demo.roll_number || rollNumber;
+      className = demo.class_name || className;
+      sectionName = demo.section_name || sectionName;
     }
   }
 
@@ -2329,9 +2441,33 @@ r.post('/students/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     name: studentName,
     role: 'STUDENT',
     userId,
+    schoolId: req.user?.schoolId,
     schoolName: req.user?.schoolName,
-    req
+    req,
+    sendEmail: false
   });
+
+  if (resetResult?.resetUrl) {
+    await queueEmailNotification({
+      schoolId: req.user?.schoolId || 'school-default',
+      recipientEmail: targetEmail,
+      recipientName: studentName,
+      recipientType: 'STUDENT',
+      templateKey: 'STUDENT_CREATED',
+      templateData: {
+        student_name: studentName,
+        school_name: req.user?.schoolName || 'School',
+        admission_number: admissionNumber || '—',
+        class_name: className || '8',
+        section_name: sectionName || 'A',
+        roll_number: rollNumber || '—',
+        login_email: targetEmail,
+        reset_link: resetResult.resetUrl,
+        login_url: resetResult.resetUrl
+      },
+      idempotencyKey: `stu-invite-${req.user?.schoolId || 'default'}-${targetEmail}-${Date.now()}`
+    });
+  }
 
   return res.json({
     success: true,
@@ -2482,10 +2618,39 @@ r.get('/teachers/template', ...reader, (_req, res) => {
 
 r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  const userSchoolId = req.user?.schoolId;
+ const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+ const rawLimit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+ const isExplicitPagination = Boolean(req.query.page || req.query.limit || req.query.paginated === 'true');
+
+ const sendPaginatedTeachers = (allRows: any[]) => {
+   const total = allRows.length;
+   const limit = rawLimit && rawLimit > 0 ? Math.min(rawLimit, 500) : (isExplicitPagination ? 50 : total || 50);
+   const totalPages = Math.ceil(total / (limit || 1)) || 1;
+   const pagedRows = isExplicitPagination ? allRows.slice((page - 1) * limit, page * limit) : allRows;
+
+   res.setHeader('X-Total-Count', String(total));
+   res.setHeader('X-Page', String(page));
+   res.setHeader('X-Per-Page', String(limit));
+   res.setHeader('X-Total-Pages', String(totalPages));
+
+   if (req.query.paginated === 'true' || req.query.format === 'object') {
+     return res.json({
+       data: pagedRows,
+       pagination: {
+         total,
+         page,
+         limit,
+         totalPages
+       }
+     });
+   }
+   return res.json(pagedRows);
+ };
+
  const cacheKey = userSchoolId ? `teachers:${userSchoolId}` : null;
  if (cacheKey) {
    const cached = fastCache.get<any>(cacheKey);
-   if (cached) return res.json(cached);
+   if (cached) return sendPaginatedTeachers(cached);
  }
 
  try {
@@ -2494,7 +2659,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
     if (cacheKey) fastCache.set(cacheKey, q.rows, 30);
-    return res.json(q.rows);
+    return sendPaginatedTeachers(q.rows);
   }
  } catch {}
 
@@ -2534,7 +2699,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           }
         }
       }
-      if (list.length > 0) return res.json(list);
+      if (list.length > 0) return sendPaginatedTeachers(list);
     }
   } catch {}
  }
@@ -2542,17 +2707,17 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   // Check in-memory teachers registered for this specific school
   const memSchoolTeachers = demoTeachers.filter(t => t.school_id && userSchoolId && isSameSchool(t.school_id, userSchoolId));
   if (memSchoolTeachers.length > 0) {
-    return res.json(memSchoolTeachers);
+    return sendPaginatedTeachers(memSchoolTeachers);
   }
 
   // Only Greenwood test school can access demo teachers
   if (isTestSchool(userSchoolId)) {
    const schoolTeachers = demoTeachers.filter(t => isSameSchool(t.school_id, userSchoolId));
-   return res.json(schoolTeachers.length ? schoolTeachers : demoTeachers);
+   return sendPaginatedTeachers(schoolTeachers.length ? schoolTeachers : demoTeachers);
  }
 
  // Other schools start with 0 teachers before manual entry
- res.json([]);
+ return sendPaginatedTeachers([]);
 });
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
@@ -2647,10 +2812,12 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: name,
                 school_name: req.user?.schoolName || 'School',
                 employee_id: employeeId,
+                login_email: cleanEmail,
+                reset_link: resetInfo.resetUrl,
                 login_url: resetInfo.resetUrl,
                 temporary_password: rawPassword
               },
-              idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+              idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
             });
             emailDeliveryStatus = 'Sent';
           }
@@ -2714,10 +2881,12 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
             teacher_name: name,
             school_name: req.user?.schoolName || 'School',
             employee_id: employeeId,
+            login_email: cleanEmail,
+            reset_link: resetInfo.resetUrl,
             login_url: resetInfo.resetUrl,
             temporary_password: rawPassword
           },
-          idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}-${Date.now()}`
+          idempotencyKey: `tch-welcome-${req.user?.schoolId || 'default'}-${cleanEmail}`
         });
         emailDeliveryStatus = 'Sent';
       }
@@ -2766,16 +2935,21 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
   let teacherEmail = '';
   let teacherName = 'Teacher';
   let userId: string | undefined = undefined;
+  let employeeId = '';
 
   try {
     const q = await pool.query(
-      `SELECT u.id, u.name, u.email FROM users u WHERE u.id = $1 AND u.school_id = $2 AND u.role = 'TEACHER' LIMIT 1`,
+      `SELECT u.id, u.name, u.email, tp.employee_id 
+       FROM users u 
+       LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+       WHERE (u.id = $1 OR tp.id = $1) AND u.school_id = $2 AND u.role = 'TEACHER' LIMIT 1`,
       [teacherId, req.user!.schoolId]
     );
     if (q.rowCount && q.rowCount > 0) {
       userId = q.rows[0].id;
       teacherName = q.rows[0].name;
       teacherEmail = q.rows[0].email;
+      employeeId = q.rows[0].employee_id || '';
     }
   } catch {}
 
@@ -2787,6 +2961,7 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
         teacherName = dt.name || dt.fullName || teacherName;
         teacherEmail = dt.email || '';
         userId = dt.user_id || dt.userId || userId;
+        employeeId = dt.employee_id || dt.employeeId || employeeId;
       }
     } catch {}
   }
@@ -2796,6 +2971,7 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     if (demo) {
       teacherEmail = demo.email;
       teacherName = demo.name;
+      employeeId = demo.employee_id || '';
     }
   }
 
@@ -2808,9 +2984,30 @@ r.post('/teachers/:id/send-reset-email',...admin,async(req:AuthRequest,res)=>{
     name: teacherName,
     role: 'TEACHER',
     userId,
+    schoolId: req.user?.schoolId,
     schoolName: req.user?.schoolName,
-    req
+    req,
+    sendEmail: false
   });
+
+  if (resetResult?.resetUrl) {
+    await queueEmailNotification({
+      schoolId: req.user?.schoolId || 'school-default',
+      recipientEmail: teacherEmail,
+      recipientName: teacherName,
+      recipientType: 'TEACHER',
+      templateKey: 'TEACHER_CREATED',
+      templateData: {
+        teacher_name: teacherName,
+        school_name: req.user?.schoolName || 'School',
+        employee_id: employeeId || '',
+        login_email: teacherEmail,
+        reset_link: resetResult.resetUrl,
+        login_url: resetResult.resetUrl
+      },
+      idempotencyKey: `tch-invite-${req.user?.schoolId || 'default'}-${teacherEmail}-${Date.now()}`
+    });
+  }
 
   return res.json({
     success: true,
@@ -3055,10 +3252,12 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
                 teacher_name: item.created.name,
                 school_name: schoolName,
                 employee_id: item.created.employee_id,
-                login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+                login_email: item.created.email,
+                reset_link: resetInfo?.resetUrl,
+                login_url: resetInfo?.resetUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/#/reset-password`,
                 temporary_password: item.tempPassword
               },
-              idempotencyKey: `tch-import-${schoolId}-${item.created.email}-${Date.now()}`
+              idempotencyKey: `tch-import-${schoolId}-${item.created.email}`
             }).catch(err => {
               console.warn(`[TeacherBulkImport] SMTP dispatch warning for ${item.created.email}:`, err.message);
             });

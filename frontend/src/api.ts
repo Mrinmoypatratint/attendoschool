@@ -2,20 +2,25 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 export const getApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') {
+    // Enforce canonical domain: Redirect legacy domains to https://attendoschool.online
+    if (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app')) {
+      window.location.replace('https://attendoschool.online' + window.location.pathname + window.location.search + window.location.hash);
+      return 'https://attendoschool.online/api';
+    }
+    // For localhost or 127.0.0.1:
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       const customLocal = import.meta.env.VITE_API_URL;
       if (customLocal && !customLocal.includes('onrender.com')) {
         return customLocal;
       }
       return 'http://localhost:5001/api';
     }
-    if (host === 'attendoschool.optinetinnovations.in') {
-      return 'https://attendoschool-backend.onrender.com/api';
-    }
+    // For attendoschool.online, www.attendoschool.online, or any public hostname:
+    return '/api';
   }
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl;
   }
   return 'http://localhost:5001/api';
 };

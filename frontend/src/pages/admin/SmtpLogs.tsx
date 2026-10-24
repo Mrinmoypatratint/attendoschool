@@ -18,7 +18,9 @@ import {
   ArrowUpDown,
   Send,
   User,
-  GraduationCap
+  GraduationCap,
+  Briefcase,
+  EyeOff
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
@@ -34,7 +36,7 @@ export interface SmtpLogItem {
   template_key: string;
   subject?: string;
   message?: string;
-  status: 'SENT' | 'FAILED' | 'QUEUED' | 'PROCESSING' | 'RETRYING' | 'SKIPPED';
+  status: 'SENT' | 'FAILED' | 'QUEUED' | 'PROCESSING' | 'RETRYING' | 'SKIPPED' | 'UNSENT';
   attempts: number;
   max_attempts: number;
   last_error?: string | null;
@@ -44,6 +46,7 @@ export interface SmtpLogItem {
   failed_at?: string | null;
   scheduled_at?: string | null;
   admission_number?: string;
+  employee_id?: string;
   recipient_name?: string;
   student_name?: string;
   roll_number?: string;
@@ -101,6 +104,8 @@ export default function SmtpLogs() {
 
   useEffect(() => {
     fetchLogs();
+    const refreshTimer = window.setInterval(() => fetchLogs(true), 5000);
+    return () => window.clearInterval(refreshTimer);
   }, [fetchLogs]);
 
   // Copy email or ID to clipboard
@@ -138,7 +143,8 @@ export default function SmtpLogs() {
     const failed = logs.filter(l => l.status === 'FAILED').length;
     const queued = logs.filter(l => l.status === 'QUEUED' || l.status === 'PROCESSING').length;
     const retrying = logs.filter(l => l.status === 'RETRYING').length;
-    return { total, sent, failed, queued, retrying };
+    const unsent = logs.filter(l => l.status === 'UNSENT' || l.status === 'SKIPPED').length;
+    return { total, sent, failed, queued, retrying, unsent };
   }, [logs]);
 
   // Filtered logs
@@ -148,14 +154,15 @@ export default function SmtpLogs() {
       if (statusFilter !== 'ALL' && item.status !== statusFilter) {
         return false;
       }
-      // Search query filter (matches Admission No., Student/Recipient Name, Mail ID, Subject)
+      // Search query filter (matches Admission No., Employee ID, Student/Recipient Name, Mail ID, Subject)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const adm = (item.admission_number || '').toLowerCase();
+        const emp = (item.employee_id || '').toLowerCase();
         const name = (item.recipient_name || item.student_name || '').toLowerCase();
         const mail = (item.recipient || '').toLowerCase();
         const sub = (item.subject || '').toLowerCase();
-        return adm.includes(q) || name.includes(q) || mail.includes(q) || sub.includes(q);
+        return adm.includes(q) || emp.includes(q) || name.includes(q) || mail.includes(q) || sub.includes(q);
       }
       return true;
     });
@@ -256,6 +263,40 @@ export default function SmtpLogs() {
             <RotateCcw size={13} /> RETRYING
           </span>
         );
+      case 'UNSENT':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 9999,
+            fontSize: 12,
+            fontWeight: 700,
+            background: '#f1f5f9',
+            color: '#475569',
+            border: '1px solid #cbd5e1'
+          }}>
+            <EyeOff size={13} /> UNSENT
+          </span>
+        );
+      case 'SKIPPED':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 9999,
+            fontSize: 12,
+            fontWeight: 700,
+            background: '#f1f5f9',
+            color: '#64748b',
+            border: '1px solid #e2e8f0'
+          }}>
+            <EyeOff size={13} /> SKIPPED
+          </span>
+        );
       default:
         return (
           <span style={{
@@ -307,7 +348,7 @@ export default function SmtpLogs() {
                 SMTP Email Activity Logs
               </h1>
               <p style={{ margin: 0, fontSize: 13.5, color: '#64748b' }}>
-                School-isolated delivery audit trail. Every record dynamically reflects admission number, recipient name, email ID, and delivery status.
+                School-isolated delivery audit trail. Every record dynamically reflects admission no. / employee ID, recipient name, email ID, and delivery status.
               </p>
             </div>
           </div>
@@ -427,6 +468,26 @@ export default function SmtpLogs() {
           </div>
           <div style={{ fontSize: 11.5, color: '#2563eb', marginTop: 2 }}>Pending dispatch worker</div>
         </div>
+
+        {/* Dummy / Unsent */}
+        <div style={{
+          background: 'var(--bg-card, #ffffff)',
+          border: '1px solid #cbd5e1',
+          borderRadius: 12,
+          padding: '16px 18px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Unsent (Dummy)
+            </span>
+            <EyeOff size={16} color="#64748b" />
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#334155', marginTop: 6 }}>
+            {loading ? '—' : metrics.unsent}
+          </div>
+          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>Suppressed mock / placeholder</div>
+        </div>
       </div>
 
       {/* ── Error Notice Banner ── */}
@@ -484,7 +545,7 @@ export default function SmtpLogs() {
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input
             type="text"
-            placeholder="Search by Admission No., Name, Mail ID, or Subject..."
+            placeholder="Search by Admission No., Employee ID, Name, Mail ID..."
             value={searchQuery}
             onChange={e => {
               setSearchQuery(e.target.value);
@@ -530,6 +591,7 @@ export default function SmtpLogs() {
           {[
             { key: 'ALL', label: 'All Statuses' },
             { key: 'SENT', label: 'Sent' },
+            { key: 'UNSENT', label: 'Unsent' },
             { key: 'FAILED', label: 'Failed' },
             { key: 'QUEUED', label: 'Queued' },
             { key: 'RETRYING', label: 'Retrying' }
@@ -583,7 +645,7 @@ export default function SmtpLogs() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em'
               }}>
-                <th style={{ padding: '12px 18px' }}>Admission No.</th>
+                <th style={{ padding: '12px 18px' }}>Admission No. / Employee ID</th>
                 <th style={{ padding: '12px 18px' }}>Student / Recipient Name</th>
                 <th style={{ padding: '12px 18px' }}>Mail ID</th>
                 <th style={{ padding: '12px 18px' }}>Status</th>
@@ -669,12 +731,25 @@ export default function SmtpLogs() {
                 const admNumber = item.admission_number && item.admission_number.trim() !== ''
                   ? item.admission_number.trim()
                   : null;
+                const empNumber = item.employee_id && item.employee_id.trim() !== ''
+                  ? item.employee_id.trim()
+                  : null;
+
+                const rawType = (item.recipient_type || '').toUpperCase();
+                const isTeacher = rawType === 'TEACHER' || (Boolean(empNumber) && !admNumber);
+                const isStudent = rawType === 'STUDENT' || rawType === 'PARENT' || (Boolean(admNumber) && !empNumber);
+
+                // Priority: For teachers show employee ID, for students show admission no.
+                const displayedId = isTeacher
+                  ? (empNumber || admNumber || null)
+                  : (admNumber || empNumber || null);
+                const isEmployeeBadge = isTeacher && Boolean(empNumber);
 
                 const displayName = item.recipient_name && item.recipient_name.trim() !== '—'
                   ? item.recipient_name.trim()
                   : (item.student_name && item.student_name.trim() !== '—' ? item.student_name.trim() : null);
 
-                const recipientType = item.recipient_type || (admNumber ? 'STUDENT' : 'RECIPIENT');
+                const recipientType = item.recipient_type || (isTeacher ? 'TEACHER' : (displayedId ? 'STUDENT' : 'RECIPIENT'));
 
                 return (
                   <tr
@@ -686,21 +761,21 @@ export default function SmtpLogs() {
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover, #f8fafc)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    {/* 1. Admission No. */}
+                    {/* 1. Admission No. / Employee ID */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
-                      {admNumber ? (
+                      {displayedId ? (
                         <span style={{
                           fontFamily: 'monospace',
                           fontSize: 12.5,
                           fontWeight: 700,
                           padding: '3px 8px',
                           borderRadius: 6,
-                          background: 'var(--card-subtle, #f1f5f9)',
-                          color: 'var(--text, #0f172a)',
-                          border: '1px solid var(--border, #e2e8f0)',
+                          background: isEmployeeBadge ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)',
+                          color: isEmployeeBadge ? '#3b82f6' : 'var(--text, #0f172a)',
+                          border: isEmployeeBadge ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid var(--border, #e2e8f0)',
                           display: 'inline-block'
-                        }}>
-                          {admNumber}
+                        }} title={isEmployeeBadge ? `Employee ID: ${displayedId}` : `Admission No: ${displayedId}`}>
+                          {displayedId}
                         </span>
                       ) : (
                         <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>—</span>
@@ -714,8 +789,8 @@ export default function SmtpLogs() {
                           width: 32,
                           height: 32,
                           borderRadius: '50%',
-                          background: admNumber ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)',
-                          color: admNumber ? '#3b82f6' : 'var(--text-secondary, #64748b)',
+                          background: isTeacher ? 'rgba(8, 145, 178, 0.15)' : (admNumber || isStudent ? 'rgba(37, 99, 235, 0.15)' : 'var(--card-subtle, #f1f5f9)'),
+                          color: isTeacher ? '#06b6d4' : (admNumber || isStudent ? '#3b82f6' : 'var(--text-secondary, #64748b)'),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -730,7 +805,11 @@ export default function SmtpLogs() {
                             {displayName || <span style={{ color: '#94a3b8' }}>—</span>}
                           </div>
                           <div style={{ fontSize: 11, color: '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {admNumber ? (
+                            {isTeacher ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#0891b2' }}>
+                                <Briefcase size={11} /> Teacher
+                              </span>
+                            ) : (admNumber || isStudent) ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#2563eb' }}>
                                 <GraduationCap size={11} /> Student
                               </span>
@@ -1046,13 +1125,24 @@ export default function SmtpLogs() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-                {/* Admission Number */}
-                <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Admission Number</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4, fontFamily: 'monospace' }}>
-                    {activeModalItem.admission_number || '—'}
-                  </div>
-                </div>
+                {/* Admission No. / Employee ID */}
+                {(() => {
+                  const mType = (activeModalItem.recipient_type || '').toUpperCase();
+                  const mIsTeacher = mType === 'TEACHER' || (Boolean(activeModalItem.employee_id) && !activeModalItem.admission_number);
+                  const mId = mIsTeacher
+                    ? (activeModalItem.employee_id || activeModalItem.admission_number)
+                    : (activeModalItem.admission_number || activeModalItem.employee_id);
+                  const mLabel = mIsTeacher ? 'Employee ID' : 'Admission No.';
+
+                  return (
+                    <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{mLabel}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4, fontFamily: 'monospace' }}>
+                        {mId || '—'}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Status */}
                 <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
@@ -1078,6 +1168,31 @@ export default function SmtpLogs() {
                   </div>
                 </div>
               </div>
+
+              {/* Dummy Recipient Banner */}
+              {activeModalItem.status === 'UNSENT' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155'
+                }}>
+                  <EyeOff size={18} style={{ color: '#64748b', marginTop: 1, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      External SMTP Dispatch Suppressed (Status: UNSENT)
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                      This recipient has been detected as a synthetic, placeholder, or seeded demo address (e.g. <code>.local</code>, <code>admin@dav.com</code>, <code>student123@gmail.com</code>). Outbound SMTP transmission was suppressed to preserve relay quota.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Subject */}
               <div style={{ marginBottom: 16 }}>

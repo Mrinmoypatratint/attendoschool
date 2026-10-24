@@ -107,16 +107,43 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
     }
 
     const { status, search, role } = req.query;
-    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
-      let query = `
-        SELECT p.*
-        FROM photo_approval_requests p
-        WHERE (p.school_id = $1 OR p.school_id::text = $2)
-      `;
-      const params: any[] = [pgSchoolId || schoolId, String(schoolId)];
+      if (isTeacher && role && role === 'TEACHER') {
+        return res.json({
+          success: true,
+          data: [],
+          counts: { all: 0, pending: 0, approved: 0, rejected: 0 }
+        });
+      }
+
+      let query: string;
+      const params: any[] = [pgSchoolId, String(schoolId)];
       let paramIdx = 3;
+
+      if (isTeacher) {
+        query = `
+          SELECT p.*
+          FROM photo_approval_requests p
+          JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
+          JOIN class_mentors cm 
+            ON (cm.school_id = p.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          WHERE (p.school_id = $1 OR p.school_id::text = $2)
+        `;
+        params.push(req.user?.id);
+        paramIdx = 4;
+      } else {
+        query = `
+          SELECT p.*
+          FROM photo_approval_requests p
+          WHERE (p.school_id = $1 OR p.school_id::text = $2)
+        `;
+      }
 
       if (status && status !== 'ALL') {
         query += ` AND p.status = $${paramIdx++}`;
@@ -139,15 +166,34 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
       const result = await pool.query(query, params);
 
       // Fetch accurate counts for badges
-      const countRes = await pool.query(`
-        SELECT 
-          COUNT(*) as total,
-          COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
-          COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
-          COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
-        FROM photo_approval_requests
-        WHERE (school_id = $1 OR school_id::text = $2)
-      `, [pgSchoolId || schoolId, String(schoolId)]);
+      let countRes;
+      if (isTeacher) {
+        countRes = await pool.query(`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE p.status = 'PENDING') as pending,
+            COUNT(*) FILTER (WHERE p.status = 'APPROVED') as approved,
+            COUNT(*) FILTER (WHERE p.status = 'REJECTED') as rejected
+          FROM photo_approval_requests p
+          JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
+          JOIN class_mentors cm 
+            ON (cm.school_id = p.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          WHERE (p.school_id = $1 OR p.school_id::text = $2)
+        `, [pgSchoolId, String(schoolId), req.user?.id]);
+      } else {
+        countRes = await pool.query(`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+            COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
+            COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
+          FROM photo_approval_requests
+          WHERE (school_id = $1 OR school_id::text = $2)
+        `, [pgSchoolId, String(schoolId)]);
+      }
 
       const counts = {
         all: parseInt(countRes.rows[0]?.total || '0', 10),
@@ -164,7 +210,15 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
     }
 
     // In-memory fallback
-    const filtered = inMemoryPhotos.filter(p => p.school_id === schoolId);
+    const filtered = inMemoryPhotos.filter(p => {
+      const matchSchool = isSameSchool(p.school_id, schoolId);
+      if (!matchSchool) return false;
+      if (isTeacher) {
+        if (p.applicant_type !== 'STUDENT') return false;
+        if (p.mentor_id && p.mentor_id !== req.user?.id) return false;
+      }
+      return true;
+    });
     const counts = {
       all: filtered.length,
       pending: filtered.filter(p => p.status === 'PENDING').length,
@@ -185,19 +239,47 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const reviewerName = req.user?.name || (req.user?.role === 'TEACHER' ? 'Teacher' : 'School Admin');
-    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const isTeacher = req.user?.role === 'TEACHER';
+    const reviewerName = req.user?.name || (isTeacher ? 'Class Mentor' : 'School Admin');
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
       const existing = await pool.query(
         'SELECT * FROM photo_approval_requests WHERE id = $1 AND (school_id = $2 OR school_id::text = $3)',
-        [id, pgSchoolId || schoolId, String(schoolId)]
+        [id, pgSchoolId, String(schoolId)]
       );
       if (existing.rowCount === 0) {
         return res.status(404).json({ success: false, message: 'Photo request not found' });
       }
 
       const reqRow = existing.rows[0];
+
+      if (isTeacher) {
+        if (reqRow.applicant_type !== 'STUDENT') {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: Teachers are not authorized to review staff photo requests'
+          });
+        }
+
+        const mentorCheck = await pool.query(`
+          SELECT 1 
+          FROM students s
+          JOIN class_mentors cm 
+            ON (cm.school_id = s.school_id OR cm.school_id::text = $3)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $1
+          WHERE s.id = $2 AND (s.school_id = $4 OR s.school_id::text = $3)
+        `, [reviewerId, reqRow.applicant_id, String(schoolId), pgSchoolId]);
+
+        if (mentorCheck.rowCount === 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You are not authorized to review photo requests for this student'
+          });
+        }
+      }
 
       // Update approval record
       const updateRes = await pool.query(`
@@ -210,13 +292,13 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
             updated_at = NOW()
         WHERE id = $3 AND (school_id = $4 OR school_id::text = $5)
         RETURNING *
-      `, [reviewerId, reviewerName, id, pgSchoolId || schoolId, String(schoolId)]);
+      `, [reviewerId, reviewerName, id, pgSchoolId, String(schoolId)]);
 
       // Apply the photo to the student or teacher profile
       if (reqRow.applicant_type === 'STUDENT') {
         await pool.query(
           'UPDATE students SET photo_url = $1, updated_at = NOW() WHERE id = $2 AND (school_id = $3 OR school_id::text = $4)',
-          [reqRow.photo_url, reqRow.applicant_id, pgSchoolId || schoolId, String(schoolId)]
+          [reqRow.photo_url, reqRow.applicant_id, pgSchoolId, String(schoolId)]
         );
 
         if (isFirebaseConfigured()) {
@@ -277,7 +359,23 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    return res.json({ success: true, message: 'Photo approved' });
+    const item = inMemoryPhotos.find(p => (p.id === id || String(p.id) === String(id)) && isSameSchool(p.school_id, schoolId));
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Photo request not found' });
+    }
+    if (isTeacher) {
+      if (item.applicant_type !== 'STUDENT') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Teachers are not authorized to review staff photo requests' });
+      }
+      if (item.mentor_id && item.mentor_id !== reviewerId) {
+        return res.status(403).json({ success: false, message: 'Forbidden: You are not authorized to review photo requests for this student' });
+      }
+    }
+    item.status = 'APPROVED';
+    item.reviewed_by = reviewerId;
+    item.reviewed_by_name = reviewerName;
+    item.reviewed_at = new Date().toISOString();
+    return res.json({ success: true, message: 'Photo approved', data: item });
   } catch (error: any) {
     console.error('Error approving photo:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to approve photo' });
@@ -292,20 +390,49 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
     const { reason } = req.body;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const reviewerName = req.user?.name || (req.user?.role === 'TEACHER' ? 'Teacher' : 'School Admin');
-    const pgSchoolId = resolvePostgresSchoolId(schoolId);
+    const isTeacher = req.user?.role === 'TEACHER';
+    const reviewerName = req.user?.name || (isTeacher ? 'Class Mentor' : 'School Admin');
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
       const existing = await pool.query(
         'SELECT * FROM photo_approval_requests WHERE id = $1 AND (school_id = $2 OR school_id::text = $3)',
-        [id, pgSchoolId || schoolId, String(schoolId)]
+        [id, pgSchoolId, String(schoolId)]
       );
       if (existing.rowCount === 0) {
         return res.status(404).json({ success: false, message: 'Photo request not found' });
       }
 
       const reqRow = existing.rows[0];
-      const rejectionReason = reason || 'Photo does not meet standards';
+
+      if (isTeacher) {
+        if (reqRow.applicant_type !== 'STUDENT') {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: Teachers are not authorized to review staff photo requests'
+          });
+        }
+
+        const mentorCheck = await pool.query(`
+          SELECT 1 
+          FROM students s
+          JOIN class_mentors cm 
+            ON (cm.school_id = s.school_id OR cm.school_id::text = $3)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $1
+          WHERE s.id = $2 AND (s.school_id = $4 OR s.school_id::text = $3)
+        `, [reviewerId, reqRow.applicant_id, String(schoolId), pgSchoolId]);
+
+        if (mentorCheck.rowCount === 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You are not authorized to review photo requests for this student'
+          });
+        }
+      }
+
+      const rejectionReason = reason || 'Photo does not meet administrative standards';
 
       const updateRes = await pool.query(`
         UPDATE photo_approval_requests
@@ -317,7 +444,7 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
             updated_at = NOW()
         WHERE id = $4 AND (school_id = $5 OR school_id::text = $6)
         RETURNING *
-      `, [rejectionReason, reviewerId, reviewerName, id, pgSchoolId || schoolId, String(schoolId)]);
+      `, [rejectionReason, reviewerId, reviewerName, id, pgSchoolId, String(schoolId)]);
 
       // If student, dispatch rejection email
       if (reqRow.applicant_type === 'STUDENT') {
@@ -422,37 +549,85 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
     }
 
     const { status, search, role } = req.query;
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
+      if (isTeacher && role && role === 'TEACHER') {
+        return res.json({
+          success: true,
+          data: [],
+          counts: { all: 0, pending: 0, seen: 0, approved: 0, rejected: 0 }
+        });
+      }
+
       // Query student leaves
-      let studentLeaveQuery = `
-        SELECT 
-          l.id,
-          l.school_id,
-          'STUDENT' as applicant_type,
-          l.student_id as applicant_id,
-          s.name as applicant_name,
-          s.admission_number as identifier,
-          CONCAT('Class ', c.class_number, CASE WHEN sec.name IS NOT NULL THEN CONCAT(' - ', sec.name) ELSE '' END) as detail,
-          s.photo_url,
-          l.start_date,
-          l.end_date,
-          l.reason,
-          l.status,
-          l.reviewed_by,
-          u.name as reviewer_name,
-          l.review_notes,
-          l.created_at,
-          l.updated_at
-        FROM student_leave_requests l
-        LEFT JOIN students s ON s.id = l.student_id
-        LEFT JOIN classes c ON c.id = s.class_id
-        LEFT JOIN sections sec ON sec.id = s.section_id
-        LEFT JOIN users u ON u.id = l.reviewed_by
-        WHERE l.school_id = $1
-      `;
-      const params: any[] = [schoolId];
-      let paramIdx = 2;
+      let studentLeaveQuery: string;
+      const params: any[] = [pgSchoolId, String(schoolId)];
+      let paramIdx = 3;
+
+      if (isTeacher) {
+        studentLeaveQuery = `
+          SELECT 
+            l.id,
+            l.school_id,
+            'STUDENT' as applicant_type,
+            l.student_id as applicant_id,
+            s.name as applicant_name,
+            s.admission_number as identifier,
+            CONCAT('Class ', c.class_number, CASE WHEN sec.name IS NOT NULL THEN CONCAT(' - ', sec.name) ELSE '' END) as detail,
+            s.photo_url,
+            l.start_date,
+            l.end_date,
+            l.reason,
+            l.status,
+            l.reviewed_by,
+            u.name as reviewer_name,
+            l.review_notes,
+            l.created_at,
+            l.updated_at
+          FROM student_leave_requests l
+          JOIN students s ON s.id = l.student_id
+          JOIN class_mentors cm 
+            ON (cm.school_id = l.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN sections sec ON sec.id = s.section_id
+          LEFT JOIN users u ON u.id = l.reviewed_by
+          WHERE (l.school_id = $1 OR l.school_id::text = $2)
+        `;
+        params.push(req.user?.id);
+        paramIdx = 4;
+      } else {
+        studentLeaveQuery = `
+          SELECT 
+            l.id,
+            l.school_id,
+            'STUDENT' as applicant_type,
+            l.student_id as applicant_id,
+            s.name as applicant_name,
+            s.admission_number as identifier,
+            CONCAT('Class ', c.class_number, CASE WHEN sec.name IS NOT NULL THEN CONCAT(' - ', sec.name) ELSE '' END) as detail,
+            s.photo_url,
+            l.start_date,
+            l.end_date,
+            l.reason,
+            l.status,
+            l.reviewed_by,
+            u.name as reviewer_name,
+            l.review_notes,
+            l.created_at,
+            l.updated_at
+          FROM student_leave_requests l
+          LEFT JOIN students s ON s.id = l.student_id
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN sections sec ON sec.id = s.section_id
+          LEFT JOIN users u ON u.id = l.reviewed_by
+          WHERE (l.school_id = $1 OR l.school_id::text = $2)
+        `;
+      }
 
       if (status && status !== 'ALL') {
         studentLeaveQuery += ` AND l.status = $${paramIdx++}`;
@@ -470,18 +645,42 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
       const result = await pool.query(studentLeaveQuery, params);
 
       // Fetch accurate counts
-      const countRes = await pool.query(`
-        SELECT 
-          COUNT(*) as total,
-          COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
-          COUNT(*) FILTER (WHERE status = 'SEEN') as seen,
-          COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
-          COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
-        FROM student_leave_requests
-        WHERE school_id = $1
-      `, [schoolId]);
+      let countRes;
+      if (isTeacher) {
+        countRes = await pool.query(`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE l.status = 'PENDING') as pending,
+            COUNT(*) FILTER (WHERE l.status = 'SEEN') as seen,
+            COUNT(*) FILTER (WHERE l.status = 'APPROVED') as approved,
+            COUNT(*) FILTER (WHERE l.status = 'REJECTED') as rejected
+          FROM student_leave_requests l
+          JOIN students s ON s.id = l.student_id
+          JOIN class_mentors cm 
+            ON (cm.school_id = l.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          WHERE (l.school_id = $1 OR l.school_id::text = $2)
+        `, [pgSchoolId, String(schoolId), req.user?.id]);
+      } else {
+        countRes = await pool.query(`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE status = 'PENDING') as pending,
+            COUNT(*) FILTER (WHERE status = 'SEEN') as seen,
+            COUNT(*) FILTER (WHERE status = 'APPROVED') as approved,
+            COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected
+          FROM student_leave_requests
+          WHERE (school_id = $1 OR school_id::text = $2)
+        `, [pgSchoolId, String(schoolId)]);
+      }
 
-      const memLeaves = inMemoryLeaves.filter(l => l.school_id === schoolId || !l.school_id);
+      const memLeaves = inMemoryLeaves.filter(l => {
+        if (!isSameSchool(l.school_id, schoolId)) return false;
+        if (isTeacher && l.mentor_id && l.mentor_id !== req.user?.id) return false;
+        return true;
+      });
       let combinedRows = [...result.rows];
       for (const m of memLeaves) {
         if (!combinedRows.some(r => r.id === m.id)) {
@@ -506,7 +705,11 @@ router.get('/leaves', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const filtered = inMemoryLeaves.filter(l => l.school_id === schoolId);
+    const filtered = inMemoryLeaves.filter(l => {
+      if (!isSameSchool(l.school_id, schoolId)) return false;
+      if (isTeacher && l.mentor_id && l.mentor_id !== req.user?.id) return false;
+      return true;
+    });
     const counts = {
       all: filtered.length,
       pending: filtered.filter(l => l.status === 'PENDING').length,
@@ -528,22 +731,50 @@ router.put('/leaves/:id/approve', async (req: AuthRequest, res: Response) => {
     const { notes } = req.body;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
+    const defaultApproveNotes = isTeacher ? 'Approved by Class Teacher' : 'Approved by School Administration';
 
-    const defaultApproveNotes = req.user?.role === 'TEACHER' ? 'Approved by Class Teacher' : 'Approved by School Administration';
     if (isPostgresConfigured) {
+      const existing = await pool.query(`
+        SELECT l.*, s.class_id, s.section_id 
+        FROM student_leave_requests l
+        LEFT JOIN students s ON s.id = l.student_id
+        WHERE l.id = $1 AND (l.school_id = $2 OR l.school_id::text = $3)
+      `, [id, pgSchoolId, String(schoolId)]);
+
+      if (existing.rowCount === 0) {
+        return res.status(404).json({ success: false, message: 'Leave request not found' });
+      }
+
+      if (isTeacher) {
+        const row = existing.rows[0];
+        const mentorCheck = await pool.query(`
+          SELECT 1 
+          FROM class_mentors cm
+          WHERE (cm.school_id = $1 OR cm.school_id::text = $2)
+            AND cm.class_id = $3 
+            AND cm.section_id = $4 
+            AND cm.teacher_id = $5
+        `, [pgSchoolId, String(schoolId), row.class_id, row.section_id, reviewerId]);
+
+        if (mentorCheck.rowCount === 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You are not authorized to review leave requests for this student'
+          });
+        }
+      }
+
       const updateRes = await pool.query(`
         UPDATE student_leave_requests
         SET status = 'APPROVED',
             reviewed_by = $1,
             review_notes = $2,
             updated_at = NOW()
-        WHERE id = $3 AND school_id = $4
+        WHERE id = $3 AND (school_id = $4 OR school_id::text = $5)
         RETURNING *
-      `, [reviewerId, notes || defaultApproveNotes, id, schoolId]);
-
-      if (updateRes.rowCount === 0) {
-        return res.status(404).json({ success: false, message: 'Leave request not found' });
-      }
+      `, [reviewerId, notes || defaultApproveNotes, id, pgSchoolId, String(schoolId)]);
 
       return res.json({
         success: true,
@@ -552,16 +783,18 @@ router.put('/leaves/:id/approve', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const item = inMemoryLeaves.find(l => l.id === id && l.school_id === schoolId);
-    if (item) {
-      item.status = 'APPROVED';
-      item.reviewed_by = reviewerId;
-      item.review_notes = notes || defaultApproveNotes;
-      item.updated_at = new Date().toISOString();
-      return res.json({ success: true, message: 'Leave application approved', data: item });
+    const item = inMemoryLeaves.find(l => (l.id === id || String(l.id) === String(id)) && isSameSchool(l.school_id, schoolId));
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Leave request not found' });
     }
-
-    return res.json({ success: true, message: 'Leave approved' });
+    if (isTeacher && item.mentor_id && item.mentor_id !== reviewerId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You are not authorized to review leave requests for this student' });
+    }
+    item.status = 'APPROVED';
+    item.reviewed_by = reviewerId;
+    item.review_notes = notes || defaultApproveNotes;
+    item.updated_at = new Date().toISOString();
+    return res.json({ success: true, message: 'Leave application approved', data: item });
   } catch (error: any) {
     console.error('Error approving leave:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to approve leave' });
@@ -575,22 +808,50 @@ router.put('/leaves/:id/reject', async (req: AuthRequest, res: Response) => {
     const { reason, notes } = req.body;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const defaultRejectNotes = req.user?.role === 'TEACHER' ? 'Leave request declined by Class Teacher' : 'Leave request declined by School Administration';
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
+    const defaultRejectNotes = isTeacher ? 'Leave request declined by Class Teacher' : 'Leave request declined by School Administration';
 
     if (isPostgresConfigured) {
+      const existing = await pool.query(`
+        SELECT l.*, s.class_id, s.section_id 
+        FROM student_leave_requests l
+        LEFT JOIN students s ON s.id = l.student_id
+        WHERE l.id = $1 AND (l.school_id = $2 OR l.school_id::text = $3)
+      `, [id, pgSchoolId, String(schoolId)]);
+
+      if (existing.rowCount === 0) {
+        return res.status(404).json({ success: false, message: 'Leave request not found' });
+      }
+
+      if (isTeacher) {
+        const row = existing.rows[0];
+        const mentorCheck = await pool.query(`
+          SELECT 1 
+          FROM class_mentors cm
+          WHERE (cm.school_id = $1 OR cm.school_id::text = $2)
+            AND cm.class_id = $3 
+            AND cm.section_id = $4 
+            AND cm.teacher_id = $5
+        `, [pgSchoolId, String(schoolId), row.class_id, row.section_id, reviewerId]);
+
+        if (mentorCheck.rowCount === 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You are not authorized to review leave requests for this student'
+          });
+        }
+      }
+
       const updateRes = await pool.query(`
         UPDATE student_leave_requests
         SET status = 'REJECTED',
             reviewed_by = $1,
             review_notes = $2,
             updated_at = NOW()
-        WHERE id = $3 AND school_id = $4
+        WHERE id = $3 AND (school_id = $4 OR school_id::text = $5)
         RETURNING *
-      `, [reviewerId, notes || reason || defaultRejectNotes, id, schoolId]);
-
-      if (updateRes.rowCount === 0) {
-        return res.status(404).json({ success: false, message: 'Leave request not found' });
-      }
+      `, [reviewerId, notes || reason || defaultRejectNotes, id, pgSchoolId, String(schoolId)]);
 
       return res.json({
         success: true,
@@ -599,16 +860,18 @@ router.put('/leaves/:id/reject', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const item = inMemoryLeaves.find(l => l.id === id && l.school_id === schoolId);
-    if (item) {
-      item.status = 'REJECTED';
-      item.reviewed_by = reviewerId;
-      item.review_notes = notes || reason || defaultRejectNotes;
-      item.updated_at = new Date().toISOString();
-      return res.json({ success: true, message: 'Leave application rejected', data: item });
+    const item = inMemoryLeaves.find(l => (l.id === id || String(l.id) === String(id)) && isSameSchool(l.school_id, schoolId));
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Leave request not found' });
     }
-
-    return res.json({ success: true, message: 'Leave rejected' });
+    if (isTeacher && item.mentor_id && item.mentor_id !== reviewerId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You are not authorized to review leave requests for this student' });
+    }
+    item.status = 'REJECTED';
+    item.reviewed_by = reviewerId;
+    item.review_notes = notes || reason || defaultRejectNotes;
+    item.updated_at = new Date().toISOString();
+    return res.json({ success: true, message: 'Leave application rejected', data: item });
   } catch (error: any) {
     console.error('Error rejecting leave:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to reject leave' });
@@ -621,44 +884,69 @@ router.put('/leaves/:id/seen', async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
-    const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-    const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+    if (isPostgresConfigured) {
+      const existing = await pool.query(`
+        SELECT l.*, s.class_id, s.section_id 
+        FROM student_leave_requests l
+        LEFT JOIN students s ON s.id = l.student_id
+        WHERE l.id = $1 AND (l.school_id = $2 OR l.school_id::text = $3)
+      `, [id, pgSchoolId, String(schoolId)]);
 
-    if (isPostgresConfigured && isUuid(id) && isUuid(schoolId)) {
-      try {
-        const updateRes = await pool.query(`
-          UPDATE student_leave_requests
-          SET status = 'SEEN',
-              reviewed_by = $1,
-              review_notes = COALESCE(review_notes, 'Seen by Faculty'),
-              updated_at = NOW()
-          WHERE id = $2 AND school_id = $3
-          RETURNING *
-        `, [safeReviewerId, id, schoolId]);
+      if (existing.rowCount === 0) {
+        return res.status(404).json({ success: false, message: 'Leave request not found' });
+      }
 
-        if (updateRes.rowCount && updateRes.rowCount > 0) {
-          return res.json({
-            success: true,
-            message: 'Leave application marked as seen',
-            data: updateRes.rows[0]
+      if (isTeacher) {
+        const row = existing.rows[0];
+        const mentorCheck = await pool.query(`
+          SELECT 1 
+          FROM class_mentors cm
+          WHERE (cm.school_id = $1 OR cm.school_id::text = $2)
+            AND cm.class_id = $3 
+            AND cm.section_id = $4 
+            AND cm.teacher_id = $5
+        `, [pgSchoolId, String(schoolId), row.class_id, row.section_id, reviewerId]);
+
+        if (mentorCheck.rowCount === 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You are not authorized to review leave requests for this student'
           });
         }
-      } catch (dbErr: any) {
-        console.warn('[Reviews] DB update error on mark seen:', dbErr.message);
       }
+
+      const updateRes = await pool.query(`
+        UPDATE student_leave_requests
+        SET status = 'SEEN',
+            reviewed_by = $1,
+            review_notes = COALESCE(review_notes, 'Seen by Faculty'),
+            updated_at = NOW()
+        WHERE id = $2 AND (school_id = $3 OR school_id::text = $4)
+        RETURNING *
+      `, [reviewerId, id, pgSchoolId, String(schoolId)]);
+
+      return res.json({
+        success: true,
+        message: 'Leave application marked as seen',
+        data: updateRes.rows[0]
+      });
     }
 
-    const item = inMemoryLeaves.find(l => (l.id === id || String(l.id) === String(id)) && (!schoolId || l.school_id === schoolId));
-    if (item) {
-      item.status = 'SEEN';
-      item.reviewed_by = reviewerId;
-      item.review_notes = item.review_notes || 'Seen by Faculty';
-      item.updated_at = new Date().toISOString();
-      return res.json({ success: true, message: 'Leave application marked as seen', data: item });
+    const item = inMemoryLeaves.find(l => (l.id === id || String(l.id) === String(id)) && isSameSchool(l.school_id, schoolId));
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Leave request not found' });
     }
-
-    return res.status(404).json({ success: false, message: 'Leave request not found' });
+    if (isTeacher && item.mentor_id && item.mentor_id !== reviewerId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You are not authorized to review leave requests for this student' });
+    }
+    item.status = 'SEEN';
+    item.reviewed_by = reviewerId;
+    item.review_notes = item.review_notes || 'Seen by Faculty';
+    item.updated_at = new Date().toISOString();
+    return res.json({ success: true, message: 'Leave application marked as seen', data: item });
   } catch (error: any) {
     console.error('Error marking leave as seen:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to mark leave as seen' });
@@ -670,30 +958,50 @@ router.put('/leaves/mark-all-seen', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
-    const isUuid = (val: any) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-    const safeReviewerId = isUuid(reviewerId) ? reviewerId : null;
+    const isTeacher = req.user?.role === 'TEACHER';
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
-    if (isPostgresConfigured && isUuid(schoolId)) {
-      try {
+    if (isPostgresConfigured) {
+      if (isTeacher) {
         await pool.query(`
           UPDATE student_leave_requests
           SET status = 'SEEN',
               reviewed_by = $1,
               review_notes = COALESCE(review_notes, 'Seen by Faculty'),
               updated_at = NOW()
-          WHERE school_id = $2 AND status = 'PENDING'
-        `, [safeReviewerId, schoolId]);
-      } catch (err: any) {
-        console.warn('[Reviews] DB mark-all-seen error:', err.message);
+          WHERE (school_id = $2 OR school_id::text = $3) 
+            AND status = 'PENDING'
+            AND student_id IN (
+              SELECT s.id 
+              FROM students s
+              JOIN class_mentors cm 
+                ON (cm.school_id = s.school_id OR cm.school_id::text = $3)
+               AND cm.class_id = s.class_id 
+               AND cm.section_id = s.section_id
+              WHERE (cm.school_id = $2 OR cm.school_id::text = $3) 
+                AND cm.teacher_id = $1
+            )
+        `, [reviewerId, pgSchoolId, String(schoolId)]);
+      } else {
+        await pool.query(`
+          UPDATE student_leave_requests
+          SET status = 'SEEN',
+              reviewed_by = $1,
+              review_notes = COALESCE(review_notes, 'Seen by Faculty'),
+              updated_at = NOW()
+          WHERE (school_id = $2 OR school_id::text = $3) AND status = 'PENDING'
+        `, [reviewerId, pgSchoolId, String(schoolId)]);
       }
     }
 
     inMemoryLeaves.forEach(l => {
-      if ((!schoolId || l.school_id === schoolId) && l.status === 'PENDING') {
-        l.status = 'SEEN';
-        l.reviewed_by = reviewerId;
-        l.review_notes = l.review_notes || 'Seen by Faculty';
-        l.updated_at = new Date().toISOString();
+      if (isSameSchool(l.school_id, schoolId) && l.status === 'PENDING') {
+        if (!isTeacher || !l.mentor_id || l.mentor_id === reviewerId) {
+          l.status = 'SEEN';
+          l.reviewed_by = reviewerId;
+          l.review_notes = l.review_notes || 'Seen by Faculty';
+          l.updated_at = new Date().toISOString();
+        }
       }
     });
 
@@ -714,19 +1022,28 @@ router.post('/leaves', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Start date, end date, and reason are required' });
     }
 
+    const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
     let targetStudentId = studentId || req.user?.id;
     if (isPostgresConfigured) {
       // Check if targetStudentId exists in students table. If not, match by user_id or admission number or fallback to an existing student in this school
-      const stCheck = await pool.query(`SELECT id FROM students WHERE id::text = $1::text AND school_id = $2`, [String(targetStudentId), schoolId]);
-      if (stCheck.rowCount === 0) {
+      const stCheck = await pool.query(
+        `SELECT id FROM students WHERE id::text = $1::text AND (school_id = $2 OR school_id::text = $3)`,
+        [String(targetStudentId), pgSchoolId, String(schoolId)]
+      );
+      if (stCheck.rowCount && stCheck.rowCount > 0) {
+        targetStudentId = stCheck.rows[0].id;
+      } else {
         const altCheck = await pool.query(
-          `SELECT id FROM students WHERE (user_id::text = $1::text OR admission_number::text = $1::text OR email::text = $1::text) AND school_id = $2 LIMIT 1`,
-          [String(targetStudentId), schoolId]
+          `SELECT id FROM students WHERE (user_id::text = $1::text OR admission_number::text = $1::text OR email::text = $1::text) AND (school_id = $2 OR school_id::text = $3) LIMIT 1`,
+          [String(targetStudentId), pgSchoolId, String(schoolId)]
         );
         if (altCheck.rowCount && altCheck.rowCount > 0) {
           targetStudentId = altCheck.rows[0].id;
         } else {
-          const anySt = await pool.query(`SELECT id FROM students WHERE school_id = $1 LIMIT 1`, [schoolId]);
+          const anySt = await pool.query(
+            `SELECT id FROM students WHERE (school_id = $1 OR school_id::text = $2) LIMIT 1`,
+            [pgSchoolId, String(schoolId)]
+          );
           if (anySt.rowCount && anySt.rowCount > 0) {
             targetStudentId = anySt.rows[0].id;
           }
@@ -738,7 +1055,7 @@ router.post('/leaves', async (req: AuthRequest, res: Response) => {
           school_id, student_id, start_date, end_date, reason, status
         ) VALUES ($1, $2, $3, $4, $5, 'PENDING')
         RETURNING *
-      `, [schoolId, targetStudentId, startDate, endDate, reason]);
+      `, [pgSchoolId, targetStudentId, startDate, endDate, reason]);
 
       return res.status(201).json({
         success: true,
@@ -929,7 +1246,7 @@ router.get('/teacher-leaves/export-excel', async (req: AuthRequest, res: Respons
 
     if (isPostgresConfigured && pgSchoolId) {
       const qLeaves = await pool.query(`
-        SELECT 
+        SELECT
           l.id,
           l.school_id,
           l.teacher_id,
@@ -1413,44 +1730,109 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
     const pgSchoolId = resolvePostgresSchoolId(schoolId);
 
     if (isPostgresConfigured && pgSchoolId) {
-      // Photo approvals are routed to TEACHER (and SUPER_ADMIN), NOT to SCHOOL_ADMIN
-      const photosRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
-        SELECT id, applicant_name, applicant_type, identifier, detail, photo_url, created_at
-        FROM photo_approval_requests
-        WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING'
-        ORDER BY created_at DESC
-        LIMIT 10
-      `, [pgSchoolId, String(schoolId)]);
+      let photosRes;
+      let studentLeavesRes;
+      let teacherLeavesRes;
+      let countRes;
 
-      // For TEACHER: student leaves awaiting review
-      const studentLeavesRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
-        SELECT l.id, 'STUDENT' as applicant_type, COALESCE(s.name, 'Student') as applicant_name,
-               s.admission_number as identifier, l.start_date, l.end_date, l.reason, l.created_at
-        FROM student_leave_requests l
-        LEFT JOIN students s ON s.id = l.student_id
-        WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
-        ORDER BY l.created_at DESC
-        LIMIT 10
-      `, [pgSchoolId, String(schoolId)]);
+      if (userRole === 'TEACHER') {
+        // For TEACHER: student photos awaiting review in their mentored class-sections
+        photosRes = await pool.query(`
+          SELECT p.id, p.applicant_name, p.applicant_type, p.identifier, p.detail, p.photo_url, p.created_at
+          FROM photo_approval_requests p
+          JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
+          JOIN class_mentors cm 
+            ON (cm.school_id = p.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          WHERE (p.school_id = $1 OR p.school_id::text = $2) AND p.status = 'PENDING'
+          ORDER BY p.created_at DESC
+          LIMIT 10
+        `, [pgSchoolId, String(schoolId), req.user?.id]);
 
-      // For SCHOOL_ADMIN: teacher leaves awaiting review
-      const teacherLeavesRes = (userRole === 'TEACHER') ? { rows: [] } : await pool.query(`
-        SELECT l.id, 'TEACHER' as applicant_type, COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
-               tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.document_url, l.document_name, l.created_at
-        FROM teacher_leave_requests l
-        LEFT JOIN users u ON u.id = l.teacher_id
-        LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
-        WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
-        ORDER BY l.created_at DESC
-        LIMIT 10
-      `, [pgSchoolId, String(schoolId)]);
+        // For TEACHER: student leaves awaiting review in their mentored class-sections
+        studentLeavesRes = await pool.query(`
+          SELECT l.id, 'STUDENT' as applicant_type, COALESCE(s.name, 'Student') as applicant_name,
+                 s.admission_number as identifier, l.start_date, l.end_date, l.reason, l.created_at
+          FROM student_leave_requests l
+          JOIN students s ON s.id = l.student_id
+          JOIN class_mentors cm 
+            ON (cm.school_id = l.school_id OR cm.school_id::text = $2)
+           AND cm.class_id = s.class_id 
+           AND cm.section_id = s.section_id 
+           AND cm.teacher_id = $3
+          WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
+          ORDER BY l.created_at DESC
+          LIMIT 10
+        `, [pgSchoolId, String(schoolId), req.user?.id]);
 
-      const countRes = await pool.query(`
-        SELECT 
-          (SELECT COUNT(*) FROM photo_approval_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_photos,
-          (SELECT COUNT(*) FROM student_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_student_leaves,
-          (SELECT COUNT(*) FROM teacher_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_teacher_leaves
-      `, [pgSchoolId, String(schoolId)]);
+        // Teacher does not review teacher leaves
+        teacherLeavesRes = { rows: [] };
+
+        countRes = await pool.query(`
+          SELECT 
+            (
+              SELECT COUNT(*) 
+              FROM photo_approval_requests p
+              JOIN students s ON s.id = p.applicant_id AND p.applicant_type = 'STUDENT'
+              JOIN class_mentors cm 
+                ON (cm.school_id = p.school_id OR cm.school_id::text = $2)
+               AND cm.class_id = s.class_id 
+               AND cm.section_id = s.section_id 
+               AND cm.teacher_id = $3
+              WHERE (p.school_id = $1 OR p.school_id::text = $2) AND p.status = 'PENDING'
+            ) as pending_photos,
+            (
+              SELECT COUNT(*) 
+              FROM student_leave_requests l
+              JOIN students s ON s.id = l.student_id
+              JOIN class_mentors cm 
+                ON (cm.school_id = l.school_id OR cm.school_id::text = $2)
+               AND cm.class_id = s.class_id 
+               AND cm.section_id = s.section_id 
+               AND cm.teacher_id = $3
+              WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
+            ) as pending_student_leaves,
+            0 as pending_teacher_leaves
+        `, [pgSchoolId, String(schoolId), req.user?.id]);
+      } else {
+        photosRes = await pool.query(`
+          SELECT id, applicant_name, applicant_type, identifier, detail, photo_url, created_at
+          FROM photo_approval_requests
+          WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING'
+          ORDER BY created_at DESC
+          LIMIT 10
+        `, [pgSchoolId, String(schoolId)]);
+
+        studentLeavesRes = (userRole === 'SCHOOL_ADMIN') ? { rows: [] } : await pool.query(`
+          SELECT l.id, 'STUDENT' as applicant_type, COALESCE(s.name, 'Student') as applicant_name,
+                 s.admission_number as identifier, l.start_date, l.end_date, l.reason, l.created_at
+          FROM student_leave_requests l
+          LEFT JOIN students s ON s.id = l.student_id
+          WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
+          ORDER BY l.created_at DESC
+          LIMIT 10
+        `, [pgSchoolId, String(schoolId)]);
+
+        teacherLeavesRes = await pool.query(`
+          SELECT l.id, 'TEACHER' as applicant_type, COALESCE(l.teacher_name, u.name, 'Teacher') as applicant_name,
+                 tp.employee_id as identifier, l.leave_type, l.start_date, l.end_date, l.reason, l.document_url, l.document_name, l.created_at
+          FROM teacher_leave_requests l
+          LEFT JOIN users u ON u.id = l.teacher_id
+          LEFT JOIN teacher_profiles tp ON tp.user_id = l.teacher_id
+          WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
+          ORDER BY l.created_at DESC
+          LIMIT 10
+        `, [pgSchoolId, String(schoolId)]);
+
+        countRes = await pool.query(`
+          SELECT 
+            (SELECT COUNT(*) FROM photo_approval_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_photos,
+            (SELECT COUNT(*) FROM student_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_student_leaves,
+            (SELECT COUNT(*) FROM teacher_leave_requests WHERE (school_id = $1 OR school_id::text = $2) AND status = 'PENDING') as pending_teacher_leaves
+        `, [pgSchoolId, String(schoolId)]);
+      }
 
       const rawPhotosCount = parseInt(countRes.rows[0]?.pending_photos || '0', 10);
       const rawStudentLeavesCount = parseInt(countRes.rows[0]?.pending_student_leaves || '0', 10);
@@ -1524,12 +1906,26 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const memTeacherLeaves = (userRole === 'TEACHER') ? [] : inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
-    const memStudentLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
-    const memPhotos = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryPhotos.filter(p => isSameSchool(p.school_id, schoolId) && p.status === 'PENDING');
+    const isTeacher = userRole === 'TEACHER';
+    const teacherId = req.user?.id;
+    const memTeacherLeaves = isTeacher ? [] : inMemoryTeacherLeaves.filter(l => isSameSchool(l.school_id, schoolId) && l.status === 'PENDING');
+    const memStudentLeaves = (userRole === 'SCHOOL_ADMIN') ? [] : inMemoryLeaves.filter(l => {
+      if (!isSameSchool(l.school_id, schoolId) || l.status !== 'PENDING') return false;
+      if (isTeacher && l.mentor_id && l.mentor_id !== teacherId) return false;
+      return true;
+    });
+    const memPhotos = inMemoryPhotos.filter(p => {
+      if (!isSameSchool(p.school_id, schoolId) || p.status !== 'PENDING') return false;
+      if (isTeacher) {
+        if (p.applicant_type !== 'STUDENT') return false;
+        if (p.mentor_id && p.mentor_id !== teacherId) return false;
+      }
+      return true;
+    });
 
-    const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
     const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : memPhotos.length;
+    const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
+    const pendingTeacherLeavesCount = isTeacher ? 0 : memTeacherLeaves.length;
 
     const notifications: any[] = [
       ...memPhotos.map(p => ({

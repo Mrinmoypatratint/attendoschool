@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface UploadFileItem {
   file: File;
@@ -498,11 +499,13 @@ export function StudentAssignments() {
 
               <label>
                 <span>Submission Notes / Solution Proof:</span>
-                <textarea
-                  rows={4}
+                <AutoExpandingTextarea
                   placeholder="Enter your solution notes or explanation..."
                   value={submissionText}
                   onChange={(e) => setSubmissionText(e.target.value)}
+                  minHeight={70}
+                  maxHeight={250}
+                  style={{ width: '100%' }}
                 />
               </label>
 

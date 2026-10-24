@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../hooks/useAuth';
+import { SidebarToggle } from '../components/SidebarToggle';
 import {
   LayoutDashboard, School, CreditCard, FileText, Eye, BarChart3,
   Users, Shield, ShieldCheck, Database, Settings, Moon, Sun,
@@ -29,7 +30,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
     setMobileDrawerOpen(false);
   };
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_super_nav_collapsed') === 'true');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Dark mode (default to crisp light enterprise theme)
@@ -265,7 +266,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   return (
     <div className="sa-app-shell">
       {/* ─── SIDEBAR ─── */}
-      <aside className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
+      <aside id="primary-navigation" className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
         {/* Brand Header */}
         <div className="sa-sidebar-brand" onClick={() => nav('/super-admin')}>
           <div className="sa-brand-logo-wrap">
@@ -346,19 +347,21 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
         {/* ─── TOP BAR ─── */}
         <header className="sa-topbar">
           <div className="sa-topbar-left">
-            <button
+            <SidebarToggle
               className="sa-icon-btn sa-menu-btn"
-              onClick={() => {
+              collapsed={sidebarCollapsed}
+              onToggle={() => {
                 if (window.innerWidth <= 1024) {
                   setMobileDrawerOpen(prev => !prev);
                 } else {
-                  setSidebarCollapsed(prev => !prev);
+                  setSidebarCollapsed(prev => {
+                    const next = !prev;
+                    localStorage.setItem('attendo_super_nav_collapsed', String(next));
+                    return next;
+                  });
                 }
               }}
-              title="Toggle Menu"
-            >
-              <Menu size={18} />
-            </button>
+            />
 
             {/* Global Search Trigger */}
             <div className="sa-search-trigger" onClick={() => setSearchOpen(true)}>

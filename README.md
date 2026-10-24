@@ -13,10 +13,10 @@
 
 | Environment / Service | Provider | Status | URL |
 |---|---|---|---|
-| **Frontend Production App** | Hostinger Web Hosting (LiteSpeed / FTPS) | [![Deploy](https://img.shields.io/badge/status-Live-brightgreen.svg)](#) | **[https://attendoschool.optinetinnovations.in](https://attendoschool.optinetinnovations.in)** |
-| **Backend REST API** | Render Cloud (Node.js 20 LTS) | [![API](https://img.shields.io/badge/status-Active-blue.svg)](#) | **[https://attendoschool-backend.onrender.com](https://attendoschool-backend.onrender.com)** |
-| **Backend Health Check** | Render Cloud Endpoint | [![Health](https://img.shields.io/badge/probe-200%20OK-emerald.svg)](#) | **[https://attendoschool-backend.onrender.com/api/health](https://attendoschool-backend.onrender.com/api/health)** |
-| **CI/CD Pipeline** | GitHub Actions | [![CI/CD](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci-cd.yml) | **[GitHub Actions Runs](https://github.com/Mrinmoypatratint/attendoschool/actions)** |
+| **Production Web Application** | Hostinger VPS (Nginx + React SPA) | [![Deploy](https://img.shields.io/badge/status-Live-brightgreen.svg)](#) | **[https://attendoschool.online](https://attendoschool.online)** |
+| **Backend REST API** | Hostinger VPS (Node.js 20 LTS + PM2 Cluster) | [![API](https://img.shields.io/badge/status-Active-blue.svg)](#) | **[https://attendoschool.online/api](https://attendoschool.online/api)** |
+| **Backend Health Check** | VPS Production Health Endpoint | [![Health](https://img.shields.io/badge/probe-200%20OK-emerald.svg)](#) | **[https://attendoschool.online/api/health](https://attendoschool.online/api/health)** |
+| **CI/CD Pipeline** | GitHub Actions | [![CI/CD](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci.yml/badge.svg)](https://github.com/Mrinmoypatratint/attendoschool/actions/workflows/ci.yml) | **[GitHub Actions Runs](https://github.com/Mrinmoypatratint/attendoschool/actions)** |
 
 ---
 
@@ -324,10 +324,9 @@ All API routes are prefixed with `/api`. Protected routes require a Bearer token
 ### Live Production Architecture
 The platform runs a decoupled cloud architecture designed for high availability, automatic SSL, and zero-maintenance operations:
 
-- **Frontend Client**: Hosted on **Hostinger Web Hosting (LiteSpeed / Apache)** at **[https://attendoschool.optinetinnovations.in](https://attendoschool.optinetinnovations.in)** with automatic SPA client-side routing (`.htaccess`) and free Let's Encrypt SSL.
-- **Backend API**: Hosted on **Render Cloud (Node.js 20 LTS Web Service)** at **[https://attendoschool-backend.onrender.com](https://attendoschool-backend.onrender.com)**.
+- **Frontend Client**: Hosted on **Hostinger VPS (Nginx reverse proxy)** at **[https://attendoschool.online](https://attendoschool.online)** with client-side SPA routing and Let's Encrypt SSL.
+- **Backend API**: Hosted on **Hostinger VPS (Node.js 20 LTS + PM2 Cluster)** at **[https://attendoschool.online/api](https://attendoschool.online/api)**.
 - **Primary Database**: Hosted on **Supabase PostgreSQL 16 Cloud** with transactional pooling and Supabase Realtime synchronization.
-- **Failover / Historical Store**: **Google Cloud Firestore** (multi-tenant isolated document collections).
 
 ### Automated CI/CD (GitHub Actions)
 Every `git push` to the `main` branch automatically triggers the AttendoSchool CI/CD pipeline (`.github/workflows/ci-cd.yml`):

@@ -7,6 +7,9 @@ export interface LeaveStoreItem {
   applicant_name?: string;
   identifier?: string;
   detail?: string;
+  class_id?: string;
+  section_id?: string;
+  mentor_id?: string;
   start_date: string;
   end_date: string;
   reason: string;

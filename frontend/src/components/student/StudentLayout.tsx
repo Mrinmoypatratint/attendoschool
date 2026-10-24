@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
 import { StudentSearchBar } from './StudentSearchBar';
+import { SidebarToggle } from '../SidebarToggle';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const nav = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_student_nav_collapsed') === 'true');
   const [dark, setDark] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -64,9 +66,32 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     studentApi.getProfile()
       .then((p) => {
         const photo = p?.photoUrl || p?.photo_url || null;
+        // Sync core student identity fields from authoritative DB profile
+        // This ensures navbar matches the dashboard (both reflect DB truth)
+        const identityUpdates: Record<string, any> = {};
         if (photo) {
           setStudentPhoto(photo);
-          updateUser({ photoUrl: photo, avatarUrl: photo, photo_url: photo });
+          identityUpdates.photoUrl = photo;
+          identityUpdates.avatarUrl = photo;
+          identityUpdates.photo_url = photo;
+        }
+        if (p?.name) {
+          identityUpdates.name = p.name;
+        }
+        if (p?.className) {
+          identityUpdates.className = p.className;
+        }
+        if (p?.sectionName) {
+          identityUpdates.sectionName = p.sectionName;
+        }
+        if (p?.rollNumber) {
+          identityUpdates.rollNumber = p.rollNumber;
+        }
+        if (p?.id) {
+          identityUpdates.studentId = p.id;
+        }
+        if (Object.keys(identityUpdates).length > 0) {
+          updateUser(identityUpdates);
         }
         if (p?.schoolPhotoUrl || p?.school_photo_url) {
           setSchoolPhoto(p.schoolPhotoUrl || p.school_photo_url || null);
@@ -83,6 +108,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         }
       })
       .catch(() => {});
+
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
         setSchoolWebsite(e.detail.website);
@@ -241,10 +267,10 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     nav('/login');
   };
 
-  const studentName = user?.name || 'Rohan Sharma';
-  const studentClass = user?.className && user?.sectionName 
-    ? `${user.className} - Section ${user.sectionName}` 
-    : 'Class 10 - Section A';
+  const studentName = user?.name || 'Student';
+  const studentClass = user?.className 
+    ? (user?.sectionName ? `${user.className} · Section ${user.sectionName}` : user.className) 
+    : '';
   const schoolName = schoolNameState || user?.schoolName || 'AttendoSchool';
   const isDav =
     String(schoolName || '').toUpperCase().includes('DAV') ||
@@ -304,7 +330,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       )}
 
       {/* Left Sidebar */}
-      <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
+      <aside id="primary-navigation" className={`student-sidebar ${sidebarCollapsed ? 'student-sidebar-collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
           <div 
             className="student-logo-wrap" 
@@ -401,14 +427,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         {/* Topbar */}
         <header className="student-topbar">
           <div className="student-topbar-left">
-            <button
-              type="button"
+            <SidebarToggle
+              collapsed={sidebarCollapsed}
               className="student-hamburger-btn"
-              onClick={() => setMobileNavOpen(prev => !prev)}
-              aria-label="Toggle navigation menu"
-            >
-              <Menu size={20} />
-            </button>
+              iconSize={20}
+              onToggle={() => {
+                if (window.matchMedia('(max-width: 1180px)').matches) {
+                  setMobileNavOpen(previous => !previous);
+                } else {
+                  setSidebarCollapsed(previous => {
+                    const next = !previous;
+                    localStorage.setItem('attendo_student_nav_collapsed', String(next));
+                    return next;
+                  });
+                }
+              }}
+            />
             <StudentSearchBar />
           </div>
 

@@ -58,14 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('attendance_user');
     try {
       Object.keys(sessionStorage).forEach(key => {
-        if (key.startsWith('attendo_welcome_seen_')) {
+        if (key.startsWith('attendo_welcome_seen_') || key.startsWith('cached_student_dashboard')) {
           sessionStorage.removeItem(key);
         }
       });
-      sessionStorage.removeItem('cached_student_dashboard');
     } catch {}
     setUser(null);
   }, []);
+
 
   const updateUser = useCallback((fields: Partial<User>) => {
     setUser(prev => {

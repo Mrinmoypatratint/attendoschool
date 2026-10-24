@@ -3,7 +3,7 @@ import {createDatabaseBackup,listBackups,restoreTest,cleanupOldBackups} from '..
 const router=Router();
 const user=(r:Request)=>(r as any).user;
 function admin(req:Request,res:any,next:any){
- if(!user(req)||!['SUPER_ADMIN','SCHOOL_ADMIN'].includes(user(req).role))return res.status(403).json({message:'Admin access required'});
+ if(!user(req)||user(req).role !== 'SUPER_ADMIN') return res.status(403).json({message:'Super Admin access required for database backups'});
  next();
 }
 router.use(admin);

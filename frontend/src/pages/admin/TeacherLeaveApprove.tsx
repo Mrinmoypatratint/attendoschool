@@ -25,6 +25,7 @@ import {
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface TeacherLeave {
   id: string;
@@ -64,14 +65,16 @@ const LEAVE_TYPES = [
 ];
 
 export default function TeacherLeaveApprove() {
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [leaves, setLeaves] = useState<TeacherLeave[]>([]);
-  const [counts, setCounts] = useState({ all: 0, pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [monthFilter, setMonthFilter] = useState<string>('ALL');
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [reportMonth, setReportMonth] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -129,9 +132,6 @@ export default function TeacherLeaveApprove() {
       const res = await api.get('/reviews/teacher-leaves');
       if (res.data?.success) {
         setLeaves(res.data.data || []);
-        if (res.data.counts) {
-          setCounts(res.data.counts);
-        }
       }
 
       // Also silently load all faculty members for institution-wide monthly reporting
@@ -222,14 +222,15 @@ export default function TeacherLeaveApprove() {
   };
 
   // Helper to calculate exact days of a leave that fall within a given YYYY-MM month
-  const computeLeaveDaysInMonth = (l: { start_date: string; end_date: string }, yearMonthStr: string) => {
-    if (!l.start_date || !l.end_date || !yearMonthStr || yearMonthStr === 'ALL') return 0;
+  const computeLeaveDaysInMonth = (l: { start_date: string; end_date?: string }, yearMonthStr: string) => {
+    if (!l.start_date || !yearMonthStr || yearMonthStr === 'ALL') return 0;
+    const endDateStr = l.end_date || l.start_date;
     const [y, m] = yearMonthStr.split('-').map(Number);
     if (!y || !m) return 0;
     const monthStart = new Date(y, m - 1, 1);
     const monthEnd = new Date(y, m, 0, 23, 59, 59, 999);
     const s = new Date(l.start_date);
-    const e = new Date(l.end_date);
+    const e = new Date(endDateStr);
     if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
     if (e < monthStart || s > monthEnd) return 0;
 
@@ -254,9 +255,27 @@ export default function TeacherLeaveApprove() {
     leaves.forEach((l) => {
       if (l.start_date) set.add(l.start_date.slice(0, 7));
       if (l.end_date) set.add(l.end_date.slice(0, 7));
+      if (l.created_at) set.add(l.created_at.slice(0, 7));
     });
-    return Array.from(set).sort().reverse();
+    return Array.from(set).filter(Boolean).sort().reverse();
   }, [leaves]);
+
+  // Real-time month-filtered leaves for KPI cards and tab badges
+  const monthScopedLeaves = useMemo(() => {
+    if (!monthFilter || monthFilter === 'ALL') {
+      return leaves;
+    }
+    return leaves.filter((l) => computeLeaveDaysInMonth(l, monthFilter) > 0);
+  }, [leaves, monthFilter]);
+
+  // Dynamic real-time counts calculated directly from real-time data
+  const dynamicCounts = useMemo(() => {
+    const pending = monthScopedLeaves.filter((l) => l.status === 'PENDING').length;
+    const approved = monthScopedLeaves.filter((l) => l.status === 'APPROVED').length;
+    const rejected = monthScopedLeaves.filter((l) => l.status === 'REJECTED').length;
+    const all = monthScopedLeaves.length;
+    return { all, pending, approved, rejected };
+  }, [monthScopedLeaves]);
 
   const formatDate = (val: string) => {
     if (!val) return '—';
@@ -285,22 +304,35 @@ export default function TeacherLeaveApprove() {
   const exportMonthlyLeaveReport = (targetMonth?: string) => {
     try {
       setExporting(true);
-      const ym = (monthFilter !== 'ALL' ? monthFilter : (targetMonth || reportMonth)) || new Date().toISOString().slice(0, 7);
-      const [yearStr, monthStr] = ym.split('-');
-      const year = parseInt(yearStr, 10) || new Date().getFullYear();
-      const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
-      const monthDate = new Date(year, monthNum - 1, 1);
-      const monthName = isNaN(monthDate.getTime())
-        ? ym
-        : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const ym = (monthFilter !== 'ALL' ? monthFilter : (targetMonth || reportMonth)) || 'ALL';
+      const isAllMonths = ym === 'ALL' || !ym;
 
-      // Take leave applications matching the current table list that fall within the target month
-      const targetLeaves = filteredLeaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+      let monthName = 'All Months';
+      if (!isAllMonths) {
+        const [yearStr, monthStr] = ym.split('-');
+        const year = parseInt(yearStr, 10) || new Date().getFullYear();
+        const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+        const monthDate = new Date(year, monthNum - 1, 1);
+        monthName = isNaN(monthDate.getTime())
+          ? ym
+          : monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      // Candidate leaves for export based on the selected month
+      const monthLeaves = isAllMonths
+        ? leaves
+        : leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
+
+      // If activeTab is a specific status (e.g. APPROVED/REJECTED/PENDING) and has matching leaves, export them,
+      // otherwise export all month leaves
+      const targetLeaves = (activeTab !== 'ALL' && monthLeaves.some((l) => l.status === activeTab))
+        ? monthLeaves.filter((l) => l.status === activeTab)
+        : monthLeaves;
 
       if (targetLeaves.length === 0) {
         setFeedback({
           type: 'error',
-          message: `No faculty leave applications found in the table list for ${monthName} to export.`
+          message: `No faculty leave applications found for ${monthName} to export.`
         });
         return;
       }
@@ -545,7 +577,7 @@ export default function TeacherLeaveApprove() {
   };
 
   const filteredLeaves = useMemo(() => {
-    return leaves.filter((l) => {
+    return monthScopedLeaves.filter((l) => {
       // Status Tab filter
       if (activeTab !== 'ALL' && l.status !== activeTab) {
         return false;
@@ -554,12 +586,6 @@ export default function TeacherLeaveApprove() {
       // Leave Type filter
       if (typeFilter !== 'ALL' && String(l.leave_type || 'CASUAL').toUpperCase() !== typeFilter) {
         return false;
-      }
-
-      // Month filter (if set)
-      if (monthFilter !== 'ALL') {
-        const daysInSelectedMonth = computeLeaveDaysInMonth(l, monthFilter);
-        if (daysInSelectedMonth === 0) return false;
       }
 
       // Search Query
@@ -574,7 +600,7 @@ export default function TeacherLeaveApprove() {
 
       return true;
     });
-  }, [leaves, activeTab, typeFilter, monthFilter, searchQuery]);
+  }, [monthScopedLeaves, activeTab, typeFilter, searchQuery]);
 
   return (
     <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
@@ -618,7 +644,7 @@ export default function TeacherLeaveApprove() {
               background: 'var(--surface, #FFF)',
               boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
             }}
-            title="Select month for monthly leave report"
+            title="Select month to filter leave applications and Excel report"
           >
             <Calendar size={14} color="#64748B" />
             <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748B)' }}>
@@ -626,11 +652,11 @@ export default function TeacherLeaveApprove() {
             </span>
             <input
               type="month"
-              value={reportMonth}
+              value={monthFilter === 'ALL' ? '' : monthFilter}
               onChange={(e) => {
-                if (e.target.value) {
-                  setReportMonth(e.target.value);
-                }
+                const val = e.target.value;
+                setMonthFilter(val || 'ALL');
+                setReportMonth(val || new Date().toISOString().slice(0, 7));
               }}
               style={{
                 border: 'none',
@@ -643,6 +669,27 @@ export default function TeacherLeaveApprove() {
                 fontFamily: 'inherit'
               }}
             />
+            {monthFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setMonthFilter('ALL')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563EB',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  display: 'inline-flex',
+                  alignItems: 'center'
+                }}
+                title="Show all months"
+              >
+                All Months
+              </button>
+            )}
           </div>
 
           {/* Export Excel Button */}
@@ -751,7 +798,7 @@ export default function TeacherLeaveApprove() {
               Pending Review
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#B45309', marginTop: 4 }}>
-              {counts.pending}
+              {dynamicCounts.pending}
             </div>
           </div>
           <div
@@ -787,7 +834,7 @@ export default function TeacherLeaveApprove() {
               Approved
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D', marginTop: 4 }}>
-              {counts.approved}
+              {dynamicCounts.approved}
             </div>
           </div>
           <div
@@ -823,7 +870,7 @@ export default function TeacherLeaveApprove() {
               Rejected
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#B91C1C', marginTop: 4 }}>
-              {counts.rejected}
+              {dynamicCounts.rejected}
             </div>
           </div>
           <div
@@ -859,7 +906,7 @@ export default function TeacherLeaveApprove() {
               Total Submissions
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0F172A)', marginTop: 4 }}>
-              {counts.all}
+              {dynamicCounts.all}
             </div>
           </div>
           <div
@@ -891,24 +938,6 @@ export default function TeacherLeaveApprove() {
       >
         <button
           type="button"
-          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
-          onClick={() => setActiveTab('PENDING')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: '9px 18px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
-            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
-            transition: 'all 0.15s'
-          }}
-        >
-          Pending Review ({counts.pending})
-        </button>
-        <button
-          type="button"
           className={`student-tab-btn ${activeTab === 'ALL' ? 'active' : ''}`}
           onClick={() => setActiveTab('ALL')}
           style={{
@@ -923,7 +952,25 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          All ({counts.all})
+          All ({dynamicCounts.all})
+        </button>
+        <button
+          type="button"
+          className={`student-tab-btn ${activeTab === 'PENDING' ? 'active' : ''}`}
+          onClick={() => setActiveTab('PENDING')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: '9px 18px',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            borderBottom: activeTab === 'PENDING' ? '2px solid #D97706' : '2px solid transparent',
+            color: activeTab === 'PENDING' ? '#D97706' : 'var(--text-secondary, #64748B)',
+            transition: 'all 0.15s'
+          }}
+        >
+          Pending Review ({dynamicCounts.pending})
         </button>
         <button
           type="button"
@@ -941,7 +988,7 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Approved ({counts.approved})
+          Approved ({dynamicCounts.approved})
         </button>
         <button
           type="button"
@@ -959,7 +1006,7 @@ export default function TeacherLeaveApprove() {
             transition: 'all 0.15s'
           }}
         >
-          Rejected ({counts.rejected})
+          Rejected ({dynamicCounts.rejected})
         </button>
       </div>
 
@@ -1004,9 +1051,10 @@ export default function TeacherLeaveApprove() {
             <select
               value={monthFilter}
               onChange={(e) => {
-                setMonthFilter(e.target.value);
-                if (e.target.value !== 'ALL') {
-                  setReportMonth(e.target.value);
+                const val = e.target.value;
+                setMonthFilter(val);
+                if (val !== 'ALL') {
+                  setReportMonth(val);
                 }
               }}
               style={{
@@ -1176,7 +1224,7 @@ export default function TeacherLeaveApprove() {
                           )}
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)' }}>
-                              {l.applicant_name}
+                              <PersonProfileLink kind="teacher" id={l.applicant_id} name={l.applicant_name} person={l as any} />
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
                               {l.teacher_email || l.identifier || 'Faculty Member'}
@@ -1525,7 +1573,7 @@ export default function TeacherLeaveApprove() {
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text, #0F172A)' }}>
-                    {viewingLeave.applicant_name}
+                    <PersonProfileLink kind="teacher" id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #64748B)' }}>
                     {viewingLeave.teacher_email || viewingLeave.identifier || 'Faculty Member'}

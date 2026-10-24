@@ -1,8 +1,9 @@
-import {Router,Request} from 'express';
-import {getUserForLogin,isLocked,registerLoginFailure,registerLoginSuccess,passwordStrongEnough,revokeRefreshToken,cleanupSecurity,recordSecurityEvent} from '../services/securityService';
+import { Router, Request } from 'express';
+import { requireRoles } from '../middleware/auth';
+import { getUserForLogin, isLocked, registerLoginFailure, registerLoginSuccess, passwordStrongEnough, revokeRefreshToken, cleanupSecurity, recordSecurityEvent } from '../services/securityService';
 import bcrypt from 'bcryptjs';
-const router=Router();
-const ctx=(req:Request)=>({userId:(req as any).user?.id,schoolId:(req as any).user?.schoolId,ip:req.ip,userAgent:req.get('user-agent')||''});
+const router = Router();
+const ctx = (req: Request) => ({ userId: (req as any).user?.id, schoolId: (req as any).user?.schoolId, ip: req.ip, userAgent: req.get('user-agent') || '' });
 
 router.post('/check-login',async(req,res)=>{
  const {email,password}=req.body||{};
@@ -28,7 +29,7 @@ router.post('/logout-refresh',async(req,res)=>{
  catch(e:any){res.status(500).json({message:e.message||'Logout failed'})}
 });
 
-router.post('/cleanup',async(_req,res)=>{
+router.post('/cleanup', requireRoles('SUPER_ADMIN'), async(_req,res)=>{
  try{res.json(await cleanupSecurity())}catch(e:any){res.status(500).json({message:e.message||'Cleanup failed'})}
 });
 export default router;

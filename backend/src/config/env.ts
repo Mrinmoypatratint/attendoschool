@@ -51,11 +51,47 @@ export function extractSenderName(raw: string | undefined, fallback: string = 'A
   return fallback;
 }
 
+function resolveJwtSecret(): string {
+  const secret = cleanEnv(process.env.JWT_SECRET, '');
+  if (process.env.NODE_ENV === 'production') {
+    if (!secret || secret === 'development-only-secret' || secret.length < 32) {
+      throw new Error('[Security Exception] In production, JWT_SECRET must be configured with a cryptographically strong secret of at least 32 characters.');
+    }
+    return secret;
+  }
+  return secret || 'development-only-secret';
+}
+
+export function validateSecurityConfig(): { valid: boolean; warnings: string[] } {
+  const warnings: string[] = [];
+  const INSECURE_DEFAULTS = [
+    'development-only-secret',
+    'supersecret_change_in_production_key',
+    'super-secret-jwt-key-for-local-testing-12345',
+    'change-me-in-production'
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    const secret = process.env.JWT_SECRET?.trim() || '';
+    if (!secret || secret.length < 32) {
+      throw new Error('[Security Exception] Critical: Insecure or missing JWT_SECRET in production. JWT_SECRET must be at least 32 characters.');
+    }
+    if (INSECURE_DEFAULTS.includes(secret)) {
+      throw new Error('[Security Exception] Critical: JWT_SECRET must not be left as default placeholder in production.');
+    }
+  } else {
+    if (!process.env.JWT_SECRET || env.jwtSecret === 'development-only-secret') {
+      warnings.push('Warning: Using default development JWT secret. Configure JWT_SECRET in .env before deploying to production.');
+    }
+  }
+  return { valid: true, warnings };
+}
+
 export const env = {
   port: Number(cleanEnv(process.env.PORT, '5001')),
   databaseUrl: cleanEnv(process.env.DATABASE_URL, ''),
-  jwtSecret: cleanEnv(process.env.JWT_SECRET, 'development-only-secret'),
-  corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.optinetinnovations.in,http://attendoschool.optinetinnovations.in,https://attendoschool.vercel.app'),
+  jwtSecret: resolveJwtSecret(),
+  corsOrigin: cleanEnv(process.env.CORS_ORIGIN, 'http://localhost:5173,https://attendoschool.online,https://www.attendoschool.online'),
   razorpayKeyId: cleanEnv(process.env.RAZORPAY_KEY_ID, ''),
   razorpayKeySecret: cleanEnv(process.env.RAZORPAY_KEY_SECRET, ''),
   razorpayWebhookSecret: cleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET, ''),
@@ -70,14 +106,14 @@ export const env = {
   companyPhone: cleanEnv(process.env.COMPANY_PHONE, ''),
   companyGstRate: Number(cleanEnv(process.env.COMPANY_GST_RATE, '18')),
   // Firebase configuration
-  firebaseProjectId: cleanEnv(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT, 'attendoschool-saas'),
+  firebaseProjectId: cleanEnv(process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT, 'attendoschool-2d0fb'),
   firebaseClientEmail: cleanEnv(process.env.FIREBASE_CLIENT_EMAIL, ''),
   firebasePrivateKey: cleanEnv(process.env.FIREBASE_PRIVATE_KEY)?.replace(/\\n/g, '\n') || '',
   firebaseServiceAccountPath: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, ''),
   firebaseServiceAccount: cleanEnv(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_KEY, ''),
   firestoreEmulatorHost: cleanEnv(process.env.FIRESTORE_EMULATOR_HOST, ''),
-  dbDriver: cleanEnv(process.env.DB_DRIVER, 'postgres').toLowerCase(), // 'firebase' | 'postgres'
-  keepAliveUrl: cleanEnv(process.env.KEEP_ALIVE_URL || process.env.RENDER_EXTERNAL_URL, ''),
+  dbDriver: cleanEnv(process.env.DB_DRIVER, 'firebase').toLowerCase(), // 'firebase' | 'postgres'
+  keepAliveUrl: cleanEnv(process.env.KEEP_ALIVE_URL, ''),
   // Email & deliverability settings
   emailEnabled: cleanEnv(process.env.EMAIL_ENABLED, 'true') !== 'false',
   emailRateLimit: Number(cleanEnv(process.env.EMAIL_RATE_LIMIT, '50')),
@@ -90,7 +126,7 @@ export const env = {
   brevoSenderEmail: cleanEnv(process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER, 'info.sahayog24x7@gmail.com'),
   brevoSenderName: cleanEnv(process.env.BREVO_SENDER_NAME || process.env.SMTP_FROM_NAME, 'AttendoSchool'),
   gmailRelayUrl: cleanEnv(process.env.GMAIL_RELAY_URL || process.env.GOOGLE_SCRIPT_URL, ''),
-  appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.optinetinnovations.in'),
+  appBaseUrl: cleanEnv(process.env.APP_BASE_URL || process.env.FRONTEND_URL, 'https://attendoschool.online'),
   // Database Architecture (100% Supabase PostgreSQL Only)
   supabaseDatabaseUrl: cleanEnv(process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL, ''),
   enableDualDbSync: cleanEnv(process.env.ENABLE_DUAL_DB_SYNC, 'false') === 'true',

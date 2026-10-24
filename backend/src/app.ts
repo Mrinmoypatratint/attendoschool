@@ -49,8 +49,9 @@ import mentor from './routes/mentor';
 import teacherAssignments from './routes/teacherAssignments';
 
 const app = express();
+app.disable('x-powered-by');
 
-// Trust reverse proxy (Render ALB/Envoy, Cloudflare) for accurate client IP
+// Trust reverse proxy (Nginx on VPS) for accurate client IP
 app.set('trust proxy', 1);
 
 const allowedOriginsList = [
@@ -58,9 +59,10 @@ const allowedOriginsList = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:5001',
-  'https://attendoschool.optinetinnovations.in',
-  'http://attendoschool.optinetinnovations.in',
-  'https://attendoschool.vercel.app',
+  'https://attendoschool.online',
+  'https://www.attendoschool.online',
+  'http://attendoschool.online',
+  'http://www.attendoschool.online',
   ...(env.corsOrigin && env.corsOrigin !== '*'
     ? (env.corsOrigin.includes(',') ? env.corsOrigin.split(',').map((s) => s.trim()) : [env.corsOrigin.trim()])
     : [])
@@ -73,14 +75,13 @@ const corsOptions: cors.CorsOptions = {
     if (
       env.corsOrigin === '*' ||
       allowedOriginsList.includes(requestOrigin) ||
-      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?optinetinnovations\.in(?::\d+)?$/.test(requestOrigin) ||
-      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?vercel\.app(?::\d+)?$/.test(requestOrigin) ||
+      /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?attendoschool\.online(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/localhost(?::\d+)?$/.test(requestOrigin) ||
       /^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(requestOrigin)
     ) {
       return callback(null, true);
     }
-    return callback(null, true);
+    return callback(new Error('Blocked by CORS policy: Origin not permitted'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -92,6 +93,11 @@ app.use(cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '35mb' }));
 app.use(express.urlencoded({ extended: true, limit: '35mb' }));
+
+// Global security middleware applied to all endpoints
+app.use(securityHeaders);
+app.use(requestContext);
+app.use(apiRateLimit);
 
 // Root health probe for cloud platform monitors (Render / Railway / Kubernetes)
 app.get('/health', (_q, res) => res.json({ status: 'ok', uptime: process.uptime() }));
@@ -111,18 +117,13 @@ app.get('/attendo-school-logo.png', (_req, res) => {
   res.status(404).send('Logo not found');
 });
 
-// Public integration endpoints
+// Operational integration endpoints
 app.use('/api/parent-onboarding', parentOnboarding);
 app.use('/api/parent-onboarding-v27', parentOnboarding);
 app.use('/api/final-integration', finalIntegration);
 app.use('/api/final-v28', finalIntegration);
 app.use('/api/production', production);
 app.use('/api/production-v26', production);
-
-// Global security middleware
-app.use(securityHeaders);
-app.use(requestContext);
-app.use(apiRateLimit);
 
 // Authenticated operational routes (mounted on clean paths + backward-compatible aliases)
 app.use('/api/communication', requireAuth, communication);
@@ -169,20 +170,27 @@ app.use('/api/attendance-reports-v12', requireAuth, attendanceReports);
 
 app.use('/api/calendar', requireAuth, calendar);
 
-// Info endpoints
-app.get('/', (_q, res) => res.json({
-  name: 'School Attendance SaaS Backend API',
-  version: 'production',
-  status: 'running',
-  frontendUrl: 'http://localhost:5173',
-  endpoints: {
-    baseApi: '/api',
-    health: '/api/health',
-    productionHealth: '/api/production/health',
-    ready: '/api/production/ready',
-    dbCheck: '/api/final-integration/db-check'
-  }
-}));
+// Unified VPS static frontend serving
+const frontendDistDir = path.resolve(__dirname, '../../frontend/dist');
+const frontendIndexHtml = path.join(frontendDistDir, 'index.html');
+if (fs.existsSync(frontendIndexHtml)) {
+  app.use(express.static(frontendDistDir, { maxAge: '7d', index: false }));
+  app.get('/', (_req, res) => res.sendFile(frontendIndexHtml));
+} else {
+  // Info endpoints
+  app.get('/', (_q, res) => res.json({
+    name: 'School Attendance SaaS Backend API',
+    version: 'production',
+    status: 'running',
+    endpoints: {
+      baseApi: '/api',
+      health: '/api/health',
+      productionHealth: '/api/production/health',
+      ready: '/api/production/ready',
+      dbCheck: '/api/final-integration/db-check'
+    }
+  }));
+}
 
 app.get('/api', (_q, res) => res.json({ name: 'School Attendance SaaS API', version: 'production' }));
 
@@ -211,7 +219,24 @@ app.use('/api', mentor);
 app.use('/api/teacher/assignments', teacherAssignments);
 
 
-// 404 handler
+// Block sensitive hidden dotfiles (.env, .git, etc.)
+app.use((req, res, next) => {
+  if (/\/\./.test(req.path)) {
+    return res.status(404).json({ message: 'Resource not found' });
+  }
+  next();
+});
+
+// SPA client-side routing fallback for non-API paths (Express 5 compatible)
+if (fs.existsSync(frontendIndexHtml)) {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith('/api') || req.path === '/health') return next();
+    res.sendFile(frontendIndexHtml);
+  });
+}
+
+// 404 handler for unmatched API routes
 app.use((_q, res) => res.status(404).json({ message: 'API route not found' }));
 
 // Centralized error handler

@@ -41,7 +41,7 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
   if (cached) return res.json(cached);
 
   try {
-    const data = await svc.getStudentProfile(req.user!.schoolId!, req.user!.id);
+    const data = await svc.getStudentProfile(req.user!.schoolId!, req.user!.id, req.user?.studentId);
     fastCache.set(cacheKey, data, 30);
     res.json(data);
   } catch (e: any) {
@@ -56,7 +56,7 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
   if (cached) return res.json(cached);
 
   try {
-    const data = await svc.getStudentDashboard(req.user!.schoolId!, req.user!.id);
+    const data = await svc.getStudentDashboard(req.user!.schoolId!, req.user!.id, req.user?.studentId);
     fastCache.set(cacheKey, data, 20);
     res.json(data);
   } catch (e: any) {

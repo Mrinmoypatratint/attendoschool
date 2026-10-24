@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface LeaveRequest {
   id: string;
@@ -48,7 +49,7 @@ export default function LeaveApprove() {
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // View Details Modal State
@@ -173,11 +174,11 @@ export default function LeaveApprove() {
             <ArrowLeft size={16} /> <span>Dashboard</span>
           </Link>
           <h1 className="student-subpage-title" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text, #0F172A)', margin: '2px 0 4px' }}>
-            Leave Review
+            {isTeacher ? 'Student Leave Review' : 'Leave Review'}
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
             {isTeacher
-              ? 'Review and acknowledge submitted student leave applications.'
+              ? 'Review, evaluate, and approve submitted student leave applications for your mentored class-section.'
               : 'Review, evaluate, and approve submitted student leave applications.'}
           </p>
         </div>
@@ -366,10 +367,14 @@ export default function LeaveApprove() {
         <div className="student-empty-state" style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #64748B)', fontSize: 14, background: 'var(--surface, #FFF)', border: '1px dashed var(--border, #E2E8F0)', borderRadius: 12 }}>
           <Calendar size={36} style={{ color: '#CBD5E1', marginBottom: 12 }} />
           <p style={{ margin: 0, fontWeight: 500, fontSize: 15, color: 'var(--text, #334155)' }}>
-            No leave requests found in this category.
+            {isTeacher && counts.all === 0
+              ? 'No student leave applications found for your mentored class-section.'
+              : 'No leave requests found in this category.'}
           </p>
           <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>
-            {activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
+            {isTeacher && counts.all === 0
+              ? 'Leave review duties are routed exclusively to assigned class mentors.'
+              : activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
           </p>
         </div>
       ) : (
@@ -485,7 +490,7 @@ export default function LeaveApprove() {
                       )}
 
                       <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
-                        {leave.applicant_name}
+                        <PersonProfileLink kind={leave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={leave.applicant_id} name={leave.applicant_name} person={leave as any} />
                       </h3>
 
                       <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
@@ -698,7 +703,7 @@ export default function LeaveApprove() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
-                    {viewingLeave.applicant_name}
+                    <PersonProfileLink kind={viewingLeave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </h4>
                   {!isTeacher && (
                     <span

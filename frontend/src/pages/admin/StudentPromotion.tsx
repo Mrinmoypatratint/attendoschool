@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import {
   UniversalPreviewModal,
   PreviewSummaryCard,
@@ -320,7 +321,7 @@ export default function StudentPromotion() {
         marginBottom: 24
       }}>
         {/* Top Header Filter Bar */}
-        <div style={{
+        <div className="directory-box-header" style={{
           padding: '12px 18px',
           background: 'var(--bg-card, #ffffff)',
           borderBottom: '1px solid var(--border, #e2e8f0)',
@@ -331,15 +332,16 @@ export default function StudentPromotion() {
           flexWrap: 'wrap'
         }}>
           {/* Search Input */}
-          <div style={{ position: 'relative', minWidth: 260, flex: '1 1 280px' }}>
-            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <div style={{ position: 'relative', minWidth: 260, maxWidth: 460, flex: '1 1 auto', height: 38, display: 'flex', alignItems: 'center' }}>
+            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
             <input
               type="text"
-              placeholder="🔍 Search name, roll, admission number, class..."
+              placeholder="Search name, roll no, admission no, class..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               style={{
                 width: '100%',
+                height: '100%',
                 padding: '7px 12px 7px 32px',
                 fontSize: 13,
                 borderRadius: 6,
@@ -506,7 +508,7 @@ export default function StudentPromotion() {
                       {x.admission_number || x.admissionNumber || '—'}
                     </span>
                   </td>
-                  <td><b>{x.name}</b></td>
+                  <td><PersonProfileLink kind="student" id={x.id} name={x.name} person={x as any}><b>{x.name}</b></PersonProfileLink></td>
                   <td>{x.from_class_name || '—'}</td>
                   <td>{x.from_section_name || '—'}</td>
                   <td>

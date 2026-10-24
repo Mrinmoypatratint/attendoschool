@@ -11,10 +11,10 @@
     "build:backend": "npm --prefix backend run build",
     "build:frontend": "npm --prefix frontend run build",
     "build": "npm --prefix backend run build && npm --prefix frontend run build",
-    "test": "npm --prefix backend run test",
-    "deploy:hostinger": "node scripts/deploy-hostinger.js"
+    "test": "npm --prefix backend run test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "basic-ftp": "^5.0.5"
   }
 }

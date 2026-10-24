@@ -1,26 +1,27 @@
 import { Router } from 'express';
 import { checkPostgresHealth, isPostgresConfigured } from '../db';
+import { checkFirestoreHealth, isFirebaseConfigured } from '../firebase';
 import { env } from '../config/env';
 import { testSmtpConnection, getGlobalSmtpConfig, isEmailServiceEnabled } from '../services/notificationService';
 
 const r = Router();
 
 r.get('/', async (_req, res) => {
-  let pgOk = false;
-  let latency: number | undefined;
+  let fsOk = false;
   try {
-    const pgHealth = await checkPostgresHealth();
-    pgOk = pgHealth.ok;
-    latency = pgHealth.latency;
+    const fsHealth = await checkFirestoreHealth();
+    fsOk = fsHealth.ok;
   } catch {}
 
   res.status(200).json({
     status: 'ok',
     database: {
-      supabase: pgOk ? 'connected' : (isPostgresConfigured ? 'connecting' : 'disconnected'),
-      mode: 'supabase_postgres',
-      ...(latency !== undefined ? { latency: `${latency}ms` } : {})
+      firestore: fsOk ? 'connected' : (isFirebaseConfigured() ? 'ready' : 'configured'),
+      projectId: env.firebaseProjectId || 'attendoschool-2d0fb',
+      mode: 'cloud_firestore'
     },
+    domain: 'attendoschool.online',
+    hosting: 'hostinger_vps',
     version: 'production',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
@@ -35,8 +36,6 @@ r.get('/email-status', (_req, res) => {
   const brevoKey = env.brevoApiKey || process.env.BREVO_API_KEY || '';
   const brevoKeyType = brevoKey.startsWith('xkeysib-') ? 'REST_API_KEY' : (brevoKey.startsWith('xsmtpsib-') ? 'SMTP_PASSWORD' : (brevoKey ? 'CUSTOM_KEY' : 'NOT_SET'));
   const port443Ready = Boolean(brevoKey.startsWith('xkeysib-') || env.resendApiKey || env.gmailRelayUrl);
-  const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || (env.keepAliveUrl && env.keepAliveUrl.includes('render.com')));
-
   res.json({
     status: hasCreds || port443Ready ? 'configured' : 'missing_credentials',
     emailEnabled: isEmailServiceEnabled(),
@@ -69,16 +68,9 @@ r.get('/email-status', (_req, res) => {
       },
       port443Ready
     },
-    renderEgress: {
-      isRender,
-      canDirectSmtp: !isRender,
-      requiresPort443: isRender,
-      status: (!isRender || port443Ready) ? 'READY' : 'ACTION_REQUIRED',
-      guidance: isRender && !port443Ready ? (
-        brevoKeyType === 'SMTP_PASSWORD'
-          ? 'BREVO_API_KEY currently contains an SMTP key (xsmtpsib-). Generate an API Key (xkeysib-) in Brevo -> SMTP & API -> API Keys to enable HTTPS Port 443 delivery on Render.'
-          : 'Render Free Tier blocks ports 25/465/587. Add a Brevo API Key (xkeysib-...) or GMAIL_RELAY_URL to send emails over Port 443.'
-      ) : 'All egress requirements satisfied.'
+    networkEgress: {
+      canDirectSmtp: true,
+      status: 'READY'
     },
     envSource: {
       SMTP_HOST: process.env.SMTP_HOST ? 'env' : 'default',

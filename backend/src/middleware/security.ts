@@ -6,19 +6,10 @@ import { Request, Response, NextFunction } from 'express';
  * by safely extracting the real client IP from upstream proxy headers.
  */
 export function getClientIp(req: Request): string {
-  const headers = req.headers || {};
-  const cf = headers['cf-connecting-ip'];
-  if (typeof cf === 'string' && cf.trim()) return cf.trim();
-
-  const xff = headers['x-forwarded-for'];
-  if (typeof xff === 'string' && xff.trim()) {
-    return xff.split(',')[0].trim();
-  }
-
-  const xReal = headers['x-real-ip'];
-  if (typeof xReal === 'string' && xReal.trim()) return xReal.trim();
-
-  return String(req.ip || (req.socket as any)?.remoteAddress || '127.0.0.1');
+  // Use Express-validated req.ip based on configured trusted reverse proxy (Nginx)
+  const rawIp = req.ip || (req.socket as any)?.remoteAddress || '127.0.0.1';
+  // Strip IPv4-mapped IPv6 prefix (::ffff:127.0.0.1 -> 127.0.0.1)
+  return String(rawIp).replace(/^::ffff:/, '').trim();
 }
 
 /**
@@ -183,5 +174,23 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(),microphone=(),geolocation=(self)');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://attendoschool.online https://www.attendoschool.online https://api.razorpay.com https://*.firebaseio.com https://*.googleapis.com",
+    "frame-src 'self' https://api.razorpay.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join('; ');
+
+  res.setHeader('Content-Security-Policy', csp);
   next();
 }

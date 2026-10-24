@@ -1,33 +1,40 @@
-import {useEffect,useState,useRef,useCallback,useMemo} from 'react';
+import {useEffect,useState,useRef,useCallback,useMemo,lazy,Suspense} from 'react';
 import type {ReactNode} from 'react';
 import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
 import {api, API_BASE_URL} from './api';
 import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
-import AttendanceReports from './pages/admin/AttendanceReports';
-import AttendanceCorrections from './pages/admin/AttendanceCorrections';
-import AcademicYears from './pages/admin/AcademicYears';
-import StudentPromotion from './pages/admin/StudentPromotion';
-import Permissions from './pages/admin/Permissions';
-import SubscriptionEnforcement from './pages/admin/SubscriptionEnforcement';
-import Security from './pages/admin/Security';
-import Backup from './pages/admin/Backup';
-import Timetable from './pages/admin/Timetable';
-import OfflineAttendance from './pages/admin/OfflineAttendance';
-import Analytics from './pages/admin/Analytics';
-import Communication from './pages/admin/Communication';
-import ParentCommunication from './pages/admin/ParentCommunication';
-import ParentPortal from './pages/parent/ParentPortal';
-import TeacherAnnouncements from './pages/teacher/TeacherAnnouncements';
-import TeacherProfile from './pages/teacher/TeacherProfile';
-import PhotoApprove from './pages/admin/PhotoApprove';
-import LeaveApprove from './pages/admin/LeaveApprove';
-import TeacherLeaveApprove from './pages/admin/TeacherLeaveApprove';
-import TeacherLeaveRequest from './pages/teacher/TeacherLeaveRequest';
-import { ClassMentorWorkspace } from './pages/teacher/ClassMentorWorkspace';
-import TeacherAssignments from './pages/teacher/TeacherAssignments';
-import SmtpLogs from './pages/admin/SmtpLogs';
-import { SuperAdminModule } from './super-admin/SuperAdminModule';
-import ResetPassword from './pages/auth/ResetPassword';
+
+// Canonical domain enforcement: Redirect from legacy domains
+if (typeof window !== 'undefined' && (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app'))) {
+  window.location.replace('https://attendoschool.online' + window.location.pathname + window.location.search + window.location.hash);
+}
+
+// Route Code-Splitting via React.lazy()
+const AttendanceReports = lazy(() => import('./pages/admin/AttendanceReports'));
+const AttendanceCorrections = lazy(() => import('./pages/admin/AttendanceCorrections'));
+const AcademicYears = lazy(() => import('./pages/admin/AcademicYears'));
+const StudentPromotion = lazy(() => import('./pages/admin/StudentPromotion'));
+const Permissions = lazy(() => import('./pages/admin/Permissions'));
+const SubscriptionEnforcement = lazy(() => import('./pages/admin/SubscriptionEnforcement'));
+const Security = lazy(() => import('./pages/admin/Security'));
+const Backup = lazy(() => import('./pages/admin/Backup'));
+const Timetable = lazy(() => import('./pages/admin/Timetable'));
+const OfflineAttendance = lazy(() => import('./pages/admin/OfflineAttendance'));
+const Analytics = lazy(() => import('./pages/admin/Analytics'));
+const Communication = lazy(() => import('./pages/admin/Communication'));
+const ParentCommunication = lazy(() => import('./pages/admin/ParentCommunication'));
+const ParentPortal = lazy(() => import('./pages/parent/ParentPortal'));
+const TeacherAnnouncements = lazy(() => import('./pages/teacher/TeacherAnnouncements'));
+const TeacherProfile = lazy(() => import('./pages/teacher/TeacherProfile'));
+const PhotoApprove = lazy(() => import('./pages/admin/PhotoApprove'));
+const LeaveApprove = lazy(() => import('./pages/admin/LeaveApprove'));
+const TeacherLeaveApprove = lazy(() => import('./pages/admin/TeacherLeaveApprove'));
+const TeacherLeaveRequest = lazy(() => import('./pages/teacher/TeacherLeaveRequest'));
+const ClassMentorWorkspace = lazy(() => import('./pages/teacher/ClassMentorWorkspace').then(m => ({ default: m.ClassMentorWorkspace })));
+const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments'));
+const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
+const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
@@ -43,20 +50,22 @@ import {
 import { studentApi, Institute } from './services/studentApi';
 import { validatePassword } from './utils/passwordPolicy';
 import { StudentLayout } from './components/student/StudentLayout';
-import { StudentDashboard } from './pages/student/StudentDashboard';
-import { StudentAttendance } from './pages/student/StudentAttendance';
-import { StudentTimetable } from './pages/student/StudentTimetable';
-import { StudentAssignments } from './pages/student/StudentAssignments';
-import { StudentExams } from './pages/student/StudentExams';
-import { StudentAnnouncements } from './pages/student/StudentAnnouncements';
-import { StudentLeaveRequest } from './pages/student/StudentLeaveRequest';
-import { StudentProfile } from './pages/student/StudentProfile';
+
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const StudentAttendance = lazy(() => import('./pages/student/StudentAttendance').then(m => ({ default: m.StudentAttendance })));
+const StudentTimetable = lazy(() => import('./pages/student/StudentTimetable').then(m => ({ default: m.StudentTimetable })));
+const StudentAssignments = lazy(() => import('./pages/student/StudentAssignments').then(m => ({ default: m.StudentAssignments })));
+const StudentExams = lazy(() => import('./pages/student/StudentExams').then(m => ({ default: m.StudentExams })));
+const StudentAnnouncements = lazy(() => import('./pages/student/StudentAnnouncements').then(m => ({ default: m.StudentAnnouncements })));
+const StudentLeaveRequest = lazy(() => import('./pages/student/StudentLeaveRequest').then(m => ({ default: m.StudentLeaveRequest })));
+const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import { BrandedWelcomeLoader } from './components/BrandedWelcomeLoader';
+import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import {
   UniversalPreviewModal,
   DestructiveConfirmModal,
@@ -67,6 +76,7 @@ import {
   PreviewTableData
 } from './components/preview';
 import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
+import { SidebarToggle } from './components/SidebarToggle';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -372,7 +382,6 @@ function Login() {
   const [loginRole, setLoginRole] = useState<LoginOption>('SCHOOL_ADMIN');
   const [instituteId, setInstituteId] = useState<string>('');
   const [detectedInstitute, setDetectedInstitute] = useState<Institute | null>(null);
-  const [manualSchoolSelect, setManualSchoolSelect] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupNotFound, setLookupNotFound] = useState(false);
   const [email, setEmail] = useState('');
@@ -558,7 +567,6 @@ function Login() {
       setPassword('');
       setInstituteId('');
       setDetectedInstitute(null);
-      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     } else {
@@ -566,7 +574,6 @@ function Login() {
       setPassword('ChangeMe123!');
       setInstituteId('');
       setDetectedInstitute(null);
-      setManualSchoolSelect(false);
       setLookupNotFound(false);
       setLookupLoading(false);
     }
@@ -802,7 +809,7 @@ function Login() {
                       School / Institute <span style={{ color: '#fb923c' }}>*</span>
                     </label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selectedInstitute && !manualSchoolSelect && (
+                      {selectedInstitute && (
                         <span style={{ 
                           fontSize: 10.5, 
                           color: '#34d399', 
@@ -818,59 +825,10 @@ function Login() {
                           <Check size={11} strokeWidth={3} /> Auto-detected
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(prev => !prev)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          padding: 0
-                        }}
-                      >
-                        {manualSchoolSelect ? 'Auto-detect' : 'Choose School'}
-                      </button>
                     </div>
                   </div>
 
-                  {manualSchoolSelect ? (
-                    <div style={{ marginBottom: 4 }}>
-                      <select
-                        id="manual-institute-select"
-                        className="as-simple-input"
-                        value={instituteId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setInstituteId(val);
-                          const inst = institutes.find(i => i.id === val);
-                          setDetectedInstitute(inst || null);
-                          if (val) setLookupNotFound(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          fontSize: 13,
-                          padding: '10px 14px',
-                          borderRadius: 10,
-                          background: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="">-- Choose School / Institute --</option>
-                        {institutes.map(inst => (
-                          <option key={inst.id} value={inst.id}>
-                            {inst.name} ({inst.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : selectedInstitute ? (
+                  {selectedInstitute ? (
                     <div 
                       id="detected-institute-display"
                       style={{
@@ -908,11 +866,9 @@ function Login() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
+                      <span
                         style={{
-                          padding: '4px 10px',
+                          padding: '3px 8px',
                           borderRadius: 6,
                           background: 'rgba(56, 189, 248, 0.15)',
                           border: '1px solid rgba(56, 189, 248, 0.25)',
@@ -920,13 +876,11 @@ function Login() {
                           fontSize: 11,
                           fontWeight: 700,
                           letterSpacing: '0.04em',
-                          flexShrink: 0,
-                          cursor: 'pointer'
+                          flexShrink: 0
                         }}
-                        title="Change selected school"
                       >
-                        {selectedInstitute.code || 'ACTIVE'} ✎
-                      </button>
+                        {selectedInstitute.code || 'ACTIVE'}
+                      </span>
                     </div>
                   ) : lookupLoading ? (
                     <div 
@@ -959,40 +913,10 @@ function Login() {
                         fontSize: 12
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                        <span>No school auto-detected for this Login ID. Please select your school:</span>
+                        <span>No school detected for this Login ID.</span>
                       </div>
-                      <select
-                        id="fallback-institute-select"
-                        className="as-simple-input"
-                        value={instituteId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setInstituteId(val);
-                          const inst = institutes.find(i => i.id === val);
-                          setDetectedInstitute(inst || null);
-                          if (val) setLookupNotFound(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          fontSize: 12.5,
-                          padding: '8px 10px',
-                          borderRadius: 8,
-                          background: '#0f172a',
-                          color: '#f8fafc',
-                          border: '1px solid rgba(239, 68, 68, 0.35)',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="">-- Choose Your School / Institute --</option>
-                        {institutes.map(inst => (
-                          <option key={inst.id} value={inst.id}>
-                            {inst.name} ({inst.code})
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   ) : (
                     <div 
@@ -1018,23 +942,6 @@ function Login() {
                             : 'School will appear automatically when you enter your Login ID / Email'}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualSchoolSelect(true)}
-                        style={{
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        Choose
-                      </button>
                     </div>
                   )}
                 </div>
@@ -1973,7 +1880,7 @@ function Layout({children}:{children:React.ReactNode}){
   const nav=useNavigate();
   const loc=useLocation();
   const {dark,toggle}=useTheme();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_staff_nav_collapsed') === 'true');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [reviewOpen, setReviewOpen] = useState(true);
@@ -2475,6 +2382,18 @@ function Layout({children}:{children:React.ReactNode}){
   const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   const activeSessionName = cleanSessionName || '2026–27';
 
+  const handleNavigationToggle = () => {
+    if (window.matchMedia('(max-width: 1180px)').matches) {
+      setMobileSidebarOpen(previous => !previous);
+      return;
+    }
+    setSidebarCollapsed(previous => {
+      const next = !previous;
+      localStorage.setItem('attendo_staff_nav_collapsed', String(next));
+      return next;
+    });
+  };
+
   return <div className="app-shell">
     {/* ── Mobile Sidebar Backdrop ── */}
     {mobileSidebarOpen && (
@@ -2484,7 +2403,7 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside id="primary-navigation" className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
           className="sidebar-brand-interactive"
@@ -2623,25 +2542,12 @@ function Layout({children}:{children:React.ReactNode}){
     </aside>
     <main>
       {user.role === 'SUPER_ADMIN' ? (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => {
-                if (window.innerWidth <= 1180) {
-                  setMobileSidebarOpen(prev => !prev);
-                } else {
-                  setSidebarCollapsed(prev => !prev);
-                }
-              }}
-            >
-              <Menu size={16} />
-            </button>
-            <div className="header-search" style={{ width: 340 }} onClick={() => setSearchOpen(true)}>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" iconSize={18} />
+            <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search schools, students, invoices..." readOnly style={{ cursor: 'pointer' }} />
+              <input placeholder="Search schools, students, classes..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
@@ -2726,16 +2632,9 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => setMobileSidebarOpen(prev => !prev)}
-            >
-              <Menu size={18} />
-            </button>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
             <div 
               style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -2767,7 +2666,7 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               </div>
             </div>
-            <div className="header-search" style={{ marginLeft: 16, width: 300, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
+            <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
@@ -2966,16 +2865,9 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
         </header>
       ) : (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => setMobileSidebarOpen(prev => !prev)}
-            >
-              <Menu size={18} />
-            </button>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
             <div 
               style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -3008,7 +2900,7 @@ function Layout({children}:{children:React.ReactNode}){
               </div>
             </div>
           </div>
-          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ cursor: 'pointer' }}>
+          <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15}/>
             <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">CTRL+K</span>
@@ -3141,7 +3033,7 @@ function Layout({children}:{children:React.ReactNode}){
                           onClick={() => { setTeacherNotifOpen(false); nav('/leave-applications'); }}
                         >
                           <CalendarCheck size={12} />
-                          <span>Leaves</span>
+                          <span>Leaves{pendingLeaveCount > 0 ? ` (${pendingLeaveCount})` : ''}</span>
                         </button>
                       </div>
                     </div>
@@ -3153,7 +3045,7 @@ function Layout({children}:{children:React.ReactNode}){
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student photo or leave approval requests.</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student leaves or photo approvals for your class.</div>
                         </div>
                       ) : (
                         adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').map((n: any) => (
@@ -3204,7 +3096,7 @@ function Layout({children}:{children:React.ReactNode}){
                                 </div>
                                 <p className="super-notif-msg">{n.message}</p>
                                 <span className="super-notif-action-tag">
-                                  {n.type === 'PHOTO_APPROVAL' ? "Approve Photo →" : "Review & Verify →"}
+                                  {n.type === 'PHOTO_APPROVAL' ? 'Review Photo →' : 'Review & Verify →'}
                                 </span>
                               </div>
                             </div>
@@ -4122,13 +4014,13 @@ function AdminHome(){
                     ></div>
                   </div>
                   <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                    {t.day} {t.isToday ? '(Today)' : ''}
+                    {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
               <span>Institutional Target: <b>90% Minimum</b></span>
               <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
             </div>
@@ -4596,7 +4488,7 @@ function TeacherHome(){
           {/* Today's Teaching Schedule */}
           <div className="td-section-card">
             <div className="td-section-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
                   <CalendarDays size={18} style={{ color: '#2563eb' }} />
                   Today's Teaching Schedule ({r.length})
@@ -4993,6 +4885,7 @@ function Students(){
   const [sectionFilter,setSectionFilter]=useState('');
   const [genderFilter,setGenderFilter]=useState('');
   const [open,setOpen]=useState(false);
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
   const [importSession,setImportSession]=useState('');
@@ -5207,8 +5100,9 @@ function Students(){
         api.get('/academic-years').catch(()=>({data:[]})) as any
       ]);
       setLoadProgress(95);
-      if (Array.isArray(a.data)) {
-        setRows(a.data);
+      const studentData = Array.isArray(a.data) ? a.data : (Array.isArray(a.data?.data) ? a.data.data : null);
+      if (studentData) {
+        setRows(studentData);
       }
       if (Array.isArray(b.data) && b.data.length > 0) {
         setClasses(b.data);
@@ -5329,6 +5223,48 @@ function Students(){
     if (f.password && f.password.trim() && f.password.trim().length < 6) {
       alert('Password must be at least 6 characters in length.');
       return;
+    }
+
+    // Client-side uniqueness pre-checks against loaded student directory
+    const cleanAdm = String(f.admissionNumber || f.admission_number || '').trim();
+    if (cleanAdm) {
+      const dupAdm = rows.find(r => 
+        (!editingStudent || r.id !== editingStudent.id) &&
+        (r.admission_number || r.admissionNumber || '').trim().toLowerCase() === cleanAdm.toLowerCase()
+      );
+      if (dupAdm) {
+        alert(`Validation Error: Admission number '${cleanAdm}' is already assigned to student '${dupAdm.name || dupAdm.full_name || 'Existing Student'}'.`);
+        return;
+      }
+    }
+
+    const cleanStuEmail = String(f.studentEmail || f.email || '').trim().toLowerCase();
+    if (cleanStuEmail) {
+      const dupEmail = rows.find(r =>
+        (!editingStudent || r.id !== editingStudent.id) &&
+        (r.email || r.student_email || '').trim().toLowerCase() === cleanStuEmail
+      );
+      if (dupEmail) {
+        alert(`Validation Error: Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
+        return;
+      }
+    }
+
+    const cleanRoll = String(f.rollNumber || f.roll_number || '').trim();
+    if (cleanRoll && f.classId && finalSectionId) {
+      const dupRoll = rows.find(r => {
+        if (editingStudent && r.id === editingStudent.id) return false;
+        const rSession = r.session || r.session_name || r.academic_year_id || r.session_id;
+        const sameSess = isSameSession(rSession, selectedSessionStr);
+        const sameClass = r.class_id === f.classId || r.classId === f.classId || String(r.class_number || r.classNumber) === String(f.classId);
+        const sameSec = r.section_id === finalSectionId || r.sectionId === finalSectionId;
+        const sameRoll = String(r.roll_number || r.rollNumber || '').trim().toLowerCase() === cleanRoll.toLowerCase();
+        return sameSess && sameClass && sameSec && sameRoll && r.is_active !== false;
+      });
+      if (dupRoll) {
+        alert(`Validation Error: Roll number '${cleanRoll}' is already assigned to student '${dupRoll.name || dupRoll.full_name || 'Existing Student'}' in this class and section for session ${selectedSessionStr}.`);
+        return;
+      }
     }
 
     const payload = {
@@ -5778,7 +5714,9 @@ function Students(){
         }
 
         const rowErrors: {row:number;field:string;message:string}[] = [];
-        const seenAdm = new Set<string>();
+        const seenAdm = new Map<string, number>();
+        const seenRoll = new Map<string, number>();
+        const seenEmails = new Map<string, number>();
 
         const mapped = json.map((r, idx) => {
           const rowNum = idx + 1;
@@ -5846,12 +5784,59 @@ function Students(){
           const rowErrs: {row:number;field:string;message:string}[] = [];
           if (!firstName)       rowErrs.push({row:rowNum,field:'First Name',message:'First Name is required'});
           if (!lastName)        rowErrs.push({row:rowNum,field:'Last Name',message:'Last Name is required'});
-          if (!rollNumber)      rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
-          if (!admissionNumber) rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
           if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
           if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
-          if (admissionNumber && seenAdm.has(admissionNumber)) rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate: '${admissionNumber}'`});
-          if (admissionNumber) seenAdm.add(admissionNumber);
+
+          const normAdm = admissionNumber.toLowerCase();
+          if (!admissionNumber) {
+            rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
+          } else if (seenAdm.has(normAdm)) {
+            rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate admission number in file: '${admissionNumber}' (row ${seenAdm.get(normAdm)})`});
+          } else {
+            seenAdm.set(normAdm, rowNum);
+            const dbDupAdm = rows.find(dr => (dr.admission_number || dr.admissionNumber || '').trim().toLowerCase() === normAdm);
+            if (dbDupAdm) {
+              rowErrs.push({row:rowNum,field:'Admission Number',message:`Admission number '${admissionNumber}' already exists in database`});
+            }
+          }
+
+          const normRoll = rollNumber.toLowerCase();
+          if (!rollNumber) {
+            rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
+          } else if (parsedCls.valid) {
+            const rollKey = `${classNumber}_${sectionName}_${normRoll}`;
+            if (seenRoll.has(rollKey)) {
+              rowErrs.push({row:rowNum,field:'Roll Number',message:`Duplicate roll '${rollNumber}' for ${classLabel} ${sectionName} in file (row ${seenRoll.get(rollKey)})`});
+            } else {
+              seenRoll.set(rollKey, rowNum);
+              const dbDupRoll = rows.find(dr => {
+                const rSess = dr.session || dr.session_name || dr.academic_year_id || dr.session_id;
+                const sameSess = isSameSession(rSess, session);
+                const sameClass = String(dr.class_number || dr.classNumber) === String(classNumber);
+                const sameSec = (dr.section_name || 'A').toUpperCase() === sectionName;
+                const sameRoll = String(dr.roll_number || dr.rollNumber || '').trim().toLowerCase() === normRoll;
+                return sameSess && sameClass && sameSec && sameRoll && dr.is_active !== false;
+              });
+              if (dbDupRoll) {
+                rowErrs.push({row:rowNum,field:'Roll Number',message:`Roll number '${rollNumber}' already exists in database for this class/section`});
+              }
+            }
+          }
+
+          const normEmail = studentEmail.toLowerCase();
+          if (studentEmail) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+              rowErrs.push({row:rowNum,field:'Student Email',message:`Invalid student email format '${studentEmail}'`});
+            } else if (seenEmails.has(normEmail)) {
+              rowErrs.push({row:rowNum,field:'Student Email',message:`Duplicate student email in file (row ${seenEmails.get(normEmail)})`});
+            } else {
+              seenEmails.set(normEmail, rowNum);
+              const dbDupEmail = rows.find(dr => (dr.email || dr.student_email || '').trim().toLowerCase() === normEmail);
+              if (dbDupEmail) {
+                rowErrs.push({row:rowNum,field:'Student Email',message:`Student email '${studentEmail}' already in use in database`});
+              }
+            }
+          }
 
           rowErrors.push(...rowErrs);
           return { firstName, lastName, name:fullName, admissionNumber, rollNumber, gender, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
@@ -6316,10 +6301,11 @@ function Students(){
           )}
         </div>
         <input 
-          placeholder="🔍 Search name, roll number, admission number, gender, email..."
+          placeholder="🔍 Search name, roll no, admission no, class, email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 180px', minWidth: 160, maxWidth: 280, padding: '7px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 460, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+          title="Search by student name, roll number, admission number, class, or email"
         />
         {/* Class and Section grouped together on the same line */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -6401,7 +6387,6 @@ function Students(){
           <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
           <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
         </button>
-
         {/* Last Fetched Time Badge */}
         <div 
           className="last-fetched-badge"
@@ -7114,13 +7099,25 @@ function Students(){
             {editingStudent
               ? 'Leave blank to retain current password, or set a new password for student portal login:'
               : 'Optional initial login password (leave empty to let student/parent activate via link):'}
-            <input
-              type="password"
-              placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
-              value={f.password || ''}
-              onChange={e => setF({ ...f, password: e.target.value })}
-              style={{ marginTop: 6, width: '100%' }}
-            />
+            <div style={{ position: 'relative', marginTop: 6, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showStudentPassword ? 'text' : 'password'}
+                placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+                value={f.password || ''}
+                onChange={e => setF({ ...f, password: e.target.value })}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowStudentPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showStudentPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -7853,6 +7850,7 @@ function Teachers(){
 
   const [rows,setRows]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
+  const [showTeacherPassword, setShowTeacherPassword] = useState(false);
   const [importOpen,setImportOpen]=useState(false);
   const [exportOpen,setExportOpen]=useState(false);
   const [addTeacherPreview,setAddTeacherPreview]=useState(false);
@@ -8480,8 +8478,7 @@ function Teachers(){
     return (
       r.name.toLowerCase().includes(q) || 
       r.email.toLowerCase().includes(q) ||
-      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q) ||
-      (r.gender && String(r.gender).toLowerCase().includes(q))
+      String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
     );
   });
 
@@ -8875,10 +8872,10 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
       <input 
-        placeholder="🔍 Search teacher name, email, employee ID, or gender..."
+        placeholder="🔍 Search teacher name, email, or employee ID..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 380, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+        style={{ maxWidth: 460, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
       />
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -8908,7 +8905,6 @@ function Teachers(){
           <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
           <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
         </button>
-
         {/* Last Fetched Time Badge */}
         <div 
           className="last-fetched-badge"
@@ -9474,13 +9470,25 @@ function Teachers(){
           )}
           <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
             {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
-            <input
-              type="password"
-              placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
-              value={f.password||''}
-              onChange={e => setF({...f,password:e.target.value})}
-              style={{ marginTop: 4 }}
-            />
+            <div style={{ position: 'relative', marginTop: 4, display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showTeacherPassword ? 'text' : 'password'}
+                placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
+                value={f.password||''}
+                onChange={e => setF({...f,password:e.target.value})}
+                style={{ width: '100%', paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowTeacherPassword(s => !s)}
+                className="password-toggle-btn"
+                title={showTeacherPassword ? "Hide password" : "Show password"}
+                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+              >
+                {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
         </div>
 
@@ -10329,9 +10337,10 @@ function Classes(){
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     load();
-  },[]);
+    loadMentors();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'MENTORS') {
@@ -10368,9 +10377,7 @@ function Classes(){
         return cls;
       }));
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
@@ -10414,9 +10421,7 @@ function Classes(){
       }));
       setConfirmRemoveSectionModal(null);
       await load();
-      if (activeTab === 'MENTORS') {
-        await loadMentors();
-      }
+      await loadMentors();
     } catch(err: any){
       alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
     } finally {
@@ -10514,18 +10519,30 @@ function Classes(){
     </div>
 
     {/* Tab Navigation */}
-    <div className="student-tab-bar" style={{ marginBottom: 20 }}>
+    <div className="student-tab-bar" style={{ marginBottom: 20, borderBottom: 'none' }}>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
         onClick={() => setActiveTab('CLASSES')}
+        style={{
+          color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Classes & Sections ({s.length})
       </button>
       <button
         type="button"
-        className={`student-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
         onClick={() => setActiveTab('MENTORS')}
+        style={{
+          color: activeTab === 'MENTORS' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          fontWeight: 600,
+        }}
       >
         Class Mentors ({assignedCount}/{combinedMentors.length})
       </button>
@@ -15111,12 +15128,12 @@ function SchoolProfile() {
         currentPassword,
         newPassword
       });
-      setPwMsg({ type: 'success', text: res.data?.message || 'Administrator password updated successfully!' });
+      setPwMsg({ type: 'success', text: res.data?.message || 'School Admin password updated successfully!' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update administrator password' });
+      setPwMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update School Admin password' });
     } finally {
       setChangingPw(false);
     }
@@ -15136,13 +15153,32 @@ function SchoolProfile() {
     error: null,
   });
 
+// Helper: Format school phone into 0343-2563500 (11-digit STD code with hyphen after 4 digits, 10-digit adds leading 0)
+function formatSchoolContactNumber(val: string): string {
+  if (!val) return '';
+  let digits = val.replace(/\D/g, '');
+  // If 10 digits without leading 0, prepend 0 to make it 11 digits
+  if (digits.length === 10 && !digits.startsWith('0')) {
+    digits = '0' + digits;
+  }
+  digits = digits.slice(0, 11);
+  if (digits.length > 4) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  if (digits.length === 4 && val.endsWith('-')) {
+    return `${digits}-`;
+  }
+  return digits;
+}
+
   async function load() {
     setLoading(true);
     try {
       const res = await api.get('/school-profile');
       setProfile(res.data);
+      const rawContact = res.data.contact_number || res.data.enquiry_number || res.data.phone || '';
       setForm({
-        contact_number: res.data.contact_number || res.data.enquiry_number || res.data.phone || '',
+        contact_number: formatSchoolContactNumber(rawContact),
         address: res.data.address || '',
         website: res.data.website || ''
       });
@@ -15167,14 +15203,16 @@ function SchoolProfile() {
 
     let cleanContact = (form.contact_number || '').trim();
     if (cleanContact) {
-      // Must contain only numeric digits and standard phone formatting (+, -, spaces, parentheses)
-      const digitsOnly = cleanContact.replace(/\D/g, '');
-      const validPhoneFormat = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{4,18}$/.test(cleanContact);
-      if (!validPhoneFormat || digitsOnly.length < 6 || digitsOnly.length > 15) {
-        setContactNumberError('Please enter a valid numeric contact number (e.g. +91 98765 43210 or 0343-2563500). Plain words and alphabets are not allowed.');
-        setMsg({ type: 'error', text: 'Validation Error: Contact number must be numeric only (e.g. +91 98765 43210 or 0343-2563500). Plain words or alphabets are not allowed.' });
+      let digitsOnly = cleanContact.replace(/\D/g, '');
+      if (digitsOnly.length === 10 && !digitsOnly.startsWith('0')) {
+        digitsOnly = '0' + digitsOnly;
+      }
+      if (digitsOnly.length !== 11) {
+        setContactNumberError('Contact number must be an 11-digit number in 0343-2563500 format.');
+        setMsg({ type: 'error', text: 'Validation Error: Contact number must be an 11-digit number in 0343-2563500 format (e.g. 0343-2563500).' });
         return;
       }
+      cleanContact = `${digitsOnly.slice(0, 4)}-${digitsOnly.slice(4)}`;
     }
 
     const cleanAddress = (form.address || '').trim();
@@ -15474,8 +15512,9 @@ function SchoolProfile() {
                 Enquiry / Emergency Contact Number
                 <input
                   type="tel"
-                  placeholder="+91 98765 43210 or 0343-2563500"
+                  placeholder="0343-2563500"
                   value={form.contact_number}
+                  maxLength={12}
                   onKeyDown={e => {
                     // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
                     if (
@@ -15484,16 +15523,26 @@ function SchoolProfile() {
                     ) {
                       return;
                     }
-                    // Block any key that is not a digit (0-9) or standard phone punctuation (+, -, space, ())
-                    if (!/^[0-9+\-\s()]$/.test(e.key)) {
+                    // Block any key that is not a numeric digit
+                    if (!/^[0-9]$/.test(e.key)) {
                       e.preventDefault();
                     }
                   }}
                   onChange={e => {
-                    // Strictly strip any non-phone character (words, alphabets, symbols)
-                    const sanitized = e.target.value.replace(/[^0-9+\-\s()]/g, '').slice(0, 20);
-                    setForm({ ...form, contact_number: sanitized });
+                    const formatted = formatSchoolContactNumber(e.target.value);
+                    setForm({ ...form, contact_number: formatted });
                     if (contactNumberError) setContactNumberError('');
+                  }}
+                  onBlur={() => {
+                    if (form.contact_number) {
+                      let digits = form.contact_number.replace(/\D/g, '');
+                      if (digits.length === 10 && !digits.startsWith('0')) {
+                        digits = '0' + digits;
+                      }
+                      if (digits.length > 4) {
+                        setForm((prev: any) => ({ ...prev, contact_number: `${digits.slice(0, 4)}-${digits.slice(4, 11)}` }));
+                      }
+                    }
                   }}
                   style={contactNumberError ? { borderColor: '#ef4444' } : {}}
                 />
@@ -15503,7 +15552,7 @@ function SchoolProfile() {
                   </span>
                 )}
                 <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
-                  Only numeric contact numbers allowed (e.g. <code>+91 98765 43210</code> or <code>0343-2563500</code>). Alphabetic words cannot be entered.
+                  Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
                 </span>
               </label>
               <label>
@@ -15529,17 +15578,29 @@ function SchoolProfile() {
               </label>
               <label>
                 Campus Physical Address
-                <textarea
-                  rows={3}
+                <AutoExpandingTextarea
+                  minHeight={72}
+                  maxHeight={360}
                   minLength={50}
                   maxLength={1000}
-                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000)"
+                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000 words)"
                   value={form.address}
                   onChange={e => {
                     setForm({ ...form, address: e.target.value.slice(0, 1000) });
                     if (addressError) setAddressError('');
                   }}
-                  style={addressError ? { borderColor: '#ef4444' } : {}}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 'var(--radius-sm, 6px)',
+                    border: '1px solid var(--border-strong, #cbd5e1)',
+                    background: 'var(--bg, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 13.5,
+                    lineHeight: 1.5,
+                    resize: 'none',
+                    ...(addressError ? { borderColor: '#ef4444' } : {})
+                  }}
                 />
                 {addressError && (
                   <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
@@ -15641,7 +15702,7 @@ function SchoolProfile() {
             <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
               <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <KeyRound size={15} style={{ color: '#2563eb' }} />
-                Change Administrator Password
+                Change School Admin Password
               </h4>
 
               <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
@@ -15764,87 +15825,119 @@ function ProfileRedirect() {
   return <Navigate to="/school-profile" replace />;
 }
 
+/* ────── Route Fallback Loader ────── */
+function RouteFallbackLoader() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '70vh',
+      gap: 16
+    }}>
+      <div style={{
+        width: 40,
+        height: 40,
+        border: '3px solid rgba(59, 130, 246, 0.18)',
+        borderTopColor: '#2563eb',
+        borderRadius: '50%',
+        animation: 'spin 0.75s linear infinite'
+      }} />
+      <span style={{ fontSize: 13, color: 'var(--muted-text, #64748b)', fontWeight: 500, letterSpacing: '0.01em' }}>
+        Loading module...
+      </span>
+    </div>
+  );
+}
+
 /* ────── Routes ────── */
-function App(){return <Routes>
-  <Route path="/login" element={<Login/>}/>
-  <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
-  <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
-  <Route path="/reset-password" element={<ResetPassword/>}/>
-  <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
-  <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
-  <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
-  <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
-  <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
-  <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
-  <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
-  <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
-  <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
-  <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
-  <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
-  <Route path="/history" element={<Guard><History/></Guard>}/>
-  <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
-  <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
-  <Route path="/people" element={<Navigate to="/students" replace />}/>
-  <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
-  <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
-  <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-  <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
-  <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-  <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
-  <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
-  <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
-  <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
-  <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
-  <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
-  <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
-  <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
-  <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
-  <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-  <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
-  <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
-  <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
-  <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
-  <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
-  <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
-  <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
-  <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
-  <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
-  <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-  <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
-  <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-  <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
-  <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
-  <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
-  <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
-  <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
-  <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
-  <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-  <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
-  {/* Student Portal Routes */}
-  <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
-  <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
-  <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
-  <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
-</Routes>}
+function App(){
+  return (
+    <Suspense fallback={<RouteFallbackLoader />}>
+      <Routes>
+        <Route path="/login" element={<Login/>}/>
+        <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
+        <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
+        <Route path="/reset-password" element={<ResetPassword/>}/>
+        <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
+        <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
+        <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
+        <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
+        <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
+        <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
+        <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
+        <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
+        <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
+        <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
+        <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
+        <Route path="/history" element={<Guard><History/></Guard>}/>
+        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
+        <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
+        <Route path="/people" element={<Navigate to="/students" replace />}/>
+        <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
+        <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
+        <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+        <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
+        <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
+        <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
+        <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
+        <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
+        <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
+        <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
+        <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
+        <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
+        <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
+        <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
+        <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
+        <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
+        <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
+        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+        <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
+        <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
+        <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
+        <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
+        <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
+        <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
+        <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
+        <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
+        <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
+        <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
+        <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
+        <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
+        <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
+        <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
+        <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
+        <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
+        <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+        {/* Student Portal Routes */}
+        <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
+        <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
+        <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
+        <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
+      </Routes>
+    </Suspense>
+  );
+}
 
 export default App;

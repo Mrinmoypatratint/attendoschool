@@ -6,10 +6,11 @@ import { pool, isPostgresConfigured } from '../db';
 import { env, cleanEnv, cleanSmtpPass, extractEmailAddress, extractSenderName } from '../config/env';
 import { collections, isFirebaseConfigured } from '../firebase';
 import { isSameSchool } from '../utils/tenant';
+import { queueService } from './queueService';
 
 export type Channel = 'SMS' | 'WHATSAPP' | 'EMAIL';
 export type RecipientType = 'STUDENT' | 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | 'ADMIN' | 'SUPER_ADMIN' | 'OTHER';
-export type DeliveryStatus = 'QUEUED' | 'PROCESSING' | 'SENT' | 'FAILED' | 'RETRYING' | 'SKIPPED';
+export type DeliveryStatus = 'QUEUED' | 'PROCESSING' | 'SENT' | 'FAILED' | 'RETRYING' | 'SKIPPED' | 'UNSENT';
 
 export interface SchoolSmtpConfig {
   schoolId: string;
@@ -53,6 +54,8 @@ export interface NotificationLog {
   student_id?: string | null;
   studentId?: string | null;
   student_name?: string;
+  recipient_name?: string;
+  admission_number?: string;
   channel: Channel;
   recipient: string;
   recipient_type?: RecipientType;
@@ -434,10 +437,116 @@ export function getLogoAttachment(): { path: string; hasLogo: boolean } {
   return { path: '', hasLogo: false };
 }
 
+// In-memory cache for institution logos and names to avoid repeated database lookups
+export const schoolLogoCache = new Map<string, { name: string; photo_url: string }>();
+
+export async function prefetchSchoolLogos(): Promise<void> {
+  if (pool && isPostgresConfigured) {
+    try {
+      const res = await pool.query(`SELECT id, name, photo_url FROM schools WHERE photo_url IS NOT NULL AND photo_url != ''`);
+      for (const row of res.rows) {
+        if (row.id) {
+          schoolLogoCache.set(String(row.id), { name: row.name || '', photo_url: row.photo_url || '' });
+        }
+      }
+      console.log(`[School Logo Cache] Loaded logos for ${schoolLogoCache.size} schools.`);
+    } catch (err: any) {
+      console.warn('[School Logo Cache] Could not prefetch school logos:', err?.message || err);
+    }
+  }
+}
+// Trigger async prefetch
+prefetchSchoolLogos().catch(() => {});
+
+/**
+ * Resolves the respective institution's official logo attachment (e.g. DAV Model School, TINT, etc.)
+ * Supports binary buffers from base64 data URIs, local files, and falls back to platform logo.
+ */
+export function getSchoolLogoAttachment(
+  schoolId?: string,
+  schoolName?: string,
+  customLogo?: string
+): {
+  cid: string;
+  hasLogo: boolean;
+  filename: string;
+  content?: Buffer;
+  path?: string;
+} {
+  // If customLogo not passed directly, look up from schoolLogoCache
+  if (!customLogo && schoolId && schoolLogoCache.has(schoolId)) {
+    const cached = schoolLogoCache.get(schoolId);
+    if (cached?.photo_url) customLogo = cached.photo_url;
+    if (!schoolName && cached?.name) schoolName = cached.name;
+  }
+
+  // 1. If customLogo is provided as a data URI (e.g. data:image/png;base64,...)
+  if (customLogo && typeof customLogo === 'string' && customLogo.startsWith('data:image/')) {
+    const match = customLogo.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (match) {
+      const mime = match[1].toLowerCase().replace('jpeg', 'jpg');
+      const buf = Buffer.from(match[2], 'base64');
+      // Require more than 200 bytes to ignore 1x1 transparent placeholder dots
+      if (buf.length > 200) {
+        return {
+          cid: 'school-logo',
+          hasLogo: true,
+          filename: `school-logo.${mime === 'svg+xml' ? 'svg' : mime}`,
+          content: buf
+        };
+      }
+    }
+  }
+
+  // 2. Check if school is DAV MODEL SCHOOL (or school name has DAV)
+  const normName = (schoolName || '').toLowerCase();
+  const normId = (schoolId || '').toLowerCase();
+  const isDav = normName.includes('dav') || normId.includes('5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3');
+
+  if (isDav) {
+    const davCandidates = [
+      path.resolve(__dirname, '../../assets/dav-logo.png'),
+      path.resolve(__dirname, '../assets/dav-logo.png'),
+      path.resolve(process.cwd(), 'assets/dav-logo.png'),
+      path.resolve(process.cwd(), 'backend/assets/dav-logo.png'),
+      path.resolve(process.cwd(), 'frontend/public/dav-logo.png'),
+      path.resolve(__dirname, '../../../frontend/public/dav-logo.png'),
+      path.resolve(process.cwd(), '../frontend/public/dav-logo.png')
+    ];
+    for (const p of davCandidates) {
+      if (fs.existsSync(p)) {
+        return {
+          cid: 'school-logo',
+          hasLogo: true,
+          filename: 'dav-logo.png',
+          path: p
+        };
+      }
+    }
+  }
+
+  // 3. Fallback to default institutional logo
+  const defaultLogo = getLogoAttachment();
+  if (defaultLogo.hasLogo) {
+    return {
+      cid: 'school-logo',
+      hasLogo: true,
+      filename: 'school-logo.png',
+      path: defaultLogo.path
+    };
+  }
+
+  return {
+    cid: 'school-logo',
+    hasLogo: false,
+    filename: 'school-logo.png'
+  };
+}
+
 export function renderEmailTemplate(templateKey: string, data: Record<string, any>): EmailTemplateResult {
-  const schoolName = escapeHtml(data.school_name || data.schoolName || 'Greenwood International School');
+  const schoolName = escapeHtml(data.school_name || data.schoolName || 'DAV MODEL SCHOOL');
   const baseUrl = data.app_base_url || env.appBaseUrl || 'http://localhost:5173';
-  const logoUrl = `${baseUrl}/attendo-school-logo.png`;
+  const logoUrl = 'cid:school-logo';
 
   // Professional White & Blue Brand Header
   const brandHeader = `
@@ -454,13 +563,13 @@ export function renderEmailTemplate(templateKey: string, data: Record<string, an
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td style="vertical-align: middle; padding-right: 14px;">
-                <img src="${logoUrl}" alt="AttendoSchool" width="44" height="44" style="display: block; border: 0; outline: none; text-decoration: none; width: 44px; height: 44px; border-radius: 6px; object-fit: contain;" />
+                <img src="${logoUrl}" alt="${schoolName}" width="48" height="48" style="display: block; border: 0; outline: none; text-decoration: none; width: 48px; height: 48px; border-radius: 6px; object-fit: contain;" />
               </td>
               <td style="vertical-align: middle;">
                 <div style="font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.01em;">
                   Attendo<span style="color: #1d4ed8;">School</span>
                 </div>
-                <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #64748b; font-weight: 500; margin-top: 2px;">
+                <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #475569; font-weight: 600; margin-top: 2px;">
                   ${schoolName}
                 </div>
               </td>
@@ -649,7 +758,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
           </tr>` : ''}
           <tr>
             <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Login Email</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1d4ed8; background-color: #ffffff;">${loginEmail}</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #1d4ed8; background-color: #ffffff;">${loginEmail || '&mdash;'}</td>
           </tr>
         </table>
 
@@ -661,7 +770,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
           <tr>
             <td align="center" style="padding: 4px 0 18px 0;">
               <a href="${resetUrl}" style="background-color: #1d4ed8; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 4px; display: inline-block; border: 1px solid #1e40af;">
-                Activate Account &amp; Set Password &rarr;
+                Activate Account &amp; Reset Password &rarr;
               </a>
             </td>
           </tr>
@@ -681,7 +790,7 @@ AttendoSchool Campus Portal: ${baseUrl}`;
       const className = escapeHtml(data.class_name || data.className || '8');
       const section = escapeHtml(data.section_name || data.section || 'A');
       const rollNumber = escapeHtml(data.roll_number || data.rollNumber || data.roll || '—');
-      const resetUrl = data.reset_link || data.resetUrl || `${baseUrl}/#/reset-password`;
+      const resetUrl = data.reset_link || data.resetUrl || data.login_url || data.loginUrl || `${baseUrl}/#/reset-password`;
       const subject = `Welcome to ${data.school_name || data.schoolName || 'School'} — Student Portal Access for ${data.student_name || 'Student'}`;
       const text = `Hello,
 
@@ -745,25 +854,33 @@ AttendoSchool: ${baseUrl}`;
           <tr>
             <td align="center" style="padding: 4px 0 18px 0;">
               <a href="${resetUrl}" style="background-color: #1d4ed8; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 4px; display: inline-block; border: 1px solid #1e40af;">
-                Access Student Portal &rarr;
+                Activate Account &amp; Reset Password &rarr;
               </a>
             </td>
           </tr>
         </table>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 14px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 10px;">
+          <strong>Notice:</strong> This secure activation link is valid for 24 hours.
+        </div>
       `);
       return { subject, text, html };
     }
 
     case 'PASSWORD_RESET': {
       const name = escapeHtml(data.name || 'User');
-      const resetUrl = data.reset_link || data.resetUrl || `${baseUrl}/#/reset-password`;
+      const resetUrl = data.reset_link || data.resetUrl || data.login_url || data.loginUrl || `${baseUrl}/#/reset-password`;
       const rawAdmission = data.admission_number || data.admissionNumber || data.admission_no || data.admissionNo || '';
       const admissionNumber = rawAdmission ? escapeHtml(rawAdmission) : '';
+      const rawEmployee = data.employee_id || data.employeeId || data.employee_no || data.employeeNo || '';
+      const employeeId = rawEmployee ? escapeHtml(rawEmployee) : '';
+      const rawRoll = data.roll_number || data.rollNumber || data.roll_no || data.rollNo || '';
+      const rollNumber = rawRoll ? escapeHtml(rawRoll) : '';
       const subject = `Password Reset Request — ${data.school_name || data.schoolName || 'AttendoSchool'}`;
       const text = `Hello ${data.name || 'User'},
 
 A request has been received to reset the password for your account at ${data.school_name || 'AttendoSchool'}.
-${admissionNumber ? `Admission Number (Login ID): ${admissionNumber}\n` : ''}To proceed, use this secure link (expires in 24 hours):
+${admissionNumber ? `Admission Number (Login ID): ${admissionNumber}\n` : ''}${employeeId ? `Employee ID: ${employeeId}\n` : ''}${rollNumber ? `Roll Number: ${rollNumber}\n` : ''}To proceed, use this secure link (expires in 24 hours):
 ${resetUrl}
 
 If you did not request a password reset, please ignore this email or contact your school administrator.
@@ -783,19 +900,30 @@ AttendoSchool Enterprise Security`;
           </div>
         </div>
 
-        ${admissionNumber ? `
+        ${(admissionNumber || employeeId || rollNumber) ? `
         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
-          Student Account Profile
+          ${employeeId ? 'Faculty Account Profile' : 'Student Account Profile'}
         </div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-bottom: 22px; border: 1px solid #e2e8f0; font-family: Arial, Helvetica, sans-serif;">
           <tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">Student Name</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">${employeeId ? 'Faculty Name' : 'Student Name'}</td>
             <td style="padding: 10px 14px; font-size: 13.5px; font-weight: 700; color: #0f172a; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">${name}</td>
           </tr>
+          ${employeeId ? `
           <tr>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; background-color: #f8fafc;">Admission Number (Login ID)</td>
-            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff;">${admissionNumber}</td>
-          </tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: none;">Employee ID</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: none;">${employeeId}</td>
+          </tr>` : ''}
+          ${admissionNumber ? `
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc; border-bottom: ${rollNumber ? '1px solid #e2e8f0' : 'none'};">Admission Number (Login ID)</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1d4ed8; background-color: #ffffff; border-bottom: ${rollNumber ? '1px solid #e2e8f0' : 'none'};">${admissionNumber}</td>
+          </tr>` : ''}
+          ${rollNumber ? `
+          <tr>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 600; color: #475569; width: 36%; background-color: #f8fafc;">Roll Number</td>
+            <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #0f172a; background-color: #ffffff;">${rollNumber}</td>
+          </tr>` : ''}
         </table>
         ` : ''}
 
@@ -807,7 +935,7 @@ AttendoSchool Enterprise Security`;
           <tr>
             <td align="center" style="padding: 4px 0 20px 0;">
               <a href="${resetUrl}" style="background-color: #1d4ed8; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 4px; display: inline-block; border: 1px solid #1e40af;">
-                Reset Account Password &rarr;
+                Activate Account &amp; Reset Password &rarr;
               </a>
             </td>
           </tr>
@@ -1064,6 +1192,56 @@ export function isValidEmail(email: string): boolean {
   return re.test(trimmed);
 }
 
+/**
+ * Identifies synthetic, dummy, placeholder, or seeded demo email addresses
+ * (@school.local, @testschool.edu, example.com, admin@dav.com, student@gmail.com, etc.)
+ * for which outbound external SMTP transmission is intentionally suppressed and
+ * logged with status 'UNSENT'.
+ */
+export function isSyntheticOrDummyEmail(email?: string | null): boolean {
+  if (!email || typeof email !== 'string') return true;
+  const e = email.trim().toLowerCase();
+  if (!e || !e.includes('@')) return true;
+
+  const parts = e.split('@');
+  if (parts.length !== 2) return true;
+  const [localPart, domain] = parts;
+
+  // Local/test/example TLDs or domains
+  if (
+    domain.endsWith('.local') ||
+    domain.endsWith('.test') ||
+    domain.endsWith('.example') ||
+    domain.endsWith('.invalid') ||
+    domain.endsWith('.localhost') ||
+    domain === 'example.com' ||
+    domain === 'testschool.edu' ||
+    domain === 'school.local' ||
+    domain === 'test.com' ||
+    domain === 'demo.com'
+  ) {
+    return true;
+  }
+
+  // Common seed/demo accounts
+  if (
+    e === 'admin@dav.com' ||
+    e === 'teacher@school.local' ||
+    e === 'student@gmail.com' ||
+    e === 'student123@gmail.com' ||
+    e === 'teacher@gmail.com' ||
+    e === 'parent@gmail.com' ||
+    e === 'test@gmail.com' ||
+    e === 'test@test.com' ||
+    (localPart.startsWith('teacher.') && domain === 'school.local') ||
+    (localPart.startsWith('single.enrollment.') && domain === 'testschool.edu')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 // ── UNIFIED EMAIL QUEUE FUNCTION ──
 export interface QueueEmailOptions {
   schoolId: string;
@@ -1149,33 +1327,65 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
         }
       } catch {}
 
-      // 2. Query PostgreSQL if still not resolved
-      if (!templateData.admission_number && pool && isPostgresConfigured) {
+      if ((!templateData.admission_number || !templateData.roll_number) && pool && isPostgresConfigured) {
         try {
           let stQ: any = null;
           if (studentId) {
             stQ = await pool.query(
-              `SELECT admission_number FROM students WHERE id::text = $1 OR user_id::text = $1 LIMIT 1`,
+              `SELECT admission_number, roll_number FROM students WHERE id::text = $1 OR user_id::text = $1 LIMIT 1`,
               [String(studentId).trim()]
             );
           }
           if ((!stQ || !stQ.rowCount) && cleanRecipient) {
             stQ = await pool.query(
-              `SELECT admission_number FROM students WHERE LOWER(email) = $1 OR LOWER(student_email) = $1 OR LOWER(parent_email) = $1 LIMIT 1`,
+              `SELECT admission_number, roll_number FROM students WHERE LOWER(email) = $1 OR LOWER(parent_email) = $1 LIMIT 1`,
               [cleanRecipient]
             );
           }
-          if (stQ?.rowCount && stQ.rows[0]?.admission_number) {
-            templateData.admission_number = stQ.rows[0].admission_number;
+          if (stQ?.rowCount) {
+            if (!templateData.admission_number && stQ.rows[0]?.admission_number) {
+              templateData.admission_number = stQ.rows[0].admission_number;
+            }
+            if (!templateData.roll_number && stQ.rows[0]?.roll_number) {
+              templateData.roll_number = stQ.rows[0].roll_number;
+            }
           }
         } catch {}
       }
     }
   }
 
+  // Populate respective school name & logo from cache/database if missing
+  if (schoolId && (!templateData.school_logo || !templateData.school_name)) {
+    if (schoolLogoCache.has(schoolId)) {
+      const cached = schoolLogoCache.get(schoolId);
+      if (cached?.photo_url && !templateData.school_logo) templateData.school_logo = cached.photo_url;
+      if (cached?.name && !templateData.school_name) templateData.school_name = cached.name;
+    } else if (pool && isPostgresConfigured) {
+      try {
+        const sRes = await pool.query(`SELECT id, name, photo_url FROM schools WHERE id = $1 LIMIT 1`, [schoolId]);
+        if (sRes.rows.length > 0) {
+          const sRow = sRes.rows[0];
+          schoolLogoCache.set(schoolId, { name: sRow.name || '', photo_url: sRow.photo_url || '' });
+          if (sRow.photo_url && !templateData.school_logo) templateData.school_logo = sRow.photo_url;
+          if (sRow.name && !templateData.school_name) templateData.school_name = sRow.name;
+        }
+      } catch {}
+    }
+  }
+
   const rendered = renderEmailTemplate(templateKey, templateData);
-  const logId = `notif-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  // Use the same UUID in memory, PostgreSQL, Firestore, and workers so provider
+  // responses always update the exact audit record that initiated the send.
+  const logId = crypto.randomUUID();
   const now = new Date().toISOString();
+
+  const isDummyRecipient = isSyntheticOrDummyEmail(cleanRecipient);
+  const initialStatus: DeliveryStatus = isDummyRecipient ? 'UNSENT' : 'QUEUED';
+  const initialProviderMsgId = isDummyRecipient ? 'UNSENT-DUMMY-RECIPIENT' : null;
+  const initialLastError = isDummyRecipient
+    ? 'Unsent: Dummy or placeholder recipient (@school.local, admin@dav.com, etc.). External SMTP dispatch suppressed.'
+    : null;
 
   const logEntry: NotificationLog = {
     id: logId,
@@ -1186,6 +1396,8 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     student_id: studentId,
     studentId,
     student_name: studentName,
+    recipient_name: recipientName || studentName,
+    admission_number: templateData.admission_number || templateData.admissionNumber,
     channel: 'EMAIL',
     recipient: cleanRecipient,
     recipient_type: recipientType,
@@ -1193,13 +1405,14 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     subject: rendered.subject,
     message: rendered.text,
     html_body: rendered.html,
-    status: 'QUEUED',
+    status: initialStatus,
     attempts: 0,
     max_attempts: env.emailMaxRetries || 4,
     scheduled_at: now,
     sent_at: null,
     failed_at: null,
-    last_error: null,
+    last_error: initialLastError,
+    provider_message_id: initialProviderMsgId,
     idempotency_key: idempotencyKey,
     created_at: now
   };
@@ -1213,7 +1426,13 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     const isValidUuid = (val?: any) =>
       typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
 
-    const safeSchoolId = isValidUuid(schoolId) ? schoolId.trim() : null;
+    let safeSchoolId = isValidUuid(schoolId) ? schoolId.trim() : null;
+    if (!safeSchoolId && pool && isPostgresConfigured) {
+      try {
+        const sRes = await pool.query(`SELECT id FROM schools LIMIT 1`);
+        if (sRes.rows[0]?.id) safeSchoolId = sRes.rows[0].id;
+      } catch {}
+    }
     const safeSessionId = isValidUuid(attendanceSessionId) ? attendanceSessionId.trim() : null;
     let safeStudentId = isValidUuid(studentId) ? studentId.trim() : null;
 
@@ -1233,29 +1452,57 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     if (safeSchoolId) {
       await pool.query(
         `INSERT INTO notification_logs(
-          id, school_id, attendance_session_id, student_id, channel, recipient,
+          id, school_id, attendance_session_id, student_id, recipient_name, admission_number, channel, recipient,
           recipient_type, template_key, subject, message, html_body, status,
-          attempts, max_attempts, scheduled_at, idempotency_key, created_at
-        ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,'QUEUED',0,$11,NOW(),$12,NOW())
+          attempts, max_attempts, scheduled_at, idempotency_key, created_at, provider_message_id, last_error
+        ) VALUES($1,$2,$3,$4,$5,$6,'EMAIL',$7,$8,$9,$10,$11,$12,$13,0,$14,NOW(),$15,NOW(),$16,$17)
         ON CONFLICT(idempotency_key) DO NOTHING`,
         [
-          crypto.randomUUID(),
+          logId,
           safeSchoolId,
           safeSessionId,
           safeStudentId,
+          recipientName || studentName || null,
+          templateData.admission_number || templateData.admissionNumber || null,
           cleanRecipient,
           recipientType,
           templateKey,
           rendered.subject,
           rendered.text,
           rendered.html,
+          initialStatus,
           env.emailMaxRetries || 4,
-          idempotencyKey
+          idempotencyKey,
+          initialProviderMsgId,
+          initialLastError
         ]
       );
     }
   } catch (_sqlErr: any) {
-    console.warn('[NotificationQueue] Error saving to notification_logs SQL:', _sqlErr?.message || _sqlErr);
+    // Rolling-deployment compatibility: keep logging on an older schema until
+    // migration 040 has run. Never allow a successful email to have no SQL log.
+    try {
+      const isValidUuid = (val?: any) =>
+        typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+      const legacySchoolId = isValidUuid(schoolId) ? schoolId.trim() : null;
+      const legacySessionId = isValidUuid(attendanceSessionId) ? attendanceSessionId!.trim() : null;
+      const legacyStudentId = isValidUuid(studentId) ? studentId!.trim() : null;
+      if (legacySchoolId) {
+        await pool.query(
+          `INSERT INTO notification_logs(
+            id, school_id, attendance_session_id, student_id, channel, recipient,
+            recipient_type, template_key, subject, message, html_body, status,
+            attempts, max_attempts, scheduled_at, idempotency_key, created_at, provider_message_id, last_error
+          ) VALUES($1,$2,$3,$4,'EMAIL',$5,$6,$7,$8,$9,$10,$11,0,$12,NOW(),$13,NOW(),$14,$15)
+          ON CONFLICT(idempotency_key) DO NOTHING`,
+          [logId, legacySchoolId, legacySessionId, legacyStudentId, cleanRecipient,
+            recipientType, templateKey, rendered.subject, rendered.text, rendered.html,
+            initialStatus, env.emailMaxRetries || 4, idempotencyKey, initialProviderMsgId, initialLastError]
+        );
+      }
+    } catch (legacyErr: any) {
+      console.error('[NotificationQueue] Failed to persist email audit log:', legacyErr?.message || legacyErr);
+    }
   }
 
   // 3. Mirror to Firestore if configured
@@ -1268,14 +1515,32 @@ export async function queueEmailNotification(options: QueueEmailOptions): Promis
     } catch {}
   }
 
-  // Trigger background queue processing immediately
-  setImmediate(() => {
-    processNotificationQueue(env.emailRateLimit || 50).catch(err => {
-      console.warn('[QueueEmailWorker] Background processing notice:', err.message);
-    });
-  });
+  // If dummy/synthetic email, suppress queue worker and SMTP delivery
+  if (!isDummyRecipient) {
+    // Offload to Redis background queue worker (with instant non-blocking fallback)
+    queueService.enqueueNotificationJob({
+      type: 'EMAIL',
+      id: logId,
+      schoolId: schoolId || undefined,
+      timestamp: Date.now()
+    }).catch(() => {});
 
-  return { id: logId, status: 'QUEUED', message: 'Email successfully queued for delivery' };
+    if (!queueService.isDistributed()) {
+      setImmediate(() => {
+        processNotificationQueue(env.emailRateLimit || 50).catch(err => {
+          console.warn('[QueueEmailWorker] Background processing notice:', err.message);
+        });
+      });
+    }
+  }
+
+  return {
+    id: logId,
+    status: initialStatus,
+    message: isDummyRecipient
+      ? 'Dummy recipient: notification recorded as UNSENT and external SMTP dispatch suppressed.'
+      : 'Email successfully queued for delivery'
+  };
 }
 
 // ── ATTENDANCE EMAIL DISPATCHER (With Teacher / Admin Security Checks) ──
@@ -1488,7 +1753,7 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
         });
         if (qRes.status === 'QUEUED') queuedCount++;
         else if (qRes.status === 'SENT' || qRes.message.includes('already')) alreadySentCount++;
-        else if (qRes.status === 'SKIPPED') skippedCount++;
+        else if (qRes.status === 'SKIPPED' || qRes.status === 'UNSENT') skippedCount++;
         else failedCount++;
       } else {
         skippedCount++;
@@ -1512,7 +1777,7 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
         });
         if (qRes.status === 'QUEUED') queuedCount++;
         else if (qRes.status === 'SENT' || qRes.message.includes('already')) alreadySentCount++;
-        else if (qRes.status === 'SKIPPED') skippedCount++;
+        else if (qRes.status === 'SKIPPED' || qRes.status === 'UNSENT') skippedCount++;
         else failedCount++;
       } else {
         skippedCount++;
@@ -1520,12 +1785,21 @@ export async function dispatchAttendanceEmails(options: DispatchAttendanceEmails
     }
   }
 
-  // Trigger non-blocking worker processing
-  setImmediate(() => {
-    processNotificationQueue(env.emailRateLimit || 50).catch(err => {
-      console.warn('[AttendanceEmailWorker] Background processing notice:', err.message);
+  // Offload to Redis background queue worker (with non-blocking fallback)
+  queueService.enqueueNotificationJob({
+    type: 'BATCH',
+    sessionId,
+    schoolId,
+    timestamp: Date.now()
+  }).catch(() => {});
+
+  if (!queueService.isDistributed()) {
+    setImmediate(() => {
+      processNotificationQueue(env.emailRateLimit || 50).catch(err => {
+        console.warn('[AttendanceEmailWorker] Background processing notice:', err.message);
+      });
     });
-  });
+  }
 
   return {
     success: true,
@@ -1971,24 +2245,10 @@ export async function sendMailWithDualPortFallback(
         }
       }
 
-      const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || (env.keepAliveUrl && env.keepAliveUrl.includes('render.com')));
-      if (isRender || isConnErr) {
-        let renderNotice: string;
-        if (brevoKey && brevoKey.startsWith('xsmtpsib-')) {
-          renderNotice =
-            `Render Free Tier blocks outbound SMTP on ports 25, 465, and 587. ` +
-            `Your current BREVO_API_KEY is an SMTP password ('xsmtpsib-...'). ` +
-            `To deliver emails over Port 443 on Render: Log in to Brevo -> Settings -> SMTP & API -> click 'API Keys' tab -> click 'Generate a new API key' (starts with 'xkeysib-') and update BREVO_API_KEY in Render.`;
-        } else {
-          renderNotice =
-            `Render Free Tier web services block outbound SMTP traffic on ports 25, 465, and 587. ` +
-            `To fix this on Render for 100% FREE without paying: ` +
-            `(1) Add BREVO_API_KEY to your Render Environment Variables (starts with 'xkeysib-' from Brevo -> SMTP & API -> API Keys tab), or ` +
-            `(2) Add GMAIL_RELAY_URL to your Render Environment Variables (free Google Apps Script Web App sending directly from ${user}).`;
-        }
-        console.error(`[Render Egress Policy] ${renderNotice}`);
-        const customErr: any = new Error(renderNotice);
-        customErr.code = isRender ? 'RENDER_SMTP_BLOCKED' : (errCode || 'ECONNFAILED');
+      if (isConnErr) {
+        console.error(`[SMTP Egress] Outbound SMTP connection error: ${errMsg}`);
+        const customErr: any = new Error(`Outbound SMTP connection failed: ${errMsg}`);
+        customErr.code = errCode || 'ECONNFAILED';
         throw customErr;
       }
 
@@ -2008,6 +2268,11 @@ async function deliver(
   htmlBody?: string
 ): Promise<string> {
   if (channel === 'EMAIL') {
+    if (isSyntheticOrDummyEmail(recipient)) {
+      console.log(`[NotificationDelivery] Recipient "${recipient}" is dummy/synthetic. Outbound SMTP dispatch suppressed.`);
+      return 'UNSENT-DUMMY-RECIPIENT';
+    }
+
     const cfg = getSchoolSmtpConfig(schoolId);
     if (!cfg.isEnabled) return `EMAIL-SKIPPED-DISABLED`;
 
@@ -2040,16 +2305,31 @@ async function deliver(
 
     const emailSubject = subject || (emailData?.student_name ? `Attendance Notice: ${emailData.student_name}` : 'AttendoSchool Notification');
     let finalHtml = htmlBody || `<p>${message.replace(/\n/g, '<br/>')}</p>`;
-    const logo = getLogoAttachment();
     const attachments: any[] = [];
 
-    if (logo.hasLogo) {
+    // 1. Resolve respective institution's official logo (DAV, TINT, or uploaded photo_url)
+    const schoolLogo = getSchoolLogoAttachment(schoolId, cfg.senderName, emailData?.school_logo);
+    if (schoolLogo.hasLogo) {
+      const att: any = {
+        cid: 'school-logo',
+        filename: schoolLogo.filename
+      };
+      if (schoolLogo.content) {
+        att.content = schoolLogo.content;
+      } else if (schoolLogo.path) {
+        att.path = schoolLogo.path;
+      }
+      attachments.push(att);
+    }
+
+    // 2. Also attach default logo for legacy cid:attendoschool-logo references
+    const defaultLogo = getLogoAttachment();
+    if (defaultLogo.hasLogo) {
       attachments.push({
         filename: 'attendo-school-logo.png',
-        path: logo.path,
+        path: defaultLogo.path,
         cid: 'attendoschool-logo'
       });
-      // Replace web URL with CID so logo displays natively without image blockers in all mail clients
       finalHtml = finalHtml.replace(/src=["'][^"']*attendo-school-logo\.png["']/gi, 'src="cid:attendoschool-logo"');
     }
 
@@ -2103,6 +2383,9 @@ async function deliver(
   return `MOCK-DISPATCH-${Date.now()}`;
 }
 
+// Concurrency mutex tracking in-flight notification dispatches across async workers
+const inFlightNotificationIds = new Set<string>();
+
 // ── QUEUE WORKER: CONCURRENCY LEASE & EXPONENTIAL BACKOFF ──
 export async function processNotificationQueue(limit = 50) {
   const effectiveLimit = Math.min(limit, env.emailRateLimit || 50);
@@ -2116,12 +2399,55 @@ export async function processNotificationQueue(limit = 50) {
   const eligibleMemJobs = memNotificationLogs.filter(j =>
     (j.status === 'QUEUED' || j.status === 'RETRYING') &&
     j.attempts < (j.max_attempts || 4) &&
-    (!j.scheduled_at || new Date(j.scheduled_at).getTime() <= (now.getTime() + 2000))
+    (!j.scheduled_at || new Date(j.scheduled_at).getTime() <= (now.getTime() + 2000)) &&
+    (!j.id || !inFlightNotificationIds.has(j.id)) &&
+    (!j.idempotency_key || !inFlightNotificationIds.has(j.idempotency_key))
   ).slice(0, effectiveLimit);
 
   for (const job of eligibleMemJobs) {
+    if (job.id && inFlightNotificationIds.has(job.id)) continue;
+    if (job.idempotency_key && inFlightNotificationIds.has(job.idempotency_key)) continue;
+
+    if (isSyntheticOrDummyEmail(job.recipient)) {
+      job.status = 'UNSENT';
+      job.sent_at = null;
+      job.provider_message_id = 'UNSENT-DUMMY-RECIPIENT';
+      job.last_error = 'Unsent: Dummy or placeholder recipient (@school.local, admin@dav.com, etc.). External SMTP dispatch suppressed.';
+      if (pool && isPostgresConfigured) {
+        try {
+          await pool.query(
+            `UPDATE notification_logs 
+             SET status='UNSENT', provider_message_id='UNSENT-DUMMY-RECIPIENT', sent_at=NULL, last_error='Unsent: Dummy or placeholder recipient. External SMTP forwarding suppressed.'
+             WHERE id=$1`,
+            [job.id]
+          );
+        } catch {}
+      }
+      continue;
+    }
+
+    // Atomic lease from PostgreSQL if connected to ensure no dual dispatch between memory & DB workers
+    if (pool && isPostgresConfigured && job.id) {
+      try {
+        const chk = await pool.query(`SELECT id, status FROM notification_logs WHERE id=$1`, [job.id]);
+        if (chk.rowCount && chk.rowCount > 0) {
+          if (chk.rows[0].status === 'SENT' || chk.rows[0].status === 'PROCESSING') {
+            // Already claimed or dispatched by another worker loop
+            job.status = chk.rows[0].status;
+            continue;
+          }
+          await pool.query(
+            `UPDATE notification_logs SET status='PROCESSING', attempts=attempts+1 WHERE id=$1`,
+            [job.id]
+          );
+        }
+      } catch {}
+    }
+
     job.status = 'PROCESSING';
     job.attempts++;
+    if (job.id) inFlightNotificationIds.add(job.id);
+    if (job.idempotency_key) inFlightNotificationIds.add(job.idempotency_key);
 
     try {
       const providerId = await deliver(
@@ -2141,20 +2467,20 @@ export async function processNotificationQueue(limit = 50) {
       if (job.id) dispatchedKeys.add(job.id);
       if (job.idempotency_key) dispatchedKeys.add(job.idempotency_key);
 
-      // Sync sent status to PostgreSQL to prevent duplicate dispatch from SQL queue
+      // Sync sent status to PostgreSQL
       if (pool && isPostgresConfigured) {
         try {
           if (job.idempotency_key) {
             await pool.query(
               `UPDATE notification_logs 
-               SET status='SENT', provider_message_id=$1, sent_at=NOW(), attempts=attempts+1, last_error=NULL 
+               SET status='SENT', provider_message_id=$1, sent_at=NOW(), last_error=NULL 
                WHERE idempotency_key=$2 AND status IN ('QUEUED', 'PROCESSING')`,
               [providerId, job.idempotency_key]
             );
           } else if (job.id) {
             await pool.query(
               `UPDATE notification_logs 
-               SET status='SENT', provider_message_id=$1, sent_at=NOW(), attempts=attempts+1, last_error=NULL 
+               SET status='SENT', provider_message_id=$1, sent_at=NOW(), last_error=NULL 
                WHERE id=$2 AND status IN ('QUEUED', 'PROCESSING')`,
               [providerId, job.id]
             );
@@ -2178,24 +2504,58 @@ export async function processNotificationQueue(limit = 50) {
         job.scheduled_at = new Date(Date.now() + delaySec * 1000).toISOString();
         retrying++;
       }
+
+      if (pool && isPostgresConfigured) {
+        try {
+          await pool.query(
+            `UPDATE notification_logs
+             SET status=$1, attempts=$2, last_error=$3,
+                 failed_at=CASE WHEN $1='FAILED' THEN NOW() ELSE failed_at END,
+                 scheduled_at=CASE WHEN $1='RETRYING' THEN $4::timestamptz ELSE scheduled_at END
+             WHERE id=$5`,
+            [job.status, job.attempts, job.last_error, job.scheduled_at || null, job.id]
+          );
+        } catch {}
+      }
+    } finally {
+      if (job.id) inFlightNotificationIds.delete(job.id);
+      if (job.idempotency_key) inFlightNotificationIds.delete(job.idempotency_key);
     }
   }
 
-  // 2. Process from PostgreSQL queue if active
+  // 2. Process from PostgreSQL queue if active (Atomic FOR UPDATE SKIP LOCKED)
   try {
     const jobs = await pool.query(
-      `SELECT * FROM notification_logs 
-       WHERE status IN ('QUEUED', 'RETRYING') 
-         AND attempts < max_attempts 
-         AND (scheduled_at IS NULL OR scheduled_at <= NOW())
-       ORDER BY created_at ASC 
-       LIMIT $1`,
+      `UPDATE notification_logs
+       SET status = 'PROCESSING', attempts = attempts + 1
+       WHERE id IN (
+         SELECT id FROM notification_logs
+         WHERE status IN ('QUEUED', 'RETRYING')
+           AND attempts < max_attempts
+           AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+         ORDER BY created_at ASC
+         FOR UPDATE SKIP LOCKED
+         LIMIT $1
+       )
+       RETURNING *`,
       [effectiveLimit]
     );
 
     for (const j of jobs.rows) {
-      // Deduplication guard: do not re-deliver if this notification was already delivered via memory
+      // Deduplication guard
       if ((j.id && dispatchedKeys.has(j.id)) || (j.idempotency_key && dispatchedKeys.has(j.idempotency_key))) {
+        continue;
+      }
+      if (j.id && inFlightNotificationIds.has(j.id)) continue;
+      if (j.idempotency_key && inFlightNotificationIds.has(j.idempotency_key)) continue;
+
+      if (isSyntheticOrDummyEmail(j.recipient)) {
+        await pool.query(
+          `UPDATE notification_logs 
+           SET status='UNSENT', provider_message_id='UNSENT-DUMMY-RECIPIENT', sent_at=NULL, last_error='Unsent: Dummy or placeholder recipient. External SMTP forwarding suppressed.'
+           WHERE id=$1`,
+          [j.id]
+        ).catch(() => {});
         continue;
       }
 
@@ -2212,7 +2572,9 @@ export async function processNotificationQueue(limit = 50) {
         continue;
       }
 
-      await pool.query(`UPDATE notification_logs SET status='PROCESSING', attempts=attempts+1 WHERE id=$1`, [j.id]);
+      if (j.id) inFlightNotificationIds.add(j.id);
+      if (j.idempotency_key) inFlightNotificationIds.add(j.idempotency_key);
+
       try {
         const providerId = await deliver(j.channel, j.recipient, j.message, j.school_id, undefined, j.subject, j.html_body);
         await pool.query(
@@ -2248,6 +2610,9 @@ export async function processNotificationQueue(limit = 50) {
           );
           retrying++;
         }
+      } finally {
+        if (j.id) inFlightNotificationIds.delete(j.id);
+        if (j.idempotency_key) inFlightNotificationIds.delete(j.idempotency_key);
       }
     }
   } catch {}
@@ -2319,15 +2684,29 @@ export async function testSmtpConnection(
   const rawSender = cfg.senderEmail || extractEmailAddress(env.smtpFrom) || user || 'info.sahayog24x7@gmail.com';
   const rawName = cfg.senderName || extractSenderName(env.smtpFrom) || 'AttendoSchool Verification';
   const from = `"${rawName}" <${rawSender}>`;
-  const testTemplate = renderEmailTemplate('TEST_EMAIL', { host, port, school_name: 'AttendoSchool Verification' });
-  const logo = getLogoAttachment();
+  const testTemplate = renderEmailTemplate('TEST_EMAIL', { host, port, school_name: cfg.senderName || 'AttendoSchool Verification' });
   const attachments: any[] = [];
   let testHtml = testTemplate.html;
 
-  if (logo.hasLogo) {
+  const schoolLogo = getSchoolLogoAttachment(customConfig?.schoolId || schoolId, cfg.senderName, undefined);
+  if (schoolLogo.hasLogo) {
+    const att: any = {
+      cid: 'school-logo',
+      filename: schoolLogo.filename
+    };
+    if (schoolLogo.content) {
+      att.content = schoolLogo.content;
+    } else if (schoolLogo.path) {
+      att.path = schoolLogo.path;
+    }
+    attachments.push(att);
+  }
+
+  const defaultLogo = getLogoAttachment();
+  if (defaultLogo.hasLogo) {
     attachments.push({
       filename: 'attendo-school-logo.png',
-      path: logo.path,
+      path: defaultLogo.path,
       cid: 'attendoschool-logo'
     });
     testHtml = testHtml.replace(/src=["'][^"']*attendo-school-logo\.png["']/gi, 'src="cid:attendoschool-logo"');

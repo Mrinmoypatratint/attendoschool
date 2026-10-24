@@ -1,6 +1,6 @@
 # ===========================================================================
 # AttendoSchool — Continuous Integration (CI)
-# Triggers: Pushes to developer branches (auto-test, auto-PR, auto-merge, auto-deploy)
+# Triggers: Pushes to developer branches (auto-test, compare, auto-merge, auto-deploy)
 # ===========================================================================
 name: CI — Lint, Test, Build, Security
 
@@ -51,14 +51,12 @@ jobs:
           echo "Scanning diff for potential secret leaks..."
           ISSUES=0
 
-          # Patterns that should never appear in committed code
           if git diff origin/main...HEAD -- ':(exclude).env.example' ':(exclude).env.production.example' ':(exclude)*.md' 2>/dev/null | \
             grep -iE '(password\s*[:=]\s*["\x27][^"\x27]{6,}|api[_-]?key\s*[:=]\s*["\x27][A-Za-z0-9]{16,}|private[_-]?key\s*[:=]\s*["\x27]-----BEGIN)' ; then
             echo "::warning::Potential secret detected in diff. Please review before merging."
             ISSUES=$((ISSUES + 1))
           fi
 
-          # Check for .env files being committed
           if git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^\.env$|^\.env\.(local|development|production)$|serviceAccount.*\.json$' ; then
             echo "::error::Sensitive file (.env or serviceAccount) detected in commit!"
             ISSUES=$((ISSUES + 1))
@@ -84,7 +82,6 @@ jobs:
             echo "$MIGRATION_FILES" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
 
-            # Check for destructive operations
             if echo "$MIGRATION_FILES" | xargs -I{} git diff origin/main...HEAD -- {} 2>/dev/null | \
               grep -iE '(DROP\s+(TABLE|DATABASE|INDEX|COLUMN)|TRUNCATE\s+TABLE|DELETE\s+FROM.*WHERE\s+1|ALTER\s+TABLE.*DROP)'; then
               echo "destructive=true" >> $GITHUB_OUTPUT
@@ -125,7 +122,7 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
-      - name: Run Comprehensive Test Suite (50 tests)
+      - name: Run Backend Test Suite
         working-directory: ./backend
         run: npm run test
 
@@ -134,7 +131,7 @@ jobs:
         run: |
           echo "### ⚙️ Backend CI" >> $GITHUB_STEP_SUMMARY
           echo "- **TypeScript Build:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Suite:** ${{ job.status == 'success' && '✅ 50/50 PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Suite:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
 
   # =========================================================================
   # STAGE 3 — FRONTEND CI
@@ -165,7 +162,7 @@ jobs:
       - name: Frontend Vite Production Build
         working-directory: ./frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://attendoschool-backend.onrender.com/api' }}
+          VITE_API_URL: '/api'
         run: npm run build
 
       - name: Frontend CI Summary
@@ -176,12 +173,17 @@ jobs:
           echo "- **Vite Production Build:** ${{ job.status == 'success' && '✅ PASS' || '❌ FAIL' }}" >> $GITHUB_STEP_SUMMARY
 
   # =========================================================================
-  # STAGE 4 — CONFLICT DETECTION & AUTO-PR
+  # STAGE 4 — CONFLICT DETECTION, AUTO-PR & AUTO-MERGE (COMPARE, MERGE, DEPLOY)
   # =========================================================================
   conflict-check-and-pr:
     name: "Merge Safety: Conflict Detection & Auto-PR"
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
+    concurrency:
+      # All developer branches target main. Serialize the final merge decision
+      # so two green runs cannot both validate against an outdated main.
+      group: merge-to-main
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -225,7 +227,6 @@ jobs:
 
           echo "already_merged=false" >> $GITHUB_OUTPUT
 
-          # File change summary
           echo "#### Changed Files" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
           git diff --stat origin/main..HEAD >> $GITHUB_STEP_SUMMARY
@@ -236,13 +237,11 @@ jobs:
         if: steps.compare.outputs.already_merged != 'true'
         run: |
           BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
-          git config user.name "ci-conflict-checker"
-          git config user.email "ci@attendoschool.local"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create a temporary branch from main for safe conflict testing
           git checkout -B _ci_merge_test origin/main
 
-          # Attempt merge without committing
           if git merge --no-commit --no-ff "origin/${BRANCH}" 2>/dev/null; then
             echo "conflict=false" >> $GITHUB_OUTPUT
             echo "#### ✅ Merge Conflict Check: CLEAN" >> $GITHUB_STEP_SUMMARY
@@ -285,7 +284,7 @@ jobs:
             "## Auto-Generated Pull Request" \
             "" \
             "**Branch:** \`${BRANCH}\` → \`main\`" \
-            "**CI Status:** ✅ All checks passed (Backend Build + 50 Tests + Frontend Build)" \
+            "**CI Status:** ✅ All checks passed (Backend Build + Test Suite + Frontend Build)" \
             "**Conflicts:** ✅ None detected" \
             "" \
             "${MIGRATION_NOTE}" \
@@ -311,7 +310,7 @@ jobs:
             echo "pr_number=${PR_NUM}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Auto-Merge Pull Request into main
+      - name: Auto-Merge Pull Request into main & Deploy
         if: |
           steps.compare.outputs.already_merged != 'true' &&
           steps.conflict.outputs.conflict != 'true' &&
@@ -320,13 +319,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          TESTED_HEAD="${GITHUB_SHA}"
           PR_NUM="${{ steps.create_pr.outputs.pr_number }}"
           if [ -z "$PR_NUM" ]; then
             PR_NUM=$(gh pr list --head "${BRANCH}" --base main --state open --json number -q '.[0].number' 2>/dev/null || echo "")
           fi
 
           if [ -n "$PR_NUM" ]; then
-            # Verify if already merged
             PR_STATE=$(gh pr view "$PR_NUM" --json state -q '.state' 2>/dev/null || echo "")
             if [ "$PR_STATE" = "MERGED" ]; then
               echo "✅ PR #${PR_NUM} is already merged into main."
@@ -334,7 +333,6 @@ jobs:
               exit 0
             fi
 
-            # Check if PR or commit is marked WIP / Draft
             PR_DATA=$(gh pr view "$PR_NUM" --json isDraft,title 2>/dev/null || echo "{}")
             IS_DRAFT=$(echo "$PR_DATA" | jq -r '.isDraft // false')
             PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // ""')
@@ -345,32 +343,60 @@ jobs:
               exit 0
             fi
 
-            echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
-            MERGED=false
-            if gh pr merge "$PR_NUM" --merge --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
-              echo "✅ Successfully merged PR #${PR_NUM} into main!"
-              echo "- **Auto-Merge:** ✅ Successfully merged PR #${PR_NUM} into main" >> $GITHUB_STEP_SUMMARY
-              MERGED=true
-            elif gh pr merge "$PR_NUM" --auto --merge 2>&1; then
-              echo "✅ GitHub Auto-Merge queued for PR #${PR_NUM}"
-              echo "- **Auto-Merge:** ⏳ GitHub Auto-Merge queued for PR #${PR_NUM}" >> $GITHUB_STEP_SUMMARY
-              sleep 5
-              MERGED=true
-            else
-              echo "::warning::Direct merge and auto-merge failed. PR ready for manual review."
-              echo "- **Auto-Merge:** ⚠️ Manual review required" >> $GITHUB_STEP_SUMMARY
+            CURRENT_HEAD=$(gh pr view "$PR_NUM" --json headRefOid -q '.headRefOid')
+            if [ "$CURRENT_HEAD" != "$TESTED_HEAD" ]; then
+              echo "::error::Branch changed after CI started (${TESTED_HEAD:0:8} -> ${CURRENT_HEAD:0:8}). Refusing to merge untested code."
+              exit 1
             fi
 
-            if [ "$MERGED" = "true" ]; then
-              echo "🚀 Triggering CD — Production Deployment for main branch..."
-              if gh workflow run deploy.yml --ref main 2>&1; then
-                echo "✅ Successfully triggered production deployment for main!"
-                echo "- **CD Deployment:** 🚀 Triggered automatically for \`main\`" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "::warning::Could not trigger deploy.yml workflow automatically."
-                echo "- **CD Deployment:** ⚠️ Failed to trigger automatically — check Actions tab" >> $GITHUB_STEP_SUMMARY
-              fi
+            echo "Attempting auto-merge for PR #${PR_NUM} (${BRANCH} → main)..."
+            if ! gh pr merge "$PR_NUM" --merge --match-head-commit "$TESTED_HEAD" \
+              --subject "Auto-merge ${BRANCH} into main (#${PR_NUM})" 2>&1; then
+              echo "::error::GitHub did not complete the merge. Deployment will not run for an unmerged commit."
+              echo "- **Auto-Merge:** ❌ GitHub rejected the merge; inspect branch protection/checks" >> $GITHUB_STEP_SUMMARY
+              exit 1
             fi
+
+            # Obtain the actual merge commit before synchronizing or deploying.
+            MERGE_SHA=""
+            for ATTEMPT in $(seq 1 24); do
+              PR_DATA=$(gh pr view "$PR_NUM" --json state,headRefOid,mergeCommit)
+              PR_STATE=$(echo "$PR_DATA" | jq -r '.state')
+              CURRENT_HEAD=$(echo "$PR_DATA" | jq -r '.headRefOid')
+              if [ "$CURRENT_HEAD" != "$TESTED_HEAD" ]; then
+                echo "::error::PR head changed while waiting for merge."
+                exit 1
+              fi
+              if [ "$PR_STATE" = "MERGED" ]; then
+                MERGE_SHA=$(echo "$PR_DATA" | jq -r '.mergeCommit.oid // empty')
+                break
+              fi
+              sleep 5
+            done
+
+            if [ -z "$MERGE_SHA" ]; then
+              echo "::error::PR #${PR_NUM} did not reach MERGED state. Deployment was skipped."
+              exit 1
+            fi
+
+            echo "✅ PR #${PR_NUM} merged as ${MERGE_SHA}."
+            echo "- **Auto-Merge:** ✅ Merged as \`${MERGE_SHA:0:8}\`" >> $GITHUB_STEP_SUMMARY
+
+            # Keep the developer branch at the merge result. This fast-forward
+            # safely fails instead of overwriting concurrent developer work.
+            git fetch origin \
+              "main:refs/remotes/origin/main" \
+              "${BRANCH}:refs/remotes/origin/${BRANCH}"
+            if git push origin "${MERGE_SHA}:refs/heads/${BRANCH}"; then
+              echo "- **Branch Sync:** ✅ \`${BRANCH}\` fast-forwarded to merged main" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "::warning::The branch changed after merge; skipped branch sync without overwriting new work."
+              echo "- **Branch Sync:** ⚠️ Skipped because new work was pushed" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "🚀 Triggering deployment of confirmed merge ${MERGE_SHA:0:8}..."
+            gh workflow run deploy.yml --ref main -f deploy_sha="$MERGE_SHA"
+            echo "- **CD Deployment:** 🚀 Triggered for \`${MERGE_SHA:0:8}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ No open PR found for branch ${BRANCH}."
           fi

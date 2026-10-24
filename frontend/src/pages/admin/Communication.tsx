@@ -12,6 +12,8 @@ import {
   Filter
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
+import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface AnnouncementItem {
   id: string;
@@ -372,8 +374,8 @@ export default function Communication() {
   ];
 
   return (
-    <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 1300, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div className="feature-page as-communication-page" style={{ maxWidth: 1300, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Communication Center</h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
@@ -382,7 +384,7 @@ export default function Communication() {
         </div>
 
         {/* Tab switch */}
-        <div style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 8, backgroundColor: 'var(--card-subtle, #f1f5f9)', padding: 4, borderRadius: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setActiveTab('announcements')}
@@ -434,7 +436,9 @@ export default function Communication() {
           fontSize: 13,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxSizing: 'border-box',
+          width: '100%'
         }}>
           <span>{msg}</span>
           <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af' }}>✕</button>
@@ -444,25 +448,31 @@ export default function Communication() {
       {activeTab === 'announcements' ? (
         <>
           {/* New Announcement Form */}
-          <div className="form-card" style={{
+          <div className="form-card as-announcement-card" style={{
             backgroundColor: 'var(--bg-card, #ffffff)',
             border: '1px solid var(--border, #e2e8f0)',
             borderRadius: 8,
             padding: 20,
             marginBottom: 24,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
           }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={18} color="#2563eb" /> New Broadcast Announcement
             </h3>
 
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 12, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
               <input
                 placeholder="Announcement Title (e.g., Annual Science Olympiad / Faculty Meeting)"
                 value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
                 style={{
                   width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 6,
                   border: '1px solid var(--border, #cbd5e1)',
@@ -473,13 +483,16 @@ export default function Communication() {
                 }}
               />
 
-              <textarea
+              <AutoExpandingTextarea
                 placeholder="Broadcast details and instructions..."
                 value={form.message}
                 onChange={e => setForm({ ...form, message: e.target.value })}
+                minHeight={100}
+                maxHeight={360}
                 style={{
                   width: '100%',
-                  minHeight: 110,
+                  maxWidth: '100%',
+                  minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 6,
                   border: '1px solid var(--border, #cbd5e1)',
@@ -491,21 +504,23 @@ export default function Communication() {
                 }}
               />
 
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 {/* Extended Audience Selector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
                   <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>AUDIENCE TYPE</label>
                   <select
                     value={form.audienceType}
                     onChange={handleAudienceChange}
                     style={{
+                      width: '100%',
+                      minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
                       border: '1px solid var(--border, #cbd5e1)',
                       backgroundColor: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)',
                       fontSize: 13,
-                      minWidth: 155
+                      boxSizing: 'border-box'
                     }}
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
@@ -518,7 +533,7 @@ export default function Communication() {
                 </div>
 
                 {/* Class selector: L-KG to Class 12 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
@@ -530,11 +545,13 @@ export default function Communication() {
                     value={form.classId}
                     onChange={handleClassChange}
                     style={{
+                      width: '100%',
+                      minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
                       border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
-                      minWidth: 140,
+                      boxSizing: 'border-box',
                       backgroundColor: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)'
                     }}
@@ -547,7 +564,7 @@ export default function Communication() {
                 </div>
 
                 {/* Section selector: Section A or B */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0, maxWidth: '100%' }}>
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
@@ -559,11 +576,13 @@ export default function Communication() {
                     value={selectedSectionLetter}
                     onChange={handleSectionChange}
                     style={{
+                      width: '100%',
+                      minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
                       border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
-                      minWidth: 130,
+                      boxSizing: 'border-box',
                       backgroundColor: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)'
                     }}
@@ -575,16 +594,19 @@ export default function Communication() {
                 </div>
 
                 {/* Priority Selector with Emergency Multi-channel Callout */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0, maxWidth: '100%' }}>
                   <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>PRIORITY</label>
                   <select
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: e.target.value })}
                     style={{
+                      width: '100%',
+                      minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
                       border: form.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
+                      boxSizing: 'border-box',
                       backgroundColor: form.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg, #ffffff)',
                       color: form.priority === 'EMERGENCY' ? '#f87171' : 'var(--text, #0f172a)',
                       fontWeight: form.priority === 'EMERGENCY' ? 700 : 500
@@ -596,22 +618,25 @@ export default function Communication() {
                   </select>
                 </div>
 
-                <div style={{ alignSelf: 'flex-end', marginLeft: 'auto' }}>
+                <div className="announcement-btn-wrap" style={{ alignSelf: 'flex-end', marginLeft: 'auto', flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
                     onClick={handleInitiateCreate}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: 6,
                       backgroundColor: '#2563eb',
                       color: '#ffffff',
-                      padding: '9px 20px',
+                      padding: '9px 18px',
                       borderRadius: 6,
                       border: 'none',
                       fontSize: 13.5,
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                      maxWidth: '100%'
                     }}
                   >
                     <Eye size={15} /> Preview & Save Announcement
@@ -629,8 +654,15 @@ export default function Communication() {
                 fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'center',
+                flexWrap: 'wrap',
                 gap: 8,
-                marginTop: 2
+                marginTop: 2,
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere'
               }}>
                 <span style={{ fontWeight: 700 }}>🎯 Target Audience:</span>
                 {form.audienceType === 'SECTION' && selectedClass && selectedSectionLetter ? (
@@ -673,7 +705,7 @@ export default function Communication() {
           </div>
 
           {/* Announcements Filter Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
               Published & Draft Notices ({items.length})
             </div>
@@ -704,8 +736,8 @@ export default function Communication() {
           </div>
 
           {/* Announcements Table */}
-          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflowX: 'auto', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
                   <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>TITLE</th>
@@ -915,7 +947,7 @@ export default function Communication() {
               {/* Linked Student academic placement context */}
               {r.student_name && (
                 <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
-                  Linked Student: <b>{r.student_name}</b> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
+                  Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
                 </div>
               )}
 
@@ -1032,7 +1064,7 @@ export default function Communication() {
 
                     {r.student_name && (
                       <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
-                        Student: {r.student_name} ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
+                        Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} /> ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
                       </div>
                     )}
 

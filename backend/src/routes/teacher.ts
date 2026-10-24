@@ -149,6 +149,7 @@ export const memAttendanceAuditLogs: MemAttendanceAuditLog[] = [];
 
 const r = Router();
 const teacher = [requireAuth, requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN')];
+r.use(requireAuth, requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'));
 
 // Invalidate in-memory caches whenever a mutation succeeds
 r.use((req, res, next) => {
