@@ -17,6 +17,7 @@
 }
 
 [data-theme="dark"] .sa-app-shell {
+  color-scheme: dark;
   background-color: #090d16;
   color: #f8fafc;
 }

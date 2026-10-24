@@ -453,9 +453,9 @@ export function TeacherProfileHoverCard({
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#4338ca',
-                        backgroundColor: '#eef2ff',
-                        border: '1px solid #c7d2fe',
+                        color: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.14)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)',
                         padding: '2px 8px',
                         borderRadius: 6,
                         display: 'inline-flex',

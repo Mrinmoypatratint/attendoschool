@@ -377,8 +377,8 @@ export default function Communication() {
     <div className="feature-page as-communication-page" style={{ maxWidth: 1300, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a' }}>Communication Center</h1>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Communication Center</h1>
+          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
           </p>
         </div>
@@ -395,8 +395,8 @@ export default function Communication() {
               borderRadius: 6,
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'announcements' ? '#ffffff' : 'transparent',
-              color: activeTab === 'announcements' ? '#0f172a' : '#64748b',
+              backgroundColor: activeTab === 'announcements' ? 'var(--bg-card, #ffffff)' : 'transparent',
+              color: activeTab === 'announcements' ? 'var(--text, #0f172a)' : 'var(--text-muted, #64748b)',
               boxShadow: activeTab === 'announcements' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
             }}
           >
@@ -415,8 +415,8 @@ export default function Communication() {
               borderRadius: 6,
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'all-replies' ? '#ffffff' : 'transparent',
-              color: activeTab === 'all-replies' ? '#0f172a' : '#64748b',
+              backgroundColor: activeTab === 'all-replies' ? 'var(--bg-card, #ffffff)' : 'transparent',
+              color: activeTab === 'all-replies' ? 'var(--text, #0f172a)' : 'var(--text-muted, #64748b)',
               boxShadow: activeTab === 'all-replies' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
             }}
           >
@@ -449,8 +449,8 @@ export default function Communication() {
         <>
           {/* New Announcement Form */}
           <div className="form-card as-announcement-card" style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
+            backgroundColor: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border, #e2e8f0)',
             borderRadius: 8,
             padding: 20,
             marginBottom: 24,
@@ -460,7 +460,7 @@ export default function Communication() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <MessageSquare size={18} color="#2563eb" /> New Broadcast Announcement
             </h3>
 
@@ -475,7 +475,9 @@ export default function Communication() {
                   minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 6,
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  backgroundColor: 'var(--bg, #ffffff)',
+                  color: 'var(--text, #0f172a)',
                   fontSize: 14,
                   boxSizing: 'border-box'
                 }}
@@ -493,7 +495,9 @@ export default function Communication() {
                   minWidth: 0,
                   padding: '10px 12px',
                   borderRadius: 6,
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  backgroundColor: 'var(--bg, #ffffff)',
+                  color: 'var(--text, #0f172a)',
                   fontSize: 13.5,
                   boxSizing: 'border-box',
                   fontFamily: 'inherit'
@@ -503,11 +507,21 @@ export default function Communication() {
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 {/* Extended Audience Selector */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>AUDIENCE TYPE</label>
                   <select
                     value={form.audienceType}
                     onChange={handleAudienceChange}
-                    style={{ width: '100%', minWidth: 0, padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                    style={{
+                      width: '100%',
+                      minWidth: 0,
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
                     <option value="CLASS">CLASS (Specific Class)</option>
@@ -523,7 +537,7 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
-                    color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#2563eb' : '#64748b'
+                    color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
                     CLASS {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: '#ef4444' }}>*</span>}
                   </label>
@@ -535,10 +549,11 @@ export default function Communication() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? '1px solid #f87171' : '1px solid #cbd5e1',
+                      border: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && !form.classId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#ffffff' : '#f8fafc'
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">{form.audienceType === 'CLASS' || form.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
@@ -553,7 +568,7 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
-                    color: form.audienceType === 'SECTION' ? '#2563eb' : '#64748b'
+                    color: form.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
                     SECTION {form.audienceType === 'SECTION' && <span style={{ color: '#ef4444' }}>*</span>}
                   </label>
@@ -565,10 +580,11 @@ export default function Communication() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid #cbd5e1',
+                      border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: '#ffffff'
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)'
                     }}
                   >
                     <option value="">{form.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
@@ -579,7 +595,7 @@ export default function Communication() {
 
                 {/* Priority Selector with Emergency Multi-channel Callout */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>PRIORITY</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>PRIORITY</label>
                   <select
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: e.target.value })}
@@ -588,11 +604,11 @@ export default function Communication() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: form.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                      border: form.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       boxSizing: 'border-box',
-                      backgroundColor: form.priority === 'EMERGENCY' ? '#fef2f2' : '#ffffff',
-                      color: form.priority === 'EMERGENCY' ? '#b91c1c' : '#0f172a',
+                      backgroundColor: form.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg, #ffffff)',
+                      color: form.priority === 'EMERGENCY' ? '#f87171' : 'var(--text, #0f172a)',
                       fontWeight: form.priority === 'EMERGENCY' ? 700 : 500
                     }}
                   >
@@ -632,9 +648,9 @@ export default function Communication() {
               <div style={{
                 padding: '10px 14px',
                 borderRadius: 6,
-                backgroundColor: form.audienceType === 'SECTION' ? '#f5f3ff' : form.audienceType === 'CLASS' ? '#f0f9ff' : '#f8fafc',
-                border: form.audienceType === 'SECTION' ? '1px solid #ddd6fe' : form.audienceType === 'CLASS' ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                color: form.audienceType === 'SECTION' ? '#5b21b6' : form.audienceType === 'CLASS' ? '#0369a1' : '#334155',
+                backgroundColor: form.audienceType === 'SECTION' ? 'rgba(147, 51, 234, 0.12)' : form.audienceType === 'CLASS' ? 'rgba(59, 130, 246, 0.12)' : 'var(--card-subtle, #f8fafc)',
+                border: form.audienceType === 'SECTION' ? '1px solid rgba(147, 51, 234, 0.3)' : form.audienceType === 'CLASS' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid var(--border, #e2e8f0)',
+                color: form.audienceType === 'SECTION' ? '#c084fc' : form.audienceType === 'CLASS' ? '#60a5fa' : 'var(--text, #334155)',
                 fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'center',
@@ -690,11 +706,11 @@ export default function Communication() {
 
           {/* Announcements Filter Bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
               Published & Draft Notices ({items.length})
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Filter size={13} /> Filter:
               </span>
               {(['ALL', 'SCHOOL', 'CLASS', 'SECTION', 'TEACHER', 'STUDENT'] as const).map(f => (
@@ -707,9 +723,9 @@ export default function Communication() {
                     borderRadius: 4,
                     fontSize: 11.5,
                     fontWeight: tableFilter === f ? 700 : 500,
-                    backgroundColor: tableFilter === f ? '#2563eb' : '#f1f5f9',
-                    color: tableFilter === f ? '#ffffff' : '#475569',
-                    border: 'none',
+                    backgroundColor: tableFilter === f ? 'var(--sidebar-accent, #2563eb)' : 'var(--card-subtle, #f1f5f9)',
+                    color: tableFilter === f ? '#ffffff' : 'var(--text-secondary, #475569)',
+                    border: '1px solid var(--border, transparent)',
                     cursor: 'pointer'
                   }}
                 >
@@ -724,14 +740,14 @@ export default function Communication() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>TITLE</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>AUDIENCE</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>PRIORITY</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>STATUS</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>RECIPIENTS</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>READ</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 600 }}>REPLIES</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 12, color: '#475569', fontWeight: 600 }}>ACTION</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>TITLE</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>AUDIENCE</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>PRIORITY</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>STATUS</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>RECIPIENTS</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>READ</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>REPLIES</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -764,10 +780,10 @@ export default function Communication() {
                     }
 
                     return (
-                      <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: '#0f172a' }}>{x.title}</div>
-                          <div style={{ fontSize: 12, color: '#64748b', maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0f172a)' }}>{x.title}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {x.message}
                           </div>
                         </td>
@@ -784,13 +800,13 @@ export default function Communication() {
                               x.audience_type === 'STUDENT' ? '#eff6ff' :
                               x.audience_type === 'PARENTS' ? '#fef3c7' :
                               x.audience_type === 'SECTION' ? '#f5f3ff' :
-                              x.audience_type === 'CLASS' ? '#f0f9ff' : '#f1f5f9',
+                              x.audience_type === 'CLASS' ? '#f0f9ff' : 'var(--card-subtle, #f1f5f9)',
                             color:
                               x.audience_type === 'TEACHER' ? '#166534' :
                               x.audience_type === 'STUDENT' ? '#1e40af' :
                               x.audience_type === 'PARENTS' ? '#92400e' :
                               x.audience_type === 'SECTION' ? '#6b21a8' :
-                              x.audience_type === 'CLASS' ? '#0369a1' : '#334155',
+                              x.audience_type === 'CLASS' ? '#0369a1' : 'var(--text-secondary, #334155)',
                             border: x.audience_type === 'SECTION' ? '1px solid #ddd6fe' : x.audience_type === 'CLASS' ? '1px solid #bae6fd' : 'none'
                           }}>
                             {audienceBadgeText}
@@ -805,8 +821,8 @@ export default function Communication() {
                         borderRadius: 4,
                         fontSize: 11.5,
                         fontWeight: 700,
-                        backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : '#f1f5f9',
-                        color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : '#475569'
+                        backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
+                        color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
                       }}>
                         {x.priority === 'EMERGENCY' && <AlertTriangle size={12} />}
                         {x.priority}
@@ -819,14 +835,14 @@ export default function Communication() {
                         borderRadius: 4,
                         fontSize: 11.5,
                         fontWeight: 600,
-                        backgroundColor: x.status === 'PUBLISHED' ? '#ecfdf5' : '#f8fafc',
-                        color: x.status === 'PUBLISHED' ? '#047857' : '#64748b'
+                        backgroundColor: x.status === 'PUBLISHED' ? '#ecfdf5' : 'var(--card-subtle, #f8fafc)',
+                        color: x.status === 'PUBLISHED' ? '#047857' : 'var(--text-muted, #64748b)'
                       }}>
                         {x.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>{x.recipient_count || 0}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>{x.read_count || 0}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #334155)' }}>{x.recipient_count || 0}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #334155)' }}>{x.read_count || 0}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <button
                         type="button"
@@ -835,12 +851,12 @@ export default function Communication() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 5,
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #cbd5e1',
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          border: '1px solid var(--border, #cbd5e1)',
                           padding: '4px 10px',
                           borderRadius: 5,
                           fontSize: 12,
-                          color: '#2563eb',
+                          color: '#3b82f6',
                           fontWeight: 600,
                           cursor: 'pointer'
                         }}
@@ -893,15 +909,15 @@ export default function Communication() {
       ) : (
         /* Administrator Console: Threaded Replies Grouped by Notice */
         <div style={{ display: 'grid', gap: 16 }}>
-          <div style={{ fontSize: 14, color: '#475569', marginBottom: 4 }}>
+          <div style={{ fontSize: 14, color: 'var(--text-secondary, #475569)', marginBottom: 4 }}>
             Threaded parent and student responses grouped across all published notices:
           </div>
           {allReplies.map(r => (
             <div
               key={r.id}
               style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                border: '1px solid var(--border, #e2e8f0)',
                 borderRadius: 8,
                 padding: 18,
                 boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
@@ -921,27 +937,27 @@ export default function Communication() {
                     {r.author_role}
                   </span>
                   <span style={{ fontWeight: 700, color: 'var(--text, #0f172a)', fontSize: 14 }}>{r.author_name}</span>
-                  {r.author_email && <span style={{ fontSize: 12, color: '#64748b', marginLeft: 6 }}>({r.author_email})</span>}
+                  {r.author_email && <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginLeft: 6 }}>({r.author_email})</span>}
                 </div>
-                <span style={{ fontSize: 11.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94a3b8)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={12} /> {r.created_at ? new Date(r.created_at).toLocaleString() : ''}
                 </span>
               </div>
 
               {/* Linked Student academic placement context */}
               {r.student_name && (
-                <div style={{ fontSize: 12.5, color: '#475569', backgroundColor: '#f8fafc', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
                   Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
                 </div>
               )}
 
               {/* Reply message */}
-              <div style={{ fontSize: 13.5, color: '#1e293b', lineHeight: 1.5, whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: 12, borderRadius: 6, borderLeft: '3px solid #2563eb' }}>
+              <div style={{ fontSize: 13.5, color: 'var(--text, #1e293b)', lineHeight: 1.5, whiteSpace: 'pre-wrap', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 12, borderRadius: 6, borderLeft: '3px solid #2563eb' }}>
                 {r.reply_text}
               </div>
 
               {r.announcement_title && (
-                <div style={{ marginTop: 10, fontSize: 11.5, color: '#64748b' }}>
+                <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
                   In response to notice: <b>{r.announcement_title}</b>
                 </div>
               )}
@@ -963,7 +979,7 @@ export default function Communication() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
           display: 'flex',
           justifyContent: 'flex-end',
           zIndex: 1000
@@ -971,24 +987,25 @@ export default function Communication() {
           <div style={{
             width: '100%',
             maxWidth: 580,
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-card, #ffffff)',
+            color: 'var(--text, #0f172a)',
             height: '100%',
             overflowY: 'auto',
             padding: 24,
             boxSizing: 'border-box',
-            boxShadow: '-4px 0 20px rgba(0,0,0,0.15)',
+            boxShadow: '-4px 0 20px rgba(0,0,0,0.3)',
             display: 'flex',
             flexDirection: 'column'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border, #e2e8f0)', paddingBottom: 16, marginBottom: 16 }}>
               <div>
                 <span style={{
                   fontSize: 11,
                   fontWeight: 700,
                   padding: '2px 7px',
                   borderRadius: 4,
-                  backgroundColor: '#f1f5f9',
-                  color: '#475569'
+                  backgroundColor: 'var(--card-subtle, #f1f5f9)',
+                  color: 'var(--text-secondary, #475569)'
                 }}>
                   {selectedNoticeForReplies.audience_type}
                 </span>
@@ -999,7 +1016,7 @@ export default function Communication() {
               <button
                 type="button"
                 onClick={() => setSelectedNoticeForReplies(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
               >
                 <X size={20} />
               </button>
@@ -1007,7 +1024,7 @@ export default function Communication() {
 
             {/* Notice Message Card */}
             <div style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', padding: 14, borderRadius: 6, marginBottom: 20, fontSize: 13, color: 'var(--text, #334155)', border: '1px solid var(--border, #e2e8f0)' }}>
-              <div style={{ fontWeight: 600, color: '#64748b', fontSize: 11, marginBottom: 4 }}>NOTICE BODY</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-muted, #64748b)', fontSize: 11, marginBottom: 4 }}>NOTICE BODY</div>
               {selectedNoticeForReplies.message}
             </div>
 
@@ -1016,9 +1033,9 @@ export default function Communication() {
             </h3>
 
             {loadingReplies ? (
-              <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>Loading replies...</div>
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>Loading replies...</div>
             ) : noticeReplies.length === 0 ? (
-              <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', border: '1px dashed #cbd5e1', borderRadius: 6 }}>
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: 6 }}>
                 No replies from parents or students for this notice yet.
               </div>
             ) : (
@@ -1038,20 +1055,20 @@ export default function Communication() {
                         }}>
                           {r.author_role}
                         </span>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{r.author_name}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)' }}>{r.author_name}</span>
                       </div>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
                         {r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
 
                     {r.student_name && (
-                      <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 8 }}>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
                         Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} /> ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
                       </div>
                     )}
 
-                    <div style={{ fontSize: 13, color: '#1e293b', backgroundColor: '#f8fafc', padding: 10, borderRadius: 5 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text, #1e293b)', backgroundColor: 'var(--bg-muted, #f8fafc)', padding: 10, borderRadius: 5 }}>
                       {r.reply_text}
                     </div>
                   </div>

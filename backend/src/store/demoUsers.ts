@@ -139,6 +139,17 @@ const demoUsers: DemoUser[] = [
     password: 'ChangeMe123!',
     isActive: true,
     photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa1',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Aarav Sharma',
+    email: 'student@dav.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-DAV1',
+    isActive: true,
+    photo_url: '/dav-logo.png'
   }
 ];
 

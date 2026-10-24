@@ -213,6 +213,13 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
   const norm = String(schoolIdOrCode || '').toLowerCase();
   const isTint = norm.includes('tint') || norm === '00000000-0000-0000-0000-000000000002';
   const isAbc = norm.includes('abc') || norm === '08c4960d-75d6-4a92-989b-48309500632e';
+  const isDav = norm.includes('dav') || norm.includes('15582') || norm === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
+
+  if (isDav) {
+    if (role === 'TEACHER') return 'teacher1@dav.com';
+    if (role === 'STUDENT') return 'student@dav.com';
+    return 'admin@dav.com';
+  }
 
   if (isTint) {
     if (role === 'TEACHER') return 'teacher@tint.edu.in';
@@ -233,10 +240,34 @@ function getDemoEmailForInstitute(schoolIdOrCode?: string, role: LoginOption = '
 }
 
 function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Institute | undefined {
-  if (!inputEmail || !inputEmail.trim() || !list || list.length === 0) return undefined;
+  if (!inputEmail || !inputEmail.trim()) return undefined;
   const norm = inputEmail.trim().toLowerCase();
+  const safeList = Array.isArray(list) ? list : [];
 
-  // 1. Explicit TINT matches (Faculty, Student, School Admin)
+  // 1. Explicit DAV MODEL SCHOOL matches
+  if (
+    norm.includes('dav') || 
+    norm.includes('15582') ||
+    norm === 'admin@dav.com' ||
+    norm === 'teacher1@dav.com' ||
+    norm === 'student@dav.com' ||
+    norm.includes('adm-2026-dav')
+  ) {
+    const found = safeList.find(i => 
+      (i.code && (i.code === '15582' || i.code.toUpperCase() === 'DAV')) || 
+      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' || 
+      i.name.toLowerCase().includes('dav')
+    );
+    if (found) return found;
+    return {
+      id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+      name: 'DAV MODEL SCHOOL',
+      code: '15582',
+      address: 'DAV Campus'
+    };
+  }
+
+  // 2. Explicit TINT matches (Faculty, Student, School Admin)
   if (
     norm.includes('tint.edu.in') || 
     norm.includes('tint.local') || 
@@ -249,16 +280,22 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'admin@tint.edu.in' ||
     norm === 'admin@tint.local'
   ) {
-    const found = list.find(i => 
+    const found = safeList.find(i => 
       (i.code && i.code.toUpperCase() === 'TINT') || 
       i.id === '00000000-0000-0000-0000-000000000002' || 
       i.name.toLowerCase().includes('techno international') ||
       i.name.toLowerCase().includes('tint')
     );
     if (found) return found;
+    return {
+      id: '00000000-0000-0000-0000-000000000002',
+      name: 'Techno International New Town (TINT)',
+      code: 'TINT',
+      address: 'Major Arterial Road, New Town, Kolkata'
+    };
   }
 
-  // 2. Explicit Greenwood matches
+  // 3. Explicit Greenwood matches
   if (
     norm.includes('demo-school.local') || 
     norm.includes('greenwood') || 
@@ -274,15 +311,21 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'emp002' ||
     norm === 'emp012'
   ) {
-    const found = list.find(i => 
+    const found = safeList.find(i => 
       (i.code && i.code.toUpperCase() === 'GIS001') || 
       i.id === '00000000-0000-0000-0000-000000000001' || 
       i.name.toLowerCase().includes('greenwood')
     );
     if (found) return found;
+    return {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Greenwood International School',
+      code: 'GIS001',
+      address: 'Campus 4, Tech Park Boulevard, Bengaluru'
+    };
   }
 
-  // 3. Explicit ABC Public School matches
+  // 4. Explicit ABC Public School matches
   if (
     norm.includes('abc155') || 
     norm.includes('abc') ||
@@ -292,8 +335,8 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'ahana12@gmail.com' ||
     norm === 'dhardhuran689@gmail.com'
   ) {
-    const found = list.find(i => 
-      (i.code && i.code.toUpperCase() === 'ABC') ||
+    const found = safeList.find(i => 
+      (i.code && i.code.toUpperCase() === 'ABC') || 
       i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
       i.name.toLowerCase().includes('abc')
     );
@@ -6924,12 +6967,13 @@ function Students(){
             type="button"
             onClick={() => load(activeSession)}
             disabled={loading}
+            className="directory-refresh-btn"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-              color: loading ? '#64748b' : 'var(--text, #1e293b)',
+              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
+              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
               border: '1px solid var(--border, #cbd5e1)',
               padding: '7px 13px',
               borderRadius: 'var(--radius-sm, 6px)',
@@ -7037,7 +7081,7 @@ function Students(){
 
     {/* Toast / Feedback Notice */}
     {toastNotice && (
-      <div style={{
+      <div className={`feedback-notice ${toastNotice.type}`} style={{
         padding: '12px 16px',
         marginBottom: 16,
         borderRadius: 'var(--radius-sm)',
@@ -7045,9 +7089,6 @@ function Students(){
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 12,
-        backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
-        border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-        color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
         fontSize: 13
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -7110,16 +7151,14 @@ function Students(){
           <button 
             type="button"
             onClick={() => setSessionPickerOpen(prev => !prev)}
+            className={`session-picker-btn ${sessionPickerOpen ? 'open' : ''}`}
             style={{ 
               display: 'inline-flex', 
               alignItems: 'center', 
               gap: 8, 
               padding: '7px 12px', 
-              background: sessionPickerOpen ? '#dbeafe' : '#eff6ff', 
-              border: `1px solid ${sessionPickerOpen ? '#2563eb' : '#bfdbfe'}`, 
               borderRadius: 'var(--radius-sm)', 
               fontSize: 13, 
-              color: '#1d4ed8',
               cursor: 'pointer',
               fontWeight: 500,
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
@@ -7127,8 +7166,6 @@ function Students(){
               outline: 'none',
               whiteSpace: 'nowrap'
             }}
-            onMouseEnter={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#dbeafe'; }}
-            onMouseLeave={e => { if (!sessionPickerOpen) e.currentTarget.style.background = '#eff6ff'; }}
             title="Click to change academic session"
             id="students-session-picker-btn"
           >
@@ -7318,19 +7355,38 @@ function Students(){
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
+        {/* Refresh Button */}
+        <button 
+          type="button"
+          onClick={() => load(activeSession)}
+          disabled={loading}
+          className="directory-refresh-btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
+            border: '1px solid var(--border, #cbd5e1)',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 12.5,
+            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            transition: 'all 0.15s ease'
+          }}
+          title="Refetch student records from database"
+          id="students-directory-refresh-btn"
+        >
+          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+        </button>
         {/* Last Fetched Time Badge */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '4px 9px',
-          borderRadius: 6,
-          background: 'var(--bg-muted, #f8fafc)',
-          border: '1px solid var(--border, #e2e8f0)',
-          fontSize: 12,
-          color: 'var(--text-secondary, #475569)'
-        }} title="Last successful synchronization with database">
-          <Clock size={12} style={{ color: '#64748b' }} />
+        <div 
+          className="last-fetched-badge"
+          title="Last successful synchronization with database"
+        >
+          <Clock size={12} />
           <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
           {loading && (
             <span style={{
@@ -7340,8 +7396,8 @@ function Students(){
               marginLeft: 3,
               padding: '1px 5px',
               borderRadius: 4,
-              background: '#dbeafe',
-              color: '#1d4ed8',
+              background: 'rgba(37, 99, 235, 0.16)',
+              color: '#3b82f6',
               fontWeight: 600,
               fontSize: 11
             }}>
@@ -7356,13 +7412,12 @@ function Students(){
           <select
             value={directoryPageSize}
             onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
+            className="directory-select"
             style={{
               padding: '4px 8px',
               fontSize: 12.5,
               borderRadius: 6,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
@@ -7481,7 +7536,7 @@ function Students(){
               </td>
               <td style={{ whiteSpace: 'nowrap' }}>
                 {(x.admission_number || x.admissionNumber) ? (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                  <span className="adm-no-tag">
                     {x.admission_number || x.admissionNumber}
                   </span>
                 ) : (
@@ -7498,17 +7553,20 @@ function Students(){
               </td>
               <td style={{ whiteSpace: 'nowrap' }}>
                 {x.gender ? (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '2px 8px',
-                    borderRadius: 999,
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                  }}>
+                  <span 
+                    className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontSize: 11.5,
+                      fontWeight: 500,
+                      background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                      color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                      border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                    }}
+                  >
                     {formatGender(x.gender)}
                   </span>
                 ) : (
@@ -7554,10 +7612,7 @@ function Students(){
                   padding: '3px 8px',
                   borderRadius: 999,
                   fontSize: 11,
-                  fontWeight: 600,
-                  background: x.is_active !== false ? '#ecfdf5' : '#fef2f2',
-                  color: x.is_active !== false ? '#059669' : '#dc2626',
-                  border: `1px solid ${x.is_active !== false ? '#a7f3d0' : '#fecaca'}`
+                  fontWeight: 600
                 }}>
                   {x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
                 </span>
@@ -7675,13 +7730,12 @@ function Students(){
           <select
             value={currentDirectoryPage}
             onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
+            className="directory-select"
             style={{
               padding: '3px 6px',
               fontSize: 12,
               borderRadius: 4,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
@@ -8520,7 +8574,7 @@ function Students(){
                       displayedStudentPreviewRows.map((r, i) => {
                         const rowNum = r._origRowIndex || (studentStartIdx + i + 1);
                         return (
-                          <tr key={studentStartIdx + i} style={{ background: r._errors?.length ? '#fef2f2' : undefined, outline: r._errors?.length ? '1px solid #fecaca' : undefined }}>
+                          <tr key={studentStartIdx + i} className={r._errors?.length ? 'preview-row-error' : ''} style={{ background: r._errors?.length ? 'rgba(239, 68, 68, 0.12)' : undefined, outline: r._errors?.length ? '1px solid rgba(239, 68, 68, 0.35)' : undefined }}>
                             <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: r._errors?.length ? 700 : 500 }}>
                               {r._errors?.length ? `⚠ ${rowNum}` : rowNum}
                             </td>
@@ -8694,7 +8748,7 @@ function Students(){
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#10b981' }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
                         Uploading & Processing Batch {importProgress.batch} of {importProgress.totalBatches} ({importProgress.current.toLocaleString()} / {importProgress.total.toLocaleString()} students)
                       </span>
                     </div>
@@ -9979,12 +10033,13 @@ function Teachers(){
           type="button"
           onClick={() => load()}
           disabled={loading}
+          className="directory-refresh-btn"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-            color: loading ? '#64748b' : 'var(--text, #1e293b)',
+            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
+            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
             border: '1px solid var(--border, #cbd5e1)',
             padding: '7px 13px',
             borderRadius: 'var(--radius-sm, 6px)',
@@ -10043,7 +10098,7 @@ function Teachers(){
 
     {/* Toast / Feedback Notice */}
     {toastNotice && (
-      <div style={{
+      <div className={`feedback-notice ${toastNotice.type}`} style={{
         padding: '12px 16px',
         marginBottom: 16,
         borderRadius: 'var(--radius-sm)',
@@ -10051,9 +10106,6 @@ function Teachers(){
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 12,
-        backgroundColor: toastNotice.type === 'error' ? '#fef2f2' : '#f0fdf4',
-        border: `1px solid ${toastNotice.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-        color: toastNotice.type === 'error' ? '#991b1b' : '#166534',
         fontSize: 13
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -10155,19 +10207,38 @@ function Teachers(){
         </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        {/* Refresh Button */}
+        <button 
+          type="button"
+          onClick={() => load()}
+          disabled={loading}
+          className="directory-refresh-btn"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
+            border: '1px solid var(--border, #cbd5e1)',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 12.5,
+            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            transition: 'all 0.15s ease'
+          }}
+          title="Refetch faculty records from database"
+          id="teachers-directory-refresh-btn"
+        >
+          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+        </button>
         {/* Last Fetched Time Badge */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '4px 9px',
-          borderRadius: 6,
-          background: 'var(--bg-muted, #f8fafc)',
-          border: '1px solid var(--border, #e2e8f0)',
-          fontSize: 12,
-          color: 'var(--text-secondary, #475569)'
-        }} title="Last successful synchronization with database">
-          <Clock size={12} style={{ color: '#64748b' }} />
+        <div 
+          className="last-fetched-badge"
+          title="Last successful synchronization with database"
+        >
+          <Clock size={12} />
           <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
           {loading && (
             <span style={{
@@ -10177,8 +10248,8 @@ function Teachers(){
               marginLeft: 3,
               padding: '1px 5px',
               borderRadius: 4,
-              background: '#dbeafe',
-              color: '#1d4ed8',
+              background: 'rgba(37, 99, 235, 0.16)',
+              color: '#3b82f6',
               fontWeight: 600,
               fontSize: 11
             }}>
@@ -10193,13 +10264,12 @@ function Teachers(){
           <select
             value={directoryPageSize}
             onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
+            className="directory-select"
             style={{
               padding: '4px 8px',
               fontSize: 12.5,
               borderRadius: 6,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
@@ -10323,17 +10393,20 @@ function Teachers(){
               </td>
               <td>
                 {x.gender ? (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '2px 8px',
-                    borderRadius: 999,
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                    color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                    border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                  }}>
+                  <span 
+                    className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      fontSize: 11.5,
+                      fontWeight: 500,
+                      background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                      color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                      border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                    }}
+                  >
                     {formatGender(x.gender)}
                   </span>
                 ) : (
@@ -10341,7 +10414,7 @@ function Teachers(){
                 )}
               </td>
               <td>
-                <span style={{ fontWeight: 500, color: '#334155' }}>{x.designation || 'Teacher'}</span>
+                <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{x.designation || 'Teacher'}</span>
               </td>
               <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
@@ -10350,7 +10423,7 @@ function Teachers(){
                 {x.email}
               </td>
               <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>{x.mobile || '—'}</td>
-              <td><span className="badge active">{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
+              <td><span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`}>{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
                   className="table-action-btn"
@@ -10447,13 +10520,12 @@ function Teachers(){
           <select
             value={currentDirectoryPage}
             onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
+            className="directory-select"
             style={{
               padding: '3px 6px',
               fontSize: 12,
               borderRadius: 4,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
@@ -11180,7 +11252,7 @@ function Teachers(){
                         const rowNum = r._origRowIndex || (teacherStartIdx + i + 1);
                         const hasErr = Boolean(r._errors?.length);
                         return (
-                          <tr key={teacherStartIdx + i} style={{ background: hasErr ? '#fef2f2' : undefined, outline: hasErr ? '1px solid #fecaca' : undefined }}>
+                          <tr key={teacherStartIdx + i} className={hasErr ? 'preview-row-error' : ''} style={{ background: hasErr ? 'rgba(239, 68, 68, 0.12)' : undefined, outline: hasErr ? '1px solid rgba(239, 68, 68, 0.35)' : undefined }}>
                             <td style={{ color: hasErr ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: hasErr ? 700 : 500 }}>
                               {hasErr ? `⚠ ${rowNum}` : rowNum}
                             </td>
@@ -11206,17 +11278,20 @@ function Teachers(){
                             </td>
                             <td>
                               {r.gender ? (
-                                <span style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  padding: '1px 7px',
-                                  borderRadius: 999,
-                                  fontSize: 11,
-                                  fontWeight: 500,
-                                  background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
-                                  color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
-                                }}>
+                                <span 
+                                  className={`gender-chip ${/^f/i.test(r.gender) ? 'gender-female' : /^m/i.test(r.gender) ? 'gender-male' : 'gender-other'}`}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '1px 7px',
+                                    borderRadius: 999,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    background: /^f/i.test(r.gender) ? '#fdf2f8' : /^m/i.test(r.gender) ? '#f0f9ff' : '#f8fafc',
+                                    color: /^f/i.test(r.gender) ? '#db2777' : /^m/i.test(r.gender) ? '#0284c7' : '#64748b',
+                                    border: `1px solid ${/^f/i.test(r.gender) ? '#fbcfe8' : /^m/i.test(r.gender) ? '#bae6fd' : '#e2e8f0'}`
+                                  }}
+                                >
                                   {r.gender}
                                 </span>
                               ) : '—'}
@@ -15760,22 +15835,22 @@ function NotificationCenter(){
             alignItems: 'center',
             gap: 10
           }}>
-            <span style={{ fontWeight: 700, color: '#475569' }}>Subject:</span>
-            <span style={{ fontWeight: 600, color: '#0f172a' }}>{previewData?.subject || 'Loading preview...'}</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-secondary, #475569)' }}>Subject:</span>
+            <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{previewData?.subject || 'Loading preview...'}</span>
           </div>
 
           {/* Preview Viewport Container */}
           <div style={{
             display: 'flex',
             justifyContent: 'center',
-            background: '#e2e8f0',
+            background: 'var(--bg-muted, #e2e8f0)',
             padding: '24px 16px',
             borderRadius: 10,
             overflowX: 'auto',
             minHeight: 460
           }}>
             {previewLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#64748b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: 'var(--text-muted, #64748b)' }}>
                 <Loader2 size={24} className="spin" style={{ marginRight: 8 }} /> Loading rendered preview...
               </div>
             ) : viewFormat === 'html' ? (
@@ -15787,7 +15862,7 @@ function NotificationCenter(){
                   width: previewDevice === 'desktop' ? '650px' : '375px',
                   height: '580px',
                   background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--border, #cbd5e1)',
                   borderRadius: previewDevice === 'mobile' ? 24 : 8,
                   boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
                   transition: 'width 0.25s ease'
@@ -15796,15 +15871,15 @@ function NotificationCenter(){
             ) : (
               <div style={{
                 width: previewDevice === 'desktop' ? '650px' : '375px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
+                background: 'var(--bg-card, #ffffff)',
+                border: '1px solid var(--border, #cbd5e1)',
                 borderRadius: 8,
                 padding: 20,
                 fontFamily: 'monospace',
                 fontSize: 13,
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
-                color: '#1e293b',
+                color: 'var(--text, #1e293b)',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
                 transition: 'width 0.25s ease'
               }}>
@@ -15815,28 +15890,28 @@ function NotificationCenter(){
         </div>
 
         {/* Deliverability & Email Authentication Guide */}
-        <div className="panel" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '18px 22px' }}>
+        <div className="panel" style={{ background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, padding: '18px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <ShieldCheck size={20} color="#059669" />
-            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
               Institutional Email Deliverability &amp; DNS Authentication Guide
             </h4>
           </div>
-          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 14px 0', fontSize: 13, color: 'var(--text-secondary, #475569)', lineHeight: 1.5 }}>
             To protect your institution's domain reputation and achieve optimal inbox placement with Gmail, Microsoft 365, and institutional spam filters, configure your school domain DNS records:
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>1. SPF Record (Sender Policy)</div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>TXT record at domain root:</div>
-              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>TXT record at domain root:</div>
+              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f1f5f9)', color: 'var(--text, #0f172a)', padding: '4px 6px', borderRadius: 4, display: 'block', wordBreak: 'break-all' }}>
                 v=spf1 include:_spf.google.com ~all
               </code>
             </div>
-            <div style={{ background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div style={{ background: 'var(--bg-card, #ffffff)', padding: 12, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', marginBottom: 4 }}>2. DKIM Signature (DomainKeys)</div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 4 }}>2048-bit cryptographic key published at:</div>
-              <code style={{ fontSize: 11, background: '#f1f5f9', padding: '4px 6px', borderRadius: 4, display: 'block' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>2048-bit cryptographic key published at:</div>
+              <code style={{ fontSize: 11, background: 'var(--card-subtle, #f1f5f9)', color: 'var(--text, #0f172a)', padding: '4px 6px', borderRadius: 4, display: 'block' }}>
                 google._domainkey.yourschool.edu
               </code>
             </div>

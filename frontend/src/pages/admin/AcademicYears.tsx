@@ -1302,59 +1302,59 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           {calcResult && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
-                <div style={{ background: '#f8fafc', padding: 16, borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                <div style={{ background: 'var(--bg-card, #f8fafc)', padding: 16, borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 600, textTransform: 'uppercase' }}>Total Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text, #0f172a)', marginTop: 4 }}>
                     {calcResult.totalDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Inclusive range</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Inclusive range</div>
                 </div>
 
-                <div style={{ background: '#f0fdf4', padding: 16, borderRadius: 10, border: '1px solid #bbf7d0' }}>
-                  <div style={{ fontSize: 12, color: '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Working Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#15803d', marginTop: 4 }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                  <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600, textTransform: 'uppercase' }}>Working Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
                     {calcResult.workingDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>Instructional sessions</div>
+                  <div style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>Instructional sessions</div>
                 </div>
 
-                <div style={{ background: '#fef2f2', padding: 16, borderRadius: 10, border: '1px solid #fecaca' }}>
-                  <div style={{ fontSize: 12, color: '#991b1b', fontWeight: 600, textTransform: 'uppercase' }}>Non-Working Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#b91c1c', marginTop: 4 }}>
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, textTransform: 'uppercase' }}>Non-Working Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', marginTop: 4 }}>
                     {calcResult.nonWorkingDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#991b1b', marginTop: 2 }}>Weekends + Holidays</div>
+                  <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>Weekends + Holidays</div>
                 </div>
 
-                <div style={{ background: '#eff6ff', padding: 16, borderRadius: 10, border: '1px solid #bfdbfe' }}>
-                  <div style={{ fontSize: 12, color: '#1e40af', fontWeight: 600, textTransform: 'uppercase' }}>Weekend Days</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#1d4ed8', marginTop: 4 }}>
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  <div style={{ fontSize: 12, color: '#3b82f6', fontWeight: 600, textTransform: 'uppercase' }}>Weekend Days</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#3b82f6', marginTop: 4 }}>
                     {calcResult.weekendDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#1e40af', marginTop: 2 }}>Per school calendar</div>
+                  <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 2 }}>Per school calendar</div>
                 </div>
 
-                <div style={{ background: '#faf5ff', padding: 16, borderRadius: 10, border: '1px solid #e9d5ff' }}>
-                  <div style={{ fontSize: 12, color: '#6b21a8', fontWeight: 600, textTransform: 'uppercase' }}>Holidays</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#7e22ce', marginTop: 4 }}>
+                <div style={{ background: 'rgba(168, 85, 247, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                  <div style={{ fontSize: 12, color: '#a855f7', fontWeight: 600, textTransform: 'uppercase' }}>Holidays</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#a855f7', marginTop: 4 }}>
                     {calcResult.holidayDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#6b21a8', marginTop: 2 }}>Gazetted &amp; Institutional</div>
+                  <div style={{ fontSize: 11, color: '#a855f7', marginTop: 2 }}>Gazetted &amp; Institutional</div>
                 </div>
 
-                <div style={{ background: '#fffbeb', padding: 16, borderRadius: 10, border: '1px solid #fde68a' }}>
-                  <div style={{ fontSize: 12, color: '#92400e', fontWeight: 600, textTransform: 'uppercase' }}>Overlap Deduplicated</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706', marginTop: 4 }}>
+                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: 16, borderRadius: 10, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600, textTransform: 'uppercase' }}>Overlap Deduplicated</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
                     {calcResult.overlapDays}
                   </div>
-                  <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>Zero double-counting</div>
+                  <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>Zero double-counting</div>
                 </div>
               </div>
 
               {/* Deduplication Invariant Banner */}
               <div style={{
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
+                background: 'var(--card-subtle, #f8fafc)',
+                border: '1px solid var(--border, #cbd5e1)',
                 borderRadius: 8,
                 padding: '12px 16px',
                 display: 'flex',
@@ -1362,7 +1362,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 gap: 12
               }}>
                 <CheckCircle2 size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-                <div style={{ fontSize: 13, color: '#334155' }}>
+                <div style={{ fontSize: 13, color: 'var(--text, #334155)' }}>
                   <b>Mathematical Invariant Verified:</b> Total Days ({calcResult.totalDays}) = Working Days ({calcResult.workingDays}) + Non-Working Days ({calcResult.nonWorkingDays}). Non-Working Days = Weekend Days ({calcResult.weekendDays}) + Holidays ({calcResult.holidayDays}) − Overlap Days ({calcResult.overlapDays}) = <b>{calcResult.nonWorkingDays}</b>.
                 </div>
               </div>
