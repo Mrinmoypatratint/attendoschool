@@ -60,6 +60,7 @@ export interface UniversalPreviewProps {
   entityName?: string;
   operationType?: 'create' | 'update' | 'submit' | 'import' | 'delete' | 'action';
   confirmText?: string;
+  confirmIcon?: React.ReactNode;
   editText?: string;
   loading?: boolean;
   error?: string | null;
@@ -71,6 +72,12 @@ export interface UniversalPreviewProps {
   destructiveWarning?: string;
   children?: React.ReactNode;
   width?: string | number;
+  onSecondary?: () => Promise<void> | void;
+  secondaryText?: string;
+  secondaryLoading?: boolean;
+  secondaryIcon?: React.ReactNode;
+  cancelText?: string;
+  showCancel?: boolean;
 }
 
 export interface DestructiveConfirmProps {

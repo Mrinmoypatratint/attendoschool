@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   RotateCcw,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FileText
 } from 'lucide-react';
 import { UniversalPreviewProps } from './types';
 import { PreviewSection } from './PreviewSection';
@@ -25,6 +26,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
   entityName,
   operationType = 'create',
   confirmText,
+  confirmIcon,
   editText = 'Back to Edit',
   loading = false,
   error = null,
@@ -35,7 +37,13 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
   isDestructive = false,
   destructiveWarning,
   children,
-  width = 'min(700px, 95vw)'
+  width = 'min(700px, 95vw)',
+  onSecondary,
+  secondaryText = 'Save as Draft',
+  secondaryLoading = false,
+  secondaryIcon,
+  cancelText = 'Cancel',
+  showCancel = false
 }) => {
   if (!isOpen) return null;
 
@@ -413,30 +421,85 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
             <span>{editText}</span>
           </button>
 
-          {/* Right: Cancel & Final Confirm Buttons */}
+          {/* Right: Cancel / Draft & Final Confirm Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                border: '1px solid transparent',
-                background: 'transparent',
-                color: 'var(--text-muted, #64748b)'
-              }}
-            >
-              Cancel
-            </button>
+            {showCancel && onSecondary && (
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading || secondaryLoading}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
+                  border: '1px solid transparent',
+                  background: 'transparent',
+                  color: 'var(--text-muted, #64748b)'
+                }}
+              >
+                {cancelText}
+              </button>
+            )}
+
+            {onSecondary ? (
+              <button
+                type="button"
+                onClick={onSecondary}
+                disabled={loading || secondaryLoading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '10px 18px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--card-subtle, #f8fafc)',
+                  color: 'var(--text, #1e293b)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {secondaryLoading ? (
+                  <>
+                    <Loader2 size={16} className="spinning" />
+                    <span>Saving Draft…</span>
+                  </>
+                ) : (
+                  <>
+                    {secondaryIcon || <FileText size={16} />}
+                    <span>{secondaryText}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  border: '1px solid transparent',
+                  background: 'transparent',
+                  color: 'var(--text-muted, #64748b)'
+                }}
+              >
+                {cancelText}
+              </button>
+            )}
 
             <button
               type="button"
               onClick={onConfirm}
-              disabled={loading}
+              disabled={loading || secondaryLoading}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -445,7 +508,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 borderRadius: 10,
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: (loading || secondaryLoading) ? 'not-allowed' : 'pointer',
                 border: 'none',
                 background: isDestructive ? '#dc2626' : '#2563eb',
                 color: '#ffffff',
@@ -462,7 +525,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={16} />
+                  {confirmIcon || <CheckCircle2 size={16} />}
                   <span>{defaultConfirmText}</span>
                 </>
               )}
