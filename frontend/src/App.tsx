@@ -186,10 +186,10 @@ const LOGIN_ROLES: Record<LoginOption, LoginRoleConfig> = {
     roleName: 'Teacher',
     roleSub: 'Manage classes',
     bannerTitle: 'Teacher Portal',
-    bannerText: 'Enter your teacher email or employee ID to automatically identify your school.',
+    bannerText: 'Enter your teacher email or Employee ID / Savior_NO to automatically identify your school.',
     needsSchool: true,
-    emailLabel: 'Teacher Email / Employee ID',
-    emailPlaceholder: 'e.g. teacher@tint.edu.in or EMP001',
+    emailLabel: 'Teacher Email / Employee Id / Savior_NO',
+    emailPlaceholder: 'e.g. teacher@school.edu.in, Employee ID, or Savior_NO (e.g. 20059)',
     defaultEmail: '',
     icon: GraduationCap,
     color: '#d97706'
@@ -304,7 +304,12 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'rahul@demo-school.local' ||
     norm === 'priya@demo-school.local' ||
     norm === 'student@greenwood.local' ||
-    norm === 'admin@demo-school.local'
+    norm === 'admin@demo-school.local' ||
+    norm === 'tch-001' ||
+    norm === 'tch-002' ||
+    norm === 'emp001' ||
+    norm === 'emp002' ||
+    norm === 'emp012'
   ) {
     const found = safeList.find(i => 
       (i.code && i.code.toUpperCase() === 'GIS001') || 
@@ -334,6 +339,23 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
       (i.code && i.code.toUpperCase() === 'ABC') || 
       i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
       i.name.toLowerCase().includes('abc')
+    );
+    if (found) return found;
+  }
+
+  // 3b. Explicit DAV Model School matches (Domain, Emails, and Savior_NOs / Employee IDs)
+  if (
+    norm.includes('dav') ||
+    norm === 'admin@dav.com' ||
+    norm === 'teacher1@dav.com' ||
+    norm === 'teacher2@dav.com' ||
+    norm.startsWith('teacher.') ||
+    /^(20\d{3}|30\d{3}|50\d{3}|53\d{3}|\d{5})$/.test(norm)
+  ) {
+    const found = list.find(i => 
+      (i.code && (i.code.toUpperCase() === 'DAV' || i.code === '15582')) || 
+      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' || 
+      i.name.toLowerCase().includes('dav')
     );
     if (found) return found;
   }
@@ -913,9 +935,37 @@ function Login() {
                         fontSize: 12
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                        <span>No school detected for this Login ID.</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                          <span>No school auto-detected.</span>
+                        </div>
+                        <select
+                          value={instituteId}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setInstituteId(val);
+                            const matched = institutes.find(i => i.id === val);
+                            setDetectedInstitute(matched || null);
+                            if (val) setLookupNotFound(false);
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            background: '#0f172a',
+                            color: '#f8fafc',
+                            fontSize: 12,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="">Select your school manually...</option>
+                          {institutes.map(inst => (
+                            <option key={inst.id} value={inst.id}>
+                              {inst.name} ({inst.code})
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   ) : (
@@ -1893,13 +1943,11 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }, [loc.pathname]);
 
-  // ── Global Search State ──
+  // ── Global Search State (Menu & Page Navigation Only) ──
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any>({ students: [], teachers: [], classes: [] });
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchTimerRef = useRef<any>(null);
 
   // ── Academic Year Switcher State ──
   const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
@@ -2111,30 +2159,9 @@ function Layout({children}:{children:React.ReactNode}){
     }
     if (!searchOpen) {
       setSearchQuery('');
-      setSearchResults({ students: [], teachers: [], classes: [] });
+      setSelectedIndex(0);
     }
   }, [searchOpen]);
-
-  // Debounced search
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (!searchQuery || searchQuery.length < 2) {
-      setSearchResults({ students: [], teachers: [], classes: [] });
-      return;
-    }
-    setSearchLoading(true);
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await api.get(`/search?q=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(res.data);
-      } catch {
-        setSearchResults({ students: [], teachers: [], classes: [] });
-      } finally {
-        setSearchLoading(false);
-      }
-    }, 300);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [searchQuery]);
 
   // Close AY dropdown on outside click
   useEffect(() => {
@@ -2166,6 +2193,7 @@ function Layout({children}:{children:React.ReactNode}){
           }));
           localStorage.setItem('attendo_active_academic_year', current.name);
           localStorage.setItem('attendo_academic_session', current.name);
+          localStorage.setItem('attendo_active_academic_year_id', current.id);
         }
       }
     } catch {
@@ -2195,7 +2223,8 @@ function Layout({children}:{children:React.ReactNode}){
       }));
       localStorage.setItem('attendo_active_academic_year', target.name);
       localStorage.setItem('attendo_academic_session', target.name);
-      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target.name }));
+      localStorage.setItem('attendo_active_academic_year_id', target.id);
+      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target }));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -2204,8 +2233,10 @@ function Layout({children}:{children:React.ReactNode}){
         // 3. Post to backend activation endpoint for admins
         await api.post(`/academic-years/${yearId}/activate`);
 
-        // 4. Re-fetch school dashboard and academic years
-        const res = await api.get('/dashboard/school');
+        // 4. Re-fetch school dashboard and academic years for this specific session
+        const res = await api.get('/dashboard/school', {
+          params: { academicYearId: target?.id || yearId, session: target?.name }
+        });
         if (res.data) {
           setSchoolInfo(res.data);
         }
@@ -2223,16 +2254,485 @@ function Layout({children}:{children:React.ReactNode}){
     }
   }
 
-  function handleSearchResultClick(result: any) {
-    setSearchOpen(false);
-    if (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') {
-      if (result.type === 'student') nav('/students');
-      else if (result.type === 'teacher') nav('/teachers');
-      else if (result.type === 'class') nav('/classes');
-    }
-  }
+  // ── Navigation Menu Items for Global Command Palette (No Students / Teachers) ──
+  const menuItems = useMemo(() => {
+    if (!user) return [];
 
-  const hasAnyResults = searchResults.students.length > 0 || searchResults.teachers.length > 0 || searchResults.classes.length > 0;
+    if (user.role === 'SCHOOL_ADMIN') {
+      return [
+        {
+          path: '/dashboard',
+          label: 'Dashboard',
+          category: 'Main Navigation',
+          description: 'School overview, statistics, daily attendance pulse & live metrics',
+          icon: LayoutDashboard,
+          keywords: ['home', 'main', 'stats', 'metrics', 'overview', 'summary']
+        },
+        {
+          path: '/students',
+          label: 'Students',
+          category: 'Main Navigation',
+          description: 'Student directory, enrollments, admissions, documents & profiles',
+          icon: Users,
+          keywords: ['students', 'directory', 'admissions', 'enrollment', 'roster', 'pupils']
+        },
+        {
+          path: '/teachers',
+          label: 'Teachers & Staff',
+          category: 'Main Navigation',
+          description: 'Faculty directory, teacher profiles, employee IDs & department roster',
+          icon: GraduationCap,
+          keywords: ['teachers', 'faculty', 'staff', 'instructors', 'educators', 'employee']
+        },
+        {
+          path: '/classes',
+          label: 'Classes & Sections',
+          category: 'Main Navigation',
+          description: 'Manage grade levels, classrooms, divisions & section capacities',
+          icon: Layers,
+          keywords: ['classes', 'sections', 'grades', 'classrooms', 'divisions', 'rooms']
+        },
+        {
+          path: '/attendance-reports',
+          label: 'Attendance Reports',
+          category: 'Main Navigation',
+          description: 'School-wide attendance registers, monthly reports & analytics',
+          icon: ClipboardCheck,
+          keywords: ['attendance', 'reports', 'register', 'daily attendance', 'absent', 'present']
+        },
+        {
+          path: '/timetable',
+          label: 'Timetable & Schedule',
+          category: 'Main Navigation',
+          description: 'Weekly timetable, class periods & schedule management',
+          icon: CalendarDays,
+          keywords: ['timetable', 'schedule', 'periods', 'routine', 'bell timing']
+        },
+        {
+          path: '/academic-years',
+          label: 'Academic Calendar & Sessions',
+          category: 'Academics',
+          description: 'Academic sessions, term dates, and calendar setup',
+          icon: Clock,
+          keywords: ['academic year', 'sessions', 'calendar', 'terms', 'session switch']
+        },
+        {
+          path: '/working-calendar',
+          label: 'Working Days Configuration',
+          category: 'Academics',
+          description: 'Configure operational school days and instructional schedule',
+          icon: Calendar,
+          keywords: ['working days', 'operational days', 'weekdays', 'school calendar']
+        },
+        {
+          path: '/holidays',
+          label: 'Holidays List',
+          category: 'Academics',
+          description: 'Declared school holidays, vacations & public holiday schedule',
+          icon: CalendarDays,
+          keywords: ['holidays', 'vacation', 'breaks', 'festivals', 'off days']
+        },
+        {
+          path: '/subjects',
+          label: 'Subjects & Curriculum',
+          category: 'Academics',
+          description: 'Subject list, curriculum mapping, course codes & credits',
+          icon: BookOpen,
+          keywords: ['subjects', 'curriculum', 'courses', 'syllabus']
+        },
+        {
+          path: '/routine',
+          label: 'Class Routine Setup',
+          category: 'Academics',
+          description: 'Daily class routine layout, period timing & structure',
+          icon: CalendarDays,
+          keywords: ['routine', 'class routine', 'bell schedule', 'periods']
+        },
+        {
+          path: '/promotion',
+          label: 'Student Promotions',
+          category: 'Academics',
+          description: 'Promote students to next class / academic session batch',
+          icon: ArrowUpDown,
+          keywords: ['promotion', 'promote', 'progression', 'next grade', 'batch transition']
+        },
+        {
+          path: '/communication',
+          label: 'Announcements & Broadcasts',
+          category: 'Communication',
+          description: 'Broadcast school-wide announcements, news & notices',
+          icon: MessageSquare,
+          keywords: ['announcements', 'broadcast', 'notices', 'circulars', 'communication', 'bulletins', 'bulletin']
+        },
+        {
+          path: '/smtp-logs',
+          label: 'SMTP Email Logs',
+          category: 'Communication',
+          description: 'Email delivery audit logs, password setup & notification history',
+          icon: Mail,
+          keywords: ['smtp', 'email logs', 'delivery', 'welcome emails', 'mail status']
+        },
+        {
+          path: '/teacher-leave-approvals',
+          label: 'Teacher Leave Review',
+          category: 'Reviews & Approvals',
+          description: 'Review and approve teacher leave applications',
+          icon: CalendarCheck,
+          keywords: ['teacher leave', 'leave review', 'leave approvals', 'staff absence']
+        },
+        {
+          path: '/leave-applications',
+          label: 'Student Leave Review',
+          category: 'Reviews & Approvals',
+          description: 'Review and approve student absence requests',
+          icon: CalendarCheck,
+          keywords: ['student leave', 'leave review', 'absence requests', 'student approvals']
+        },
+        {
+          path: '/photo-approvals',
+          label: 'Student Photo Approvals',
+          category: 'Reviews & Approvals',
+          description: 'Review submitted student ID photos and profile pictures',
+          icon: Camera,
+          keywords: ['photo approvals', 'student photos', 'profile picture review', 'id photos']
+        },
+        {
+          path: '/classes?tab=mentors',
+          label: 'Class Mentors',
+          category: 'Academics',
+          description: 'Allocate and manage teacher class mentors for sections in Classes & Sections',
+          icon: Users,
+          keywords: ['class mentor', 'mentor', 'mentors', 'class mentors', 'teacher mentor', 'section mentor', 'mentor allocation']
+        },
+        {
+          path: '/analytics',
+          label: 'Reports & Analytics',
+          category: 'Management',
+          description: 'Attendance analytics, visual charts, trends and KPIs',
+          icon: BarChart3,
+          keywords: ['analytics', 'charts', 'trends', 'metrics', 'kpi', 'reports']
+        },
+        {
+          path: '/subscription',
+          label: 'Subscription Plan',
+          category: 'Billing',
+          description: 'Manage subscription plan, limits & renewal details',
+          icon: CreditCard,
+          keywords: ['subscription', 'plan', 'billing', 'upgrade', 'license']
+        },
+        {
+          path: '/invoices',
+          label: 'Invoices & Receipts',
+          category: 'Billing',
+          description: 'Official subscription invoices, statements & receipts',
+          icon: FileText,
+          keywords: ['invoices', 'bills', 'receipts']
+        },
+        {
+          path: '/payments',
+          label: 'Payment History',
+          category: 'Billing',
+          description: 'Payment transactions, receipts and payment history',
+          icon: CreditCard,
+          keywords: ['payments', 'transactions', 'billing history']
+        },
+        {
+          path: '/school-profile',
+          label: 'School Profile & Branding',
+          category: 'Settings',
+          description: 'School name, crest/logo, website, code & contact details',
+          icon: Building2,
+          keywords: ['profile', 'settings', 'school profile', 'logo', 'branding', 'website']
+        },
+        {
+          path: '/permissions',
+          label: 'Permissions & Roles',
+          category: 'Settings',
+          description: 'Manage staff roles, access permissions and privileges',
+          icon: ShieldCheck,
+          keywords: ['permissions', 'roles', 'rbac', 'access control', 'security']
+        },
+        {
+          path: '/backups',
+          label: 'Backups & Security',
+          category: 'Settings',
+          description: 'Data export, system backups, and database security',
+          icon: Database,
+          keywords: ['backups', 'export', 'security', 'database']
+        }
+      ];
+    }
+
+    if (user.role === 'TEACHER') {
+      return [
+        {
+          path: '/dashboard',
+          label: 'Dashboard',
+          category: 'Main Navigation',
+          description: "Today's schedule, classes, and quick teacher actions",
+          icon: LayoutDashboard,
+          keywords: ['home', 'main', 'today', 'schedule']
+        },
+        {
+          path: '/take-attendance',
+          label: 'Take Attendance',
+          category: 'Main Navigation',
+          description: 'Mark student attendance for assigned periods & classes',
+          icon: ClipboardCheck,
+          keywords: ['attendance', 'take attendance', 'mark attendance', 'roll call', 'present', 'absent']
+        },
+        {
+          path: '/teacher-history',
+          label: 'Attendance History',
+          category: 'Main Navigation',
+          description: 'View past submitted attendance records and class logs',
+          icon: CalendarDays,
+          keywords: ['history', 'past attendance', 'attendance records', 'logs']
+        },
+        {
+          path: '/attendance-reports',
+          label: 'Attendance Reports',
+          category: 'Main Navigation',
+          description: 'Student attendance percentages, monthly sheets & summaries',
+          icon: FileText,
+          keywords: ['reports', 'sheets', 'attendance summary']
+        },
+        {
+          path: '/timetable',
+          label: 'My Timetable',
+          category: 'Main Navigation',
+          description: 'Weekly teaching timetable and class schedule',
+          icon: CalendarDays,
+          keywords: ['timetable', 'schedule', 'routine', 'classes']
+        },
+        {
+          path: '/teacher/assignments',
+          label: 'Assignments & Homework',
+          category: 'Workspace',
+          description: 'Create homework, manage assignments & review student submissions',
+          icon: BookOpen,
+          keywords: ['assignments', 'homework', 'tasks', 'submissions']
+        },
+        {
+          path: '/leave-applications',
+          label: 'Student Leave Review',
+          category: 'Workspace',
+          description: 'Review and approve student leave and absence requests',
+          icon: CalendarCheck,
+          keywords: ['student leave', 'leave review', 'approvals']
+        },
+        {
+          path: '/photo-approvals',
+          label: 'Student Photo Approvals',
+          category: 'Workspace',
+          description: 'Review submitted student ID photos and profile pictures',
+          icon: Camera,
+          keywords: ['photo approvals', 'student photos', 'pictures']
+        },
+        {
+          path: '/teacher/leave-request',
+          label: 'Apply Leave',
+          category: 'Workspace',
+          description: 'Submit teacher leave application and view leave approval status',
+          icon: CalendarPlus,
+          keywords: ['apply leave', 'leave request', 'time off', 'vacation']
+        },
+        {
+          path: '/teacher/mentor-workspace',
+          label: 'Class Mentor Workspace',
+          category: 'Workspace',
+          description: 'Mentored class student monitoring and attendance overview',
+          icon: Users,
+          keywords: ['mentor', 'workspace', 'class mentor']
+        },
+        {
+          path: '/announcements',
+          label: 'School Announcements',
+          category: 'Communication',
+          description: 'School announcements, circulars & bulletins',
+          icon: Megaphone,
+          keywords: ['announcements', 'circulars', 'notices', 'bulletins']
+        },
+        {
+          path: '/teacher/profile',
+          label: 'My Profile',
+          category: 'Settings',
+          description: 'Manage personal profile, contact information & password',
+          icon: User,
+          keywords: ['profile', 'account', 'password', 'settings']
+        }
+      ];
+    }
+
+    if (user.role === 'SUPER_ADMIN') {
+      return [
+        {
+          path: '/super-admin',
+          label: 'Platform Overview',
+          category: 'Platform Management',
+          description: 'Platform overview, tenant schools & global metrics',
+          icon: LayoutDashboard,
+          keywords: ['dashboard', 'overview', 'metrics']
+        },
+        {
+          path: '/super-admin/schools',
+          label: 'Schools Directory',
+          category: 'Platform Management',
+          description: 'Manage school tenants, onboarding & status',
+          icon: School,
+          keywords: ['schools', 'tenants', 'institutions']
+        },
+        {
+          path: '/super-admin/subscriptions',
+          label: 'Subscriptions',
+          category: 'Platform Management',
+          description: 'School subscription plans, tiers & limits',
+          icon: CalendarDays,
+          keywords: ['subscriptions', 'plans']
+        },
+        {
+          path: '/super-admin/payments',
+          label: 'Payments',
+          category: 'Platform Management',
+          description: 'Platform revenue, transactions & payment gateways',
+          icon: CreditCard,
+          keywords: ['payments', 'revenue', 'transactions']
+        },
+        {
+          path: '/super-admin/invoices',
+          label: 'Invoices',
+          category: 'Platform Management',
+          description: 'Billing statements and issued invoices',
+          icon: FileText,
+          keywords: ['invoices', 'bills', 'statements']
+        },
+        {
+          path: '/super-admin/monitoring',
+          label: 'System Monitoring',
+          category: 'Platform Management',
+          description: 'Server health, worker processes & uptime',
+          icon: Eye,
+          keywords: ['monitoring', 'health', 'uptime', 'server']
+        },
+        {
+          path: '/super-admin/reports',
+          label: 'Platform Reports',
+          category: 'Platform Management',
+          description: 'Cross-school aggregated reports & analytics',
+          icon: BarChart3,
+          keywords: ['reports', 'analytics']
+        },
+        {
+          path: '/super-admin/people',
+          label: 'People & Staff',
+          category: 'Platform Administration',
+          description: 'Platform administrators and user accounts',
+          icon: Users,
+          keywords: ['people', 'users', 'administrators']
+        },
+        {
+          path: '/super-admin/permissions',
+          label: 'Roles & Permissions',
+          category: 'Platform Administration',
+          description: 'Platform security roles & permissions',
+          icon: ShieldCheck,
+          keywords: ['permissions', 'roles', 'rbac']
+        },
+        {
+          path: '/super-admin/security',
+          label: 'Security Policies',
+          category: 'Platform Administration',
+          description: 'Authentication policies & security controls',
+          icon: Shield,
+          keywords: ['security', 'policies', 'auth']
+        },
+        {
+          path: '/super-admin/audit-logs',
+          label: 'Audit Logs',
+          category: 'Platform Administration',
+          description: 'Administrative activity trail & change logs',
+          icon: FileSpreadsheet,
+          keywords: ['audit', 'logs', 'activity']
+        },
+        {
+          path: '/super-admin/backups',
+          label: 'System Backups',
+          category: 'Platform Administration',
+          description: 'Database snapshots & system restoration',
+          icon: Database,
+          keywords: ['backups', 'snapshots', 'recovery']
+        },
+        {
+          path: '/smtp-logs',
+          label: 'SMTP Email Logs',
+          category: 'Platform Administration',
+          description: 'Global SMTP email logs and notification status',
+          icon: Mail,
+          keywords: ['smtp', 'email logs', 'notifications']
+        }
+      ];
+    }
+
+    if (user.role === 'STUDENT') {
+      return [
+        { path: '/student/dashboard', label: 'Dashboard', category: 'Student Portal', description: 'Student dashboard & daily overview', icon: LayoutDashboard, keywords: ['home', 'dashboard'] },
+        { path: '/student/attendance', label: 'My Attendance', category: 'Student Portal', description: 'Personal attendance records & statistics', icon: ClipboardCheck, keywords: ['attendance', 'presence'] },
+        { path: '/student/timetable', label: 'My Timetable', category: 'Student Portal', description: 'Class schedule & routine', icon: CalendarDays, keywords: ['timetable', 'schedule'] },
+        { path: '/student/assignments', label: 'Assignments', category: 'Student Portal', description: 'Class homework & tasks', icon: BookOpen, keywords: ['assignments', 'homework'] },
+        { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
+        { path: '/student/announcements', label: 'Announcements', category: 'Student Portal', description: 'School announcements & circulars', icon: Megaphone, keywords: ['announcements', 'notices'] },
+        { path: '/student/leave-request', label: 'Apply Leave', category: 'Student Portal', description: 'Apply for leave & check status', icon: CalendarPlus, keywords: ['leave', 'sick leave'] },
+        { path: '/student/profile', label: 'My Profile', category: 'Student Portal', description: 'Personal profile & account', icon: User, keywords: ['profile', 'account'] }
+      ];
+    }
+
+    return [];
+  }, [user]);
+
+  // Filter menu items matching search query in real-time (only active when user types a query)
+  const filteredMenuItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return menuItems.filter(item => {
+      if (item.label.toLowerCase().includes(q)) return true;
+      if (item.category.toLowerCase().includes(q)) return true;
+      if (item.description.toLowerCase().includes(q)) return true;
+      if (item.path.toLowerCase().includes(q)) return true;
+      if (item.keywords?.some((k: string) => k.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  }, [menuItems, searchQuery]);
+
+  // Group filtered results by category for clean visual hierarchy
+  const groupedMenuResults = useMemo(() => {
+    const map = new Map<string, typeof filteredMenuItems>();
+    filteredMenuItems.forEach(item => {
+      const list = map.get(item.category) || [];
+      list.push(item);
+      map.set(item.category, list);
+    });
+    return Array.from(map.entries());
+  }, [filteredMenuItems]);
+
+  // Handle keyboard navigation (ArrowUp, ArrowDown, Enter, Escape)
+  const handlePaletteKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (filteredMenuItems.length > 0 ? (prev + 1) % filteredMenuItems.length : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (filteredMenuItems.length > 0 ? (prev - 1 + filteredMenuItems.length) % filteredMenuItems.length : 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredMenuItems[selectedIndex]) {
+        setSearchOpen(false);
+        nav(filteredMenuItems[selectedIndex].path);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setSearchOpen(false);
+    }
+  };
 
   // Dynamic browser title for School Admin & Teacher portals
   useEffect(() => {
@@ -2547,7 +3047,7 @@ function Layout({children}:{children:React.ReactNode}){
             <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" iconSize={18} />
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search schools, students, classes..." readOnly style={{ cursor: 'pointer' }} />
+              <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
@@ -2668,7 +3168,7 @@ function Layout({children}:{children:React.ReactNode}){
             </div>
             <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
-              <input placeholder="Search students, teachers, classes..." readOnly style={{ cursor: 'pointer' }} />
+              <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
           </div>
@@ -2902,7 +3402,7 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
             <Search size={15}/>
-            <input placeholder="Search records, classes..." readOnly style={{ cursor: 'pointer' }} />
+            <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">CTRL+K</span>
           </div>
           <div className="header-right">
@@ -3340,7 +3840,7 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
         </div>
       )}
-      {/* ── Global Search Command Palette ── */}
+      {/* ── Global Search Command Palette (Menu & Page Navigation Only) ── */}
       {searchOpen && (
         <div className="search-overlay" onClick={() => setSearchOpen(false)}>
           <div className="search-palette" onClick={(e) => e.stopPropagation()}>
@@ -3349,146 +3849,96 @@ function Layout({children}:{children:React.ReactNode}){
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search students, teachers, classes..."
+                placeholder="Search menus, pages, modules... (e.g. Attendance, Timetable, Promotion)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handlePaletteKeyDown}
                 className="search-palette-input"
               />
-              <kbd className="search-palette-esc">ESC</kbd>
+              <kbd className="search-palette-esc" onClick={() => setSearchOpen(false)} style={{ cursor: 'pointer' }}>ESC</kbd>
             </div>
 
             <div className="search-palette-body">
-              {searchQuery.length < 2 ? (
-                <div className="search-palette-hint">
-                  <div className="search-hint-section">
-                    <span className="search-hint-title">Quick Navigation</span>
-                    <div className="search-hint-items">
-                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
-                        <button onClick={() => { setSearchOpen(false); nav('/students'); }}>
-                          <Users size={14} /> <span>Students</span>
-                        </button>
-                      )}
-                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
-                        <button onClick={() => { setSearchOpen(false); nav('/teachers'); }}>
-                          <GraduationCap size={14} /> <span>Teachers</span>
-                        </button>
-                      )}
-                      {(user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN') && (
-                        <button onClick={() => { setSearchOpen(false); nav('/classes'); }}>
-                          <Layers size={14} /> <span>Classes</span>
-                        </button>
-                      )}
-                      <button onClick={() => { setSearchOpen(false); nav(user.role === 'TEACHER' ? '/take-attendance' : '/attendance-reports'); }}>
-                        <ClipboardCheck size={14} /> <span>Attendance</span>
-                      </button>
-                      <button onClick={() => { setSearchOpen(false); nav('/timetable'); }}>
-                        <CalendarDays size={14} /> <span>Timetable</span>
-                      </button>
-                      <button onClick={() => { setSearchOpen(false); nav('/analytics'); }}>
-                        <BarChart3 size={14} /> <span>Analytics</span>
-                      </button>
-                    </div>
-                  </div>
-                  <p className="search-hint-tip">Type at least 2 characters to search</p>
+              {!searchQuery.trim() ? (
+                <div className="search-palette-hint" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                  <Search size={32} color="var(--primary, #2563eb)" style={{ opacity: 0.6, margin: '0 auto 12px', display: 'block' }} />
+                  <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
+                    Type to search menu &amp; pages
+                  </h4>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0, maxWidth: 420, marginInline: 'auto' }}>
+                    Type any page name or section (e.g. <strong>Leave</strong>, <strong>Attendance</strong>, <strong>Timetable</strong>, <strong>Promotion</strong>, <strong>Routine</strong>) to view suggestions.
+                  </p>
                 </div>
-              ) : searchLoading ? (
-                <div className="search-palette-loading">
-                  <RefreshCw size={16} className="spin" />
-                  <span>Searching...</span>
-                </div>
-              ) : !hasAnyResults ? (
+              ) : filteredMenuItems.length === 0 ? (
                 <div className="search-palette-empty">
                   <Search size={28} color="var(--text-muted)" />
-                  <p>No results found for "<strong>{searchQuery}</strong>"</p>
-                  <span>Try different keywords or check for typos</span>
+                  <p>No menu found for "<strong>{searchQuery}</strong>"</p>
+                  <span>This search bar is only for navigation menu pages.</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Student and teacher name search is not allowed in this search bar.
+                  </span>
                 </div>
               ) : (
-                <>
-                  {searchResults.students.length > 0 && (
-                    <div className="search-result-group">
-                      <div className="search-result-label"><Users size={13} /> Students ({searchResults.students.length})</div>
-                      {searchResults.students.map((s: any) => (
-                        <div key={s.id} className="search-result-item" onClick={() => handleSearchResultClick(s)}>
-                          <div className="search-result-avatar student">{s.name?.[0]?.toUpperCase() || 'S'}</div>
+                groupedMenuResults.map(([category, items]) => (
+                  <div key={category} className="search-result-group">
+                    <div className="search-result-label">
+                      {category} ({items.length})
+                    </div>
+                    {items.map((item) => {
+                      const isSelected = item.path === filteredMenuItems[selectedIndex]?.path;
+                      const ItemIcon = item.icon || Layers;
+                      return (
+                        <div
+                          key={item.path + item.label}
+                          className={`search-result-item ${isSelected ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSearchOpen(false);
+                            nav(item.path);
+                          }}
+                          onMouseEnter={() => {
+                            const idx = filteredMenuItems.findIndex(m => m.path === item.path);
+                            if (idx !== -1) setSelectedIndex(idx);
+                          }}
+                        >
+                          <div className="search-result-avatar" style={{ background: 'var(--primary, #2563eb)', color: '#fff' }}>
+                            <ItemIcon size={16} />
+                          </div>
                           <div className="search-result-info">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span className="search-result-name">{s.name}</span>
-                              {s.gender && (
-                                <span style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 600,
-                                  padding: '1px 6px',
-                                  borderRadius: 999,
-                                  background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                                  color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                                }}>
-                                  {formatGender(s.gender)}
-                                </span>
-                              )}
+                              <span className="search-result-name">{item.label}</span>
+                              <span style={{
+                                fontSize: 10,
+                                fontWeight: 600,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: 'var(--bg-muted, #f1f5f9)',
+                                color: 'var(--text-muted, #64748b)',
+                                border: '1px solid var(--border)'
+                              }}>
+                                {item.category}
+                              </span>
                             </div>
-                            <span className="search-result-meta">
-                              Roll: {s.roll} · {s.class || 'Unassigned'}{s.section ? ` - ${s.section}` : ''}{s.gender ? ` · ${formatGender(s.gender)}` : ''} · {s.email}
-                            </span>
+                            <span className="search-result-meta">{item.description}</span>
                           </div>
-                          <ArrowRight size={14} color="var(--text-muted)" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {searchResults.teachers.length > 0 && (
-                    <div className="search-result-group">
-                      <div className="search-result-label"><GraduationCap size={13} /> Teachers ({searchResults.teachers.length})</div>
-                      {searchResults.teachers.map((t: any) => (
-                        <div key={t.id} className="search-result-item" onClick={() => handleSearchResultClick(t)}>
-                          <div className="search-result-avatar teacher">{t.name?.[0]?.toUpperCase() || 'T'}</div>
-                          <div className="search-result-info">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span className="search-result-name">{t.name}</span>
-                              {t.gender && (
-                                <span style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 600,
-                                  padding: '1px 6px',
-                                  borderRadius: 999,
-                                  background: formatGender(t.gender) === 'Female' ? '#fdf2f8' : formatGender(t.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                                  color: formatGender(t.gender) === 'Female' ? '#db2777' : formatGender(t.gender) === 'Male' ? '#0284c7' : '#64748b',
-                                  border: `1px solid ${formatGender(t.gender) === 'Female' ? '#fbcfe8' : formatGender(t.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                                }}>
-                                  {formatGender(t.gender)}
-                                </span>
-                              )}
-                            </div>
-                            <span className="search-result-meta">{t.employee_id ? `ID: ${t.employee_id} · ` : ''}{t.gender ? `${formatGender(t.gender)} · ` : ''}{t.email}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', opacity: 0.85 }}>{item.path}</span>
+                            <ArrowRight size={14} color="var(--text-muted)" />
                           </div>
-                          <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {searchResults.classes.length > 0 && (
-                    <div className="search-result-group">
-                      <div className="search-result-label"><Layers size={13} /> Classes ({searchResults.classes.length})</div>
-                      {searchResults.classes.map((c: any) => (
-                        <div key={c.id} className="search-result-item" onClick={() => handleSearchResultClick(c)}>
-                          <div className="search-result-avatar class">C</div>
-                          <div className="search-result-info">
-                            <span className="search-result-name">{c.name}</span>
-                            <span className="search-result-meta">{c.sections} section(s)</span>
-                          </div>
-                          <ArrowRight size={14} color="var(--text-muted)" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+                      );
+                    })}
+                  </div>
+                ))
               )}
             </div>
 
             <div className="search-palette-footer">
               <span><kbd>↑↓</kbd> Navigate</span>
-              <span><kbd>↵</kbd> Open</span>
+              <span><kbd>↵</kbd> Open Menu</span>
               <span><kbd>ESC</kbd> Close</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                Menu &amp; Navigation Only
+              </span>
             </div>
           </div>
         </div>
@@ -3609,10 +4059,32 @@ function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role===
 function AdminHome(){
   const {user}=useAuth();
   const nav=useNavigate();
-  const cacheKey = `dashboard_cache_${(user as any)?.schoolId || 'current'}`;
+
+  const getSessionStorageKey = () => {
+    try {
+      return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || 'default';
+    } catch {
+      return 'default';
+    }
+  };
+
+  const getCacheKey = (sessionKey?: string) => {
+    const sid = (user as any)?.schoolId || 'current';
+    const s = sessionKey || getSessionStorageKey();
+    return `dashboard_cache_${sid}_${s}`;
+  };
+
+  const [currentSessionName, setCurrentSessionName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+    } catch {
+      return '';
+    }
+  });
+
   const [data, setData] = useState<any>(() => {
     try {
-      const c = typeof window !== 'undefined' ? localStorage.getItem(`dashboard_cache_${(user as any)?.schoolId || 'current'}`) : null;
+      const c = typeof window !== 'undefined' ? localStorage.getItem(getCacheKey()) : null;
       return c ? JSON.parse(c) : null;
     } catch {
       return null;
@@ -3642,13 +4114,35 @@ function AdminHome(){
     setShowWelcome(false);
   }, [welcomeSessionKey]);
 
-  async function load(retryCount = 0) {
-    if (!data) setLoading(true);
+  async function load(retryCount = 0, specificYearId?: string, specificSession?: string) {
+    const yearId = specificYearId !== undefined ? specificYearId : localStorage.getItem('attendo_active_academic_year_id');
+    const session = specificSession !== undefined ? specificSession : (localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year'));
+    const cacheKey = getCacheKey(session || undefined);
+
+    if (session) {
+      setCurrentSessionName(session);
+    }
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setData(JSON.parse(cached));
+      } else {
+        setLoading(true);
+      }
+    } catch {}
+
     setDashboardError(null);
     try {
-      const res = await api.get('/dashboard/school');
+      const params: any = {};
+      if (yearId) params.academicYearId = yearId;
+      if (session) params.session = session;
+      const res = await api.get('/dashboard/school', { params });
       if (res.data) {
         setData(res.data);
+        if (res.data.activeAcademicYear?.name) {
+          setCurrentSessionName(res.data.activeAcademicYear.name);
+        }
         try {
           localStorage.setItem(cacheKey, JSON.stringify(res.data));
         } catch {}
@@ -3656,7 +4150,7 @@ function AdminHome(){
     } catch (e: any) {
       console.error('Failed to load school dashboard', e);
       if (retryCount < 2) {
-        setTimeout(() => load(retryCount + 1), 1500);
+        setTimeout(() => load(retryCount + 1, yearId || undefined, session || undefined), 1500);
         return;
       }
       try {
@@ -3671,7 +4165,37 @@ function AdminHome(){
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+
+    const handleSessionChange = (e: any) => {
+      const targetObj = typeof e?.detail === 'object' ? e.detail : null;
+      const newSessionName = targetObj?.name || (typeof e?.detail === 'string' ? e.detail : '') || localStorage.getItem('attendo_academic_session') || '';
+      const newYearId = targetObj?.id || localStorage.getItem('attendo_active_academic_year_id') || undefined;
+      if (newSessionName) setCurrentSessionName(newSessionName);
+      load(0, newYearId, newSessionName);
+    };
+
+    const handleStorage = () => {
+      const s = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+      const y = localStorage.getItem('attendo_active_academic_year_id') || undefined;
+      if (s) setCurrentSessionName(s);
+      load(0, y, s);
+    };
+
+    const handleDashboardRefresh = () => {
+      load();
+    };
+
+    window.addEventListener('sessionChanged', handleSessionChange);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('dashboardShouldRefresh', handleDashboardRefresh);
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('dashboardShouldRefresh', handleDashboardRefresh);
+    };
+  }, []);
 
   const school = data?.school;
   const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, percentage: 0, classBreakdown: [] };
@@ -3727,7 +4251,7 @@ function AdminHome(){
         </p>
         <div className="hero-meta-row">
           <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || '—'}</b></span>
-          <span>📅 Session: <b>{data?.activeAcademicYear?.name || 'Current Session'}</b></span>
+          <span>📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Current Session'}</b></span>
           <span>📞 Enquiry: <b>{school?.enquiry_number || school?.phone || '—'}</b></span>
           <span>🛡️ Plan: <b>{sub?.plan_name || 'Standard'}</b></span>
         </div>
@@ -3762,7 +4286,7 @@ function AdminHome(){
       </div>
     )}
 
-    {/* 6 Top KPI Cards */}
+    {/* Top KPI Cards */}
     <div className="dashboard-kpi-grid">
       <div className="kpi-card" onClick={() => nav('/students')}>
         <div className="kpi-icon-wrap blue"><Users size={22} /></div>
@@ -3773,12 +4297,60 @@ function AdminHome(){
         </div>
       </div>
 
+      {/* Student Gender Split - Session Dependent */}
+      <div className="kpi-card" onClick={() => nav('/students')} title="Click to view student directory">
+        <div className="kpi-icon-wrap blue" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
+          <Users size={22} />
+        </div>
+        <div className="kpi-body" style={{ width: '100%' }}>
+          <span className="kpi-label">Students (M / F)</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
+              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+            </span>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
+              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+            </span>
+          </div>
+          <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+            📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Active'}</b>
+          </span>
+        </div>
+      </div>
+
       <div className="kpi-card" onClick={() => nav('/teachers')}>
         <div className="kpi-icon-wrap indigo"><GraduationCap size={22} /></div>
         <div className="kpi-body">
           <span className="kpi-label">Active Faculty</span>
           <strong className="kpi-value">{loading ? '...' : (data?.totalTeachers ?? 0)}</strong>
           <span className="kpi-sub positive">Verified teachers</span>
+        </div>
+      </div>
+
+      {/* Teacher Gender Split - Session Independent */}
+      <div className="kpi-card" onClick={() => nav('/teachers')} title="Click to view faculty directory">
+        <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+          <GraduationCap size={22} />
+        </div>
+        <div className="kpi-body" style={{ width: '100%' }}>
+          <span className="kpi-label">Faculty (M / F)</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
+              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+            </span>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
+              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+            </span>
+          </div>
+          <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+            🏫 School-wide faculty
+          </span>
         </div>
       </div>
 
@@ -4146,7 +4718,8 @@ function TeacherHome(){
       const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
       setTodaySessions(historyList.filter((h: any) => (h.attendance_date || '').slice(0, 10) === todayStr));
 
-      setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : []);
+      const rawNotices = Array.isArray(noticesRes.data) ? noticesRes.data : [];
+      setNotices(rawNotices.filter((n: any) => !n.read_at));
 
       // Calculate distinct active students across teacher's assigned classes
       if (routineData.length > 0) {
@@ -4186,8 +4759,15 @@ function TeacherHome(){
   useEffect(() => {
     loadSchedule(true);
     const onFocus = () => loadSchedule(false);
+    const onAnnouncementsUpdated = () => loadSchedule(false);
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener('announcements-read', onAnnouncementsUpdated);
+    window.addEventListener('storage', onAnnouncementsUpdated);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('announcements-read', onAnnouncementsUpdated);
+      window.removeEventListener('storage', onAnnouncementsUpdated);
+    };
   }, []);
 
   useEffect(() => {
@@ -4721,12 +5301,12 @@ function TeacherHome(){
             )}
           </div>
 
-          {/* School Updates */}
+          {/* Announcements */}
           <div className="td-section-card">
             <div className="td-section-header">
               <h3 className="td-section-title">
                 <Megaphone size={18} style={{ color: '#2563eb' }} />
-                School updates
+                Announcements
               </h3>
               <a href="#/announcements" className="td-link-btn">
                 View All →
@@ -4737,9 +5317,9 @@ function TeacherHome(){
               <p className="muted" style={{ padding: 14 }}>Loading announcements...</p>
             ) : notices.length === 0 ? (
               <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 10 }}>
-                <Megaphone size={28} style={{ color: 'var(--text-muted)', margin: '0 auto 6px' }} />
-                <div style={{ fontWeight: 700, fontSize: 14 }}>No recent announcements</div>
-                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>Official school notices will appear here when published.</p>
+                <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+                <div style={{ fontWeight: 700, fontSize: 14 }}>All caught up!</div>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>You have read all recent announcements.</p>
               </div>
             ) : (
               <div>
@@ -4895,6 +5475,7 @@ function Students(){
   const [saving,setSaving]=useState(false);
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
   const [search,setSearch]=useState('');
+  const [exportOpen,setExportOpen]=useState(false);
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importing,setImporting]=useState(false);
   const [importProgress, setImportProgress] = useState<{
@@ -5179,23 +5760,54 @@ function Students(){
       alert('Validation Error: Enter a string not a number in name fields.');
       return;
     }
+    const fatherName = String(f.fatherName || '').trim();
+    const fatherPhone = String(f.fatherPhone || '').trim();
+    const fatherOccupation = String(f.fatherOccupation || '').trim();
+    const motherName = String(f.motherName || '').trim();
+    const motherPhone = String(f.motherPhone || '').trim();
+    const motherOccupation = String(f.motherOccupation || '').trim();
+    const parentWhatsappNo = String(f.parentWhatsappNo || f.parent_whatsapp_no || '').trim();
+
+    if (parentWhatsappNo && parentWhatsappNo.replace(/\D/g, '').length < 10) {
+      alert('Validation Error: Parent WhatsApp No. must be a valid 10-digit number.');
+      return;
+    }
+
+    if (fatherName && /\d/.test(fatherName)) {
+      alert('Validation Error: Enter a string not a number in Father Name.');
+      return;
+    }
+    if (motherName && /\d/.test(motherName)) {
+      alert('Validation Error: Enter a string not a number in Mother Name.');
+      return;
+    }
     if (f.parentName && /\d/.test(f.parentName)) {
       alert('Validation Error: Enter a string not a number in parent name.');
       return;
     }
 
+    if (!f.dob) {
+      alert('Validation Error: Date of Birth is a required field.');
+      return;
+    }
+
     const code = f.countryCode || '+91';
-    const rawMobile = String(f.parentSmsNumber || '').trim();
-    const phoneDigits = rawMobile.replace(/\D/g, '');
-    if (!rawMobile || phoneDigits.length === 0) {
-      alert('Validation Error: Please enter parent mobile number.');
+    const primaryPhone = String(fatherPhone || motherPhone || f.parentSmsNumber || '').trim();
+    const phoneDigits = primaryPhone.replace(/\D/g, '');
+    if (!primaryPhone || phoneDigits.length === 0) {
+      alert('Validation Error: Please enter Father Contact No. or Mother Contact No.');
       return;
     }
-    if (phoneDigits.length < 10) {
-      alert('pls check your number.... Phone number must be at least 10 digits.');
+    if (fatherPhone && fatherPhone.replace(/\D/g, '').length < 10) {
+      alert('Validation Error: Father Contact No. must be a valid 10-digit number.');
       return;
     }
-    const fullParentPhone = rawMobile.startsWith('+') ? rawMobile : `${code} ${rawMobile}`;
+    if (motherPhone && motherPhone.replace(/\D/g, '').length < 10) {
+      alert('Validation Error: Mother Contact No. must be a valid 10-digit number.');
+      return;
+    }
+    const fullParentPhone = primaryPhone.startsWith('+') ? primaryPhone : `${code} ${phoneDigits.slice(-10)}`;
+    const compositeParentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || f.parentName || '');
 
     if (!f.classId) {
       alert('Validation Error: Please select an enrolled class.');
@@ -5269,13 +5881,36 @@ function Students(){
 
     const payload = {
       ...f,
-      is_active: f.is_active !== false,
-      status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
-      password: f.password && f.password.trim() ? f.password.trim() : undefined,
+      fatherName,
+      father_name: fatherName,
+      fatherPhone,
+      father_phone: fatherPhone,
+      fatherContactNo: fatherPhone,
+      fatherOccupation,
+      father_occupation: fatherOccupation,
+      motherName,
+      mother_name: motherName,
+      motherPhone,
+      mother_phone: motherPhone,
+      motherContactNo: motherPhone,
+      motherOccupation,
+      mother_occupation: motherOccupation,
+      parentWhatsappNo,
+      parent_whatsapp_no: parentWhatsappNo,
+      parentWhatsapp: parentWhatsappNo,
+      parentName: compositeParentName,
+      parent_name: compositeParentName,
       parentSmsNumber: fullParentPhone,
       parent_sms_number: fullParentPhone,
       parentPhone: fullParentPhone,
       parent_phone: fullParentPhone,
+      dob: f.dob,
+      date_of_birth: f.dob,
+      admissionDate: f.admissionDate || f.admission_date || undefined,
+      admission_date: f.admissionDate || f.admission_date || undefined,
+      is_active: f.is_active !== false,
+      status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+      password: f.password && f.password.trim() ? f.password.trim() : undefined,
       countryCode: code,
       sectionId: finalSectionId,
       name: fullName,
@@ -5297,8 +5932,9 @@ function Students(){
           { label: 'Full Name', value: fullName, color: 'blue' },
           { label: 'Roll Number', value: f.rollNumber || editingStudent?.roll_number || 'Auto-assigned', type: 'code' },
           { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
+          { label: 'Admission Date', value: f.admissionDate || f.admission_date || editingStudent?.admission_date || '—', type: 'date' },
           { label: 'Academic Session', value: selectedSessionStr, type: 'badge', color: 'blue' },
-          { label: 'Date of Birth', value: f.dob || editingStudent?.dob || '—', type: 'date' },
+          { label: 'Date of Birth', value: f.dob || editingStudent?.dob || editingStudent?.date_of_birth || '—', type: 'date' },
           { label: 'Gender', value: formatGender(f.gender || editingStudent?.gender) || '—' },
         ]
       },
@@ -5310,11 +5946,15 @@ function Students(){
         ]
       },
       {
-        title: 'Parent & Contact Coordinates',
+        title: 'Parent & Family Coordinates',
         fields: [
-          { label: 'Parent Name', value: f.guardianName || f.parentName || editingStudent?.parent_name || '—' },
-          { label: 'Contact Phone Number', value: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone || '—', type: 'phone' },
-          // { label: 'Residential Address', value: f.address || editingStudent?.address || '—', span: 2 },
+          { label: 'Father Name', value: fatherName || editingStudent?.father_name || '—' },
+          { label: 'Father Contact No.', value: fatherPhone || editingStudent?.father_phone || '—', type: 'phone' },
+          { label: 'Father Occupation', value: fatherOccupation || editingStudent?.father_occupation || '—' },
+          { label: 'Mother Name', value: motherName || editingStudent?.mother_name || '—' },
+          { label: 'Mother Contact No.', value: motherPhone || editingStudent?.mother_phone || '—', type: 'phone' },
+          { label: 'Mother Occupation', value: motherOccupation || editingStudent?.mother_occupation || '—' },
+          { label: 'Parent WhatsApp No.', value: parentWhatsappNo || editingStudent?.parent_whatsapp_no || '—', type: 'phone' },
         ]
       },
       {
@@ -5343,8 +5983,17 @@ function Students(){
         name: fullName,
         roll_number: f.rollNumber || editingStudent.roll_number,
         admission_number: f.admissionNumber || editingStudent.admission_number,
-        parent_name: f.guardianName || f.parentName,
-        parent_phone: fullParentPhone || f.parentSmsNumber || f.parentPhone || f.phone || editingStudent?.parent_phone,
+        admission_date: f.admissionDate || f.admission_date || editingStudent.admission_date,
+        date_of_birth: f.dob || editingStudent.dob || editingStudent.date_of_birth,
+        father_name: fatherName,
+        father_phone: fatherPhone,
+        father_occupation: fatherOccupation,
+        mother_name: motherName,
+        mother_phone: motherPhone,
+        mother_occupation: motherOccupation,
+        parent_whatsapp_no: parentWhatsappNo || editingStudent.parent_whatsapp_no,
+        parent_name: compositeParentName,
+        parent_phone: fullParentPhone,
         address: f.address,
         student_email: f.studentEmail || f.email,
         parent_email: f.parentEmail,
@@ -5354,8 +6003,17 @@ function Students(){
         name: 'Student Name',
         roll_number: 'Roll Number',
         admission_number: 'Admission Number',
+        admission_date: 'Admission Date',
+        date_of_birth: 'Date of Birth',
+        father_name: 'Father Name',
+        father_phone: 'Father Contact No',
+        father_occupation: 'Father Occupation',
+        mother_name: 'Mother Name',
+        mother_phone: 'Mother Contact No',
+        mother_occupation: 'Mother Occupation',
+        parent_whatsapp_no: 'Parent WhatsApp No',
         parent_name: 'Parent Name',
-        parent_phone: 'Contact Phone',
+        parent_phone: 'Parent Phone',
         address: 'Residential Address',
         student_email: 'Student Email',
         parent_email: 'Parent Email',
@@ -5436,6 +6094,13 @@ function Students(){
       setOpen(false);
       setEditingStudent(null);
       setF({});
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
+        }
+      } catch {}
+      window.dispatchEvent(new Event('dashboardShouldRefresh'));
       load();
     } catch (err: any) {
       setStudentPreview(prev => ({
@@ -5503,6 +6168,13 @@ function Students(){
         });
       }
       setDeleteDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
+        }
+      } catch {}
+      window.dispatchEvent(new Event('dashboardShouldRefresh'));
     } catch (err: any) {
       setDeleteDialog(prev => ({
         ...prev,
@@ -5573,29 +6245,234 @@ function Students(){
     }
   }
 
-  async function downloadTemplate() {
-    try {
-      // Fetch from backend API — always up to date with correct columns
-      const res = await api.get('/students/template', { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'students_import_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback: build locally
-      const sample = [
-        { "First Name": "Aarav", "Last Name": "Sharma", "Full Name": "Aarav Sharma", "Admission Number": "ADM-2025-001", "Roll Number": "101", "Session": "2025-26", "Class": "Class 1", "Section": "A", "Gender": "Male", "Parent Name": "Rajesh Sharma", "Parent Phone": "9876543210", "Parent Email": "rajesh@example.com", "Student Email": "aarav@school.edu" },
-        { "First Name": "Diya",  "Last Name": "Patel",  "Full Name": "Diya Patel",   "Admission Number": "ADM-2025-002", "Roll Number": "102", "Session": "2025-26", "Class": "L-KG",    "Section": "A", "Gender": "Female", "Parent Name": "Kirit Patel",   "Parent Phone": "9876543211", "Parent Email": "kirit@example.com",  "Student Email": "" },
-        { "First Name": "Rohan", "Last Name": "Gupta",  "Full Name": "Rohan Gupta",  "Admission Number": "ADM-2025-003", "Roll Number": "103", "Session": "2025-26", "Class": "U-KG",    "Section": "B", "Gender": "Male", "Parent Name": "Manoj Gupta",   "Parent Phone": "9876543212", "Parent Email": "manoj@example.com", "Student Email": "" },
-      ];
-      const ws = XLSX.utils.json_to_sheet(sample);
-      ws['!cols'] = [14,14,20,18,14,12,12,10,12,20,16,24,26].map(wch => ({ wch }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
-      XLSX.writeFile(wb, 'students_import_template.xlsx');
+  function toIsoDate(val: any): string {
+    if (!val) return '';
+    const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const dmyMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
     }
+    if (typeof val === 'number' || (/^\d{4,5}$/.test(s) && !s.includes('-') && !s.includes('/'))) {
+      const num = Number(val);
+      if (!isNaN(num) && num > 1000 && num < 60000) {
+        const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+        if (!isNaN(date.getTime())) {
+          const y = String(date.getUTCFullYear());
+          const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(date.getUTCDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+      }
+    }
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) {
+      const y = String(dt.getFullYear());
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const d = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return s;
+  }
+
+  function prepareStudentExportData(): any[] {
+    const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : filtered;
+    return list.map((r, idx) => {
+      let fn = r.first_name || r.firstName || '';
+      let ln = r.last_name || r.lastName || '';
+      if (!fn && !ln && r.name) {
+        const parts = r.name.split(' ');
+        fn = parts[0] || '';
+        ln = parts.slice(1).join(' ') || '';
+      }
+      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || `${fn} ${ln}`.trim());
+
+      const cNum = Number(r.class_number);
+      const cId = String(r.class_id || '');
+      let classLabel = 'Class ' + (cNum || 1);
+      if (cNum === -1 || /l.?kg/i.test(cId)) classLabel = 'L-KG';
+      else if (cNum === 0 || /u.?kg/i.test(cId)) classLabel = 'U-KG';
+      else if (!isNaN(cNum) && cNum > 0) classLabel = `Class ${cNum}`;
+      else if (r.class_label || r.class_name) classLabel = String(r.class_label || r.class_name);
+
+      const secName = String(r.section_name || r.sectionName || r.section || 'A').replace(/^section\s*/i, '').trim() || 'A';
+
+      return {
+        'Roll Number': r.roll_number !== undefined && r.roll_number !== null ? String(r.roll_number) : String(idx + 101),
+        'Admission Number': r.admission_number || r.admissionNumber || '',
+        'Admission Date': toDdMmYyyy(r.admission_date || r.admissionDate),
+        'First Name': fn,
+        'Last Name': ln,
+        'Full Name': fullName,
+        'Gender': formatGender(r.gender) || '',
+        'Class': classLabel,
+        'Section': secName,
+        'Date of Birth': toDdMmYyyy(r.dob || r.date_of_birth),
+        'Academic Session': r.session || r.session_name || activeSession || '2025-26',
+        'Father Name': r.father_name || r.fatherName || '',
+        'Father Contact No': r.father_phone || r.fatherPhone || '',
+        'Father Occupation': r.father_occupation || r.fatherOccupation || '',
+        'Mother Name': r.mother_name || r.motherName || '',
+        'Mother Contact No': r.mother_phone || r.motherPhone || '',
+        'Mother Occupation': r.mother_occupation || r.motherOccupation || '',
+        'Parent WhatsApp No': r.parent_whatsapp_no || r.parentWhatsappNo || r.parent_whatsapp || '',
+        'Parent Email': r.parent_email || r.parentEmail || '',
+        'Student Email': r.student_email || r.email || '',
+        'Status': r.is_active !== false ? 'Active' : 'Inactive'
+      };
+    });
+  }
+
+  function handleExportStudentsExcel() {
+    const data = prepareStudentExportData();
+    if (!data.length) {
+      alert('No student records found to export for current selection/filters.');
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [12, 16, 14, 14, 14, 20, 10, 12, 10, 14, 14, 18, 16, 16, 18, 16, 16, 18, 22, 22, 10].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (classFilter ? `Class_${classFilter}` : 'All');
+    XLSX.writeFile(wb, `Students_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  function handleExportStudentsCSV() {
+    const data = prepareStudentExportData();
+    if (!data.length) {
+      alert('No student records found to export for current selection/filters.');
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(data);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (classFilter ? `Class_${classFilter}` : 'All');
+    link.setAttribute('download', `Students_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function downloadTemplate() {
+    const sample = [
+      { 
+        "First Name": "Aarav", 
+        "Last Name": "Sharma", 
+        "Full Name": "Aarav Sharma", 
+        "Admission Number": "ADM-2025-001", 
+        "Admission Date": "2025-04-01",
+        "Roll Number": "101", 
+        "Session": "2025-26", 
+        "Class": "Class 1", 
+        "Section": "A", 
+        "Date of Birth": "2019-05-15",
+        "Gender": "Male", 
+        "Father Name": "Rajesh Sharma", 
+        "Father Contact No": "9876543210", 
+        "Father Occupation": "Business",
+        "Mother Name": "Sunita Sharma",
+        "Mother Contact No": "9876543219",
+        "Mother Occupation": "Teacher",
+        "Parent WhatsApp No": "9876543210",
+        "Parent Email": "rajesh@example.com", 
+        "Student Email": "aarav@school.edu" 
+      },
+      { 
+        "First Name": "Diya",  
+        "Last Name": "Patel",  
+        "Full Name": "Diya Patel",   
+        "Admission Number": "ADM-2025-002", 
+        "Admission Date": "2025-04-01",
+        "Roll Number": "102", 
+        "Session": "2025-26", 
+        "Class": "L-KG",    
+        "Section": "A", 
+        "Date of Birth": "2021-08-20",
+        "Gender": "Female", 
+        "Father Name": "Kirit Patel",   
+        "Father Contact No": "9876543211", 
+        "Father Occupation": "Engineer",
+        "Mother Name": "Bhavna Patel",
+        "Mother Contact No": "9876543218",
+        "Mother Occupation": "Doctor",
+        "Parent WhatsApp No": "9876543211",
+        "Parent Email": "kirit@example.com",  
+        "Student Email": "" 
+      },
+      { 
+        "First Name": "Rohan", 
+        "Last Name": "Gupta",  
+        "Full Name": "Rohan Gupta",  
+        "Admission Number": "ADM-2025-003", 
+        "Admission Date": "2025-04-02",
+        "Roll Number": "103", 
+        "Session": "2025-26", 
+        "Class": "U-KG",    
+        "Section": "B", 
+        "Date of Birth": "2020-11-10",
+        "Gender": "Male", 
+        "Father Name": "Manoj Gupta",   
+        "Father Contact No": "9876543212", 
+        "Father Occupation": "Civil Servant",
+        "Mother Name": "Rekha Gupta",
+        "Mother Contact No": "9876543217",
+        "Mother Occupation": "Home Maker",
+        "Parent WhatsApp No": "9876543212",
+        "Parent Email": "manoj@example.com", 
+        "Student Email": "" 
+      },
+      { 
+        "First Name": "Amit", 
+        "Last Name": "Verma",  
+        "Full Name": "Amit Verma",  
+        "Admission Number": "ADM-2025-004", 
+        "Admission Date": "2025-04-05",
+        "Roll Number": "104", 
+        "Session": "2025-26", 
+        "Class": "Class 2",    
+        "Section": "A", 
+        "Date of Birth": "2018-02-14",
+        "Gender": "Male", 
+        "Father Name": "Sunil Verma",   
+        "Father Contact No": "9876543213", 
+        "Father Occupation": "Banker",
+        "Mother Name": "Pooja Verma",
+        "Mother Contact No": "9876543216",
+        "Mother Occupation": "Architect",
+        "Parent WhatsApp No": "9876543213",
+        "Parent Email": "sunil@example.com", 
+        "Student Email": "" 
+      },
+      { 
+        "First Name": "Ananya", 
+        "Last Name": "Singh",  
+        "Full Name": "Ananya Singh",  
+        "Admission Number": "ADM-2025-005", 
+        "Admission Date": "2025-04-05",
+        "Roll Number": "105", 
+        "Session": "2025-26", 
+        "Class": "Class 3",    
+        "Section": "B", 
+        "Date of Birth": "2017-06-30",
+        "Gender": "Female", 
+        "Father Name": "Sanjay Singh",   
+        "Father Contact No": "9876543214", 
+        "Father Occupation": "Professor",
+        "Mother Name": "Meena Singh",
+        "Mother Contact No": "9876543215",
+        "Mother Occupation": "Scientist",
+        "Parent WhatsApp No": "9876543214",
+        "Parent Email": "sanjay@example.com", 
+        "Student Email": "" 
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [14, 14, 20, 18, 16, 14, 12, 12, 10, 16, 12, 20, 18, 18, 20, 18, 18, 20, 24, 26].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
+    XLSX.writeFile(wb, 'students_import_template.xlsx');
   }
 
   function formatBytes(bytes: number): string {
@@ -5705,9 +6582,17 @@ function Students(){
         const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
         // Required headers validation
-        const REQUIRED = ['First Name','Last Name','Admission Number','Roll Number','Parent Name','Parent Phone'];
         const headers = Object.keys(json[0] || {});
-        const missingHeaders = REQUIRED.filter(h => !headers.some(hk => hk.trim()===h));
+        const REQUIRED_CORE = ['First Name','Last Name','Admission Number','Roll Number'];
+        const missingCore = REQUIRED_CORE.filter(h => !headers.some(hk => hk.trim().toLowerCase() === h.toLowerCase()));
+        const hasParentName = headers.some(hk => /father name|parent name|mother name|guardian/i.test(hk));
+        const hasParentPhone = headers.some(hk => /father contact|father phone|parent phone|parent mobile|mother contact|mother phone|contact/i.test(hk));
+        const hasDobHeader = headers.some(hk => /date of birth|dob|birth date/i.test(hk));
+
+        const missingHeaders = [...missingCore];
+        if (!hasDobHeader) missingHeaders.push('Date of Birth');
+        if (!hasParentName) missingHeaders.push('Father Name (or Parent Name)');
+        if (!hasParentPhone) missingHeaders.push('Father Contact No (or Parent Phone)');
         if (missingHeaders.length > 0) {
           alert(`Missing required columns: ${missingHeaders.join(', ')}\n\nPlease download the sample template and use the correct column names.`);
           return;
@@ -5731,8 +6616,31 @@ function Students(){
           const fullName = rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
           const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
           const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
-          const parentName  = String(r['Parent Name']||r['parent_name']||'').trim();
-          const parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
+
+          const fatherName = String(r['Father Name'] || r['Father\'s Name'] || r['father_name'] || r['FatherName'] || '').trim();
+          const fatherPhone = String(r['Father Contact No'] || r['Father Contact'] || r['Father Phone'] || r['father_phone'] || r['FatherPhone'] || '').trim();
+          const fatherOccupation = String(r['Father Occupation'] || r['Father\'s Occupation'] || r['father_occupation'] || r['FatherOccupation'] || '').trim();
+
+          const motherName = String(r['Mother Name'] || r['Mother\'s Name'] || r['mother_name'] || r['MotherName'] || '').trim();
+          const motherPhone = String(r['Mother Contact No'] || r['Mother Contact'] || r['Mother Phone'] || r['mother_phone'] || r['MotherPhone'] || '').trim();
+          const motherOccupation = String(r['Mother Occupation'] || r['Mother\'s Occupation'] || r['mother_occupation'] || r['MotherOccupation'] || '').trim();
+
+          const rawAdmDate = r['Admission Date'] || r['admission_date'] || r['AdmissionDate'] || r['Adm Date'] || '';
+          const admissionDate = rawAdmDate ? (toIsoDate(rawAdmDate) || String(rawAdmDate)) : '';
+
+          const rawDob = r['Date of Birth'] || r['date_of_birth'] || r['DOB'] || r['dob'] || r['DateOfBirth'] || '';
+          const dob = rawDob ? (toIsoDate(rawDob) || String(rawDob)) : '';
+
+          const parentWhatsappNo = String(r['Parent WhatsApp No'] || r['Parent Whatsapp No'] || r['WhatsApp No'] || r['Whatsapp No'] || r['parent_whatsapp_no'] || r['parent_whatsapp'] || '').trim();
+
+          let parentName  = String(r['Parent Name']||r['parent_name']||'').trim();
+          if (!parentName && (fatherName || motherName)) {
+            parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || '');
+          }
+          let parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
+          if (!parentPhone && (fatherPhone || motherPhone)) {
+            parentPhone = fatherPhone || motherPhone || '';
+          }
           const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
           const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
           let rawGender = String(r['Gender']||r['gender']||r['GENDER']||r['Sex']||r['sex']||r['SEX']||r['Gender (M/F)']||r['Gender(M/F)']||r['M/F']||r['MF']||r['Sex/Gender']||r['Gen']||'').trim();
@@ -5784,7 +6692,10 @@ function Students(){
           const rowErrs: {row:number;field:string;message:string}[] = [];
           if (!firstName)       rowErrs.push({row:rowNum,field:'First Name',message:'First Name is required'});
           if (!lastName)        rowErrs.push({row:rowNum,field:'Last Name',message:'Last Name is required'});
-          if (!parentPhone)     rowErrs.push({row:rowNum,field:'Parent Phone',message:'Parent Phone is required'});
+          if (!dob)             rowErrs.push({row:rowNum,field:'Date of Birth',message:'Date of Birth is required'});
+          if (!parentPhone && !fatherPhone && !motherPhone) {
+            rowErrs.push({row:rowNum,field:'Father Contact No',message:'Father Contact No (or Parent Phone) is required'});
+          }
           if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
 
           const normAdm = admissionNumber.toLowerCase();
@@ -5839,7 +6750,47 @@ function Students(){
           }
 
           rowErrors.push(...rowErrs);
-          return { firstName, lastName, name:fullName, admissionNumber, rollNumber, gender, parentName, parentPhone, parentEmail, studentEmail, session, classId, classNumber, classLabel, sectionId, sectionName, _origRowIndex: rowNum, _errors: rowErrs };
+          return {
+            firstName,
+            lastName,
+            name: fullName,
+            admissionNumber,
+            admissionDate,
+            admission_date: admissionDate,
+            rollNumber,
+            gender,
+            dob,
+            dateOfBirth: dob,
+            date_of_birth: dob,
+            fatherName,
+            father_name: fatherName,
+            fatherPhone,
+            father_phone: fatherPhone,
+            fatherContactNo: fatherPhone,
+            fatherOccupation,
+            father_occupation: fatherOccupation,
+            motherName,
+            mother_name: motherName,
+            motherPhone,
+            mother_phone: motherPhone,
+            motherContactNo: motherPhone,
+            motherOccupation,
+            mother_occupation: motherOccupation,
+            parentWhatsappNo,
+            parent_whatsapp_no: parentWhatsappNo,
+            parentName,
+            parentPhone,
+            parentEmail,
+            studentEmail,
+            session,
+            classId,
+            classNumber,
+            classLabel,
+            sectionId,
+            sectionName,
+            _origRowIndex: rowNum,
+            _errors: rowErrs
+          };
         });
 
         setImportErrors(rowErrors);
@@ -6038,6 +6989,28 @@ function Students(){
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
           <button 
+            type="button"
+            onClick={() => setExportOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#0284c7',
+              color: '#ffffff',
+              border: '1px solid #0369a1',
+              padding: '7px 13px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            title="Export student records as Excel spreadsheet or CSV"
+            id="students-top-export-btn"
+          >
+            <Download size={16} /> Export Excel / CSV{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+          </button>
+          <button 
             onClick={() => setImportOpen(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
           >
@@ -6080,6 +7053,27 @@ function Students(){
           >
             <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setExportOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#0284c7',
+              color: '#ffffff',
+              border: '1px solid #0369a1',
+              padding: '7px 13px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontWeight: 500,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            title="Export student records as Excel spreadsheet or CSV"
+          >
+            <Download size={16} /> Export Excel / CSV{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
           </button>
         </div>
       )}
@@ -6452,7 +7446,7 @@ function Students(){
     </div>
 
     {/* Box Body (Scrollable Table Area) */}
-    <div className="directory-box-body" ref={tableBodyRef}>
+    <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'hidden' }}>
       {loading && displayedStudents.length > 0 && (
         <div style={{
           position: 'sticky',
@@ -6486,7 +7480,7 @@ function Students(){
       <table>
         <thead>
           <tr>
-            <th style={{ width: 40, textAlign: 'center' }}>
+            <th style={{ width: 36, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
                 checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
@@ -6494,22 +7488,23 @@ function Students(){
                 title="Select all on this page"
               />
             </th>
-            <th>Roll No</th>
-            <th>Adm No</th>
-            <th>Student Name</th>
-            <th>Gender</th>
-            <th>Class</th>
-            <th>Section</th>
-            <th>Student Email</th>
-            <th>Parent & Contact</th>
-            <th>Status</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Roll No</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Adm No</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Adm Date</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Student Name</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Class</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Section</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Student Email</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Parent & Contact</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+            <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && displayedStudents.length === 0 ? (
             <tr>
-              <td colSpan={12} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <td colSpan={13} style={{ textAlign: 'center', padding: '48px 24px' }}>
                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
@@ -6526,20 +7521,20 @@ function Students(){
               </td>
             </tr>
           ) : displayedStudents.length === 0 ? (
-            <tr><td colSpan={12} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
           ) : displayedStudents.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
-              <td style={{ textAlign: 'center' }}>
+              <td style={{ textAlign: 'center', width: 36 }}>
                 <input 
                   type="checkbox" 
                   checked={selectedIds.has(x.id)}
                   onChange={() => toggleSelect(x.id)}
                 />
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 <span className="roll">{x.roll_number}</span>
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 {(x.admission_number || x.admissionNumber) ? (
                   <span className="adm-no-tag">
                     {x.admission_number || x.admissionNumber}
@@ -6548,12 +7543,15 @@ function Students(){
                   <span className="muted" style={{ fontSize: 11 }}>—</span>
                 )}
               </td>
+              <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-secondary)' }}>
+                {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
+              </td>
               <td>
                 <StudentProfileHoverCard student={x} activeSession={activeSession}>
                   <b>{x.name}</b>
                 </StudentProfileHoverCard>
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 {x.gender ? (
                   <span 
                     className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
@@ -6575,7 +7573,7 @@ function Students(){
                   <span className="muted" style={{ fontSize: 12 }}>—</span>
                 )}
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 {(() => {
                   const cNum = Number(x.class_number);
                   const cId = String(x.class_id || '');
@@ -6589,7 +7587,7 @@ function Students(){
                   return 'Class ' + (cNum || 1);
                 })()}
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                   {(() => {
                     const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
@@ -6597,26 +7595,26 @@ function Students(){
                   })()}
                 </span>
               </td>
-              <td>
-                <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }}>
+              <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }} title={x.student_email || x.email || ''}>
                   {x.student_email || x.email || '—'}
                 </span>
               </td>
-              <td>
+              <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <div><b>{x.parent_name || 'Parent'}</b></div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   <code>{x.parent_sms_number}</code>
-                  {x.parent_email && <span style={{ marginLeft: 6 }}>• {x.parent_email}</span>}
+                  {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#16a34a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
                 </div>
               </td>
-              <td>
+              <td style={{ whiteSpace: 'nowrap' }}>
                 <span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`} style={{
                   padding: '3px 8px',
                   borderRadius: 999,
                   fontSize: 11,
                   fontWeight: 600
                 }}>
-                  {x.is_active !== false ? 'ACTIVE' : 'DEACTIVE'}
+                  {x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
                 </span>
               </td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -6632,7 +7630,7 @@ function Students(){
                   className="table-action-btn" 
                   onClick={() => {
                     setEditingStudent(x);
-                    const rawPhone = x.parent_sms_number || x.parentPhone || '';
+                    const rawPhone = x.father_phone || x.fatherPhone || x.parent_sms_number || x.parentPhone || '';
                     let cCode = '+91';
                     let pNum = rawPhone;
                     const cMatch = rawPhone.match(/^(\+\d{1,4})\s*(.*)$/);
@@ -6642,12 +7640,22 @@ function Students(){
                     }
                     setF({
                       name: x.name,
+                      firstName: x.first_name || (x.name || '').split(' ')[0] || '',
+                      lastName: x.last_name || (x.name || '').split(' ').slice(1).join(' ') || '',
                       rollNumber: x.roll_number,
                       admissionNumber: x.admission_number || x.admissionNumber || '',
+                      admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
                       studentEmail: x.student_email || x.email || '',
                       parentName: x.parent_name || '',
+                      fatherName: x.father_name || x.fatherName || '',
+                      fatherPhone: x.father_phone || x.fatherPhone || pNum || '',
+                      fatherOccupation: x.father_occupation || x.fatherOccupation || '',
+                      motherName: x.mother_name || x.motherName || '',
+                      motherPhone: x.mother_phone || x.motherPhone || '',
+                      motherOccupation: x.mother_occupation || x.motherOccupation || '',
                       countryCode: cCode,
                       parentSmsNumber: pNum,
+                      parentWhatsappNo: x.parent_whatsapp_no || x.parentWhatsappNo || x.parent_whatsapp || x.parentWhatsapp || '',
                       parentEmail: x.parent_email || '',
                       classId: x.class_id,
                       sectionId: x.section_id,
@@ -6886,6 +7894,30 @@ function Students(){
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Admission Date
+            </span>
+            <input
+              type="date"
+              value={f.admissionDate || f.admission_date || ''}
+              onChange={e => setF({ ...f, admissionDate: e.target.value })}
+            />
+          </label>
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+            </span>
+            <input
+              type="date"
+              required
+              value={f.dob || ''}
+              onChange={e => setF({ ...f, dob: e.target.value })}
+            />
+          </label>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           <label>Gender
             <select
               value={formatGender(f.gender) || ''}
@@ -6896,13 +7928,6 @@ function Students(){
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
-          </label>
-          <label>Date of Birth
-            <input
-              type="date"
-              value={f.dob || ''}
-              onChange={e => setF({ ...f, dob: e.target.value })}
-            />
           </label>
         </div>
         <label>Class
@@ -6981,100 +8006,160 @@ function Students(){
           />
         </label>
 
-        <label>Parent Name
-          <input
-            placeholder="Parent Name"
-            value={f.parentName || ''}
-            style={{
-              borderColor: /\d/.test(f.parentName || '') ? '#ef4444' : undefined,
-              boxShadow: /\d/.test(f.parentName || '') ? '0 0 0 1px #ef4444' : undefined
-            }}
-            onChange={e => setF({ ...f, parentName: e.target.value })}
-          />
-          {/\d/.test(f.parentName || '') && (
-            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-              Enter a string not a number
-            </span>
-          )}
-        </label>
+        {/* Father's Information */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--card-subtle, #f8fafc)',
+          borderRadius: 8,
+          border: '1px solid var(--border, #e2e8f0)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          marginTop: 4
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Father's Details</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+            <label>Father Name
+              <input
+                placeholder="Father Name"
+                value={f.fatherName || ''}
+                style={{
+                  borderColor: /\d/.test(f.fatherName || '') ? '#ef4444' : undefined,
+                  boxShadow: /\d/.test(f.fatherName || '') ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => setF({ ...f, fatherName: e.target.value })}
+              />
+              {/\d/.test(f.fatherName || '') && (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Enter a string not a number
+                </span>
+              )}
+            </label>
+            <label>Father Contact No.
+              <input
+                placeholder="10-digit mobile"
+                maxLength={10}
+                inputMode="numeric"
+                value={f.fatherPhone || ''}
+                style={{
+                  borderColor: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                  boxShadow: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => {
+                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setF({ ...f, fatherPhone: cleaned });
+                }}
+              />
+              {f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10 && (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Must be 10 digits
+                </span>
+              )}
+            </label>
+            <label>Father Occupation
+              <input
+                placeholder="Father Occupation"
+                value={f.fatherOccupation || ''}
+                onChange={e => setF({ ...f, fatherOccupation: e.target.value })}
+              />
+            </label>
+          </div>
+        </div>
 
-        <label>Parent SMS Mobile Number
-          <div className="student-mobile-row">
-            <select
-              className="student-country-select"
-              value={f.countryCode || '+91'}
-              onChange={e => setF({ ...f, countryCode: e.target.value })}
-              title="Select Country Code"
-            >
-              <option value="+91">🇮🇳 +91 (IN)</option>
-              <option value="+1">🇺🇸 +1 (US)</option>
-              <option value="+44">🇬🇧 +44 (UK)</option>
-              <option value="+971">🇦🇪 +971 (UAE)</option>
-              <option value="+966">🇸🇦 +966 (KSA)</option>
-              <option value="+65">🇸🇬 +65 (SG)</option>
-              <option value="+61">🇦🇺 +61 (AU)</option>
-              <option value="+880">🇧🇩 +880 (BD)</option>
-              <option value="+977">🇳🇵 +977 (NP)</option>
-              <option value="+94">🇱🇰 +94 (LK)</option>
-              <option value="+92">🇵🇰 +92 (PK)</option>
-              <option value="+974">🇶🇦 +974 (QA)</option>
-              <option value="+965">🇰🇼 +965 (KW)</option>
-              <option value="+968">🇴🇲 +968 (OM)</option>
-              <option value="+49">🇩🇪 +49 (DE)</option>
-              <option value="+33">🇫🇷 +33 (FR)</option>
-              <option value="+81">🇯🇵 +81 (JP)</option>
-              <option value="+86">🇨🇳 +86 (CN)</option>
-              <option value="+7">🇷🇺 +7 (RU)</option>
-              <option value="+27">🇿🇦 +27 (ZA)</option>
-              <option value="+234">🇳🇬 +234 (NG)</option>
-              <option value="+254">🇰🇪 +254 (KE)</option>
-              <option value="+55">🇧🇷 +55 (BR)</option>
-              <option value="+52">🇲🇽 +52 (MX)</option>
-              <option value="+39">🇮🇹 +39 (IT)</option>
-              <option value="+34">🇪🇸 +34 (ES)</option>
-              <option value="+31">🇳🇱 +31 (NL)</option>
-              <option value="+41">🇨🇭 +41 (CH)</option>
-              <option value="+46">🇸🇪 +46 (SE)</option>
-              <option value="+64">🇳🇿 +64 (NZ)</option>
-              <option value="+60">🇲🇾 +60 (MY)</option>
-              <option value="+62">🇮🇩 +62 (ID)</option>
-              <option value="+63">🇵🇭 +63 (PH)</option>
-              <option value="+84">🇻🇳 +84 (VN)</option>
-              <option value="+66">🇹🇭 +66 (TH)</option>
-              <option value="+20">🇪🇬 +20 (EG)</option>
-            </select>
+        {/* Mother's Information */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--card-subtle, #f8fafc)',
+          borderRadius: 8,
+          border: '1px solid var(--border, #e2e8f0)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Mother's Details</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+            <label>Mother Name
+              <input
+                placeholder="Mother Name"
+                value={f.motherName || ''}
+                style={{
+                  borderColor: /\d/.test(f.motherName || '') ? '#ef4444' : undefined,
+                  boxShadow: /\d/.test(f.motherName || '') ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => setF({ ...f, motherName: e.target.value })}
+              />
+              {/\d/.test(f.motherName || '') && (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Enter a string not a number
+                </span>
+              )}
+            </label>
+            <label>Mother Contact No.
+              <input
+                placeholder="10-digit mobile"
+                maxLength={10}
+                inputMode="numeric"
+                value={f.motherPhone || ''}
+                style={{
+                  borderColor: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                  boxShadow: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => {
+                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setF({ ...f, motherPhone: cleaned });
+                }}
+              />
+              {f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10 && (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Must be 10 digits
+                </span>
+              )}
+            </label>
+            <label>Mother Occupation
+              <input
+                placeholder="Mother Occupation"
+                value={f.motherOccupation || ''}
+                onChange={e => setF({ ...f, motherOccupation: e.target.value })}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <label>Parent WhatsApp No.
             <input
-              required
-              className="student-mobile-input"
-              placeholder="Mobile (e.g. 9876543210)"
+              placeholder="10-digit mobile"
               maxLength={10}
               inputMode="numeric"
-              value={f.parentSmsNumber || ''}
+              value={f.parentWhatsappNo || f.parent_whatsapp_no || ''}
               style={{
-                borderColor: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                boxShadow: (f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                borderColor: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                boxShadow: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
               }}
               onChange={e => {
                 const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setF({ ...f, parentSmsNumber: cleaned });
+                setF({ ...f, parentWhatsappNo: cleaned, parent_whatsapp_no: cleaned });
               }}
             />
-          </div>
-          {f.parentSmsNumber && String(f.parentSmsNumber).replace(/\D/g, '').length < 10 && (
-            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-              Must be a valid 10-digit mobile number
-            </span>
-          )}
-        </label>
-
-        <label>Parent Email Address (for Login / Absent Alerts)
-          <input
-            type="email"
-            placeholder="parent@example.com"
-            value={f.parentEmail||''}
-            onChange={e => setF({...f,parentEmail:e.target.value})}
-          />
-        </label>
+            {f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10 && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Must be 10 digits
+              </span>
+            )}
+          </label>
+          <label>Parent Email Address (for Login / Absent Alerts)
+            <input
+              type="email"
+              placeholder="parent@example.com"
+              value={f.parentEmail||''}
+              onChange={e => setF({...f,parentEmail:e.target.value})}
+            />
+          </label>
+        </div>
 
         {editingStudent && (
           <label>Account Status
@@ -7301,7 +8386,7 @@ function Students(){
                 </div>
                 <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
                 <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Full Name, Admission Number, Roll Number, Session, Class, Section, Gender, Parent Name, Parent Phone, Parent Email, Student Email</span>
+                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Admission Number, Admission Date, Roll Number, Session, Class, Section, Date of Birth, Gender, Father Name, Father Contact No, Father Occupation, Mother Name, Mother Contact No, Mother Occupation, Parent WhatsApp No, Parent Email, Student Email</span>
               </label>
               <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between' }}>
                 <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
@@ -7458,7 +8543,7 @@ function Students(){
 
               {/* ── PREVIEW TABLE ── */}
               <div className="preview-table-container" style={{ flex: 1, minHeight: 320, overflow: 'auto' }}>
-                <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', minWidth: 1400, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ width: 44, textAlign: 'center' }}>#</th>
@@ -7466,19 +8551,22 @@ function Students(){
                       <th style={{ minWidth: 120 }}>Last Name</th>
                       <th style={{ minWidth: 150 }}>Full Name</th>
                       <th style={{ minWidth: 120 }}>Adm. No.</th>
+                      <th style={{ minWidth: 110 }}>Adm. Date</th>
                       <th style={{ minWidth: 90 }}>Roll No</th>
                       <th style={{ minWidth: 110 }}>Session</th>
                       <th style={{ minWidth: 90 }}>Class</th>
                       <th style={{ minWidth: 80 }}>Section</th>
+                      <th style={{ minWidth: 110 }}>Date of Birth</th>
                       <th style={{ minWidth: 90 }}>Gender</th>
-                      <th style={{ minWidth: 130 }}>Parent Phone</th>
+                      <th style={{ minWidth: 160 }}>Father Details</th>
+                      <th style={{ minWidth: 160 }}>Mother Details</th>
                       <th style={{ minWidth: 160 }}>Student Email</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedStudentPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={15} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No students match the current search or error filter.
                         </td>
                       </tr>
@@ -7509,12 +8597,21 @@ function Students(){
                                 <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
                               )}
                             </td>
+                            <td style={{ fontSize: 12 }}>
+                              {r.admissionDate || r.admission_date || '—'}
+                            </td>
                             <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
                               <span className="roll">{r.rollNumber}</span>
                             </td>
                             <td><span style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
+                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Date of Birth') ? '#dc2626' : undefined, fontSize: 12 }}>
+                              {r.dob ? toDdMmYyyy(r.dob) : '—'}
+                              {r._errors?.filter((e:any)=>e.field==='Date of Birth').map((e:any,j:number)=>
+                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              )}
+                            </td>
                             <td>
                               {r.gender ? (
                                 <span style={{
@@ -7532,11 +8629,18 @@ function Students(){
                                 </span>
                               ) : '—'}
                             </td>
-                            <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Parent Phone') ? '#dc2626' : undefined }}>
-                              {r.parentPhone || r.parentSmsNumber || '—'}
-                              {r._errors?.filter((e:any)=>e.field==='Parent Phone').map((e:any,j:number)=>
+                            <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Father Contact No') ? '#dc2626' : undefined }}>
+                              <div><b>{r.fatherName || '—'}</b></div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>{r.fatherPhone || r.parentPhone || ''}</div>
+                              {r.fatherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.fatherOccupation}</div>}
+                              {r._errors?.filter((e:any)=>e.field==='Father Contact No').map((e:any,j:number)=>
                                 <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
                               )}
+                            </td>
+                            <td style={{ fontSize: 12 }}>
+                              <div><b>{r.motherName || '—'}</b></div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>{r.motherPhone || ''}</div>
+                              {r.motherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.motherOccupation}</div>}
                             </td>
                             <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
                           </tr>
@@ -7728,6 +8832,116 @@ function Students(){
       loading={deleteDialog.loading}
       error={deleteDialog.error}
     />
+
+    {/* ═══ STUDENT EXPORT PREVIEW MODAL ═══ */}
+    {exportOpen && (
+      <Modal title="Export Student Directory (Preview)" close={() => setExportOpen(false)}>
+        <div style={{ padding: '4px 2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {selectedIds.size > 0 
+                  ? `Exporting ${selectedIds.size} manually selected student record${selectedIds.size > 1 ? 's' : ''}`
+                  : `Exporting ${prepareStudentExportData().length} student record${prepareStudentExportData().length !== 1 ? 's' : ''} matching current filters`}
+              </div>
+              <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
+                {selectedIds.size > 0
+                  ? 'Manual selection active across student directory.'
+                  : `Filters: Class [${classFilter || 'All'}], Section [${sectionFilter || 'All'}], Gender [${genderFilter || 'All'}], Session [${activeSession || 'Current'}]${search ? `, Search ["${search}"]` : ''}`}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button 
+                type="button" 
+                onClick={handleExportStudentsExcel}
+                disabled={prepareStudentExportData().length === 0}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: prepareStudentExportData().length === 0 ? '#94a3b8' : '#10b981',
+                  color: '#ffffff',
+                  cursor: prepareStudentExportData().length === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <FileSpreadsheet size={15} /> Download Excel (.xlsx)
+              </button>
+              <button 
+                type="button" 
+                onClick={handleExportStudentsCSV}
+                disabled={prepareStudentExportData().length === 0}
+                className="btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: prepareStudentExportData().length === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <Download size={15} /> Download CSV (.csv)
+              </button>
+            </div>
+          </div>
+
+          <div className="preview-table-container" style={{ maxHeight: 380, overflowY: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Admission No</th>
+                  <th>Admission Date</th>
+                  <th>Full Name</th>
+                  <th>Gender</th>
+                  <th>Class</th>
+                  <th>Section</th>
+                  <th>Date of Birth</th>
+                  <th>Parent WhatsApp</th>
+                  <th>Father Name</th>
+                  <th>Mother Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prepareStudentExportData().slice(0, 15).map((r, i) => (
+                  <tr key={i}>
+                    <td><code>{r['Roll Number'] || '—'}</code></td>
+                    <td><code>{r['Admission Number'] || '—'}</code></td>
+                    <td>{r['Admission Date'] || '—'}</td>
+                    <td><b>{r['Full Name'] || `${r['First Name'] || ''} ${r['Last Name'] || ''}`.trim()}</b></td>
+                    <td>
+                      {r['Gender'] ? (
+                        <span className={`badge ${String(r['Gender']).toLowerCase() === 'female' ? 'role-teacher' : 'role-admin'}`} style={{ fontSize: 11 }}>
+                          {r['Gender']}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>{r['Class'] || '—'}</td>
+                    <td>{r['Section'] || '—'}</td>
+                    <td>{r['Date of Birth'] ? <code>{r['Date of Birth']}</code> : '—'}</td>
+                    <td>{r['Parent WhatsApp No'] ? <code>{r['Parent WhatsApp No']}</code> : '—'}</td>
+                    <td>{r['Father Name'] || '—'}</td>
+                    <td>{r['Mother Name'] || '—'}</td>
+                    <td><span className="badge active">{r['Status']}</span></td>
+                  </tr>
+                ))}
+                {prepareStudentExportData().length === 0 && (
+                  <tr>
+                    <td colSpan={12} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                      No student records match the selected filters or manual selection.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {prepareStudentExportData().length > 15 && (
+            <p className="muted" style={{ fontSize: 11, margin: '8px 0 0', textAlign: 'center' }}>
+              Showing first 15 of {prepareStudentExportData().length} student records in preview. Full dataset will be included in the exported file.
+            </p>
+          )}
+        </div>
+      </Modal>
+    )}
   </Layout>
 }
 
@@ -7858,6 +9072,7 @@ function Teachers(){
   const [saving,setSaving]=useState(false);
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
   const [search,setSearch]=useState('');
+  const [genderFilter,setGenderFilter]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
   const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'valid' | 'errors'>('all');
@@ -8175,7 +9390,7 @@ function Teachers(){
   }
 
   function prepareExportData(): any[] {
-    const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : (filtered.length > 0 ? filtered : rows);
+    const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : filtered;
     return list.map(r => {
       let fn = r.first_name || r.firstName || '';
       let ln = r.last_name || r.lastName || '';
@@ -8189,12 +9404,13 @@ function Teachers(){
       
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
-        'Fist Name': fn,
+        'First Name': fn,
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
         'Gender': r.gender || '',
         'Date_of_Birth': toDdMmYyyy(r.dob || r.date_of_birth),
+        'Joining_Date': toDdMmYyyy(r.joining_date || r.joiningDate),
         'Class': allocSummary !== '—' ? allocSummary : '',
         'Section': '',
         'Status': r.is_active !== false ? 'Active' : 'Inactive',
@@ -8206,20 +9422,30 @@ function Teachers(){
 
   function handleExportExcel() {
     const data = prepareExportData();
+    if (!data.length) {
+      alert('No faculty records found to export for current selection/filters.');
+      return;
+    }
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
-    XLSX.writeFile(wb, 'Faculty_Export.xlsx');
+    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (genderFilter ? `Gender_${genderFilter}` : 'All');
+    XLSX.writeFile(wb, `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function handleExportCSV() {
     const data = prepareExportData();
+    if (!data.length) {
+      alert('No faculty records found to export for current selection/filters.');
+      return;
+    }
     const ws = XLSX.utils.json_to_sheet(data);
     const csv = XLSX.utils.sheet_to_csv(ws);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'Faculty_Export.csv');
+    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (genderFilter ? `Gender_${genderFilter}` : 'All');
+    link.setAttribute('download', `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -8251,8 +9477,17 @@ function Teachers(){
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
-    if (f.dob && !isValidDdMmYyyy(f.dob)) {
+    if (!f.dob) {
+      alert('Validation Error: Date of Birth is required.');
+      return;
+    }
+    if (!isValidDdMmYyyy(f.dob)) {
       alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).');
+      return;
+    }
+    const joiningDateVal = f.joiningDate || f.joining_date;
+    if (joiningDateVal && !isValidDdMmYyyy(joiningDateVal)) {
+      alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
       return;
     }
 
@@ -8270,6 +9505,8 @@ function Teachers(){
       gender: f.gender || '',
       dob: f.dob ? toDdMmYyyy(f.dob) : '',
       date_of_birth: f.dob ? toDdMmYyyy(f.dob) : '',
+      joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
+      joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
       designation: f.designation || 'Teacher',
       is_active: f.is_active !== false,
       status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
@@ -8285,6 +9522,7 @@ function Teachers(){
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
           { label: 'Gender', value: f.gender || 'Not specified' },
           { label: 'Date of Birth', value: f.dob || 'Not specified' },
+          { label: 'Joining Date', value: f.joiningDate || f.joining_date || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
@@ -8313,6 +9551,7 @@ function Teachers(){
         employee_id: employeeId,
         gender: f.gender || '',
         dob: f.dob ? toDdMmYyyy(f.dob) : (editingTeacher.dob || editingTeacher.date_of_birth || ''),
+        joining_date: (f.joiningDate || f.joining_date) ? toDdMmYyyy(f.joiningDate || f.joining_date) : (editingTeacher.joining_date || editingTeacher.joiningDate || ''),
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
@@ -8323,6 +9562,7 @@ function Teachers(){
         employee_id: 'Employee ID',
         gender: 'Gender',
         dob: 'Date of Birth',
+        joining_date: 'Joining Date',
         mobile: 'Mobile Number',
         designation: 'Designation',
         is_active: 'Status'
@@ -8359,7 +9599,7 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, dob: payload.dob || updated.dob, date_of_birth: payload.dob || updated.dob, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, dob: payload.dob || updated.dob, date_of_birth: payload.dob || updated.dob, joining_date: payload.joining_date || updated.joining_date, joiningDate: payload.joiningDate || updated.joiningDate, is_active: payload.is_active } : r));
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -8391,6 +9631,13 @@ function Teachers(){
       setOpen(false);
       setEditingTeacher(null);
       setF({});
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
+        }
+      } catch {}
+      window.dispatchEvent(new Event('dashboardShouldRefresh'));
       load();
     } catch (err: any) {
       setTeacherPreview(prev => ({
@@ -8455,6 +9702,13 @@ function Teachers(){
         });
       }
       setDeleteTeacherDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
+        }
+      } catch {}
+      window.dispatchEvent(new Event('dashboardShouldRefresh'));
     } catch (err: any) {
       setDeleteTeacherDialog(prev => ({
         ...prev,
@@ -8475,16 +9729,19 @@ function Teachers(){
 
   const filtered = rows.filter(r => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch = !q || (
       r.name.toLowerCase().includes(q) || 
       r.email.toLowerCase().includes(q) ||
       String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
     );
+    const g = formatGender(r.gender);
+    const matchesGender = !genderFilter || g === genderFilter;
+    return matchesSearch && matchesGender;
   });
 
   useEffect(() => {
     setDirectoryPage(1);
-  }, [search]);
+  }, [search, genderFilter]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
   const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
@@ -8512,12 +9769,12 @@ function Teachers(){
 
   function downloadTemplate() {
     const sample = [
-      { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-      { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-      { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 16, 12, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -8604,6 +9861,8 @@ function Teachers(){
           }
           const rawDob = getExcelCell(r, ['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
           const dob = rawDob ? toDdMmYyyy(rawDob) : '';
+          const rawJoiningDate = getExcelCell(r, ['Joining_Date', 'JOINING_DATE', 'Joining Date', 'joining_date', 'DOJ', 'doj', 'Date of Joining', 'Date_of_Joining', 'JoiningDate', 'joiningDate']);
+          const joiningDate = rawJoiningDate ? toDdMmYyyy(rawJoiningDate) : '';
 
           const designation = getExcelCell(r, [
             'Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title'
@@ -8632,6 +9891,14 @@ function Teachers(){
           } else if (email) {
             seenMail.add(email);
           }
+          if (!dob) {
+            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth is required' });
+          } else if (!isValidDdMmYyyy(dob)) {
+            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth must be DD-MM-YYYY' });
+          }
+          if (joiningDate && !isValidDdMmYyyy(joiningDate)) {
+            rowErrs.push({ row: rowNum, field: 'Joining Date', message: 'Joining Date must be DD-MM-YYYY' });
+          }
           if (rawMobile && rawMobile.length !== 10) {
             rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
           }
@@ -8648,6 +9915,8 @@ function Teachers(){
             mobile,
             gender,
             dob,
+            joiningDate,
+            joining_date: joiningDate,
             designation,
             status,
             class: className,
@@ -8786,6 +10055,28 @@ function Teachers(){
           <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
         </button>
         <button 
+          type="button"
+          onClick={() => setExportOpen(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#0284c7',
+            color: '#ffffff',
+            border: '1px solid #0369a1',
+            padding: '7px 13px',
+            borderRadius: 'var(--radius-sm, 6px)',
+            fontSize: 13,
+            cursor: 'pointer',
+            fontWeight: 500,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }}
+          title="Export faculty records as Excel spreadsheet or CSV"
+          id="teachers-top-export-btn"
+        >
+          <Download size={16} /> Export Excel / CSV{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+        </button>
+        <button 
           onClick={() => setImportOpen(true)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
           title="Import teachers via Excel spreadsheet or CSV with interactive preview"
@@ -8871,12 +10162,49 @@ function Teachers(){
       )}
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
-      <input 
-        placeholder="🔍 Search teacher name, email, or employee ID..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 460, width: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
-      />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', flexShrink: 0 }}>
+          <input 
+            placeholder="🔍 Search teacher name, email, or employee ID..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: 280, maxWidth: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
+            id="teacher-search-input"
+          />
+          <select 
+            value={genderFilter} 
+            onChange={e => setGenderFilter(e.target.value)}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              fontSize: 13,
+              cursor: 'pointer',
+              minWidth: 115,
+              flexShrink: 0,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            aria-label="Filter teachers by gender"
+            id="teacher-gender-filter"
+          >
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          {(search || genderFilter) && (
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => { setSearch(''); setGenderFilter(''); }}
+              style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
+              title="Clear active search and filters"
+              id="clear-teacher-filters-btn"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {/* Refresh Button */}
@@ -9004,7 +10332,7 @@ function Teachers(){
       <table>
         <thead>
           <tr>
-            <th style={{ width: 40, textAlign: 'center' }}>
+            <th style={{ width: 36, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
                 checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
@@ -9012,21 +10340,22 @@ function Teachers(){
                 title="Select all on this page"
               />
             </th>
-            <th>Employee Id/Savior_NO</th>
-            <th>Teacher Name</th>
-            <th>Gender</th>
-            <th>Designation</th>
-            <th>Assigned Classes</th>
-            <th>Email</th>
-            <th>Mobile</th>
-            <th>Status</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Employee Id / Savior_NO</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Assigned Classes</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Email</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
+            <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+            <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading && displayedTeachers.length === 0 ? (
             <tr>
-              <td colSpan={10} style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
@@ -9043,21 +10372,24 @@ function Teachers(){
               </td>
             </tr>
           ) : displayedTeachers.length === 0 ? (
-            <tr><td colSpan={10} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
           ) : displayedTeachers.map(x => (
             <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
-              <td style={{ textAlign: 'center' }}>
+              <td style={{ textAlign: 'center', width: 36 }}>
                 <input 
                   type="checkbox" 
                   checked={selectedIds.has(x.id)}
                   onChange={() => toggleSelect(x.id)}
                 />
               </td>
-              <td><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
+              <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
                 <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
                   <b>{x.name}</b>
                 </TeacherProfileHoverCard>
+              </td>
+              <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                {toDdMmYyyy(x.joining_date || x.joiningDate) || '—'}
               </td>
               <td>
                 {x.gender ? (
@@ -9084,18 +10416,20 @@ function Teachers(){
               <td>
                 <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{x.designation || 'Teacher'}</span>
               </td>
-              <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
               </td>
-              <td>{x.email}</td>
-              <td>{x.mobile || '—'}</td>
+              <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.email}>
+                {x.email}
+              </td>
+              <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>{x.mobile || '—'}</td>
               <td><span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`}>{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
               <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button
                   className="table-action-btn"
                   onClick={() => openAllocModal(x)}
                   title="Manage teaching allocations"
-                  style={{ marginRight: 6, color: '#7c3aed' }}
+                  style={{ marginRight: 4, color: '#7c3aed' }}
                 >
                   <BookOpen size={14} />
                 </button>
@@ -9110,13 +10444,15 @@ function Teachers(){
                       mobile: x.mobile || x.phone || '',
                       gender: formatGender(x.gender) || '',
                       dob: toDdMmYyyy(x.dob || x.date_of_birth),
+                      joiningDate: toDdMmYyyy(x.joining_date || x.joiningDate),
+                      joining_date: toDdMmYyyy(x.joining_date || x.joiningDate),
                       designation: x.designation || 'Teacher',
                       is_active: x.is_active !== false
                     });
                     setOpen(true);
                   }}
                   title="Edit teacher profile"
-                  style={{ marginRight: 6, color: '#0d9488' }}
+                  style={{ marginRight: 4, color: '#0d9488' }}
                 >
                   <Pencil size={14} />
                 </button>
@@ -9124,7 +10460,7 @@ function Teachers(){
                   className="table-action-btn" 
                   onClick={() => sendTeacherResetEmail(x)}
                   title="Send password setup / reset email"
-                  style={{ marginRight: 6, color: '#2563eb' }}
+                  style={{ marginRight: 4, color: '#2563eb' }}
                 >
                   <KeyRound size={14} />
                 </button>
@@ -9341,9 +10677,13 @@ function Teachers(){
               <option value="Other">Other</option>
             </select>
           </label>
-          <label>Date of Birth <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Date of Birth <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+            </span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
               <input
+                required
                 type="text"
                 placeholder="DD-MM-YYYY (e.g. 15-08-1990)"
                 maxLength={10}
@@ -9356,7 +10696,7 @@ function Teachers(){
                   width: '100%',
                   padding: '8px 34px 8px 10px',
                   borderRadius: 6,
-                  border: `1px solid ${f.dob && !isValidDdMmYyyy(f.dob) ? '#ef4444' : 'var(--border)'}`,
+                  border: `1px solid ${(!f.dob || (f.dob && !isValidDdMmYyyy(f.dob))) ? '#ef4444' : 'var(--border)'}`,
                   boxSizing: 'border-box'
                 }}
               />
@@ -9404,8 +10744,72 @@ function Teachers(){
           </label>
         </div>
 
-        {/* Row 2: Designation & Mobile Number */}
+        {/* Row 2: Joining Date & Designation */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Joining Date <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+            </span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
+              <input
+                type="text"
+                placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
+                maxLength={10}
+                value={f.joiningDate || f.joining_date || ''}
+                onChange={e => {
+                  const formatted = formatDdMmYyyyInput(e.target.value, f.joiningDate || f.joining_date || '');
+                  setF({ ...f, joiningDate: formatted, joining_date: formatted });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 34px 8px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) ? '#ef4444' : 'var(--border)'}`,
+                  boxSizing: 'border-box'
+                }}
+              />
+              <input
+                type="date"
+                title="Select from date picker"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 38,
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer',
+                  zIndex: 2
+                }}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {}
+                }}
+                onChange={e => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split('-');
+                    setF({ ...f, joiningDate: `${d}-${m}-${y}`, joining_date: `${d}-${m}-${y}` });
+                  }
+                }}
+              />
+              <Calendar
+                size={16}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  color: '#64748b',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+            {(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
+              </span>
+            )}
+          </label>
           <label>Designation
             <input
               placeholder="e.g. Senior Teacher, TGT Mathematics"
@@ -9414,30 +10818,32 @@ function Teachers(){
               style={{ width: '100%', boxSizing: 'border-box' }}
             />
           </label>
-          <label>Mobile Number
-            <input
-              placeholder="10-digit mobile number"
-              maxLength={10}
-              inputMode="numeric"
-              value={f.mobile||''}
-              onChange={e => {
-                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setF({ ...f, mobile: cleaned });
-              }}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
-                boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
-              }}
-            />
-            {f.mobile && f.mobile.length < 10 && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Must be a valid 10-digit mobile number
-              </span>
-            )}
-          </label>
         </div>
+
+        {/* Row 3: Mobile Number */}
+        <label style={{ display: 'block' }}>Mobile Number
+          <input
+            placeholder="10-digit mobile number"
+            maxLength={10}
+            inputMode="numeric"
+            value={f.mobile||''}
+            onChange={e => {
+              const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+              setF({ ...f, mobile: cleaned });
+            }}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
+              boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+            }}
+          />
+          {f.mobile && f.mobile.length < 10 && (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Must be a valid 10-digit mobile number
+            </span>
+          )}
+        </label>
 
         {editingTeacher && (
           <label>Account Status
@@ -9827,6 +11233,7 @@ function Teachers(){
                       <th style={{ minWidth: 180 }}>Email ID</th>
                       <th style={{ minWidth: 90 }}>Gender</th>
                       <th style={{ minWidth: 110 }}>Date of Birth</th>
+                      <th style={{ minWidth: 110 }}>Joining Date</th>
                       <th style={{ minWidth: 130 }}>Designation</th>
                       <th style={{ minWidth: 140 }}>Class & Section</th>
                       <th style={{ minWidth: 100 }}>Status</th>
@@ -9836,7 +11243,7 @@ function Teachers(){
                   <tbody>
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No teachers match the current search or error filter.
                         </td>
                       </tr>
@@ -9889,7 +11296,18 @@ function Teachers(){
                                 </span>
                               ) : '—'}
                             </td>
-                            <td>{r.dob || '—'}</td>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#dc2626' : undefined }}>
+                              {r.dob || '—'}
+                              {r._errors?.filter((e: any) => e.field === 'Date of Birth').map((e: any, j: number) => (
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                              ))}
+                            </td>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#dc2626' : undefined }}>
+                              {r.joiningDate || r.joining_date || '—'}
+                              {r._errors?.filter((e: any) => e.field === 'Joining Date').map((e: any, j: number) => (
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                              ))}
+                            </td>
                             <td>{r.designation || 'Teacher'}</td>
                             <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
                             <td><span className="badge active">{r.status || 'Active'}</span></td>
@@ -10074,53 +11492,72 @@ function Teachers(){
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
-              Previewing <b>{prepareExportData().length}</b> faculty records for export
+              {selectedIds.size > 0 
+                ? `Exporting ${selectedIds.size} manually selected faculty record${selectedIds.size > 1 ? 's' : ''}`
+                : `Exporting ${prepareExportData().length} faculty record${prepareExportData().length !== 1 ? 's' : ''} matching current filters`}
             </div>
             <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
-              Formatted with standardized template headers: Savior_No, Fist Name, Last Name, Full Name(Automatically generated), Email_id, Gender, Date_of_Birth, Class, Section, Status, Designation
+              {selectedIds.size > 0
+                ? 'Manual selection active across faculty directory.'
+                : `Filters: Gender [${genderFilter || 'All'}]${search ? `, Search ["${search}"]` : ''}`}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button 
               type="button" 
               onClick={handleExportExcel}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
+              disabled={prepareExportData().length === 0}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: prepareExportData().length === 0 ? '#94a3b8' : '#10b981',
+                color: '#ffffff',
+                cursor: prepareExportData().length === 0 ? 'not-allowed' : 'pointer'
+              }}
             >
               <FileSpreadsheet size={15} /> Download Excel (.xlsx)
             </button>
             <button 
               type="button" 
               onClick={handleExportCSV}
+              disabled={prepareExportData().length === 0}
               className="btn-secondary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: prepareExportData().length === 0 ? 'not-allowed' : 'pointer'
+              }}
             >
               <Download size={15} /> Download CSV (.csv)
             </button>
           </div>
         </div>
 
-        <div className="preview-table-container" style={{ maxHeight: 360, overflowY: 'auto' }}>
+        <div className="preview-table-container" style={{ maxHeight: 380, overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>
                 <th>Savior_No</th>
-                <th>Fist Name</th>
+                <th>First Name</th>
                 <th>Last Name</th>
-                <th>Full Name(Automatically generated)</th>
+                <th>Full Name</th>
                 <th>Email_id</th>
                 <th>Gender</th>
                 <th>Date of Birth</th>
-                <th>Class</th>
-                <th>Section</th>
+                <th>Joining Date</th>
+                <th>Class / Allocation</th>
                 <th>Status</th>
                 <th>Designation</th>
+                <th>Mobile</th>
               </tr>
             </thead>
             <tbody>
               {prepareExportData().slice(0, 15).map((r, i) => (
                 <tr key={i}>
                   <td><code>{r['Savior_No'] || '—'}</code></td>
-                  <td>{r['Fist Name'] || '—'}</td>
+                  <td>{r['First Name'] || '—'}</td>
                   <td>{r['Last Name'] || '—'}</td>
                   <td><b>{r['Full Name(Automatically generated)']}</b></td>
                   <td>{r['Email_id']}</td>
@@ -10132,12 +11569,20 @@ function Teachers(){
                     ) : '—'}
                   </td>
                   <td>{r['Date_of_Birth'] ? <code>{r['Date_of_Birth']}</code> : '—'}</td>
+                  <td>{r['Joining_Date'] ? <code>{r['Joining_Date']}</code> : '—'}</td>
                   <td>{r['Class'] || '—'}</td>
-                  <td>{r['Section'] || '—'}</td>
                   <td><span className="badge active">{r['Status']}</span></td>
                   <td>{r['Designation']}</td>
+                  <td>{r['Mobile'] ? <code>{r['Mobile']}</code> : '—'}</td>
                 </tr>
               ))}
+              {prepareExportData().length === 0 && (
+                <tr>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                    No faculty records match the selected filters or manual selection.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -10192,7 +11637,21 @@ function sectionLabelToIndex(label: string): number | null {
 function Classes(){
   const {user}=useAuth();
   const {dark}=useTheme();
-  const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>('CLASSES');
+  const loc = useLocation();
+  const nav = useNavigate();
+  const searchParams = new URLSearchParams(loc.search);
+  const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>(
+    searchParams.get('tab') === 'mentors' ? 'MENTORS' : 'CLASSES'
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(loc.search);
+    if (params.get('tab') === 'mentors') {
+      setActiveTab('MENTORS');
+    } else if (params.get('tab') === 'classes') {
+      setActiveTab('CLASSES');
+    }
+  }, [loc.search]);
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
@@ -10523,7 +11982,10 @@ function Classes(){
       <button
         type="button"
         className={`student-tab-btn as-classes-tab-btn ${activeTab === 'CLASSES' ? 'active' : ''}`}
-        onClick={() => setActiveTab('CLASSES')}
+        onClick={() => {
+          setActiveTab('CLASSES');
+          nav('/classes', { replace: true });
+        }}
         style={{
           color: activeTab === 'CLASSES' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
           backgroundColor: activeTab === 'CLASSES' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
@@ -10536,7 +11998,10 @@ function Classes(){
       <button
         type="button"
         className={`student-tab-btn as-classes-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
-        onClick={() => setActiveTab('MENTORS')}
+        onClick={() => {
+          setActiveTab('MENTORS');
+          nav('/classes?tab=mentors', { replace: true });
+        }}
         style={{
           color: activeTab === 'MENTORS' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
           backgroundColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),

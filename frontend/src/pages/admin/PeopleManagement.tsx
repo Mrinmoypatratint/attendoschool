@@ -307,8 +307,17 @@ export default function PeopleManagement() {
   // Teacher Addition
   async function handleAddTeacher(e: React.FormEvent) {
     e.preventDefault();
-    if (teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob)) {
+    if (!teacherForm.dob) {
+      alert('Validation Error: Date of Birth is required.');
+      return;
+    }
+    if (!isValidDdMmYyyy(teacherForm.dob)) {
       alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).');
+      return;
+    }
+    const joiningDateVal = teacherForm.joiningDate || teacherForm.joining_date;
+    if (joiningDateVal && !isValidDdMmYyyy(joiningDateVal)) {
+      alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
       return;
     }
     setSavingTeacher(true);
@@ -325,7 +334,9 @@ export default function PeopleManagement() {
         employeeId: teacherForm.employeeId || teacherForm.saviorNo,
         gender: teacherForm.gender || '',
         dob: teacherForm.dob ? toDdMmYyyy(teacherForm.dob) : '',
-        date_of_birth: teacherForm.dob ? toDdMmYyyy(teacherForm.dob) : ''
+        date_of_birth: teacherForm.dob ? toDdMmYyyy(teacherForm.dob) : '',
+        joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
+        joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : ''
       };
 
       const res = await api.post('/teachers', payload);
@@ -353,12 +364,12 @@ export default function PeopleManagement() {
   // Teacher Bulk Template Download
   function downloadTeacherTemplate() {
     const sample = [
-      { "Savior_No": "EMP010", "Fist Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-      { "Savior_No": "EMP011", "Fist Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-      { "Savior_No": "EMP012", "Fist Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 16, 12, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -446,6 +457,8 @@ export default function PeopleManagement() {
           }
           const rawDob = getExcelCell(r, ['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
           const dob = rawDob ? toDdMmYyyy(rawDob) : '';
+          const rawJoiningDate = getExcelCell(r, ['Joining_Date', 'JOINING_DATE', 'Joining Date', 'joining_date', 'DOJ', 'doj', 'Date of Joining', 'Date_of_Joining', 'JoiningDate', 'joiningDate']);
+          const joiningDate = rawJoiningDate ? toDdMmYyyy(rawJoiningDate) : '';
 
           const designation = getExcelCell(r, [
             'Designation', 'DESIGNATION', 'designation', 'Role', 'ROLE', 'role', 'Post', 'POST', 'post', 'Job Title'
@@ -474,6 +487,14 @@ export default function PeopleManagement() {
           } else if (email) {
             seenMail.add(email);
           }
+          if (!dob) {
+            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth is required' });
+          } else if (!isValidDdMmYyyy(dob)) {
+            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth must be DD-MM-YYYY' });
+          }
+          if (joiningDate && !isValidDdMmYyyy(joiningDate)) {
+            rowErrs.push({ row: rowNum, field: 'Joining Date', message: 'Joining Date must be DD-MM-YYYY' });
+          }
           if (rawMobile && rawMobile.length !== 10) {
             rowErrs.push({ row: rowNum, field: 'Mobile', message: `Mobile must be 10 digits (${rawMobile.length} given)` });
           }
@@ -490,6 +511,8 @@ export default function PeopleManagement() {
             mobile,
             gender,
             dob,
+            joiningDate,
+            joining_date: joiningDate,
             designation,
             status,
             class: className,
@@ -1255,9 +1278,10 @@ export default function PeopleManagement() {
                       <option value="Other">Other</option>
                     </select>
                   </label>
-                  <label>Date of Birth <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                  <label>Date of Birth <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
                       <input
+                        required
                         type="text"
                         placeholder="DD-MM-YYYY (e.g. 15-08-1990)"
                         maxLength={10}
@@ -1270,7 +1294,7 @@ export default function PeopleManagement() {
                           width: '100%',
                           padding: '8px 34px 8px 10px',
                           borderRadius: 6,
-                          border: `1px solid ${teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob) ? '#ef4444' : 'var(--border)'}`,
+                          border: `1px solid ${(!teacherForm.dob || (teacherForm.dob && !isValidDdMmYyyy(teacherForm.dob))) ? '#ef4444' : 'var(--border)'}`,
                           boxSizing: 'border-box'
                         }}
                       />
@@ -1318,8 +1342,69 @@ export default function PeopleManagement() {
                   </label>
                 </div>
 
-                {/* Row 2: Designation & Mobile Number */}
+                {/* Row 2: Joining Date & Designation */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label>Joining Date <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
+                      <input
+                        type="text"
+                        placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
+                        maxLength={10}
+                        value={teacherForm.joiningDate || teacherForm.joining_date || ''}
+                        onChange={e => {
+                          const formatted = formatDdMmYyyyInput(e.target.value, teacherForm.joiningDate || teacherForm.joining_date || '');
+                          setTeacherForm({ ...teacherForm, joiningDate: formatted, joining_date: formatted });
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 34px 8px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${(teacherForm.joiningDate || teacherForm.joining_date) && !isValidDdMmYyyy(teacherForm.joiningDate || teacherForm.joining_date) ? '#ef4444' : 'var(--border)'}`,
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <input
+                        type="date"
+                        title="Select from date picker"
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 38,
+                          height: '100%',
+                          opacity: 0,
+                          cursor: 'pointer',
+                          zIndex: 2
+                        }}
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {}
+                        }}
+                        onChange={e => {
+                          if (e.target.value) {
+                            const [y, m, d] = e.target.value.split('-');
+                            setTeacherForm({ ...teacherForm, joiningDate: `${d}-${m}-${y}`, joining_date: `${d}-${m}-${y}` });
+                          }
+                        }}
+                      />
+                      <Calendar
+                        size={16}
+                        style={{
+                          position: 'absolute',
+                          right: 10,
+                          color: '#64748b',
+                          pointerEvents: 'none'
+                        }}
+                      />
+                    </div>
+                    {(teacherForm.joiningDate || teacherForm.joining_date) && !isValidDdMmYyyy(teacherForm.joiningDate || teacherForm.joining_date) && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
+                      </span>
+                    )}
+                  </label>
                   <label>Designation
                     <input
                       placeholder="e.g. Senior Teacher, TGT Science"
@@ -1328,6 +1413,10 @@ export default function PeopleManagement() {
                       style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                   </label>
+                </div>
+
+                {/* Row 3: Mobile Number & Qualification */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <label>Mobile Number
                     <input
                       placeholder="10-digit mobile number"
@@ -1351,17 +1440,15 @@ export default function PeopleManagement() {
                       </span>
                     )}
                   </label>
+                  <label>Qualification
+                    <input
+                      placeholder="e.g. M.Sc, B.Ed"
+                      value={teacherForm.qualification || ''}
+                      onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </label>
                 </div>
-
-                {/* Row 3: Qualification */}
-                <label>Qualification
-                  <input
-                    placeholder="e.g. M.Sc, B.Ed"
-                    value={teacherForm.qualification || ''}
-                    onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
-                    style={{ width: '100%', boxSizing: 'border-box' }}
-                  />
-                </label>
 
                 {/* Automatic Email Notice */}
                 <div style={{
@@ -1394,6 +1481,10 @@ export default function PeopleManagement() {
                       }
                       if (!teacherForm.email) { alert('Please enter Email Address.'); return; }
                       if (!(teacherForm.employeeId || teacherForm.saviorNo)) { alert('Please enter Employee Id/Savior_NO.'); return; }
+                      if (!teacherForm.dob) { alert('Please enter Date of Birth.'); return; }
+                      if (!isValidDdMmYyyy(teacherForm.dob)) { alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).'); return; }
+                      const jVal = teacherForm.joiningDate || teacherForm.joining_date;
+                      if (jVal && !isValidDdMmYyyy(jVal)) { alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).'); return; }
                       setAddTeacherPreview(true);
                     }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -1465,6 +1556,10 @@ export default function PeopleManagement() {
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Date of Birth</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.dob || 'Not Specified'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Joining Date</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.joiningDate || teacherForm.joining_date || 'Not Specified'}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Mobile Contact</div>
@@ -1768,6 +1863,7 @@ export default function PeopleManagement() {
                         <th>Email ID</th>
                         <th>Gender</th>
                         <th>Date of Birth</th>
+                        <th>Joining Date</th>
                         <th>Designation</th>
                         <th>Class & Section</th>
                         <th>Status</th>
@@ -1777,7 +1873,7 @@ export default function PeopleManagement() {
                     <tbody>
                       {displayedTeacherPreviewRows.length === 0 ? (
                         <tr>
-                          <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                             No teachers match the current search or error filter.
                           </td>
                         </tr>
@@ -1827,7 +1923,18 @@ export default function PeopleManagement() {
                                   </span>
                                 ) : '—'}
                               </td>
-                              <td>{r.dob || '—'}</td>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#dc2626' : undefined }}>
+                                {r.dob || '—'}
+                                {r._errors?.filter((e: any) => e.field === 'Date of Birth').map((e: any, j: number) => (
+                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                ))}
+                              </td>
+                              <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#dc2626' : undefined }}>
+                                {r.joiningDate || r.joining_date || '—'}
+                                {r._errors?.filter((e: any) => e.field === 'Joining Date').map((e: any, j: number) => (
+                                  <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
+                                ))}
+                              </td>
                               <td>{r.designation || 'Teacher'}</td>
                               <td>{r.class ? `${r.class} — Sec ${r.section}` : '—'}</td>
                               <td><span className="badge active">{r.status || 'Active'}</span></td>

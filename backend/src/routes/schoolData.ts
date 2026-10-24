@@ -667,6 +667,9 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
   const q=await pool.query(`SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,st.gender,st.date_of_birth,st.address,st.created_at,
   st.academic_year_id, ay.name AS session_name,
   COALESCE(st.is_active, true) AS is_active,
+  st.father_name, st.father_phone, st.father_occupation,
+  st.mother_name, st.mother_phone, st.mother_occupation,
+  st.parent_whatsapp, st.admission_date,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
   LEFT JOIN classes c ON c.id=st.class_id 
@@ -687,6 +690,22 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         full_name: st.name,
         rollNumber: st.roll_number,
         admissionNumber: st.admission_number,
+        admission_date: st.admission_date ? new Date(st.admission_date).toISOString().slice(0, 10) : '',
+        admissionDate: st.admission_date ? new Date(st.admission_date).toISOString().slice(0, 10) : '',
+        father_name: st.father_name || '',
+        fatherName: st.father_name || '',
+        father_phone: st.father_phone || '',
+        fatherPhone: st.father_phone || '',
+        father_occupation: st.father_occupation || '',
+        fatherOccupation: st.father_occupation || '',
+        mother_name: st.mother_name || '',
+        motherName: st.mother_name || '',
+        mother_phone: st.mother_phone || '',
+        motherPhone: st.mother_phone || '',
+        mother_occupation: st.mother_occupation || '',
+        motherOccupation: st.mother_occupation || '',
+        parent_whatsapp: st.parent_whatsapp || '',
+        parentWhatsapp: st.parent_whatsapp || '',
         student_email: st.student_email || st.email,
         email: st.student_email || st.email,
         parent_email: st.parent_email,
@@ -827,14 +846,119 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
 r.get('/students/template', ...reader, (_req, res) => {
   const XLSX = require('xlsx');
   const sample = [
-    { 'First Name': 'Aarav',  'Last Name': 'Sharma',  'Full Name': 'Aarav Sharma',  'Admission Number': 'ADM-2025-001', 'Roll Number': '101', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Gender': 'Male', 'Parent Name': 'Rajesh Sharma', 'Parent Phone': '9876543210', 'Parent Email': 'rajesh@example.com', 'Student Email': 'aarav@school.edu' },
-    { 'First Name': 'Diya',   'Last Name': 'Patel',   'Full Name': 'Diya Patel',    'Admission Number': 'ADM-2025-002', 'Roll Number': '102', 'Session': '2025-26', 'Class': 'Class 1', 'Section': 'A', 'Gender': 'Female', 'Parent Name': 'Kirit Patel',   'Parent Phone': '9876543211', 'Parent Email': 'kirit@example.com',  'Student Email': 'diya@school.edu' },
-    { 'First Name': 'Rohan',  'Last Name': 'Gupta',   'Full Name': 'Rohan Gupta',   'Admission Number': 'ADM-2025-003', 'Roll Number': '103', 'Session': '2025-26', 'Class': 'Class 2', 'Section': 'B', 'Gender': 'Male', 'Parent Name': 'Manoj Gupta',   'Parent Phone': '9876543212', 'Parent Email': 'manoj@example.com', 'Student Email': 'rohan@school.edu' },
-    { 'First Name': 'L-KG',   'Last Name': 'Example', 'Full Name': 'L-KG Example',  'Admission Number': 'ADM-2025-004', 'Roll Number': '104', 'Session': '2025-26', 'Class': 'L-KG',    'Section': 'A', 'Gender': 'Female', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543213', 'Parent Email': 'p@example.com',    'Student Email': '' },
-    { 'First Name': 'U-KG',   'Last Name': 'Example', 'Full Name': 'U-KG Example',  'Admission Number': 'ADM-2025-005', 'Roll Number': '105', 'Session': '2025-26', 'Class': 'U-KG',    'Section': 'B', 'Gender': 'Male', 'Parent Name': 'Parent Name',   'Parent Phone': '9876543214', 'Parent Email': 'p2@example.com',   'Student Email': '' },
+    { 
+      'First Name': 'Aarav',  
+      'Last Name': 'Sharma',  
+      'Full Name': 'Aarav Sharma',  
+      'Admission Number': 'ADM-2025-001', 
+      'Admission Date': '2025-04-01',
+      'Roll Number': '101', 
+      'Session': '2025-26', 
+      'Class': 'Class 1', 
+      'Section': 'A', 
+      'Date of Birth': '2019-05-15',
+      'Gender': 'Male', 
+      'Father Name': 'Rajesh Sharma', 
+      'Father Contact No': '9876543210', 
+      'Father Occupation': 'Business',
+      'Mother Name': 'Sunita Sharma',
+      'Mother Contact No': '9876543219',
+      'Mother Occupation': 'Teacher',
+      'Parent WhatsApp No': '9876543210',
+      'Parent Email': 'rajesh@example.com', 
+      'Student Email': 'aarav@school.edu' 
+    },
+    { 
+      'First Name': 'Diya',   
+      'Last Name': 'Patel',   
+      'Full Name': 'Diya Patel',    
+      'Admission Number': 'ADM-2025-002', 
+      'Admission Date': '2025-04-01',
+      'Roll Number': '102', 
+      'Session': '2025-26', 
+      'Class': 'Class 1', 
+      'Section': 'A', 
+      'Date of Birth': '2019-08-20',
+      'Gender': 'Female', 
+      'Father Name': 'Kirit Patel',   
+      'Father Contact No': '9876543211', 
+      'Father Occupation': 'Engineer',
+      'Mother Name': 'Bhavna Patel',
+      'Mother Contact No': '9876543218',
+      'Mother Occupation': 'Doctor',
+      'Parent WhatsApp No': '9876543211',
+      'Parent Email': 'kirit@example.com',  
+      'Student Email': 'diya@school.edu' 
+    },
+    { 
+      'First Name': 'Rohan',  
+      'Last Name': 'Gupta',   
+      'Full Name': 'Rohan Gupta',   
+      'Admission Number': 'ADM-2025-003', 
+      'Admission Date': '2025-04-02',
+      'Roll Number': '103', 
+      'Session': '2025-26', 
+      'Class': 'Class 2', 
+      'Section': 'B', 
+      'Date of Birth': '2018-11-10',
+      'Gender': 'Male', 
+      'Father Name': 'Manoj Gupta',   
+      'Father Contact No': '9876543212', 
+      'Father Occupation': 'Civil Servant',
+      'Mother Name': 'Rekha Gupta',
+      'Mother Contact No': '9876543217',
+      'Mother Occupation': 'Home Maker',
+      'Parent WhatsApp No': '9876543212',
+      'Parent Email': 'manoj@example.com', 
+      'Student Email': 'rohan@school.edu' 
+    },
+    { 
+      'First Name': 'L-KG',   
+      'Last Name': 'Example', 
+      'Full Name': 'L-KG Example',  
+      'Admission Number': 'ADM-2025-004', 
+      'Admission Date': '2025-04-05',
+      'Roll Number': '104', 
+      'Session': '2025-26', 
+      'Class': 'L-KG',    
+      'Section': 'A', 
+      'Date of Birth': '2021-02-14',
+      'Gender': 'Female', 
+      'Father Name': 'Amit Verma',   
+      'Father Contact No': '9876543213', 
+      'Father Occupation': 'Banker',
+      'Mother Name': 'Pooja Verma',
+      'Mother Contact No': '9876543216',
+      'Mother Occupation': 'Architect',
+      'Parent WhatsApp No': '9876543213',
+      'Parent Email': 'p@example.com',    
+      'Student Email': '' 
+    },
+    { 
+      'First Name': 'U-KG',   
+      'Last Name': 'Example', 
+      'Full Name': 'U-KG Example',  
+      'Admission Number': 'ADM-2025-005', 
+      'Admission Date': '2025-04-05',
+      'Roll Number': '105', 
+      'Session': '2025-26', 
+      'Class': 'U-KG',    
+      'Section': 'B', 
+      'Date of Birth': '2020-06-30',
+      'Gender': 'Male', 
+      'Father Name': 'Sanjay Singh',   
+      'Father Contact No': '9876543214', 
+      'Father Occupation': 'Professor',
+      'Mother Name': 'Meena Singh',
+      'Mother Contact No': '9876543215',
+      'Mother Occupation': 'Scientist',
+      'Parent WhatsApp No': '9876543214',
+      'Parent Email': 'p2@example.com',   
+      'Student Email': '' 
+    },
   ];
   const ws = XLSX.utils.json_to_sheet(sample);
-  ws['!cols'] = [14,14,20,18,14,12,12,10,12,20,16,24,26].map(wch => ({ wch }));
+  ws['!cols'] = [14, 14, 20, 18, 14, 12, 12, 10, 10, 14, 10, 20, 18, 18, 20, 18, 18, 18, 24, 26].map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -850,9 +974,28 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const rawName = b.name;
   const rollNumber = b.rollNumber || b.roll_number;
   const admissionNumber = b.admissionNumber || b.admission_number;
-  const parentName = b.parentName || b.parent_name || b.guardianName || b.guardian_name || '';
-  const parentSmsNumber = b.parentSmsNumber || b.parentPhone || b.parent_phone || b.parent_sms_number || b.phone || '';
-  const dob = b.dob || b.dateOfBirth || b.date_of_birth || null;
+  
+  // Father details
+  const fatherName = String(b.fatherName || b.father_name || '').trim();
+  const fatherPhone = String(b.fatherPhone || b.father_phone || b.fatherContact || b.father_contact || b.fatherContactNo || b['Father Contact No'] || '').trim();
+  const fatherOccupation = String(b.fatherOccupation || b.father_occupation || '').trim();
+
+  // Mother details
+  const motherName = String(b.motherName || b.mother_name || '').trim();
+  const motherPhone = String(b.motherPhone || b.mother_phone || b.motherContact || b.mother_contact || b.motherContactNo || b['Mother Contact No'] || '').trim();
+  const motherOccupation = String(b.motherOccupation || b.mother_occupation || '').trim();
+
+  // Additional parent & admission details
+  const parentWhatsapp = String(b.parentWhatsapp || b.parent_whatsapp || b.parentWhatsappNo || b.parent_whatsapp_no || b['Parent WhatsApp No'] || '').trim();
+  const rawAdmissionDate = b.admissionDate || b.admission_date || null;
+  const rawDob = b.dob || b.dateOfBirth || b.date_of_birth || null;
+  const admissionDate = rawAdmissionDate ? (toDbDate(rawAdmissionDate) || rawAdmissionDate) : null;
+  const dob = rawDob ? (toDbDate(rawDob) || rawDob) : null;
+
+  // Composite / fallback parentName and parentSmsNumber for backwards compatibility
+  const parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || b.parentName || b.parent_name || b.guardianName || b.guardian_name || '');
+  const parentSmsNumber = fatherPhone || motherPhone || parentWhatsapp || b.parentSmsNumber || b.parentPhone || b.parent_phone || b.parent_sms_number || b.phone || '';
+
   const gender = normalizeGender(b.gender);
   const address = b.address || null;
   const classId = b.classId || b.class_id;
@@ -862,6 +1005,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const loginOption = b.loginOption || b.login_option;
   const sendInviteEmail = b.sendInviteEmail !== undefined ? b.sendInviteEmail : true;
   const sessionId = b.sessionId || b.session_id || b.session;
+
+  // Validation: Date of birth is strictly required as requested
+  if (!dob) {
+    return res.status(400).json({ message: 'Date of Birth is a required field.' });
+  }
 
   // Name normalization
   const firstName  = String(rawFirst || '').trim();
@@ -1153,9 +1301,14 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         `INSERT INTO students(
           school_id, academic_year_id, class_id, section_id, roll_number, 
           admission_number, name, parent_name, parent_sms_number, email, parent_email, user_id,
-          date_of_birth, gender, address
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-
+          date_of_birth, gender, address,
+          father_name, father_phone, father_occupation,
+          mother_name, mother_phone, mother_occupation,
+          parent_whatsapp, admission_date
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+          $16, $17, $18, $19, $20, $21, $22, $23
+        )
         RETURNING *`,
         [
           schoolId,
@@ -1172,7 +1325,15 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           pgUserId,
           dob || null,
           gender || null,
-          address || null
+          address || null,
+          fatherName || null,
+          fatherPhone || null,
+          fatherOccupation || null,
+          motherName || null,
+          motherPhone || null,
+          motherOccupation || null,
+          parentWhatsapp || null,
+          admissionDate || null
         ]
       );
       
@@ -1191,6 +1352,24 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         section_name: secName,
         admission_number: cleanAdmissionNumber || q.rows[0].admission_number,
         admissionNumber: cleanAdmissionNumber || q.rows[0].admission_number,
+        admission_date: admissionDate || q.rows[0].admission_date,
+        admissionDate: admissionDate || q.rows[0].admission_date,
+        date_of_birth: dob || q.rows[0].date_of_birth,
+        dob: dob || q.rows[0].date_of_birth,
+        father_name: fatherName || q.rows[0].father_name,
+        fatherName: fatherName || q.rows[0].father_name,
+        father_phone: fatherPhone || q.rows[0].father_phone,
+        fatherPhone: fatherPhone || q.rows[0].father_phone,
+        father_occupation: fatherOccupation || q.rows[0].father_occupation,
+        fatherOccupation: fatherOccupation || q.rows[0].father_occupation,
+        mother_name: motherName || q.rows[0].mother_name,
+        motherName: motherName || q.rows[0].mother_name,
+        mother_phone: motherPhone || q.rows[0].mother_phone,
+        motherPhone: motherPhone || q.rows[0].mother_phone,
+        mother_occupation: motherOccupation || q.rows[0].mother_occupation,
+        motherOccupation: motherOccupation || q.rows[0].mother_occupation,
+        parent_whatsapp: parentWhatsapp || q.rows[0].parent_whatsapp,
+        parentWhatsapp: parentWhatsapp || q.rows[0].parent_whatsapp,
         student_email: cleanStudentEmail,
         parent_email: cleanParentEmail,
         parent_phone: safeParentSms,
@@ -1555,8 +1734,33 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const name = rawFullName || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()));
     const rollNumber = String(st.rollNumber || st['Roll Number'] || st.roll_number || '').trim();
     const admissionNumber = String(st.admissionNumber || st['Admission Number'] || st.admission_number || '').trim();
-    const parentName = String(st.parentName || st['Parent Name'] || st.parent_name || '').trim();
-    const parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
+
+    // Father details
+    const fatherName = String(st.fatherName || st['Father Name'] || st['Father\'s Name'] || st.father_name || '').trim();
+    const fatherPhone = String(st.fatherPhone || st.fatherContactNo || st['Father Contact No'] || st['Father Contact'] || st['Father Phone'] || st.father_phone || '').trim();
+    const fatherOccupation = String(st.fatherOccupation || st['Father Occupation'] || st['Father\'s Occupation'] || st.father_occupation || '').trim();
+
+    // Mother details
+    const motherName = String(st.motherName || st['Mother Name'] || st['Mother\'s Name'] || st.mother_name || '').trim();
+    const motherPhone = String(st.motherPhone || st.motherContactNo || st['Mother Contact No'] || st['Mother Contact'] || st['Mother Phone'] || st.mother_phone || '').trim();
+    const motherOccupation = String(st.motherOccupation || st['Mother Occupation'] || st['Mother\'s Occupation'] || st.mother_occupation || '').trim();
+
+    // Parent WhatsApp, DOB, Admission Date
+    const parentWhatsapp = String(st.parentWhatsapp || st['Parent WhatsApp No'] || st['WhatsApp No'] || st.parent_whatsapp || '').trim();
+    const rawDob = st.dob || st.dateOfBirth || st['Date of Birth'] || st['DOB'] || st.date_of_birth || null;
+    const rawAdmissionDate = st.admissionDate || st.admission_date || st['Admission Date'] || null;
+    const dob = rawDob ? (toDbDate(rawDob) || rawDob) : null;
+    const admissionDate = rawAdmissionDate ? (toDbDate(rawAdmissionDate) || rawAdmissionDate) : null;
+
+    let parentName = String(st.parentName || st['Parent Name'] || st.parent_name || '').trim();
+    if (!parentName && (fatherName || motherName)) {
+      parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || '');
+    }
+    let parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
+    if (!parentPhone && (fatherPhone || motherPhone || parentWhatsapp)) {
+      parentPhone = fatherPhone || motherPhone || parentWhatsapp || '';
+    }
+
     const parentEmail = String(st.parentEmail || st['Parent Email'] || st.parent_email || '').trim();
     const studentEmail = String(st.studentEmail || st['Student Email'] || st.email || '').trim();
     const gender = normalizeGender(st.gender || st['Gender'] || st['gender'] || st.sex || st['Sex'] || '');
@@ -1577,7 +1781,10 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
     if (!firstName) errors.push({ row: rowNum, field: 'First Name', message: 'First Name is required' });
     if (!lastName)  errors.push({ row: rowNum, field: 'Last Name', message: 'Last Name is required' });
-    if (!parentPhone) errors.push({ row: rowNum, field: 'Parent Phone', message: 'Parent Phone is required' });
+    if (!dob)       errors.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth is required' });
+    if (!parentPhone && !fatherPhone && !motherPhone) {
+      errors.push({ row: rowNum, field: 'Father Contact No', message: 'Father Contact No (or Parent Phone) is required' });
+    }
     if (!parsedCls.valid) errors.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid class' });
 
     const normAdm = normalizeAdmissionNumber(admissionNumber)?.toLowerCase();
@@ -1617,7 +1824,14 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     }
 
     if (errors.filter(e => e.row === rowNum).length === 0) {
-      validRows.push({ rowNum, firstName, lastName, name, rollNumber, admissionNumber, gender, parentName, parentPhone, parentEmail, studentEmail, classId, classNumber, classLabel, sectionId, sectionName });
+      validRows.push({
+        rowNum, firstName, lastName, name, rollNumber, admissionNumber, gender,
+        dob, admissionDate,
+        parentName, parentPhone, parentEmail, studentEmail,
+        fatherName, fatherPhone, fatherOccupation,
+        motherName, motherPhone, motherOccupation, parentWhatsapp,
+        classId, classNumber, classLabel, sectionId, sectionName
+      });
     }
   }
 
@@ -1667,7 +1881,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
           let pIdx = 3;
 
           for (const st of chunk) {
-            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, null)`);
+            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, null)`);
             params.push(
               st.classId,
               st.sectionId,
@@ -1678,15 +1892,28 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               st.parentName || null,
               st.parentPhone,
               st.studentEmail || null,
-              st.parentEmail || null
+              st.parentEmail || null,
+              st.fatherName || null,
+              st.fatherPhone || null,
+              st.fatherOccupation || null,
+              st.motherName || null,
+              st.motherPhone || null,
+              st.motherOccupation || null,
+              st.parentWhatsapp || null,
+              st.dob || null,
+              st.admissionDate || null
             );
-            pIdx += 10;
+            pIdx += 19;
           }
 
           const insertSql = `
             INSERT INTO students(
               school_id, academic_year_id, class_id, section_id, roll_number, 
-              admission_number, name, gender, parent_name, parent_sms_number, email, parent_email, user_id
+              admission_number, name, gender, parent_name, parent_sms_number, email, parent_email,
+              father_name, father_phone, father_occupation,
+              mother_name, mother_phone, mother_occupation,
+              parent_whatsapp, date_of_birth, admission_date,
+              user_id
             )
             VALUES ${valuesChunks.join(', ')}
 
@@ -1703,6 +1930,24 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
             createdList.push({
               ...row,
               gender: row.gender || meta?.gender || null,
+              date_of_birth: row.date_of_birth || meta?.dob || null,
+              dob: row.date_of_birth || meta?.dob || null,
+              admission_date: row.admission_date || meta?.admissionDate || null,
+              admissionDate: row.admission_date || meta?.admissionDate || null,
+              father_name: row.father_name || meta?.fatherName || null,
+              fatherName: row.father_name || meta?.fatherName || null,
+              father_phone: row.father_phone || meta?.fatherPhone || null,
+              fatherPhone: row.father_phone || meta?.fatherPhone || null,
+              father_occupation: row.father_occupation || meta?.fatherOccupation || null,
+              fatherOccupation: row.father_occupation || meta?.fatherOccupation || null,
+              mother_name: row.mother_name || meta?.motherName || null,
+              motherName: row.mother_name || meta?.motherName || null,
+              mother_phone: row.mother_phone || meta?.motherPhone || null,
+              motherPhone: row.mother_phone || meta?.motherPhone || null,
+              mother_occupation: row.mother_occupation || meta?.motherOccupation || null,
+              motherOccupation: row.mother_occupation || meta?.motherOccupation || null,
+              parent_whatsapp: row.parent_whatsapp || meta?.parentWhatsapp || null,
+              parentWhatsapp: row.parent_whatsapp || meta?.parentWhatsapp || null,
               academic_year_id: bulkSessionId,
               session_id: bulkSessionId,
               session_name: bulkSessionName,
@@ -1962,6 +2207,9 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
       `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
        st.academic_year_id, ay.name AS session_name,
        COALESCE(st.is_active, true) AS is_active,
+   st.father_name, st.father_phone, st.father_occupation,
+   st.mother_name, st.mother_phone, st.mother_occupation,
+   st.parent_whatsapp, st.admission_date,
        c.id class_id,c.class_number,sec.id section_id,sec.name section_name
        FROM students st 
        JOIN classes c ON c.id=st.class_id 
@@ -2003,6 +2251,14 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     admissionNumber, admission_number,
     parentName, parent_name,
     parentSmsNumber, parentPhone, parent_sms_number,
+    fatherName, father_name,
+    fatherPhone, father_phone, fatherContact, father_contact, fatherContactNo,
+    fatherOccupation, father_occupation,
+    motherName, mother_name,
+    motherPhone, mother_phone, motherContact, mother_contact, motherContactNo,
+    motherOccupation, mother_occupation,
+    parentWhatsapp, parent_whatsapp, parentWhatsappNo, parent_whatsapp_no,
+    admissionDate, admission_date,
     studentEmail, email, parentEmail, parent_email,
     classId, class_id,
     sectionId, section_id,
@@ -2040,8 +2296,36 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
   const cleanParentEmail = String(parentEmail || parent_email || '').trim().toLowerCase();
   const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
   const cleanRollNumber = String(rollNumber !== undefined ? rollNumber : (roll_number !== undefined ? roll_number : '')).trim();
-  const cleanParentName = String(parentName !== undefined ? parentName : (parent_name !== undefined ? parent_name : '')).trim();
-  const cleanParentPhone = String(parentSmsNumber !== undefined ? parentSmsNumber : (parentPhone !== undefined ? parentPhone : (parent_sms_number !== undefined ? parent_sms_number : ''))).trim();
+
+  // Father, Mother, WhatsApp, Admission Date extraction
+  const cleanFatherName = (fatherName !== undefined || father_name !== undefined) ? String(fatherName || father_name || '').trim() : undefined;
+  const cleanFatherPhone = (fatherPhone !== undefined || father_phone !== undefined || fatherContact !== undefined || father_contact !== undefined || fatherContactNo !== undefined)
+    ? String(fatherPhone || father_phone || fatherContact || father_contact || fatherContactNo || '').trim()
+    : undefined;
+  const cleanFatherOccupation = (fatherOccupation !== undefined || father_occupation !== undefined)
+    ? String(fatherOccupation || father_occupation || '').trim()
+    : undefined;
+  const cleanMotherName = (motherName !== undefined || mother_name !== undefined) ? String(motherName || mother_name || '').trim() : undefined;
+  const cleanMotherPhone = (motherPhone !== undefined || mother_phone !== undefined || motherContact !== undefined || mother_contact !== undefined || motherContactNo !== undefined)
+    ? String(motherPhone || mother_phone || motherContact || mother_contact || motherContactNo || '').trim()
+    : undefined;
+  const cleanMotherOccupation = (motherOccupation !== undefined || mother_occupation !== undefined)
+    ? String(motherOccupation || mother_occupation || '').trim()
+    : undefined;
+  const cleanParentWhatsapp = (parentWhatsapp !== undefined || parent_whatsapp !== undefined || parentWhatsappNo !== undefined || parent_whatsapp_no !== undefined)
+    ? String(parentWhatsapp || parent_whatsapp || parentWhatsappNo || parent_whatsapp_no || '').trim()
+    : undefined;
+  const rawAdmissionDate = (admissionDate || admission_date) !== undefined ? (admissionDate || admission_date || null) : undefined;
+  const cleanAdmissionDate = rawAdmissionDate !== undefined ? (rawAdmissionDate ? (toDbDate(rawAdmissionDate) || rawAdmissionDate) : null) : undefined;
+
+  let cleanParentName = String(parentName !== undefined ? parentName : (parent_name !== undefined ? parent_name : '')).trim();
+  if (!cleanParentName && (cleanFatherName || cleanMotherName)) {
+    cleanParentName = (cleanFatherName && cleanMotherName) ? `${cleanFatherName} / ${cleanMotherName}` : (cleanFatherName || cleanMotherName || '');
+  }
+  let cleanParentPhone = String(parentSmsNumber !== undefined ? parentSmsNumber : (parentPhone !== undefined ? parentPhone : (parent_sms_number !== undefined ? parent_sms_number : ''))).trim();
+  if (!cleanParentPhone && (cleanFatherPhone || cleanMotherPhone || cleanParentWhatsapp)) {
+    cleanParentPhone = cleanFatherPhone || cleanMotherPhone || cleanParentWhatsapp || '';
+  }
 
   const firstName = String(rawFirst || '').trim();
   const lastName = String(rawLast || '').trim();
@@ -2129,7 +2413,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     }
 
     const cleanGender = gender !== undefined ? normalizeGender(gender) : null;
-    const cleanDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
+    const rawDob = (dob || dateOfBirth || date_of_birth) !== undefined ? (dob || dateOfBirth || date_of_birth || null) : null;
+    const cleanDob = rawDob !== null ? (toDbDate(rawDob) || rawDob) : null;
     const cleanAddress = address !== undefined ? (address || null) : null;
 
     if (isStudentUuid) {
@@ -2149,9 +2434,42 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            date_of_birth=COALESCE($14, date_of_birth),
            address=COALESCE($15, address),
            is_active=$16,
+           father_name=COALESCE($17, father_name),
+           father_phone=COALESCE($18, father_phone),
+           father_occupation=COALESCE($19, father_occupation),
+           mother_name=COALESCE($20, mother_name),
+           mother_phone=COALESCE($21, mother_phone),
+           mother_occupation=COALESCE($22, mother_occupation),
+           parent_whatsapp=COALESCE($23, parent_whatsapp),
+           admission_date=COALESCE($24, admission_date),
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
-        [fullName || name || null, cleanRollNumber || null, cleanAdmissionNumber || null, cleanParentName || null, cleanParentPhone || null, cleanStudentEmail || null, cleanParentEmail || null, isPutClassUuid ? realPutClassId : null, isPutSecUuid ? realPutSectionId : null, isAyUuid ? resolvedSession : null, studentId, schoolId, cleanGender, cleanDob, cleanAddress, resolvedIsActive]
+        [
+          fullName || name || null,
+          cleanRollNumber || null,
+          cleanAdmissionNumber || null,
+          cleanParentName || null,
+          cleanParentPhone || null,
+          cleanStudentEmail || null,
+          cleanParentEmail || null,
+          isPutClassUuid ? realPutClassId : null,
+          isPutSecUuid ? realPutSectionId : null,
+          isAyUuid ? resolvedSession : null,
+          studentId,
+          schoolId,
+          cleanGender,
+          cleanDob,
+          cleanAddress,
+          resolvedIsActive,
+          cleanFatherName !== undefined ? (cleanFatherName || null) : null,
+          cleanFatherPhone !== undefined ? (cleanFatherPhone || null) : null,
+          cleanFatherOccupation !== undefined ? (cleanFatherOccupation || null) : null,
+          cleanMotherName !== undefined ? (cleanMotherName || null) : null,
+          cleanMotherPhone !== undefined ? (cleanMotherPhone || null) : null,
+          cleanMotherOccupation !== undefined ? (cleanMotherOccupation || null) : null,
+          cleanParentWhatsapp !== undefined ? (cleanParentWhatsapp || null) : null,
+          cleanAdmissionDate !== undefined ? (cleanAdmissionDate || null) : null
+        ]
       );
       if (q.rowCount && q.rows.length > 0) {
         let studentUserId = q.rows[0].user_id;
@@ -2562,18 +2880,30 @@ export function normalizeToDdMmYyyy(val: any): string | null {
   return s;
 }
 
+export function toDbDate(val: any): string | null {
+  if (!val) return null;
+  const normalized = normalizeToDdMmYyyy(val);
+  if (!normalized) return null;
+  const parts = normalized.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return null;
+}
+
 // GET /teachers/template — standardized Excel import template
 r.get('/teachers/template', ...reader, (_req, res) => {
   const XLSX = require('xlsx');
   const sample = [
     {
       'Savior_No': 'EMP010',
-      'Fist Name': 'Sunita',
+      'First Name': 'Sunita',
       'Last Name': 'Verma',
       'Full Name(Automatically generated)': 'Sunita Verma',
       'Email_id': 'sunita.v@school.local',
       'Gender': 'Female',
       'Date_of_Birth': '15-08-1990',
+      'Joining_Date': '01-07-2020',
       'Class': 'Class 10',
       'Section': 'A',
       'Status': 'Active',
@@ -2581,12 +2911,13 @@ r.get('/teachers/template', ...reader, (_req, res) => {
     },
     {
       'Savior_No': 'EMP011',
-      'Fist Name': 'Alok',
+      'First Name': 'Alok',
       'Last Name': 'Mishra',
       'Full Name(Automatically generated)': 'Alok Mishra',
       'Email_id': 'alok.m@school.local',
       'Gender': 'Male',
       'Date_of_Birth': '22-04-1988',
+      'Joining_Date': '15-01-2019',
       'Class': 'Class 9',
       'Section': 'B',
       'Status': 'Active',
@@ -2594,12 +2925,13 @@ r.get('/teachers/template', ...reader, (_req, res) => {
     },
     {
       'Savior_No': 'EMP012',
-      'Fist Name': 'Rekha',
+      'First Name': 'Rekha',
       'Last Name': 'Sengupta',
       'Full Name(Automatically generated)': 'Rekha Sengupta',
       'Email_id': 'rekha.s@school.local',
       'Gender': 'Female',
       'Date_of_Birth': '10-12-1992',
+      'Joining_Date': '10-08-2021',
       'Class': 'Class 8',
       'Section': 'A',
       'Status': 'Active',
@@ -2607,7 +2939,7 @@ r.get('/teachers/template', ...reader, (_req, res) => {
     }
   ];
   const ws = XLSX.utils.json_to_sheet(sample);
-  ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+  ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 16, 12, 10, 12, 20].map(wch => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Teachers Import Template');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -2654,12 +2986,19 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.date_of_birth,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
-    if (cacheKey) fastCache.set(cacheKey, q.rows, 30);
-    return sendPaginatedTeachers(q.rows);
+    const formatted = q.rows.map(r => ({
+      ...r,
+      dob: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
+      date_of_birth: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
+      joining_date: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : '',
+      joiningDate: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : ''
+    }));
+    if (cacheKey) fastCache.set(cacheKey, formatted, 30);
+    return sendPaginatedTeachers(formatted);
   }
  } catch {}
 
@@ -2681,6 +3020,8 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           gender: dt.gender || '',
           dob: dt.dob || dt.date_of_birth || '',
           date_of_birth: dt.dob || dt.date_of_birth || '',
+          joining_date: dt.joining_date || dt.joiningDate || '',
+          joiningDate: dt.joining_date || dt.joiningDate || '',
           school_id: docSchoolId,
           schoolId: docSchoolId,
           is_active: dt.is_active !== false,
@@ -2727,6 +3068,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     mobile: rawMobile, designation: rawDesig,
     gender: rawGender, qualification: rawQual,
     dob: rawDob, dateOfBirth: rawDateOfBirth, date_of_birth: rawDate_of_birth,
+    joiningDate: rawJoiningDate, joining_date: rawJoining_date,
     classId, sectionId, sendInviteEmail=true
   } = req.body;
 
@@ -2741,9 +3083,16 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const qualification = String(rawQual || req.body?.qualification || '').trim() || null;
   const rawDobInput = rawDob || rawDateOfBirth || rawDate_of_birth || req.body?.dob || req.body?.date_of_birth;
   const dob = rawDobInput ? normalizeToDdMmYyyy(rawDobInput) : null;
+  const rawJoiningInput = rawJoiningDate || rawJoining_date || req.body?.joiningDate || req.body?.joining_date;
+  const joiningDate = rawJoiningInput ? normalizeToDdMmYyyy(rawJoiningInput) : null;
 
   if (!name || !cleanEmail || !employeeId) {
     return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
+  }
+
+  // Date of Birth is mandatory
+  if (!dob) {
+    return res.status(400).json({ message: 'Date of Birth is required and must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).' });
   }
 
   // Email format validation
@@ -2783,8 +3132,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, name, cleanEmail, hash]
       );
       await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification) VALUES($1,$2,$3,$4,$5)`,
-        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null]
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,date_of_birth,joining_date) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(dob), toDbDate(joiningDate)]
       );
       await client.query('COMMIT');
       
@@ -2839,6 +3188,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         gender: gender || null,
         dob: dob || null,
         date_of_birth: dob || null,
+        joining_date: joiningDate || null,
+        joiningDate: joiningDate || null,
         mobile: mobile || '—',
         email_status: emailDeliveryStatus,
         is_active: true,
@@ -2911,6 +3262,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     gender: gender || null,
     dob: dob || null,
     date_of_birth: dob || null,
+    joining_date: joiningDate || null,
+    joiningDate: joiningDate || null,
     mobile: mobile || '—',
     email_status: emailDeliveryStatus,
     is_active: true,
@@ -3071,6 +3424,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const gender = getVal(['Gender', 'GENDER', 'gender', 'Sex', 'sex']) || null;
     const rawDob = getVal(['Date_of_Birth', 'DATE_OF_BIRTH', 'Date of Birth', 'date_of_birth', 'DOB', 'dob', 'DateOfBirth']);
     const dob = rawDob ? normalizeToDdMmYyyy(rawDob) : null;
+    const rawJoiningDate = getVal(['Joining_Date', 'JOINING_DATE', 'Joining Date', 'joining_date', 'DOJ', 'doj', 'Date of Joining', 'Date_of_Joining', 'JoiningDate', 'joiningDate']);
+    const joiningDate = rawJoiningDate ? normalizeToDdMmYyyy(rawJoiningDate) : null;
 
     // Validation engine:
     if (!name) errors.push({ row: rowNum, field: 'First Name', message: 'First Name or Teacher Name is required' });
@@ -3091,6 +3446,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     } else if (email) {
       seenEmails.add(email);
     }
+    if (!dob) {
+      errors.push({ row: rowNum, field: 'Date_of_Birth', message: 'Date of Birth is required' });
+    }
     if (rawMobile && rawMobile.length !== 10) {
       errors.push({ row: rowNum, field: 'Mobile', message: `Mobile number must be exactly 10 digits (${rawMobile.length} given)` });
     }
@@ -3106,6 +3464,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         gender,
         dob,
         date_of_birth: dob,
+        joiningDate,
+        joining_date: joiningDate,
         designation,
         status,
         class: rawClass,
@@ -3162,15 +3522,15 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         const existingEp = await client.query('SELECT user_id FROM teacher_profiles WHERE employee_id = $1', [t.saviorNo]);
         if (existingEp.rows.length > 0 && existingEp.rows[0].user_id !== u.rows[0].id) {
           await client.query(
-            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender) WHERE employee_id = $7`,
-            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, t.saviorNo]
+            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), date_of_birth = COALESCE($7, date_of_birth), joining_date = COALESCE($8, joining_date) WHERE employee_id = $9`,
+            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate), t.saviorNo]
           );
         } else {
           await client.query(
-            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender) VALUES($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender)
+            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, date_of_birth, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), date_of_birth=COALESCE(EXCLUDED.date_of_birth, teacher_profiles.date_of_birth), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
              RETURNING *`,
-            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender]
+            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate)]
           );
         }
 
@@ -3198,6 +3558,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           gender: t.gender || null,
           dob: t.dob || null,
           date_of_birth: t.dob || null,
+          joining_date: t.joining_date || null,
+          joiningDate: t.joining_date || null,
           designation: t.designation,
           class_name: t.class,
           section_name: t.section,
@@ -3497,6 +3859,12 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const resolvedGender = rawGender !== undefined ? (rawGender ? String(rawGender).trim() : null) : (existingDocData.gender || demoTeachers[idx]?.gender || null);
   const rawDob = req.body.dob !== undefined ? req.body.dob : (req.body.date_of_birth !== undefined ? req.body.date_of_birth : req.body.dateOfBirth);
   const resolvedDob = rawDob !== undefined ? (rawDob ? normalizeToDdMmYyyy(rawDob) : null) : (existingDocData.dob || existingDocData.date_of_birth || demoTeachers[idx]?.dob || null);
+  const rawJoining = req.body.joining_date !== undefined ? req.body.joining_date : req.body.joiningDate;
+  const resolvedJoining = rawJoining !== undefined ? (rawJoining ? normalizeToDdMmYyyy(rawJoining) : null) : (existingDocData.joining_date || existingDocData.joiningDate || demoTeachers[idx]?.joining_date || null);
+
+  if (rawDob !== undefined && !resolvedDob) {
+    return res.status(400).json({ message: 'Date of Birth is required and must follow DD-MM-YYYY format' });
+  }
 
   try {
     await pool.query(
@@ -3504,8 +3872,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
       [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
     );
     await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3 WHERE user_id=$4`,
-      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, tid]
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, date_of_birth=$4, joining_date=$5 WHERE user_id=$6`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedDob), toDbDate(resolvedJoining), tid]
     );
   } catch {}
 
@@ -3520,6 +3888,8 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     gender: resolvedGender,
     dob: resolvedDob,
     date_of_birth: resolvedDob,
+    joining_date: resolvedJoining,
+    joiningDate: resolvedJoining,
     school_id: resolvedSchoolId,
     schoolId: resolvedSchoolId,
     status: resolvedStatus,

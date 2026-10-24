@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X } from 'lucide-react';
+import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,6 +37,32 @@ export function StudentAnnouncements() {
   useEffect(() => {
     load();
   }, []);
+
+  async function handleMarkRead(notice: Announcement) {
+    if (notice.read_at) return;
+    const targetParam = String(notice.id || notice.recipient_id || '');
+    if (!targetParam) return;
+    try {
+      const res = await studentApi.markAnnouncementRead(targetParam);
+      const readAtTime = (res as any)?.read_at || (res as any)?.data?.read_at || new Date().toISOString();
+      setAnnouncements(prev =>
+        prev.map(n => (n.id === notice.id ? { ...n, read_at: readAtTime } : n))
+      );
+      try {
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('cached_student_dashboard_')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch {}
+      window.dispatchEvent(new Event('announcements-read'));
+      window.dispatchEvent(new Event('storage'));
+    } catch (_e) {
+      setAnnouncements(prev =>
+        prev.map(n => (n.id === notice.id ? { ...n, read_at: new Date().toISOString() } : n))
+      );
+    }
+  }
 
   async function handleReplySubmit(id: string) {
     if (!replyText.trim()) return;
@@ -138,19 +164,59 @@ export function StudentAnnouncements() {
         </div>
       ) : (
         <div className="student-announcements-feed">
-          {displayedAnnouncements.map((a) => (
-            <div key={a.id} className="student-card student-notice-card" style={{ marginBottom: 16 }}>
-              <div className="notice-header">
-                <div className="notice-badge-group">
-                  <span className={`notice-priority-badge priority-${a.priority.toLowerCase()}`}>
-                    {a.priority}
-                  </span>
-                  <span className="notice-date">
-                    <Calendar size={13} /> {new Date(a.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
+          {displayedAnnouncements.map((a) => {
+            const isUnread = !a.read_at;
+            return (
+              <div key={a.id} className="student-card student-notice-card" style={{ marginBottom: 16 }}>
+                <div className="notice-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <div className="notice-badge-group" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span className={`notice-priority-badge priority-${a.priority.toLowerCase()}`}>
+                      {a.priority}
+                    </span>
+                    <span className="notice-date">
+                      <Calendar size={13} /> {new Date(a.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                    {a.author_name && <span className="notice-author" style={{ marginLeft: 2 }}>By: <b>{a.author_name}</b></span>}
+                  </div>
+
+                  {/* Read status / Mark as Read */}
+                  <div>
+                    {isUnread ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkRead(a)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
+                          border: '1px solid var(--border-focus, #3b82f6)',
+                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                          color: 'var(--sidebar-accent, #3b82f6)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Check size={13} /> Mark as Read
+                      </button>
+                    ) : (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          color: '#059669'
+                        }}
+                      >
+                        <CheckCircle2 size={13} /> Read
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {a.author_name && <span className="notice-author">By: {a.author_name}</span>}
-              </div>
 
               <h3 className="notice-title" style={{ marginTop: 8 }}>{a.title}</h3>
               <p className="notice-body" style={{ whiteSpace: 'pre-wrap' }}>{a.message}</p>
@@ -258,7 +324,8 @@ export function StudentAnnouncements() {
                 </>
               )}
             </div>
-          ))}
+          );
+        })}
         </div>
       )}
     </div>

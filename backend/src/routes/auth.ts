@@ -156,6 +156,27 @@ router.get('/lookup-institute', async (req, res) => {
         });
       }
 
+      // Check teachers by employee_id / Savior_No
+      const tq = await pool.query(
+        `SELECT u.school_id, s.name as school_name, s.code as school_code, s.status
+         FROM teacher_profiles tp
+         JOIN users u ON u.id = tp.user_id
+         JOIN schools s ON u.school_id = s.id
+         WHERE (LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($1)))
+           AND s.status = 'ACTIVE' AND u.is_active = true
+         LIMIT 1`,
+        [email]
+      );
+      if (tq.rowCount && tq.rowCount > 0) {
+        const row = tq.rows[0];
+        return res.json({
+          found: true,
+          instituteId: String(row.school_id),
+          instituteName: row.school_name,
+          instituteCode: row.school_code
+        });
+      }
+
       // Check students table if not found in users
       const sq = await pool.query(
         `SELECT st.school_id, s.name as school_name, s.code as school_code, s.status
@@ -370,7 +391,20 @@ router.post('/login', loginRateLimit, async (req, res) => {
           return res.json({ token, user: userPayload, provider: 'firestore' });
         }
       } else {
-        const fUser = await findFirestoreUserByEmail(rawIdentifier);
+        let fUser = await findFirestoreUserByEmail(rawIdentifier);
+        if (!fUser && isFirebaseConfigured()) {
+          try {
+            const empSnap = await collections.users().where('employee_id', '==', rawIdentifier).limit(1).get();
+            if (!empSnap.empty) {
+              fUser = { id: empSnap.docs[0].id, ...(empSnap.docs[0].data() as any) } as any;
+            } else {
+              const empSnap2 = await collections.users().where('employeeId', '==', rawIdentifier).limit(1).get();
+              if (!empSnap2.empty) {
+                fUser = { id: empSnap2.docs[0].id, ...(empSnap2.docs[0].data() as any) } as any;
+              }
+            }
+          } catch {}
+        }
         if (fUser && (fUser.status === 'ACTIVE' || (fUser as any).is_active !== false) && (await bcrypt.compare(password, fUser.passwordHash || (fUser as any).password_hash))) {
           if (expectedRole && !roleMatches(fUser.role, expectedRole)) {
             return res.status(401).json({ message: 'Account is not authorized for the selected role' });
@@ -520,13 +554,19 @@ router.post('/login', loginRateLimit, async (req, res) => {
         }
       } else {
         // School Admin, Teacher, Super Admin, or unspecified role login
+        // Supports logging in via Email, Employee ID, or Savior_No
         const facultyQuery = `
           SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active, u.photo_url,
+                 tp.employee_id,
                  sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM users u
+          LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
           LEFT JOIN schools sch ON sch.id = u.school_id
-          WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
-          ORDER BY (u.school_id::text = $2) DESC
+          WHERE (
+            LOWER(TRIM(u.email)) = LOWER(TRIM($1))
+            OR (u.role = 'TEACHER' AND LOWER(TRIM(COALESCE(tp.employee_id, ''))) = LOWER(TRIM($1)))
+          )
+          ORDER BY (u.school_id::text = $2) DESC, (u.role = 'TEACHER') DESC, (LOWER(TRIM(u.email)) = LOWER(TRIM($1))) DESC
           LIMIT 1
         `;
 
@@ -566,6 +606,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
             name: u.name,
             email: u.email,
             role,
+            employeeId: u.employee_id || undefined,
+            employee_id: u.employee_id || undefined,
             photo_url: photoUrl,
             photoUrl: photoUrl,
             schoolPhotoUrl: u.school_photo_url || undefined,

@@ -148,6 +148,7 @@ router.use((req, res, next) => {
         const sid = schoolId(req) || 'default';
         fastCache.invalidatePattern(`academic_years:${sid}`);
         fastCache.invalidatePattern('academic_years');
+        fastCache.invalidatePattern(`dashboard:school:${sid}`);
       }
     });
   }

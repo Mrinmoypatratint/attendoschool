@@ -123,6 +123,63 @@ router.get('/announcements', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// POST /api/student/announcements/:id/read - Mark announcement as read
+router.post('/announcements/:id/read', async (req: AuthRequest, res: Response) => {
+  try {
+    const targetId = req.params.id;
+    const userId = req.user!.id;
+
+    // Invalidate cached dashboard so updated unread announcements reflect instantly
+    svc.clearStudentDashboardCache(userId);
+    fastCache.delete(`student:${userId}:dashboard`);
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(targetId).trim());
+    if (isUuid) {
+      const updated = await pool.query(
+        `UPDATE announcement_recipients
+         SET read_at = COALESCE(read_at, NOW()), delivery_status = 'READ'
+         WHERE (id = $1 OR announcement_id = $1) AND parent_user_id = $2
+         RETURNING *`,
+        [targetId, userId]
+      );
+
+      if (updated.rowCount && updated.rowCount > 0) {
+        return res.json({ success: true, read_at: updated.rows[0].read_at });
+      }
+
+      // Resolve the underlying announcement_id
+      let resolvedAnnId: string | null = null;
+      const chkAnn = await pool.query(`SELECT id FROM announcements WHERE id = $1 LIMIT 1`, [targetId]);
+      if (chkAnn.rowCount && chkAnn.rowCount > 0) {
+        resolvedAnnId = chkAnn.rows[0].id;
+      } else {
+        const chkRec = await pool.query(`SELECT announcement_id FROM announcement_recipients WHERE id = $1 LIMIT 1`, [targetId]);
+        if (chkRec.rowCount && chkRec.rowCount > 0) {
+          resolvedAnnId = chkRec.rows[0].announcement_id;
+        }
+      }
+
+      if (resolvedAnnId) {
+        const inserted = await pool.query(
+          `INSERT INTO announcement_recipients (announcement_id, parent_user_id, delivery_channel, delivery_status, read_at)
+           VALUES ($1, $2, 'IN_APP', 'READ', NOW())
+           ON CONFLICT (announcement_id, parent_user_id, student_id, delivery_channel)
+           DO UPDATE SET read_at = COALESCE(announcement_recipients.read_at, NOW()), delivery_status = 'READ'
+           RETURNING *`,
+          [resolvedAnnId, userId]
+        );
+        if (inserted.rowCount && inserted.rowCount > 0) {
+          return res.json({ success: true, read_at: inserted.rows[0].read_at });
+        }
+      }
+    }
+
+    res.json({ success: true, read_at: new Date().toISOString() });
+  } catch (_e: any) {
+    res.json({ success: true, read_at: new Date().toISOString() });
+  }
+});
+
 // GET /api/student/assignments - Homework & assignments
 router.get('/assignments', async (req: AuthRequest, res: Response) => {
   try {

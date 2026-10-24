@@ -97,11 +97,15 @@ export function TeacherAnnouncements() {
 
   async function handleMarkRead(notice: AnnouncementItem) {
     if (notice.read_at) return;
+    const targetParam = notice.id || notice.recipient_id;
     try {
-      await api.post(`/communication/teacher/read/${notice.recipient_id || notice.id}`);
+      const res = await api.post(`/communication/teacher/read/${targetParam}`);
+      const readAtTime = res.data?.read_at || new Date().toISOString();
       setAnnouncements(prev =>
-        prev.map(n => (n.id === notice.id ? { ...n, read_at: new Date().toISOString() } : n))
+        prev.map(n => (n.id === notice.id ? { ...n, read_at: readAtTime } : n))
       );
+      window.dispatchEvent(new Event('announcements-read'));
+      window.dispatchEvent(new Event('storage'));
     } catch (_e) {}
   }
 
