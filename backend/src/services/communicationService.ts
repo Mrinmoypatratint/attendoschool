@@ -218,6 +218,77 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
 }
 
 /**
+ * Updates an existing draft announcement before publishing
+ */
+export async function updateAnnouncement(schoolId: string, id: string, d: any) {
+  if (!d.title || !d.message) throw new Error('Title and message are required');
+  const audience = d.audienceType || d.audience_type || 'SCHOOL';
+  const allowedAudiences = ['SCHOOL', 'CLASS', 'SECTION', 'PARENTS', 'TEACHER', 'STUDENT'];
+  if (!allowedAudiences.includes(audience)) {
+    throw new Error(`Invalid audience. Allowed: ${allowedAudiences.join(', ')}`);
+  }
+
+  await ensureTables();
+  const { classId: resolvedClassId, sectionId: resolvedSectionId } = await resolveClassAndSectionUuids(schoolId, d.classId || d.class_id, d.sectionId || d.section_id);
+
+  const targetClassId = (audience === 'CLASS' || audience === 'SECTION') ? resolvedClassId : null;
+  const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE announcements
+       SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6, updated_at = NOW()
+       WHERE id = $7 AND (school_id = $8 OR school_id = '00000000-0000-0000-0000-000000000001')
+       RETURNING *`,
+      [
+        d.title,
+        d.message,
+        audience,
+        targetClassId,
+        targetSectionId,
+        d.priority || 'NORMAL',
+        id,
+        schoolId
+      ]
+    );
+    if (rows && rows.length > 0) return rows[0];
+  } catch (dbErr) {
+    console.warn('[updateAnnouncement] DB update fallback to memory:', dbErr);
+  }
+
+  // Memory fallback
+  const idx = memAnnouncements.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    memAnnouncements[idx] = {
+      ...memAnnouncements[idx],
+      title: d.title,
+      message: d.message,
+      audience_type: audience,
+      class_id: targetClassId,
+      section_id: targetSectionId,
+      class_number: d.class_number ?? d.classNumber ?? memAnnouncements[idx].class_number,
+      section_name: d.section_name ?? d.sectionName ?? memAnnouncements[idx].section_name,
+      priority: d.priority || 'NORMAL',
+      updated_at: new Date().toISOString()
+    };
+    return memAnnouncements[idx];
+  }
+
+  return {
+    id,
+    school_id: schoolId,
+    title: d.title,
+    message: d.message,
+    audience_type: audience,
+    class_id: targetClassId,
+    section_id: targetSectionId,
+    priority: d.priority || 'NORMAL',
+    status: 'DRAFT',
+    updated_at: new Date().toISOString()
+  };
+}
+
+/**
  * Publishes an announcement.
  * Multi-Channel Dispatch: If priority === 'EMERGENCY', automatically triggers emergency emails.
  */

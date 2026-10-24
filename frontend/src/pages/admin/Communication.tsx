@@ -9,7 +9,9 @@ import {
   Clock,
   MessageCircle,
   Eye,
-  Filter
+  Filter,
+  Edit3,
+  FileText
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
@@ -95,11 +97,25 @@ export default function Communication() {
   // Universal Preview Modal State
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Confirm publish state
   const [publishTarget, setPublishTarget] = useState<AnnouncementItem | null>(null);
   const [publishing, setPublishing] = useState(false);
+
+  // Edit Draft Announcement Modal State
+  const [editingDraft, setEditingDraft] = useState<AnnouncementItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    message: '',
+    audienceType: 'SCHOOL',
+    priority: 'NORMAL',
+    classId: '',
+    sectionId: ''
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -245,6 +261,200 @@ export default function Communication() {
     }));
   }
 
+  // ─── Edit Draft Synchronized Targeting Logic ───
+  const editSelectedClass = useMemo(() => {
+    return resolvedClasses.find(c => c.id === editForm.classId);
+  }, [editForm.classId, resolvedClasses]);
+
+  const editClassSections = useMemo(() => {
+    if (!editSelectedClass) return [];
+    return sections.filter(s => {
+      if (s.class_id && s.class_id === editSelectedClass.id) return true;
+      if (s.classId && s.classId === editSelectedClass.id) return true;
+      if (s.class_number !== undefined && Number(s.class_number) === editSelectedClass.classNumber) return true;
+      return false;
+    });
+  }, [editSelectedClass, sections]);
+
+  const editSecA = useMemo(() => {
+    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
+  }, [editClassSections]);
+
+  const editSecB = useMemo(() => {
+    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
+  }, [editClassSections]);
+
+  const editSelectedSectionLetter = useMemo(() => {
+    if (!editForm.sectionId) return '';
+    if (editSecA && (editForm.sectionId === editSecA.id || editForm.sectionId === 'sec-a')) return 'A';
+    if (editSecB && (editForm.sectionId === editSecB.id || editForm.sectionId === 'sec-b')) return 'B';
+    const found = editClassSections.find(s => s.id === editForm.sectionId);
+    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
+    return '';
+  }, [editForm.sectionId, editSecA, editSecB, editClassSections]);
+
+  function handleOpenEditDraft(item: AnnouncementItem) {
+    setEditingDraft(item);
+    setEditError(null);
+
+    let matchedClassId = item.class_id || '';
+    if (!matchedClassId && item.class_number !== undefined) {
+      const c = resolvedClasses.find(rc => rc.classNumber === Number(item.class_number));
+      if (c) matchedClassId = c.id;
+    }
+
+    let matchedSectionId = item.section_id || '';
+    if (!matchedSectionId && item.section_name) {
+      const sLetter = String(item.section_name).toUpperCase();
+      if (sLetter.includes('B')) {
+        matchedSectionId = 'sec-b';
+      } else {
+        matchedSectionId = 'sec-a';
+      }
+    }
+
+    setEditForm({
+      title: item.title || '',
+      message: item.message || '',
+      audienceType: item.audience_type || 'SCHOOL',
+      priority: item.priority || 'NORMAL',
+      classId: matchedClassId,
+      sectionId: matchedSectionId
+    });
+  }
+
+  function handleEditAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value;
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+      setEditForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
+    } else if (val === 'CLASS') {
+      setEditForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
+    } else if (val === 'SECTION') {
+      setEditForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+    }
+  }
+
+  function handleEditClassChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const chosenClassId = e.target.value;
+    if (!chosenClassId) {
+      setEditForm(prev => ({
+        ...prev,
+        classId: '',
+        sectionId: '',
+        audienceType: (prev.audienceType === 'CLASS' || prev.audienceType === 'SECTION') ? 'SCHOOL' : prev.audienceType
+      }));
+      return;
+    }
+
+    const targetClass = resolvedClasses.find(c => c.id === chosenClassId);
+    const newClassSections = sections.filter(s => {
+      if (s.class_id && s.class_id === chosenClassId) return true;
+      if (s.classId && s.classId === chosenClassId) return true;
+      if (targetClass && s.class_number !== undefined && Number(s.class_number) === targetClass.classNumber) return true;
+      return false;
+    });
+
+    let newSectionId = '';
+    if (editSelectedSectionLetter === 'A') {
+      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
+      newSectionId = a?.id || 'sec-a';
+    } else if (editSelectedSectionLetter === 'B') {
+      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
+      newSectionId = b?.id || 'sec-b';
+    }
+
+    setEditForm(prev => ({
+      ...prev,
+      classId: chosenClassId,
+      sectionId: newSectionId,
+      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+    }));
+  }
+
+  function handleEditSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const letter = e.target.value;
+    if (!letter) {
+      setEditForm(prev => ({
+        ...prev,
+        sectionId: '',
+        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+      }));
+      return;
+    }
+
+    let targetSecId = '';
+    if (letter === 'A') {
+      targetSecId = editSecA?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-a` : 'sec-a');
+    } else if (letter === 'B') {
+      targetSecId = editSecB?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-b` : 'sec-b');
+    }
+
+    setEditForm(prev => ({
+      ...prev,
+      sectionId: targetSecId,
+      audienceType: 'SECTION'
+    }));
+  }
+
+  async function handleSaveDraftOnly() {
+    if (!editingDraft) return;
+    if (!editForm.title.trim()) {
+      setEditError('Announcement title is required.');
+      return;
+    }
+    if (!editForm.message.trim()) {
+      setEditError('Message content is required.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await api.put(`/communication/announcements/${editingDraft.id}`, editForm);
+      setMsg(`Draft announcement "${editForm.title}" saved successfully.`);
+      setEditingDraft(null);
+      load();
+    } catch (e: any) {
+      setEditError(e?.response?.data?.message || 'Unable to save draft changes.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleConfirmAndPublishDraft() {
+    if (!editingDraft) return;
+    if (!editForm.title.trim()) {
+      setEditError('Announcement title is required.');
+      return;
+    }
+    if (!editForm.message.trim()) {
+      setEditError('Message content is required.');
+      return;
+    }
+    if (editForm.audienceType === 'CLASS' && !editForm.classId) {
+      setEditError('Please select a target class (L-KG to Class 12).');
+      return;
+    }
+    if (editForm.audienceType === 'SECTION' && (!editForm.classId || !editSelectedSectionLetter)) {
+      setEditError('Please select both Class and Section.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      // 1. Update draft content first
+      await api.put(`/communication/announcements/${editingDraft.id}`, editForm);
+      // 2. Publish announcement to recipients
+      await api.post(`/communication/announcements/${editingDraft.id}/publish`);
+      setMsg(`Announcement "${editForm.title}" confirmed and published successfully!`);
+      setEditingDraft(null);
+      load();
+    } catch (e: any) {
+      setEditError(e?.response?.data?.message || 'Unable to publish announcement.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   // Stage 1 Validation & Preview Trigger
   function handleInitiateCreate() {
     if (!form.title.trim()) {
@@ -267,18 +477,22 @@ export default function Communication() {
     setPreviewOpen(true);
   }
 
-  // Stage 2 Confirmation & Commit
-  async function handleConfirmCreate() {
+  // Save Announcement as Draft Execution
+  async function handleSaveDraft() {
     if (!form.title.trim() || !form.message.trim()) {
       setPreviewError('Title and message cannot be empty.');
       return;
     }
 
-    setPreviewLoading(true);
+    setDraftLoading(true);
     setPreviewError(null);
     try {
-      await api.post('/communication/announcements', form);
-      setMsg('Announcement saved successfully!');
+      await api.post('/communication/announcements', {
+        ...form,
+        publish: false,
+        status: 'DRAFT'
+      });
+      setMsg('Announcement saved as draft successfully!');
       setForm({
         title: '',
         message: '',
@@ -290,8 +504,53 @@ export default function Communication() {
       setPreviewOpen(false);
       load();
     } catch (e: any) {
-      console.error('[Communication] Error saving announcement:', e);
-      setPreviewError(e?.response?.data?.message || e?.message || 'Unable to save announcement. Please check server connection.');
+      console.error('[Communication] Error saving draft announcement:', e);
+      setPreviewError(e?.response?.data?.message || e?.message || 'Unable to save draft announcement. Please check server connection.');
+    } finally {
+      setDraftLoading(false);
+    }
+  }
+
+  // Confirm & Publish Announcement Execution directly from Preview Modal
+  async function handleConfirmAndPublish() {
+    if (!form.title.trim() || !form.message.trim()) {
+      setPreviewError('Title and message cannot be empty.');
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const res = await api.post('/communication/announcements', {
+        ...form,
+        publish: true,
+        status: 'PUBLISHED'
+      });
+      const created = res.data;
+
+      // If backend did not auto-publish, trigger secondary publish
+      if (created && created.id && created.status !== 'PUBLISHED') {
+        try {
+          await api.post(`/communication/announcements/${created.id}/publish`);
+        } catch (_pubErr) {
+          console.warn('[Communication] Secondary publish call notice');
+        }
+      }
+
+      setMsg('Announcement confirmed and published successfully!');
+      setForm({
+        title: '',
+        message: '',
+        audienceType: 'SCHOOL',
+        priority: 'NORMAL',
+        classId: '',
+        sectionId: ''
+      });
+      setPreviewOpen(false);
+      load();
+    } catch (e: any) {
+      console.error('[Communication] Error publishing announcement:', e);
+      setPreviewError(e?.response?.data?.message || e?.message || 'Unable to publish announcement. Please check server connection.');
     } finally {
       setPreviewLoading(false);
     }
@@ -713,7 +972,7 @@ export default function Communication() {
               <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Filter size={13} /> Filter:
               </span>
-              {(['ALL', 'SCHOOL', 'CLASS', 'SECTION', 'TEACHER', 'STUDENT'] as const).map(f => (
+              {(['ALL', 'SCHOOL', 'TEACHER', 'STUDENT'] as const).map(f => (
                 <button
                   key={f}
                   type="button"
@@ -736,18 +995,18 @@ export default function Communication() {
           </div>
 
           {/* Announcements Table */}
-          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflowX: 'auto', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+          <div className="table-wrap" style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 8, overflow: 'hidden', overflowX: 'hidden', backgroundColor: 'var(--bg-card, #ffffff)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 0 }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>TITLE</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>AUDIENCE</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>PRIORITY</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>STATUS</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>RECIPIENTS</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>READ</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>REPLIES</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ACTION</th>
+                  <th style={{ width: '30%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>TITLE</th>
+                  <th style={{ width: '13%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>AUDIENCE</th>
+                  <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PRIORITY</th>
+                  <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>STATUS</th>
+                  <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>RECIPIENTS</th>
+                  <th style={{ width: '6%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>READ</th>
+                  <th style={{ width: '10%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>REPLIES</th>
+                  <th style={{ width: '13%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -781,19 +1040,24 @@ export default function Communication() {
 
                     return (
                       <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0f172a)' }}>{x.title}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={x.title}>
+                            {x.title}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.message}>
                             {x.message}
                           </div>
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '3px 8px',
+                            display: 'inline-block',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            padding: '2px 7px',
                             borderRadius: 4,
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: 600,
                             backgroundColor:
                               x.audience_type === 'TEACHER' ? '#f0fdf4' :
@@ -808,93 +1072,121 @@ export default function Communication() {
                               x.audience_type === 'SECTION' ? '#6b21a8' :
                               x.audience_type === 'CLASS' ? '#0369a1' : 'var(--text-secondary, #334155)',
                             border: x.audience_type === 'SECTION' ? '1px solid #ddd6fe' : x.audience_type === 'CLASS' ? '1px solid #bae6fd' : 'none'
-                          }}>
+                          }} title={audienceBadgeText}>
                             {audienceBadgeText}
                           </span>
                         </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '3px 8px',
-                        borderRadius: 4,
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
-                        color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
-                      }}>
-                        {x.priority === 'EMERGENCY' && <AlertTriangle size={12} />}
-                        {x.priority}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '3px 8px',
-                        borderRadius: 4,
-                        fontSize: 11.5,
-                        fontWeight: 600,
-                        backgroundColor: x.status === 'PUBLISHED' ? '#ecfdf5' : 'var(--card-subtle, #f8fafc)',
-                        color: x.status === 'PUBLISHED' ? '#047857' : 'var(--text-muted, #64748b)'
-                      }}>
-                        {x.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #334155)' }}>{x.recipient_count || 0}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #334155)' }}>{x.read_count || 0}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <button
-                        type="button"
-                        onClick={() => openNoticeReplies(x)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          backgroundColor: 'var(--card-subtle, #f8fafc)',
-                          border: '1px solid var(--border, #cbd5e1)',
-                          padding: '4px 10px',
-                          borderRadius: 5,
-                          fontSize: 12,
-                          color: '#3b82f6',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                        title="View threaded parent & student replies"
-                      >
-                        <MessageCircle size={13} /> {x.reply_count || 0} Replies
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                      {x.status !== 'PUBLISHED' ? (
-                        <button
-                          type="button"
-                          onClick={() => setPublishTarget(x)}
-                          style={{
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
+                          <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 4,
-                            padding: '5px 12px',
-                            backgroundColor: '#10b981',
-                            color: '#ffffff',
-                            borderRadius: 5,
-                            border: 'none',
-                            fontSize: 12,
+                            gap: 3,
+                            padding: '2px 7px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor: x.priority === 'EMERGENCY' ? '#fee2e2' : x.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
+                            color: x.priority === 'EMERGENCY' ? '#b91c1c' : x.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
+                          }}>
+                            {x.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
+                            {x.priority}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 7px',
+                            borderRadius: 4,
+                            fontSize: 11,
                             fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Send size={12} /> Publish
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: 11.5, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle2 size={13} /> Sent
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                            backgroundColor: x.status === 'PUBLISHED' ? '#ecfdf5' : 'var(--card-subtle, #f8fafc)',
+                            color: x.status === 'PUBLISHED' ? '#047857' : 'var(--text-muted, #64748b)'
+                          }}>
+                            {x.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
+                          {x.recipient_count || 0}
+                        </td>
+                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
+                          {x.read_count || 0}
+                        </td>
+                        <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <button
+                            type="button"
+                            onClick={() => openNoticeReplies(x)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              backgroundColor: 'var(--card-subtle, #f8fafc)',
+                              border: '1px solid var(--border, #cbd5e1)',
+                              padding: '3px 7px',
+                              borderRadius: 5,
+                              fontSize: 11,
+                              color: '#3b82f6',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="View threaded parent & student replies"
+                          >
+                            <MessageCircle size={11} /> {x.reply_count || 0} Replies
+                          </button>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                          {x.status !== 'PUBLISHED' ? (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditDraft(x)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  padding: '4px 8px',
+                                  backgroundColor: '#2563eb',
+                                  color: '#ffffff',
+                                  borderRadius: 4,
+                                  border: 'none',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                                title="Edit this draft announcement"
+                              >
+                                <Edit3 size={11} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPublishTarget(x)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  padding: '4px 8px',
+                                  backgroundColor: '#10b981',
+                                  color: '#ffffff',
+                                  borderRadius: 4,
+                                  border: 'none',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                                title="Publish announcement directly"
+                              >
+                                <Send size={11} /> Publish
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 11.5, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                              <CheckCircle2 size={13} /> Sent
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 {!items.length && (
                   <tr>
                     <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
@@ -1084,11 +1376,16 @@ export default function Communication() {
         isOpen={previewOpen}
         onClose={() => setPreviewOpen(false)}
         onEdit={() => setPreviewOpen(false)}
-        onConfirm={handleConfirmCreate}
+        onConfirm={handleConfirmAndPublish}
+        onSecondary={handleSaveDraft}
         title="Preview Announcement Broadcast"
         subtitle={`Target: ${form.audienceType} · Priority: ${form.priority}`}
         operationType="create"
-        confirmText="Confirm & Save Announcement"
+        confirmText="Confirm & Publish"
+        confirmIcon={<Send size={15} />}
+        secondaryText="Save as Draft"
+        secondaryIcon={<FileText size={15} />}
+        secondaryLoading={draftLoading}
         editText="Back to Edit Draft"
         sections={previewSections}
         loading={previewLoading}
@@ -1100,17 +1397,348 @@ export default function Communication() {
         isOpen={!!publishTarget}
         onClose={() => setPublishTarget(null)}
         onConfirm={handleConfirmPublish}
-        title="Confirm Announcement Broadcast"
+        title="Confirm Announcement Publish"
         entityName={publishTarget?.title || 'Announcement'}
         entityType="Announcement"
         warningMessage="This action will deliver notification broadcasts to all designated recipients and inboxes immediately."
-        confirmText="Confirm & Broadcast"
+        confirmText="Confirm and publish"
         loading={publishing}
         details={[
           { label: 'Audience Scope', value: publishTarget?.audience_type || '' },
           { label: 'Priority', value: publishTarget?.priority || '' }
         ]}
       />
+
+      {/* Edit Draft Announcement Modal */}
+      {editingDraft && (
+        <div
+          className="overlay"
+          style={{
+            zIndex: 10050,
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              width: 'min(640px, 95vw)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: 14,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid var(--border, #e2e8f0)',
+              background: 'var(--card-subtle, #f8fafc)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'rgba(37, 99, 235, 0.15)',
+                  color: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Edit3 size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                    Edit Draft Announcement
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                    Update details, target audience, or publish directly
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDraft(null)}
+                disabled={editSaving}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {editError && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Title Field */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+                  ANNOUNCEMENT TITLE <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                  placeholder="Enter announcement title..."
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 13.5,
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Message Details Field */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+                  BROADCAST DETAILS & INSTRUCTIONS <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <AutoExpandingTextarea
+                  value={editForm.message}
+                  onChange={e => setEditForm({ ...editForm, message: e.target.value })}
+                  placeholder="Broadcast details, agenda, and instructions..."
+                  minHeight={90}
+                  maxHeight={280}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    backgroundColor: 'var(--bg, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 13,
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Targeting Controls */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>AUDIENCE TYPE</label>
+                  <select
+                    value={editForm.audienceType}
+                    onChange={handleEditAudienceChange}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="SCHOOL">SCHOOL (All)</option>
+                    <option value="CLASS">CLASS (Specific Class)</option>
+                    <option value="SECTION">SECTION (Class + Section)</option>
+                    <option value="TEACHER">TEACHER (Faculty only)</option>
+                    <option value="STUDENT">STUDENT (Student portal)</option>
+                    <option value="PARENTS">PARENTS</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: (editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                  }}>
+                    CLASS {(editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <select
+                    value={editForm.classId}
+                    onChange={handleEditClassChange}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="">{editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION' ? 'Select Class (L-KG to 12)' : 'All Classes'}</option>
+                    {resolvedClasses.map(c => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0 }}>
+                  <label style={{
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: editForm.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
+                  }}>
+                    SECTION {editForm.audienceType === 'SECTION' && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <select
+                    value={editSelectedSectionLetter}
+                    onChange={handleEditSectionChange}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="">{editForm.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>PRIORITY</label>
+                  <select
+                    value={editForm.priority}
+                    onChange={e => setEditForm({ ...editForm, priority: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: editForm.priority === 'EMERGENCY' ? '1px solid #ef4444' : '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13,
+                      boxSizing: 'border-box',
+                      backgroundColor: editForm.priority === 'EMERGENCY' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg, #ffffff)',
+                      color: editForm.priority === 'EMERGENCY' ? '#f87171' : 'var(--text, #0f172a)',
+                      fontWeight: editForm.priority === 'EMERGENCY' ? 700 : 500
+                    }}
+                  >
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="EMERGENCY">EMERGENCY (Auto-Email Broadcast)</option>
+                  </select>
+                </div>
+              </div>
+
+              {editForm.priority === 'EMERGENCY' && (
+                <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertTriangle size={14} /> Emergency announcements automatically dispatch priority emails to all target audience accounts upon publication.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid var(--border, #e2e8f0)',
+              background: 'var(--card-subtle, #f8fafc)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 10
+            }}>
+              <button
+                type="button"
+                onClick={() => setEditingDraft(null)}
+                disabled={editSaving}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: editSaving ? 'not-allowed' : 'pointer',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'transparent',
+                  color: 'var(--text, #334155)'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveDraftOnly}
+                disabled={editSaving}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: editSaving ? 'not-allowed' : 'pointer',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--bg-card, #ffffff)',
+                  color: 'var(--text, #0f172a)'
+                }}
+              >
+                {editSaving ? 'Saving…' : 'Save as Draft'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmAndPublishDraft}
+                disabled={editSaving}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 20px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: editSaving ? 'not-allowed' : 'pointer',
+                  border: 'none',
+                  backgroundColor: '#10b981',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.35)'
+                }}
+              >
+                <Send size={14} />
+                <span>{editSaving ? 'Publishing…' : 'Confirm and publish'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Loader2, Send } from 'lucide-react';
 import { DestructiveConfirmProps } from './types';
 
 export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
@@ -16,6 +16,8 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
   error = null
 }) => {
   if (!isOpen) return null;
+
+  const isPublish = confirmText.toLowerCase().includes('publish') || confirmText.toLowerCase().includes('broadcast');
 
   return (
     <div
@@ -38,9 +40,9 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
         style={{
           width: 'min(500px, 95vw)',
           background: 'var(--bg-card, #ffffff)',
-          border: '1px solid #fecaca',
+          border: isPublish ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #fecaca',
           borderRadius: 16,
-          boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25)',
+          boxShadow: isPublish ? '0 25px 50px -12px rgba(16, 185, 129, 0.25)' : '0 25px 50px -12px rgba(220, 38, 38, 0.25)',
           overflow: 'hidden',
           padding: 0
         }}
@@ -49,8 +51,8 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
         <div
           style={{
             padding: '20px 24px 16px',
-            borderBottom: '1px solid rgba(239, 68, 68, 0.25)',
-            background: 'rgba(239, 68, 68, 0.12)',
+            borderBottom: isPublish ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
+            background: isPublish ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -62,22 +64,22 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: 'rgba(239, 68, 68, 0.22)',
-                color: '#ef4444',
+                background: isPublish ? 'rgba(16, 185, 129, 0.22)' : 'rgba(239, 68, 68, 0.22)',
+                color: isPublish ? '#10b981' : '#ef4444',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0
               }}
             >
-              <AlertTriangle size={22} />
+              {isPublish ? <Send size={20} /> : <AlertTriangle size={22} />}
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#ef4444' }}>
-                {title || `Delete ${entityType}`}
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: isPublish ? 'var(--text, #0f172a)' : '#ef4444' }}>
+                {title || (isPublish ? `Publish ${entityType}` : `Delete ${entityType}`)}
               </h3>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--text-secondary, #fca5a5)' }}>
-                Destructive operation confirmation
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: isPublish ? 'var(--text-muted, #10b981)' : 'var(--text-secondary, #fca5a5)' }}>
+                {isPublish ? 'Broadcast & delivery confirmation' : 'Destructive operation confirmation'}
               </p>
             </div>
           </div>
@@ -89,7 +91,7 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
               background: 'transparent',
               border: 'none',
               cursor: loading ? 'not-allowed' : 'pointer',
-              color: '#ef4444',
+              color: isPublish ? 'var(--text-muted, #64748b)' : '#ef4444',
               padding: 4
             }}
           >
@@ -213,19 +215,19 @@ export const DestructiveConfirmModal: React.FC<DestructiveConfirmProps> = ({
               fontWeight: 700,
               cursor: loading ? 'not-allowed' : 'pointer',
               border: 'none',
-              background: '#dc2626',
+              background: isPublish ? '#10b981' : '#dc2626',
               color: '#ffffff',
-              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
+              boxShadow: isPublish ? '0 2px 6px rgba(16, 185, 129, 0.35)' : '0 2px 6px rgba(220, 38, 38, 0.3)'
             }}
           >
             {loading ? (
               <>
                 <Loader2 size={15} className="spinning" />
-                <span>Deleting…</span>
+                <span>{isPublish ? 'Publishing…' : 'Deleting…'}</span>
               </>
             ) : (
               <>
-                <Trash2 size={15} />
+                {isPublish ? <Send size={15} /> : <Trash2 size={15} />}
                 <span>{confirmText}</span>
               </>
             )}

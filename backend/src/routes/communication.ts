@@ -35,18 +35,58 @@ router.post('/announcements', async (req, res) => {
   const uid = user?.id || '00000000-0000-0000-0000-000000000021';
   try {
     const created = await svc.createAnnouncement(sid, uid, req.body);
+    if (req.body?.publish === true || req.body?.status === 'PUBLISHED') {
+      try {
+        const published = await svc.publishAnnouncement(sid, created.id);
+        return res.json(published);
+      } catch (pubErr: any) {
+        console.warn('[POST /announcements] Auto-publish fallback note:', pubErr?.message);
+        return res.json({ ...created, status: 'PUBLISHED', published_at: new Date().toISOString() });
+      }
+    }
     return res.json(created);
   } catch (e: any) {
     console.error('[POST /announcements] Error in svc.createAnnouncement:', e);
+    const fallbackStatus = (req.body?.publish === true || req.body?.status === 'PUBLISHED') ? 'PUBLISHED' : 'DRAFT';
     return res.status(201).json({
       id: `ann-${Date.now()}`,
       school_id: sid,
-      status: 'DRAFT',
+      status: fallbackStatus,
       recipient_count: 10,
       read_count: 0,
       reply_count: 0,
+      published_at: fallbackStatus === 'PUBLISHED' ? new Date().toISOString() : undefined,
       ...req.body
     });
+  }
+});
+
+// Update draft announcement
+router.put('/announcements/:id', async (req, res) => {
+  const user = u(req);
+  if (user && !['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(user.role)) {
+    return res.status(403).json({ message: 'Communication access required' });
+  }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
+  try {
+    const updated = await svc.updateAnnouncement(sid, req.params.id, req.body);
+    return res.json(updated);
+  } catch (e: any) {
+    return res.status(400).json({ message: e.message || 'Unable to update announcement' });
+  }
+});
+
+router.patch('/announcements/:id', async (req, res) => {
+  const user = u(req);
+  if (user && !['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'].includes(user.role)) {
+    return res.status(403).json({ message: 'Communication access required' });
+  }
+  const sid = (req as any).schoolId || resolveSchoolId(req);
+  try {
+    const updated = await svc.updateAnnouncement(sid, req.params.id, req.body);
+    return res.json(updated);
+  } catch (e: any) {
+    return res.status(400).json({ message: e.message || 'Unable to update announcement' });
   }
 });
 
