@@ -76,6 +76,7 @@ import {
   PreviewTableData
 } from './components/preview';
 import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
+import { NavVisibilityMenu } from './components/NavVisibilityMenu';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1837,6 +1838,7 @@ function Layout({children}:{children:React.ReactNode}){
   const loc=useLocation();
   const {dark,toggle}=useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem('attendo_staff_nav_hidden') === 'true');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [reviewOpen, setReviewOpen] = useState(true);
@@ -2338,7 +2340,14 @@ function Layout({children}:{children:React.ReactNode}){
   const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   const activeSessionName = cleanSessionName || '2026–27';
 
-  return <div className="app-shell">
+  const toggleSidebarHidden = () => setSidebarHidden(previous => {
+    const next = !previous;
+    localStorage.setItem('attendo_staff_nav_hidden', String(next));
+    return next;
+  });
+
+  return <div className={`app-shell ${sidebarHidden ? 'nav-sidebar-hidden' : ''}`}>
+    <NavVisibilityMenu hidden={sidebarHidden} onToggle={toggleSidebarHidden} />
     {/* ── Mobile Sidebar Backdrop ── */}
     {mobileSidebarOpen && (
       <div
@@ -2347,7 +2356,7 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside className={`${sidebarHidden ? 'nav-hidden' : ''} ${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
           className="sidebar-brand-interactive"

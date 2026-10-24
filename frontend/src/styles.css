@@ -454,6 +454,60 @@ button.secondary:hover {
   display: flex;
 }
 
+.nav-hidden {
+  display: none !important;
+}
+
+.nav-visibility-menu {
+  position: fixed;
+  top: 72px;
+  left: 8px;
+  z-index: 1005;
+}
+
+.nav-visibility-dots {
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  border: 1px solid var(--border, #e2e8f0) !important;
+  border-radius: 10px !important;
+  background: var(--surface, #fff) !important;
+  color: var(--text-secondary, #475569) !important;
+  display: grid !important;
+  place-items: center;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.12) !important;
+}
+
+.nav-visibility-popover {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18);
+}
+
+.nav-visibility-popover button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--text, #0f172a) !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+.nav-visibility-popover button:hover {
+  background: var(--bg-sidebar-hover, #f1f5f9) !important;
+}
+
 aside {
   width: 270px;
   padding: 0;

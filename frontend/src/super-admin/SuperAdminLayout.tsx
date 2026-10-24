@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../hooks/useAuth';
+import { NavVisibilityMenu } from '../components/NavVisibilityMenu';
 import {
   LayoutDashboard, School, CreditCard, FileText, Eye, BarChart3,
   Users, Shield, ShieldCheck, Database, Settings, Moon, Sun,
@@ -30,6 +31,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   };
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem('attendo_super_nav_hidden') === 'true');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Dark mode (default to crisp light enterprise theme)
@@ -263,9 +265,14 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
   const userInitials = user?.name ? user.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() : 'SA';
 
   return (
-    <div className="sa-app-shell">
+    <div className={`sa-app-shell ${sidebarHidden ? 'nav-sidebar-hidden' : ''}`}>
+      <NavVisibilityMenu hidden={sidebarHidden} onToggle={() => setSidebarHidden(previous => {
+        const next = !previous;
+        localStorage.setItem('attendo_super_nav_hidden', String(next));
+        return next;
+      })} />
       {/* ─── SIDEBAR ─── */}
-      <aside className={`sa-sidebar ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
+      <aside className={`sa-sidebar ${sidebarHidden ? 'nav-hidden' : ''} ${sidebarCollapsed ? 'sa-sidebar-collapsed' : ''} ${mobileDrawerOpen ? 'sa-sidebar-mobile-open mobile-open' : ''}`}>
         {/* Brand Header */}
         <div className="sa-sidebar-brand" onClick={() => nav('/super-admin')}>
           <div className="sa-brand-logo-wrap">

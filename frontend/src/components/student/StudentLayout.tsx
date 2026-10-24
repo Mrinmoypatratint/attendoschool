@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
 import { StudentSearchBar } from './StudentSearchBar';
+import { NavVisibilityMenu } from '../NavVisibilityMenu';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const nav = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem('attendo_student_nav_hidden') === 'true');
   const [dark, setDark] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -318,7 +320,12 @@ export function StudentLayout({ children }: StudentLayoutProps) {
           onComplete={handleWelcomeComplete}
         />
       )}
-      <div className="student-portal-root">
+      <div className={`student-portal-root ${sidebarHidden ? 'nav-sidebar-hidden' : ''}`}>
+      <NavVisibilityMenu hidden={sidebarHidden} onToggle={() => setSidebarHidden(previous => {
+        const next = !previous;
+        localStorage.setItem('attendo_student_nav_hidden', String(next));
+        return next;
+      })} />
       {/* Mobile Backdrop */}
       {mobileNavOpen && (
         <div 
@@ -328,7 +335,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       )}
 
       {/* Left Sidebar */}
-      <aside className={`student-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
+      <aside className={`student-sidebar ${sidebarHidden ? 'nav-hidden' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
           <div 
             className="student-logo-wrap" 
