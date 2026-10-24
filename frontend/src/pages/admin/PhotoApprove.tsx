@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface PhotoRequest {
   id: string;
@@ -507,7 +508,7 @@ export default function PhotoApprove() {
                   )}
 
                   <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {photo.applicant_name}
+                    <PersonProfileLink kind={photo.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={photo.applicant_id} name={photo.applicant_name} person={photo as any} />
                   </h3>
 
                   {isTeacher ? (
@@ -656,7 +657,7 @@ export default function PhotoApprove() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>{previewPhoto.applicant_name}</h3>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}><PersonProfileLink kind={previewPhoto.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={previewPhoto.applicant_id} name={previewPhoto.applicant_name} person={previewPhoto as any} /></h3>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
                   {previewPhoto.detail || (isTeacher ? cleanIdentifier(previewPhoto.identifier) : previewPhoto.identifier)}
                 </span>

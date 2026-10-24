@@ -25,6 +25,7 @@ import {
 import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface TeacherLeave {
   id: string;
@@ -1223,7 +1224,7 @@ export default function TeacherLeaveApprove() {
                           )}
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)' }}>
-                              {l.applicant_name}
+                              <PersonProfileLink kind="teacher" id={l.applicant_id} name={l.applicant_name} person={l as any} />
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
                               {l.teacher_email || l.identifier || 'Faculty Member'}
@@ -1572,7 +1573,7 @@ export default function TeacherLeaveApprove() {
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text, #0F172A)' }}>
-                    {viewingLeave.applicant_name}
+                    <PersonProfileLink kind="teacher" id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #64748B)' }}>
                     {viewingLeave.teacher_email || viewingLeave.identifier || 'Faculty Member'}

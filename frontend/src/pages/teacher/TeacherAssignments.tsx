@@ -4,6 +4,7 @@ import {
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download
 } from 'lucide-react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 interface AssignmentRecord {
@@ -785,7 +786,7 @@ export function TeacherAssignments() {
               <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 16, borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', marginBottom: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-                    Grade Submission for {selectedSubmission.student_name || 'Student'} (Roll #{selectedSubmission.roll_number || '—'})
+                    Grade Submission for <PersonProfileLink kind="student" id={selectedSubmission.student_id} name={selectedSubmission.student_name || 'Student'} person={selectedSubmission as any} /> (Roll #{selectedSubmission.roll_number || '—'})
                   </h3>
                   <button type="button" onClick={() => setSelectedSubmission(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
                     Cancel Grading
@@ -945,7 +946,7 @@ export function TeacherAssignments() {
                   {submissions.map((sub) => (
                     <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
                       <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
-                        {sub.student_name || 'Student'}
+                        <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'} person={sub as any} />
                         {sub.roll_number && <span style={{ color: 'var(--text-muted, #64748b)', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
                         {sub.attachments && sub.attachments.length > 0 && (
                           <span

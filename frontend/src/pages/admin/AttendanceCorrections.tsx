@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
 
 type Item = {
@@ -180,7 +181,7 @@ export default function AttendanceCorrections() {
               {items.map(x => (
                 <tr key={x.id}>
                   <td>
-                    <b>{x.student_name}</b>
+                    <PersonProfileLink kind="student" name={x.student_name} person={x as any}><b>{x.student_name}</b></PersonProfileLink>
                     <br />
                     <small className="table-sub" style={{ color: 'var(--text-secondary, #94a3b8)' }}>Roll {x.roll}</small>
                   </td>
@@ -344,7 +345,7 @@ export default function AttendanceCorrections() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Student:</span>
-                <b>{dialog.item.student_name} (Roll {dialog.item.roll})</b>
+                <PersonProfileLink kind="student" name={dialog.item.student_name} person={dialog.item as any}><b>{dialog.item.student_name} (Roll {dialog.item.roll})</b></PersonProfileLink>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Status Change:</span>

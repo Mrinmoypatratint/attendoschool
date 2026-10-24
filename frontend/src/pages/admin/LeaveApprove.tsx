@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface LeaveRequest {
   id: string;
@@ -489,7 +490,7 @@ export default function LeaveApprove() {
                       )}
 
                       <h3 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
-                        {leave.applicant_name}
+                        <PersonProfileLink kind={leave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={leave.applicant_id} name={leave.applicant_name} person={leave as any} />
                       </h3>
 
                       <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
@@ -702,7 +703,7 @@ export default function LeaveApprove() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0F172A)' }}>
-                    {viewingLeave.applicant_name}
+                    <PersonProfileLink kind={viewingLeave.applicant_type === 'TEACHER' ? 'teacher' : 'student'} id={viewingLeave.applicant_id} name={viewingLeave.applicant_name} person={viewingLeave as any} />
                   </h4>
                   {!isTeacher && (
                     <span

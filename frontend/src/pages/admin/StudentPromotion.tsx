@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import {
   UniversalPreviewModal,
   PreviewSummaryCard,
@@ -507,7 +508,7 @@ export default function StudentPromotion() {
                       {x.admission_number || x.admissionNumber || '—'}
                     </span>
                   </td>
-                  <td><b>{x.name}</b></td>
+                  <td><PersonProfileLink kind="student" id={x.id} name={x.name} person={x as any}><b>{x.name}</b></PersonProfileLink></td>
                   <td>{x.from_class_name || '—'}</td>
                   <td>{x.from_section_name || '—'}</td>
                   <td>

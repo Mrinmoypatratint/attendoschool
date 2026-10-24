@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -326,7 +327,7 @@ export default function Analytics() {
                     return (
                       <tr key={x.id}>
                         <td>
-                          <b>{idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''}{x.name}</b>
+                          <PersonProfileLink kind="student" id={x.id || x.student_id} name={x.name} person={x as any}><b>{idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''}{x.name}</b></PersonProfileLink>
                         </td>
                         <td><code>{x.code}</code></td>
                         <td>{x.students}</td>
@@ -627,7 +628,7 @@ export default function Analytics() {
                       {data.lowAttendanceStudents.map((st: any) => (
                         <tr key={st.id}>
                           <td><span className="roll">{st.roll_number}</span></td>
-                          <td><b>{st.name}</b></td>
+                          <td><PersonProfileLink kind="student" id={st.id || st.student_id} name={st.name} person={st as any}><b>{st.name}</b></PersonProfileLink></td>
                           <td>{st.class_name} - {st.section_name}</td>
                           <td>
                             <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 14, background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '3px 8px', borderRadius: 4 }}>

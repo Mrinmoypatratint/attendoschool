@@ -4,6 +4,7 @@ import {
   CheckCircle2, AlertCircle, Loader2, Check, Lock, Calendar, Info, Search
 } from 'lucide-react';
 import { api } from '../../api';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface MentoredClass {
   mentor_record_id: string;
@@ -414,7 +415,7 @@ export function ClassMentorWorkspace() {
                           {item.subject_name}
                         </td>
                         <td style={{ padding: '14px 16px', color: 'var(--text)', fontWeight: 500 }}>
-                          {item.teacher_name}
+                          <PersonProfileLink kind="teacher" id={item.teacher_id} name={item.teacher_name} person={item as any} />
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           {item.is_primary ? (
@@ -589,7 +590,7 @@ export function ClassMentorWorkspace() {
                         return (
                           <tr key={st.student_id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontWeight: 600 }}>{st.roll || '—'}</td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text)' }}>{st.student_name}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text)' }}><PersonProfileLink kind="student" id={st.student_id} name={st.student_name} person={st as any} /></td>
                             <td style={{ padding: '12px 16px', color: 'var(--emerald-600, #059669)', fontWeight: 600 }}>{st.present_days}</td>
                             <td style={{ padding: '12px 16px', color: 'var(--rose-600, #dc2626)', fontWeight: 600 }}>{st.absent_days}</td>
                             <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{st.marked_days}</td>

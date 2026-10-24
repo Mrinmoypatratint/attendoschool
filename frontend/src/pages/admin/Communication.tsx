@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { PersonProfileLink } from '../../components/PersonProfileLink';
 
 interface AnnouncementItem {
   id: string;
@@ -930,7 +931,7 @@ export default function Communication() {
               {/* Linked Student academic placement context */}
               {r.student_name && (
                 <div style={{ fontSize: 12.5, color: '#475569', backgroundColor: '#f8fafc', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
-                  Linked Student: <b>{r.student_name}</b> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
+                  Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
                 </div>
               )}
 
@@ -1046,7 +1047,7 @@ export default function Communication() {
 
                     {r.student_name && (
                       <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: 8 }}>
-                        Student: {r.student_name} ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
+                        Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} /> ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
                       </div>
                     )}
 
