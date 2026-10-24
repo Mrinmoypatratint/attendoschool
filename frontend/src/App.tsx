@@ -76,7 +76,7 @@ import {
   PreviewTableData
 } from './components/preview';
 import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
-import { NavVisibilityMenu } from './components/NavVisibilityMenu';
+import { SidebarToggle } from './components/SidebarToggle';
 
 const fmt=(t:string)=>t?.slice(0,5)||'';
 const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1837,8 +1837,7 @@ function Layout({children}:{children:React.ReactNode}){
   const nav=useNavigate();
   const loc=useLocation();
   const {dark,toggle}=useTheme();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem('attendo_staff_nav_hidden') === 'true');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_staff_nav_collapsed') === 'true');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [reviewOpen, setReviewOpen] = useState(true);
@@ -2340,14 +2339,19 @@ function Layout({children}:{children:React.ReactNode}){
   const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   const activeSessionName = cleanSessionName || '2026–27';
 
-  const toggleSidebarHidden = () => setSidebarHidden(previous => {
-    const next = !previous;
-    localStorage.setItem('attendo_staff_nav_hidden', String(next));
-    return next;
-  });
+  const handleNavigationToggle = () => {
+    if (window.matchMedia('(max-width: 1180px)').matches) {
+      setMobileSidebarOpen(previous => !previous);
+      return;
+    }
+    setSidebarCollapsed(previous => {
+      const next = !previous;
+      localStorage.setItem('attendo_staff_nav_collapsed', String(next));
+      return next;
+    });
+  };
 
-  return <div className={`app-shell ${sidebarHidden ? 'nav-sidebar-hidden' : ''}`}>
-    <NavVisibilityMenu hidden={sidebarHidden} onToggle={toggleSidebarHidden} />
+  return <div className="app-shell">
     {/* ── Mobile Sidebar Backdrop ── */}
     {mobileSidebarOpen && (
       <div
@@ -2356,7 +2360,7 @@ function Layout({children}:{children:React.ReactNode}){
         aria-label="Close navigation"
       />
     )}
-    <aside className={`${sidebarHidden ? 'nav-hidden' : ''} ${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+    <aside id="primary-navigation" className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div 
           className="sidebar-brand-interactive"
@@ -2495,22 +2499,9 @@ function Layout({children}:{children:React.ReactNode}){
     </aside>
     <main>
       {user.role === 'SUPER_ADMIN' ? (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => {
-                if (window.innerWidth <= 1180) {
-                  setMobileSidebarOpen(prev => !prev);
-                } else {
-                  setSidebarCollapsed(prev => !prev);
-                }
-              }}
-            >
-              <Menu size={16} />
-            </button>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" iconSize={18} />
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search schools, students, classes..." readOnly style={{ cursor: 'pointer' }} />
@@ -2598,16 +2589,9 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
         </header>
       ) : user.role === 'SCHOOL_ADMIN' ? (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => setMobileSidebarOpen(prev => !prev)}
-            >
-              <Menu size={18} />
-            </button>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
             <div 
               style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -2838,16 +2822,9 @@ function Layout({children}:{children:React.ReactNode}){
           </div>
         </header>
       ) : (
-        <header>
+        <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <button
-              className="header-icon-btn mobile-menu-btn"
-              title="Toggle menu"
-              style={{ border: '1px solid var(--border)', borderRadius: 8 }}
-              onClick={() => setMobileSidebarOpen(prev => !prev)}
-            >
-              <Menu size={18} />
-            </button>
+            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
             <div 
               style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}

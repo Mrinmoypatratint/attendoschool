@@ -6,7 +6,9 @@
 /* ─── 1. Core Shell & Baseline ─── */
 .sa-app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   width: 100%;
   background-color: #f8fafc;
   color: #0f172a;
@@ -373,7 +375,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #f8fafc;
 }
 
@@ -393,6 +398,8 @@
   top: 0;
   z-index: 40;
   box-sizing: border-box;
+  flex-shrink: 0;
+  isolation: isolate;
 }
 
 [data-theme="dark"] .sa-topbar {

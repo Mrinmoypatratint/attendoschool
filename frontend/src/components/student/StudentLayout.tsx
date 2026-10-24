@@ -27,7 +27,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { studentApi } from '../../services/studentApi';
 import { StudentSearchBar } from './StudentSearchBar';
-import { NavVisibilityMenu } from '../NavVisibilityMenu';
+import { SidebarToggle } from '../SidebarToggle';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -38,7 +38,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const nav = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem('attendo_student_nav_hidden') === 'true');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_student_nav_collapsed') === 'true');
   const [dark, setDark] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -320,12 +320,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
           onComplete={handleWelcomeComplete}
         />
       )}
-      <div className={`student-portal-root ${sidebarHidden ? 'nav-sidebar-hidden' : ''}`}>
-      <NavVisibilityMenu hidden={sidebarHidden} onToggle={() => setSidebarHidden(previous => {
-        const next = !previous;
-        localStorage.setItem('attendo_student_nav_hidden', String(next));
-        return next;
-      })} />
+      <div className="student-portal-root">
       {/* Mobile Backdrop */}
       {mobileNavOpen && (
         <div 
@@ -335,7 +330,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       )}
 
       {/* Left Sidebar */}
-      <aside className={`student-sidebar ${sidebarHidden ? 'nav-hidden' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}>
+      <aside id="primary-navigation" className={`student-sidebar ${sidebarCollapsed ? 'student-sidebar-collapsed' : ''} ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="student-sidebar-brand" style={{ padding: '16px 16px 14px' }}>
           <div 
             className="student-logo-wrap" 
@@ -432,14 +427,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         {/* Topbar */}
         <header className="student-topbar">
           <div className="student-topbar-left">
-            <button
-              type="button"
+            <SidebarToggle
+              collapsed={sidebarCollapsed}
               className="student-hamburger-btn"
-              onClick={() => setMobileNavOpen(prev => !prev)}
-              aria-label="Toggle navigation menu"
-            >
-              <Menu size={20} />
-            </button>
+              iconSize={20}
+              onToggle={() => {
+                if (window.matchMedia('(max-width: 1180px)').matches) {
+                  setMobileNavOpen(previous => !previous);
+                } else {
+                  setSidebarCollapsed(previous => {
+                    const next = !previous;
+                    localStorage.setItem('attendo_student_nav_collapsed', String(next));
+                    return next;
+                  });
+                }
+              }}
+            />
             <StudentSearchBar />
           </div>
 
