@@ -14,6 +14,7 @@ export interface DemoUser {
   role: string;
   password: string;
   admissionNumber?: string;
+  employeeId?: string;
   isActive?: boolean;
   photo_url?: string;
   photoUrl?: string;
@@ -44,6 +45,7 @@ const demoUsers: DemoUser[] = [
     schoolId: '00000000-0000-0000-0000-000000000001',
     name: 'Rahul Sharma',
     email: 'rahul@demo-school.local',
+    employeeId: 'TCH-001',
     role: 'TEACHER',
     password: 'ChangeMe123!',
     isActive: true
@@ -53,6 +55,7 @@ const demoUsers: DemoUser[] = [
     schoolId: '00000000-0000-0000-0000-000000000001',
     name: 'Priya Patel',
     email: 'priya@demo-school.local',
+    employeeId: 'TCH-002',
     role: 'TEACHER',
     password: 'ChangeMe123!',
     isActive: true
@@ -131,6 +134,7 @@ const demoUsers: DemoUser[] = [
     schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
     name: 'Debashis Das',
     email: 'teacher1@dav.com',
+    employeeId: '50359',
     role: 'TEACHER',
     password: 'ChangeMe123!',
     isActive: true,
@@ -138,7 +142,7 @@ const demoUsers: DemoUser[] = [
   }
 ];
 
-/** Find a demo user by email, student admission number, or id (case-insensitive with school isolation) */
+/** Find a demo user by email, student admission number, teacher employee ID / savior number, or id (case-insensitive with school isolation) */
 export function findDemoUser(identifier: string, schoolId?: string | null, role?: string): DemoUser | undefined {
   const norm = identifier.toLowerCase().trim();
   return demoUsers.find(u => {
@@ -146,6 +150,14 @@ export function findDemoUser(identifier: string, schoolId?: string | null, role?
 
     // Check admission number match
     if (u.admissionNumber && u.admissionNumber.toLowerCase() === norm) {
+      if (schoolId && u.schoolId && !isSameSchool(u.schoolId, schoolId)) {
+        return false;
+      }
+      return true;
+    }
+
+    // Check teacher employee ID / savior number match
+    if (u.employeeId && u.employeeId.toLowerCase() === norm) {
       if (schoolId && u.schoolId && !isSameSchool(u.schoolId, schoolId)) {
         return false;
       }

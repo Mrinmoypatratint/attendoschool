@@ -580,13 +580,15 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
       [schoolId, String(st.id)]
     ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
-    // 4. Latest Announcements
+    // 4. Latest Announcements (Unread Only)
     pool.query(
       `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at
        FROM announcements a
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
+       LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
        WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
+         AND r.read_at IS NULL
          AND (
            a.audience_type IN ('SCHOOL', 'STUDENT')
            OR (
@@ -601,7 +603,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
          )
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC
        LIMIT 3`,
-      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name]
+      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name, userId]
     ).catch(() => ({ rowCount: 0, rows: [] as any[] })),
 
     // 5. Pending Tasks / Assignments
@@ -1155,11 +1157,13 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
     const q = await pool.query(
       `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
               u.name AS author_name,
-              c.class_number, sec.name AS section_name
+              c.class_number, sec.name AS section_name,
+              r.read_at, r.id AS recipient_id
        FROM announcements a
        LEFT JOIN users u ON u.id = a.created_by
        LEFT JOIN classes c ON c.id = a.class_id
        LEFT JOIN sections sec ON sec.id = a.section_id
+       LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
        WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
          AND (
            a.audience_type IN ('SCHOOL', 'STUDENT')
@@ -1174,7 +1178,7 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
            )
          )
        ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
-      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name]
+      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name, userId]
     );
     if (q.rowCount && q.rowCount > 0) return q.rows;
   } catch (_e) {}

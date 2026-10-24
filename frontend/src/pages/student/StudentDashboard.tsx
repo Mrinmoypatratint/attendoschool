@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
@@ -15,7 +15,8 @@ import {
   BookOpen,
   FlaskConical,
   BookMarked,
-  Award
+  Award,
+  CheckCircle2
 } from 'lucide-react';
 import { studentApi, StudentDashboardData } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -47,16 +48,14 @@ export function StudentDashboard() {
   const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchDashboard = useCallback((showSpinner = false) => {
+    if (showSpinner && !data) setLoading(true);
     studentApi
       .getDashboard()
       .then((res) => {
-        if (!isMounted) return;
         setData(res);
         try {
           if (cacheKey) {
-            // Clear any stale caches from other students
             Object.keys(sessionStorage).forEach(key => {
               if (key.startsWith('cached_student_dashboard_') && key !== cacheKey) {
                 sessionStorage.removeItem(key);
@@ -68,17 +67,25 @@ export function StudentDashboard() {
         setLoading(false);
       })
       .catch((err) => {
-        if (!isMounted) return;
         if (!data) {
           setError(err?.response?.data?.message || 'Failed to load dashboard data');
         }
         setLoading(false);
       });
+  }, [cacheKey, data]);
 
+  useEffect(() => {
+    fetchDashboard(false);
+    const handleRefresh = () => fetchDashboard(false);
+    window.addEventListener('announcements-read', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    window.addEventListener('storage', handleRefresh);
     return () => {
-      isMounted = false;
+      window.removeEventListener('announcements-read', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+      window.removeEventListener('storage', handleRefresh);
     };
-  }, [cacheKey]);
+  }, [fetchDashboard]);
 
 
 
@@ -428,8 +435,10 @@ export function StudentDashboard() {
 
               <div className="student-list">
                 {announcements.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    No new announcements at this time
+                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)' }}>
+                    <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>All caught up!</div>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>You have read all current school announcements.</p>
                   </div>
                 ) : (
                   announcements.map((a, i) => (

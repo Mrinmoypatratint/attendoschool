@@ -778,17 +778,69 @@ export async function listAllRepliesGrouped(schoolId: string) {
   });
 }
 
-export async function markRead(userId: string, recipientId: string) {
+export async function markRead(userId: string, recipientIdOrNoticeId: string) {
   try {
-    const { rows } = await pool.query(
-      `UPDATE announcement_recipients 
-       SET read_at = COALESCE(read_at, NOW()), delivery_status = 'READ'
-       WHERE id = $1 AND parent_user_id = $2 RETURNING *`,
-      [recipientId, userId]
-    );
-    if (rows && rows.length) return rows[0];
-  } catch (_e) {}
-  return { id: recipientId, delivery_status: 'READ', read_at: new Date().toISOString() };
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(recipientIdOrNoticeId).trim());
+    if (isUuid) {
+      // 1. Try updating directly if passed ID matches recipient row ID or announcement_id with parent_user_id
+      const directUpdate = await pool.query(
+        `UPDATE announcement_recipients 
+         SET read_at = COALESCE(read_at, NOW()), delivery_status = 'READ'
+         WHERE (id = $1 OR announcement_id = $1) AND parent_user_id = $2 
+         RETURNING *`,
+        [recipientIdOrNoticeId, userId]
+      );
+      if (directUpdate.rowCount && directUpdate.rowCount > 0) {
+        return directUpdate.rows[0];
+      }
+
+      // 2. Resolve the underlying announcement_id
+      let resolvedAnnId: string | null = null;
+      const chkAnn = await pool.query(
+        `SELECT id FROM announcements WHERE id = $1 LIMIT 1`,
+        [recipientIdOrNoticeId]
+      );
+      if (chkAnn.rowCount && chkAnn.rowCount > 0) {
+        resolvedAnnId = chkAnn.rows[0].id;
+      } else {
+        const chkRec = await pool.query(
+          `SELECT announcement_id FROM announcement_recipients WHERE id = $1 LIMIT 1`,
+          [recipientIdOrNoticeId]
+        );
+        if (chkRec.rowCount && chkRec.rowCount > 0) {
+          resolvedAnnId = chkRec.rows[0].announcement_id;
+        }
+      }
+
+      if (resolvedAnnId) {
+        // Upsert recipient record with READ status
+        const insRes = await pool.query(
+          `INSERT INTO announcement_recipients (announcement_id, parent_user_id, delivery_channel, delivery_status, read_at)
+           VALUES ($1, $2, 'IN_APP', 'READ', NOW())
+           ON CONFLICT (announcement_id, parent_user_id, student_id, delivery_channel)
+           DO UPDATE SET read_at = COALESCE(announcement_recipients.read_at, NOW()), delivery_status = 'READ'
+           RETURNING *`,
+          [resolvedAnnId, userId]
+        );
+        if (insRes.rowCount && insRes.rowCount > 0) {
+          return insRes.rows[0];
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn('[markRead] Error marking announcement read in DB:', err.message);
+  }
+
+  // Update in-memory announcements as fallback
+  try {
+    const memMatch = memAnnouncements.find(a => a.id === recipientIdOrNoticeId);
+    if (memMatch) {
+      memMatch.read_at = new Date().toISOString();
+      memMatch.delivery_status = 'READ';
+    }
+  } catch {}
+
+  return { id: recipientIdOrNoticeId, delivery_status: 'READ', read_at: new Date().toISOString() };
 }
 
 export async function preferences(parentUserId: string, schoolId: string) {
