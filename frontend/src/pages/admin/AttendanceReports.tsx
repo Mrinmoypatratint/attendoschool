@@ -661,8 +661,8 @@ export default function AttendanceReports() {
       {/* ─── Header: Title & Right Corner Controls ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a' }}>Attendance Reports</h1>
-          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Attendance Reports</h1>
+          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Student-wise attendance verified from institutional Firestore logs.
           </p>
         </div>

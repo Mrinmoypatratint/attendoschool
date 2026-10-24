@@ -38,6 +38,26 @@ export const TINT_TEST_ALIASES = [
   'tint school'
 ];
 
+export const DAV_TEST_ALIASES = [
+  '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+  '15582',
+  'dav',
+  'dav model school',
+  'dav-model-school'
+];
+
+export function isDavSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
+  if (!schoolId && !schoolCode) return false;
+  const sid = (schoolId || '').toLowerCase().trim();
+  const scode = (schoolCode || '').toLowerCase().trim();
+  return (
+    DAV_TEST_ALIASES.includes(sid) ||
+    DAV_TEST_ALIASES.includes(scode) ||
+    sid.includes('dav') ||
+    scode.includes('15582')
+  );
+}
+
 export function isGreenwoodSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
   if (!schoolId && !schoolCode) return false;
   const sid = (schoolId || '').toLowerCase().trim();
@@ -84,6 +104,7 @@ export function isSameSchool(a?: string | null, b?: string | null): boolean {
 
   if (isGreenwoodSchool(lowA) && isGreenwoodSchool(lowB)) return true;
   if (isTintSchool(lowA) && isTintSchool(lowB)) return true;
+  if (isDavSchool(lowA) && isDavSchool(lowB)) return true;
 
   return false;
 }
@@ -98,6 +119,9 @@ export function canonicalSchoolId(id?: string | null): string | null {
   }
   if (isTintSchool(id)) {
     return 'sch-1790665531365';
+  }
+  if (isDavSchool(id)) {
+    return '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
   }
   return id;
 }

@@ -64,8 +64,8 @@ export default function ParentCommunication() {
   return (
     <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a' }}>Parent Messages & Notices</h1>
-        <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Parent Messages & Notices</h1>
+        <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
           Official announcements, academic notices, and direct interactive reply communication.
         </p>
       </div>
@@ -81,8 +81,8 @@ export default function ParentCommunication() {
           <article
             key={x.recipient_id || x.id}
             style={{
-              backgroundColor: '#ffffff',
-              border: x.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              border: x.priority === 'EMERGENCY' ? '1.5px solid #ef4444' : '1px solid var(--border, #e2e8f0)',
               borderRadius: 8,
               padding: 20,
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)'

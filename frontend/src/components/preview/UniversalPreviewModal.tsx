@@ -95,7 +95,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: isDestructive ? '#fef2f2' : 'var(--bg, #f8fafc)'
+            background: isDestructive ? 'rgba(239, 68, 68, 0.12)' : 'var(--card-subtle, #f8fafc)'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -104,8 +104,8 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: isDestructive ? '#fee2e2' : '#eff6ff',
-                color: isDestructive ? '#dc2626' : '#2563eb',
+                background: isDestructive ? 'rgba(239, 68, 68, 0.22)' : 'rgba(37, 99, 235, 0.14)',
+                color: isDestructive ? '#ef4444' : 'var(--sidebar-accent, #3b82f6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -121,7 +121,7 @@ export const UniversalPreviewModal: React.FC<UniversalPreviewProps> = ({
                     margin: 0,
                     fontSize: 18,
                     fontWeight: 800,
-                    color: isDestructive ? '#991b1b' : 'var(--text, #0f172a)',
+                    color: isDestructive ? '#ef4444' : 'var(--text, #0f172a)',
                     letterSpacing: '-0.02em'
                   }}
                 >

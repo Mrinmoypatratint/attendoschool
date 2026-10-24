@@ -1216,7 +1216,7 @@ export default function PeopleManagement() {
                   <input
                     readOnly
                     tabIndex={-1}
-                    style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', border: '1px solid #e2e8f0' }}
+                    style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text-muted, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
                     value={[teacherForm.firstName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || ''}
                     placeholder="Full name will appear here automatically"
                   />

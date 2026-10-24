@@ -512,7 +512,7 @@ export function StudentAssignments() {
               {/* Attachments Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Attachments (Max 5 files, 10MB each, 25MB total):
                   </span>
                   <span style={{ fontSize: 11, color: '#64748b' }}>

@@ -88,8 +88,8 @@ export function TableSubToolbar({
             marginLeft: 3,
             padding: '1px 5px',
             borderRadius: 4,
-            background: '#dbeafe',
-            color: '#1d4ed8',
+            background: 'rgba(37, 99, 235, 0.16)',
+            color: '#3b82f6',
             fontWeight: 600,
             fontSize: 11
           }}>
@@ -106,13 +106,12 @@ export function TableSubToolbar({
           <select
             value={pageSize}
             onChange={e => onPageSizeChange(Number(e.target.value))}
+            className="directory-select"
             style={{
               padding: '4px 8px',
               fontSize: 12.5,
               borderRadius: 6,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
@@ -223,13 +222,12 @@ export function TablePaginationFooter({
           <select
             value={safeCurrentPage}
             onChange={(e) => goTo(Number(e.target.value))}
+            className="directory-select"
             style={{
               padding: '3px 6px',
               fontSize: 12,
               borderRadius: 4,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--card-bg, #ffffff)',
-              color: 'var(--text, #1e293b)',
               cursor: 'pointer'
             }}
           >
