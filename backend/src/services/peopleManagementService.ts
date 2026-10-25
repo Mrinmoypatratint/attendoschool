@@ -208,7 +208,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       );
     }
 
-    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url'];
+    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url','class_name','section_name'];
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {
