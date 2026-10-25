@@ -1,6 +1,7 @@
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { sendMailWithDualPortFallback } from './notificationService';
 import { env } from '../config/env';
+import { isSameSchool } from '../utils/tenant';
 
 // In-memory fallback stores for test schools / pure Firestore mode resilience
 export const memAnnouncements: any[] = [
@@ -167,11 +168,15 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const safeSchoolId = isUuid(schoolId) ? schoolId : '00000000-0000-0000-0000-000000000001';
   const safeUserId = isUuid(userId) ? userId : null;
 
+  const isDirectPublish = d.publish === true || d.status === 'PUBLISHED';
+  const initStatus = d.scheduledAt ? 'SCHEDULED' : (isDirectPublish ? 'PUBLISHED' : 'DRAFT');
+  const pubAt = isDirectPublish ? new Date().toISOString() : null;
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO announcements
-       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, CASE WHEN $9::timestamptz IS NOT NULL THEN 'SCHEDULED' ELSE 'DRAFT' END)
+       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz)
        RETURNING *`,
       [
         safeSchoolId,
@@ -183,7 +188,9 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         targetSectionId,
         d.priority || 'NORMAL',
         d.scheduledAt || null,
-        d.expiresAt || null
+        d.expiresAt || null,
+        initStatus,
+        pubAt
       ]
     );
     if (rows && rows.length > 0) return rows[0];
@@ -204,9 +211,10 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     class_number: d.class_number ?? d.classNumber,
     section_name: d.section_name ?? d.sectionName,
     priority: d.priority || 'NORMAL',
-    status: d.scheduledAt ? 'SCHEDULED' : 'DRAFT',
+    status: initStatus,
     scheduled_at: d.scheduledAt || null,
     expires_at: d.expiresAt || null,
+    published_at: isDirectPublish ? new Date().toISOString() : undefined,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : audience === 'SECTION' ? 15 : 30,
@@ -571,29 +579,73 @@ export async function listSchoolAnnouncements(schoolId: string) {
  * Strict RBAC: Faculty In-App Inbox for Teachers
  * Strictly visible to authenticated faculty accounts
  */
-export async function teacherInbox(teacherUserId: string, schoolId: string) {
-  try {
-    const { rows } = await pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.published_at, a.created_at,
-              u.name AS author_name,
-              r.read_at, r.id AS recipient_id
-       FROM announcements a
-       LEFT JOIN users u ON u.id = a.created_by
-       LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $1
-       WHERE a.school_id = $2 
-         AND a.status = 'PUBLISHED'
-         AND a.audience_type IN ('TEACHER', 'SCHOOL')
-         AND (a.expires_at IS NULL OR a.expires_at > NOW())
-       ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
-      [teacherUserId, schoolId]
-    );
-    if (rows && rows.length > 0) return rows;
-  } catch (_e) {}
+export async function teacherInbox(teacherUserId: string, schoolId: string, fromDate?: string, toDate?: string) {
+  if (isPostgresConfigured) {
+    try {
+      const params: any[] = [teacherUserId, schoolId];
+      let dateClauses = '';
+
+      if (fromDate && fromDate.trim()) {
+        params.push(fromDate.trim());
+        dateClauses += ` AND COALESCE(a.published_at, a.created_at) >= $${params.length}::timestamp`;
+      }
+
+      if (toDate && toDate.trim()) {
+        params.push(toDate.trim());
+        dateClauses += ` AND COALESCE(a.published_at, a.created_at) < ($${params.length}::date + interval '1 day')`;
+      }
+
+      const { rows } = await pool.query(
+        `SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.published_at, a.created_at,
+                u.name AS author_name,
+                r.read_at, r.id AS recipient_id
+         FROM announcements a
+         LEFT JOIN users u ON u.id = a.created_by
+         LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $1
+         WHERE a.school_id = $2 
+           AND a.status = 'PUBLISHED'
+           AND a.audience_type IN ('TEACHER', 'SCHOOL')
+           AND (a.expires_at IS NULL OR a.expires_at > NOW())
+           ${dateClauses}
+         ORDER BY a.priority = 'EMERGENCY' DESC, COALESCE(a.published_at, a.created_at) DESC`,
+        params
+      );
+      if (rows) return rows;
+    } catch (_e) {}
+  }
 
   // Filter in-memory announcements strictly for faculty
-  const facultyNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['TEACHER', 'SCHOOL'].includes(a.audience_type)
+  let facultyNotices = memAnnouncements.filter(
+    a => a.status === 'PUBLISHED' && ['TEACHER', 'SCHOOL'].includes(a.audience_type) && isSameSchool(a.school_id, schoolId)
   );
+
+  if (fromDate && fromDate.trim()) {
+    const fromTime = new Date(`${fromDate.trim()}T00:00:00`).getTime();
+    if (!isNaN(fromTime)) {
+      facultyNotices = facultyNotices.filter(a => {
+        const t = new Date(a.published_at || a.created_at).getTime();
+        return !isNaN(t) && t >= fromTime;
+      });
+    }
+  }
+
+  if (toDate && toDate.trim()) {
+    const toTime = new Date(`${toDate.trim()}T23:59:59.999`).getTime();
+    if (!isNaN(toTime)) {
+      facultyNotices = facultyNotices.filter(a => {
+        const t = new Date(a.published_at || a.created_at).getTime();
+        return !isNaN(t) && t <= toTime;
+      });
+    }
+  }
+
+  facultyNotices.sort((a, b) => {
+    if (a.priority === 'EMERGENCY' && b.priority !== 'EMERGENCY') return -1;
+    if (a.priority !== 'EMERGENCY' && b.priority === 'EMERGENCY') return 1;
+    const tA = new Date(a.published_at || a.created_at).getTime() || 0;
+    const tB = new Date(b.published_at || b.created_at).getTime() || 0;
+    return tB - tA;
+  });
 
   return facultyNotices.map(n => ({
     ...n,

@@ -116,7 +116,8 @@ router.get('/timetable', async (req: AuthRequest, res: Response) => {
 // GET /api/student/announcements - Published announcements
 router.get('/announcements', async (req: AuthRequest, res: Response) => {
   try {
-    const data = await svc.getStudentAnnouncements(req.user!.schoolId!, req.user!.id);
+    const { from, to } = req.query as { from?: string; to?: string };
+    const data = await svc.getStudentAnnouncements(req.user!.schoolId!, req.user!.id, from, to);
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ message: e.message || 'Unable to load announcements' });

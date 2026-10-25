@@ -83,10 +83,10 @@ export function isTintSchool(schoolId?: string | null, schoolCode?: string | nul
 }
 
 /**
- * Checks if a given school ID or code belongs to the demo school (Greenwood only).
+ * Checks if a given school ID or code belongs to demo schools (Greenwood, TINT, DAV).
  */
 export function isTestSchool(schoolId?: string | null, schoolCode?: string | null): boolean {
-  return isGreenwoodSchool(schoolId, schoolCode);
+  return isGreenwoodSchool(schoolId, schoolCode) || isTintSchool(schoolId, schoolCode) || isDavSchool(schoolId, schoolCode);
 }
 
 /**

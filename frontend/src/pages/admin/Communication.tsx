@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { api } from '../../api';
 import {
   MessageSquare,
@@ -11,7 +11,8 @@ import {
   Eye,
   Filter,
   Edit3,
-  FileText
+  FileText,
+  Calendar
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
@@ -74,6 +75,28 @@ export function formatClassGrade(num?: number | null): string {
   return '';
 }
 
+export function formatPublishDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+export function formatPublishTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
 export default function Communication() {
   const [items, setItems] = useState<AnnouncementItem[]>([]);
   const [activeTab, setActiveTab] = useState<'announcements' | 'all-replies'>('announcements');
@@ -116,6 +139,67 @@ export default function Communication() {
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Hover preview card state for notice message popup
+  const [hoveredCard, setHoveredCard] = useState<{
+    item: AnnouncementItem;
+    top: number;
+    left: number;
+    placement: 'below' | 'above';
+  } | null>(null);
+  const hoverTimeoutRef = useRef<any>(null);
+
+  function handleMouseEnterNotice(e: React.MouseEvent<HTMLElement>, item: AnnouncementItem) {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const cardHeightEstimate = 280;
+    const cardWidth = 420;
+
+    let top = rect.bottom + 8;
+    let placement: 'below' | 'above' = 'below';
+
+    // If near viewport bottom, render above the target element
+    if (rect.bottom + cardHeightEstimate > window.innerHeight && rect.top - cardHeightEstimate > 10) {
+      top = Math.max(10, rect.top - 8);
+      placement = 'above';
+    }
+
+    // Keep horizontally within viewport boundaries
+    let left = rect.left;
+    if (left + cardWidth > window.innerWidth - 16) {
+      left = Math.max(16, window.innerWidth - cardWidth - 16);
+    }
+
+    setHoveredCard({ item, top, left, placement });
+  }
+
+  function handleMouseLeaveNotice() {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredCard(null);
+    }, 180);
+  }
+
+  function handleCardMouseEnter() {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  }
+
+  function handleCardMouseLeave() {
+    setHoveredCard(null);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   async function load() {
     try {
@@ -999,14 +1083,15 @@ export default function Communication() {
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 0 }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--table-header, var(--card-subtle))', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                  <th style={{ width: '30%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>TITLE</th>
-                  <th style={{ width: '13%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>AUDIENCE</th>
-                  <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PRIORITY</th>
-                  <th style={{ width: '10%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>STATUS</th>
-                  <th style={{ width: '8%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>RECIPIENTS</th>
+                  <th style={{ width: '25%', padding: '10px 12px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>TITLE</th>
+                  <th style={{ width: '12%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>AUDIENCE</th>
+                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PRIORITY</th>
+                  <th style={{ width: '9%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>STATUS</th>
+                  <th style={{ width: '14%', padding: '10px 8px', textAlign: 'left', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>PUBLISHED AT</th>
+                  <th style={{ width: '7%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>RECIPIENTS</th>
                   <th style={{ width: '6%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>READ</th>
-                  <th style={{ width: '10%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>REPLIES</th>
-                  <th style={{ width: '13%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>ACTION</th>
+                  <th style={{ width: '9%', padding: '10px 4px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>REPLIES</th>
+                  <th style={{ width: '9%', padding: '10px 12px', textAlign: 'right', fontSize: 11.5, color: 'var(--text-secondary, #475569)', fontWeight: 600, boxSizing: 'border-box' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -1040,11 +1125,29 @@ export default function Communication() {
 
                     return (
                       <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                        <td style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={x.title}>
-                            {x.title}
+                        <td
+                          style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden', cursor: 'pointer' }}
+                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
+                          onMouseLeave={handleMouseLeaveNotice}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {x.title}
+                            </div>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: '#3b82f6',
+                                opacity: 0.8,
+                                flexShrink: 0
+                              }}
+                              title="Hover to view published message"
+                            >
+                              <Eye size={12} />
+                            </span>
                           </div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.message}>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {x.message}
                           </div>
                         </td>
@@ -1092,7 +1195,11 @@ export default function Communication() {
                             {x.priority}
                           </span>
                         </td>
-                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
+                        <td
+                          style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden', cursor: 'pointer' }}
+                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
+                          onMouseLeave={handleMouseLeaveNotice}
+                        >
                           <span style={{
                             display: 'inline-block',
                             padding: '2px 7px',
@@ -1104,6 +1211,34 @@ export default function Communication() {
                           }}>
                             {x.status}
                           </span>
+                        </td>
+                        <td
+                          style={{ padding: '10px 8px', verticalAlign: 'middle', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
+                          onMouseLeave={handleMouseLeaveNotice}
+                        >
+                          {(() => {
+                            const isPub = x.status === 'PUBLISHED';
+                            const pubStamp = x.published_at || (isPub ? x.created_at : null);
+                            if (isPub && pubStamp) {
+                              return (
+                                <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text, #1e293b)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Clock size={11} style={{ color: '#10b981' }} />
+                                    {formatPublishDate(pubStamp)}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', paddingLeft: 15 }}>
+                                    {formatPublishTime(pubStamp)}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <span style={{ fontSize: 11.5, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Clock size={11} style={{ opacity: 0.4 }} /> —
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: 12.5, color: 'var(--text-secondary, #334155)', fontWeight: 500 }}>
                           {x.recipient_count || 0}
@@ -1157,29 +1292,14 @@ export default function Communication() {
                               >
                                 <Edit3 size={11} /> Edit
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setPublishTarget(x)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 3,
-                                  padding: '4px 8px',
-                                  backgroundColor: '#10b981',
-                                  color: '#ffffff',
-                                  borderRadius: 4,
-                                  border: 'none',
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  cursor: 'pointer'
-                                }}
-                                title="Publish announcement directly"
-                              >
-                                <Send size={11} /> Publish
-                              </button>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 11.5, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                            <span
+                              style={{ fontSize: 11.5, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600, cursor: 'pointer' }}
+                              onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
+                              onMouseLeave={handleMouseLeaveNotice}
+                              title="Hover to view published message"
+                            >
                               <CheckCircle2 size={13} /> Sent
                             </span>
                           )}
@@ -1189,7 +1309,7 @@ export default function Communication() {
                   })}
                 {!items.length && (
                   <tr>
-                    <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
                       No announcements published yet.
                     </td>
                   </tr>
@@ -1197,6 +1317,152 @@ export default function Communication() {
               </tbody>
             </table>
           </div>
+
+          {/* Floating Hover Card for Announcement Message & Broadcast Details */}
+          {hoveredCard && (
+            <div
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
+              style={{
+                position: 'fixed',
+                top: hoveredCard.top,
+                left: hoveredCard.left,
+                transform: hoveredCard.placement === 'above' ? 'translateY(-100%)' : 'none',
+                width: 420,
+                maxWidth: 'calc(100vw - 32px)',
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                borderRadius: 12,
+                border: '1px solid var(--border, #cbd5e1)',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08)',
+                padding: '16px',
+                zIndex: 99999,
+                pointerEvents: 'auto',
+                animation: 'fadeIn 0.15s ease-out'
+              }}
+            >
+              {/* Header meta badges */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    backgroundColor: hoveredCard.item.status === 'PUBLISHED' ? '#ecfdf5' : '#f8fafc',
+                    color: hoveredCard.item.status === 'PUBLISHED' ? '#047857' : '#64748b',
+                    border: hoveredCard.item.status === 'PUBLISHED' ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
+                  }}>
+                    {hoveredCard.item.status === 'PUBLISHED' ? <CheckCircle2 size={12} /> : <FileText size={12} />}
+                    {hoveredCard.item.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
+                  </span>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    backgroundColor: hoveredCard.item.priority === 'EMERGENCY' ? '#fee2e2' : hoveredCard.item.priority === 'HIGH' ? '#ffedd5' : '#f1f5f9',
+                    color: hoveredCard.item.priority === 'EMERGENCY' ? '#b91c1c' : hoveredCard.item.priority === 'HIGH' ? '#c2410c' : '#475569'
+                  }}>
+                    {hoveredCard.item.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
+                    {hoveredCard.item.priority}
+                  </span>
+                  <span style={{
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    backgroundColor: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe'
+                  }}>
+                    {hoveredCard.item.audience_type}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHoveredCard(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted, #94a3b8)',
+                    cursor: 'pointer',
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Close preview"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Notice Title */}
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text, #0f172a)', marginBottom: 6, lineHeight: 1.4 }}>
+                {hoveredCard.item.title}
+              </div>
+
+              {/* Publish Date & Time */}
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                <Clock size={12} style={{ color: hoveredCard.item.status === 'PUBLISHED' ? '#10b981' : '#94a3b8' }} />
+                {hoveredCard.item.status === 'PUBLISHED' ? (
+                  <span>
+                    Published: <b>{formatPublishDate(hoveredCard.item.published_at || hoveredCard.item.created_at)}</b> at <b>{formatPublishTime(hoveredCard.item.published_at || hoveredCard.item.created_at)}</b>
+                  </span>
+                ) : (
+                  <span style={{ fontStyle: 'italic' }}>
+                    Draft Notice · Created {formatPublishDate(hoveredCard.item.created_at)}
+                  </span>
+                )}
+              </div>
+
+              {/* Full Message Box */}
+              <div style={{
+                backgroundColor: 'var(--card-subtle, #f8fafc)',
+                border: '1px solid var(--border, #e2e8f0)',
+                borderLeft: hoveredCard.item.status === 'PUBLISHED' ? '3px solid #10b981' : '3px solid #3b82f6',
+                borderRadius: 6,
+                padding: '10px 12px',
+                marginBottom: 10
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #475569)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <MessageSquare size={12} style={{ color: hoveredCard.item.status === 'PUBLISHED' ? '#10b981' : '#3b82f6' }} />
+                  {hoveredCard.item.status === 'PUBLISHED' ? 'Published Message Content' : 'Draft Message Preview'}
+                </div>
+                <div style={{
+                  fontSize: 12.5,
+                  lineHeight: 1.6,
+                  color: 'var(--text, #1e293b)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  maxHeight: 190,
+                  overflowY: 'auto'
+                }}>
+                  {hoveredCard.item.message || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No message content.</span>}
+                </div>
+              </div>
+
+              {/* Footer Metrics */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: 8,
+                borderTop: '1px solid var(--border, #f1f5f9)',
+                fontSize: 11,
+                color: 'var(--text-muted, #64748b)'
+              }}>
+                <span>Recipients: <b>{hoveredCard.item.recipient_count || 0}</b></span>
+                <span>Read: <b>{hoveredCard.item.read_count || 0}</b></span>
+                <span>Replies: <b>{hoveredCard.item.reply_count || 0}</b></span>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         /* Administrator Console: Threaded Replies Grouped by Notice */

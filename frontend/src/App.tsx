@@ -250,7 +250,12 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm.includes('15582') ||
     norm === 'admin@dav.com' ||
     norm === 'teacher1@dav.com' ||
+    norm === 'teacher2@dav.com' ||
+    norm === 'teacher@dav.com' ||
     norm === 'student@dav.com' ||
+    norm === 'student1@dav.com' ||
+    norm === 'student2@dav.com' ||
+    norm === 'student@gmail.com' ||
     norm.includes('adm-2026-dav')
   ) {
     const found = safeList.find(i => 
