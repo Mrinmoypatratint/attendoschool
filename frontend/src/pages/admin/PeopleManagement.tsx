@@ -5,6 +5,7 @@ import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, Ch
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 import { formatGender } from '../../utils/gender';
+import { convertRomanClassToDigital, parseImportClassAndSection } from '../../utils/roman';
 
 /* ────── Teacher DOB Validation & Formatting Helpers ────── */
 function isValidDdMmYyyy(val: string): boolean {
@@ -155,6 +156,9 @@ export default function PeopleManagement() {
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
   const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error'; message: string; resetUrl?: string } | null>(null);
+  const [allocClasses, setAllocClasses] = useState<any[]>([]);
+  const [allocSections, setAllocSections] = useState<any[]>([]);
+  const [allocDesignations, setAllocDesignations] = useState<any[]>([]);
 
   const lastRegisteredTeacherInfo = useMemo(() => {
     try {
@@ -231,7 +235,7 @@ export default function PeopleManagement() {
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
         'Gender': r.gender || '',
-        'Class': r.class_name || r.class || '',
+        'Class': convertRomanClassToDigital(r.class_name || r.class || ''),
         'Section': r.section_name || r.section || '',
         'Status': (r.is_active !== false && r.active !== false) ? 'Active' : 'Inactive',
         'Designation': r.designation || 'Teacher'
@@ -296,6 +300,9 @@ export default function PeopleManagement() {
 
   useEffect(() => {
     load();
+    api.get('/classes').then(r => setAllocClasses(r.data || [])).catch(() => {});
+    api.get('/sections').then(r => setAllocSections(r.data || [])).catch(() => {});
+    api.get('/designations').then(r => setAllocDesignations(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => {});
   }, [tab]);
 
   function handleSearchSubmit(e: React.FormEvent) {
@@ -325,7 +332,13 @@ export default function PeopleManagement() {
         employeeId: teacherForm.employeeId || teacherForm.saviorNo,
         gender: teacherForm.gender || '',
         joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
-        joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : ''
+        joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
+        class_id: teacherForm.class_id || '',
+        class_name: teacherForm.class_name || teacherForm.class || '',
+        class: teacherForm.class_name || teacherForm.class || '',
+        section_id: teacherForm.section_id || '',
+        section_name: teacherForm.section_name || teacherForm.section || '',
+        section: teacherForm.section_name || teacherForm.section || ''
       };
 
       const res = await api.post('/teachers', payload);
@@ -456,8 +469,9 @@ export default function PeopleManagement() {
           const rawStatus = getExcelCell(r, ['Status', 'STATUS', 'status']);
           const status = (rawStatus === 'T' || /active/i.test(rawStatus) || !rawStatus) ? 'Active' : 'Inactive';
 
-          const className = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
-          const sectionName = (getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+          const rawClassCell = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+          const rawSectionCell = getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']);
+          const { className, sectionName } = parseImportClassAndSection(rawClassCell, rawSectionCell);
 
           // Field validations
           const rowErrs: { row: number; field: string; message: string }[] = [];
@@ -1325,15 +1339,24 @@ export default function PeopleManagement() {
                   </label>
                 </div>
 
-                {/* Row 2: Designation & Qualification */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Row 2: Designation */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                   <label>Designation
-                    <input
-                      placeholder="e.g. Senior Teacher, TGT Science"
+                    <select
                       value={teacherForm.designation || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, designation: e.target.value })}
-                      style={{ width: '100%', boxSizing: 'border-box' }}
-                    />
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    >
+                      <option value="">Select Designation (Optional)</option>
+                      {teacherForm.designation && !allocDesignations.some(d => (d.title || d.name) === teacherForm.designation) && (
+                        <option value={teacherForm.designation}>{teacherForm.designation}</option>
+                      )}
+                      {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                        <option key={d.id || d.title} value={d.title || d.name}>
+                          {d.title || d.name}{d.category ? ` (${d.category})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
 
@@ -1369,6 +1392,107 @@ export default function PeopleManagement() {
                       onChange={e => setTeacherForm({ ...teacherForm, qualification: e.target.value })}
                       style={{ width: '100%', boxSizing: 'border-box' }}
                     />
+                  </label>
+                </div>
+
+                {/* Row 4: Assign Class & Section */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label>Assign Class
+                    <select
+                      value={teacherForm.class_id || ''}
+                      onChange={e => {
+                        const selectedClassId = e.target.value;
+                        const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
+                        let clsName = '';
+                        if (clsObj) {
+                          if (clsObj.class_number === -1) clsName = 'Class L KG';
+                          else if (clsObj.class_number === 0) clsName = 'Class U KG';
+                          else clsName = `Class ${clsObj.class_number}`;
+                        } else if (selectedClassId) {
+                          clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
+                        }
+                        setTeacherForm({
+                          ...teacherForm,
+                          class_id: selectedClassId,
+                          class_name: clsName,
+                          class: clsName,
+                          section_id: '',
+                          section_name: '',
+                          section: ''
+                        });
+                      }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    >
+                      <option value="">Select Class (Optional)</option>
+                      {allocClasses.length > 0 ? (
+                        allocClasses.map(c => {
+                          const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                          return (
+                            <option key={c.id} value={c.id}>{label}</option>
+                          );
+                        })
+                      ) : (
+                        <>
+                          <option value="Class L KG">Class L KG</option>
+                          <option value="Class U KG">Class U KG</option>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </label>
+                  <label>Assign Section
+                    <select
+                      value={teacherForm.section_name || teacherForm.section || ''}
+                      onChange={e => {
+                        const sName = e.target.value;
+                        const secObj = allocSections.find(s => {
+                          const matchName = String(s.name).trim().toUpperCase() === sName.toUpperCase();
+                          if (!matchName) return false;
+                          if (!teacherForm.class_id) return true;
+                          return String(s.class_id) === String(teacherForm.class_id);
+                        }) || allocSections.find(s => String(s.name).trim().toUpperCase() === sName.toUpperCase());
+
+                        setTeacherForm({
+                          ...teacherForm,
+                          section_id: secObj ? String(secObj.id) : sName,
+                          section_name: sName,
+                          section: sName
+                        });
+                      }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                    >
+                      <option value="">Select Section (Optional)</option>
+                      {(() => {
+                        let list = allocSections;
+                        if (teacherForm.class_id) {
+                          const selectedCls = allocClasses.find(c => String(c.id) === String(teacherForm.class_id));
+                          const filtered = allocSections.filter(s => String(s.class_id) === String(teacherForm.class_id) || (selectedCls && String(s.class_number) === String(selectedCls.class_number)));
+                          if (filtered.length > 0) {
+                            list = filtered;
+                          }
+                        }
+                        const seen = new Set<string>();
+                        const uniqueNames: string[] = [];
+                        for (const s of list) {
+                          const name = String(s.name || '').trim().toUpperCase();
+                          if (name && !seen.has(name)) {
+                            seen.add(name);
+                            uniqueNames.push(name);
+                          }
+                        }
+                        if (uniqueNames.length === 0) {
+                          return ['A', 'B', 'C', 'D'].map(sec => (
+                            <option key={sec} value={sec}>Section {sec}</option>
+                          ));
+                        }
+                        uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                        return uniqueNames.map(secName => (
+                          <option key={secName} value={secName}>Section {secName}</option>
+                        ));
+                      })()}
+                    </select>
                   </label>
                 </div>
 
@@ -1468,6 +1592,12 @@ export default function PeopleManagement() {
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Designation</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.designation || 'Teacher'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Assigned Class & Section</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#7c3aed', marginTop: 2 }}>
+                      {(teacherForm.class_name || teacherForm.class) ? `${teacherForm.class_name || teacherForm.class}${teacherForm.section_name || teacherForm.section ? ` - Section ${teacherForm.section_name || teacherForm.section}` : ''}` : 'Not assigned'}
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Gender</div>

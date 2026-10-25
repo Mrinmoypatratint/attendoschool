@@ -33,6 +33,7 @@ const TeacherLeaveRequest = lazy(() => import('./pages/teacher/TeacherLeaveReque
 const ClassMentorWorkspace = lazy(() => import('./pages/teacher/ClassMentorWorkspace').then(m => ({ default: m.ClassMentorWorkspace })));
 const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments'));
 const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
+const Designations = lazy(() => import('./pages/admin/Designations'));
 const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 import * as XLSX from 'xlsx';
@@ -45,7 +46,7 @@ import {
   Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
-  Camera, CalendarCheck, CalendarPlus
+  Camera, CalendarCheck, CalendarPlus, Award
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { validatePassword } from './utils/passwordPolicy';
@@ -62,6 +63,7 @@ const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
+import { convertRomanClassToDigital, parseImportClassAndSection } from './utils/roman';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
 import { BrandedWelcomeLoader } from './components/BrandedWelcomeLoader';
@@ -2271,6 +2273,14 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['teachers', 'faculty', 'staff', 'instructors', 'educators', 'employee']
         },
         {
+          path: '/designations',
+          label: 'Staff Designations',
+          category: 'Main Navigation',
+          description: 'Manage faculty designations, teacher roles, department titles & hierarchy',
+          icon: Award,
+          keywords: ['designations', 'designation', 'roles', 'faculty roles', 'titles', 'job titles']
+        },
+        {
           path: '/classes',
           label: 'Classes & Sections',
           category: 'Main Navigation',
@@ -2744,6 +2754,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/dashboard', 'Dashboard', LayoutDashboard],
     ['/students', 'Students', Users],
     ['/teachers', 'Teachers', GraduationCap],
+    ['/designations', 'Designations', Award],
     ['/classes', 'Classes & Sections', Layers],
     ['/attendance-reports', 'Attendance', ClipboardCheck],
     ['/timetable', 'Timetable', CalendarDays],
@@ -6951,31 +6962,6 @@ function Students(){
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button 
             type="button"
-            onClick={() => load(activeSession)}
-            disabled={loading}
-            className="directory-refresh-btn"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
-              border: '1px solid var(--border, #cbd5e1)',
-              padding: '7px 13px',
-              borderRadius: 'var(--radius-sm, 6px)',
-              fontSize: 13,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 500,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-            }}
-            title="Refetch students directly from database"
-            id="students-top-refresh-btn"
-          >
-            <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-          </button>
-          <button 
-            type="button"
             onClick={() => setExportOpen(true)}
             style={{
               display: 'inline-flex',
@@ -7155,9 +7141,9 @@ function Students(){
             title="Click to change academic session"
             id="students-session-picker-btn"
           >
-            <CalendarDays size={14} style={{ color: '#2563eb' }} />
+            <CalendarDays size={14} style={{ color: 'inherit' }} />
             <span><b>Session:</b> {activeSession}</span>
-            <ChevronDown size={14} style={{ transform: sessionPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: '#2563eb' }} />
+            <ChevronDown size={14} style={{ transform: sessionPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: 'inherit' }} />
           </button>
 
           {sessionPickerOpen && (
@@ -9059,6 +9045,7 @@ function Teachers(){
   const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
   const [search,setSearch]=useState('');
   const [genderFilter,setGenderFilter]=useState('');
+  const [designationFilter,setDesignationFilter]=useState('');
   const [previewRows,setPreviewRows]=useState<any[]>([]);
   const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
   const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'valid' | 'errors'>('all');
@@ -9198,6 +9185,7 @@ function Teachers(){
   const [allocClasses,setAllocClasses]=useState<any[]>([]);
   const [allocSections,setAllocSections]=useState<any[]>([]);
   const [allocSessions,setAllocSessions]=useState<any[]>([]);
+  const [allocDesignations,setAllocDesignations]=useState<any[]>([]);
 
   async function load(){
     setLoading(true);
@@ -9211,12 +9199,13 @@ function Teachers(){
     }, 120);
 
     try {
-      const [tRes, aRes, subRes, clsRes, secRes] = await Promise.all([
+      const [tRes, aRes, subRes, clsRes, secRes, desigRes] = await Promise.all([
         api.get('/teachers'),
         api.get('/teacher-assignments').catch(()=>({data:[]})),
         api.get('/subjects').catch(()=>({data:[]})),
         api.get('/classes').catch(()=>({data:[]})),
-        api.get('/sections').catch(()=>({data:[]}))
+        api.get('/sections').catch(()=>({data:[]})),
+        api.get('/designations').catch(()=>({data:[]}))
       ]);
       setLoadProgress(95);
       setRows(tRes.data || []);
@@ -9224,6 +9213,7 @@ function Teachers(){
       setAllocSubjects(Array.isArray(subRes.data) ? subRes.data : []);
       setAllocClasses(Array.isArray(clsRes.data) ? clsRes.data : []);
       setAllocSections(Array.isArray(secRes.data) ? secRes.data : []);
+      setAllocDesignations(Array.isArray(desigRes.data) ? desigRes.data : (desigRes.data?.data || []));
       setLoadProgress(100);
       const now = new Date();
       setLastFetchedAt(now);
@@ -9338,7 +9328,7 @@ function Teachers(){
         else if (clsNum && !clsNum.toLowerCase().startsWith('class')) clsNum = `Class ${clsNum}`;
         const sec = a.section_name ? `-${String(a.section_name).trim().toUpperCase()}` : '';
         const classSec = `${clsNum}${sec}`.trim();
-        return classSec || '—';
+        return convertRomanClassToDigital(classSec) || '—';
       }).filter(Boolean).join(', ');
     }
 
@@ -9349,11 +9339,11 @@ function Teachers(){
       else if (rawCls === '0') rawCls = 'Class U KG';
       else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
       const sec = (teacherObj.section_name || teacherObj.section) ? `-${String(teacherObj.section_name || teacherObj.section).trim().toUpperCase()}` : '';
-      return `${rawCls}${sec}`;
+      return convertRomanClassToDigital(`${rawCls}${sec}`);
     }
 
     if (teacherObj?.assigned_classes || teacherObj?.assigned_class) {
-      return teacherObj.assigned_classes || teacherObj.assigned_class;
+      return convertRomanClassToDigital(teacherObj.assigned_classes || teacherObj.assigned_class);
     }
 
     return '—';
@@ -9414,7 +9404,9 @@ function Teachers(){
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
-    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (genderFilter ? `Gender_${genderFilter}` : 'All');
+    const filterDesc = selectedIds.size > 0 
+      ? `Selected_${selectedIds.size}` 
+      : ([genderFilter && `Gender_${genderFilter}`, designationFilter && `Designation_${designationFilter}`].filter(Boolean).join('_') || 'All');
     XLSX.writeFile(wb, `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
@@ -9429,7 +9421,9 @@ function Teachers(){
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (genderFilter ? `Gender_${genderFilter}` : 'All');
+    const filterDesc = selectedIds.size > 0 
+      ? `Selected_${selectedIds.size}` 
+      : ([genderFilter && `Gender_${genderFilter}`, designationFilter && `Designation_${designationFilter}`].filter(Boolean).join('_') || 'All');
     link.setAttribute('download', `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -9468,6 +9462,10 @@ function Teachers(){
       return;
     }
 
+    const assignedClassSecText = (f.class_name || f.class)
+      ? `${f.class_name || f.class}${f.section_name || f.section ? ` - Section ${f.section_name || f.section}` : ''}`
+      : 'Not assigned';
+
     const payload = {
       ...f,
       firstName,
@@ -9483,6 +9481,12 @@ function Teachers(){
       joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
       joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
       designation: f.designation || 'Teacher',
+      class_id: f.class_id || '',
+      class_name: f.class_name || f.class || '',
+      class: f.class_name || f.class || '',
+      section_id: f.section_id || '',
+      section_name: f.section_name || f.section || '',
+      section: f.section_name || f.section || '',
       is_active: f.is_active !== false,
       status: f.is_active !== false ? 'ACTIVE' : 'INACTIVE',
       ...(f.password && f.password.trim() ? { password: f.password.trim() } : {}),
@@ -9498,6 +9502,7 @@ function Teachers(){
           { label: 'Gender', value: f.gender || 'Not specified' },
           { label: 'Joining Date', value: f.joiningDate || f.joining_date || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
+          { label: 'Assigned Class & Section', value: assignedClassSecText, color: (f.class_name || f.class) ? 'purple' : 'slate' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
           { label: 'Account Status', value: f.is_active !== false ? 'ACTIVE' : 'INACTIVE', type: 'badge', color: f.is_active !== false ? 'green' : 'slate' },
         ]
@@ -9527,6 +9532,8 @@ function Teachers(){
         joining_date: (f.joiningDate || f.joining_date) ? toDdMmYyyy(f.joiningDate || f.joining_date) : (editingTeacher.joining_date || editingTeacher.joiningDate || ''),
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
+        class_name: f.class_name || f.class || '',
+        section_name: f.section_name || f.section || '',
         is_active: f.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       },
       {
@@ -9537,6 +9544,8 @@ function Teachers(){
         joining_date: 'Joining Date',
         mobile: 'Mobile Number',
         designation: 'Designation',
+        class_name: 'Assigned Class',
+        section_name: 'Assigned Section',
         is_active: 'Status'
       }
     ) : [];
@@ -9571,7 +9580,25 @@ function Teachers(){
       if (editingTeacher) {
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
-        setRows(prev => prev.map(r => r.id === editingTeacher.id ? { ...r, ...updated, employee_id: payload.employeeId, savior_no: payload.employeeId, mobile: payload.mobile, gender: payload.gender || updated.gender, dob: payload.dob || updated.dob, date_of_birth: payload.dob || updated.dob, joining_date: payload.joining_date || updated.joining_date, joiningDate: payload.joiningDate || updated.joiningDate, is_active: payload.is_active } : r));
+        setRows(prev => prev.map(r => r.id === editingTeacher.id ? {
+          ...r,
+          ...updated,
+          employee_id: payload.employeeId,
+          savior_no: payload.employeeId,
+          mobile: payload.mobile,
+          gender: payload.gender || updated.gender,
+          dob: payload.dob || updated.dob,
+          date_of_birth: payload.dob || updated.dob,
+          joining_date: payload.joining_date || updated.joining_date,
+          joiningDate: payload.joiningDate || updated.joiningDate,
+          designation: payload.designation || updated.designation,
+          class_name: payload.class_name || updated.class_name,
+          section_name: payload.section_name || updated.section_name,
+          class: payload.class || updated.class,
+          section: payload.section || updated.section,
+          is_active: payload.is_active
+        } : r));
+        load();
         setToastNotice({
           type: 'success',
           message: `Faculty member ${payload.name} updated successfully.`
@@ -9580,6 +9607,7 @@ function Teachers(){
         const res = await api.post('/teachers', payload);
         const created = res.data;
         setRows(prev => [created, ...prev.filter(r => r.id !== created.id)]);
+        load();
         try {
           localStorage.setItem('attendo_last_registered_teacher', JSON.stringify({
             name: created.name || payload.name,
@@ -9699,6 +9727,19 @@ function Teachers(){
     });
   }
 
+  const availableDesignations = useMemo(() => {
+    const set = new Set<string>();
+    allocDesignations.forEach(d => {
+      const val = (d.title || d.name || '').trim();
+      if (val) set.add(val);
+    });
+    rows.forEach(r => {
+      const val = (r.designation || '').trim();
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allocDesignations, rows]);
+
   const filtered = rows.filter(r => {
     const q = search.toLowerCase();
     const matchesSearch = !q || (
@@ -9708,12 +9749,14 @@ function Teachers(){
     );
     const g = formatGender(r.gender);
     const matchesGender = !genderFilter || g === genderFilter;
-    return matchesSearch && matchesGender;
+    const teacherDesig = (r.designation || 'Teacher').trim();
+    const matchesDesignation = !designationFilter || teacherDesig.toLowerCase() === designationFilter.toLowerCase();
+    return matchesSearch && matchesGender && matchesDesignation;
   });
 
   useEffect(() => {
     setDirectoryPage(1);
-  }, [search, genderFilter]);
+  }, [search, genderFilter, designationFilter]);
 
   const totalDirectoryPages = Math.max(1, Math.ceil(filtered.length / (directoryPageSize || 25)));
   const currentDirectoryPage = Math.min(Math.max(1, directoryPage), totalDirectoryPages);
@@ -9843,8 +9886,9 @@ function Teachers(){
           const rawStatus = getExcelCell(r, ['Status', 'STATUS', 'status']);
           const status = (rawStatus === 'T' || /active/i.test(rawStatus) || !rawStatus) ? 'Active' : 'Inactive';
 
-          const className = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
-          const sectionName = (getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
+          const rawClassCell = getExcelCell(r, ['Class', 'CLASS', 'class', 'Standard', 'Grade']);
+          const rawSectionCell = getExcelCell(r, ['Section', 'SECTION', 'section', 'Sec', 'SEC']);
+          const { className, sectionName } = parseImportClassAndSection(rawClassCell, rawSectionCell);
 
           // Field validations
           const rowErrs: { row: number; field: string; message: string }[] = [];
@@ -9998,31 +10042,6 @@ function Teachers(){
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button 
           type="button"
-          onClick={() => load()}
-          disabled={loading}
-          className="directory-refresh-btn"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
-            border: '1px solid var(--border, #cbd5e1)',
-            padding: '7px 13px',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 13,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-          }}
-          title="Refetch faculty records directly from database"
-          id="teachers-top-refresh-btn"
-        >
-          <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-        <button 
-          type="button"
           onClick={() => setExportOpen(true)}
           style={{
             display: 'inline-flex',
@@ -10053,7 +10072,16 @@ function Teachers(){
         <button 
           onClick={() => {
             setEditingTeacher(null);
-            setF({ sendInviteEmail: true, is_active: true });
+            setF({
+              sendInviteEmail: true,
+              is_active: true,
+              class_id: '',
+              class_name: '',
+              class: '',
+              section_id: '',
+              section_name: '',
+              section: ''
+            });
             setOpen(true);
           }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -10159,11 +10187,34 @@ function Teachers(){
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
-          {(search || genderFilter) && (
+          <select 
+            value={designationFilter} 
+            onChange={e => setDesignationFilter(e.target.value)}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 'var(--radius-sm, 6px)',
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card-bg, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              fontSize: 13,
+              cursor: 'pointer',
+              minWidth: 140,
+              flexShrink: 0,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+            aria-label="Filter teachers by designation"
+            id="teacher-designation-filter"
+          >
+            <option value="">All Designations</option>
+            {availableDesignations.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          {(search || genderFilter || designationFilter) && (
             <button 
               type="button" 
               className="btn-secondary" 
-              onClick={() => { setSearch(''); setGenderFilter(''); }}
+              onClick={() => { setSearch(''); setGenderFilter(''); setDesignationFilter(''); }}
               style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
               title="Clear active search and filters"
               id="clear-teacher-filters-btn"
@@ -10404,16 +10455,37 @@ function Teachers(){
                   className="table-action-btn" 
                   onClick={() => {
                     setEditingTeacher(x);
+                    const directAssign = allAssignments.find(a => a.teacher_id === x.id);
+                    const rawCls = x.class_name || x.class || (directAssign ? directAssign.class_number : '');
+                    const rawSec = x.section_name || x.section || (directAssign ? directAssign.section_name : '');
+                    const matchingClass = allocClasses.find(c => {
+                      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                      const rawNum = String(c.class_number);
+                      const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
+                      return String(c.id) === String(x.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
+                    });
+                    const matchingSec = allocSections.find(s => {
+                      return String(s.id) === String(x.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
+                    });
+                    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+                    const sVal = rawSec || (matchingSec ? matchingSec.name : '');
                     setF({
                       name: x.name,
+                      firstName: x.first_name || (x.name ? x.name.split(' ')[0] : ''),
+                      lastName: x.last_name || (x.name ? x.name.split(' ').slice(1).join(' ') : ''),
                       email: x.email,
-                      employeeId: x.employee_id || x.employeeId || '',
+                      employeeId: x.employee_id || x.employeeId || x.savior_no || '',
                       mobile: x.mobile || x.phone || '',
                       gender: formatGender(x.gender) || '',
-                      dob: toDdMmYyyy(x.dob || x.date_of_birth),
                       joiningDate: toDdMmYyyy(x.joining_date || x.joiningDate),
                       joining_date: toDdMmYyyy(x.joining_date || x.joiningDate),
                       designation: x.designation || 'Teacher',
+                      class_id: matchingClass ? String(matchingClass.id) : (x.class_id || ''),
+                      class_name: cVal,
+                      class: cVal,
+                      section_id: matchingSec ? String(matchingSec.id) : (x.section_id || ''),
+                      section_name: sVal,
+                      section: sVal,
                       is_active: x.is_active !== false
                     });
                     setOpen(true);
@@ -10713,12 +10785,21 @@ function Teachers(){
         {/* Row 2: Designation & Mobile Number */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Designation
-            <input
-              placeholder="e.g. Senior Teacher, TGT Mathematics"
-              value={f.designation||''}
-              onChange={e=>setF({...f,designation:e.target.value})}
-              style={{ width: '100%', boxSizing: 'border-box' }}
-            />
+            <select
+              value={f.designation || ''}
+              onChange={e => setF({ ...f, designation: e.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+            >
+              <option value="">Select Designation (Optional)</option>
+              {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
+                <option value={f.designation}>{f.designation}</option>
+              )}
+              {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                <option key={d.id || d.title} value={d.title || d.name}>
+                  {d.title || d.name}{d.category ? ` (${d.category})` : ''}
+                </option>
+              ))}
+            </select>
           </label>
           <label>Mobile Number
             <input
@@ -10742,6 +10823,110 @@ function Teachers(){
                 Must be a valid 10-digit mobile number
               </span>
             )}
+          </label>
+        </div>
+
+        {/* Row 3: Assign Class & Section */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <label>Assign Class
+            <select
+              value={f.class_id || (allocClasses.find(c => {
+                const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                return cName.toLowerCase() === String(f.class_name || f.class || '').toLowerCase() || String(c.class_number) === String(f.class_name || f.class || '').replace(/^Class\s*/i, '').trim();
+              })?.id) || ''}
+              onChange={e => {
+                const selectedClassId = e.target.value;
+                const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
+                let clsName = '';
+                if (clsObj) {
+                  if (clsObj.class_number === -1) clsName = 'Class L KG';
+                  else if (clsObj.class_number === 0) clsName = 'Class U KG';
+                  else clsName = `Class ${clsObj.class_number}`;
+                } else if (selectedClassId) {
+                  clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
+                }
+                setF({
+                  ...f,
+                  class_id: selectedClassId,
+                  class_name: clsName,
+                  class: clsName,
+                  section_id: '',
+                  section_name: '',
+                  section: ''
+                });
+              }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+            >
+              <option value="">Select Class (Optional)</option>
+              {allocClasses.length > 0 ? (
+                allocClasses.map(c => {
+                  const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                  return (
+                    <option key={c.id} value={c.id}>{label}</option>
+                  );
+                })
+              ) : (
+                <>
+                  <option value="Class L KG">Class L KG</option>
+                  <option value="Class U KG">Class U KG</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          </label>
+          <label>Assign Section
+            <select
+              value={f.section_name || f.section || ''}
+              onChange={e => {
+                const sName = e.target.value;
+                const secObj = allocSections.find(s => {
+                  const matchName = String(s.name).trim().toUpperCase() === sName.toUpperCase();
+                  if (!matchName) return false;
+                  if (!f.class_id) return true;
+                  return String(s.class_id) === String(f.class_id);
+                }) || allocSections.find(s => String(s.name).trim().toUpperCase() === sName.toUpperCase());
+
+                setF({
+                  ...f,
+                  section_id: secObj ? String(secObj.id) : sName,
+                  section_name: sName,
+                  section: sName
+                });
+              }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+            >
+              <option value="">Select Section (Optional)</option>
+              {(() => {
+                let list = allocSections;
+                if (f.class_id) {
+                  const selectedCls = allocClasses.find(c => String(c.id) === String(f.class_id));
+                  const filtered = allocSections.filter(s => String(s.class_id) === String(f.class_id) || (selectedCls && String(s.class_number) === String(selectedCls.class_number)));
+                  if (filtered.length > 0) {
+                    list = filtered;
+                  }
+                }
+                const seen = new Set<string>();
+                const uniqueNames: string[] = [];
+                for (const s of list) {
+                  const name = String(s.name || '').trim().toUpperCase();
+                  if (name && !seen.has(name)) {
+                    seen.add(name);
+                    uniqueNames.push(name);
+                  }
+                }
+                if (uniqueNames.length === 0) {
+                  return ['A', 'B', 'C', 'D'].map(sec => (
+                    <option key={sec} value={sec}>Section {sec}</option>
+                  ));
+                }
+                uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                return uniqueNames.map(secName => (
+                  <option key={secName} value={secName}>Section {secName}</option>
+                ));
+              })()}
+            </select>
           </label>
         </div>
 
@@ -11392,7 +11577,7 @@ function Teachers(){
             <p className="muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
               {selectedIds.size > 0
                 ? 'Manual selection active across faculty directory.'
-                : `Filters: Gender [${genderFilter || 'All'}]${search ? `, Search ["${search}"]` : ''}`}
+                : `Filters: Gender [${genderFilter || 'All'}], Designation [${designationFilter || 'All'}]${search ? `, Search ["${search}"]` : ''}`}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -17219,6 +17404,7 @@ function App(){
         <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
         <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
         <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
+        <Route path="/designations" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><Designations/></Layout></RoleGuard>}/>
         <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
         <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
         <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
