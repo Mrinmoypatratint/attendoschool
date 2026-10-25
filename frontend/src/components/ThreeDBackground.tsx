@@ -54,7 +54,7 @@ export const EDUCATIONAL_SCENES: EducationalScene[] = [
 
 const EDUCATIONAL_GLYPHS = ['🎓', '📖', '⚛️', '✨', '💡', '📐', 'A+', 'π', 'Σ', '🔬', '🌍'];
 
-export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false }) => {
+export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = true }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseTargetRef = useRef({ x: 0, y: 0 });
   const mouseSmoothRef = useRef({ x: 0, y: 0 });
@@ -285,7 +285,7 @@ export const ThreeDBackground: React.FC<ThreeDBackgroundProps> = ({ dark = false
   }, [dark]);
 
   return (
-    <div className={`as-3d-backdrop-container ${dark ? 'dark' : 'light'}`} aria-hidden="true">
+    <div className="as-3d-backdrop-container" aria-hidden="true">
       {/* Dynamic Educational Background Photo Slides (Vivid, crisp, NO heavy blur) */}
       {EDUCATIONAL_SCENES.map((scene, idx) => (
         <div

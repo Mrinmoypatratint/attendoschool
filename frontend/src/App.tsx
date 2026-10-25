@@ -664,7 +664,7 @@ function Login() {
   }
 
   return (
-    <div className={`as-simple-page ${dark ? 'dark' : 'light'}`}>
+    <div className="as-simple-page">
       {/* 3D Educational Dynamic Animated Background */}
       <ThreeDBackground dark={dark} />
 
