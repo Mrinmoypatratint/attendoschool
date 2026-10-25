@@ -664,9 +664,9 @@ function Login() {
   }
 
   return (
-    <div className="as-simple-page">
+    <div className="as-simple-page" data-theme="dark">
       {/* 3D Educational Dynamic Animated Background */}
-      <ThreeDBackground dark={dark} />
+      <ThreeDBackground dark={true} />
 
       {/* Floating Top-Left Brand Logo */}
       <div className="as-top-left-brand">
@@ -679,20 +679,6 @@ function Login() {
           <h1 className="as-simple-brand-title">AttendoSchool</h1>
           <p className="as-simple-brand-tagline">Attendance Today — Brighter Tomorrow</p>
         </div>
-      </div>
-
-      {/* Floating Top-Right Theme Toggle */}
-      <div className="as-simple-top-bar">
-        <button
-          type="button"
-          onClick={toggle}
-          className="as-simple-util-btn"
-          title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          id="login-theme-toggle"
-        >
-          {dark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#93c5fd' }} />}
-          <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
       </div>
 
       {/* Centered Main Login Content: Left Handwriting Quote & Right Form */}
@@ -9409,7 +9395,6 @@ function Teachers(){
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
         'Gender': r.gender || '',
-        'Date_of_Birth': toDdMmYyyy(r.dob || r.date_of_birth),
         'Joining_Date': toDdMmYyyy(r.joining_date || r.joiningDate),
         'Class': allocSummary !== '—' ? allocSummary : '',
         'Section': '',
@@ -9477,14 +9462,6 @@ function Teachers(){
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
-    if (!f.dob) {
-      alert('Validation Error: Date of Birth is required.');
-      return;
-    }
-    if (!isValidDdMmYyyy(f.dob)) {
-      alert('Validation Error: Date of Birth must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).');
-      return;
-    }
     const joiningDateVal = f.joiningDate || f.joining_date;
     if (joiningDateVal && !isValidDdMmYyyy(joiningDateVal)) {
       alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
@@ -9503,8 +9480,6 @@ function Teachers(){
       employee_id: employeeId,
       mobile: f.mobile || '',
       gender: f.gender || '',
-      dob: f.dob ? toDdMmYyyy(f.dob) : '',
-      date_of_birth: f.dob ? toDdMmYyyy(f.dob) : '',
       joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
       joiningDate: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
       designation: f.designation || 'Teacher',
@@ -9521,7 +9496,6 @@ function Teachers(){
           { label: 'Full Name', value: name, color: 'blue' },
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
           { label: 'Gender', value: f.gender || 'Not specified' },
-          { label: 'Date of Birth', value: f.dob || 'Not specified' },
           { label: 'Joining Date', value: f.joiningDate || f.joining_date || 'Not specified' },
           { label: 'Designation', value: f.designation || 'Teacher' },
           { label: 'Mobile Number', value: f.mobile || '—', type: 'phone' },
@@ -9550,7 +9524,6 @@ function Teachers(){
         email,
         employee_id: employeeId,
         gender: f.gender || '',
-        dob: f.dob ? toDdMmYyyy(f.dob) : (editingTeacher.dob || editingTeacher.date_of_birth || ''),
         joining_date: (f.joiningDate || f.joining_date) ? toDdMmYyyy(f.joiningDate || f.joining_date) : (editingTeacher.joining_date || editingTeacher.joiningDate || ''),
         mobile: f.mobile || '',
         designation: f.designation || 'Teacher',
@@ -9561,7 +9534,6 @@ function Teachers(){
         email: 'Email Address',
         employee_id: 'Employee ID',
         gender: 'Gender',
-        dob: 'Date of Birth',
         joining_date: 'Joining Date',
         mobile: 'Mobile Number',
         designation: 'Designation',
@@ -9769,12 +9741,12 @@ function Teachers(){
 
   function downloadTemplate() {
     const sample = [
-      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Date_of_Birth": "15-08-1990", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Date_of_Birth": "22-04-1988", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Date_of_Birth": "10-12-1992", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -9890,11 +9862,6 @@ function Teachers(){
             rowErrs.push({ row: rowNum, field: 'Email ID', message: `Duplicate email '${email}' in file` });
           } else if (email) {
             seenMail.add(email);
-          }
-          if (!dob) {
-            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth is required' });
-          } else if (!isValidDdMmYyyy(dob)) {
-            rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth must be DD-MM-YYYY' });
           }
           if (joiningDate && !isValidDdMmYyyy(joiningDate)) {
             rowErrs.push({ row: rowNum, field: 'Joining Date', message: 'Joining Date must be DD-MM-YYYY' });
@@ -10663,7 +10630,7 @@ function Teachers(){
         <label>Employee Id / Savior_NO
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
-        {/* Row 1: Gender & Date of Birth */}
+        {/* Row 1: Gender & Joining Date */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Gender
             <select
@@ -10677,75 +10644,6 @@ function Teachers(){
               <option value="Other">Other</option>
             </select>
           </label>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Date of Birth <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
-            </span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
-              <input
-                required
-                type="text"
-                placeholder="DD-MM-YYYY (e.g. 15-08-1990)"
-                maxLength={10}
-                value={f.dob || ''}
-                onChange={e => {
-                  const formatted = formatDdMmYyyyInput(e.target.value, f.dob || '');
-                  setF({ ...f, dob: formatted });
-                }}
-                style={{
-                  width: '100%',
-                  padding: '8px 34px 8px 10px',
-                  borderRadius: 6,
-                  border: `1px solid ${(!f.dob || (f.dob && !isValidDdMmYyyy(f.dob))) ? '#ef4444' : 'var(--border)'}`,
-                  boxSizing: 'border-box'
-                }}
-              />
-              <input
-                type="date"
-                title="Select from date picker"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 38,
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 2
-                }}
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker?.();
-                  } catch {}
-                }}
-                onChange={e => {
-                  if (e.target.value) {
-                    const [y, m, d] = e.target.value.split('-');
-                    setF({ ...f, dob: `${d}-${m}-${y}` });
-                  }
-                }}
-              />
-              <Calendar
-                size={16}
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  color: '#64748b',
-                  pointerEvents: 'none'
-                }}
-              />
-            </div>
-            {f.dob && !isValidDdMmYyyy(f.dob) && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Strict format required: DD-MM-YYYY (e.g. 15-08-1990)
-              </span>
-            )}
-          </label>
-        </div>
-
-        {/* Row 2: Joining Date & Designation */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>
             <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               Joining Date <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
@@ -10810,6 +10708,10 @@ function Teachers(){
               </span>
             )}
           </label>
+        </div>
+
+        {/* Row 2: Designation & Mobile Number */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <label>Designation
             <input
               placeholder="e.g. Senior Teacher, TGT Mathematics"
@@ -10818,32 +10720,30 @@ function Teachers(){
               style={{ width: '100%', boxSizing: 'border-box' }}
             />
           </label>
+          <label>Mobile Number
+            <input
+              placeholder="10-digit mobile number"
+              maxLength={10}
+              inputMode="numeric"
+              value={f.mobile||''}
+              onChange={e => {
+                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setF({ ...f, mobile: cleaned });
+              }}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
+                boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+              }}
+            />
+            {f.mobile && f.mobile.length < 10 && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Must be a valid 10-digit mobile number
+              </span>
+            )}
+          </label>
         </div>
-
-        {/* Row 3: Mobile Number */}
-        <label style={{ display: 'block' }}>Mobile Number
-          <input
-            placeholder="10-digit mobile number"
-            maxLength={10}
-            inputMode="numeric"
-            value={f.mobile||''}
-            onChange={e => {
-              const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-              setF({ ...f, mobile: cleaned });
-            }}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
-              boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
-            }}
-          />
-          {f.mobile && f.mobile.length < 10 && (
-            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-              Must be a valid 10-digit mobile number
-            </span>
-          )}
-        </label>
 
         {editingTeacher && (
           <label>Account Status
@@ -11232,7 +11132,6 @@ function Teachers(){
                       <th style={{ minWidth: 150 }}>Full Name</th>
                       <th style={{ minWidth: 180 }}>Email ID</th>
                       <th style={{ minWidth: 90 }}>Gender</th>
-                      <th style={{ minWidth: 110 }}>Date of Birth</th>
                       <th style={{ minWidth: 110 }}>Joining Date</th>
                       <th style={{ minWidth: 130 }}>Designation</th>
                       <th style={{ minWidth: 140 }}>Class & Section</th>
@@ -11243,7 +11142,7 @@ function Teachers(){
                   <tbody>
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No teachers match the current search or error filter.
                         </td>
                       </tr>
@@ -11295,12 +11194,6 @@ function Teachers(){
                                   {r.gender}
                                 </span>
                               ) : '—'}
-                            </td>
-                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#dc2626' : undefined }}>
-                              {r.dob || '—'}
-                              {r._errors?.filter((e: any) => e.field === 'Date of Birth').map((e: any, j: number) => (
-                                <div key={j} style={{ fontSize: 10, color: '#dc2626', fontWeight: 600, marginTop: 2 }}>{e.message}</div>
-                              ))}
                             </td>
                             <td style={{ color: r._errors?.some((e: any) => e.field === 'Joining Date') ? '#dc2626' : undefined }}>
                               {r.joiningDate || r.joining_date || '—'}
@@ -11545,7 +11438,6 @@ function Teachers(){
                 <th>Full Name</th>
                 <th>Email_id</th>
                 <th>Gender</th>
-                <th>Date of Birth</th>
                 <th>Joining Date</th>
                 <th>Class / Allocation</th>
                 <th>Status</th>
@@ -11568,7 +11460,6 @@ function Teachers(){
                       </span>
                     ) : '—'}
                   </td>
-                  <td>{r['Date_of_Birth'] ? <code>{r['Date_of_Birth']}</code> : '—'}</td>
                   <td>{r['Joining_Date'] ? <code>{r['Joining_Date']}</code> : '—'}</td>
                   <td>{r['Class'] || '—'}</td>
                   <td><span className="badge active">{r['Status']}</span></td>

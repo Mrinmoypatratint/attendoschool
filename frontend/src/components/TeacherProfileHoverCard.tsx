@@ -14,6 +14,7 @@ import {
   Copy,
   Check,
   Cake,
+  Calendar,
   Hash
 } from 'lucide-react';
 
@@ -111,8 +112,8 @@ export function TeacherProfileHoverCard({
   const email = teacher.email && teacher.email !== '—' ? teacher.email : null;
   const mobile = teacher.mobile || teacher.phone;
   const genderStr = teacher.gender && teacher.gender.trim() ? teacher.gender : 'Not Specified';
-  const dobRaw = teacher.dob || teacher.date_of_birth || '';
-  const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
+  const joiningDateRaw = teacher.joining_date || teacher.joiningDate || '';
+  const joiningDateStr = joiningDateRaw && joiningDateRaw !== '—' ? joiningDateRaw : null;
   const qualification = teacher.qualification && teacher.qualification.trim() ? teacher.qualification : null;
   const address = teacher.address;
   const isActive = teacher.is_active !== undefined ? teacher.is_active : (teacher.active !== undefined ? teacher.active : teacher.status !== 'INACTIVE');
@@ -541,7 +542,7 @@ export function TeacherProfileHoverCard({
                     </div>
                   </div>
 
-                  {/* Date of Birth Card */}
+                  {/* Joining Date Card */}
                   <div
                     style={{
                       backgroundColor: 'var(--card-subtle, #f8fafc)',
@@ -562,19 +563,19 @@ export function TeacherProfileHoverCard({
                         gap: 4
                       }}
                     >
-                      <Cake size={10} color="#94a3b8" />
-                      <span>Date of Birth</span>
+                      <Calendar size={10} color="#94a3b8" />
+                      <span>Joining Date</span>
                     </div>
                     <div
                       style={{
                         fontSize: 12,
-                        fontWeight: dobStr ? 650 : 500,
-                        color: dobStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
-                        fontStyle: dobStr ? 'normal' : 'italic',
+                        fontWeight: joiningDateStr ? 650 : 500,
+                        color: joiningDateStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
+                        fontStyle: joiningDateStr ? 'normal' : 'italic',
                         marginTop: 2
                       }}
                     >
-                      {dobStr || 'Not Recorded'}
+                      {joiningDateStr || 'Not Recorded'}
                     </div>
                   </div>
                 </div>

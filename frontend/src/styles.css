@@ -10453,11 +10453,19 @@ header {
   transform: scale(1.05);
 }
 
-[data-theme="light"] .as-3d-slide {
+.as-simple-page .as-3d-slide {
+  filter: brightness(0.72) contrast(1.06) !important;
+}
+
+.as-simple-page .as-3d-slide.active {
+  opacity: 1 !important;
+}
+
+[data-theme="light"] :not(.as-simple-page) > .as-3d-backdrop-container .as-3d-slide {
   filter: brightness(0.9) contrast(1.02);
 }
 
-[data-theme="light"] .as-3d-slide.active {
+[data-theme="light"] :not(.as-simple-page) > .as-3d-backdrop-container .as-3d-slide.active {
   opacity: 0.92;
 }
 

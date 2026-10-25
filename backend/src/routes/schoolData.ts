@@ -2986,21 +2986,21 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.date_of_birth,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
     const formatted = q.rows.map(r => ({
       ...r,
-      dob: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
-      date_of_birth: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
       joining_date: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : '',
       joiningDate: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : ''
     }));
     if (cacheKey) fastCache.set(cacheKey, formatted, 30);
     return sendPaginatedTeachers(formatted);
   }
- } catch {}
+ } catch (err: any) {
+   console.error('Error in GET /teachers pool.query:', err?.message);
+ }
 
  if (isFirebaseConfigured()) {
   try {
@@ -3090,11 +3090,6 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
   }
 
-  // Date of Birth is mandatory
-  if (!dob) {
-    return res.status(400).json({ message: 'Date of Birth is required and must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).' });
-  }
-
   // Email format validation
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
     return res.status(400).json({ message: 'Invalid email format. Please provide a valid email address.' });
@@ -3132,8 +3127,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, name, cleanEmail, hash]
       );
       await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,date_of_birth,joining_date) VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(dob), toDbDate(joiningDate)]
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,joining_date) VALUES($1,$2,$3,$4,$5,$6)`,
+        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(joiningDate)]
       );
       await client.query('COMMIT');
       
@@ -3446,9 +3441,6 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     } else if (email) {
       seenEmails.add(email);
     }
-    if (!dob) {
-      errors.push({ row: rowNum, field: 'Date_of_Birth', message: 'Date of Birth is required' });
-    }
     if (rawMobile && rawMobile.length !== 10) {
       errors.push({ row: rowNum, field: 'Mobile', message: `Mobile number must be exactly 10 digits (${rawMobile.length} given)` });
     }
@@ -3462,8 +3454,6 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         email,
         mobile: rawMobile || '9876500000',
         gender,
-        dob,
-        date_of_birth: dob,
         joiningDate,
         joining_date: joiningDate,
         designation,
@@ -3522,15 +3512,15 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         const existingEp = await client.query('SELECT user_id FROM teacher_profiles WHERE employee_id = $1', [t.saviorNo]);
         if (existingEp.rows.length > 0 && existingEp.rows[0].user_id !== u.rows[0].id) {
           await client.query(
-            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), date_of_birth = COALESCE($7, date_of_birth), joining_date = COALESCE($8, joining_date) WHERE employee_id = $9`,
-            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate), t.saviorNo]
+            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), joining_date = COALESCE($7, joining_date) WHERE employee_id = $8`,
+            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.joiningDate), t.saviorNo]
           );
         } else {
           await client.query(
-            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, date_of_birth, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), date_of_birth=COALESCE(EXCLUDED.date_of_birth, teacher_profiles.date_of_birth), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
+            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
              RETURNING *`,
-            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate)]
+            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.joiningDate)]
           );
         }
 
@@ -3862,18 +3852,14 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const rawJoining = req.body.joining_date !== undefined ? req.body.joining_date : req.body.joiningDate;
   const resolvedJoining = rawJoining !== undefined ? (rawJoining ? normalizeToDdMmYyyy(rawJoining) : null) : (existingDocData.joining_date || existingDocData.joiningDate || demoTeachers[idx]?.joining_date || null);
 
-  if (rawDob !== undefined && !resolvedDob) {
-    return res.status(400).json({ message: 'Date of Birth is required and must follow DD-MM-YYYY format' });
-  }
-
   try {
     await pool.query(
       `UPDATE users SET name=$1, email=$2, is_active=$3, updated_at=NOW() WHERE id=$4 AND school_id=$5`,
       [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
     );
     await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, date_of_birth=$4, joining_date=$5 WHERE user_id=$6`,
-      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedDob), toDbDate(resolvedJoining), tid]
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, joining_date=$4 WHERE user_id=$5`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedJoining), tid]
     );
   } catch {}
 
