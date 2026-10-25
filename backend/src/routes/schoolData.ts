@@ -551,11 +551,95 @@ r.delete('/sections/:id',...admin,async(req:AuthRequest,res)=>{
   res.json({success:true});
 });
 
-export const demoStudents: any[] = [];
+export const demoStudents: any[] = [
+  {
+    id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa1',
+    school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    user_id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa1',
+    name: 'Aarav Sharma',
+    full_name: 'Aarav Sharma',
+    first_name: 'Aarav',
+    last_name: 'Sharma',
+    roll_number: '25',
+    rollNumber: '25',
+    admission_number: 'ADM-2026-DAV1',
+    admissionNumber: 'ADM-2026-DAV1',
+    email: 'student@dav.com',
+    student_email: 'student@dav.com',
+    class_id: 'cls-10',
+    class_number: 10,
+    class_name: 'Class 10',
+    section_id: 'sec-10-a',
+    section_name: 'A',
+    gender: 'Male',
+    parent_name: 'Vikram Sharma',
+    parent_sms_number: '9876543210',
+    parent_email: 'parent@dav.com',
+    is_active: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'f69420a3-3c74-4d02-b290-0f9d5f642ab2',
+    school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    user_id: 'f69420a3-3c74-4d02-b290-0f9d5f642ab2',
+    name: 'Ananya Verma',
+    full_name: 'Ananya Verma',
+    first_name: 'Ananya',
+    last_name: 'Verma',
+    roll_number: '26',
+    rollNumber: '26',
+    admission_number: 'ADM-2026-DAV2',
+    admissionNumber: 'ADM-2026-DAV2',
+    email: 'student2@dav.com',
+    student_email: 'student2@dav.com',
+    class_id: 'cls-10',
+    class_number: 10,
+    class_name: 'Class 10',
+    section_id: 'sec-10-a',
+    section_name: 'A',
+    gender: 'Female',
+    parent_name: 'Ramesh Verma',
+    parent_sms_number: '9876543211',
+    parent_email: 'parent2@dav.com',
+    is_active: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000025',
+    school_id: '00000000-0000-0000-0000-000000000001',
+    schoolId: '00000000-0000-0000-0000-000000000001',
+    user_id: '00000000-0000-0000-0000-000000000025',
+    name: 'Rohan Sharma',
+    full_name: 'Rohan Sharma',
+    first_name: 'Rohan',
+    last_name: 'Sharma',
+    roll_number: '1',
+    rollNumber: '1',
+    admission_number: 'ADM-2026-001',
+    admissionNumber: 'ADM-2026-001',
+    email: 'student@greenwood.local',
+    student_email: 'student@greenwood.local',
+    class_id: 'cls-10',
+    class_number: 10,
+    class_name: 'Grade 10',
+    section_id: 'sec-10-a',
+    section_name: 'A',
+    gender: 'Male',
+    parent_name: 'Vikram Patel',
+    parent_sms_number: '9876500001',
+    parent_email: 'parent@greenwood.local',
+    is_active: true
+  }
+];
 
 export const demoTeachers: any[] = [
-  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', mobile: '9000000001', gender: 'Male', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
-  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', mobile: '9000000002', gender: 'Female', school_id: '00000000-0000-0000-0000-000000000001', is_active: true }
+  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', savior_no: 'EMP001', mobile: '9000000001', gender: 'Male', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
+  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', savior_no: 'EMP002', mobile: '9000000002', gender: 'Female', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
+  { id: 'c3737d42-6f11-4f08-9001-8e052722cc54', name: 'Debashis Das', email: 'teacher1@dav.com', employee_id: '50359', savior_no: '50359', mobile: '9876543210', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' },
+  { id: 'd7a18f43-8e22-4a09-9112-9e163722dd65', name: 'Sunita Rao', email: 'teacher2@dav.com', employee_id: '50360', savior_no: '50360', mobile: '9876543211', gender: 'Female', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' },
+  { id: 'b149cd21-7f33-4c12-8854-8e354911aa78', name: 'Rajesh Sen', email: 'teacher@dav.com', employee_id: '50361', savior_no: '50361', mobile: '9876543212', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' }
 ];
 
 // In-memory teacher teaching allocations (empty - no mock data)
@@ -1411,7 +1495,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   }
 
   // Demo In-Memory Fallback
-  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail;
+  const targetLoginEmail = loginOpt === 'PARENT' ? cleanParentEmail : cleanStudentEmail || cleanParentEmail || (cleanAdmissionNumber ? `student.${cleanAdmissionNumber.toLowerCase()}@portal.local` : '');
   if (targetLoginEmail && loginOpt !== 'NONE') {
     registerDemoUser({
       id: `usr-st-${Date.now()}`,
@@ -1419,7 +1503,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
       name,
       email: targetLoginEmail,
       role: 'STUDENT',
-      password: 'ChangeMe123!'
+      password: 'ChangeMe123!',
+      admissionNumber: cleanAdmissionNumber
     });
     if (!welcomeEmailSent && sendInviteEmail) {
       try {
@@ -2142,6 +2227,15 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
           is_active: true
         };
         stagedList.push(studentObj);
+        registerDemoUser({
+          id: studentObj.id,
+          schoolId,
+          name: studentObj.name,
+          email: studentObj.email || `student.${String(studentObj.admission_number || studentObj.id).toLowerCase()}@portal.local`,
+          role: 'STUDENT',
+          password: 'ChangeMe123!',
+          admissionNumber: studentObj.admission_number
+        });
       }
       demoStudents.unshift(...stagedList);
       return res.status(201).json({ success: true, count: stagedList.length, items: stagedList, session: bulkSessionName });
@@ -3319,7 +3413,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     name,
     email: cleanEmail,
     role: 'TEACHER',
-    password: rawPassword
+    password: rawPassword,
+    employeeId: employeeId
   });
   syncTeacherToFirestore(newTeacher, rawPassword).catch(() => {});
   res.status(201).json(newTeacher);

@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { pool } from '../db';
+import { pool, isPostgresConfigured } from '../db';
 import { collections, isFirebaseConfigured } from '../firebase';
-import { isSameSchool, isTestSchool } from '../utils/tenant';
+import { isSameSchool, isTestSchool, isDavSchool, isTintSchool } from '../utils/tenant';
 import { demoStudents } from '../routes/schoolData';
+import { getAllDemoUsers } from '../store/demoUsers';
 import { memAttendanceSessions, memAttendanceRecords } from '../routes/teacher';
 import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
@@ -156,7 +157,107 @@ async function resolveStudentRecord(schoolId: string, userId: string, studentId?
     }
   }
 
-  return null;
+  // 3. Fallback: Query in-memory demoStudents
+  const normUser = String(userId || '').trim().toLowerCase();
+  const normStudentId = String(studentId || '').trim().toLowerCase();
+
+  const ds = demoStudents.find(s => {
+    const sidMatch = !s.school_id || isSameSchool(s.school_id, schoolId);
+    if (!sidMatch) return false;
+    const sId = String(s.id || '').toLowerCase();
+    const uId = String(s.user_id || s.userId || '').toLowerCase();
+    const adm = String(s.admission_number || s.admissionNumber || '').toLowerCase();
+    const em = String(s.email || s.student_email || '').toLowerCase();
+    return (
+      (normStudentId && (sId === normStudentId || adm === normStudentId)) ||
+      sId === normUser ||
+      uId === normUser ||
+      adm === normUser ||
+      em === normUser
+    );
+  });
+
+  if (ds) {
+    const cNum = Number(ds.class_number ?? ds.classNumber ?? ds.className ?? 10);
+    const sName = ds.section_name || ds.sectionName || ds.section || 'A';
+    const cleanSName = String(sName).replace(/section\s*/i, '').trim() || 'A';
+    return {
+      id: ds.id || studentId || userId,
+      school_id: ds.school_id || ds.schoolId || schoolId,
+      user_id: ds.user_id || ds.userId || userId,
+      name: ds.name || ds.fullName || 'Student',
+      roll_number: String(ds.roll_number || ds.rollNumber || '25'),
+      admission_number: ds.admission_number || ds.admissionNumber || 'ADM-2026-DAV1',
+      class_id: ds.class_id || ds.classId || `cls-${cNum}`,
+      class_number: cNum,
+      section_id: ds.section_id || ds.sectionId || `sec-${cNum}-${cleanSName.toLowerCase()}`,
+      section_name: cleanSName,
+      school_name: ds.school_name || ds.schoolName || (isDavSchool(schoolId) ? 'DAV MODEL SCHOOL' : 'Institutional Campus'),
+      parent_name: ds.parent_name || ds.parentName || 'Guardian',
+      parent_sms_number: ds.parent_sms_number || ds.parentPhone || '9876543210',
+      parent_email: ds.parent_email || ds.parentEmail || 'parent@dav.com',
+      date_of_birth: ds.date_of_birth || ds.dob || ds.dateOfBirth || '15-08-2010',
+      photo_url: ds.photo_url || ds.photoUrl || (isDavSchool(schoolId) ? '/dav-logo.png' : '/student-avatar.png')
+    };
+  }
+
+  // 4. Fallback: Query in-memory demoUsers store
+  const du = getAllDemoUsers().find(u => {
+    if (u.role !== 'STUDENT') return false;
+    const sidMatch = !u.schoolId || isSameSchool(u.schoolId, schoolId);
+    if (!sidMatch) return false;
+    const uId = String(u.id || '').toLowerCase();
+    const em = String(u.email || '').toLowerCase();
+    const adm = String(u.admissionNumber || '').toLowerCase();
+    return (
+      uId === normUser ||
+      em === normUser ||
+      adm === normUser ||
+      (normStudentId && (uId === normStudentId || adm === normStudentId))
+    );
+  });
+
+  if (du) {
+    return {
+      id: du.id || studentId || userId,
+      school_id: du.schoolId || schoolId,
+      user_id: du.id || userId,
+      name: du.name || 'Student',
+      roll_number: '25',
+      admission_number: du.admissionNumber || (isDavSchool(schoolId) ? 'ADM-2026-DAV1' : 'ADM-2026-001'),
+      class_id: 'cls-10',
+      class_number: 10,
+      section_id: 'sec-10-a',
+      section_name: 'A',
+      school_name: isDavSchool(schoolId) ? 'DAV MODEL SCHOOL' : 'Institutional Campus',
+      parent_name: 'Guardian',
+      parent_sms_number: '9876543210',
+      parent_email: isDavSchool(schoolId) ? 'parent@dav.com' : 'parent@school.local',
+      date_of_birth: '15-08-2010',
+      photo_url: du.photo_url || du.photoUrl || (isDavSchool(schoolId) ? '/dav-logo.png' : '/student-avatar.png')
+    };
+  }
+
+  // 5. Universal synthetic fallback for any authenticated student in this school
+  const isDav = isDavSchool(schoolId);
+  return {
+    id: studentId || userId || 'st-demo-current',
+    school_id: schoolId,
+    user_id: userId,
+    name: isDav ? 'Aarav Sharma' : 'Student',
+    roll_number: '25',
+    admission_number: isDav ? 'ADM-2026-DAV1' : 'ADM-2026-001',
+    class_id: 'cls-10',
+    class_number: 10,
+    section_id: 'sec-10-a',
+    section_name: 'A',
+    school_name: isDav ? 'DAV MODEL SCHOOL' : 'Institutional Campus',
+    parent_name: 'Guardian',
+    parent_sms_number: '9876543210',
+    parent_email: isDav ? 'parent@dav.com' : 'parent@school.local',
+    date_of_birth: '15-08-2010',
+    photo_url: isDav ? '/dav-logo.png' : '/student-avatar.png'
+  };
 }
 
 /**
@@ -1151,44 +1252,60 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
 /**
  * Returns announcements visible to student
  */
-export async function getStudentAnnouncements(schoolId: string, userId: string) {
+export async function getStudentAnnouncements(schoolId: string, userId: string, fromDate?: string, toDate?: string) {
   const st = await resolveStudentRecord(schoolId, userId);
-  try {
-    const q = await pool.query(
-      `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-              u.name AS author_name,
-              c.class_number, sec.name AS section_name,
-              r.read_at, r.id AS recipient_id
-       FROM announcements a
-       LEFT JOIN users u ON u.id = a.created_by
-       LEFT JOIN classes c ON c.id = a.class_id
-       LEFT JOIN sections sec ON sec.id = a.section_id
-       LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
-       WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
-         AND (
-           a.audience_type IN ('SCHOOL', 'STUDENT')
-           OR (
-             a.audience_type = 'CLASS'
-             AND (a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+  if (isPostgresConfigured) {
+    try {
+      const params: any[] = [schoolId, st.class_id, st.section_id, st.class_number, st.section_name, userId];
+      let dateClauses = '';
+
+      if (fromDate && fromDate.trim()) {
+        params.push(fromDate.trim());
+        dateClauses += ` AND COALESCE(a.published_at, a.created_at) >= $${params.length}::timestamp`;
+      }
+
+      if (toDate && toDate.trim()) {
+        params.push(toDate.trim());
+        dateClauses += ` AND COALESCE(a.published_at, a.created_at) < ($${params.length}::date + interval '1 day')`;
+      }
+
+      const q = await pool.query(
+        `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
+                u.name AS author_name,
+                c.class_number, sec.name AS section_name,
+                r.read_at, r.id AS recipient_id
+         FROM announcements a
+         LEFT JOIN users u ON u.id = a.created_by
+         LEFT JOIN classes c ON c.id = a.class_id
+         LEFT JOIN sections sec ON sec.id = a.section_id
+         LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $6
+         WHERE a.school_id = $1 AND a.status = 'PUBLISHED'
+           AND (
+             a.audience_type IN ('SCHOOL', 'STUDENT')
+             OR (
+               a.audience_type = 'CLASS'
+               AND (a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+             )
+             OR (
+               a.audience_type = 'SECTION'
+               AND (a.class_id IS NULL OR a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
+               AND (a.section_id = $3 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER($5)))
+             )
            )
-           OR (
-             a.audience_type = 'SECTION'
-             AND (a.class_id IS NULL OR a.class_id = $2 OR (c.class_number IS NOT NULL AND c.class_number = $4))
-             AND (a.section_id = $3 OR (sec.name IS NOT NULL AND UPPER(sec.name) = UPPER($5)))
-           )
-         )
-       ORDER BY a.priority = 'EMERGENCY' DESC, a.published_at DESC`,
-      [schoolId, st.class_id, st.section_id, st.class_number, st.section_name, userId]
-    );
-    if (q.rowCount && q.rowCount > 0) return q.rows;
-  } catch (_e) {}
+           ${dateClauses}
+         ORDER BY a.priority = 'EMERGENCY' DESC, COALESCE(a.published_at, a.created_at) DESC`,
+        params
+      );
+      if (q && q.rows) return q.rows;
+    } catch (_e) {}
+  }
 
   // Filter in-memory announcements strictly for students
   try {
     const { memAnnouncements } = await import('./communicationService');
-    const filteredMem = memAnnouncements.filter((a: any) => {
+    let filteredMem = memAnnouncements.filter((a: any) => {
       if (a.status !== 'PUBLISHED') return false;
-      if (a.school_id !== schoolId) return false;
+      if (!isSameSchool(a.school_id, schoolId)) return false;
       if (['SCHOOL', 'STUDENT'].includes(a.audience_type)) return true;
       if (a.audience_type === 'CLASS') {
         return (a.class_id && a.class_id === st.class_id) || 
@@ -1203,7 +1320,36 @@ export async function getStudentAnnouncements(schoolId: string, userId: string) 
       }
       return false;
     });
-    if (filteredMem.length > 0) return filteredMem;
+
+    if (fromDate && fromDate.trim()) {
+      const fromTime = new Date(`${fromDate.trim()}T00:00:00`).getTime();
+      if (!isNaN(fromTime)) {
+        filteredMem = filteredMem.filter(a => {
+          const t = new Date(a.published_at || a.created_at).getTime();
+          return !isNaN(t) && t >= fromTime;
+        });
+      }
+    }
+
+    if (toDate && toDate.trim()) {
+      const toTime = new Date(`${toDate.trim()}T23:59:59.999`).getTime();
+      if (!isNaN(toTime)) {
+        filteredMem = filteredMem.filter(a => {
+          const t = new Date(a.published_at || a.created_at).getTime();
+          return !isNaN(t) && t <= toTime;
+        });
+      }
+    }
+
+    filteredMem.sort((a, b) => {
+      if (a.priority === 'EMERGENCY' && b.priority !== 'EMERGENCY') return -1;
+      if (a.priority !== 'EMERGENCY' && b.priority === 'EMERGENCY') return 1;
+      const tA = new Date(a.published_at || a.created_at).getTime() || 0;
+      const tB = new Date(b.published_at || b.created_at).getTime() || 0;
+      return tB - tA;
+    });
+
+    return filteredMem;
   } catch {}
 
   return [];

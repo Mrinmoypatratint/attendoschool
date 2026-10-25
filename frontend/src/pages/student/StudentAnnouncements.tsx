@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check } from 'lucide-react';
+import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check, RotateCcw } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { AnnouncementDateFilter } from '../../components/AnnouncementDateFilter';
 
 export function StudentAnnouncements() {
   const { user } = useAuth();
@@ -13,6 +14,8 @@ export function StudentAnnouncements() {
   const [searchFilter, setSearchFilter] = useState(queryParam);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
@@ -22,16 +25,30 @@ export function StudentAnnouncements() {
     setSearchFilter(queryParam);
   }, [queryParam]);
 
-  function load() {
+  function load(from = fromDate, to = toDate) {
+    setLoading(true);
     studentApi
-      .getAnnouncements()
+      .getAnnouncements(from || undefined, to || undefined)
       .then((res) => {
-        setAnnouncements(res);
+        setAnnouncements(Array.isArray(res) ? res : []);
         setLoading(false);
       })
       .catch(() => {
+        setAnnouncements([]);
         setLoading(false);
       });
+  }
+
+  function handleApplyDateFilter(from: string, to: string) {
+    setFromDate(from);
+    setToDate(to);
+    load(from, to);
+  }
+
+  function handleResetDateFilter() {
+    setFromDate('');
+    setToDate('');
+    load('', '');
   }
 
   useEffect(() => {
@@ -101,6 +118,15 @@ export function StudentAnnouncements() {
         </div>
       </div>
 
+      {/* Date Range Filter */}
+      <AnnouncementDateFilter
+        fromDate={fromDate}
+        toDate={toDate}
+        onApply={handleApplyDateFilter}
+        onReset={handleResetDateFilter}
+        loading={loading}
+      />
+
       {/* Search & In-Page Filter Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div className="student-inpage-search-bar">
@@ -151,16 +177,34 @@ export function StudentAnnouncements() {
         <div className="student-loading-spinner">Loading announcements...</div>
       ) : displayedAnnouncements.length === 0 ? (
         <div className="student-empty-state">
-          <p>{searchFilter ? `No announcements matched "${searchFilter}".` : 'No announcements at this time.'}</p>
-          {searchFilter && (
-            <button 
-              type="button" 
-              onClick={() => { setSearchFilter(''); setSearchParams({}); }}
-              style={{ marginTop: 8, padding: '4px 12px', fontSize: 12.5, borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}
-            >
-              Show all announcements
-            </button>
-          )}
+          <p>
+            {searchFilter
+              ? `No announcements matched "${searchFilter}".`
+              : fromDate || toDate
+              ? `No announcements found for the selected date range (${fromDate || 'Any'} to ${toDate || 'Today'}).`
+              : 'No announcements at this time.'}
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+            {searchFilter && (
+              <button 
+                type="button" 
+                onClick={() => { setSearchFilter(''); setSearchParams({}); }}
+                style={{ padding: '6px 14px', fontSize: 12.5, borderRadius: 6, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Show all announcements
+              </button>
+            )}
+            {(fromDate || toDate) && (
+              <button 
+                type="button" 
+                onClick={handleResetDateFilter}
+                style={{ padding: '6px 14px', fontSize: 12.5, borderRadius: 6, background: 'var(--surface-subtle, #f1f5f9)', color: 'var(--text, #1e293b)', border: '1px solid var(--border, #cbd5e1)', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <RotateCcw size={13} />
+                Reset Date Filter
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="student-announcements-feed">

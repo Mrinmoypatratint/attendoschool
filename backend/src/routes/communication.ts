@@ -118,7 +118,9 @@ router.get('/', async (req, res) => {
           status: 'PUBLISHED',
           recipient_count: 10,
           read_count: 8,
-          reply_count: 1
+          reply_count: 1,
+          published_at: '2025-09-10T08:00:00Z',
+          created_at: '2025-09-10T08:00:00Z'
         }
       ]);
     }
@@ -141,7 +143,9 @@ router.get('/announcements', async (req, res) => {
           status: 'PUBLISHED',
           recipient_count: 10,
           read_count: 8,
-          reply_count: 1
+          reply_count: 1,
+          published_at: '2025-09-10T08:00:00Z',
+          created_at: '2025-09-10T08:00:00Z'
         }
       ]);
     }
@@ -155,7 +159,8 @@ router.get('/teacher/inbox', async (req, res) => {
     return res.status(403).json({ message: 'Faculty access required' });
   }
   try {
-    res.json(await svc.teacherInbox(u(req).id, u(req).schoolId));
+    const { from, to } = req.query as { from?: string; to?: string };
+    res.json(await svc.teacherInbox(u(req).id, u(req).schoolId, from, to));
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }

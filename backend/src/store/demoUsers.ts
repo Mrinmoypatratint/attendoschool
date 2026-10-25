@@ -141,6 +141,28 @@ const demoUsers: DemoUser[] = [
     photo_url: '/dav-logo.png'
   },
   {
+    id: 'd7a18f43-8e22-4a09-9112-9e163722dd65',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Sunita Rao',
+    email: 'teacher2@dav.com',
+    employeeId: '50360',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'b149cd21-7f33-4c12-8854-8e354911aa78',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Rajesh Sen',
+    email: 'teacher@dav.com',
+    employeeId: '50361',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
     id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa1',
     schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
     name: 'Aarav Sharma',
@@ -150,6 +172,100 @@ const demoUsers: DemoUser[] = [
     admissionNumber: 'ADM-2026-DAV1',
     isActive: true,
     photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa3',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Aarav Sharma',
+    email: 'student@gmail.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-DAV1',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'e58319f2-2b63-4c91-a189-9e8c4e531fa2',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Aarav Sharma',
+    email: 'student1@dav.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-DAV1',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  {
+    id: 'f69420a3-3c74-4d02-b290-0f9d5f642ab2',
+    schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
+    name: 'Ananya Verma',
+    email: 'student2@dav.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-DAV2',
+    isActive: true,
+    photo_url: '/dav-logo.png'
+  },
+  // Additional Greenwood aliases
+  {
+    id: '00000000-0000-0000-0000-000000000024',
+    schoolId: '00000000-0000-0000-0000-000000000001',
+    name: 'Faculty Teacher',
+    email: 'teacher@demo-school.local',
+    employeeId: 'TCH-001',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000026',
+    schoolId: '00000000-0000-0000-0000-000000000001',
+    name: 'Rohan Sharma',
+    email: 'student@demo-school.local',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM-2026-001',
+    isActive: true
+  },
+  // ABC Public School
+  {
+    id: '08c4960d-75d6-4a92-989b-48309500632a',
+    schoolId: '08c4960d-75d6-4a92-989b-48309500632e',
+    name: 'ABC School Administrator',
+    email: 'admin@abc155.edu.in',
+    role: 'SCHOOL_ADMIN',
+    password: 'ChangeMe123!',
+    isActive: true
+  },
+  {
+    id: '08c4960d-75d6-4a92-989b-48309500632b',
+    schoolId: '08c4960d-75d6-4a92-989b-48309500632e',
+    name: 'Mrinmoy Patra',
+    email: 'mmrinmay76@gmail.com',
+    employeeId: 'ABC-TCH-01',
+    role: 'TEACHER',
+    password: 'ChangeMe123!',
+    isActive: true
+  },
+  {
+    id: '08c4960d-75d6-4a92-989b-48309500632c',
+    schoolId: '08c4960d-75d6-4a92-989b-48309500632e',
+    name: 'Ahana Sen',
+    email: 'ahana12@gmail.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM1',
+    isActive: true
+  },
+  {
+    id: '08c4960d-75d6-4a92-989b-48309500632d',
+    schoolId: '08c4960d-75d6-4a92-989b-48309500632e',
+    name: 'Dhardhuran Das',
+    email: 'dhardhuran689@gmail.com',
+    role: 'STUDENT',
+    password: 'ChangeMe123!',
+    admissionNumber: 'ADM1',
+    isActive: true
   }
 ];
 

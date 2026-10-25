@@ -13,12 +13,14 @@ import {
   ArrowLeft,
   Check,
   ShieldAlert,
-  Bell
+  Bell,
+  RotateCcw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+import { AnnouncementDateFilter } from '../../components/AnnouncementDateFilter';
 
 export interface AnnouncementItem {
   id: string;
@@ -52,6 +54,8 @@ export function TeacherAnnouncements() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | 'EMERGENCY' | 'HIGH' | 'UNREAD'>('ALL');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Reply state mapped by announcement id
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
@@ -60,12 +64,16 @@ export function TeacherAnnouncements() {
   const [repliesMap, setRepliesMap] = useState<Record<string, ReplyItem[]>>({});
   const [loadingRepliesId, setLoadingRepliesId] = useState<string | null>(null);
 
-  async function loadNotices(isManual = false) {
+  async function loadNotices(isManual = false, from = fromDate, to = toDate) {
     if (isManual) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await api.get('/communication/teacher/inbox');
+      const params: Record<string, string> = {};
+      if (from && from.trim()) params.from = from.trim();
+      if (to && to.trim()) params.to = to.trim();
+
+      const res = await api.get('/communication/teacher/inbox', { params });
       const data = Array.isArray(res.data) ? res.data : [];
       setAnnouncements(data);
 
@@ -80,6 +88,18 @@ export function TeacherAnnouncements() {
       setLoading(false);
       setRefreshing(false);
     }
+  }
+
+  function handleApplyDateFilter(from: string, to: string) {
+    setFromDate(from);
+    setToDate(to);
+    loadNotices(false, from, to);
+  }
+
+  function handleResetDateFilter() {
+    setFromDate('');
+    setToDate('');
+    loadNotices(false, '', '');
   }
 
   async function loadRepliesForNotice(noticeId: string) {
@@ -250,6 +270,15 @@ export function TeacherAnnouncements() {
         </div>
       </div>
 
+      {/* ── Date Filter Control ── */}
+      <AnnouncementDateFilter
+        fromDate={fromDate}
+        toDate={toDate}
+        onApply={handleApplyDateFilter}
+        onReset={handleResetDateFilter}
+        loading={loading || refreshing}
+      />
+
       {/* ── Search & Filter Controls ── */}
       <div
         style={{
@@ -394,8 +423,33 @@ export function TeacherAnnouncements() {
           <p style={{ margin: 0, fontSize: 13.5 }}>
             {searchQuery
               ? `No circulars match "${searchQuery}". Try a different keyword.`
+              : fromDate || toDate
+              ? `No announcements found for the selected date range (${fromDate || 'Any'} to ${toDate || 'Today'}).`
               : 'There are currently no active notices broadcast to faculty.'}
           </p>
+          {(fromDate || toDate) && (
+            <button
+              type="button"
+              onClick={handleResetDateFilter}
+              style={{
+                marginTop: 14,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: 'none',
+                backgroundColor: 'var(--primary, #2563eb)',
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <RotateCcw size={13} />
+              Reset Date Filter
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 20 }}>
