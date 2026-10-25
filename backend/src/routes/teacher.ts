@@ -2677,7 +2677,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       const q = await pool.query(
         `SELECT u.id, u.name, u.email, u.role, u.school_id,
                 tp.employee_id, COALESCE(tp.mobile, tp.phone) AS phone,
-                tp.address, tp.date_of_birth, tp.joining_date, tp.qualification, tp.photo_url, tp.gender
+                tp.address, tp.joining_date, tp.qualification, tp.photo_url, tp.gender
          FROM users u
          LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
          WHERE u.id = $1`,
