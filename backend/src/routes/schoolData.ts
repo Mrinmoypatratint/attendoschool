@@ -38,6 +38,7 @@ import {
 import { normalizeGender } from '../utils/gender';
 import { invalidateDashboardCache } from './dashboard';
 import { clearStudentDashboardCache } from '../services/studentService';
+import { convertRomanClassToDigital, parseImportClassAndSection } from '../utils/roman';
 
 const isUuid = (val: any): boolean => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
@@ -657,10 +658,14 @@ r.get('/teachers/:id/assignments',...admin,async(req:AuthRequest,res)=>{
 // GET /api/teacher-assignments (all assignments for current school)
 r.get('/teacher-assignments',...admin,async(req:AuthRequest,res)=>{
   const sid = req.user!.schoolId;
-  if (!isTestSchool(sid)) {
-    return res.json(demoTeacherAssignments.filter(a => a.school_id && isSameSchool(a.school_id, sid)));
-  }
-  res.json(demoTeacherAssignments);
+  const rawList = (!isTestSchool(sid))
+    ? demoTeacherAssignments.filter(a => a.school_id && isSameSchool(a.school_id, sid))
+    : demoTeacherAssignments;
+  const list = rawList.map(a => ({
+    ...a,
+    class_number: a.class_number ? convertRomanClassToDigital(String(a.class_number).toLowerCase().startsWith('class') ? a.class_number : `Class ${a.class_number}`).replace(/^Class\s*/i, '') : a.class_number
+  }));
+  res.json(list);
 });
 
 // PUT /api/teachers/:id/assignments — Replace all assignments for a teacher
@@ -3080,21 +3085,25 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.date_of_birth,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
     const formatted = q.rows.map(r => ({
       ...r,
-      dob: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
-      date_of_birth: r.date_of_birth ? normalizeToDdMmYyyy(r.date_of_birth) : '',
+      class_name: convertRomanClassToDigital(r.class_name),
+      class: convertRomanClassToDigital(r.class_name),
+      section_name: r.section_name || null,
+      section: r.section_name || null,
       joining_date: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : '',
       joiningDate: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : ''
     }));
     if (cacheKey) fastCache.set(cacheKey, formatted, 30);
     return sendPaginatedTeachers(formatted);
   }
- } catch {}
+ } catch (err: any) {
+   console.error('Error in GET /teachers pool.query:', err?.message);
+ }
 
  if (isFirebaseConfigured()) {
   try {
@@ -3184,11 +3193,6 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
   }
 
-  // Date of Birth is mandatory
-  if (!dob) {
-    return res.status(400).json({ message: 'Date of Birth is required and must strictly follow DD-MM-YYYY format (e.g. 15-08-1990).' });
-  }
-
   // Email format validation
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
     return res.status(400).json({ message: 'Invalid email format. Please provide a valid email address.' });
@@ -3216,6 +3220,11 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   let resetInfo: any = null;
   let emailDeliveryStatus: 'Sent' | 'Failed' | 'Pending' = 'Pending';
 
+  const rawClass = req.body.class_name || req.body.className || req.body.class;
+  const rawSection = req.body.section_name || req.body.sectionName || req.body.section;
+  const className = rawClass ? String(rawClass).trim() : null;
+  const sectionName = rawSection ? String(rawSection).trim() : null;
+
   try {
     const client = await pool.connect();
     try {
@@ -3226,10 +3235,22 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, name, cleanEmail, hash]
       );
       await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,date_of_birth,joining_date) VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(dob), toDbDate(joiningDate)]
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,joining_date,designation,class_name,section_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(joiningDate), designation || 'Teacher', className, sectionName]
       );
       await client.query('COMMIT');
+
+      if (className) {
+        demoTeacherAssignments.push({
+          id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          school_id: req.user!.schoolId,
+          teacher_id: u.rows[0].id,
+          teacher_name: name,
+          class_number: className.replace(/^Class\s*/i, ''),
+          section_name: sectionName || 'A',
+          subject_name: null
+        });
+      }
       
       // Automatic Teacher Welcome Email via SMTP
       if (sendInviteEmail) {
@@ -3279,6 +3300,10 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         employee_id: employeeId,
         savior_no: employeeId,
         designation,
+        class_name: className,
+        section_name: sectionName,
+        class: className,
+        section: sectionName,
         gender: gender || null,
         dob: dob || null,
         date_of_birth: dob || null,
@@ -3291,6 +3316,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         invite_sent: Boolean(resetInfo)
       };
       demoTeachers.unshift(created);
+      if (req.user?.schoolId) fastCache.delete(`teachers:${req.user.schoolId}`);
       syncTeacherToFirestore(created, hash).catch(() => {});
       return res.status(201).json(created);
     } catch(e) {
@@ -3353,6 +3379,10 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     employee_id: employeeId,
     savior_no: employeeId,
     designation,
+    class_name: className,
+    section_name: sectionName,
+    class: className,
+    section: sectionName,
     gender: gender || null,
     dob: dob || null,
     date_of_birth: dob || null,
@@ -3365,6 +3395,18 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     invite_sent: Boolean(resetInfo)
   };
   demoTeachers.unshift(newTeacher);
+  if (className) {
+    demoTeacherAssignments.push({
+      id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      school_id: req.user!.schoolId,
+      teacher_id: newTeacher.id,
+      teacher_name: name,
+      class_number: className.replace(/^Class\s*/i, ''),
+      section_name: sectionName || 'A',
+      subject_name: null
+    });
+  }
+  if (req.user?.schoolId) fastCache.delete(`teachers:${req.user.schoolId}`);
   registerDemoUser({
     id: newTeacher.id,
     schoolId: req.user!.schoolId,
@@ -3541,9 +3583,6 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     } else if (email) {
       seenEmails.add(email);
     }
-    if (!dob) {
-      errors.push({ row: rowNum, field: 'Date_of_Birth', message: 'Date of Birth is required' });
-    }
     if (rawMobile && rawMobile.length !== 10) {
       errors.push({ row: rowNum, field: 'Mobile', message: `Mobile number must be exactly 10 digits (${rawMobile.length} given)` });
     }
@@ -3557,8 +3596,6 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         email,
         mobile: rawMobile || '9876500000',
         gender,
-        dob,
-        date_of_birth: dob,
         joiningDate,
         joining_date: joiningDate,
         designation,
@@ -3606,8 +3643,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           throw new Error(`Failed to insert or update user record for faculty member ${t.name} (${t.email})`);
         }
 
-        const rawClass = t.class ? String(t.class).trim() : null;
-        const rawSection = t.section ? String(t.section).trim().toUpperCase() : null;
+        const { className: parsedClass, sectionName: parsedSection } = parseImportClassAndSection(t.class, t.section);
+        const rawClass = parsedClass ? convertRomanClassToDigital(parsedClass) : null;
+        const rawSection = parsedSection ? String(parsedSection).trim().toUpperCase() : 'A';
         let parsedGender = t.gender ? String(t.gender).trim() : null;
         if (parsedGender) {
           if (/^f/i.test(parsedGender)) parsedGender = 'Female';
@@ -3617,15 +3655,15 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         const existingEp = await client.query('SELECT user_id FROM teacher_profiles WHERE employee_id = $1', [t.saviorNo]);
         if (existingEp.rows.length > 0 && existingEp.rows[0].user_id !== u.rows[0].id) {
           await client.query(
-            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), date_of_birth = COALESCE($7, date_of_birth), joining_date = COALESCE($8, joining_date) WHERE employee_id = $9`,
-            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate), t.saviorNo]
+            `UPDATE teacher_profiles SET user_id = $1, mobile = $2, designation = $3, class_name = $4, section_name = $5, gender = COALESCE($6, gender), joining_date = COALESCE($7, joining_date) WHERE employee_id = $8`,
+            [u.rows[0].id, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.joiningDate), t.saviorNo]
           );
         } else {
           await client.query(
-            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, date_of_birth, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), date_of_birth=COALESCE(EXCLUDED.date_of_birth, teacher_profiles.date_of_birth), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
+            `INSERT INTO teacher_profiles(user_id, employee_id, mobile, designation, class_name, section_name, gender, joining_date) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (user_id) DO UPDATE SET employee_id=EXCLUDED.employee_id, mobile=EXCLUDED.mobile, designation=EXCLUDED.designation, class_name=EXCLUDED.class_name, section_name=EXCLUDED.section_name, gender=COALESCE(EXCLUDED.gender, teacher_profiles.gender), joining_date=COALESCE(EXCLUDED.joining_date, teacher_profiles.joining_date)
              RETURNING *`,
-            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.dob), toDbDate(t.joiningDate)]
+            [u.rows[0].id, t.saviorNo, t.mobile || null, t.designation || 'Teacher', rawClass, rawSection, parsedGender, toDbDate(t.joiningDate)]
           );
         }
 
@@ -3801,6 +3839,9 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       for (const t of validRows) {
         const teacherId = `tch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const tempPassword = crypto.randomBytes(8).toString('hex') + 'Tt1!';
+        const { className: parsedClass, sectionName: parsedSection } = parseImportClassAndSection(t.class, t.section);
+        const normClass = parsedClass ? convertRomanClassToDigital(parsedClass) : null;
+        const normSec = parsedSection ? String(parsedSection).trim().toUpperCase() : 'A';
         const teacherObj = {
           id: teacherId,
           school_id: schoolId,
@@ -3817,8 +3858,10 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           dob: t.dob || null,
           date_of_birth: t.dob || null,
           designation: t.designation,
-          class_name: t.class,
-          section_name: t.section,
+          class_name: normClass,
+          section_name: normSec,
+          class: normClass,
+          section: normSec,
           status: t.status,
           email_status: 'Pending',
           is_active: t.status.toUpperCase() !== 'INACTIVE'
@@ -3956,10 +3999,12 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const resolvedDob = rawDob !== undefined ? (rawDob ? normalizeToDdMmYyyy(rawDob) : null) : (existingDocData.dob || existingDocData.date_of_birth || demoTeachers[idx]?.dob || null);
   const rawJoining = req.body.joining_date !== undefined ? req.body.joining_date : req.body.joiningDate;
   const resolvedJoining = rawJoining !== undefined ? (rawJoining ? normalizeToDdMmYyyy(rawJoining) : null) : (existingDocData.joining_date || existingDocData.joiningDate || demoTeachers[idx]?.joining_date || null);
-
-  if (rawDob !== undefined && !resolvedDob) {
-    return res.status(400).json({ message: 'Date of Birth is required and must follow DD-MM-YYYY format' });
-  }
+  const rawClass = req.body.class_name !== undefined ? req.body.class_name : (req.body.className !== undefined ? req.body.className : req.body.class);
+  const resolvedClass = rawClass !== undefined ? (rawClass ? String(rawClass).trim() : null) : (existingDocData.class_name || demoTeachers[idx]?.class_name || null);
+  const rawSection = req.body.section_name !== undefined ? req.body.section_name : (req.body.sectionName !== undefined ? req.body.sectionName : req.body.section);
+  const resolvedSection = rawSection !== undefined ? (rawSection ? String(rawSection).trim() : null) : (existingDocData.section_name || demoTeachers[idx]?.section_name || null);
+  const rawDesig = req.body.designation;
+  const resolvedDesig = rawDesig !== undefined ? (rawDesig ? String(rawDesig).trim() : 'Teacher') : (existingDocData.designation || demoTeachers[idx]?.designation || 'Teacher');
 
   try {
     await pool.query(
@@ -3967,9 +4012,22 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
       [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
     );
     await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, date_of_birth=$4, joining_date=$5 WHERE user_id=$6`,
-      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedDob), toDbDate(resolvedJoining), tid]
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, joining_date=$4, designation=$5, class_name=$6, section_name=$7 WHERE user_id=$8`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedJoining), resolvedDesig, resolvedClass, resolvedSection, tid]
     );
+
+    const prevDesig = existingDocData.designation || (demoTeachers[idx] && demoTeachers[idx].designation) || '';
+    if (prevDesig && resolvedDesig && prevDesig.trim().toLowerCase() !== resolvedDesig.trim().toLowerCase()) {
+      try {
+        await pool.query(
+          `INSERT INTO teacher_promotions (school_id, teacher_id, teacher_name, employee_id, email, previous_position, current_position, promotion_date, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), 'Designation updated via teacher profile')`,
+          [userSchoolId, tid, name || existingDocData.name || demoTeachers[idx]?.name || 'Teacher', employeeId || existingDocData.employee_id || '', cleanEmail, prevDesig.trim(), resolvedDesig.trim()]
+        );
+      } catch (pErr) {
+        console.warn('[Teacher Promotion] Could not auto-log promotion:', pErr);
+      }
+    }
   } catch {}
 
   const updated = {
@@ -3980,6 +4038,11 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     employeeId: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',
     mobile: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
     phone: mobile || phone || existingDocData.mobile || existingDocData.phone || demoTeachers[idx]?.mobile || '',
+    designation: resolvedDesig,
+    class_name: resolvedClass,
+    section_name: resolvedSection,
+    class: resolvedClass,
+    section: resolvedSection,
     gender: resolvedGender,
     dob: resolvedDob,
     date_of_birth: resolvedDob,
@@ -3993,6 +4056,30 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
 
   if (idx >= 0) demoTeachers[idx] = { ...demoTeachers[idx], ...updated };
   else demoTeachers.push(updated);
+
+  const existingAssignIdx = demoTeacherAssignments.findIndex(a => a.teacher_id === tid);
+  if (resolvedClass) {
+    if (existingAssignIdx >= 0) {
+      demoTeacherAssignments[existingAssignIdx] = {
+        ...demoTeacherAssignments[existingAssignIdx],
+        class_number: resolvedClass.replace(/^Class\s*/i, ''),
+        section_name: resolvedSection || 'A'
+      };
+    } else {
+      demoTeacherAssignments.push({
+        id: `ta-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        school_id: resolvedSchoolId,
+        teacher_id: tid,
+        teacher_name: name || demoTeachers[idx]?.name,
+        class_number: resolvedClass.replace(/^Class\s*/i, ''),
+        section_name: resolvedSection || 'A',
+        subject_name: null
+      });
+    }
+  } else if (resolvedClass === null && existingAssignIdx >= 0) {
+    demoTeacherAssignments.splice(existingAssignIdx, 1);
+  }
+  if (userSchoolId) fastCache.delete(`teachers:${userSchoolId}`);
 
   if (password && String(password).trim()) {
     const pwValidation = validatePasswordStrength(String(password).trim());

@@ -422,10 +422,33 @@ html.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 /* Session Picker Button in Directory Box */
 .session-picker-btn {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  color: #1d4ed8 !important;
   transition: all 0.15s ease;
+}
+
+.session-picker-btn:hover,
+.session-picker-btn:focus-visible,
+.session-picker-btn.open {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+.session-picker-btn span,
+.session-picker-btn b {
+  color: inherit !important;
+}
+
+.session-picker-btn svg {
+  color: currentColor !important;
+  transition: color 0.15s ease;
+}
+
+.session-picker-btn:hover svg,
+.session-picker-btn.open svg {
+  color: currentColor !important;
 }
 
 [data-theme="dark"] .session-picker-btn,
@@ -446,7 +469,7 @@ html.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 [data-theme="dark"] .session-picker-btn svg,
 .dark .session-picker-btn svg {
-  color: #60a5fa !important;
+  color: currentColor !important;
 }
 
 /* Directory Select & Pagination Dropdowns */
@@ -10453,11 +10476,19 @@ header {
   transform: scale(1.05);
 }
 
-[data-theme="light"] .as-3d-slide {
+.as-simple-page .as-3d-slide {
+  filter: brightness(0.72) contrast(1.06) !important;
+}
+
+.as-simple-page .as-3d-slide.active {
+  opacity: 1 !important;
+}
+
+[data-theme="light"] :not(.as-simple-page) > .as-3d-backdrop-container .as-3d-slide {
   filter: brightness(0.9) contrast(1.02);
 }
 
-[data-theme="light"] .as-3d-slide.active {
+[data-theme="light"] :not(.as-simple-page) > .as-3d-backdrop-container .as-3d-slide.active {
   opacity: 0.92;
 }
 

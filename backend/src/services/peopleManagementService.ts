@@ -168,7 +168,7 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
   }
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.is_active AS user_active,
-            tp.employee_id, tp.phone, tp.gender, tp.address, tp.date_of_birth, tp.joining_date,
+            tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
             tp.qualification, tp.designation, tp.photo_url, tp.class_name, tp.section_name,
             COALESCE(tp.is_active, TRUE) AS is_active
      FROM users u
@@ -180,8 +180,6 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
   return rows.map((r: any) => ({
     ...r,
     gender: normalizeGender(r.gender) || '',
-    dob: r.date_of_birth ? String(r.date_of_birth).slice(0, 10) : '',
-    date_of_birth: r.date_of_birth ? String(r.date_of_birth).slice(0, 10) : '',
     joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
     joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
   }));
@@ -210,12 +208,11 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       );
     }
 
-    const allowed = ['employee_id','phone','gender','address','date_of_birth','joining_date','qualification','designation','photo_url'];
+    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url','class_name','section_name'];
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {
-      const aliasKey = key === 'date_of_birth' ? (body.date_of_birth !== undefined ? 'date_of_birth' : 'dob')
-                     : key === 'joining_date' ? (body.joining_date !== undefined ? 'joining_date' : 'joiningDate')
+      const aliasKey = key === 'joining_date' ? (body.joining_date !== undefined ? 'joining_date' : 'joiningDate')
                      : key;
       if (Object.prototype.hasOwnProperty.call(body, aliasKey)) {
         let val = body[aliasKey] === '' ? null : body[aliasKey];
@@ -227,7 +224,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     if (fields.length) {
       values.push(id);
       await client.query(
-        `INSERT INTO teacher_profiles (user_id, ${allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'date_of_birth' && body.dob !== undefined) || (k === 'joining_date' && body.joiningDate !== undefined)).join(', ')})
+        `INSERT INTO teacher_profiles (user_id, ${allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined)).join(', ')})
          VALUES ($${values.length}, ${values.slice(0,-1).map((_,i)=>'$'+(i+1)).join(', ')})
          ON CONFLICT (user_id) DO UPDATE SET ${fields.join(', ')}`,
         values
