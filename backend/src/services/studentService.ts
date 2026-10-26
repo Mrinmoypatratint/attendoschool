@@ -1364,6 +1364,8 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
   try {
     const q = await pool.query(
       `SELECT a.id, a.title, a.description, a.due_date, a.max_marks,
+              a.document_url, a.document_name, a.document_size, a.document_mime, a.document_data,
+              COALESCE(a.attachments, '[]'::jsonb) AS teacher_attachments,
               sub.name AS subject_name, u.name AS teacher_name,
               COALESCE(s.status, 'PENDING') AS submission_status,
               s.id AS submission_id,

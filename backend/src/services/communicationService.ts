@@ -131,7 +131,8 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
   }
 
   if (sUuid && !isUuid(sUuid)) {
-    const sName = String(sUuid).toUpperCase().includes('B') ? 'B' : 'A';
+    const match = String(sUuid).match(/sec-([a-z0-9]+)/i) || String(sUuid).match(/section\s*([a-z0-9]+)/i);
+    const sName = match ? match[1].toUpperCase() : String(sUuid).trim().toUpperCase();
     if (cUuid && isUuid(cUuid)) {
       try {
         const q = await pool.query('SELECT id FROM sections WHERE class_id = $1 AND UPPER(name) = $2 LIMIT 1', [cUuid, sName]);

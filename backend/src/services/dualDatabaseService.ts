@@ -429,9 +429,13 @@ export class DualDatabaseService {
   }
 
   /**
-   * Supabase: Get Today's Attendance Breakdown
+   * Supabase: Get Today's Attendance Breakdown (dynamically scoped to academic session when provided)
    */
-  static async getTodayAttendanceFromSupabase(schoolId: string, dateStr: string = new Date().toISOString().slice(0, 10)) {
+  static async getTodayAttendanceFromSupabase(
+    schoolId: string, 
+    dateStr: string = new Date().toISOString().slice(0, 10),
+    academicYearId?: string
+  ) {
     const result = {
       total: 0,
       present: 0,
@@ -442,6 +446,45 @@ export class DualDatabaseService {
     if (!isPostgresConfigured || !schoolId) return result;
 
     try {
+      if (academicYearId) {
+        // Scoped to specific academic session by querying attendance records for students belonging to that session
+        const res = await pool.query(`
+          SELECT 
+            COALESCE(s.class_number, c.class_number) as class_number,
+            COALESCE(s.section_name, sec.name) as section_name,
+            COUNT(CASE WHEN ar.status = 'PRESENT' OR (ar.status NOT IN ('ABSENT', 'LEFT_EARLY') AND ar.is_present = true) THEN 1 END)::int AS present,
+            COUNT(CASE WHEN ar.status = 'ABSENT' OR (ar.is_present = false AND ar.status != 'LEFT_EARLY') THEN 1 END)::int AS absent,
+            COUNT(*)::int AS total
+          FROM attendance_records ar
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          JOIN students st ON st.id = ar.student_id
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN sections sec ON sec.id = s.section_id
+          WHERE s.school_id = $1 
+            AND s.attendance_date = $2
+            AND st.academic_year_id = $3
+            AND st.is_active = true
+          GROUP BY COALESCE(s.class_number, c.class_number), COALESCE(s.section_name, sec.name)
+          ORDER BY class_number ASC, section_name ASC
+        `, [schoolId, dateStr, academicYearId]);
+
+        result.classBreakdown = res.rows.map(r => ({
+          class_number: r.class_number,
+          section_name: r.section_name,
+          present: r.present || 0,
+          absent: r.absent || 0,
+          total: r.total || 0,
+          percentage: r.total > 0 ? Number(((r.present / r.total) * 100).toFixed(1)) : 0
+        }));
+
+        result.present = result.classBreakdown.reduce((sum, b) => sum + b.present, 0);
+        result.absent = result.classBreakdown.reduce((sum, b) => sum + b.absent, 0);
+        result.total = result.classBreakdown.reduce((sum, b) => sum + b.total, 0);
+        result.percentage = result.total > 0 ? Number(((result.present / result.total) * 100).toFixed(1)) : 0;
+
+        return result;
+      }
+
       const res = await pool.query(`
         SELECT 
           class_number, section_name,
@@ -476,12 +519,39 @@ export class DualDatabaseService {
   }
 
   /**
-   * Supabase: Get Weekly Attendance Trend with a single date-range query
+   * Supabase: Get Weekly Attendance Trend with a single date-range query (dynamically scoped to academic session when provided)
    */
-  static async getWeeklyTrendFromSupabase(schoolId: string, fromDate: string, toDate: string) {
+  static async getWeeklyTrendFromSupabase(
+    schoolId: string, 
+    fromDate: string, 
+    toDate: string,
+    academicYearId?: string
+  ) {
     if (!isPostgresConfigured || !schoolId) return [];
 
     try {
+      if (academicYearId) {
+        const res = await pool.query(`
+          SELECT 
+            s.attendance_date,
+            COUNT(CASE WHEN ar.status = 'PRESENT' OR (ar.status NOT IN ('ABSENT', 'LEFT_EARLY') AND ar.is_present = true) THEN 1 END)::int as present,
+            COUNT(CASE WHEN ar.status = 'ABSENT' OR (ar.is_present = false AND ar.status != 'LEFT_EARLY') THEN 1 END)::int as absent,
+            COUNT(*)::int as total
+          FROM attendance_records ar
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          JOIN students st ON st.id = ar.student_id
+          WHERE s.school_id = $1 
+            AND s.attendance_date >= $2 
+            AND s.attendance_date <= $3
+            AND st.academic_year_id = $4
+            AND st.is_active = true
+          GROUP BY s.attendance_date
+          ORDER BY s.attendance_date ASC
+        `, [schoolId, fromDate, toDate, academicYearId]);
+
+        return res.rows || [];
+      }
+
       const res = await pool.query(`
         SELECT 
           attendance_date,

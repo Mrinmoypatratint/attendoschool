@@ -232,6 +232,98 @@ export function StudentAssignments() {
     }
   };
 
+  const openTeacherDocPreview = async (
+    assignmentId: string,
+    fileName: string,
+    mimeType?: string,
+    inlineData?: string,
+    attachmentId?: string
+  ) => {
+    setPreviewState({
+      title: fileName,
+      blobUrl: null,
+      mimeType: mimeType || 'application/pdf',
+      fileName: fileName,
+      assignmentId,
+      attachmentId: attachmentId || 'doc',
+      loading: true,
+      error: null
+    });
+
+    try {
+      let url: string;
+      if (inlineData && inlineData.startsWith('data:')) {
+        const res = await fetch(inlineData);
+        const blob = await res.blob();
+        url = URL.createObjectURL(blob);
+      } else {
+        const blob = await studentApi.previewAssignmentDocument(assignmentId, attachmentId === 'doc' ? undefined : attachmentId);
+        url = URL.createObjectURL(blob);
+      }
+
+      setPreviewState((prev) =>
+        prev
+          ? {
+              ...prev,
+              blobUrl: url,
+              loading: false,
+              mimeType: mimeType || 'application/pdf'
+            }
+          : null
+      );
+    } catch (err: any) {
+      setPreviewState((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              error: err?.response?.data?.message || 'Unable to load document preview.'
+            }
+          : null
+      );
+    }
+  };
+
+  const handleTeacherDocDownload = async (
+    assignmentId: string,
+    fileName: string,
+    inlineData?: string,
+    attachmentId?: string
+  ) => {
+    try {
+      if (inlineData && inlineData.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = inlineData;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+      await studentApi.downloadAssignmentDocument(assignmentId, fileName, attachmentId === 'doc' ? undefined : attachmentId);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to download assignment document.');
+    }
+  };
+
+  const handlePreviewDownload = () => {
+    if (!previewState) return;
+    if (previewState.attachmentId === 'doc' || previewState.attachmentId.startsWith('doc-')) {
+      handleTeacherDocDownload(
+        previewState.assignmentId,
+        previewState.fileName,
+        undefined,
+        previewState.attachmentId === 'doc' ? undefined : previewState.attachmentId
+      );
+    } else {
+      studentApi.downloadAttachment(
+        previewState.assignmentId,
+        previewState.attachmentId,
+        previewState.fileName
+      );
+    }
+  };
+
   const filtered = assignments.filter((a) => {
     if (activeTab === 'PENDING' && a.submission_status !== 'PENDING') return false;
     if (activeTab === 'SUBMITTED' && a.submission_status === 'PENDING') return false;
@@ -366,6 +458,109 @@ export function StudentAssignments() {
                 </div>
               </div>
 
+              {/* Teacher's Attached Document / Material Section */}
+              {((a.document_name) || (a.teacher_attachments && a.teacher_attachments.length > 0)) && (
+                <div
+                  style={{
+                    margin: '12px 0',
+                    padding: '12px',
+                    borderRadius: 8,
+                    background: 'rgba(2, 132, 199, 0.06)',
+                    border: '1px solid rgba(2, 132, 199, 0.22)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FileText size={14} style={{ color: '#0284c7' }} />
+                      Assignment Document / Worksheet:
+                    </span>
+                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>
+                      Teacher Material
+                    </span>
+                  </div>
+
+                  {(a.teacher_attachments && a.teacher_attachments.length > 0
+                    ? a.teacher_attachments
+                    : [{
+                        id: 'doc',
+                        file_name: a.document_name || 'Assignment_Document.pdf',
+                        file_size: a.document_size || 0,
+                        mime_type: a.document_mime || 'application/pdf',
+                        file_data: a.document_data
+                      }]
+                  ).map((doc, idx) => {
+                    const isPreviewable =
+                      (doc.mime_type && (doc.mime_type.startsWith('image/') || doc.mime_type === 'application/pdf')) ||
+                      doc.file_name.endsWith('.pdf') ||
+                      doc.file_name.endsWith('.png') ||
+                      doc.file_name.endsWith('.jpg') ||
+                      doc.file_name.endsWith('.jpeg');
+
+                    return (
+                      <div
+                        key={doc.id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 10px',
+                          borderRadius: 6,
+                          background: 'var(--bg-card, #ffffff)',
+                          border: '1px solid var(--border, #e2e8f0)',
+                          gap: 8
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', maxWidth: '60%' }}>
+                          <Paperclip size={13} style={{ color: '#0284c7', flexShrink: 0 }} />
+                          <span
+                            title={doc.file_name}
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              color: 'var(--text, #0f172a)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {doc.file_name}
+                          </span>
+                          {doc.file_size > 0 && (
+                            <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
+                              ({formatBytes(doc.file_size)})
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          {isPreviewable && (
+                            <button
+                              type="button"
+                              onClick={() => openTeacherDocPreview(a.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
+                              className="student-attachment-preview-btn"
+                              style={{ padding: '4px 8px', fontSize: 11.5 }}
+                            >
+                              <Eye size={12} /> Preview
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleTeacherDocDownload(a.id, doc.file_name, doc.file_data, doc.id)}
+                            className="student-attachment-download-btn"
+                            style={{ padding: '4px 8px', fontSize: 11.5 }}
+                          >
+                            <Download size={12} /> Download
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Submitted Information Box */}
               {a.submission_status !== 'PENDING' && (
                 <div className="student-submission-info-box">
@@ -489,6 +684,77 @@ export function StudentAssignments() {
               <p className="modal-sub">
                 Subject: <b>{activeModal.subject_name}</b> &nbsp;|&nbsp; Due: {activeModal.due_date}
               </p>
+
+              {/* Display Teacher Attached Document if available */}
+              {(activeModal.document_name || (activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0)) && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(2, 132, 199, 0.08)',
+                    border: '1px solid rgba(2, 132, 199, 0.25)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    marginBottom: 10
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <FileText size={13} style={{ color: '#0284c7' }} />
+                    Teacher's Reference Material / Questions:
+                  </span>
+                  {(activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0
+                    ? activeModal.teacher_attachments
+                    : [{
+                        id: 'doc',
+                        file_name: activeModal.document_name || 'Assignment_Document.pdf',
+                        file_size: activeModal.document_size || 0,
+                        mime_type: activeModal.document_mime || 'application/pdf',
+                        file_data: activeModal.document_data
+                      }]
+                  ).map((doc, idx) => (
+                    <div
+                      key={doc.id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'var(--bg-card, #ffffff)',
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #e2e8f0)',
+                        fontSize: 12
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
+                        <Paperclip size={12} style={{ color: '#0284c7' }} />
+                        <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {doc.file_name}
+                        </span>
+                        {doc.file_size > 0 && <span style={{ color: '#64748b' }}>({formatBytes(doc.file_size)})</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => openTeacherDocPreview(activeModal.id, doc.file_name, doc.mime_type, doc.file_data, doc.id)}
+                          className="student-attachment-preview-btn"
+                          style={{ padding: '3px 8px', fontSize: 11 }}
+                        >
+                          <Eye size={11} /> View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTeacherDocDownload(activeModal.id, doc.file_name, doc.file_data, doc.id)}
+                          className="student-attachment-download-btn"
+                          style={{ padding: '3px 8px', fontSize: 11 }}
+                        >
+                          <Download size={11} /> Get File
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {fileError && (
                 <div className="student-alert-error" style={{ fontSize: 12.5 }}>
@@ -636,13 +902,7 @@ export function StudentAssignments() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() =>
-                    studentApi.downloadAttachment(
-                      previewState.assignmentId,
-                      previewState.attachmentId,
-                      previewState.fileName
-                    )
-                  }
+                  onClick={handlePreviewDownload}
                   className="student-attachment-download-btn"
                   style={{ padding: '5px 10px', fontSize: 12, fontWeight: 600 }}
                 >
@@ -696,13 +956,7 @@ export function StudentAssignments() {
                   </p>
                   <button
                     type="button"
-                    onClick={() =>
-                      studentApi.downloadAttachment(
-                        previewState.assignmentId,
-                        previewState.attachmentId,
-                        previewState.fileName
-                      )
-                    }
+                    onClick={handlePreviewDownload}
                     style={{
                       padding: '8px 16px',
                       borderRadius: 6,

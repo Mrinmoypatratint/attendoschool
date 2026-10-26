@@ -34,6 +34,7 @@ const ClassMentorWorkspace = lazy(() => import('./pages/teacher/ClassMentorWorks
 const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments'));
 const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
 const Designations = lazy(() => import('./pages/admin/Designations'));
+const LeavePolicy = lazy(() => import('./pages/admin/LeavePolicy'));
 const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 import * as XLSX from 'xlsx';
@@ -1602,8 +1603,8 @@ function SuperAdminHeader({
               onClick={() => setSessionOpen(s => !s)}
               title="Switch Academic Session"
             >
-              <Calendar size={14} />
-              <span>{currentSession}</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+              <span>{currentSession ? `${String(currentSession).replace(/\b(academic\s+)?sessions?\b/gi, '').trim()} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
               <ChevronDown size={14} style={{ opacity: 0.7, transform: sessionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
             </div>
 
@@ -2374,6 +2375,14 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['smtp', 'email logs', 'delivery', 'welcome emails', 'mail status']
         },
         {
+          path: '/leave-policy',
+          label: 'Leave Policy',
+          category: 'Management',
+          description: 'Configure institutional leave types, dynamic counts, and yearly or half-yearly renewal cycles',
+          icon: FileText,
+          keywords: ['leave policy', 'casual leave', 'sick leave', 'earned leave', 'leave rules', 'yearly leave', 'half yearly leave']
+        },
+        {
           path: '/teacher-leave-approvals',
           label: 'Teacher Leave Review',
           category: 'Reviews & Approvals',
@@ -2774,6 +2783,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
+    ['/leave-policy', 'Leave Policy', FileText],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
     ['/subscription', 'Subscription', CreditCard],
@@ -3061,8 +3071,8 @@ function Layout({children}:{children:React.ReactNode}){
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
                 title="Switch Academic Session"
               >
-                <Calendar size={14} color="#10b981" />
-                <span>{activeSessionName ? `${activeSessionName} Session` : 'Academic Session'}</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
               {ayDropdownOpen && (
@@ -3181,9 +3191,10 @@ function Layout({children}:{children:React.ReactNode}){
                 className="session-pill"
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
+                title="Switch Academic Session"
               >
-                <Calendar size={14} color="#10b981" />
-                <span>{activeSessionName} Session</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
               {ayDropdownOpen && (
@@ -4306,15 +4317,15 @@ function AdminHome(){
         </div>
         <div className="kpi-body" style={{ width: '100%' }}>
           <span className="kpi-label">Students (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
             </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
             </span>
           </div>
           <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4339,15 +4350,15 @@ function AdminHome(){
         </div>
         <div className="kpi-body" style={{ width: '100%' }}>
           <span className="kpi-label">Faculty (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
             </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
             </span>
           </div>
           <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -9583,8 +9594,30 @@ function Teachers(){
     setTeacherPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       if (editingTeacher) {
+        const oldDesig = (editingTeacher.designation || '').trim();
+        const newDesig = (payload.designation || '').trim();
+        const isPromoted = Boolean(oldDesig && newDesig && oldDesig.toLowerCase() !== newDesig.toLowerCase());
+
+        payload.previous_designation = oldDesig;
+        payload.previousDesignation = oldDesig;
+
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
+
+        // If designation changed, also explicitly log via /designations/promote
+        if (isPromoted) {
+          try {
+            await api.post('/designations/promote', {
+              teacher_id: editingTeacher.id,
+              previous_position: oldDesig,
+              current_position: newDesig,
+              promotion_date: new Date().toISOString().slice(0, 10),
+              notes: `Promoted from ${oldDesig} to ${newDesig} via Faculty Directory edit`
+            });
+          } catch (promoErr) {
+            console.warn('[Edit Teacher] Logged via teacher update:', promoErr);
+          }
+        }
         setRows(prev => prev.map(r => r.id === editingTeacher.id ? {
           ...r,
           ...updated,
@@ -10354,7 +10387,7 @@ function Teachers(){
       )}
       <table>
         <thead>
-          <tr>
+          <tr style={{ verticalAlign: 'middle' }}>
             <th style={{ width: 36, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
@@ -10363,12 +10396,16 @@ function Teachers(){
                 title="Select all on this page"
               />
             </th>
-            <th style={{ whiteSpace: 'nowrap' }}>Employee Id / Savior_NO</th>
+            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              Employee Id /<br />Savior_NO
+            </th>
             <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
             <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
             <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
             <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Assigned Classes</th>
+            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              Assigned<br />Classes
+            </th>
             <th style={{ whiteSpace: 'nowrap' }}>Email</th>
             <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
             <th style={{ whiteSpace: 'nowrap' }}>Status</th>
@@ -17440,6 +17477,8 @@ function App(){
         <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
         <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+        <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeavePolicy/></Layout></RoleGuard>}/>
+        <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace/>}/>
         <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
         <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>

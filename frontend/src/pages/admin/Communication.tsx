@@ -236,33 +236,48 @@ export default function Communication() {
     });
   }, [selectedClass, sections]);
 
-  const secA = useMemo(() => {
-    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-  }, [classSections]);
+  // All unique section letters/names available for the chosen class (or school-wide if no class selected)
+  const availableSections = useMemo(() => {
+    const list = selectedClass ? classSections : sections;
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id?: string }[] = [];
+    
+    list.forEach(s => {
+      const name = String(s.name || s.section_name || '').trim();
+      const letter = name.toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({ letter, name: `Section ${letter}`, id: s.id });
+      }
+    });
 
-  const secB = useMemo(() => {
-    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-  }, [classSections]);
+    if (result.length === 0) {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}` });
+      });
+    }
 
-  // Determine currently selected section letter ('A' | 'B' | '')
+    result.sort((a, b) => a.letter.localeCompare(b.letter));
+    return result;
+  }, [selectedClass, classSections, sections]);
+
+  // Determine currently selected section letter
   const selectedSectionLetter = useMemo(() => {
     if (!form.sectionId) return '';
-    if (secA && (form.sectionId === secA.id || form.sectionId === 'sec-a')) return 'A';
-    if (secB && (form.sectionId === secB.id || form.sectionId === 'sec-b')) return 'B';
-    const found = classSections.find(s => s.id === form.sectionId);
-    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
-    return '';
-  }, [form.sectionId, secA, secB, classSections]);
+    const found = classSections.find(s => s.id === form.sectionId) || sections.find(s => s.id === form.sectionId);
+    if (found) return String(found.name || found.section_name || '').toUpperCase();
+    const m = String(form.sectionId).match(/sec-([a-z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+    return String(form.sectionId).toUpperCase();
+  }, [form.sectionId, classSections, sections]);
 
   // Change Handlers with synchronized targeting logic
   function handleAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
-    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT') {
       setForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
     } else if (val === 'CLASS') {
-      setForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
-    } else if (val === 'SECTION') {
-      setForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+      setForm(prev => ({ ...prev, audienceType: 'CLASS' }));
     }
   }
 
@@ -287,44 +302,37 @@ export default function Communication() {
     });
 
     let newSectionId = '';
-    if (selectedSectionLetter === 'A') {
-      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-      newSectionId = a?.id || 'sec-a';
-    } else if (selectedSectionLetter === 'B') {
-      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-      newSectionId = b?.id || 'sec-b';
+    if (selectedSectionLetter) {
+      const match = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === selectedSectionLetter);
+      newSectionId = match?.id || (chosenClassId ? `${chosenClassId}-sec-${selectedSectionLetter.toLowerCase()}` : `sec-${selectedSectionLetter.toLowerCase()}`);
     }
 
     setForm(prev => ({
       ...prev,
       classId: chosenClassId,
       sectionId: newSectionId,
-      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+      audienceType: prev.audienceType === 'CLASS' ? 'CLASS' : (prev.audienceType || 'CLASS')
     }));
   }
 
   function handleSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const letter = e.target.value;
+    const letter = e.target.value.toUpperCase();
     if (!letter) {
       setForm(prev => ({
         ...prev,
-        sectionId: '',
-        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+        sectionId: ''
       }));
       return;
     }
 
-    let targetSecId = '';
-    if (letter === 'A') {
-      targetSecId = secA?.id || (selectedClass ? `${selectedClass.id}-sec-a` : 'sec-a');
-    } else if (letter === 'B') {
-      targetSecId = secB?.id || (selectedClass ? `${selectedClass.id}-sec-b` : 'sec-b');
-    }
+    const target = classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter)
+      || sections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter);
+
+    const targetSecId = target?.id || (selectedClass ? `${selectedClass.id}-sec-${letter.toLowerCase()}` : `sec-${letter.toLowerCase()}`);
 
     setForm(prev => ({
       ...prev,
-      sectionId: targetSecId,
-      audienceType: 'SECTION'
+      sectionId: targetSecId
     }));
   }
 
@@ -343,22 +351,39 @@ export default function Communication() {
     });
   }, [editSelectedClass, sections]);
 
-  const editSecA = useMemo(() => {
-    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-  }, [editClassSections]);
+  // All unique section letters/names available for editForm
+  const editAvailableSections = useMemo(() => {
+    const list = editSelectedClass ? editClassSections : sections;
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id?: string }[] = [];
+    
+    list.forEach(s => {
+      const name = String(s.name || s.section_name || '').trim();
+      const letter = name.toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({ letter, name: `Section ${letter}`, id: s.id });
+      }
+    });
 
-  const editSecB = useMemo(() => {
-    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-  }, [editClassSections]);
+    if (result.length === 0) {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}` });
+      });
+    }
+
+    result.sort((a, b) => a.letter.localeCompare(b.letter));
+    return result;
+  }, [editSelectedClass, editClassSections, sections]);
 
   const editSelectedSectionLetter = useMemo(() => {
     if (!editForm.sectionId) return '';
-    if (editSecA && (editForm.sectionId === editSecA.id || editForm.sectionId === 'sec-a')) return 'A';
-    if (editSecB && (editForm.sectionId === editSecB.id || editForm.sectionId === 'sec-b')) return 'B';
-    const found = editClassSections.find(s => s.id === editForm.sectionId);
-    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
-    return '';
-  }, [editForm.sectionId, editSecA, editSecB, editClassSections]);
+    const found = editClassSections.find(s => s.id === editForm.sectionId) || sections.find(s => s.id === editForm.sectionId);
+    if (found) return String(found.name || found.section_name || '').toUpperCase();
+    const m = String(editForm.sectionId).match(/sec-([a-z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+    return String(editForm.sectionId).toUpperCase();
+  }, [editForm.sectionId, editClassSections, sections]);
 
   function handleOpenEditDraft(item: AnnouncementItem) {
     setEditingDraft(item);
@@ -372,12 +397,8 @@ export default function Communication() {
 
     let matchedSectionId = item.section_id || '';
     if (!matchedSectionId && item.section_name) {
-      const sLetter = String(item.section_name).toUpperCase();
-      if (sLetter.includes('B')) {
-        matchedSectionId = 'sec-b';
-      } else {
-        matchedSectionId = 'sec-a';
-      }
+      const sLetter = String(item.section_name).toUpperCase().trim();
+      matchedSectionId = `sec-${sLetter.toLowerCase()}`;
     }
 
     setEditForm({
@@ -392,12 +413,10 @@ export default function Communication() {
 
   function handleEditAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
-    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT') {
       setEditForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
     } else if (val === 'CLASS') {
-      setEditForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
-    } else if (val === 'SECTION') {
-      setEditForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+      setEditForm(prev => ({ ...prev, audienceType: 'CLASS' }));
     }
   }
 
@@ -422,44 +441,37 @@ export default function Communication() {
     });
 
     let newSectionId = '';
-    if (editSelectedSectionLetter === 'A') {
-      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-      newSectionId = a?.id || 'sec-a';
-    } else if (editSelectedSectionLetter === 'B') {
-      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-      newSectionId = b?.id || 'sec-b';
+    if (editSelectedSectionLetter) {
+      const match = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === editSelectedSectionLetter);
+      newSectionId = match?.id || (chosenClassId ? `${chosenClassId}-sec-${editSelectedSectionLetter.toLowerCase()}` : `sec-${editSelectedSectionLetter.toLowerCase()}`);
     }
 
     setEditForm(prev => ({
       ...prev,
       classId: chosenClassId,
       sectionId: newSectionId,
-      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+      audienceType: prev.audienceType === 'CLASS' ? 'CLASS' : (prev.audienceType || 'CLASS')
     }));
   }
 
   function handleEditSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const letter = e.target.value;
+    const letter = e.target.value.toUpperCase();
     if (!letter) {
       setEditForm(prev => ({
         ...prev,
-        sectionId: '',
-        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+        sectionId: ''
       }));
       return;
     }
 
-    let targetSecId = '';
-    if (letter === 'A') {
-      targetSecId = editSecA?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-a` : 'sec-a');
-    } else if (letter === 'B') {
-      targetSecId = editSecB?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-b` : 'sec-b');
-    }
+    const target = editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter)
+      || sections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter);
+
+    const targetSecId = target?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-${letter.toLowerCase()}` : `sec-${letter.toLowerCase()}`);
 
     setEditForm(prev => ({
       ...prev,
-      sectionId: targetSecId,
-      audienceType: 'SECTION'
+      sectionId: targetSecId
     }));
   }
 
@@ -501,15 +513,15 @@ export default function Communication() {
       setEditError('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (editForm.audienceType === 'SECTION' && (!editForm.classId || !editSelectedSectionLetter)) {
-      setEditError('Please select both Class and Section.');
-      return;
-    }
     setEditSaving(true);
     setEditError(null);
     try {
       // 1. Update draft content first
-      await api.put(`/communication/announcements/${editingDraft.id}`, editForm);
+      const finalAudienceType = (editForm.audienceType === 'CLASS' && editForm.sectionId) ? 'SECTION' : editForm.audienceType;
+      await api.put(`/communication/announcements/${editingDraft.id}`, {
+        ...editForm,
+        audienceType: finalAudienceType
+      });
       // 2. Publish announcement to recipients
       await api.post(`/communication/announcements/${editingDraft.id}/publish`);
       setMsg(`Announcement "${editForm.title}" confirmed and published successfully!`);
@@ -536,10 +548,6 @@ export default function Communication() {
       alert('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (form.audienceType === 'SECTION' && (!form.classId || !selectedSectionLetter)) {
-      alert('Please select both Class (L-KG to 12) and a Section (Section A or B). If targeting the entire class, choose Audience Type: CLASS.');
-      return;
-    }
     setPreviewError(null);
     setPreviewOpen(true);
   }
@@ -554,8 +562,10 @@ export default function Communication() {
     setDraftLoading(true);
     setPreviewError(null);
     try {
+      const finalAudienceType = (form.audienceType === 'CLASS' && form.sectionId) ? 'SECTION' : form.audienceType;
       await api.post('/communication/announcements', {
         ...form,
+        audienceType: finalAudienceType,
         publish: false,
         status: 'DRAFT'
       });
@@ -588,8 +598,10 @@ export default function Communication() {
     setPreviewLoading(true);
     setPreviewError(null);
     try {
+      const finalAudienceType = (form.audienceType === 'CLASS' && form.sectionId) ? 'SECTION' : form.audienceType;
       const res = await api.post('/communication/announcements', {
         ...form,
+        audienceType: finalAudienceType,
         publish: true,
         status: 'PUBLISHED'
       });
@@ -653,34 +665,27 @@ export default function Communication() {
   }
 
   const selectedClassName = selectedClass?.label || 'Not Selected';
-  const selectedSectionDisplay = selectedSectionLetter ? `Section ${selectedSectionLetter}` : 'All Sections (A & B)';
+  const selectedSectionDisplay = selectedSectionLetter ? `Section ${selectedSectionLetter}` : 'All Sections';
 
   const previewSections: PreviewSectionData[] = [
     {
       title: 'Broadcast Scope & Delivery Target',
       fields: [
         { label: 'Audience Target', value: form.audienceType, type: 'badge', color: 'blue' },
-        ...(form.audienceType === 'CLASS' || form.audienceType === 'SECTION'
-          ? [{ label: 'Target Class', value: selectedClassName }]
-          : []),
-        ...(form.audienceType === 'SECTION'
+        ...(form.audienceType === 'CLASS'
           ? [
-              { label: 'Target Section', value: selectedSectionDisplay },
+              { label: 'Target Class', value: selectedClassName },
               {
                 label: 'Delivery Scope',
                 value: selectedSectionLetter
-                  ? `Strictly delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber}-${selectedSectionLetter} only (students & parents)`
-                  : `Delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber} (All Sections)`
+                  ? `Delivered to Class ${selectedClass?.label || 'Class'} · Section ${selectedSectionLetter} only (students & parents)`
+                  : `Delivered to all students & parents of ${selectedClassName} (All Sections)`
               }
             ]
-          : form.audienceType === 'CLASS'
-          ? [{ label: 'Delivery Scope', value: `Delivered to all students & parents of ${selectedClassName}` }]
           : form.audienceType === 'TEACHER'
           ? [{ label: 'Delivery Scope', value: 'Delivered to all teachers and faculty' }]
           : form.audienceType === 'STUDENT'
           ? [{ label: 'Delivery Scope', value: 'Delivered to all students portal accounts' }]
-          : form.audienceType === 'PARENTS'
-          ? [{ label: 'Delivery Scope', value: 'Delivered to all parents portal accounts' }]
           : [{ label: 'Delivery Scope', value: 'Delivered school-wide to students, parents, and teachers' }]),
         {
           label: 'Priority Level',
@@ -703,7 +708,7 @@ export default function Communication() {
     <div className="feature-page as-communication-page" style={{ maxWidth: 1300, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Communication Center</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Announcement</h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
           </p>
@@ -851,10 +856,8 @@ export default function Communication() {
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
                     <option value="CLASS">CLASS (Specific Class)</option>
-                    <option value="SECTION">SECTION (Class + Section)</option>
                     <option value="TEACHER">TEACHER (Faculty only)</option>
                     <option value="STUDENT">STUDENT (Student portal)</option>
-                    <option value="PARENTS">PARENTS</option>
                   </select>
                 </div>
 
@@ -906,16 +909,17 @@ export default function Communication() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
+                      border: '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       boxSizing: 'border-box',
                       backgroundColor: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)'
                     }}
                   >
-                    <option value="">{form.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
+                    <option value="">All Sections</option>
+                    {availableSections.map(s => (
+                      <option key={s.letter} value={s.letter}>{s.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -991,22 +995,16 @@ export default function Communication() {
                 overflowWrap: 'anywhere'
               }}>
                 <span style={{ fontWeight: 700 }}>🎯 Target Audience:</span>
-                {form.audienceType === 'SECTION' && selectedClass && selectedSectionLetter ? (
-                  <span>
-                    <b>{selectedClass.label} · Section {selectedSectionLetter}</b> — The message will go <b>ONLY to {selectedClass.label}-{selectedSectionLetter}</b> (students and linked parents).
-                  </span>
-                ) : form.audienceType === 'SECTION' && selectedClass ? (
-                  <span style={{ color: '#d97706' }}>
-                    <b>{selectedClass.label}</b> selected. Please choose <b>Section A or Section B</b> to target that specific section.
-                  </span>
-                ) : form.audienceType === 'SECTION' ? (
-                  <span style={{ color: '#d97706' }}>
-                    Please select a <b>Class (L-KG to 12)</b> and <b>Section (A or B)</b>.
-                  </span>
-                ) : form.audienceType === 'CLASS' && selectedClass ? (
-                  <span>
-                    <b>{selectedClass.label} (All Sections)</b> — The message will go to all students and parents in {selectedClass.label}.
-                  </span>
+                {form.audienceType === 'CLASS' && selectedClass ? (
+                  selectedSectionLetter ? (
+                    <span>
+                      <b>{selectedClass.label} · Section ${selectedSectionLetter}</b> — Broadcast will go <b>ONLY to {selectedClass.label}-{selectedSectionLetter}</b> (students and linked parents).
+                    </span>
+                  ) : (
+                    <span>
+                      <b>{selectedClass.label} (All Sections)</b> — Broadcast will go to all students and parents in {selectedClass.label}.
+                    </span>
+                  )
                 ) : form.audienceType === 'CLASS' ? (
                   <span style={{ color: '#d97706' }}>
                     Please select a target <b>Class (L-KG to Class 12)</b>.
@@ -1015,8 +1013,6 @@ export default function Communication() {
                   <span><b>Faculty Only</b> — Visible exclusively to verified teachers.</span>
                 ) : form.audienceType === 'STUDENT' ? (
                   <span><b>Student Portal</b> — Broadcast to all registered students across all classes.</span>
-                ) : form.audienceType === 'PARENTS' ? (
-                  <span><b>Parents Portal</b> — Broadcast to all parent accounts.</span>
                 ) : (
                   <span><b>Entire School (All)</b> — Broadcast to all students, parents, and faculty school-wide.</span>
                 )}
@@ -2011,10 +2007,8 @@ export default function Communication() {
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
                     <option value="CLASS">CLASS (Specific Class)</option>
-                    <option value="SECTION">SECTION (Class + Section)</option>
                     <option value="TEACHER">TEACHER (Faculty only)</option>
                     <option value="STUDENT">STUDENT (Student portal)</option>
-                    <option value="PARENTS">PARENTS</option>
                   </select>
                 </div>
 
@@ -2069,9 +2063,10 @@ export default function Communication() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    <option value="">{editForm.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
+                    <option value="">All Sections</option>
+                    {editAvailableSections.map(s => (
+                      <option key={s.letter} value={s.letter}>{s.name}</option>
+                    ))}
                   </select>
                 </div>
 

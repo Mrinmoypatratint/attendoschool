@@ -985,8 +985,8 @@ export default function PeopleManagement() {
           ) : (
             <>
               <thead>
-                <tr>
-                  <th>Employee Id/Savior_NO</th>
+                <tr style={{ verticalAlign: 'middle' }}>
+                  <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Employee Id /<br />Savior_NO</th>
                   <th>Faculty Name</th>
                   <th>Gender</th>
                   <th>Designation</th>
