@@ -140,66 +140,49 @@ export default function Communication() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Hover preview card state for notice message popup
-  const [hoveredCard, setHoveredCard] = useState<{
-    item: AnnouncementItem;
-    top: number;
-    left: number;
-    placement: 'below' | 'above';
-  } | null>(null);
-  const hoverTimeoutRef = useRef<any>(null);
-
-  function handleMouseEnterNotice(e: React.MouseEvent<HTMLElement>, item: AnnouncementItem) {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const cardHeightEstimate = 280;
-    const cardWidth = 420;
-
-    let top = rect.bottom + 8;
-    let placement: 'below' | 'above' = 'below';
-
-    // If near viewport bottom, render above the target element
-    if (rect.bottom + cardHeightEstimate > window.innerHeight && rect.top - cardHeightEstimate > 10) {
-      top = Math.max(10, rect.top - 8);
-      placement = 'above';
-    }
-
-    // Keep horizontally within viewport boundaries
-    let left = rect.left;
-    if (left + cardWidth > window.innerWidth - 16) {
-      left = Math.max(16, window.innerWidth - cardWidth - 16);
-    }
-
-    setHoveredCard({ item, top, left, placement });
-  }
-
-  function handleMouseLeaveNotice() {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredCard(null);
-    }, 180);
-  }
-
-  function handleCardMouseEnter() {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-  }
-
-  function handleCardMouseLeave() {
-    setHoveredCard(null);
-  }
+  // Click popup modal state for viewing announcement message
+  const [viewingNotice, setViewingNotice] = useState<AnnouncementItem | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && viewingNotice) {
+        setViewingNotice(null);
       }
-    };
-  }, []);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingNotice]);
+
+  function getAudienceBadgeText(item: AnnouncementItem): string {
+    let clsLabel = '';
+    if (item.class_number !== undefined && item.class_number !== null) {
+      clsLabel = formatClassGrade(item.class_number);
+    } else if (item.class_id) {
+      const c = resolvedClasses.find(rc => rc.id === item.class_id);
+      if (c) clsLabel = c.label;
+    }
+
+    let secName = item.section_name || '';
+    if (!secName && item.section_id) {
+      const s = sections.find(rs => rs.id === item.section_id);
+      if (s) secName = s.name || s.section_name || '';
+    }
+
+    if (item.audience_type === 'SECTION') {
+      return `${clsLabel || 'Class'} · Sec ${secName || 'A'}`;
+    } else if (item.audience_type === 'CLASS') {
+      return `${clsLabel || 'Class'}`;
+    } else if (item.audience_type === 'SCHOOL') {
+      return 'Entire School (All)';
+    } else if (item.audience_type === 'TEACHER') {
+      return 'Teachers & Faculty';
+    } else if (item.audience_type === 'STUDENT') {
+      return 'All Students';
+    } else if (item.audience_type === 'PARENTS') {
+      return 'All Parents';
+    }
+    return item.audience_type;
+  }
 
   async function load() {
     try {
@@ -1126,30 +1109,50 @@ export default function Communication() {
                     return (
                       <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
                         <td
-                          style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden', cursor: 'pointer' }}
-                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
-                          onMouseLeave={handleMouseLeaveNotice}
+                          style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <button
+                            type="button"
+                            onClick={() => setViewingNotice(x)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              textAlign: 'left',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              cursor: 'pointer',
+                              maxWidth: '100%',
+                              color: 'inherit'
+                            }}
+                            title="Click to view announcement message"
+                          >
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 13,
+                                color: 'var(--text, #0f172a)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
                               {x.title}
-                            </div>
+                            </span>
                             <span
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 color: '#3b82f6',
-                                opacity: 0.8,
+                                opacity: 0.85,
                                 flexShrink: 0
                               }}
-                              title="Hover to view published message"
+                              title="Click to view message"
                             >
                               <Eye size={12} />
                             </span>
-                          </div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {x.message}
-                          </div>
+                          </button>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <span style={{
@@ -1195,11 +1198,7 @@ export default function Communication() {
                             {x.priority}
                           </span>
                         </td>
-                        <td
-                          style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden', cursor: 'pointer' }}
-                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
-                          onMouseLeave={handleMouseLeaveNotice}
-                        >
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <span style={{
                             display: 'inline-block',
                             padding: '2px 7px',
@@ -1212,11 +1211,7 @@ export default function Communication() {
                             {x.status}
                           </span>
                         </td>
-                        <td
-                          style={{ padding: '10px 8px', verticalAlign: 'middle', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                          onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
-                          onMouseLeave={handleMouseLeaveNotice}
-                        >
+                        <td style={{ padding: '10px 8px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           {(() => {
                             const isPub = x.status === 'PUBLISHED';
                             const pubStamp = x.published_at || (isPub ? x.created_at : null);
@@ -1294,14 +1289,25 @@ export default function Communication() {
                               </button>
                             </div>
                           ) : (
-                            <span
-                              style={{ fontSize: 11.5, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600, cursor: 'pointer' }}
-                              onMouseEnter={(e) => handleMouseEnterNotice(e, x)}
-                              onMouseLeave={handleMouseLeaveNotice}
-                              title="Hover to view published message"
+                            <button
+                              type="button"
+                              onClick={() => setViewingNotice(x)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                fontSize: 11.5,
+                                color: '#10b981',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                              title="Click to view published message"
                             >
                               <CheckCircle2 size={13} /> Sent
-                            </span>
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -1318,148 +1324,319 @@ export default function Communication() {
             </table>
           </div>
 
-          {/* Floating Hover Card for Announcement Message & Broadcast Details */}
-          {hoveredCard && (
+          {/* Dedicated Popup Modal for Announcement Message & Broadcast Details */}
+          {viewingNotice && (
             <div
-              onMouseEnter={handleCardMouseEnter}
-              onMouseLeave={handleCardMouseLeave}
-              style={{
-                position: 'fixed',
-                top: hoveredCard.top,
-                left: hoveredCard.left,
-                transform: hoveredCard.placement === 'above' ? 'translateY(-100%)' : 'none',
-                width: 420,
-                maxWidth: 'calc(100vw - 32px)',
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                borderRadius: 12,
-                border: '1px solid var(--border, #cbd5e1)',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08)',
-                padding: '16px',
-                zIndex: 99999,
-                pointerEvents: 'auto',
-                animation: 'fadeIn 0.15s ease-out'
+              className="overlay"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setViewingNotice(null);
               }}
-            >
-              {/* Header meta badges */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    backgroundColor: hoveredCard.item.status === 'PUBLISHED' ? '#ecfdf5' : '#f8fafc',
-                    color: hoveredCard.item.status === 'PUBLISHED' ? '#047857' : '#64748b',
-                    border: hoveredCard.item.status === 'PUBLISHED' ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
-                  }}>
-                    {hoveredCard.item.status === 'PUBLISHED' ? <CheckCircle2 size={12} /> : <FileText size={12} />}
-                    {hoveredCard.item.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
-                  </span>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    padding: '2px 7px',
-                    borderRadius: 4,
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    backgroundColor: hoveredCard.item.priority === 'EMERGENCY' ? '#fee2e2' : hoveredCard.item.priority === 'HIGH' ? '#ffedd5' : '#f1f5f9',
-                    color: hoveredCard.item.priority === 'EMERGENCY' ? '#b91c1c' : hoveredCard.item.priority === 'HIGH' ? '#c2410c' : '#475569'
-                  }}>
-                    {hoveredCard.item.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
-                    {hoveredCard.item.priority}
-                  </span>
-                  <span style={{
-                    fontSize: 10.5,
-                    fontWeight: 600,
-                    padding: '2px 7px',
-                    borderRadius: 4,
-                    backgroundColor: '#eff6ff',
-                    color: '#1d4ed8',
-                    border: '1px solid #bfdbfe'
-                  }}>
-                    {hoveredCard.item.audience_type}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setHoveredCard(null)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted, #94a3b8)',
-                    cursor: 'pointer',
-                    padding: 2,
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Close preview"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* Notice Title */}
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text, #0f172a)', marginBottom: 6, lineHeight: 1.4 }}>
-                {hoveredCard.item.title}
-              </div>
-
-              {/* Publish Date & Time */}
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
-                <Clock size={12} style={{ color: hoveredCard.item.status === 'PUBLISHED' ? '#10b981' : '#94a3b8' }} />
-                {hoveredCard.item.status === 'PUBLISHED' ? (
-                  <span>
-                    Published: <b>{formatPublishDate(hoveredCard.item.published_at || hoveredCard.item.created_at)}</b> at <b>{formatPublishTime(hoveredCard.item.published_at || hoveredCard.item.created_at)}</b>
-                  </span>
-                ) : (
-                  <span style={{ fontStyle: 'italic' }}>
-                    Draft Notice · Created {formatPublishDate(hoveredCard.item.created_at)}
-                  </span>
-                )}
-              </div>
-
-              {/* Full Message Box */}
-              <div style={{
-                backgroundColor: 'var(--card-subtle, #f8fafc)',
-                border: '1px solid var(--border, #e2e8f0)',
-                borderLeft: hoveredCard.item.status === 'PUBLISHED' ? '3px solid #10b981' : '3px solid #3b82f6',
-                borderRadius: 6,
-                padding: '10px 12px',
-                marginBottom: 10
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #475569)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <MessageSquare size={12} style={{ color: hoveredCard.item.status === 'PUBLISHED' ? '#10b981' : '#3b82f6' }} />
-                  {hoveredCard.item.status === 'PUBLISHED' ? 'Published Message Content' : 'Draft Message Preview'}
-                </div>
-                <div style={{
-                  fontSize: 12.5,
-                  lineHeight: 1.6,
-                  color: 'var(--text, #1e293b)',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  maxHeight: 190,
-                  overflowY: 'auto'
-                }}>
-                  {hoveredCard.item.message || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No message content.</span>}
-                </div>
-              </div>
-
-              {/* Footer Metrics */}
-              <div style={{
+              style={{
+                zIndex: 10050,
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: 8,
-                borderTop: '1px solid var(--border, #f1f5f9)',
-                fontSize: 11,
-                color: 'var(--text-muted, #64748b)'
-              }}>
-                <span>Recipients: <b>{hoveredCard.item.recipient_count || 0}</b></span>
-                <span>Read: <b>{hoveredCard.item.read_count || 0}</b></span>
-                <span>Replies: <b>{hoveredCard.item.reply_count || 0}</b></span>
+                justifyContent: 'center',
+                padding: 16
+              }}
+            >
+              <div
+                className="modal"
+                style={{
+                  width: 'min(640px, 95vw)',
+                  maxHeight: '90vh',
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border, #e2e8f0)',
+                  borderRadius: 16,
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  animation: 'fadeIn 0.2s ease-out'
+                }}
+              >
+                {/* Modal Header */}
+                <div style={{
+                  padding: '18px 24px',
+                  borderBottom: '1px solid var(--border, #e2e8f0)',
+                  background: 'var(--card-subtle, #f8fafc)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 16
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
+                    <div style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 10,
+                      background: viewingNotice.status === 'PUBLISHED' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(37, 99, 235, 0.12)',
+                      color: viewingNotice.status === 'PUBLISHED' ? '#10b981' : '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <MessageSquare size={22} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                        {/* Status Badge */}
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor: viewingNotice.status === 'PUBLISHED' ? '#ecfdf5' : '#f8fafc',
+                          color: viewingNotice.status === 'PUBLISHED' ? '#047857' : '#64748b',
+                          border: viewingNotice.status === 'PUBLISHED' ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
+                        }}>
+                          {viewingNotice.status === 'PUBLISHED' ? <CheckCircle2 size={12} /> : <FileText size={12} />}
+                          {viewingNotice.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'}
+                        </span>
+
+                        {/* Priority Badge */}
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          padding: '2px 7px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor: viewingNotice.priority === 'EMERGENCY' ? '#fee2e2' : viewingNotice.priority === 'HIGH' ? '#ffedd5' : 'var(--card-subtle, #f1f5f9)',
+                          color: viewingNotice.priority === 'EMERGENCY' ? '#b91c1c' : viewingNotice.priority === 'HIGH' ? '#c2410c' : 'var(--text-secondary, #475569)'
+                        }}>
+                          {viewingNotice.priority === 'EMERGENCY' && <AlertTriangle size={11} />}
+                          {viewingNotice.priority}
+                        </span>
+
+                        {/* Audience Badge */}
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          backgroundColor: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe'
+                        }}>
+                          {getAudienceBadgeText(viewingNotice)}
+                        </span>
+                      </div>
+
+                      <h2 style={{
+                        margin: 0,
+                        fontSize: 17,
+                        fontWeight: 700,
+                        color: 'var(--text, #0f172a)',
+                        lineHeight: 1.35,
+                        wordBreak: 'break-word'
+                      }}>
+                        {viewingNotice.title}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewingNotice(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted, #64748b)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                    title="Close"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div style={{
+                  padding: '20px 24px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16
+                }}>
+                  {/* Meta details strip */}
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    backgroundColor: 'var(--card-subtle, #f8fafc)',
+                    border: '1px solid var(--border, #e2e8f0)',
+                    fontSize: 12
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary, #475569)' }}>
+                      <Clock size={14} style={{ color: viewingNotice.status === 'PUBLISHED' ? '#10b981' : '#64748b' }} />
+                      {viewingNotice.status === 'PUBLISHED' ? (
+                        <span>
+                          Published on <b>{formatPublishDate(viewingNotice.published_at || viewingNotice.created_at)}</b> at <b>{formatPublishTime(viewingNotice.published_at || viewingNotice.created_at)}</b>
+                        </span>
+                      ) : (
+                        <span style={{ fontStyle: 'italic' }}>
+                          Draft Notice · Created {formatPublishDate(viewingNotice.created_at)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                        Recipients: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.recipient_count || 0}</strong>
+                      </span>
+                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                        Read: <strong style={{ color: 'var(--text, #0f172a)' }}>{viewingNotice.read_count || 0}</strong>
+                      </span>
+                      <span style={{ color: 'var(--text-muted, #64748b)' }}>
+                        Replies: <strong style={{ color: '#2563eb' }}>{viewingNotice.reply_count || 0}</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Message Content Container */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      color: 'var(--text-muted, #64748b)',
+                      marginBottom: 8
+                    }}>
+                      Announcement Message
+                    </label>
+                    <div style={{
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      borderLeft: viewingNotice.status === 'PUBLISHED' ? '4px solid #10b981' : '4px solid #2563eb',
+                      borderRadius: 8,
+                      padding: '16px 18px',
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                      color: 'var(--text, #1e293b)',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      maxHeight: 280,
+                      overflowY: 'auto'
+                    }}>
+                      {viewingNotice.message ? (
+                        viewingNotice.message
+                      ) : (
+                        <span style={{ color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                          No message content available.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div style={{
+                  padding: '14px 24px',
+                  borderTop: '1px solid var(--border, #e2e8f0)',
+                  background: 'var(--card-subtle, #f8fafc)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12
+                }}>
+                  <div>
+                    {viewingNotice.reply_count > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const notice = viewingNotice;
+                          setViewingNotice(null);
+                          openNoticeReplies(notice);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '7px 14px',
+                          borderRadius: 6,
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: '1px solid #bfdbfe',
+                          backgroundColor: '#eff6ff',
+                          color: '#1d4ed8'
+                        }}
+                      >
+                        <MessageCircle size={14} />
+                        <span>View Threaded Replies ({viewingNotice.reply_count})</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {viewingNotice.status !== 'PUBLISHED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const notice = viewingNotice;
+                          setViewingNotice(null);
+                          handleOpenEditDraft(notice);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 16px',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: '1px solid var(--border, #cbd5e1)',
+                          backgroundColor: 'var(--bg-card, #ffffff)',
+                          color: 'var(--text, #0f172a)'
+                        }}
+                      >
+                        <Edit3 size={14} />
+                        <span>Edit Draft</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setViewingNotice(null)}
+                      style={{
+                        padding: '8px 20px',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        border: 'none',
+                        backgroundColor: '#2563eb',
+                        color: '#ffffff',
+                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
