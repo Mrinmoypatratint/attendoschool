@@ -48,6 +48,7 @@ import calendar from './routes/calendar';
 import mentor from './routes/mentor';
 import teacherAssignments from './routes/teacherAssignments';
 import designations from './routes/designations';
+import leavePolicies from './routes/leavePolicies';
 
 const app = express();
 app.disable('x-powered-by');
@@ -172,6 +173,8 @@ app.use('/api/attendance-reports-v12', requireAuth, attendanceReports);
 app.use('/api/calendar', requireAuth, calendar);
 app.use('/api/designations', requireAuth, designations);
 app.use('/designations', requireAuth, designations);
+app.use('/api/leave-policies', requireAuth, leavePolicies);
+app.use('/leave-policies', requireAuth, leavePolicies);
 
 // Unified VPS static frontend serving
 const frontendDistDir = path.resolve(__dirname, '../../frontend/dist');

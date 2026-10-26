@@ -75,7 +75,7 @@ async function countTenantCollection(
 /**
  * Retrieve Today's Attendance breakdown strictly scoped to the authenticated tenant
  */
-export async function getTenantTodayAttendance(schoolId: string, targetDate?: string) {
+export async function getTenantTodayAttendance(schoolId: string, targetDate?: string, academicYearId?: string) {
   const dateStr = targetDate || new Date().toISOString().slice(0, 10);
   const result = {
     total: 0,
@@ -90,7 +90,7 @@ export async function getTenantTodayAttendance(schoolId: string, targetDate?: st
   // 1. PRIMARY: Query Supabase PostgreSQL attendance_sessions first
   if (DualDatabaseService.isPrimaryAvailable()) {
     try {
-      const sbAttendance = await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr);
+      const sbAttendance = await DualDatabaseService.getTodayAttendanceFromSupabase(schoolId, dateStr, academicYearId);
       if (sbAttendance) {
         return sbAttendance;
       }

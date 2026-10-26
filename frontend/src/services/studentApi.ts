@@ -149,6 +149,19 @@ export interface Assignment {
   marks_obtained?: number;
   feedback?: string;
   attachments?: AssignmentAttachment[];
+  document_url?: string;
+  document_name?: string;
+  document_size?: number;
+  document_mime?: string;
+  document_data?: string;
+  teacher_attachments?: Array<{
+    id?: string;
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    file_data?: string;
+    storage_key?: string;
+  }>;
 }
 
 export interface Exam {
@@ -210,6 +223,28 @@ export const studentApi = {
   },
   downloadAttachment: async (assignmentId: string, attachmentId: string, fileName: string) => {
     const res = await api.get(`/student/assignments/${assignmentId}/attachments/${attachmentId}/download`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([res.data], { type: (res.headers['content-type'] as string) || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
+  previewAssignmentDocument: async (assignmentId: string, attachmentId?: string) => {
+    const res = await api.get(`/student/assignments/${assignmentId}/document/preview`, {
+      params: attachmentId ? { attachmentId } : undefined,
+      responseType: 'blob'
+    });
+    return res.data as Blob;
+  },
+  downloadAssignmentDocument: async (assignmentId: string, fileName: string, attachmentId?: string) => {
+    const res = await api.get(`/student/assignments/${assignmentId}/document/download`, {
+      params: attachmentId ? { attachmentId } : undefined,
       responseType: 'blob'
     });
     const blob = new Blob([res.data], { type: (res.headers['content-type'] as string) || 'application/octet-stream' });

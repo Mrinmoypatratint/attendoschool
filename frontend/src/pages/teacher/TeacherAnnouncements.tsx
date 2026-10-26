@@ -201,7 +201,7 @@ export function TeacherAnnouncements() {
   const highTotal = announcements.filter(n => n.priority === 'HIGH').length;
 
   return (
-    <div style={{ maxWidth: 1040, margin: '0 auto', padding: '24px 20px 60px' }}>
+    <div style={{ width: '100%', paddingBottom: 60 }}>
       {/* ── Top Header / Breadcrumbs ── */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
