@@ -2423,14 +2423,6 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['analytics', 'charts', 'trends', 'metrics', 'kpi', 'reports']
         },
         {
-          path: '/subscription',
-          label: 'Subscription Plan',
-          category: 'Billing',
-          description: 'Manage subscription plan, limits & renewal details',
-          icon: CreditCard,
-          keywords: ['subscription', 'plan', 'billing', 'upgrade', 'license']
-        },
-        {
           path: '/invoices',
           label: 'Invoices & Receipts',
           category: 'Billing',
@@ -2786,7 +2778,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['/leave-policy', 'Leave Policy', FileText],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
-    ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
     ['/payments', 'Payments', CreditCard],
     ['—', 'SETTINGS'],
@@ -4397,6 +4388,7 @@ function AdminHome(){
         </div>
       </div> */}
 
+      {/* Subscription Tier card removed as requested
       <div className="kpi-card" onClick={() => nav('/subscription')}>
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
         <div className="kpi-body">
@@ -4411,7 +4403,7 @@ function AdminHome(){
           </strong>
           <span className="kpi-sub neutral">{sub?.days_remaining ?? 365} days validity remaining</span>
         </div>
-      </div>
+      </div> */}
     </div>
 
     {/* Attendance Overview & Quick Actions 2-Column Section */}
@@ -12833,6 +12825,49 @@ function Subjects(){
     }
   }
 
+  const [editSubjectDialog, setEditSubjectDialog] = useState<{
+    isOpen: boolean;
+    subjectId?: string;
+    subjectName?: string;
+    newName?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
+  function promptEditSubject(sub: any) {
+    setEditSubjectDialog({
+      isOpen: true,
+      subjectId: sub.id,
+      subjectName: sub.name,
+      newName: sub.name,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmEditSubject(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!editSubjectDialog.subjectId) return;
+    const trimmed = (editSubjectDialog.newName || '').trim();
+    if (!trimmed) {
+      setEditSubjectDialog(prev => ({ ...prev, error: 'Subject name cannot be empty' }));
+      return;
+    }
+    setEditSubjectDialog(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const res = await api.put(`/subjects/${editSubjectDialog.subjectId}`, { name: trimmed });
+      const updated = res.data;
+      setRows(prev => prev.map(r => r.id === editSubjectDialog.subjectId ? { ...r, name: updated.name || trimmed } : r));
+      setEditSubjectDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setEditSubjectDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not update subject'
+      }));
+    }
+  }
+
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
@@ -12843,25 +12878,49 @@ function Subjects(){
       <div className="list">
         {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
-          <button
-            type="button"
-            className="table-action-btn danger"
-            onClick={() => promptDeleteSubject(x)}
-            title={`Delete ${x.name}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 12.5
-            }}
-          >
-            <Trash2 size={13} />
-            <span>Delete</span>
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => promptEditSubject(x)}
+              title={`Edit ${x.name}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 12.5,
+                border: '1px solid var(--border, #cbd5e1)',
+                background: 'var(--bg-card, #ffffff)',
+                color: '#2563eb'
+              }}
+            >
+              <Pencil size={13} />
+              <span>Edit</span>
+            </button>
+            <button
+              type="button"
+              className="table-action-btn danger"
+              onClick={() => promptDeleteSubject(x)}
+              title={`Delete ${x.name}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 12.5
+              }}
+            >
+              <Trash2 size={13} />
+              <span>Delete</span>
+            </button>
+          </div>
         </div>)}
         {rows.length === 0 && (
           <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>No subjects added yet.</p>
@@ -12910,6 +12969,142 @@ function Subjects(){
       loading={deleteSubjectDialog.loading}
       error={deleteSubjectDialog.error}
     />
+
+    {/* Edit Subject Modal */}
+    {editSubjectDialog.isOpen && (
+      <div 
+        className="modal-backdrop" 
+        onClick={() => !editSubjectDialog.loading && setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}
+      >
+        <div 
+          className="modal-content" 
+          onClick={e => e.stopPropagation()}
+          style={{
+            maxWidth: 440,
+            width: '100%',
+            padding: 24,
+            borderRadius: 12,
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border, #e2e8f0)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text, #1e293b)' }}>
+              <Pencil size={18} color="#2563eb" /> Edit Subject
+            </h3>
+            <button
+              type="button"
+              onClick={() => setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+              disabled={editSubjectDialog.loading}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={executeConfirmEditSubject}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--text, #334155)' }}>
+                Subject Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Subject name (e.g. Mathematics)"
+                value={editSubjectDialog.newName || ''}
+                onChange={e => setEditSubjectDialog(prev => ({ ...prev, newName: e.target.value, error: null }))}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  fontSize: 14,
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                Updating the subject name will automatically reflect across all class routines and schedules.
+              </p>
+            </div>
+
+            {editSubjectDialog.error && (
+              <div style={{
+                marginBottom: 16,
+                padding: '8px 12px',
+                borderRadius: 6,
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                fontSize: 12.5
+              }}>
+                {editSubjectDialog.error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={editSubjectDialog.loading}
+                onClick={() => setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'transparent'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={editSubjectDialog.loading || !editSubjectDialog.newName?.trim()}
+                style={{
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  cursor: (editSubjectDialog.loading || !editSubjectDialog.newName?.trim()) ? 'not-allowed' : 'pointer',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                {editSubjectDialog.loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
   </Layout>
 }
 
@@ -17509,7 +17704,7 @@ function App(){
         <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
         <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
         <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+        <Route path="/subscription" element={<Navigate to="/dashboard" replace />} />
         {/* Student Portal Routes */}
         <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
         <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>

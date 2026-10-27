@@ -1,4 +1,5 @@
 import {Router,Request} from 'express';
+import * as XLSX from 'xlsx';
 import * as svc from '../services/analyticsService';
 import { isTestSchool } from '../utils/tenant';
 
@@ -15,7 +16,10 @@ router.get('/school',async(req,res)=>{
  try{
   const classId = req.query.classId ? String(req.query.classId) : undefined;
   const sectionId = req.query.sectionId ? String(req.query.sectionId) : undefined;
-  res.json(await svc.schoolOverview(sid,String(req.query.from||''),String(req.query.to||''), classId, sectionId));
+  const session = (req.query.session || req.query.academicYearId || req.query.academic_year_id)
+    ? String(req.query.session || req.query.academicYearId || req.query.academic_year_id)
+    : undefined;
+  res.json(await svc.schoolOverview(sid,String(req.query.from||''),String(req.query.to||''), classId, sectionId, session));
  }catch(_e:any){
   res.json({
     from: new Date(Date.now()-30*86400000).toISOString().slice(0,10),
@@ -32,6 +36,76 @@ router.get('/school',async(req,res)=>{
     sections: []
   });
  }
+});
+
+router.get('/export-students', async (req, res) => {
+  const sid = u(req)?.schoolId;
+  if (!sid) return res.status(401).json({ message: 'School context required' });
+  try {
+    const classId = req.query.classId ? String(req.query.classId) : undefined;
+    const sectionId = req.query.sectionId ? String(req.query.sectionId) : undefined;
+    const session = (req.query.session || req.query.academicYearId || req.query.academic_year_id)
+      ? String(req.query.session || req.query.academicYearId || req.query.academic_year_id)
+      : undefined;
+
+    const overview = await svc.schoolOverview(sid, undefined, undefined, classId, sectionId, session);
+    const atRiskStudents = overview.lowAttendanceStudents || [];
+
+    if (req.query.format === 'json') {
+      return res.json({
+        students: atRiskStudents,
+        totalCount: atRiskStudents.length
+      });
+    }
+
+    // Build Excel Workbook with SheetJS containing ONLY At-Risk Watchlist students
+    const wb = XLSX.utils.book_new();
+
+    const rows = atRiskStudents.map((s: any, idx: number) => ({
+      'Sl. No.': idx + 1,
+      'Roll No.': s.roll_number || '—',
+      'Student Name': s.name,
+      'Class': s.class_name,
+      'Section': s.section_name,
+      'Attendance Rate (%)': `${s.attendance_rate}%`,
+      'Days Absent': `${s.absent_days || 0} sessions`,
+      'Total Sessions': s.total_sessions || 0,
+      'Status': 'At-Risk (< 75%)',
+      'Parent / Guardian Name': s.parent_name || 'Parent/Guardian',
+      'Parent Phone': s.parent_phone || '—',
+      'Parent Email': s.parent_email || '—'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(
+      rows.length > 0 ? rows : [{ Note: 'No students found on At-Risk Watchlist for the selected filter' }]
+    );
+    ws['!cols'] = [
+      { wch: 8 },  // Sl. No
+      { wch: 12 }, // Roll No
+      { wch: 24 }, // Student Name
+      { wch: 14 }, // Class
+      { wch: 10 }, // Section
+      { wch: 18 }, // Attendance Rate
+      { wch: 16 }, // Days Absent
+      { wch: 15 }, // Total Sessions
+      { wch: 18 }, // Status
+      { wch: 24 }, // Parent Name
+      { wch: 16 }, // Parent Phone
+      { wch: 26 }  // Parent Email
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'At-Risk Watchlist');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const classTag = classId ? `_Class${classId}` : '_AllClasses';
+    const secTag = sectionId ? `_Sec${sectionId}` : '';
+    const filename = `At_Risk_Watchlist${classTag}${secTag}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(buf);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Export failed' });
+  }
 });
 router.get('/summary',async(req,res)=>{
  const sid = u(req)?.schoolId;

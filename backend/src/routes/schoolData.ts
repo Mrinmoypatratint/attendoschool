@@ -4294,6 +4294,55 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
  res.status(201).json(newSub);
 });
 
+r.put('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
+  const sid = req.user!.schoolId;
+  const subId = String(req.params.id);
+  const { name } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ message: 'Subject name is required' });
+  const cleanName = String(name).trim();
+
+  try {
+    if (isPostgresConfigured && isUuid(subId)) {
+      const q = await pool.query(
+        'UPDATE subjects SET name = $1 WHERE id = $2 AND school_id = $3 RETURNING *',
+        [cleanName, subId, sid]
+      );
+      if (q.rowCount) {
+        const updated = { ...q.rows[0], school_id: sid };
+        const demoIdx = demoSubjects.findIndex(s => s.id === subId);
+        if (demoIdx >= 0) demoSubjects[demoIdx] = { ...demoSubjects[demoIdx], name: cleanName };
+        syncSubjectToFirestore(updated).catch(() => {});
+        if (sid) {
+          fastCache.delete(`subjects:${sid}`);
+          invalidateSchoolCache(sid);
+        }
+        return res.json(updated);
+      }
+    }
+  } catch (err: any) {
+    console.error('[UpdateSubject] SQL error:', err);
+    return res.status(400).json({ message: err?.message || 'Could not update subject' });
+  }
+
+  const idx = demoSubjects.findIndex(s => s.id === subId && (!s.school_id || isSameSchool(s.school_id, sid)));
+  if (idx >= 0) {
+    demoSubjects[idx] = { ...demoSubjects[idx], name: cleanName };
+    syncSubjectToFirestore(demoSubjects[idx]).catch(() => {});
+    if (sid) {
+      fastCache.delete(`subjects:${sid}`);
+      invalidateSchoolCache(sid);
+    }
+    return res.json(demoSubjects[idx]);
+  }
+  const fallbackUpdated = { id: subId, name: cleanName, school_id: sid };
+  syncSubjectToFirestore(fallbackUpdated).catch(() => {});
+  if (sid) {
+    fastCache.delete(`subjects:${sid}`);
+    invalidateSchoolCache(sid);
+  }
+  res.json(fallbackUpdated);
+});
+
 r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
   const sid = req.user!.schoolId;
   const subId = String(req.params.id);

@@ -23,7 +23,8 @@ export async function schoolOverview(
   from?: string, 
   to?: string,
   classId?: string,
-  sectionId?: string
+  sectionId?: string,
+  academicYearOrSession?: string
 ) {
   // Use Indian Standard Time (Asia/Kolkata) as school baseline date
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
@@ -59,8 +60,86 @@ export async function schoolOverview(
   let classes: any[] = [];
   let sections: any[] = [];
 
+  let targetAyId: string | null = null;
+  let targetAyName: string | null = null;
+
   if (isPostgresConfigured && schoolId) {
     try {
+      // 1. Resolve target academic year / session
+      if (academicYearOrSession && academicYearOrSession.trim()) {
+        const sClean = academicYearOrSession.trim();
+        const matchYears = sClean.match(/\d{4}[-–/]\d{2,4}/);
+        const pattern = matchYears ? matchYears[0].replace('–', '-') : sClean.replace(/academic\s*session/i, '').trim();
+
+        const ayMatch = await pool.query(
+          `SELECT id, name FROM academic_years 
+           WHERE school_id = $1 AND (
+             id::text = $2 
+             OR LOWER(name) = LOWER($2) 
+             OR LOWER(name) LIKE '%' || LOWER($3) || '%'
+             OR LOWER($2) LIKE '%' || LOWER(name) || '%'
+           ) ORDER BY is_active DESC LIMIT 1`,
+          [schoolId, sClean, pattern]
+        ).catch(() => ({ rows: [] }));
+
+        if (ayMatch.rows.length > 0) {
+          targetAyId = ayMatch.rows[0].id;
+          targetAyName = ayMatch.rows[0].name;
+        }
+      }
+
+      if (!targetAyId) {
+        const activeAy = await pool.query(
+          `SELECT id, name FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1`,
+          [schoolId]
+        ).catch(() => ({ rows: [] }));
+        if (activeAy.rows.length > 0) {
+          targetAyId = activeAy.rows[0].id;
+          targetAyName = activeAy.rows[0].name;
+        }
+      }
+
+      // 2. Resolve matched class (UUID or numeric class_number)
+      let matchedClassId: string | null = null;
+      let matchedClassNumber: number | null = null;
+      if (filterClass) {
+        const cNum = Number(filterClass);
+        const cMatch = await pool.query(
+          `SELECT id, class_number FROM classes 
+           WHERE school_id = $1 AND (id::text = $2 OR class_number = $3)
+           LIMIT 1`,
+          [schoolId, filterClass, isNaN(cNum) ? -999 : cNum]
+        ).catch(() => ({ rows: [] }));
+
+        if (cMatch.rows.length > 0) {
+          matchedClassId = cMatch.rows[0].id;
+          matchedClassNumber = Number(cMatch.rows[0].class_number);
+        } else if (!isNaN(cNum)) {
+          matchedClassNumber = cNum;
+        } else {
+          matchedClassId = filterClass;
+        }
+      }
+
+      // 3. Resolve matched section (UUID or name)
+      let matchedSectionId: string | null = null;
+      let matchedSectionName: string | null = null;
+      if (filterSection) {
+        const sMatch = await pool.query(
+          `SELECT id, name FROM sections 
+           WHERE school_id = $1 AND (id::text = $2 OR LOWER(name) = LOWER($2))
+           LIMIT 1`,
+          [schoolId, filterSection]
+        ).catch(() => ({ rows: [] }));
+
+        if (sMatch.rows.length > 0) {
+          matchedSectionId = sMatch.rows[0].id;
+          matchedSectionName = sMatch.rows[0].name;
+        } else {
+          matchedSectionName = filterSection;
+        }
+      }
+
       const [
         studentsRes,
         teachersRes,
@@ -73,37 +152,67 @@ export async function schoolOverview(
         classesRes,
         sectionsRes
       ] = await Promise.all([
-        // 1. Total Active Students
-        pool.query(`SELECT COUNT(*)::int count FROM students WHERE school_id=$1 AND is_active=true`, [schoolId])
-          .catch(() => ({ rows: [{ count: 0 }] })),
+        // 1. Total Active Students for school & active academic year, filtered by class/section
+        pool.query(`SELECT COUNT(*)::int count 
+          FROM students st
+          LEFT JOIN classes c ON c.id = st.class_id
+          LEFT JOIN sections sec ON sec.id = st.section_id
+          WHERE st.school_id = $1 AND st.is_active = true
+            AND ($2::uuid IS NULL OR st.academic_year_id = $2::uuid)
+            AND ($3::text IS NULL OR st.class_id::text = $3::text OR c.class_number = $4::int)
+            AND ($5::text IS NULL OR st.section_id::text = $5::text OR LOWER(sec.name) = LOWER($6::text))`,
+          [schoolId, targetAyId, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName]
+        ).catch(() => ({ rows: [{ count: 0 }] })),
 
         // 2. Total Active Teachers
         pool.query(`SELECT COUNT(*)::int count FROM users WHERE school_id=$1 AND role='TEACHER' AND is_active=true`, [schoolId])
           .catch(() => ({ rows: [{ count: 0 }] })),
 
-        // 3. Attendance Sessions in requested period
-        pool.query(`SELECT COUNT(*)::int count FROM attendance_sessions WHERE school_id=$1 AND attendance_date BETWEEN $2 AND $3`, [schoolId, start, end])
-          .catch(() => ({ rows: [{ count: 0 }] })),
+        // 3. Attendance Sessions in requested period (filtered by class, section, session)
+        pool.query(`SELECT COUNT(*)::int count 
+          FROM attendance_sessions s
+          LEFT JOIN classes c ON c.id = s.class_id
+          WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3
+            AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int)
+            AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text))
+            AND ($8::uuid IS NULL OR c.academic_year_id = $8::uuid OR EXISTS (
+              SELECT 1 FROM attendance_records ar JOIN students st ON st.id = ar.student_id 
+              WHERE ar.attendance_session_id = s.id AND st.academic_year_id = $8::uuid
+            ))`,
+          [schoolId, start, end, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
+        ).catch(() => ({ rows: [{ count: 0 }] })),
 
-        // 4. Period records: present vs absent
+        // 4. Period records: present vs absent (filtered by class, section, session)
         pool.query(`SELECT 
           COUNT(*) FILTER(WHERE ar.is_present=true OR ar.status='PRESENT')::int present, 
           COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent
           FROM attendance_records ar 
-          JOIN attendance_sessions s ON s.id=ar.attendance_session_id
-          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3`, [schoolId, start, end])
-          .catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN students st ON st.id = ar.student_id
+          WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3
+            AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int)
+            AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text))
+            AND ($8::uuid IS NULL OR c.academic_year_id = $8::uuid OR st.academic_year_id = $8::uuid)`,
+          [schoolId, start, end, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
+        ).catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
 
-        // 5. Today's attendance (Real-time live metric)
+        // 5. Today's attendance (Real-time live metric, filtered by class, section, session)
         pool.query(`SELECT 
           COUNT(*) FILTER(WHERE ar.is_present=true OR ar.status='PRESENT')::int present, 
           COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent
           FROM attendance_records ar 
-          JOIN attendance_sessions s ON s.id=ar.attendance_session_id
-          WHERE s.school_id=$1 AND s.attendance_date = $2`, [schoolId, todayStr])
-          .catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          LEFT JOIN classes c ON c.id = s.class_id
+          LEFT JOIN students st ON st.id = ar.student_id
+          WHERE s.school_id = $1 AND s.attendance_date = $2
+            AND ($3::text IS NULL OR s.class_id::text = $3::text OR s.class_number = $4::int)
+            AND ($5::text IS NULL OR s.section_id::text = $5::text OR LOWER(s.section_name) = LOWER($6::text))
+            AND ($7::uuid IS NULL OR c.academic_year_id = $7::uuid OR st.academic_year_id = $7::uuid)`,
+          [schoolId, todayStr, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
+        ).catch(() => ({ rows: [{ present: 0, absent: 0 }] })),
 
-        // 6. 14-Day Attendance Rhythm / Trend (filtered by class & section if provided)
+        // 6. 14-Day Attendance Rhythm / Trend (filtered by class, section, session)
         pool.query(`SELECT 
           to_char(s.attendance_date, 'YYYY-MM-DD') as snapshot_date,
           COALESCE(SUM(
@@ -125,27 +234,42 @@ export async function schoolOverview(
             END
           ), 0)::int as total_students
           FROM attendance_sessions s
-          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3
-            AND ($4 = '' OR s.class_id::text = $4 OR s.class_number::text = $4)
-            AND ($5 = '' OR s.section_id::text = $5 OR LOWER(s.section_name) = LOWER($5))
+          LEFT JOIN classes c ON c.id = s.class_id
+          WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3
+            AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int)
+            AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text))
+            AND ($8::uuid IS NULL OR c.academic_year_id = $8::uuid OR EXISTS (
+              SELECT 1 FROM attendance_records ar JOIN students st ON st.id = ar.student_id 
+              WHERE ar.attendance_session_id = s.id AND st.academic_year_id = $8::uuid
+            ))
           GROUP BY to_char(s.attendance_date, 'YYYY-MM-DD')
-          ORDER BY snapshot_date ASC`, [schoolId, fourteenDaysAgo, end, filterClass, filterSection])
-          .catch(() => ({ rows: [] })),
+          ORDER BY snapshot_date ASC`,
+          [schoolId, fourteenDaysAgo, end, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
+        ).catch(() => ({ rows: [] })),
 
-        // 7. Class-wise distribution
+        // 7. Class-wise distribution (filtered by class, section, session)
         pool.query(`SELECT 
           s.class_number,
+          s.class_id,
           COALESCE(s.class_number::text, 'Class') as class_name,
           COALESCE(SUM(s.present_count), 0)::int as present,
           COALESCE(SUM(s.absent_count), 0)::int as absent,
           COALESCE(SUM(s.total_count), 0)::int as total
           FROM attendance_sessions s
-          WHERE s.school_id=$1 AND s.attendance_date BETWEEN $2 AND $3 AND s.class_number IS NOT NULL
-          GROUP BY s.class_number
-          ORDER BY s.class_number ASC`, [schoolId, start, end])
-          .catch(() => ({ rows: [] })),
+          LEFT JOIN classes c ON c.id = s.class_id
+          WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3 AND s.class_number IS NOT NULL
+            AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int)
+            AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text))
+            AND ($8::uuid IS NULL OR c.academic_year_id = $8::uuid OR EXISTS (
+              SELECT 1 FROM attendance_records ar JOIN students st ON st.id = ar.student_id 
+              WHERE ar.attendance_session_id = s.id AND st.academic_year_id = $8::uuid
+            ))
+          GROUP BY s.class_number, s.class_id
+          ORDER BY s.class_number ASC`,
+          [schoolId, start, end, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
+        ).catch(() => ({ rows: [] })),
 
-        // 8. At-risk students (< 75% attendance in 14-day window, filtered by class & section)
+        // 8. At-risk students (< 75% attendance in 14-day window, filtered by class, section, session)
         pool.query(`SELECT 
           st.id,
           st.name,
@@ -165,17 +289,19 @@ export async function schoolOverview(
           JOIN attendance_sessions s ON s.id = ar.attendance_session_id
           WHERE st.school_id = $1 AND st.is_active = true
             AND s.attendance_date >= $2
-            AND ($3 = '' OR s.class_id::text = $3 OR s.class_number::text = $3 OR st.class_id::text = $3 OR c.class_number::text = $3)
-            AND ($4 = '' OR s.section_id::text = $4 OR LOWER(s.section_name) = LOWER($4) OR st.section_id::text = $4 OR LOWER(sec.name) = LOWER($4))
-          GROUP BY st.id, st.name, st.roll_number, c.class_number, sec.name, st.parent_name, st.parent_sms_number, st.parent_email`, [schoolId, fourteenDaysAgo, filterClass, filterSection])
+            AND ($3::uuid IS NULL OR st.academic_year_id = $3::uuid OR c.academic_year_id = $3::uuid)
+            AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int OR st.class_id::text = $4::text OR c.class_number = $5::int)
+            AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text) OR st.section_id::text = $6::text OR LOWER(sec.name) = LOWER($7::text))
+          GROUP BY st.id, st.name, st.roll_number, c.class_number, sec.name, st.parent_name, st.parent_sms_number, st.parent_email`,
+          [schoolId, fourteenDaysAgo, targetAyId, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName]
+        ).catch(() => ({ rows: [] })),
+
+        // 9. Classes in school (preferred for session or general)
+        pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 AND ($2::uuid IS NULL OR academic_year_id = $2::uuid OR academic_year_id IS NULL) ORDER BY class_number ASC`, [schoolId, targetAyId])
           .catch(() => ({ rows: [] })),
 
-        // 9. All classes in school
-        pool.query(`SELECT id, class_number FROM classes WHERE school_id=$1 ORDER BY class_number ASC`, [schoolId])
-          .catch(() => ({ rows: [] })),
-
-        // 10. All sections in school
-        pool.query(`SELECT id, class_id, name FROM sections WHERE school_id=$1 ORDER BY name ASC`, [schoolId])
+        // 10. Sections in school (preferred for session or general)
+        pool.query(`SELECT id, class_id, name FROM sections WHERE school_id=$1 AND ($2::uuid IS NULL OR academic_year_id = $2::uuid OR academic_year_id IS NULL) ORDER BY name ASC`, [schoolId, targetAyId])
           .catch(() => ({ rows: [] }))
       ]);
 
@@ -205,23 +331,33 @@ export async function schoolOverview(
       todayPresent = todayAttendanceRes.rows[0]?.present || 0;
       todayAbsent = todayAttendanceRes.rows[0]?.absent || 0;
 
-      // If today records in attendance_records were 0, check if attendance_sessions has counts for today
-      if (todayPresent === 0 && todayAbsent === 0) {
+      // If today records in attendance_records were 0, check attendance_sessions
+      if (todayPresent === 0 && todayAbsent === 0 && attendanceSessions > 0) {
         const sessToday = await pool.query(
-          `SELECT COALESCE(SUM(present_count), 0)::int as present, COALESCE(SUM(absent_count), 0)::int as absent 
-           FROM attendance_sessions WHERE school_id=$1 AND attendance_date=$2`,
-          [schoolId, todayStr]
+          `SELECT COALESCE(SUM(s.present_count), 0)::int as present, COALESCE(SUM(s.absent_count), 0)::int as absent 
+           FROM attendance_sessions s
+           LEFT JOIN classes c ON c.id = s.class_id
+           WHERE s.school_id = $1 AND s.attendance_date = $2
+             AND ($3::text IS NULL OR s.class_id::text = $3::text OR s.class_number = $4::int)
+             AND ($5::text IS NULL OR s.section_id::text = $5::text OR LOWER(s.section_name) = LOWER($6::text))
+             AND ($7::uuid IS NULL OR c.academic_year_id = $7::uuid)`,
+          [schoolId, todayStr, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
         ).catch(() => ({ rows: [{ present: 0, absent: 0 }] }));
         todayPresent = sessToday.rows[0]?.present || 0;
         todayAbsent = sessToday.rows[0]?.absent || 0;
       }
 
       // If period records were 0, check attendance_sessions
-      if (presentRecords === 0 && absentRecords === 0) {
+      if (presentRecords === 0 && absentRecords === 0 && attendanceSessions > 0) {
         const sessPeriod = await pool.query(
-          `SELECT COALESCE(SUM(present_count), 0)::int as present, COALESCE(SUM(absent_count), 0)::int as absent 
-           FROM attendance_sessions WHERE school_id=$1 AND attendance_date BETWEEN $2 AND $3`,
-          [schoolId, start, end]
+          `SELECT COALESCE(SUM(s.present_count), 0)::int as present, COALESCE(SUM(s.absent_count), 0)::int as absent 
+           FROM attendance_sessions s
+           LEFT JOIN classes c ON c.id = s.class_id
+           WHERE s.school_id = $1 AND s.attendance_date BETWEEN $2 AND $3
+             AND ($4::text IS NULL OR s.class_id::text = $4::text OR s.class_number = $5::int)
+             AND ($6::text IS NULL OR s.section_id::text = $6::text OR LOWER(s.section_name) = LOWER($7::text))
+             AND ($8::uuid IS NULL OR c.academic_year_id = $8::uuid)`,
+          [schoolId, start, end, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
         ).catch(() => ({ rows: [{ present: 0, absent: 0 }] }));
         presentRecords = sessPeriod.rows[0]?.present || 0;
         absentRecords = sessPeriod.rows[0]?.absent || 0;
@@ -238,7 +374,7 @@ export async function schoolOverview(
         });
       }
 
-      // Format 14-day daily rhythm ensuring all 14 consecutive calendar days are present (14 bars)
+      // Format 14-day daily rhythm ensuring all 14 consecutive calendar days are present
       daily = fourteenDaysList.map(dateKey => {
         const row = dbDateMap.get(dateKey);
         if (row && (row.present > 0 || row.absent > 0 || row.total > 0)) {
@@ -274,6 +410,7 @@ export async function schoolOverview(
         const cNum = Number(r.class_number);
         const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : `Class ${r.class_number}`;
         return {
+          classId: r.class_id,
           classNumber: r.class_number,
           className: cName,
           present: p,
@@ -323,15 +460,20 @@ export async function schoolOverview(
     }
   }
 
-  // Also integrate / reconcile with in-memory sessions if any exist (e.g. freshly taken attendance or memory mode)
+  // Also integrate / reconcile with in-memory sessions if any exist
   try {
-    const memSchoolSessions = memAttendanceSessions.filter(s => isSameSchool(s.schoolId || s.school_id, schoolId));
+    const memSchoolSessions = memAttendanceSessions.filter(s => {
+      if (!isSameSchool(s.schoolId || s.school_id, schoolId)) return false;
+      if (filterClass && s.classId !== filterClass && String(s.classNumber) !== filterClass) return false;
+      if (filterSection && s.sectionId !== filterSection && s.sectionName !== filterSection) return false;
+      return true;
+    });
+
     if (memSchoolSessions.length > 0) {
       const memTodaySessions = memSchoolSessions.filter(s => (s.attendanceDate || s.attendance_date) === todayStr);
       if (memTodaySessions.length > 0) {
         const memTodayPres = memTodaySessions.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
         const memTodayAbs = memTodaySessions.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
-        // If Postgres didn't have today's sessions yet or memory has newer
         if (todayPresent === 0 && todayAbsent === 0) {
           todayPresent = memTodayPres;
           todayAbsent = memTodayAbs;
@@ -341,11 +483,7 @@ export async function schoolOverview(
       // Reconcile daily 14-day rhythm if in-memory session has recent data
       daily = daily.map(d => {
         if (!d.has_attendance) {
-          const memMatch = memSchoolSessions.filter(s => 
-            (s.attendanceDate || s.attendance_date) === d.snapshot_date &&
-            (!filterClass || s.classId === filterClass || String(s.classNumber) === filterClass) &&
-            (!filterSection || s.sectionId === filterSection || s.sectionName === filterSection)
-          );
+          const memMatch = memSchoolSessions.filter(s => (s.attendanceDate || s.attendance_date) === d.snapshot_date);
           if (memMatch.length > 0) {
             const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
             const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
@@ -372,9 +510,31 @@ export async function schoolOverview(
     ? Number(((presentRecords / totalRecords) * 100).toFixed(1))
     : 0;
 
+  // Strict session integrity check: if 0 students exist in selected academic year, zero out sessions & counts
+  if (targetAyId && totalStudents === 0) {
+    attendanceSessions = 0;
+    todayPresent = 0;
+    todayAbsent = 0;
+    presentRecords = 0;
+    absentRecords = 0;
+    attendancePercentage = 0;
+    classBreakdown = [];
+    lowAttendanceStudents = [];
+    daily = daily.map(d => ({
+      ...d,
+      present_records: 0,
+      absent_records: 0,
+      total_students: 0,
+      attendance_percentage: 0,
+      has_attendance: false
+    }));
+  }
+
   return {
     from: start,
     to: end,
+    academicYearId: targetAyId,
+    academicYearName: targetAyName,
     totalStudents,
     totalTeachers,
     attendanceSessions,
@@ -430,4 +590,170 @@ export async function eventSummary(){
  const {rows}=await pool.query(`SELECT event_type,COUNT(*)::int count,COALESCE(SUM(value_numeric),0)::numeric value
  FROM analytics_events WHERE created_at>=NOW()-INTERVAL '30 days' GROUP BY event_type ORDER BY count DESC`);
  return rows;
+}
+
+export async function getExportStudentsData(
+  schoolId: string,
+  classId?: string,
+  sectionId?: string,
+  academicYearOrSession?: string
+) {
+  // 1. Resolve target academic year / session
+  let targetAyId: string | null = null;
+  let targetAyName: string | null = null;
+  if (academicYearOrSession && academicYearOrSession.trim()) {
+    const sClean = academicYearOrSession.trim();
+    const matchYears = sClean.match(/\d{4}[-–/]\d{2,4}/);
+    const pattern = matchYears ? matchYears[0].replace('–', '-') : sClean.replace(/academic\s*session/i, '').trim();
+
+    const ayMatch = await pool.query(
+      `SELECT id, name FROM academic_years 
+       WHERE school_id = $1 AND (
+         id::text = $2 
+         OR LOWER(name) = LOWER($2) 
+         OR LOWER(name) LIKE '%' || LOWER($3) || '%'
+         OR LOWER($2) LIKE '%' || LOWER(name) || '%'
+       ) ORDER BY is_active DESC LIMIT 1`,
+      [schoolId, sClean, pattern]
+    ).catch(() => ({ rows: [] }));
+
+    if (ayMatch.rows.length > 0) {
+      targetAyId = ayMatch.rows[0].id;
+      targetAyName = ayMatch.rows[0].name;
+    }
+  }
+
+  if (!targetAyId) {
+    const activeAy = await pool.query(
+      `SELECT id, name FROM academic_years WHERE school_id = $1 AND is_active = true LIMIT 1`,
+      [schoolId]
+    ).catch(() => ({ rows: [] }));
+    if (activeAy.rows.length > 0) {
+      targetAyId = activeAy.rows[0].id;
+      targetAyName = activeAy.rows[0].name;
+    }
+  }
+
+  // 2. Resolve matched class (UUID or numeric class_number)
+  let matchedClassId: string | null = null;
+  let matchedClassNumber: number | null = null;
+  if (classId && classId.trim()) {
+    const cNum = Number(classId.trim());
+    const cMatch = await pool.query(
+      `SELECT id, class_number FROM classes 
+       WHERE school_id = $1 AND (id::text = $2 OR class_number = $3)
+       LIMIT 1`,
+      [schoolId, classId.trim(), isNaN(cNum) ? -999 : cNum]
+    ).catch(() => ({ rows: [] }));
+
+    if (cMatch.rows.length > 0) {
+      matchedClassId = cMatch.rows[0].id;
+      matchedClassNumber = Number(cMatch.rows[0].class_number);
+    } else if (!isNaN(cNum)) {
+      matchedClassNumber = cNum;
+    } else {
+      matchedClassId = classId.trim();
+    }
+  }
+
+  // 3. Resolve matched section (UUID or name)
+  let matchedSectionId: string | null = null;
+  let matchedSectionName: string | null = null;
+  if (sectionId && sectionId.trim()) {
+    const sec = sectionId.trim();
+    const sMatch = await pool.query(
+      `SELECT id, name FROM sections 
+       WHERE school_id = $1 AND (id::text = $2 OR LOWER(name) = LOWER($2))
+       LIMIT 1`,
+      [schoolId, sec]
+    ).catch(() => ({ rows: [] }));
+
+    if (sMatch.rows.length > 0) {
+      matchedSectionId = sMatch.rows[0].id;
+      matchedSectionName = sMatch.rows[0].name;
+    } else {
+      matchedSectionName = sec;
+    }
+  }
+
+  // 4. Query all matching students along with attendance record summaries
+  const { rows } = await pool.query(
+    `SELECT 
+       st.id,
+       COALESCE(st.roll_number, '') as roll_number,
+       COALESCE(st.admission_number, '') as admission_number,
+       st.name,
+       st.gender,
+       c.class_number,
+       COALESCE(
+         CASE 
+           WHEN c.class_number = -1 THEN 'Class L-KG'
+           WHEN c.class_number = 0 THEN 'Class U-KG'
+           WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number::text
+           ELSE NULL
+         END,
+         'Class ' || COALESCE(st.class_id::text, '')
+       ) AS class_name,
+       COALESCE(sec.name, 'A') AS section_name,
+       COALESCE(st.parent_name, 'Parent/Guardian') as parent_name,
+       COALESCE(st.parent_sms_number, '') as parent_phone,
+       COALESCE(st.parent_email, '') as parent_email,
+       ay.name as academic_session,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int as present_count,
+       COUNT(ar.id) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY')::int as absent_count,
+       COUNT(ar.id)::int as total_sessions
+     FROM students st
+     LEFT JOIN classes c ON c.id = st.class_id
+     LEFT JOIN sections sec ON sec.id = st.section_id
+     LEFT JOIN academic_years ay ON ay.id = st.academic_year_id
+     LEFT JOIN attendance_records ar ON ar.student_id = st.id
+     WHERE st.school_id = $1 
+       AND st.is_active = true
+       AND ($2::uuid IS NULL OR st.academic_year_id = $2::uuid)
+       AND ($3::text IS NULL OR st.class_id::text = $3::text OR c.class_number = $4::int)
+       AND ($5::text IS NULL OR st.section_id::text = $5::text OR LOWER(sec.name) = LOWER($6::text))
+     GROUP BY st.id, st.roll_number, st.admission_number, st.name, st.gender, c.class_number, sec.name, st.parent_name, st.parent_sms_number, st.parent_email, ay.name
+     ORDER BY c.class_number ASC NULLS LAST, sec.name ASC, st.roll_number ASC, st.name ASC`,
+    [schoolId, targetAyId, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName]
+  ).catch(() => ({ rows: [] }));
+
+  const students = rows.map((r: any) => {
+    const tot = Number(r.total_sessions || 0);
+    const pres = Number(r.present_count || 0);
+    const abs = Number(r.absent_count || 0);
+    const rate = tot > 0 ? Number(((pres / tot) * 100).toFixed(1)) : 0;
+    const status = tot === 0 
+      ? 'No Attendance Recorded' 
+      : (rate >= 75 ? 'Good Standing (≥75%)' : 'At-Risk (<75%)');
+
+    return {
+      id: r.id,
+      roll_number: r.roll_number,
+      admission_number: r.admission_number,
+      name: r.name,
+      gender: r.gender || '',
+      class_name: r.class_name,
+      section_name: r.section_name,
+      present_count: pres,
+      absent_count: abs,
+      total_sessions: tot,
+      attendance_rate: rate,
+      attendance_status: status,
+      parent_name: r.parent_name,
+      parent_phone: r.parent_phone,
+      parent_email: r.parent_email,
+      academic_session: r.academic_session || targetAyName || ''
+    };
+  });
+
+  return {
+    students,
+    targetAyId,
+    targetAyName,
+    matchedClassId,
+    matchedClassNumber,
+    matchedSectionId,
+    matchedSectionName,
+    totalCount: students.length
+  };
 }
