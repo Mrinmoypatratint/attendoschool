@@ -166,7 +166,7 @@ export default function LeaveApprove() {
   }, [isTeacher, counts, leaves]);
 
   return (
-    <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
+    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
       {/* ── Page Header (Matching screenshot style) ── */}
       <div className="student-subpage-header" style={{ marginBottom: 20 }}>
         <div className="student-subpage-title-row">

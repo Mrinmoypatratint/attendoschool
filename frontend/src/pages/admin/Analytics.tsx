@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { 
@@ -9,7 +10,8 @@ import {
   Calendar,
   RefreshCw,
   Filter,
-  X
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
 
 function parseLocalDate(dateStr: string): Date {
@@ -29,6 +31,7 @@ export default function Analytics() {
   const [activeTab, setActiveTab] = useState<'overview' | 'classes' | 'watchlist'>('overview');
   const [selectedDay, setSelectedDay] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Graph area Class & Section Filters
   const [filterClass, setFilterClass] = useState<string>('');
@@ -45,9 +48,12 @@ export default function Analytics() {
         setPlatform(p.data);
         setRank(r.data);
       } else {
+        const activeSession = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
         const params: any = {};
         if (cls) params.classId = cls;
         if (sec) params.sectionId = sec;
+        if (activeSession) params.session = activeSession;
+
         const [res, classesRes, sectionsRes] = await Promise.all([
           api.get('/analytics/school', { params }),
           api.get('/classes').catch(() => ({ data: [] })),
@@ -61,7 +67,7 @@ export default function Analytics() {
           setClassList(combinedClasses);
         } else if (res.data?.classBreakdown?.length > 0) {
           setClassList(res.data.classBreakdown.map((cb: any) => ({
-            id: cb.classNumber,
+            id: cb.classId || cb.classNumber,
             class_number: cb.classNumber,
             name: `Class ${cb.classNumber}`
           })));
@@ -97,12 +103,18 @@ export default function Analytics() {
   // Filter sections by selected class when a specific class is selected
   const availableSections = React.useMemo(() => {
     if (!filterClass) return sectionList;
+    const targetCls = classList.find(c => String(c.id) === String(filterClass) || String(c.class_number) === String(filterClass));
+    const targetNum = targetCls && targetCls.class_number !== undefined ? Number(targetCls.class_number) : null;
     const matching = sectionList.filter(s => {
       const cid = String(s.class_id || s.classId || '');
-      return cid === String(filterClass) || !cid;
+      const cNum = s.class_number !== undefined ? Number(s.class_number) : (s.classNumber !== undefined ? Number(s.classNumber) : null);
+      if (cid === String(filterClass)) return true;
+      if (targetCls && cid === String(targetCls.id)) return true;
+      if (targetNum !== null && cNum !== null && targetNum === cNum) return true;
+      return !cid;
     });
     return matching.length > 0 ? matching : sectionList;
-  }, [filterClass, sectionList]);
+  }, [filterClass, sectionList, classList]);
 
   // Unique sections list for dropdown
   const uniqueSections = React.useMemo(() => {
@@ -118,7 +130,18 @@ export default function Analytics() {
     return res;
   }, [availableSections]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const handleSessionChange = () => {
+      load();
+    };
+    window.addEventListener('sessionChanged', handleSessionChange);
+    window.addEventListener('storage', handleSessionChange);
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange);
+      window.removeEventListener('storage', handleSessionChange);
+    };
+  }, []);
 
   const formatClassOptionLabel = (c: any): string => {
     const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : Number(c.id));
@@ -140,102 +163,208 @@ export default function Analytics() {
     });
   }, [classList]);
 
-  const renderClassSectionFilter = (idPrefix = 'filter') => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-50)', padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary-600)', fontSize: 12.5, fontWeight: 600 }}>
-        <Filter size={14} />
-        <span>Class & Section:</span>
-      </div>
+  const displayedBreakdown = React.useMemo(() => {
+    if (!data?.classBreakdown) return [];
+    if (!filterClass) return data.classBreakdown;
+    const targetCls = classList.find(c => String(c.id) === String(filterClass) || String(c.class_number) === String(filterClass));
+    const targetNum = targetCls && targetCls.class_number !== undefined ? Number(targetCls.class_number) : Number(filterClass);
+    return data.classBreakdown.filter((cb: any) => {
+      if (!isNaN(targetNum) && Number(cb.classNumber) === targetNum) return true;
+      if (String(cb.classNumber) === String(filterClass)) return true;
+      if (String(cb.classId) === String(filterClass)) return true;
+      return false;
+    });
+  }, [data?.classBreakdown, filterClass, classList]);
 
-      {/* Class Selector */}
-      <select
-        id={`${idPrefix}-class`}
-        value={filterClass}
-        onChange={(e) => {
-          const val = e.target.value;
-          setFilterClass(val);
-          setFilterSection('');
-          load(val, '');
-        }}
-        style={{
-          padding: '4px 8px',
-          borderRadius: 6,
-          border: '1px solid var(--border)',
-          background: 'var(--bg-card)',
-          fontSize: 12.5,
-          fontWeight: 500,
-          color: 'var(--text)',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      >
-        <option value="">All Classes</option>
-        {sortedClassList.map((c: any) => {
-          const cVal = String(c.id || c.class_number);
-          const label = formatClassOptionLabel(c);
-          return (
-            <option key={cVal} value={cVal}>
-              {label}
-            </option>
-          );
-        })}
-      </select>
+  const hasAnyDailyAttendance = Boolean(data?.daily && data.daily.some((d: any) => d.has_attendance));
 
-      {/* Section Selector */}
-      <select
-        id={`${idPrefix}-section`}
-        value={filterSection}
-        onChange={(e) => {
-          const val = e.target.value;
-          setFilterSection(val);
-          load(filterClass, val);
-        }}
-        style={{
-          padding: '4px 8px',
-          borderRadius: 6,
-          border: '1px solid var(--border)',
-          background: 'var(--bg-card)',
-          fontSize: 12.5,
-          fontWeight: 500,
-          color: 'var(--text)',
-          cursor: 'pointer',
-          outline: 'none'
-        }}
-      >
-        <option value="">All Sections</option>
-        {uniqueSections.map((s: any) => {
-          const sVal = String(s.name || s.section_name || s.id);
-          return (
-            <option key={sVal} value={sVal}>
-              Section {sVal}
-            </option>
-          );
-        })}
-      </select>
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const selectedClsObj = classList.find((c: any) => String(c.id || c.class_number) === String(filterClass));
+      const classLabel = selectedClsObj 
+        ? formatClassOptionLabel(selectedClsObj).replace(/\s+/g, '_')
+        : (filterClass ? `Class_${filterClass}` : 'All_Classes');
+      const secLabel = filterSection ? `_Sec_${filterSection}` : '';
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `At_Risk_Watchlist_${classLabel}${secLabel}_${dateStr}.xlsx`;
 
-      {/* Reset Button */}
-      {(filterClass || filterSection) && (
-        <button
-          onClick={() => {
-            setFilterClass('');
+      // Export ONLY the students who are in the At-Risk Watchlist table (< 75% attendance)
+      // This strictly matches the current table view and selected class/section filter with no extra students.
+      const atRiskList: any[] = data?.lowAttendanceStudents || [];
+
+      const rows = atRiskList.map((s: any, idx: number) => ({
+        'Sl. No.': idx + 1,
+        'Roll No.': s.roll_number || '—',
+        'Student Name': s.name,
+        'Class': s.class_name,
+        'Section': s.section_name,
+        'Attendance Rate (%)': `${s.attendance_rate}%`,
+        'Days Absent': `${s.absent_days ?? s.absent_count ?? 0} sessions`,
+        'Total Sessions': s.total_sessions || 0,
+        'Status': 'At-Risk (< 75%)',
+        'Parent / Guardian Name': s.parent_name || 'Parent/Guardian',
+        'Parent Phone': s.parent_phone || '—',
+        'Parent Email': s.parent_email || '—'
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(
+        rows.length > 0
+          ? rows
+          : [{ Note: `No students found on At-Risk Watchlist for ${classLabel.replace(/_/g, ' ')}${secLabel ? ` Section ${filterSection}` : ''}` }]
+      );
+      ws['!cols'] = [
+        { wch: 8 },  // Sl. No
+        { wch: 12 }, // Roll No
+        { wch: 24 }, // Student Name
+        { wch: 14 }, // Class
+        { wch: 10 }, // Section
+        { wch: 18 }, // Attendance Rate
+        { wch: 16 }, // Days Absent
+        { wch: 15 }, // Total Sessions
+        { wch: 18 }, // Status
+        { wch: 24 }, // Parent Name
+        { wch: 16 }, // Parent Phone
+        { wch: 26 }  // Parent Email
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, 'At-Risk Watchlist');
+      XLSX.writeFile(wb, filename);
+    } catch (e: any) {
+      console.error('Export error:', e);
+      setMsg('Failed to export At-Risk Watchlist to Excel');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const renderClassSectionFilter = (idPrefix = 'filter', showExport = false) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-50)', padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary-600)', fontSize: 12.5, fontWeight: 600 }}>
+          <Filter size={14} />
+          <span>Class & Section:</span>
+        </div>
+
+        {/* Class Selector */}
+        <select
+          id={`${idPrefix}-class`}
+          value={filterClass}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFilterClass(val);
             setFilterSection('');
-            load('', '');
+            load(val, '');
           }}
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#dc2626',
+            padding: '4px 8px',
+            borderRadius: 6,
+            border: '1px solid var(--border)',
+            background: 'var(--bg-card)',
+            fontSize: 12.5,
+            fontWeight: 500,
+            color: 'var(--text)',
             cursor: 'pointer',
+            outline: 'none'
+          }}
+        >
+          <option value="">All Classes</option>
+          {sortedClassList.map((c: any) => {
+            const cVal = String(c.id || c.class_number);
+            const label = formatClassOptionLabel(c);
+            return (
+              <option key={cVal} value={cVal}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
+
+        {/* Section Selector */}
+        <select
+          id={`${idPrefix}-section`}
+          value={filterSection}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFilterSection(val);
+            load(filterClass, val);
+          }}
+          style={{
+            padding: '4px 8px',
+            borderRadius: 6,
+            border: '1px solid var(--border)',
+            background: 'var(--bg-card)',
+            fontSize: 12.5,
+            fontWeight: 500,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+        >
+          <option value="">All Sections</option>
+          {uniqueSections.map((s: any) => {
+            const sVal = String(s.name || s.section_name || s.id);
+            return (
+              <option key={sVal} value={sVal}>
+                Section {sVal}
+              </option>
+            );
+          })}
+        </select>
+
+        {/* Reset Button */}
+        {(filterClass || filterSection) && (
+          <button
+            onClick={() => {
+              setFilterClass('');
+              setFilterSection('');
+              load('', '');
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#dc2626',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '2px 4px',
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 600
+            }}
+            title="Reset filter"
+          >
+            <X size={13} style={{ marginRight: 2 }} /> Reset
+          </button>
+        )}
+      </div>
+
+      {/* Export Excel Button beside all class & section filter (only on Watchlist) */}
+      {showExport && (
+        <button
+          type="button"
+          id={`${idPrefix}-export-excel`}
+          onClick={handleExportExcel}
+          disabled={exporting}
+          style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '2px 4px',
-            borderRadius: 4,
-            fontSize: 12,
-            fontWeight: 600
+            gap: 6,
+            padding: '6px 13px',
+            borderRadius: 8,
+            border: '1px solid #16a34a',
+            background: '#f0fdf4',
+            color: '#15803d',
+            fontWeight: 600,
+            fontSize: 12.5,
+            cursor: exporting ? 'not-allowed' : 'pointer',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
           }}
-          title="Reset filter"
+          title={`Export ${filterClass ? (filterSection ? `Class ${filterClass} - Section ${filterSection}` : `Class ${filterClass}`) : 'All Classes'} At-Risk Watchlist to Excel (.xlsx)`}
         >
-          <X size={13} style={{ marginRight: 2 }} /> Reset
+          <FileSpreadsheet size={15} style={{ color: '#16a34a' }} />
+          <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
         </button>
       )}
     </div>
@@ -425,7 +554,7 @@ export default function Analytics() {
               </div>
 
               {/* Responsive SVG / HTML Bar Chart */}
-              {(!data.daily || data.daily.length === 0) ? (
+              {!hasAnyDailyAttendance ? (
                 <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <Calendar size={36} style={{ color: 'var(--text-muted)', margin: '0 auto 10px', display: 'block' }} />
                   <h4 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--text)' }}>
@@ -538,14 +667,33 @@ export default function Analytics() {
                 {renderClassSectionFilter('classes')}
               </div>
 
-              {(!data.classBreakdown || data.classBreakdown.length === 0) ? (
+              {displayedBreakdown.length === 0 ? (
                 <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <h4 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--text)' }}>No Class Breakdown Available Yet</h4>
-                  <p style={{ margin: 0, fontSize: 13 }}>Class-wise distribution will automatically appear once teachers take attendance for their classes.</p>
+                  <h4 style={{ margin: '0 0 6px', fontSize: 15, color: 'var(--text)' }}>
+                    {filterClass || filterSection ? 'No Breakdown for Selected Filter' : 'No Class Breakdown Available Yet'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: 13 }}>
+                    {filterClass || filterSection
+                      ? 'No attendance records were found for this class/section in the selected session.'
+                      : 'Class-wise distribution will automatically appear once teachers take attendance for their classes.'}
+                  </p>
+                  {(filterClass || filterSection) && (
+                    <button
+                      onClick={() => {
+                        setFilterClass('');
+                        setFilterSection('');
+                        load('', '');
+                      }}
+                      className="btn-secondary"
+                      style={{ marginTop: 12, padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}
+                    >
+                      Reset to All Classes
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-                  {data.classBreakdown.map((c: any) => {
+                  {displayedBreakdown.map((c: any) => {
                     const rate = Number(c.percentage || 0);
                     const colorClass = rate >= 90 ? 'progress-green' : rate >= 80 ? 'progress-blue' : rate >= 75 ? 'progress-amber' : 'progress-red';
                     return (
@@ -583,7 +731,7 @@ export default function Analytics() {
                   </div>
                 </div>
 
-                {renderClassSectionFilter('watchlist')}
+                {renderClassSectionFilter('watchlist', true)}
               </div>
 
               {(!data.lowAttendanceStudents || data.lowAttendanceStudents.length === 0) ? (

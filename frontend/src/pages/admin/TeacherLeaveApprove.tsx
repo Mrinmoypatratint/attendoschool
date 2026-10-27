@@ -250,15 +250,49 @@ export default function TeacherLeaveApprove() {
   };
 
   const availableMonths = useMemo(() => {
-    const set = new Set<string>();
-    const cur = new Date().toISOString().slice(0, 7);
-    set.add(cur);
+    const yearsSet = new Set<number>();
+    const now = new Date();
+    yearsSet.add(now.getFullYear());
+
+    // Extract any year mentioned in academic session name (e.g. "2026-2027", "2027-28", "2028-2029")
+    const sessionStr = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+    const sessionMatches = sessionStr.match(/\b(20\d{2})\b/g);
+    if (sessionMatches) {
+      sessionMatches.forEach((y) => {
+        const parsed = parseInt(y, 10);
+        if (parsed && !isNaN(parsed)) yearsSet.add(parsed);
+      });
+    }
+    const shortYearMatch = sessionStr.match(/20(\d{2})[-/](\d{2})/);
+    if (shortYearMatch) {
+      yearsSet.add(parseInt(`20${shortYearMatch[2]}`, 10));
+    }
+
+    // Include years from existing leave records
     leaves.forEach((l) => {
-      if (l.start_date) set.add(l.start_date.slice(0, 7));
-      if (l.end_date) set.add(l.end_date.slice(0, 7));
-      if (l.created_at) set.add(l.created_at.slice(0, 7));
+      if (l.start_date) {
+        const y = parseInt(l.start_date.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
+      if (l.end_date) {
+        const y = parseInt(l.end_date.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
+      if (l.created_at) {
+        const y = parseInt(l.created_at.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
     });
-    return Array.from(set).filter(Boolean).sort().reverse();
+
+    const months: string[] = [];
+    const sortedYears = Array.from(yearsSet).sort((a, b) => a - b);
+    sortedYears.forEach((year) => {
+      for (let m = 1; m <= 12; m++) {
+        months.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+    });
+
+    return months;
   }, [leaves]);
 
   // Real-time month-filtered leaves for KPI cards and tab badges
@@ -847,7 +881,7 @@ export default function TeacherLeaveApprove() {
   }, [monthScopedLeaves, activeTab, typeFilter, searchQuery, configuredPolicies]);
 
   return (
-    <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
+    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
       {/* ── Page Header ── */}
       <div className="student-subpage-header" style={{ marginBottom: 20 }}>
         <div className="student-subpage-title-row">
@@ -1286,40 +1320,6 @@ export default function TeacherLeaveApprove() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          {/* Month Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
-              <Calendar size={14} />
-              <span>Month:</span>
-            </div>
-            <select
-              value={monthFilter}
-              onChange={(e) => {
-                const val = e.target.value;
-                setMonthFilter(val);
-                if (val !== 'ALL') {
-                  setReportMonth(val);
-                }
-              }}
-              style={{
-                padding: '7px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border, #E2E8F0)',
-                background: 'var(--surface, #FFF)',
-                fontSize: 13,
-                color: 'var(--text, #0F172A)',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="ALL">All Months</option>
-              {availableMonths.map((ym) => (
-                <option key={ym} value={ym}>
-                  {formatMonthDisplay(ym)}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Type Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1394,29 +1394,29 @@ export default function TeacherLeaveApprove() {
             </p>
           </div>
         ) : (
-          <div className="student-table-wrap" style={{ overflowX: 'auto' }}>
-            <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
+            <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ background: 'var(--table-header, #F8FAFC)', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 190 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 135 }}>
                     FACULTY MEMBER
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 220 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 155 }}>
                     APPROVED LEAVES (BY TYPE)
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 130 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 95 }}>
                     LEAVE TYPE
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 150 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 110 }}>
                     DURATION & PERIOD
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 190 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 110 }}>
                     REASON / DETAILS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 130 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 85 }}>
                     STATUS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', textAlign: 'right', minWidth: 120 }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', textAlign: 'right', minWidth: 140 }}>
                     ACTIONS
                   </th>
                 </tr>
@@ -1444,19 +1444,19 @@ export default function TeacherLeaveApprove() {
                       }}
                     >
                       {/* Faculty Info */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {l.photo_url ? (
                             <img
                               src={l.photo_url}
                               alt={l.applicant_name}
-                              style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '1px solid #BFDBFE' }}
+                              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid #BFDBFE', flexShrink: 0 }}
                             />
                           ) : (
                             <div
                               style={{
-                                width: 38,
-                                height: 38,
+                                width: 32,
+                                height: 32,
                                 borderRadius: '50%',
                                 background: '#EFF6FF',
                                 color: '#2563EB',
@@ -1464,7 +1464,7 @@ export default function TeacherLeaveApprove() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: 700,
-                                fontSize: 13,
+                                fontSize: 12,
                                 flexShrink: 0
                               }}
                             >
@@ -1472,10 +1472,10 @@ export default function TeacherLeaveApprove() {
                             </div>
                           )}
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #0F172A)' }}>
                               <PersonProfileLink kind="teacher" id={l.applicant_id} name={l.applicant_name} person={l as any} />
                             </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)' }}>
                               {l.teacher_email || l.identifier || 'Faculty Member'}
                             </div>
                           </div>
@@ -1483,25 +1483,25 @@ export default function TeacherLeaveApprove() {
                       </td>
 
                       {/* Approved Leaves Count (By Type) - Increases ONLY when admin approves */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 200 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <span
                               style={{
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: 700,
                                 color: teacherStats.totalApprovedDays > 0 ? '#15803D' : '#64748B',
                                 background: teacherStats.totalApprovedDays > 0 ? '#DCFCE7' : '#F1F5F9',
                                 border: `1px solid ${teacherStats.totalApprovedDays > 0 ? '#86EFAC' : '#E2E8F0'}`,
-                                padding: '2px 8px',
-                                borderRadius: 6,
+                                padding: '2px 6px',
+                                borderRadius: 5,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 4
                               }}
                               title={`Total approved leave days out of policy entitlement`}
                             >
-                              <CheckCircle2 size={12} color={teacherStats.totalApprovedDays > 0 ? '#15803D' : '#94A3B8'} />
+                              <CheckCircle2 size={11} color={teacherStats.totalApprovedDays > 0 ? '#15803D' : '#94A3B8'} />
                               <span>
                                 Total Approved: {teacherStats.totalApprovedDays}
                                 {totalAllowedQuota > 0 ? `/${totalAllowedQuota}` : ''}{' '}
@@ -1510,7 +1510,7 @@ export default function TeacherLeaveApprove() {
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                             {allDynamicLeaveTypes.map((t) => {
                               const tStat = teacherStats.byType[t.key];
                               const countDays = tStat?.days || 0;
@@ -1521,16 +1521,16 @@ export default function TeacherLeaveApprove() {
                                   key={t.key}
                                   title={`${t.label}: ${countDays} approved out of ${t.allowedDays || 'unlimited'} allowed. Increases when admin approves.`}
                                   style={{
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     fontWeight: isTaken ? 700 : 500,
                                     color: isTaken ? '#1E40AF' : '#64748B',
                                     background: isTaken ? '#EFF6FF' : '#F8FAFC',
                                     border: `1px solid ${isTaken ? '#BFDBFE' : '#E2E8F0'}`,
-                                    padding: '2px 7px',
-                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                    borderRadius: 3,
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: 3
+                                    gap: 2
                                   }}
                                 >
                                   <span>{t.code || t.name}:</span>
@@ -1543,7 +1543,7 @@ export default function TeacherLeaveApprove() {
                       </td>
 
                       {/* Leave Type */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         {(() => {
                           const currentLeavePolicy = allDynamicLeaveTypes.find((t) => matchesPolicy(l.leave_type, t));
                           const currentLeaveQuota = currentLeavePolicy?.allowedDays || 0;
@@ -1553,10 +1553,10 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 6,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                fontSize: 12,
+                                gap: 5,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
                                 fontWeight: 700,
                                 background: typeObj.bg,
                                 color: typeObj.color,
@@ -1566,10 +1566,10 @@ export default function TeacherLeaveApprove() {
                               <span>{typeObj.label}</span>
                               <span
                                 style={{
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: 800,
-                                  padding: '1px 5px',
-                                  borderRadius: 4,
+                                  padding: '1px 4px',
+                                  borderRadius: 3,
                                   background: 'rgba(255, 255, 255, 0.8)',
                                   border: `1px solid ${typeObj.border}`
                                 }}
@@ -1583,24 +1583,24 @@ export default function TeacherLeaveApprove() {
                       </td>
 
                       {/* Duration & Period */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0F172A)' }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text, #0F172A)' }}>
                           {formatDate(l.start_date)} → {formatDate(l.end_date)}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Calendar size={12} />
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Calendar size={11} />
                           <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
                         </div>
                       </td>
 
                       {/* Reason */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', maxWidth: 280 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         <p
                           style={{
                             margin: 0,
-                            fontSize: 13.5,
+                            fontSize: 12.5,
                             color: 'var(--text, #0F172A)',
-                            lineHeight: 1.45,
+                            lineHeight: 1.4,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
@@ -1611,58 +1611,58 @@ export default function TeacherLeaveApprove() {
                         >
                           {l.reason}
                         </p>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted, #94A3B8)', marginTop: 3 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted, #94A3B8)', marginTop: 2 }}>
                           Applied: {formatDate(l.created_at)}
                         </div>
                         {l.document_url && (
-                          <div style={{ marginTop: 6 }}>
+                          <div style={{ marginTop: 4 }}>
                             <button
                               type="button"
                               onClick={() => setViewingDoc({ url: l.document_url!, name: l.document_name || `${l.applicant_name} Leave Document` })}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '3px 8px',
-                                borderRadius: 5,
+                                gap: 4,
+                                padding: '2px 6px',
+                                borderRadius: 4,
                                 border: '1px solid #BFDBFE',
                                 background: '#EFF6FF',
                                 color: '#1D4ED8',
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: 600,
                                 cursor: 'pointer',
                                 transition: 'background 0.15s'
                               }}
                               title="View Supporting Document"
                             >
-                              <Paperclip size={11} />
-                              <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {l.document_name || 'View Document'}
+                              <Paperclip size={10} />
+                              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {l.document_name || 'View Doc'}
                               </span>
-                              <Eye size={11} />
+                              <Eye size={10} />
                             </button>
                           </div>
                         )}
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         {l.status === 'PENDING' && (
                           <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 9px',
-                              borderRadius: 6,
-                              fontSize: 12,
+                              gap: 4,
+                              padding: '3px 7px',
+                              borderRadius: 5,
+                              fontSize: 11.5,
                               fontWeight: 700,
                               background: '#FEF3C7',
                               color: '#B45309',
                               border: '1px solid #FDE68A'
                             }}
                           >
-                            <Clock size={12} />
+                            <Clock size={11} />
                             Pending
                           </span>
                         )}
@@ -1672,21 +1672,21 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                fontSize: 12,
+                                gap: 4,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
                                 fontWeight: 700,
                                 background: '#DCFCE7',
                                 color: '#15803D',
                                 border: '1px solid #BBF7D0'
                               }}
                             >
-                              <CheckCircle2 size={12} />
+                              <CheckCircle2 size={11} />
                               Approved
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 3 }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1698,21 +1698,21 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                fontSize: 12,
+                                gap: 4,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
                                 fontWeight: 700,
                                 background: '#FEE2E2',
                                 color: '#B91C1C',
                                 border: '1px solid #FECACA'
                               }}
                             >
-                              <XCircle size={12} />
+                              <XCircle size={11} />
                               Rejected
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 3 }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1721,27 +1721,27 @@ export default function TeacherLeaveApprove() {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           <button
                             type="button"
                             onClick={() => setViewingLeave(l)}
                             title="View Full Details"
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
+                              padding: '4px 8px',
+                              borderRadius: 5,
                               border: '1px solid var(--border, #E2E8F0)',
                               background: 'var(--surface, #FFF)',
                               color: 'var(--text, #0F172A)',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12.5,
+                              gap: 3,
+                              fontSize: 11.5,
                               fontWeight: 600
                             }}
                           >
-                            <Eye size={13} />
+                            <Eye size={12} />
                             <span>Details</span>
                           </button>
 
@@ -1756,21 +1756,21 @@ export default function TeacherLeaveApprove() {
                                 }}
                                 title="Approve Request"
                                 style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  borderRadius: 5,
                                   border: 'none',
                                   background: '#16A34A',
                                   color: '#FFF',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12.5,
+                                  gap: 3,
+                                  fontSize: 11.5,
                                   fontWeight: 600,
                                   boxShadow: '0 1px 2px rgba(22,163,74,0.2)'
                                 }}
                               >
-                                <Check size={13} />
+                                <Check size={12} />
                                 <span>Approve</span>
                               </button>
 
@@ -1783,20 +1783,20 @@ export default function TeacherLeaveApprove() {
                                 }}
                                 title="Reject Request"
                                 style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  borderRadius: 5,
                                   border: '1px solid #FECACA',
                                   background: '#FEF2F2',
                                   color: '#DC2626',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12.5,
+                                  gap: 3,
+                                  fontSize: 11.5,
                                   fontWeight: 600
                                 }}
                               >
-                                <X size={13} />
+                                <X size={12} />
                                 <span>Reject</span>
                               </button>
                             </>
