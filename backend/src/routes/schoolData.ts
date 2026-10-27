@@ -141,6 +141,17 @@ export async function ensureSchoolClassesAndSections(schoolId?: string | null): 
       return;
     }
 
+    try {
+      await pool.query(`
+        ALTER TABLE students ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+        ALTER TABLE students ADD COLUMN IF NOT EXISTS middle_name VARCHAR(100);
+        ALTER TABLE students ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+        ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+        ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS middle_name VARCHAR(100);
+        ALTER TABLE teacher_profiles ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+      `);
+    } catch {}
+
     // 2. Ultra-fast path: If classes already exist in PostgreSQL including kindergarten, return immediately
     const checkExisting = await pool.query(
       'SELECT COUNT(DISTINCT class_number)::int as count FROM classes WHERE school_id = $1 AND class_number IN (-1, 0, 1, 12)',
@@ -769,13 +780,28 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
   ORDER BY COALESCE(c.class_number, 99), COALESCE(sec.name, ''), st.roll_number`,[userSchoolId,search]);
   if (q.rows) {
     let rows = q.rows.map((st: any) => {
-      const parts = String(st.name || '').trim().split(' ');
-      const firstName = parts[0] || '';
-      const lastName = parts.slice(1).join(' ') || '';
+      const parts = String(st.name || '').trim().split(/\s+/);
+      let firstName = '';
+      let middleName = '';
+      let lastName = '';
+      if (parts.length === 1) {
+        firstName = parts[0] || '';
+      } else if (parts.length === 2) {
+        firstName = parts[0] || '';
+        lastName = parts[1] || '';
+      } else if (parts.length >= 3) {
+        firstName = parts[0] || '';
+        middleName = parts.slice(1, -1).join(' ');
+        lastName = parts[parts.length - 1] || '';
+      }
       return {
         ...st,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: st.first_name || firstName,
+        firstName: st.first_name || firstName,
+        middle_name: st.middle_name || middleName,
+        middleName: st.middle_name || middleName,
+        last_name: st.last_name || lastName,
+        lastName: st.last_name || lastName,
         full_name: st.name,
         rollNumber: st.roll_number,
         admissionNumber: st.admission_number,
@@ -1100,11 +1126,76 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'Date of Birth is a required field.' });
   }
 
-  // Name normalization
-  const firstName  = String(rawFirst || '').trim();
-  const lastName   = String(rawLast  || '').trim();
-  const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawName||'').trim());
-  if(!name||!rollNumber||!classId||!sectionId) return res.status(400).json({message:'First Name, Last Name (or full name), roll number, class and section are required'});
+  // Year validation for Date of Birth & Admission Date: cannot exceed 4 digits
+  const validate4DigitYear = (dateStr: any, label: string) => {
+    if (!dateStr) return null;
+    const yr = String(dateStr).trim().split('-')[0];
+    if (yr && (yr.length > 4 || parseInt(yr, 10) > 9999 || parseInt(yr, 10) < 1000)) {
+      return `${label} year must be a 4-digit number (e.g. 2026).`;
+    }
+    return null;
+  };
+  const dobYrErr = validate4DigitYear(rawDob, 'Date of Birth');
+  if (dobYrErr) return res.status(400).json({ message: dobYrErr });
+  const admYrErr = validate4DigitYear(rawAdmissionDate, 'Admission Date');
+  if (admYrErr) return res.status(400).json({ message: admYrErr });
+
+  // Name normalization and validation
+  const rawMiddle = b.middleName || b.middle_name;
+  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim();
+  const middleName = String(rawMiddle || '').trim();
+  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim();
+
+  if (!firstName) {
+    return res.status(400).json({ message: 'First Name is a required field.' });
+  }
+  if (firstName.length < 3 || firstName.length > 15) {
+    return res.status(400).json({ message: 'First Name must be between 3 and 15 characters.' });
+  }
+  if (/\s/.test(firstName)) {
+    return res.status(400).json({ message: 'Spaces are not allowed in First Name.' });
+  }
+  if (/\d/.test(firstName)) {
+    return res.status(400).json({ message: 'First Name must contain only letters, numbers are not allowed.' });
+  }
+  if (middleName && /\d/.test(middleName)) {
+    return res.status(400).json({ message: 'Middle Name must contain only letters, numbers are not allowed.' });
+  }
+  if (lastName && /\d/.test(lastName)) {
+    return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
+  }
+
+  const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawName || '').trim();
+  if (!name || !rollNumber || !classId || !sectionId) {
+    return res.status(400).json({ message: 'First Name, Roll Number, Class and Section are required.' });
+  }
+
+  // Roll Number & Admission Number numeric check
+  const cleanRollNumber = String(rollNumber || '').trim();
+  if (!cleanRollNumber) {
+    return res.status(400).json({ message: 'Roll Number is a required field.' });
+  }
+  if (!/^\d+$/.test(cleanRollNumber)) {
+    return res.status(400).json({ message: 'Roll Number must contain only numbers.' });
+  }
+  const cleanAdmissionNumber = String(admissionNumber || '').trim();
+  if (cleanAdmissionNumber && !/^\d+$/.test(cleanAdmissionNumber)) {
+    return res.status(400).json({ message: 'Admission Number must contain only numbers.' });
+  }
+
+  // Email format validation
+  const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const cleanStudentEmail = String(studentEmail || '').trim().toLowerCase();
+  const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
+  if (cleanStudentEmail && !EMAIL_FORMAT_REGEX.test(cleanStudentEmail)) {
+    return res.status(400).json({ message: 'Please provide a valid student email address.' });
+  }
+  if (cleanParentEmail && !EMAIL_FORMAT_REGEX.test(cleanParentEmail)) {
+    return res.status(400).json({ message: 'Please provide a valid parent email address.' });
+  }
+  if (String(loginOption || '').toUpperCase() === 'PARENT' && !cleanParentEmail) {
+    return res.status(400).json({ message: 'Parent email is required when parent login option is selected.' });
+  }
 
  // Mandatory session binding — resolve academic_year_id
  const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } = await import('./academicYears');
@@ -1140,9 +1231,6 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
    resolvedSessionName = target?.name || rawSession || '2025–26 Academic Session';
  }
  
- const cleanStudentEmail = String(studentEmail || '').trim().toLowerCase();
- const cleanParentEmail = String(parentEmail || '').trim().toLowerCase();
- const cleanAdmissionNumber = String(admissionNumber || '').trim();
  const loginOpt = String(loginOption || (cleanStudentEmail ? 'STUDENT' : cleanParentEmail ? 'PARENT' : 'NONE')).toUpperCase();
 
  // In-memory demo store uniqueness validation (used when running purely in-memory)
@@ -1393,10 +1481,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           date_of_birth, gender, address,
           father_name, father_phone, father_occupation,
           mother_name, mother_phone, mother_occupation,
-          parent_whatsapp, admission_date
+          parent_whatsapp, admission_date,
+          first_name, middle_name, last_name
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
         )
         RETURNING *`,
         [
@@ -1422,7 +1511,10 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           motherPhone || null,
           motherOccupation || null,
           parentWhatsapp || null,
-          admissionDate || null
+          admissionDate || null,
+          firstName || null,
+          middleName || null,
+          lastName || null
         ]
       );
       
@@ -1434,7 +1526,11 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         session: resolvedSessionName || resolvedSessionId,
         full_name: name,
         first_name: firstName || null,
+        firstName: firstName || null,
+        middle_name: middleName || null,
+        middleName: middleName || null,
         last_name: lastName || null,
+        lastName: lastName || null,
         class_id: realClassId,
         section_id: realSectionId,
         class_number: clsNum,
@@ -2391,10 +2487,25 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     newPasswordHash = await bcrypt.hash(String(password).trim(), 10);
   }
 
+  const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   const cleanStudentEmail = String(studentEmail || email || '').trim().toLowerCase();
   const cleanParentEmail = String(parentEmail || parent_email || '').trim().toLowerCase();
+  if (cleanStudentEmail && !EMAIL_FORMAT_REGEX.test(cleanStudentEmail)) {
+    return res.status(400).json({ message: 'Please provide a valid student email address.' });
+  }
+  if (cleanParentEmail && !EMAIL_FORMAT_REGEX.test(cleanParentEmail)) {
+    return res.status(400).json({ message: 'Please provide a valid parent email address.' });
+  }
+
   const cleanAdmissionNumber = String(admissionNumber || admission_number || '').trim();
+  if (cleanAdmissionNumber && !/^\d+$/.test(cleanAdmissionNumber)) {
+    return res.status(400).json({ message: 'Admission Number must contain only numbers.' });
+  }
+
   const cleanRollNumber = String(rollNumber !== undefined ? rollNumber : (roll_number !== undefined ? roll_number : '')).trim();
+  if (cleanRollNumber && !/^\d+$/.test(cleanRollNumber)) {
+    return res.status(400).json({ message: 'Roll Number must contain only numbers.' });
+  }
 
   // Father, Mother, WhatsApp, Admission Date extraction
   const cleanFatherName = (fatherName !== undefined || father_name !== undefined) ? String(fatherName || father_name || '').trim() : undefined;
@@ -2417,6 +2528,25 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
   const rawAdmissionDate = (admissionDate || admission_date) !== undefined ? (admissionDate || admission_date || null) : undefined;
   const cleanAdmissionDate = rawAdmissionDate !== undefined ? (rawAdmissionDate ? (toDbDate(rawAdmissionDate) || rawAdmissionDate) : null) : undefined;
 
+  // Year validation for Date of Birth & Admission Date: cannot exceed 4 digits
+  const validate4DigitYear = (dateStr: any, label: string) => {
+    if (!dateStr) return null;
+    const yr = String(dateStr).trim().split('-')[0];
+    if (yr && (yr.length > 4 || parseInt(yr, 10) > 9999 || parseInt(yr, 10) < 1000)) {
+      return `${label} year must be a 4-digit number (e.g. 2026).`;
+    }
+    return null;
+  };
+  const rawDob = dob || dateOfBirth || date_of_birth;
+  if (rawDob) {
+    const dobYrErr = validate4DigitYear(rawDob, 'Date of Birth');
+    if (dobYrErr) return res.status(400).json({ message: dobYrErr });
+  }
+  if (rawAdmissionDate) {
+    const admYrErr = validate4DigitYear(rawAdmissionDate, 'Admission Date');
+    if (admYrErr) return res.status(400).json({ message: admYrErr });
+  }
+
   let cleanParentName = String(parentName !== undefined ? parentName : (parent_name !== undefined ? parent_name : '')).trim();
   if (!cleanParentName && (cleanFatherName || cleanMotherName)) {
     cleanParentName = (cleanFatherName && cleanMotherName) ? `${cleanFatherName} / ${cleanMotherName}` : (cleanFatherName || cleanMotherName || '');
@@ -2426,9 +2556,33 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     cleanParentPhone = cleanFatherPhone || cleanMotherPhone || cleanParentWhatsapp || '';
   }
 
-  const firstName = String(rawFirst || '').trim();
-  const lastName = String(rawLast || '').trim();
-  const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(name || '').trim());
+  const rawMiddle = req.body.middleName || req.body.middle_name;
+  const firstName = String(rawFirst !== undefined ? rawFirst : '').trim();
+  const middleName = String(rawMiddle !== undefined ? rawMiddle : '').trim();
+  const lastName = String(rawLast !== undefined ? rawLast : '').trim();
+
+  if (rawFirst !== undefined) {
+    if (!firstName) {
+      return res.status(400).json({ message: 'First Name is a required field.' });
+    }
+    if (firstName.length < 3 || firstName.length > 15) {
+      return res.status(400).json({ message: 'First Name must be between 3 and 15 characters.' });
+    }
+    if (/\s/.test(firstName)) {
+      return res.status(400).json({ message: 'Spaces are not allowed in First Name.' });
+    }
+    if (/\d/.test(firstName)) {
+      return res.status(400).json({ message: 'First Name must contain only letters, numbers are not allowed.' });
+    }
+  }
+  if (middleName && /\d/.test(middleName)) {
+    return res.status(400).json({ message: 'Middle Name must contain only letters, numbers are not allowed.' });
+  }
+  if (lastName && /\d/.test(lastName)) {
+    return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
+  }
+
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(name || '').trim()));
 
   const resolvedClassId = String(classId || class_id || '').trim();
   const resolvedSectionId = String(sectionId || section_id || '').trim();
@@ -2450,6 +2604,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
 
   // Try PostgreSQL if available
   try {
+    await ensureSchoolClassesAndSections(schoolId);
     const isStudentUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
     const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedSession);
 
@@ -2541,6 +2696,9 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            mother_occupation=COALESCE($22, mother_occupation),
            parent_whatsapp=COALESCE($23, parent_whatsapp),
            admission_date=COALESCE($24, admission_date),
+           first_name=COALESCE(NULLIF($25, ''), first_name),
+           middle_name=COALESCE(NULLIF($26, ''), middle_name),
+           last_name=COALESCE(NULLIF($27, ''), last_name),
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
         [
@@ -2567,7 +2725,10 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           cleanMotherPhone !== undefined ? (cleanMotherPhone || null) : null,
           cleanMotherOccupation !== undefined ? (cleanMotherOccupation || null) : null,
           cleanParentWhatsapp !== undefined ? (cleanParentWhatsapp || null) : null,
-          cleanAdmissionDate !== undefined ? (cleanAdmissionDate || null) : null
+          cleanAdmissionDate !== undefined ? (cleanAdmissionDate || null) : null,
+          firstName || null,
+          middleName || null,
+          lastName || null
         ]
       );
       if (q.rowCount && q.rows.length > 0) {
@@ -2642,8 +2803,12 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
         const result = {
           ...q.rows[0],
           name: fullName || q.rows[0].name,
-          first_name: firstName || null,
-          last_name: lastName || null,
+          first_name: firstName || q.rows[0].first_name || null,
+          firstName: firstName || q.rows[0].first_name || null,
+          middle_name: middleName || q.rows[0].middle_name || null,
+          middleName: middleName || q.rows[0].middle_name || null,
+          last_name: lastName || q.rows[0].last_name || null,
+          lastName: lastName || q.rows[0].last_name || null,
           full_name: fullName || q.rows[0].name,
           roll_number: cleanRollNumber || q.rows[0].roll_number,
           rollNumber: cleanRollNumber || q.rows[0].roll_number,
@@ -3089,15 +3254,40 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
-    const formatted = q.rows.map(r => ({
-      ...r,
-      class_name: convertRomanClassToDigital(r.class_name),
-      class: convertRomanClassToDigital(r.class_name),
-      section_name: r.section_name || null,
-      section: r.section_name || null,
-      joining_date: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : '',
-      joiningDate: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : ''
-    }));
+    const formatted = q.rows.map(r => {
+      const nameParts = String(r.name || '').trim().split(/\s+/);
+      let fn = r.first_name || '';
+      let mn = r.middle_name || '';
+      let ln = r.last_name || '';
+      if (!fn && nameParts.length > 0) {
+        if (nameParts.length === 1) {
+          fn = nameParts[0];
+        } else if (nameParts.length === 2) {
+          fn = nameParts[0];
+          ln = nameParts[1];
+        } else {
+          fn = nameParts[0];
+          mn = nameParts.slice(1, -1).join(' ');
+          ln = nameParts[nameParts.length - 1];
+        }
+      }
+      return {
+        ...r,
+        first_name: fn,
+        firstName: fn,
+        middle_name: mn,
+        middleName: mn,
+        last_name: ln,
+        lastName: ln,
+        full_name: r.name,
+        class_name: convertRomanClassToDigital(r.class_name),
+        class: convertRomanClassToDigital(r.class_name),
+        section_name: r.section_name || null,
+        section: r.section_name || null,
+        joining_date: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : '',
+        joiningDate: r.joining_date ? normalizeToDdMmYyyy(r.joining_date) : ''
+      };
+    });
     if (cacheKey) fastCache.set(cacheKey, formatted, 30);
     return sendPaginatedTeachers(formatted);
   }
@@ -3166,7 +3356,8 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
 
 r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const {
-    firstName: rawFirst, lastName: rawLast, fullName: rawFull, name: rawName,
+    firstName: rawFirst, middleName: rawMiddle, middle_name: rawMiddleName,
+    lastName: rawLast, fullName: rawFull, name: rawName,
     email, password, employeeId: rawEmp, saviorNo, Savior_No,
     mobile: rawMobile, designation: rawDesig,
     gender: rawGender, qualification: rawQual,
@@ -3175,9 +3366,35 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     classId, sectionId, sendInviteEmail=true
   } = req.body;
 
-  const firstName = String(rawFirst || '').trim();
-  const lastName = String(rawLast || '').trim();
-  const name = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(rawFull || rawName || '').trim());
+  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim();
+  const middleName = String(rawMiddle !== undefined ? rawMiddle : (rawMiddleName || '')).trim();
+  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim();
+
+  // First Name validation: 3 to 15 characters, no spaces, letters only
+  if (!firstName) {
+    return res.status(400).json({ message: 'First Name is a required field.' });
+  }
+  if (firstName.length < 3 || firstName.length > 15) {
+    return res.status(400).json({ message: 'First Name must be between 3 and 15 characters.' });
+  }
+  if (/\s/.test(firstName)) {
+    return res.status(400).json({ message: 'Spaces are not allowed in First Name.' });
+  }
+  if (/\d/.test(firstName)) {
+    return res.status(400).json({ message: 'First Name must contain only letters, numbers are not allowed.' });
+  }
+
+  // Middle Name validation: Optional, letters only
+  if (middleName && /\d/.test(middleName)) {
+    return res.status(400).json({ message: 'Middle Name must contain only letters, numbers are not allowed.' });
+  }
+
+  // Last Name validation: Optional, letters only
+  if (lastName && /\d/.test(lastName)) {
+    return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
+  }
+
+  const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawFull || rawName || '').trim();
   const employeeId = String(rawEmp || req.body?.employee_id || saviorNo || Savior_No || '').trim();
   const cleanEmail = String(email || '').trim().toLowerCase();
   const mobile = String(rawMobile || '').trim();
@@ -3190,12 +3407,33 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
   const joiningDate = rawJoiningInput ? normalizeToDdMmYyyy(rawJoiningInput) : null;
 
   if (!name || !cleanEmail || !employeeId) {
-    return res.status(400).json({ message: 'First Name/Name, valid email, and Employee ID/Savior_NO are required' });
+    return res.status(400).json({ message: 'First Name, valid email, and Employee ID/Savior_NO are required' });
   }
 
   // Email format validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+  const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!EMAIL_FORMAT_REGEX.test(cleanEmail)) {
     return res.status(400).json({ message: 'Invalid email format. Please provide a valid email address.' });
+  }
+
+  // Teacher Email uniqueness check
+  const dupEmail = demoTeachers.find(t => (t.email || '').trim().toLowerCase() === cleanEmail);
+  if (dupEmail) {
+    return res.status(409).json({ message: `Teacher email '${cleanEmail}' already exists.` });
+  }
+  if (isPostgresConfigured) {
+    const existingUser = await pool.query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`, [cleanEmail]);
+    if (existingUser.rowCount && existingUser.rowCount > 0) {
+      return res.status(409).json({ message: `Teacher email '${cleanEmail}' already exists.` });
+    }
+  }
+  if (isFirebaseConfigured()) {
+    try {
+      const fsSnap = await collections.teachers().where('email', '==', cleanEmail).limit(1).get();
+      if (!fsSnap.empty) {
+        return res.status(409).json({ message: `Teacher email '${cleanEmail}' already exists.` });
+      }
+    } catch {}
   }
 
   // Mobile validation: 10 digits if provided
@@ -3235,8 +3473,8 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         [req.user!.schoolId, name, cleanEmail, hash]
       );
       await client.query(
-        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,joining_date,designation,class_name,section_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(joiningDate), designation || 'Teacher', className, sectionName]
+        `INSERT INTO teacher_profiles(user_id,employee_id,mobile,gender,qualification,joining_date,designation,class_name,section_name,first_name,middle_name,last_name) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [u.rows[0].id, employeeId, mobile || null, gender || null, qualification || null, toDbDate(joiningDate), designation || 'Teacher', className, sectionName, firstName || null, middleName || null, lastName || null]
       );
       await client.query('COMMIT');
 
@@ -3296,7 +3534,11 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
         name,
         full_name: name,
         first_name: firstName || null,
+        firstName: firstName || null,
+        middle_name: middleName || null,
+        middleName: middleName || null,
         last_name: lastName || null,
+        lastName: lastName || null,
         employee_id: employeeId,
         savior_no: employeeId,
         designation,
@@ -3374,7 +3616,11 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     name,
     full_name: name,
     first_name: firstName || null,
+    firstName: firstName || null,
+    middle_name: middleName || null,
+    middleName: middleName || null,
     last_name: lastName || null,
+    lastName: lastName || null,
     email: cleanEmail,
     employee_id: employeeId,
     savior_no: employeeId,
@@ -3993,6 +4239,58 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const resolvedSchoolId = userSchoolId || existingDocData.school_id || existingDocData.schoolId || demoTeachers[idx]?.school_id || null;
   const resolvedStatus = status || (is_active === false ? 'INACTIVE' : 'ACTIVE');
   const cleanEmail = email ? String(email).trim().toLowerCase() : (existingDocData.email || demoTeachers[idx]?.email || '');
+
+  const rawFirst = req.body.firstName !== undefined ? req.body.firstName : req.body.first_name;
+  const rawMiddle = req.body.middleName !== undefined ? req.body.middleName : req.body.middle_name;
+  const rawLast = req.body.lastName !== undefined ? req.body.lastName : req.body.last_name;
+
+  const computedFirst = rawFirst !== undefined ? String(rawFirst).trim() : undefined;
+  const computedMiddle = rawMiddle !== undefined ? String(rawMiddle).trim() : undefined;
+  const computedLast = rawLast !== undefined ? String(rawLast).trim() : undefined;
+
+  if (computedFirst !== undefined) {
+    if (!computedFirst) {
+      return res.status(400).json({ message: 'First Name is a required field.' });
+    }
+    if (computedFirst.length < 3 || computedFirst.length > 15) {
+      return res.status(400).json({ message: 'First Name must be between 3 and 15 characters.' });
+    }
+    if (/\s/.test(computedFirst)) {
+      return res.status(400).json({ message: 'Spaces are not allowed in First Name.' });
+    }
+    if (/\d/.test(computedFirst)) {
+      return res.status(400).json({ message: 'First Name must contain only letters, numbers are not allowed.' });
+    }
+  }
+  if (computedMiddle && /\d/.test(computedMiddle)) {
+    return res.status(400).json({ message: 'Middle Name must contain only letters, numbers are not allowed.' });
+  }
+  if (computedLast && /\d/.test(computedLast)) {
+    return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
+  }
+
+  const resolvedName = (computedFirst !== undefined || computedMiddle !== undefined || computedLast !== undefined)
+    ? [computedFirst, computedMiddle, computedLast].filter(Boolean).join(' ')
+    : (name || existingDocData.name || demoTeachers[idx]?.name || '');
+
+  // Email format & uniqueness on edit
+  if (email) {
+    const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_FORMAT_REGEX.test(cleanEmail)) {
+      return res.status(400).json({ message: 'Invalid email format. Please provide a valid email address.' });
+    }
+    const dupEmail = demoTeachers.find(t => t.id !== tid && (t.email || '').trim().toLowerCase() === cleanEmail);
+    if (dupEmail) {
+      return res.status(409).json({ message: `Teacher email '${cleanEmail}' already exists.` });
+    }
+    if (isPostgresConfigured) {
+      const existingUser = await pool.query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2 LIMIT 1`, [cleanEmail, tid]);
+      if (existingUser.rowCount && existingUser.rowCount > 0) {
+        return res.status(409).json({ message: `Teacher email '${cleanEmail}' already exists.` });
+      }
+    }
+  }
+
   const rawGender = req.body.gender;
   const resolvedGender = rawGender !== undefined ? (rawGender ? String(rawGender).trim() : null) : (existingDocData.gender || demoTeachers[idx]?.gender || null);
   const rawDob = req.body.dob !== undefined ? req.body.dob : (req.body.date_of_birth !== undefined ? req.body.date_of_birth : req.body.dateOfBirth);
@@ -4050,11 +4348,11 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   try {
     await pool.query(
       `UPDATE users SET name=$1, email=$2, is_active=$3, updated_at=NOW() WHERE id=$4 AND school_id=$5`,
-      [name || existingDocData.name || demoTeachers[idx]?.name, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
+      [resolvedName, cleanEmail, resolvedStatus === 'ACTIVE', tid, userSchoolId]
     );
     await pool.query(
-      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, joining_date=$4, designation=$5, class_name=$6, section_name=$7 WHERE user_id=$8`,
-      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedJoining), resolvedDesig, resolvedClass, resolvedSection, tid]
+      `UPDATE teacher_profiles SET employee_id=$1, mobile=$2, gender=$3, joining_date=$4, designation=$5, class_name=$6, section_name=$7, first_name=COALESCE(NULLIF($9, ''), first_name), middle_name=COALESCE(NULLIF($10, ''), middle_name), last_name=COALESCE(NULLIF($11, ''), last_name) WHERE user_id=$8`,
+      [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedJoining), resolvedDesig, resolvedClass, resolvedSection, tid, computedFirst || null, computedMiddle || null, computedLast || null]
     );
 
     const cleanOldPos = (prevDesig || 'Teacher').trim();
@@ -4107,7 +4405,14 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
 
   const updated = {
     id: tid,
-    name: name || existingDocData.name || demoTeachers[idx]?.name || '',
+    name: resolvedName,
+    full_name: resolvedName,
+    first_name: computedFirst || demoTeachers[idx]?.first_name || null,
+    firstName: computedFirst || demoTeachers[idx]?.first_name || null,
+    middle_name: computedMiddle || demoTeachers[idx]?.middle_name || null,
+    middleName: computedMiddle || demoTeachers[idx]?.middle_name || null,
+    last_name: computedLast || demoTeachers[idx]?.last_name || null,
+    lastName: computedLast || demoTeachers[idx]?.last_name || null,
     email: cleanEmail,
     employee_id: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',
     employeeId: employeeId || employee_id || existingDocData.employee_id || existingDocData.employeeId || demoTeachers[idx]?.employee_id || '',

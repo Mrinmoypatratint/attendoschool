@@ -5754,15 +5754,32 @@ function Students(){
   async function handleInitiateSave(e:React.FormEvent){
     e.preventDefault();
     // STAGE 1 VALIDATION
-    const firstName = String(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
-    const lastName = String(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
-    const fullName = [firstName, lastName].filter(Boolean).join(' ') || f.name || '';
-    if (!fullName) {
-      alert('Validation Error: Please enter student first name or full name.');
+    const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
+    const middleName = String(f.middleName || '').trim();
+    const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || f.name || '';
+    if (!firstName) {
+      alert('Validation Error: Please enter student first name.');
       return;
     }
-    if (/\d/.test(firstName) || /\d/.test(lastName)) {
-      alert('Validation Error: Enter a string not a number in name fields.');
+    if (firstName.length < 3 || firstName.length > 15) {
+      alert('Validation Error: First Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\s/.test(firstName)) {
+      alert('Validation Error: Spaces are not allowed in First Name.');
+      return;
+    }
+    if (/\d/.test(firstName)) {
+      alert('Validation Error: Enter a string not a number in First Name.');
+      return;
+    }
+    if (middleName && /\d/.test(middleName)) {
+      alert('Validation Error: Enter a string not a number in Middle Name.');
+      return;
+    }
+    if (lastName && /\d/.test(lastName)) {
+      alert('Validation Error: Enter a string not a number in Last Name.');
       return;
     }
     const fatherName = String(f.fatherName || '').trim();
@@ -5795,6 +5812,19 @@ function Students(){
       alert('Validation Error: Date of Birth is a required field.');
       return;
     }
+    const dobYr = String(f.dob).split('-')[0];
+    if (dobYr && (dobYr.length > 4 || parseInt(dobYr, 10) > 9999 || parseInt(dobYr, 10) < 1000)) {
+      alert('Validation Error: Date of Birth year cannot exceed 4 digits.');
+      return;
+    }
+    if (f.admissionDate || f.admission_date) {
+      const admStr = f.admissionDate || f.admission_date;
+      const admYr = String(admStr).split('-')[0];
+      if (admYr && (admYr.length > 4 || parseInt(admYr, 10) > 9999 || parseInt(admYr, 10) < 1000)) {
+        alert('Validation Error: Admission Date year cannot exceed 4 digits.');
+        return;
+      }
+    }
 
     const code = f.countryCode || '+91';
     const primaryPhone = String(fatherPhone || motherPhone || f.parentSmsNumber || '').trim();
@@ -5823,6 +5853,22 @@ function Students(){
       return;
     }
 
+    const cleanRoll = String(f.rollNumber || f.roll_number || '').trim();
+    if (!cleanRoll) {
+      alert('Validation Error: Roll Number is a required field.');
+      return;
+    }
+    if (!/^\d+$/.test(cleanRoll)) {
+      alert('Validation Error: Roll Number must contain only numbers.');
+      return;
+    }
+
+    const cleanAdm = String(f.admissionNumber || f.admission_number || '').trim();
+    if (cleanAdm && !/^\d+$/.test(cleanAdm)) {
+      alert('Validation Error: Admission Number must contain only numbers.');
+      return;
+    }
+
     const selectedSessionStr = f.session || activeSession || '2026-2027';
     const matchedSession = sessions.find(s => 
       s.id === selectedSessionStr || 
@@ -5843,31 +5889,46 @@ function Students(){
     }
 
     // Client-side uniqueness pre-checks against loaded student directory
-    const cleanAdm = String(f.admissionNumber || f.admission_number || '').trim();
     if (cleanAdm) {
       const dupAdm = rows.find(r => 
         (!editingStudent || r.id !== editingStudent.id) &&
-        (r.admission_number || r.admissionNumber || '').trim().toLowerCase() === cleanAdm.toLowerCase()
+        String(r.admission_number || r.admissionNumber || '').trim().toLowerCase() === cleanAdm.toLowerCase()
       );
       if (dupAdm) {
-        alert(`Validation Error: Admission number '${cleanAdm}' is already assigned to student '${dupAdm.name || dupAdm.full_name || 'Existing Student'}'.`);
+        alert(`Validation Error: Admission Number already exists. Admission number '${cleanAdm}' is already assigned to student '${dupAdm.name || dupAdm.full_name || 'Existing Student'}'.`);
         return;
       }
     }
 
+    const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const cleanStuEmail = String(f.studentEmail || f.email || '').trim().toLowerCase();
     if (cleanStuEmail) {
+      if (!EMAIL_FORMAT_REGEX.test(cleanStuEmail)) {
+        alert('Validation Error: Please enter a valid student email address (e.g. student@school.edu).');
+        return;
+      }
       const dupEmail = rows.find(r =>
         (!editingStudent || r.id !== editingStudent.id) &&
         (r.email || r.student_email || '').trim().toLowerCase() === cleanStuEmail
       );
       if (dupEmail) {
-        alert(`Validation Error: Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
+        alert(`Validation Error: Student email already exists. Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
         return;
       }
     }
 
-    const cleanRoll = String(f.rollNumber || f.roll_number || '').trim();
+    const cleanParentEmail = String(f.parentEmail || '').trim().toLowerCase();
+    if (cleanParentEmail) {
+      if (!EMAIL_FORMAT_REGEX.test(cleanParentEmail)) {
+        alert('Validation Error: Please enter a valid parent email address (e.g. parent@example.com).');
+        return;
+      }
+    }
+    if (f.loginOption === 'PARENT' && !cleanParentEmail) {
+      alert('Validation Error: Parent email is required when using parent email for student portal login.');
+      return;
+    }
+
     if (cleanRoll && f.classId && finalSectionId) {
       const dupRoll = rows.find(r => {
         if (editingStudent && r.id === editingStudent.id) return false;
@@ -5879,7 +5940,7 @@ function Students(){
         return sameSess && sameClass && sameSec && sameRoll && r.is_active !== false;
       });
       if (dupRoll) {
-        alert(`Validation Error: Roll number '${cleanRoll}' is already assigned to student '${dupRoll.name || dupRoll.full_name || 'Existing Student'}' in this class and section for session ${selectedSessionStr}.`);
+        alert(`Validation Error: Roll Number already exists. Roll number '${cleanRoll}' is already assigned to student '${dupRoll.name || dupRoll.full_name || 'Existing Student'}' in this section for session ${selectedSessionStr}.`);
         return;
       }
     }
@@ -5920,6 +5981,8 @@ function Students(){
       sectionId: finalSectionId,
       name: fullName,
       firstName,
+      middleName,
+      middle_name: middleName,
       lastName,
       session: matchedSession?.name || selectedSessionStr,
       sessionId: matchedSession?.id || selectedSessionStr
@@ -5935,6 +5998,9 @@ function Students(){
         title: 'Student Identity',
         fields: [
           { label: 'Full Name', value: fullName, color: 'blue' },
+          { label: 'First Name', value: firstName },
+          ...(middleName ? [{ label: 'Middle Name', value: middleName }] : []),
+          { label: 'Last Name', value: lastName || '—' },
           { label: 'Roll Number', value: f.rollNumber || editingStudent?.roll_number || 'Auto-assigned', type: 'code' },
           { label: 'Admission Number', value: f.admissionNumber || editingStudent?.admission_number || '—' },
           { label: 'Admission Date', value: f.admissionDate || f.admission_date || editingStudent?.admission_date || '—', type: 'date' },
@@ -7618,10 +7684,27 @@ function Students(){
                       cCode = cMatch[1];
                       pNum = cMatch[2];
                     }
+                    const nameParts = (x.name || '').trim().split(/\s+/);
+                    let fName = x.first_name || '';
+                    let mName = x.middle_name || x.middleName || '';
+                    let lName = x.last_name || '';
+                    if (!fName && nameParts.length > 0) {
+                      if (nameParts.length === 1) {
+                        fName = nameParts[0];
+                      } else if (nameParts.length === 2) {
+                        fName = nameParts[0];
+                        lName = nameParts[1];
+                      } else {
+                        fName = nameParts[0];
+                        mName = nameParts.slice(1, -1).join(' ');
+                        lName = nameParts[nameParts.length - 1];
+                      }
+                    }
                     setF({
                       name: x.name,
-                      firstName: x.first_name || (x.name || '').split(' ')[0] || '',
-                      lastName: x.last_name || (x.name || '').split(' ').slice(1).join(' ') || '',
+                      firstName: fName,
+                      middleName: mName,
+                      lastName: lName,
                       rollNumber: x.roll_number,
                       admissionNumber: x.admission_number || x.admissionNumber || '',
                       admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
@@ -7766,136 +7849,306 @@ function Students(){
     )}
 
     {/* SINGLE STUDENT ADD / EDIT MODAL */}
-    {open && <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
-      <form className="modal-form" onSubmit={handleInitiateSave}>
-        {/* Last Registered Student Banner in Red */}
-        {lastRegisteredStudentInfo && (
-          <div style={{
-            color: '#ef4444',
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: '8px 12px',
-            backgroundColor: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 6,
-            marginBottom: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
-            <span>
-              Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
-            </span>
-          </div>
-        )}
+    {open && (() => {
+      const currentFormRoll = String(f.rollNumber || '').trim();
+      const currentFormAdm = String(f.admissionNumber || '').trim();
+      const currentFormStuEmail = String(f.studentEmail || f.email || '').trim().toLowerCase();
+      const currentFormParentEmail = String(f.parentEmail || '').trim().toLowerCase();
+      const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-        {/* First Name + Last Name */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>First Name
-            <input
-              required
-              placeholder="e.g. Aarav"
-              value={f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || ''}
-              style={{
-                borderColor: /\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => {
-                const fn = e.target.value;
-                const ln = f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '';
-                setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
-              }}
-            />
-            {/\d/.test(f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
+      const isRollDuplicateInUi = Boolean(
+        currentFormRoll &&
+        rows.some(r => {
+          if (editingStudent && r.id === editingStudent.id) return false;
+          const sameRoll = String(r.roll_number || r.rollNumber || '').trim().toLowerCase() === currentFormRoll.toLowerCase();
+          if (!sameRoll) return false;
+          if (f.classId && f.sectionId) {
+            const rSession = r.session || r.session_name || r.academic_year_id || r.session_id;
+            const sameSess = isSameSession(rSession, f.session || activeSession);
+            const sameClass = r.class_id === f.classId || r.classId === f.classId || String(r.class_number || r.classNumber) === String(f.classId);
+            const sameSec = r.section_id === f.sectionId || r.sectionId === f.sectionId;
+            return sameSess && sameClass && sameSec && r.is_active !== false;
+          }
+          return r.is_active !== false;
+        })
+      );
+
+      const isAdmDuplicateInUi = Boolean(
+        currentFormAdm &&
+        rows.some(r =>
+          (!editingStudent || r.id !== editingStudent.id) &&
+          String(r.admission_number || r.admissionNumber || '').trim().toLowerCase() === currentFormAdm.toLowerCase()
+        )
+      );
+
+      const isStuEmailDuplicateInUi = Boolean(
+        currentFormStuEmail &&
+        rows.some(r =>
+          (!editingStudent || r.id !== editingStudent.id) &&
+          String(r.email || r.student_email || '').trim().toLowerCase() === currentFormStuEmail
+        )
+      );
+
+      const isStuEmailInvalidInUi = Boolean(
+        currentFormStuEmail && !EMAIL_VALIDATION_REGEX.test(currentFormStuEmail)
+      );
+
+      const isParentEmailInvalidInUi = Boolean(
+        currentFormParentEmail && !EMAIL_VALIDATION_REGEX.test(currentFormParentEmail)
+      );
+
+      const fnVal = f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '');
+      const mnVal = f.middleName || '';
+      const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '');
+      const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
+      const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
+      const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
+
+      const isDobYearInvalidInUi = Boolean(
+        f.dob && (String(f.dob).split('-')[0]?.length > 4 || parseInt(String(f.dob).split('-')[0], 10) > 9999)
+      );
+
+      const isAdmDateYearInvalidInUi = Boolean(
+        (f.admissionDate || f.admission_date) &&
+        (String(f.admissionDate || f.admission_date).split('-')[0]?.length > 4 || parseInt(String(f.admissionDate || f.admission_date).split('-')[0], 10) > 9999)
+      );
+
+      return (
+        <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
+          <form className="modal-form" onSubmit={handleInitiateSave}>
+            {/* Last Registered Student Banner in Red */}
+            {lastRegisteredStudentInfo && (
+              <div style={{
+                color: '#ef4444',
+                fontSize: 12.5,
+                fontWeight: 600,
+                padding: '8px 12px',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 6,
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                <span>
+                  Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                </span>
+              </div>
             )}
-          </label>
-          <label>Last Name
-            <input
-              placeholder="e.g. Sharma"
-              value={f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || ''}
-              style={{
-                borderColor: /\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => {
-                const ln = e.target.value;
-                const fn = f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : '') || '';
-                setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
-              }}
-            />
-            {/\d/.test(f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '') || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
-            )}
-          </label>
-        </div>
 
-        {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
-          Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
-          <input
-            readOnly
-            tabIndex={-1}
-            style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
-            value={[f.firstName || (editingStudent ? (f.name||'').split(' ')[0] : ''), f.lastName || (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')].filter(Boolean).join(' ') || f.name || ''}
-            placeholder="Full name will appear here automatically"
-          />
-        </label>
+            {/* First Name + Middle Name + Last Name */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+              <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+                <input
+                  required
+                  placeholder="e.g. Aarav"
+                  maxLength={15}
+                  value={fnVal || ''}
+                  style={{
+                    borderColor: isFnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                    setF({ ...f, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                  }}
+                />
+                {fnVal && /\d/.test(fnVal) ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                ) : fnVal && /\s/.test(fnVal) ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Spaces are not allowed in First Name
+                  </span>
+                ) : fnVal && fnVal.length < 3 ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Must be 3 to 15 characters
+                  </span>
+                ) : null}
+              </label>
+              <label>Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                <input
+                  placeholder="e.g. Kumar"
+                  maxLength={15}
+                  value={mnVal}
+                  style={{
+                    borderColor: isMnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                    setF({ ...f, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                  }}
+                />
+                {mnVal && /\d/.test(mnVal) && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                )}
+              </label>
+              <label>Last Name
+                <input
+                  placeholder="e.g. Sharma"
+                  maxLength={25}
+                  value={lnVal || ''}
+                  style={{
+                    borderColor: isLnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const ln = e.target.value.replace(/\d/g, '');
+                    setF({ ...f, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                  }}
+                />
+                {isLnInvalid && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                )}
+              </label>
+            </div>
 
-        {/* Session Selection */}
-        <label>Session
-          <select
-            value={f.session || ''}
-            onChange={e => setF({ ...f, session: e.target.value })}
-          >
-            <option value="">Select Session</option>
-            {(sessions.length > 0 ? sessions : [
-              { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
-              { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
-              { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
-            ]).map(s => (
-              <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
-            ))}
-          </select>
-        </label>
+            {/* Full Name — auto-computed, read-only */}
+            <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+              Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+              <input
+                readOnly
+                tabIndex={-1}
+                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
+                value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || f.name || ''}
+                placeholder="Full name will appear here automatically"
+              />
+            </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>Roll Number
-            <input required placeholder="Roll Number (e.g. 101)" value={f.rollNumber||''} onChange={e=>setF({...f,rollNumber:e.target.value})}/>
-          </label>
-          <label>Admission Number
-            <input placeholder="Admission Number (e.g. ADM-2025-001)" value={f.admissionNumber||''} onChange={e=>setF({...f,admissionNumber:e.target.value})}/>
-          </label>
-        </div>
+            {/* Session Selection */}
+            <label>Session
+              <select
+                value={f.session || ''}
+                onChange={e => setF({ ...f, session: e.target.value })}
+              >
+                <option value="">Select Session</option>
+                {(sessions.length > 0 ? sessions : [
+                  { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
+                  { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
+                  { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
+                ]).map(s => (
+                  <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
+                ))}
+              </select>
+            </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Admission Date
-            </span>
-            <input
-              type="date"
-              value={f.admissionDate || f.admission_date || ''}
-              onChange={e => setF({ ...f, admissionDate: e.target.value })}
-            />
-          </label>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Date of Birth <span style={{ color: '#ef4444' }}>*</span>
-            </span>
-            <input
-              type="date"
-              required
-              value={f.dob || ''}
-              onChange={e => setF({ ...f, dob: e.target.value })}
-            />
-          </label>
-        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <label>Roll Number <span style={{ color: '#ef4444' }}>*</span>
+                <input
+                  required
+                  inputMode="numeric"
+                  placeholder="Roll Number (e.g. 101)"
+                  value={f.rollNumber || ''}
+                  style={{
+                    borderColor: isRollDuplicateInUi ? '#ef4444' : undefined,
+                    boxShadow: isRollDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setF({ ...f, rollNumber: val });
+                  }}
+                />
+                {isRollDuplicateInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already exist
+                  </span>
+                )}
+              </label>
+              <label>Admission Number
+                <input
+                  inputMode="numeric"
+                  placeholder="Admission Number (e.g. 1001)"
+                  value={f.admissionNumber || ''}
+                  style={{
+                    borderColor: isAdmDuplicateInUi ? '#ef4444' : undefined,
+                    boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setF({ ...f, admissionNumber: val });
+                  }}
+                />
+                {isAdmDuplicateInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already exist
+                  </span>
+                )}
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Admission Date
+                </span>
+                <input
+                  type="date"
+                  min="1900-01-01"
+                  max="9999-12-31"
+                  value={f.admissionDate || f.admission_date || ''}
+                  style={{
+                    borderColor: isAdmDateYearInvalidInUi ? '#ef4444' : undefined,
+                    boxShadow: isAdmDateYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (val) {
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        val = parts.join('-');
+                      }
+                    }
+                    setF({ ...f, admissionDate: val });
+                  }}
+                />
+                {isAdmDateYearInvalidInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Year cannot exceed 4 digits
+                  </span>
+                )}
+              </label>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <input
+                  type="date"
+                  required
+                  min="1900-01-01"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={f.dob || ''}
+                  style={{
+                    borderColor: isDobYearInvalidInUi ? '#ef4444' : undefined,
+                    boxShadow: isDobYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (val) {
+                      const parts = val.split('-');
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        val = parts.join('-');
+                      }
+                    }
+                    setF({ ...f, dob: val });
+                  }}
+                />
+                {isDobYearInvalidInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Year cannot exceed 4 digits
+                  </span>
+                )}
+              </label>
+            </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
           <label>Gender
@@ -7982,8 +8235,21 @@ function Students(){
             type="email"
             placeholder="student@school.edu"
             value={f.studentEmail || f.email || ''}
-            onChange={e => setF({ ...f, studentEmail: e.target.value })}
+            style={{
+              borderColor: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '#ef4444' : undefined,
+              boxShadow: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+            }}
+            onChange={e => setF({ ...f, studentEmail: e.target.value.trim() })}
           />
+          {isStuEmailDuplicateInUi ? (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+              Already exist
+            </span>
+          ) : isStuEmailInvalidInUi ? (
+            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+              Please enter a valid email address
+            </span>
+          ) : null}
         </label>
 
         {/* Father's Information */}
@@ -8136,8 +8402,17 @@ function Students(){
               type="email"
               placeholder="parent@example.com"
               value={f.parentEmail||''}
-              onChange={e => setF({...f,parentEmail:e.target.value})}
+              style={{
+                borderColor: isParentEmailInvalidInUi ? '#ef4444' : undefined,
+                boxShadow: isParentEmailInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+              }}
+              onChange={e => setF({...f,parentEmail:e.target.value.trim()})}
             />
+            {isParentEmailInvalidInUi && (
+              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                Please enter a valid email address
+              </span>
+            )}
           </label>
         </div>
 
@@ -8249,7 +8524,9 @@ function Students(){
           <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
         </div>
       </form>
-    </Modal>}
+    </Modal>
+  );
+})()}
 
     {/* EXCEL / CSV BULK IMPORT MODAL — Multi-Step Wizard */}
     {importOpen && (
@@ -9442,22 +9719,49 @@ function Teachers(){
     if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
     const firstName = String(f.firstName || '').trim();
+    const middleName = String(f.middleName || '').trim();
     const lastName = String(f.lastName || '').trim();
-    const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || f.name || '').trim();
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (f.name || '').trim();
     const name = fullName;
     const email = String(f.email || '').trim().toLowerCase();
     const employeeId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim();
 
-    if (!name) {
-      alert('Validation Error: Please enter faculty member name.');
+    if (!firstName) {
+      alert('Validation Error: Please enter faculty member first name.');
       return;
     }
-    if (/\d/.test(firstName) || /\d/.test(lastName)) {
-      alert('Validation Error: Enter a string not a number in name fields.');
+    if (firstName.length < 3 || firstName.length > 15) {
+      alert('Validation Error: First Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\s/.test(firstName)) {
+      alert('Validation Error: Spaces are not allowed in First Name.');
+      return;
+    }
+    if (/\d/.test(firstName)) {
+      alert('Validation Error: Enter a string not a number in First Name.');
+      return;
+    }
+    if (middleName && /\d/.test(middleName)) {
+      alert('Validation Error: Enter a string not a number in Middle Name.');
+      return;
+    }
+    if (lastName && /\d/.test(lastName)) {
+      alert('Validation Error: Enter a string not a number in Last Name.');
       return;
     }
     if (!email) {
       alert('Validation Error: Please enter registered email address.');
+      return;
+    }
+    const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_VALIDATION_REGEX.test(email)) {
+      alert('Validation Error: Please enter a valid email address (e.g. teacher@school.edu).');
+      return;
+    }
+    const dupEmail = rows.find(r => (!editingTeacher || r.id !== editingTeacher.id) && String(r.email || '').trim().toLowerCase() === email);
+    if (dupEmail) {
+      alert(`Validation Error: Teacher email already exists. Email '${email}' is already registered to teacher '${dupEmail.name || 'Existing Teacher'}'.`);
       return;
     }
     if (!employeeId) {
@@ -9477,6 +9781,8 @@ function Teachers(){
     const payload = {
       ...f,
       firstName,
+      middleName,
+      middle_name: middleName,
       lastName,
       name,
       fullName,
@@ -9506,6 +9812,9 @@ function Teachers(){
         title: 'Faculty Profile Details',
         fields: [
           { label: 'Full Name', value: name, color: 'blue' },
+          { label: 'First Name', value: firstName },
+          ...(middleName ? [{ label: 'Middle Name', value: middleName }] : []),
+          { label: 'Last Name', value: lastName || '—' },
           { label: 'Employee ID / Savior_No', value: employeeId, type: 'code' },
           { label: 'Gender', value: f.gender || 'Not specified' },
           { label: 'Joining Date', value: f.joiningDate || f.joining_date || 'Not specified' },
@@ -10503,10 +10812,27 @@ function Teachers(){
                     });
                     const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
                     const sVal = rawSec || (matchingSec ? matchingSec.name : '');
+                    const nameParts = (x.name || '').trim().split(/\s+/);
+                    let fName = x.first_name || x.firstName || '';
+                    let mName = x.middle_name || x.middleName || '';
+                    let lName = x.last_name || x.lastName || '';
+                    if (!fName && nameParts.length > 0) {
+                      if (nameParts.length === 1) {
+                        fName = nameParts[0];
+                      } else if (nameParts.length === 2) {
+                        fName = nameParts[0];
+                        lName = nameParts[1];
+                      } else {
+                        fName = nameParts[0];
+                        mName = nameParts.slice(1, -1).join(' ');
+                        lName = nameParts[nameParts.length - 1];
+                      }
+                    }
                     setF({
                       name: x.name,
-                      firstName: x.first_name || (x.name ? x.name.split(' ')[0] : ''),
-                      lastName: x.last_name || (x.name ? x.name.split(' ').slice(1).join(' ') : ''),
+                      firstName: fName,
+                      middleName: mName,
+                      lastName: lName,
                       email: x.email,
                       employeeId: x.employee_id || x.employeeId || x.savior_no || '',
                       mobile: x.mobile || x.phone || '',
@@ -10649,90 +10975,166 @@ function Teachers(){
     )}
 
     {/* SINGLE TEACHER ADD / EDIT MODAL */}
-    {open && <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
-      <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
-        {/* Last Registered Teacher Banner in Red */}
-        {lastRegisteredTeacherInfo && (
-          <div style={{
-            color: '#ef4444',
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: '8px 12px',
-            backgroundColor: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 6,
-            marginBottom: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}>
-            <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
-            <span>
-              Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
-            </span>
-          </div>
-        )}
+    {open && (() => {
+      const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const currentTeacherEmail = String(f.email || '').trim().toLowerCase();
+      const isEmailDuplicateInUi = Boolean(
+        currentTeacherEmail &&
+        rows.some(r => {
+          const rowEmail = String(r.email || '').trim().toLowerCase();
+          const matches = rowEmail === currentTeacherEmail;
+          const isSameRecord = editingTeacher && (
+            r.id === editingTeacher.id ||
+            r.employee_id === editingTeacher.employee_id ||
+            r.employeeId === editingTeacher.employeeId ||
+            (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id))
+          );
+          return matches && !isSameRecord;
+        })
+      );
+      const isEmailInvalidInUi = Boolean(
+        currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
+      );
 
-        {/* First Name + Last Name */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>First Name
-            <input
-              required
-              placeholder="First Name (e.g. Rahul)"
-              value={f.firstName || ''}
-              style={{
-                borderColor: /\d/.test(f.firstName || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.firstName || '') ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => {
-                const fn = e.target.value;
-                const ln = f.lastName || '';
-                setF({ ...f, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
-              }}
-            />
-            {/\d/.test(f.firstName || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
+      const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name||'').split(' ')[0] : '');
+      const mnVal = f.middleName || '';
+      const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name||'').split(' ').slice(1).join(' ') : '');
+      const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
+      const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
+      const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
+
+      return (
+        <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
+          <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
+            {/* Last Registered Teacher Banner in Red */}
+            {lastRegisteredTeacherInfo && (
+              <div style={{
+                color: '#ef4444',
+                fontSize: 12.5,
+                fontWeight: 600,
+                padding: '8px 12px',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 6,
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                <span>
+                  Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                </span>
+              </div>
             )}
-          </label>
-          <label>Last Name
-            <input
-              placeholder="Last Name (e.g. Sharma)"
-              value={f.lastName || ''}
-              style={{
-                borderColor: /\d/.test(f.lastName || '') ? '#ef4444' : undefined,
-                boxShadow: /\d/.test(f.lastName || '') ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => {
-                const ln = e.target.value;
-                const fn = f.firstName || '';
-                setF({ ...f, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
-              }}
-            />
-            {/\d/.test(f.lastName || '') && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Enter a string not a number
-              </span>
-            )}
-          </label>
-        </div>
 
-        {/* Full Name — auto-computed, read-only */}
-        <label style={{ color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
-          Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
-          <input
-            readOnly
-            tabIndex={-1}
-            style={{ cursor: 'default', opacity: 0.85 }}
-            value={[f.firstName, f.lastName].filter(Boolean).join(' ') || f.name || ''}
-            placeholder="Full name will appear here automatically"
-          />
-        </label>
+            {/* First Name + Middle Name + Last Name */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+              <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+                <input
+                  required
+                  placeholder="First Name (e.g. Rahul)"
+                  maxLength={15}
+                  value={fnVal || ''}
+                  style={{
+                    borderColor: isFnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                    setF({ ...f, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                  }}
+                />
+                {fnVal && /\d/.test(fnVal) ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                ) : fnVal && /\s/.test(fnVal) ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Spaces are not allowed in First Name
+                  </span>
+                ) : fnVal && fnVal.length < 3 ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Must be 3 to 15 characters
+                  </span>
+                ) : null}
+              </label>
+              <label>Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                <input
+                  placeholder="Middle Name (e.g. Kumar)"
+                  maxLength={15}
+                  value={mnVal}
+                  style={{
+                    borderColor: isMnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                    setF({ ...f, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                  }}
+                />
+                {mnVal && /\d/.test(mnVal) && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                )}
+              </label>
+              <label>Last Name
+                <input
+                  placeholder="Last Name (e.g. Sharma)"
+                  maxLength={25}
+                  value={lnVal || ''}
+                  style={{
+                    borderColor: isLnInvalid ? '#ef4444' : undefined,
+                    boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => {
+                    const ln = e.target.value.replace(/\d/g, '');
+                    setF({ ...f, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                  }}
+                />
+                {isLnInvalid && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Enter a string not a number
+                  </span>
+                )}
+              </label>
+            </div>
 
-        <label>Email Address (for Faculty Portal Login)
-          <input required type="email" placeholder="teacher@school.local" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})}/>
-        </label>
+            {/* Full Name — auto-computed, read-only */}
+            <label style={{ color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
+              Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+              <input
+                readOnly
+                tabIndex={-1}
+                style={{ cursor: 'default', opacity: 0.85 }}
+                value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || f.name || ''}
+                placeholder="Full name will appear here automatically"
+              />
+            </label>
+
+            <label>Email Address (for Faculty Portal Login)
+              <input
+                required
+                type="email"
+                placeholder="teacher@school.local"
+                value={f.email||''}
+                style={{
+                  borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
+                  boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => setF({ ...f, email: e.target.value.trim() })}
+              />
+              {isEmailDuplicateInUi ? (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                  Already exist
+                </span>
+              ) : isEmailInvalidInUi ? (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Please enter a valid email address
+                </span>
+              ) : null}
+            </label>
         <label>Employee Id / Savior_NO
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
@@ -11030,7 +11432,9 @@ function Teachers(){
           </button>
         </div>
       </form>
-    </Modal>}
+    </Modal>
+  );
+})()}
 
     {/* ═══ TEACHING ALLOCATIONS MODAL ═══ */}
     {allocOpen && allocTeacher && <Modal title={`Manage Allocations — ${allocTeacher.name}`} close={()=>setAllocOpen(false)}>

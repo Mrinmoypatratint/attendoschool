@@ -318,17 +318,60 @@ export default function PeopleManagement() {
       alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
       return;
     }
+
+    const firstName = String(teacherForm.firstName || '').trim();
+    const middleName = String(teacherForm.middleName || '').trim();
+    const lastName = String(teacherForm.lastName || '').trim();
+    const email = String(teacherForm.email || '').trim().toLowerCase();
+
+    if (!firstName) {
+      alert('Validation Error: First Name is required.');
+      return;
+    }
+    if (firstName.length < 3 || firstName.length > 15) {
+      alert('Validation Error: First Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\s/.test(teacherForm.firstName || '')) {
+      alert('Validation Error: Spaces are not allowed in First Name.');
+      return;
+    }
+    if (/\d/.test(firstName)) {
+      alert('Validation Error: First Name must contain only letters, numbers are not allowed.');
+      return;
+    }
+    if (middleName && (/\d/.test(middleName) || /\s/.test(teacherForm.middleName || ''))) {
+      alert('Validation Error: Middle Name must contain only letters, spaces or numbers are not allowed.');
+      return;
+    }
+    if (lastName && /\d/.test(lastName)) {
+      alert('Validation Error: Last Name must contain only letters, numbers are not allowed.');
+      return;
+    }
+
+    const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!email || !EMAIL_VALIDATION_REGEX.test(email)) {
+      alert('Validation Error: Please enter a valid email address.');
+      return;
+    }
+
+    if (rows && rows.some((r: any) => String(r.email || '').trim().toLowerCase() === email)) {
+      alert('Validation Error: A teacher with this email address already exists.');
+      return;
+    }
+
     setSavingTeacher(true);
     try {
-      const firstName = String(teacherForm.firstName || '').trim();
-      const lastName = String(teacherForm.lastName || '').trim();
-      const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || teacherForm.name || '');
+      const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (teacherForm.name || '').trim();
       const payload = {
         ...teacherForm,
         firstName,
+        middleName,
+        middle_name: middleName,
         lastName,
         name: fullName,
         fullName,
+        email,
         employeeId: teacherForm.employeeId || teacherForm.saviorNo,
         gender: teacherForm.gender || '',
         joining_date: joiningDateVal ? toDdMmYyyy(joiningDateVal) : '',
@@ -1186,72 +1229,136 @@ export default function PeopleManagement() {
                   </div>
                 )}
 
-                {/* First Name + Last Name */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <label>First Name
-                    <input
-                      required
-                      placeholder="e.g. Rahul"
-                      value={teacherForm.firstName || ''}
-                      style={{
-                        borderColor: /\d/.test(teacherForm.firstName || '') ? '#ef4444' : undefined,
-                        boxShadow: /\d/.test(teacherForm.firstName || '') ? '0 0 0 1px #ef4444' : undefined
-                      }}
-                      onChange={e => {
-                        const fn = e.target.value;
-                        const ln = teacherForm.lastName || '';
-                        setTeacherForm({ ...teacherForm, firstName: fn, name: [fn, ln].filter(Boolean).join(' ') });
-                      }}
-                    />
-                    {/\d/.test(teacherForm.firstName || '') && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                        Enter a string not a number
-                      </span>
-                    )}
-                  </label>
-                  <label>Last Name
-                    <input
-                      placeholder="e.g. Sharma"
-                      value={teacherForm.lastName || ''}
-                      style={{
-                        borderColor: /\d/.test(teacherForm.lastName || '') ? '#ef4444' : undefined,
-                        boxShadow: /\d/.test(teacherForm.lastName || '') ? '0 0 0 1px #ef4444' : undefined
-                      }}
-                      onChange={e => {
-                        const ln = e.target.value;
-                        const fn = teacherForm.firstName || '';
-                        setTeacherForm({ ...teacherForm, lastName: ln, name: [fn, ln].filter(Boolean).join(' ') });
-                      }}
-                    />
-                    {/\d/.test(teacherForm.lastName || '') && (
-                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                        Enter a string not a number
-                      </span>
-                    )}
-                  </label>
-                </div>
+                {/* First Name + Middle Name + Last Name */}
+                {(() => {
+                  const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                  const currentTeacherEmail = String(teacherForm.email || '').trim().toLowerCase();
+                  const isEmailDuplicateInUi = Boolean(
+                    currentTeacherEmail &&
+                    rows.some((r: any) => String(r.email || '').trim().toLowerCase() === currentTeacherEmail)
+                  );
+                  const isEmailInvalidInUi = Boolean(
+                    currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
+                  );
 
-                {/* Full Name — auto-computed, read-only */}
-                <label style={{ color: '#64748b', fontSize: 12 }}>
-                  Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
-                  <input
-                    readOnly
-                    tabIndex={-1}
-                    style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text-muted, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
-                    value={[teacherForm.firstName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || ''}
-                    placeholder="Full name will appear here automatically"
-                  />
-                </label>
+                  const fnVal = teacherForm.firstName || '';
+                  const mnVal = teacherForm.middleName || '';
+                  const lnVal = teacherForm.lastName || '';
+                  const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
+                  const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
+                  const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
 
-                <label>Email Address (for Faculty Portal Login)
-                  <input
-                    required
-                    type="email"
-                    placeholder="teacher@school.local"
-                    value={teacherForm.email || ''}
-                    onChange={e => setTeacherForm({ ...teacherForm, email: e.target.value })}
-                  />
-                </label>
+                  return (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                        <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+                          <input
+                            required
+                            placeholder="e.g. Rahul"
+                            maxLength={15}
+                            value={fnVal}
+                            style={{
+                              borderColor: isFnInvalid ? '#ef4444' : undefined,
+                              boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                            }}
+                            onChange={e => {
+                              const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                              setTeacherForm({ ...teacherForm, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                            }}
+                          />
+                          {fnVal && /\d/.test(fnVal) ? (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Enter a string not a number
+                            </span>
+                          ) : fnVal && /\s/.test(fnVal) ? (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Spaces are not allowed in First Name
+                            </span>
+                          ) : fnVal && fnVal.length < 3 ? (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Must be 3 to 15 characters
+                            </span>
+                          ) : null}
+                        </label>
+                        <label>Middle Name <span style={{ fontSize: 11, color: '#64748b', fontWeight: 'normal' }}>(Optional)</span>
+                          <input
+                            placeholder="e.g. Kumar"
+                            maxLength={15}
+                            value={mnVal}
+                            style={{
+                              borderColor: isMnInvalid ? '#ef4444' : undefined,
+                              boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                            }}
+                            onChange={e => {
+                              const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                              setTeacherForm({ ...teacherForm, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                            }}
+                          />
+                          {mnVal && /\d/.test(mnVal) && (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Enter a string not a number
+                            </span>
+                          )}
+                        </label>
+                        <label>Last Name
+                          <input
+                            placeholder="e.g. Sharma"
+                            maxLength={25}
+                            value={lnVal}
+                            style={{
+                              borderColor: isLnInvalid ? '#ef4444' : undefined,
+                              boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                            }}
+                            onChange={e => {
+                              const ln = e.target.value.replace(/\d/g, '');
+                              setTeacherForm({ ...teacherForm, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                            }}
+                          />
+                          {isLnInvalid && (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Enter a string not a number
+                            </span>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Full Name — auto-computed, read-only */}
+                      <label style={{ color: '#64748b', fontSize: 12 }}>
+                        Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+                        <input
+                          readOnly
+                          tabIndex={-1}
+                          style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text-muted, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
+                          value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || teacherForm.name || ''}
+                          placeholder="Full name will appear here automatically"
+                        />
+                      </label>
+
+                      <label>Email Address (for Faculty Portal Login)
+                        <input
+                          required
+                          type="email"
+                          placeholder="teacher@school.local"
+                          value={teacherForm.email || ''}
+                          style={{
+                            borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
+                            boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                          }}
+                          onChange={e => setTeacherForm({ ...teacherForm, email: e.target.value.trim() })}
+                        />
+                        {isEmailDuplicateInUi ? (
+                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                            Already exist
+                          </span>
+                        ) : isEmailInvalidInUi ? (
+                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                            Please enter a valid email address
+                          </span>
+                        ) : null}
+                      </label>
+                    </>
+                  );
+                })()}
 
                 <label>Employee Id/Savior_NO
                   <input
@@ -1520,12 +1627,23 @@ export default function PeopleManagement() {
                     type="button" 
                     className="btn-secondary" 
                     onClick={() => {
-                      if (!teacherForm.firstName && !teacherForm.name) { alert('Please enter First Name.'); return; }
-                      if (/\d/.test(teacherForm.firstName || '') || /\d/.test(teacherForm.lastName || '')) {
-                        alert('Validation Error: Enter a string not a number in name fields.');
+                      const fn = String(teacherForm.firstName || '').trim();
+                      const mn = String(teacherForm.middleName || '').trim();
+                      const ln = String(teacherForm.lastName || '').trim();
+                      const em = String(teacherForm.email || '').trim().toLowerCase();
+                      const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+                      if (!fn) { alert('Validation Error: First Name is required.'); return; }
+                      if (fn.length < 3 || fn.length > 15) { alert('Validation Error: First Name must be between 3 and 15 characters.'); return; }
+                      if (/\s/.test(teacherForm.firstName || '')) { alert('Validation Error: Spaces are not allowed in First Name.'); return; }
+                      if (/\d/.test(fn)) { alert('Validation Error: First Name must contain only letters, numbers are not allowed.'); return; }
+                      if (mn && (/\d/.test(mn) || /\s/.test(teacherForm.middleName || ''))) { alert('Validation Error: Middle Name must contain only letters, spaces or numbers are not allowed.'); return; }
+                      if (ln && /\d/.test(ln)) { alert('Validation Error: Last Name must contain only letters, numbers are not allowed.'); return; }
+                      if (!em || !EMAIL_REGEX.test(em)) { alert('Validation Error: Please enter a valid email address.'); return; }
+                      if (rows && rows.some((r: any) => String(r.email || '').trim().toLowerCase() === em)) {
+                        alert('Validation Error: A teacher with this email address already exists.');
                         return;
                       }
-                      if (!teacherForm.email) { alert('Please enter Email Address.'); return; }
                       if (!(teacherForm.employeeId || teacherForm.saviorNo)) { alert('Please enter Employee Id/Savior_NO.'); return; }
                       const jVal = teacherForm.joiningDate || teacherForm.joining_date;
                       if (jVal && !isValidDdMmYyyy(jVal)) { alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).'); return; }
@@ -1577,13 +1695,19 @@ export default function PeopleManagement() {
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>First Name</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.firstName || '—'}</div>
                   </div>
+                  {teacherForm.middleName ? (
+                    <div>
+                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Middle Name</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.middleName}</div>
+                    </div>
+                  ) : null}
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Last Name</div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{teacherForm.lastName || '—'}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Full Name (Auto-Generated)</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', marginTop: 2 }}>{[teacherForm.firstName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || '—'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1e40af', marginTop: 2 }}>{[teacherForm.firstName, teacherForm.middleName, teacherForm.lastName].filter(Boolean).join(' ') || teacherForm.name || '—'}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Official Email</div>
