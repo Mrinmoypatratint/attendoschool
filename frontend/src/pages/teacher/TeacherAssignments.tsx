@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BookOpen, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
-  Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download
+  Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download, Upload,
+  Maximize2, Minimize2
 } from 'lucide-react';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
@@ -23,6 +24,26 @@ interface AssignmentRecord {
   max_marks: number;
   submission_count?: number;
   created_at?: string;
+  document_url?: string;
+  document_name?: string;
+  document_size?: number;
+  document_mime?: string;
+  document_data?: string;
+  attachments?: Array<{
+    id?: string;
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    file_data?: string;
+    storage_key?: string;
+  }>;
+}
+
+interface UploadDocItem {
+  file: File;
+  base64: string;
+  name: string;
+  size: number;
 }
 
 interface StudentSubmission {
@@ -81,6 +102,61 @@ export function TeacherAssignments() {
   });
   const [creating, setCreating] = useState(false);
   const [createFeedback, setCreateFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadDocItem[]>([]);
+  const [uploadDocError, setUploadDocError] = useState<string | null>(null);
+  const [isCreateModalMaximized, setIsCreateModalMaximized] = useState(false);
+  const [isSubmissionsMaximized, setIsSubmissionsMaximized] = useState(false);
+
+  const handleTeacherFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadDocError(null);
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const newFiles = Array.from(e.target.files);
+    if (uploadedDocuments.length + newFiles.length > 5) {
+      setUploadDocError('You can attach a maximum of 5 document files.');
+      return;
+    }
+
+    const ALLOWED_EXT = ['.png', '.jpg', '.jpeg', '.pdf', '.xlsx', '.doc', '.docx'];
+    const MAX_SZ = 10 * 1024 * 1024; // 10MB
+
+    for (const f of newFiles) {
+      const ext = '.' + f.name.split('.').pop()?.toLowerCase();
+      if (!ALLOWED_EXT.includes(ext)) {
+        setUploadDocError(`File "${f.name}" has an unsupported format. Allowed: PDF, DOC, DOCX, XLSX, PNG, JPG.`);
+        return;
+      }
+      if (f.size > MAX_SZ) {
+        setUploadDocError(`File "${f.name}" exceeds the 10MB limit.`);
+        return;
+      }
+    }
+
+    Promise.all(
+      newFiles.map(file => new Promise<UploadDocItem>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({
+          file,
+          base64: reader.result as string,
+          name: file.name,
+          size: file.size
+        });
+        reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
+        reader.readAsDataURL(file);
+      }))
+    ).then(readFiles => {
+      setUploadedDocuments(prev => [...prev, ...readFiles]);
+    }).catch(err => {
+      setUploadDocError(err.message || 'Error processing document attachment.');
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveDoc = (index: number) => {
+    setUploadedDocuments(prev => prev.filter((_, i) => i !== index));
+    setUploadDocError(null);
+  };
 
   // Submissions & Grading Drawer State
   const [activeAssignment, setActiveAssignment] = useState<AssignmentRecord | null>(null);
@@ -311,7 +387,19 @@ export function TeacherAssignments() {
     setCreateFeedback(null);
 
     try {
-      const res = await api.post('/teacher/assignments', createForm);
+      const payload = {
+        ...createForm,
+        attachments: uploadedDocuments.map(d => ({
+          fileName: d.name,
+          fileData: d.base64,
+          size: d.size
+        })),
+        document_name: uploadedDocuments[0]?.name || null,
+        document_data: uploadedDocuments[0]?.base64 || null,
+        document_size: uploadedDocuments[0]?.size || null
+      };
+
+      const res = await api.post('/teacher/assignments', payload);
       setCreateFeedback({
         type: 'success',
         message: res.data?.message || 'Assignment published successfully!'
@@ -323,6 +411,8 @@ export function TeacherAssignments() {
         due_date: '',
         max_marks: 100
       }));
+      setUploadedDocuments([]);
+      setUploadDocError(null);
       loadAssignments();
       setTimeout(() => setShowCreateModal(false), 1200);
     } catch (err: any) {
@@ -376,7 +466,7 @@ export function TeacherAssignments() {
   });
 
   return (
-    <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ width: '100%', paddingBottom: 60 }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -521,7 +611,7 @@ export function TeacherAssignments() {
                   {asg.description}
                 </p>
 
-                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Clock size={14} style={{ color: '#0284c7' }} />
                     <span>Due: <b>{asg.due_date}</b></span>
@@ -531,6 +621,21 @@ export function TeacherAssignments() {
                     <span>Max Marks: <b>{asg.max_marks}</b></span>
                   </div>
                 </div>
+
+                {/* Attached Document indicator */}
+                {(asg.document_name || (asg.attachments && asg.attachments.length > 0)) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '5px 10px', borderRadius: 6, background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', width: 'fit-content', fontSize: 12 }}>
+                    <Paperclip size={13} style={{ color: '#0284c7' }} />
+                    <span style={{ fontWeight: 600, color: '#0369a1' }}>
+                      {asg.document_name || asg.attachments?.[0]?.file_name || 'Attached Document'}
+                    </span>
+                    {(asg.document_size || asg.attachments?.[0]?.file_size) && (
+                      <span style={{ color: '#64748b' }}>
+                        ({formatBytes(asg.document_size || asg.attachments?.[0]?.file_size)})
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -564,157 +669,442 @@ export function TeacherAssignments() {
 
       {/* Create Assignment Modal */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, width: '100%', maxWidth: 540, padding: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)', color: 'var(--text, #0f172a)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Publish New Assignment</h2>
-              <button type="button" onClick={() => setShowCreateModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {createFeedback && (
-              <div
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: createFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: createFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
-                  border: `1px solid ${createFeedback.type === 'success' ? 'var(--emerald-border, rgba(16, 185, 129, 0.3))' : 'var(--rose-border, rgba(239, 68, 68, 0.3))'}`
-                }}
-              >
-                {createFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                <span>{createFeedback.message}</span>
-              </div>
-            )}
-
-            {loadingOptions ? (
-              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #94a3b8)' }}>
-                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                <p>Checking mentor-authorized publishing options...</p>
-              </div>
-            ) : eligibleOptions.length === 0 ? (
-              <div style={{ padding: 16, borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: 13.5, marginBottom: 16, lineHeight: 1.5 }}>
-                <AlertTriangle size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: '-3px' }} />
-                <strong>No Mentor-Authorized Allocations:</strong> You do not currently have any class and subject allocations authorized for assignment publishing by the Class Mentor. Please contact your Class Mentor to authorize your subject.
-              </div>
-            ) : null}
-
-            <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Dynamic Target Class & Section Dropdown + Subject Dropdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                    Target Class & Section *
-                  </label>
-                  <select
-                    required
-                    disabled={loadingOptions || uniqueClassSections.length === 0}
-                    value={createForm.class_id && createForm.section_id ? `${createForm.class_id}:${createForm.section_id}` : ''}
-                    onChange={(e) => handleClassSectionChange(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 14, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
-                  >
-                    {uniqueClassSections.length === 0 ? (
-                      <option value="">No authorized classes</option>
-                    ) : (
-                      uniqueClassSections.map(cs => (
-                        <option key={`${cs.class_id}:${cs.section_id}`} value={`${cs.class_id}:${cs.section_id}`}>
-                          Class {cs.class_number} — Section {cs.section_name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: isCreateModalMaximized ? 8 : 16,
+            transition: 'all 0.2s ease'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !creating) {
+              setShowCreateModal(false);
+              setUploadedDocuments([]);
+              setUploadDocError(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border, #e2e8f0)',
+              borderRadius: isCreateModalMaximized ? 8 : 12,
+              width: isCreateModalMaximized ? '97vw' : '100%',
+              maxWidth: isCreateModalMaximized ? 1160 : 560,
+              height: isCreateModalMaximized ? '94vh' : 'auto',
+              maxHeight: isCreateModalMaximized ? '94vh' : 'min(92vh, 750px)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)',
+              color: 'var(--text, #0f172a)',
+              overflow: 'hidden',
+              transition: 'all 0.22s ease'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '13px 20px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                background: 'var(--modal-header, #f8fafc)',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: 'rgba(37, 99, 235, 0.1)',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <BookOpen size={17} />
                 </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                    Subject *
-                  </label>
-                  <select
-                    required
-                    disabled={loadingOptions || availableSubjects.length === 0}
-                    value={createForm.subject_id}
-                    onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 14, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
-                  >
-                    {availableSubjects.length === 0 ? (
-                      <option value="">No authorized subjects</option>
-                    ) : (
-                      availableSubjects.map(sub => (
-                        <option key={sub.subject_id} value={sub.subject_id}>
-                          {sub.subject_name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  Publish New Assignment
+                </h2>
               </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Chapter 4 Calculus Homework"
-                  value={createForm.title}
-                  onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Description / Instructions</label>
-                <AutoExpandingTextarea
-                  placeholder="Enter assignment details and instructions..."
-                  value={createForm.description}
-                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                  minHeight={70}
-                  maxHeight={250}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Due Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={createForm.due_date}
-                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>Max Marks</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={createForm.max_marks}
-                    onChange={(e) => setCreateForm({ ...createForm, max_marks: Number(e.target.value) })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 14 }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => setIsCreateModalMaximized(!isCreateModalMaximized)}
                   style={{
-                    padding: '8px 16px',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--surface, #ffffff)',
+                    borderRadius: 6,
+                    padding: '5px 9px',
+                    cursor: 'pointer',
+                    color: 'var(--text, #334155)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title={isCreateModalMaximized ? 'Restore normal window size' : 'Maximize to full screen'}
+                >
+                  {isCreateModalMaximized ? (
+                    <>
+                      <Minimize2 size={14} />
+                      <span>Restore</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 size={14} />
+                      <span>Maximize</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setUploadedDocuments([]);
+                    setUploadDocError(null);
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted, #64748b)',
+                    padding: 5,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Close"
+                >
+                  <X size={19} />
+                </button>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleCreateSubmit}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+                overflow: 'hidden'
+              }}
+            >
+              {/* Scrollable Form Body - Guarantees everything fits smoothly on screen */}
+              <div
+                style={{
+                  padding: '16px 20px',
+                  overflowY: 'auto',
+                  flex: 1,
+                  minHeight: 0
+                }}
+              >
+                {createFeedback && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      marginBottom: 14,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: createFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                      color: createFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
+                      border: `1px solid ${createFeedback.type === 'success' ? 'var(--emerald-border, rgba(16, 185, 129, 0.3))' : 'var(--rose-border, rgba(239, 68, 68, 0.3))'}`
+                    }}
+                  >
+                    {createFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                    <span>{createFeedback.message}</span>
+                  </div>
+                )}
+
+                {loadingOptions ? (
+                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted, #94a3b8)' }}>
+                    <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+                    <p style={{ margin: 0, fontSize: 13 }}>Checking mentor-authorized publishing options...</p>
+                  </div>
+                ) : eligibleOptions.length === 0 ? (
+                  <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: 13, marginBottom: 14, lineHeight: 1.45 }}>
+                    <AlertTriangle size={17} style={{ display: 'inline', marginRight: 8, verticalAlign: '-3px' }} />
+                    <strong>No Mentor-Authorized Allocations:</strong> You do not currently have any class and subject allocations authorized for assignment publishing by the Class Mentor. Please contact your Class Mentor to authorize your subject.
+                  </div>
+                ) : null}
+
+                {/* Form fields: 2 columns in maximized mode, clean stacked flow in normal mode */}
+                <div
+                  style={{
+                    display: isCreateModalMaximized ? 'grid' : 'flex',
+                    gridTemplateColumns: isCreateModalMaximized ? '1.05fr 0.95fr' : undefined,
+                    flexDirection: isCreateModalMaximized ? undefined : 'column',
+                    gap: isCreateModalMaximized ? 22 : 13
+                  }}
+                >
+                  {/* Left Column / Primary Info */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Dynamic Target Class & Section Dropdown + Subject Dropdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                          Target Class & Section *
+                        </label>
+                        <select
+                          required
+                          disabled={loadingOptions || uniqueClassSections.length === 0}
+                          value={createForm.class_id && createForm.section_id ? `${createForm.class_id}:${createForm.section_id}` : ''}
+                          onChange={(e) => handleClassSectionChange(e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
+                        >
+                          {uniqueClassSections.length === 0 ? (
+                            <option value="">No authorized classes</option>
+                          ) : (
+                            uniqueClassSections.map(cs => (
+                              <option key={`${cs.class_id}:${cs.section_id}`} value={`${cs.class_id}:${cs.section_id}`}>
+                                Class {cs.class_number} — Section {cs.section_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                          Subject *
+                        </label>
+                        <select
+                          required
+                          disabled={loadingOptions || availableSubjects.length === 0}
+                          value={createForm.subject_id}
+                          onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
+                        >
+                          {availableSubjects.length === 0 ? (
+                            <option value="">No authorized subjects</option>
+                          ) : (
+                            availableSubjects.map(sub => (
+                              <option key={sub.subject_id} value={sub.subject_id}>
+                                {sub.subject_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                        Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Chapter 4 Calculus Homework"
+                        value={createForm.title}
+                        onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                        Description / Instructions
+                      </label>
+                      <AutoExpandingTextarea
+                        placeholder="Enter assignment details and instructions..."
+                        value={createForm.description}
+                        onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                        minHeight={isCreateModalMaximized ? 120 : 60}
+                        maxHeight={260}
+                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column / Schedule & Attachments */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                          Due Date *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={createForm.due_date}
+                          onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
+                          Max Marks
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={createForm.max_marks}
+                          onFocus={e => e.target.select()}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            if (/^0\d/.test(val)) {
+                              val = val.replace(/^0+/, '');
+                              e.target.value = val;
+                            }
+                            setCreateForm({ ...createForm, max_marks: val === '' ? ('' as any) : Number(val) });
+                          }}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Document Upload Section */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Paperclip size={14} style={{ color: '#0284c7' }} />
+                          Upload Document / Study Material <span style={{ fontSize: 11.5, fontWeight: 400, color: 'var(--text-muted, #64748b)' }}>(Optional)</span>
+                        </label>
+                        {uploadedDocuments.length > 0 && (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                            {uploadedDocuments.length} / 5 files attached
+                          </span>
+                        )}
+                      </div>
+
+                      {uploadDocError && (
+                        <div style={{ padding: '6px 10px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <AlertCircle size={14} />
+                          <span>{uploadDocError}</span>
+                        </div>
+                      )}
+
+                      <div
+                        onClick={() => document.getElementById('teacher-assignment-doc-input')?.click()}
+                        style={{
+                          border: '1.5px dashed var(--border, #cbd5e1)',
+                          borderRadius: 8,
+                          padding: isCreateModalMaximized ? '22px 14px' : '10px 12px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          background: 'var(--card-subtle, #f8fafc)',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 3
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#0284c7')}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border, #cbd5e1)')}
+                      >
+                        <input
+                          id="teacher-assignment-doc-input"
+                          type="file"
+                          multiple
+                          accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
+                          style={{ display: 'none' }}
+                          onChange={handleTeacherFileChange}
+                          disabled={uploadedDocuments.length >= 5}
+                        />
+                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(2, 132, 199, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+                          <Upload size={15} />
+                        </div>
+                        <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                          Click or drop document files here
+                        </p>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
+                          PDF, DOC, DOCX, XLSX, PNG, JPG (Max 10MB per file)
+                        </p>
+                      </div>
+
+                      {/* Attached Documents List */}
+                      {uploadedDocuments.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+                          {uploadedDocuments.map((doc, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                background: 'var(--card-subtle, #f1f5f9)',
+                                border: '1px solid var(--border, #e2e8f0)',
+                                fontSize: 12
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
+                                <FileText size={14} style={{ color: '#0284c7', flexShrink: 0 }} />
+                                <span style={{ fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isCreateModalMaximized ? 420 : 260 }}>
+                                  {doc.name}
+                                </span>
+                                <span style={{ color: 'var(--text-muted, #64748b)', fontSize: 11 }}>
+                                  ({formatBytes(doc.size)})
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDoc(idx)}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex' }}
+                                title="Remove file"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fixed Modal Footer - Always visible on screen, never cut off */}
+              <div
+                style={{
+                  padding: '11px 20px',
+                  borderTop: '1px solid var(--border, #e2e8f0)',
+                  background: 'var(--modal-footer, #f8fafc)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexShrink: 0
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setUploadedDocuments([]);
+                    setUploadDocError(null);
+                  }}
+                  style={{
+                    padding: '7px 15px',
                     borderRadius: 6,
                     border: '1px solid var(--border, #cbd5e1)',
                     background: 'var(--card-subtle, #fff)',
                     color: 'var(--text, #475569)',
                     fontWeight: 600,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontSize: 13
                   }}
                 >
                   Cancel
@@ -723,7 +1113,7 @@ export function TeacherAssignments() {
                   type="submit"
                   disabled={creating || loadingOptions || eligibleOptions.length === 0 || !createForm.class_id || !createForm.subject_id}
                   style={{
-                    padding: '8px 18px',
+                    padding: '7px 18px',
                     borderRadius: 6,
                     border: 'none',
                     background: (creating || eligibleOptions.length === 0) ? '#94a3b8' : '#2563eb',
@@ -732,10 +1122,11 @@ export function TeacherAssignments() {
                     cursor: (creating || eligibleOptions.length === 0) ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6
+                    gap: 6,
+                    fontSize: 13
                   }}
                 >
-                  {creating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Publish
+                  {creating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Assignment
                 </button>
               </div>
             </form>
@@ -745,8 +1136,8 @@ export function TeacherAssignments() {
 
       {/* Submissions & Grading Modal */}
       {activeAssignment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', padding: 24, color: 'var(--text, #0f172a)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isSubmissionsMaximized ? 8 : 16, transition: 'all 0.2s ease' }}>
+          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: isSubmissionsMaximized ? 8 : 12, width: isSubmissionsMaximized ? '97vw' : '100%', maxWidth: isSubmissionsMaximized ? 1200 : 780, height: isSubmissionsMaximized ? '94vh' : 'auto', maxHeight: isSubmissionsMaximized ? '94vh' : 'min(92vh, 800px)', overflowY: 'auto', padding: isSubmissionsMaximized ? '18px 24px' : '20px 24px', color: 'var(--text, #0f172a)', transition: 'all 0.22s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border, #f1f5f9)', paddingBottom: 12 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
@@ -756,9 +1147,33 @@ export function TeacherAssignments() {
                   Max Marks: <b>{activeAssignment.max_marks}</b> | Due: <b>{activeAssignment.due_date}</b>
                 </span>
               </div>
-              <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}>
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsSubmissionsMaximized(!isSubmissionsMaximized)}
+                  style={{
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--surface, #ffffff)',
+                    borderRadius: 6,
+                    padding: '5px 9px',
+                    cursor: 'pointer',
+                    color: 'var(--text, #334155)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title={isSubmissionsMaximized ? 'Restore standard window size' : 'Maximize to full screen'}
+                >
+                  {isSubmissionsMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  <span>{isSubmissionsMaximized ? 'Restore' : 'Maximize'}</span>
+                </button>
+                <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 5, borderRadius: 6 }}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {gradeFeedback && (
@@ -893,7 +1308,15 @@ export function TeacherAssignments() {
                         max={activeAssignment.max_marks}
                         required
                         value={gradeForm.marks_obtained}
-                        onChange={(e) => setGradeForm({ ...gradeForm, marks_obtained: Number(e.target.value) })}
+                        onFocus={e => e.target.select()}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (/^0\d/.test(val)) {
+                            val = val.replace(/^0+/, '');
+                            e.target.value = val;
+                          }
+                          setGradeForm({ ...gradeForm, marks_obtained: val === '' ? ('' as any) : Number(val) });
+                        }}
                         style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
                       />
                     </div>

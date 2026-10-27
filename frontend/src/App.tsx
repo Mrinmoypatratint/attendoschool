@@ -34,6 +34,7 @@ const ClassMentorWorkspace = lazy(() => import('./pages/teacher/ClassMentorWorks
 const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments'));
 const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
 const Designations = lazy(() => import('./pages/admin/Designations'));
+const LeavePolicy = lazy(() => import('./pages/admin/LeavePolicy'));
 const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 import * as XLSX from 'xlsx';
@@ -1602,8 +1603,8 @@ function SuperAdminHeader({
               onClick={() => setSessionOpen(s => !s)}
               title="Switch Academic Session"
             >
-              <Calendar size={14} />
-              <span>{currentSession}</span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+              <span>{currentSession ? `${String(currentSession).replace(/\b(academic\s+)?sessions?\b/gi, '').trim()} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
               <ChevronDown size={14} style={{ opacity: 0.7, transform: sessionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
             </div>
 
@@ -2374,6 +2375,14 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['smtp', 'email logs', 'delivery', 'welcome emails', 'mail status']
         },
         {
+          path: '/leave-policy',
+          label: 'Leave Policy',
+          category: 'Management',
+          description: 'Configure institutional leave types, dynamic counts, and yearly or half-yearly renewal cycles',
+          icon: FileText,
+          keywords: ['leave policy', 'casual leave', 'sick leave', 'earned leave', 'leave rules', 'yearly leave', 'half yearly leave']
+        },
+        {
           path: '/teacher-leave-approvals',
           label: 'Teacher Leave Review',
           category: 'Reviews & Approvals',
@@ -2412,14 +2421,6 @@ function Layout({children}:{children:React.ReactNode}){
           description: 'Attendance analytics, visual charts, trends and KPIs',
           icon: BarChart3,
           keywords: ['analytics', 'charts', 'trends', 'metrics', 'kpi', 'reports']
-        },
-        {
-          path: '/subscription',
-          label: 'Subscription Plan',
-          category: 'Billing',
-          description: 'Manage subscription plan, limits & renewal details',
-          icon: CreditCard,
-          keywords: ['subscription', 'plan', 'billing', 'upgrade', 'license']
         },
         {
           path: '/invoices',
@@ -2774,9 +2775,9 @@ function Layout({children}:{children:React.ReactNode}){
     ['—', 'MANAGEMENT'],
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
+    ['/leave-policy', 'Leave Policy', FileText],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
-    ['/subscription', 'Subscription', CreditCard],
     ['/invoices', 'Invoices', FileText],
     ['/payments', 'Payments', CreditCard],
     ['—', 'SETTINGS'],
@@ -3061,8 +3062,8 @@ function Layout({children}:{children:React.ReactNode}){
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
                 title="Switch Academic Session"
               >
-                <Calendar size={14} color="#10b981" />
-                <span>{activeSessionName ? `${activeSessionName} Session` : 'Academic Session'}</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
               {ayDropdownOpen && (
@@ -3181,9 +3182,10 @@ function Layout({children}:{children:React.ReactNode}){
                 className="session-pill"
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
                 onClick={() => { setAyDropdownOpen(prev => !prev); if (!ayDropdownOpen) loadAcademicYears(); }}
+                title="Switch Academic Session"
               >
-                <Calendar size={14} color="#10b981" />
-                <span>{activeSessionName} Session</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{activeSessionName ? `${activeSessionName} ACADEMIC SESSION` : 'ACADEMIC SESSION'}</span>
                 <ChevronDown size={14} style={{ opacity: 0.7, transform: ayDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </div>
               {ayDropdownOpen && (
@@ -4306,15 +4308,15 @@ function AdminHome(){
         </div>
         <div className="kpi-body" style={{ width: '100%' }}>
           <span className="kpi-label">Students (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
             </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
             </span>
           </div>
           <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4339,15 +4341,15 @@ function AdminHome(){
         </div>
         <div className="kpi-body" style={{ width: '100%' }}>
           <span className="kpi-label">Faculty (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0284c7' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Male:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
             </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#db2777' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Female:</span>
-              <strong style={{ fontSize: 18, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
             </span>
           </div>
           <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
@@ -4386,6 +4388,7 @@ function AdminHome(){
         </div>
       </div> */}
 
+      {/* Subscription Tier card removed as requested
       <div className="kpi-card" onClick={() => nav('/subscription')}>
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
         <div className="kpi-body">
@@ -4400,7 +4403,7 @@ function AdminHome(){
           </strong>
           <span className="kpi-sub neutral">{sub?.days_remaining ?? 365} days validity remaining</span>
         </div>
-      </div>
+      </div> */}
     </div>
 
     {/* Attendance Overview & Quick Actions 2-Column Section */}
@@ -9892,8 +9895,30 @@ function Teachers(){
     setTeacherPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
       if (editingTeacher) {
+        const oldDesig = (editingTeacher.designation || '').trim();
+        const newDesig = (payload.designation || '').trim();
+        const isPromoted = Boolean(oldDesig && newDesig && oldDesig.toLowerCase() !== newDesig.toLowerCase());
+
+        payload.previous_designation = oldDesig;
+        payload.previousDesignation = oldDesig;
+
         const res = await api.put(`/teachers/${editingTeacher.id}`, payload);
         const updated = res.data;
+
+        // If designation changed, also explicitly log via /designations/promote
+        if (isPromoted) {
+          try {
+            await api.post('/designations/promote', {
+              teacher_id: editingTeacher.id,
+              previous_position: oldDesig,
+              current_position: newDesig,
+              promotion_date: new Date().toISOString().slice(0, 10),
+              notes: `Promoted from ${oldDesig} to ${newDesig} via Faculty Directory edit`
+            });
+          } catch (promoErr) {
+            console.warn('[Edit Teacher] Logged via teacher update:', promoErr);
+          }
+        }
         setRows(prev => prev.map(r => r.id === editingTeacher.id ? {
           ...r,
           ...updated,
@@ -10663,7 +10688,7 @@ function Teachers(){
       )}
       <table>
         <thead>
-          <tr>
+          <tr style={{ verticalAlign: 'middle' }}>
             <th style={{ width: 36, textAlign: 'center' }}>
               <input 
                 type="checkbox" 
@@ -10672,12 +10697,16 @@ function Teachers(){
                 title="Select all on this page"
               />
             </th>
-            <th style={{ whiteSpace: 'nowrap' }}>Employee Id / Savior_NO</th>
+            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              Employee Id /<br />Savior_NO
+            </th>
             <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
             <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
             <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
             <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Assigned Classes</th>
+            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+              Assigned<br />Classes
+            </th>
             <th style={{ whiteSpace: 'nowrap' }}>Email</th>
             <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
             <th style={{ whiteSpace: 'nowrap' }}>Status</th>
@@ -13200,6 +13229,49 @@ function Subjects(){
     }
   }
 
+  const [editSubjectDialog, setEditSubjectDialog] = useState<{
+    isOpen: boolean;
+    subjectId?: string;
+    subjectName?: string;
+    newName?: string;
+    loading: boolean;
+    error: string | null;
+  }>({ isOpen: false, loading: false, error: null });
+
+  function promptEditSubject(sub: any) {
+    setEditSubjectDialog({
+      isOpen: true,
+      subjectId: sub.id,
+      subjectName: sub.name,
+      newName: sub.name,
+      loading: false,
+      error: null
+    });
+  }
+
+  async function executeConfirmEditSubject(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!editSubjectDialog.subjectId) return;
+    const trimmed = (editSubjectDialog.newName || '').trim();
+    if (!trimmed) {
+      setEditSubjectDialog(prev => ({ ...prev, error: 'Subject name cannot be empty' }));
+      return;
+    }
+    setEditSubjectDialog(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const res = await api.put(`/subjects/${editSubjectDialog.subjectId}`, { name: trimmed });
+      const updated = res.data;
+      setRows(prev => prev.map(r => r.id === editSubjectDialog.subjectId ? { ...r, name: updated.name || trimmed } : r));
+      setEditSubjectDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+    } catch (err: any) {
+      setEditSubjectDialog(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || 'Could not update subject'
+      }));
+    }
+  }
+
   return <Layout>
     <PageHead title="Subjects" sub="Subjects used by class routines."/>
     <div className="panel narrow">
@@ -13210,25 +13282,49 @@ function Subjects(){
       <div className="list">
         {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
-          <button
-            type="button"
-            className="table-action-btn danger"
-            onClick={() => promptDeleteSubject(x)}
-            title={`Delete ${x.name}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 12.5
-            }}
-          >
-            <Trash2 size={13} />
-            <span>Delete</span>
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => promptEditSubject(x)}
+              title={`Edit ${x.name}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 12.5,
+                border: '1px solid var(--border, #cbd5e1)',
+                background: 'var(--bg-card, #ffffff)',
+                color: '#2563eb'
+              }}
+            >
+              <Pencil size={13} />
+              <span>Edit</span>
+            </button>
+            <button
+              type="button"
+              className="table-action-btn danger"
+              onClick={() => promptDeleteSubject(x)}
+              title={`Delete ${x.name}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 12.5
+              }}
+            >
+              <Trash2 size={13} />
+              <span>Delete</span>
+            </button>
+          </div>
         </div>)}
         {rows.length === 0 && (
           <p className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>No subjects added yet.</p>
@@ -13277,6 +13373,142 @@ function Subjects(){
       loading={deleteSubjectDialog.loading}
       error={deleteSubjectDialog.error}
     />
+
+    {/* Edit Subject Modal */}
+    {editSubjectDialog.isOpen && (
+      <div 
+        className="modal-backdrop" 
+        onClick={() => !editSubjectDialog.loading && setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}
+      >
+        <div 
+          className="modal-content" 
+          onClick={e => e.stopPropagation()}
+          style={{
+            maxWidth: 440,
+            width: '100%',
+            padding: 24,
+            borderRadius: 12,
+            background: 'var(--bg-card, #ffffff)',
+            border: '1px solid var(--border, #e2e8f0)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text, #1e293b)' }}>
+              <Pencil size={18} color="#2563eb" /> Edit Subject
+            </h3>
+            <button
+              type="button"
+              onClick={() => setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+              disabled={editSubjectDialog.loading}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={executeConfirmEditSubject}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--text, #334155)' }}>
+                Subject Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Subject name (e.g. Mathematics)"
+                value={editSubjectDialog.newName || ''}
+                onChange={e => setEditSubjectDialog(prev => ({ ...prev, newName: e.target.value, error: null }))}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  fontSize: 14,
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                Updating the subject name will automatically reflect across all class routines and schedules.
+              </p>
+            </div>
+
+            {editSubjectDialog.error && (
+              <div style={{
+                marginBottom: 16,
+                padding: '8px 12px',
+                borderRadius: 6,
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                fontSize: 12.5
+              }}>
+                {editSubjectDialog.error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={editSubjectDialog.loading}
+                onClick={() => setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'transparent'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={editSubjectDialog.loading || !editSubjectDialog.newName?.trim()}
+                style={{
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  cursor: (editSubjectDialog.loading || !editSubjectDialog.newName?.trim()) ? 'not-allowed' : 'pointer',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                {editSubjectDialog.loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
   </Layout>
 }
 
@@ -17844,6 +18076,8 @@ function App(){
         <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
         <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
+        <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeavePolicy/></Layout></RoleGuard>}/>
+        <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace/>}/>
         <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
         <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
@@ -17874,7 +18108,7 @@ function App(){
         <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
         <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
         <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/subscription" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SubscriptionPage/></RoleGuard>}/>
+        <Route path="/subscription" element={<Navigate to="/dashboard" replace />} />
         {/* Student Portal Routes */}
         <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
         <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>

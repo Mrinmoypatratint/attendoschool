@@ -142,7 +142,23 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
         `;
         const unifiedParams = targetYear?.id ? [sid, targetYear.id] : [sid];
 
-        const weeklyTrendQuery = `
+        const weeklyTrendQuery = targetYear?.id ? `
+          SELECT
+            s.attendance_date,
+            COUNT(CASE WHEN ar.status = 'PRESENT' OR (ar.status NOT IN ('ABSENT', 'LEFT_EARLY') AND ar.is_present = true) THEN 1 END)::int as present,
+            COUNT(CASE WHEN ar.status = 'ABSENT' OR (ar.is_present = false AND ar.status != 'LEFT_EARLY') THEN 1 END)::int as absent,
+            COUNT(*)::int as total
+          FROM attendance_records ar
+          JOIN attendance_sessions s ON s.id = ar.attendance_session_id
+          JOIN students st ON st.id = ar.student_id
+          WHERE s.school_id = $1 
+            AND s.attendance_date >= $2 
+            AND s.attendance_date <= $3
+            AND st.academic_year_id = $4
+            AND st.is_active = true
+          GROUP BY s.attendance_date
+          ORDER BY s.attendance_date ASC;
+        ` : `
           SELECT
             attendance_date,
             SUM(present_count)::int as present,
@@ -153,6 +169,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           GROUP BY attendance_date
           ORDER BY attendance_date ASC;
         `;
+        const weeklyTrendParams = targetYear?.id ? [sid, monStr, friStr, targetYear.id] : [sid, monStr, friStr];
 
         const [kpiRes, todayAtt, weekTrendRes] = await Promise.all([
           pool.query(unifiedKpiQuery, unifiedParams).catch(async (unifiedErr) => {
@@ -204,14 +221,14 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
               }]
             };
           }),
-          DualDatabaseService.getTodayAttendanceFromSupabase(sid, todayStr).catch(() => ({
+          DualDatabaseService.getTodayAttendanceFromSupabase(sid, todayStr, targetYear?.id).catch(() => ({
             total: 0,
             present: 0,
             absent: 0,
             percentage: 0,
             classBreakdown: []
           })),
-          pool.query(weeklyTrendQuery, [sid, monStr, friStr]).catch(() => ({ rows: [] }))
+          pool.query(weeklyTrendQuery, weeklyTrendParams).catch(() => ({ rows: [] }))
         ]);
 
         const kpi = kpiRes.rows[0] || {};
@@ -221,6 +238,16 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           code: userSchoolCode,
           status: 'ACTIVE'
         };
+
+        // Strict Zero-Student Rule: If no students are enrolled in this academic session, today's attendance must be 0% with 0 present and 0 absent
+        const enrolledCount = Number(kpi.total_students) || 0;
+        if (enrolledCount === 0) {
+          todayAtt.total = 0;
+          todayAtt.present = 0;
+          todayAtt.absent = 0;
+          todayAtt.percentage = 0;
+          todayAtt.classBreakdown = [];
+        }
 
         const tot = todayAtt.total || 0;
         const pres = todayAtt.present || 0;
@@ -241,9 +268,9 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           d.setDate(monDate.getDate() + idx);
           const dStr = d.toISOString().slice(0, 10);
           const rec = trendMap.get(dStr);
-          const dayTotal = rec ? Number(rec.total) || 0 : (dStr === todayStr ? tot : 0);
-          const dayPres = rec ? Number(rec.present) || 0 : (dStr === todayStr ? pres : 0);
-          const dayAbs = rec ? Number(rec.absent) || 0 : (dStr === todayStr ? abs : 0);
+          const dayTotal = enrolledCount === 0 ? 0 : (rec ? Number(rec.total) || 0 : (dStr === todayStr ? tot : 0));
+          const dayPres = enrolledCount === 0 ? 0 : (rec ? Number(rec.present) || 0 : (dStr === todayStr ? pres : 0));
+          const dayAbs = enrolledCount === 0 ? 0 : (rec ? Number(rec.absent) || 0 : (dStr === todayStr ? abs : 0));
           const dayPct = dayTotal > 0 ? Number(((dayPres / dayTotal) * 100).toFixed(1)) : 0;
           return {
             day: dayName,

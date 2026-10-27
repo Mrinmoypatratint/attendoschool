@@ -94,6 +94,10 @@ export async function ensureTables() {
       );
       CREATE INDEX IF NOT EXISTS idx_notification_replies_announcement 
         ON notification_replies(announcement_id, created_at ASC);
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_url TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_name TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_type TEXT;
+      ALTER TABLE announcements ADD COLUMN IF NOT EXISTS attachment_size INTEGER;
     `);
     tablesInitialized = true;
   } catch (err) {
@@ -131,7 +135,8 @@ async function resolveClassAndSectionUuids(schoolId: string, classId?: string | 
   }
 
   if (sUuid && !isUuid(sUuid)) {
-    const sName = String(sUuid).toUpperCase().includes('B') ? 'B' : 'A';
+    const match = String(sUuid).match(/sec-([a-z0-9]+)/i) || String(sUuid).match(/section\s*([a-z0-9]+)/i);
+    const sName = match ? match[1].toUpperCase() : String(sUuid).trim().toUpperCase();
     if (cUuid && isUuid(cUuid)) {
       try {
         const q = await pool.query('SELECT id FROM sections WHERE class_id = $1 AND UPPER(name) = $2 LIMIT 1', [cUuid, sName]);
@@ -172,11 +177,16 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
   const initStatus = d.scheduledAt ? 'SCHEDULED' : (isDirectPublish ? 'PUBLISHED' : 'DRAFT');
   const pubAt = isDirectPublish ? new Date().toISOString() : null;
 
+  const attachmentUrl = d.attachment_url || d.attachmentUrl || null;
+  const attachmentName = d.attachment_name || d.attachmentName || null;
+  const attachmentType = d.attachment_type || d.attachmentType || null;
+  const attachmentSize = d.attachment_size || d.attachmentSize || null;
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO announcements
-       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz)
+       (school_id, created_by, title, message, audience_type, class_id, section_id, priority, scheduled_at, expires_at, status, published_at, attachment_url, attachment_name, attachment_type, attachment_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10::timestamptz, $11, $12::timestamptz, $13, $14, $15, $16)
        RETURNING *`,
       [
         safeSchoolId,
@@ -190,7 +200,11 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
         d.scheduledAt || null,
         d.expiresAt || null,
         initStatus,
-        pubAt
+        pubAt,
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize
       ]
     );
     if (rows && rows.length > 0) return rows[0];
@@ -219,7 +233,11 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     updated_at: new Date().toISOString(),
     recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : audience === 'SECTION' ? 15 : 30,
     read_count: 0,
-    reply_count: 0
+    reply_count: 0,
+    attachment_url: attachmentUrl,
+    attachment_name: attachmentName,
+    attachment_type: attachmentType,
+    attachment_size: attachmentSize
   };
   memAnnouncements.unshift(item);
   return item;
@@ -242,11 +260,17 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
   const targetClassId = (audience === 'CLASS' || audience === 'SECTION') ? resolvedClassId : null;
   const targetSectionId = audience === 'SECTION' ? resolvedSectionId : null;
 
+  const attachmentUrl = d.attachment_url !== undefined ? d.attachment_url : (d.attachmentUrl !== undefined ? d.attachmentUrl : null);
+  const attachmentName = d.attachment_name !== undefined ? d.attachment_name : (d.attachmentName !== undefined ? d.attachmentName : null);
+  const attachmentType = d.attachment_type !== undefined ? d.attachment_type : (d.attachmentType !== undefined ? d.attachmentType : null);
+  const attachmentSize = d.attachment_size !== undefined ? d.attachment_size : (d.attachmentSize !== undefined ? d.attachmentSize : null);
+
   try {
     const { rows } = await pool.query(
       `UPDATE announcements
-       SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6, updated_at = NOW()
-       WHERE id = $7 AND (school_id = $8 OR school_id = '00000000-0000-0000-0000-000000000001')
+       SET title = $1, message = $2, audience_type = $3, class_id = $4, section_id = $5, priority = $6,
+           attachment_url = $7, attachment_name = $8, attachment_type = $9, attachment_size = $10, updated_at = NOW()
+       WHERE id = $11 AND (school_id = $12 OR school_id = '00000000-0000-0000-0000-000000000001')
        RETURNING *`,
       [
         d.title,
@@ -255,6 +279,10 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
         targetClassId,
         targetSectionId,
         d.priority || 'NORMAL',
+        attachmentUrl,
+        attachmentName,
+        attachmentType,
+        attachmentSize,
         id,
         schoolId
       ]
@@ -277,6 +305,10 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
       class_number: d.class_number ?? d.classNumber ?? memAnnouncements[idx].class_number,
       section_name: d.section_name ?? d.sectionName ?? memAnnouncements[idx].section_name,
       priority: d.priority || 'NORMAL',
+      attachment_url: attachmentUrl,
+      attachment_name: attachmentName,
+      attachment_type: attachmentType,
+      attachment_size: attachmentSize,
       updated_at: new Date().toISOString()
     };
     return memAnnouncements[idx];
@@ -597,6 +629,7 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
 
       const { rows } = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.published_at, a.created_at,
+                a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
                 u.name AS author_name,
                 r.read_at, r.id AS recipient_id
          FROM announcements a
@@ -679,6 +712,7 @@ export async function parentInbox(parentUserId: string, schoolId: string) {
 
     const { rows } = await pool.query(
       `SELECT DISTINCT a.id, a.title, a.message, a.priority, a.published_at, a.expires_at, a.audience_type,
+        a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
         r.id AS recipient_id, COALESCE(r.student_id, $3) AS student_id, r.delivery_channel, r.delivery_status, r.delivered_at, r.read_at,
         c.class_number, sec.name AS section_name
        FROM announcements a

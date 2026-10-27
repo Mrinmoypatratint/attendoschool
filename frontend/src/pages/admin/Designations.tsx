@@ -137,7 +137,7 @@ export default function Designations() {
       const [desigRes, promoRes, teachRes] = await Promise.all([
         api.get('/designations').catch(() => ({ data: [] })),
         api.get('/designations/promotions').catch(() => ({ data: [] })),
-        api.get('/teachers').catch(() => ({ data: [] }))
+        api.get('/teachers?limit=1000').catch(() => ({ data: [] }))
       ]);
       const desigData = Array.isArray(desigRes.data) ? desigRes.data : (desigRes.data?.data || []);
       const promoData = Array.isArray(promoRes.data) ? promoRes.data : (promoRes.data?.data || []);
@@ -514,7 +514,7 @@ export default function Designations() {
   };
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 48px' }}>
+    <div style={{ width: '100%', paddingBottom: 48 }}>
       {/* Page Header */}
       <div
         style={{
@@ -1256,7 +1256,9 @@ export default function Designations() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Title */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  Designation Title <span style={{ color: '#ef4444' }}>*</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Designation <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
                   <input
                     type="text"
                     required
@@ -1610,7 +1612,9 @@ export default function Designations() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Select Teacher */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  Select Faculty Member <span style={{ color: '#ef4444' }}>*</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Select Faculty Member <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
                   <select
                     value={promoteTeacherId}
                     onChange={e => handleSelectTeacherForPromotion(e.target.value)}
@@ -1674,7 +1678,7 @@ export default function Designations() {
 
                   {/* New Position Dropdown */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       Promoted To <span style={{ color: '#ef4444' }}>*</span>
                     </div>
                     <select
@@ -1704,7 +1708,9 @@ export default function Designations() {
 
                 {/* Promotion Date */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  Effective Promotion Date <span style={{ color: '#ef4444' }}>*</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Effective Promotion Date <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
                   <input
                     type="date"
                     value={promoteDate}

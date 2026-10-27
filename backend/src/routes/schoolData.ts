@@ -4304,6 +4304,47 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const rawDesig = req.body.designation;
   const resolvedDesig = rawDesig !== undefined ? (rawDesig ? String(rawDesig).trim() : 'Teacher') : (existingDocData.designation || demoTeachers[idx]?.designation || 'Teacher');
 
+  // Capture existing teacher details and designation BEFORE updating
+  let prevDesig = (req.body.previous_designation || req.body.previousDesignation || '').trim();
+  let prevEmployeeId = employeeId || employee_id || '';
+  let teacherNameForLog = name || '';
+  let effectiveSchoolId = resolvedSchoolId || userSchoolId;
+
+  if (isPostgresConfigured) {
+    try {
+      const prevQ = await pool.query(
+        `SELECT u.name, u.school_id, tp.designation, tp.employee_id, u.email 
+         FROM users u 
+         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id 
+         WHERE u.id = $1`,
+        [tid]
+      );
+      if (prevQ.rows.length > 0) {
+        if (!prevDesig && prevQ.rows[0].designation) {
+          prevDesig = String(prevQ.rows[0].designation).trim();
+        }
+        if (!prevEmployeeId && prevQ.rows[0].employee_id) {
+          prevEmployeeId = prevQ.rows[0].employee_id;
+        }
+        if (!teacherNameForLog && prevQ.rows[0].name) {
+          teacherNameForLog = prevQ.rows[0].name;
+        }
+        if (!effectiveSchoolId && prevQ.rows[0].school_id) {
+          effectiveSchoolId = prevQ.rows[0].school_id;
+        }
+      }
+    } catch (e) {
+      console.warn('[Teacher Edit] Error querying previous designation from DB:', e);
+    }
+  }
+
+  if (!prevDesig) {
+    prevDesig = existingDocData.designation || (demoTeachers[idx] && demoTeachers[idx].designation) || '';
+  }
+  if (!teacherNameForLog) {
+    teacherNameForLog = existingDocData.name || demoTeachers[idx]?.name || 'Teacher';
+  }
+
   try {
     await pool.query(
       `UPDATE users SET name=$1, email=$2, is_active=$3, updated_at=NOW() WHERE id=$4 AND school_id=$5`,
@@ -4314,16 +4355,50 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
       [employeeId || employee_id || existingDocData.employee_id || demoTeachers[idx]?.employee_id, mobile || phone || existingDocData.mobile || demoTeachers[idx]?.mobile, resolvedGender, toDbDate(resolvedJoining), resolvedDesig, resolvedClass, resolvedSection, tid, computedFirst || null, computedMiddle || null, computedLast || null]
     );
 
-    const prevDesig = existingDocData.designation || (demoTeachers[idx] && demoTeachers[idx].designation) || '';
-    if (prevDesig && resolvedDesig && prevDesig.trim().toLowerCase() !== resolvedDesig.trim().toLowerCase()) {
+    const cleanOldPos = (prevDesig || 'Teacher').trim();
+    const cleanNewPos = (resolvedDesig || 'Teacher').trim();
+
+    if (cleanOldPos && cleanNewPos && cleanOldPos.toLowerCase() !== cleanNewPos.toLowerCase()) {
       try {
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS teacher_promotions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            school_id UUID NOT NULL,
+            teacher_id UUID NOT NULL,
+            teacher_name VARCHAR(255) NOT NULL,
+            employee_id VARCHAR(100),
+            email VARCHAR(255),
+            previous_position VARCHAR(255) NOT NULL,
+            current_position VARCHAR(255) NOT NULL,
+            promotion_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            notes TEXT,
+            promoted_by VARCHAR(255),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+          );
+          CREATE INDEX IF NOT EXISTS idx_teacher_promotions_school ON teacher_promotions(school_id);
+          CREATE INDEX IF NOT EXISTS idx_teacher_promotions_teacher ON teacher_promotions(teacher_id);
+        `);
+
+        const promoSid = effectiveSchoolId || userSchoolId || '00000000-0000-0000-0000-000000000001';
         await pool.query(
-          `INSERT INTO teacher_promotions (school_id, teacher_id, teacher_name, employee_id, email, previous_position, current_position, promotion_date, notes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), 'Designation updated via teacher profile')`,
-          [userSchoolId, tid, name || existingDocData.name || demoTeachers[idx]?.name || 'Teacher', employeeId || existingDocData.employee_id || '', cleanEmail, prevDesig.trim(), resolvedDesig.trim()]
+          `INSERT INTO teacher_promotions 
+             (school_id, teacher_id, teacher_name, employee_id, email, previous_position, current_position, promotion_date, notes, promoted_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)`,
+          [
+            promoSid,
+            tid,
+            teacherNameForLog,
+            prevEmployeeId || employeeId || existingDocData.employee_id || '',
+            cleanEmail,
+            cleanOldPos,
+            cleanNewPos,
+            `Promoted from ${cleanOldPos} to ${cleanNewPos} via Faculty Directory edit`,
+            req.user?.email || 'School Administration'
+          ]
         );
+        fastCache.delete(`designations:${promoSid}`);
       } catch (pErr) {
-        console.warn('[Teacher Promotion] Could not auto-log promotion:', pErr);
+        console.warn('[Teacher Promotion] Could not auto-log promotion in schoolData:', pErr);
       }
     }
   } catch {}
@@ -4522,6 +4597,55 @@ r.post('/subjects',...admin,async(req:AuthRequest,res)=>{
  syncSubjectToFirestore(newSub).catch(() => {});
  if (sid) fastCache.delete(`subjects:${sid}`);
  res.status(201).json(newSub);
+});
+
+r.put('/subjects/:id',...admin,async(req:AuthRequest,res)=>{
+  const sid = req.user!.schoolId;
+  const subId = String(req.params.id);
+  const { name } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ message: 'Subject name is required' });
+  const cleanName = String(name).trim();
+
+  try {
+    if (isPostgresConfigured && isUuid(subId)) {
+      const q = await pool.query(
+        'UPDATE subjects SET name = $1 WHERE id = $2 AND school_id = $3 RETURNING *',
+        [cleanName, subId, sid]
+      );
+      if (q.rowCount) {
+        const updated = { ...q.rows[0], school_id: sid };
+        const demoIdx = demoSubjects.findIndex(s => s.id === subId);
+        if (demoIdx >= 0) demoSubjects[demoIdx] = { ...demoSubjects[demoIdx], name: cleanName };
+        syncSubjectToFirestore(updated).catch(() => {});
+        if (sid) {
+          fastCache.delete(`subjects:${sid}`);
+          invalidateSchoolCache(sid);
+        }
+        return res.json(updated);
+      }
+    }
+  } catch (err: any) {
+    console.error('[UpdateSubject] SQL error:', err);
+    return res.status(400).json({ message: err?.message || 'Could not update subject' });
+  }
+
+  const idx = demoSubjects.findIndex(s => s.id === subId && (!s.school_id || isSameSchool(s.school_id, sid)));
+  if (idx >= 0) {
+    demoSubjects[idx] = { ...demoSubjects[idx], name: cleanName };
+    syncSubjectToFirestore(demoSubjects[idx]).catch(() => {});
+    if (sid) {
+      fastCache.delete(`subjects:${sid}`);
+      invalidateSchoolCache(sid);
+    }
+    return res.json(demoSubjects[idx]);
+  }
+  const fallbackUpdated = { id: subId, name: cleanName, school_id: sid };
+  syncSubjectToFirestore(fallbackUpdated).catch(() => {});
+  if (sid) {
+    fastCache.delete(`subjects:${sid}`);
+    invalidateSchoolCache(sid);
+  }
+  res.json(fallbackUpdated);
 });
 
 r.delete('/subjects/:id',...admin,async(req:AuthRequest,res)=>{

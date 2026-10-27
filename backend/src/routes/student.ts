@@ -282,6 +282,135 @@ router.get('/assignments/:id/attachments/:attachmentId/download', async (req: Au
   }
 });
 
+// GET /api/student/assignments/:id/document/preview - Preview teacher's uploaded assignment document
+router.get('/assignments/:id/document/preview', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId } = req.params;
+    const q = await pool.query(
+      `SELECT a.* FROM student_assignments a
+       JOIN students st ON st.school_id = a.school_id AND st.class_id = a.class_id AND (a.section_id IS NULL OR a.section_id = st.section_id)
+       WHERE a.id = $1 AND a.school_id = $2 AND st.user_id = $3`,
+      [assignmentId, req.user!.schoolId!, req.user!.id]
+    );
+
+    if (q.rowCount === 0) {
+      return res.status(404).json({ message: 'Assignment document not found or access denied' });
+    }
+
+    const asg = q.rows[0];
+    const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
+    let targetDoc: any = null;
+    if (attId && Array.isArray(asg.attachments)) {
+      targetDoc = asg.attachments.find((a: any) => a.id === attId);
+    }
+    if (!targetDoc) {
+      targetDoc = {
+        file_name: asg.document_name,
+        mime_type: asg.document_mime,
+        storage_key: asg.storage_key,
+        file_data: asg.document_data
+      };
+    }
+
+    if (!targetDoc.file_name && !targetDoc.file_data && !targetDoc.storage_key) {
+      return res.status(404).json({ message: 'No document attached to this assignment' });
+    }
+
+    let buffer: Buffer | null = null;
+    let mimeType = targetDoc.mime_type || 'application/octet-stream';
+    const fileName = targetDoc.file_name || 'assignment-document.pdf';
+
+    if (targetDoc.storage_key) {
+      try {
+        const dl = await downloadFromStorage(targetDoc.storage_key);
+        buffer = dl.buffer;
+        mimeType = dl.mimeType || mimeType;
+      } catch (_e) {}
+    }
+
+    if (!buffer && targetDoc.file_data) {
+      const cleanBase64 = String(targetDoc.file_data).replace(/^data:[^;]+;base64,/, '');
+      buffer = Buffer.from(cleanBase64, 'base64');
+    }
+
+    if (!buffer) {
+      return res.status(404).json({ message: 'Document content is unavailable' });
+    }
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to preview document' });
+  }
+});
+
+// GET /api/student/assignments/:id/document/download - Download teacher's uploaded assignment document
+router.get('/assignments/:id/document/download', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId } = req.params;
+    const q = await pool.query(
+      `SELECT a.* FROM student_assignments a
+       JOIN students st ON st.school_id = a.school_id AND st.class_id = a.class_id AND (a.section_id IS NULL OR a.section_id = st.section_id)
+       WHERE a.id = $1 AND a.school_id = $2 AND st.user_id = $3`,
+      [assignmentId, req.user!.schoolId!, req.user!.id]
+    );
+
+    if (q.rowCount === 0) {
+      return res.status(404).json({ message: 'Assignment document not found or access denied' });
+    }
+
+    const asg = q.rows[0];
+    const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
+    let targetDoc: any = null;
+    if (attId && Array.isArray(asg.attachments)) {
+      targetDoc = asg.attachments.find((a: any) => a.id === attId);
+    }
+    if (!targetDoc) {
+      targetDoc = {
+        file_name: asg.document_name,
+        mime_type: asg.document_mime,
+        storage_key: asg.storage_key,
+        file_data: asg.document_data
+      };
+    }
+
+    if (!targetDoc.file_name && !targetDoc.file_data && !targetDoc.storage_key) {
+      return res.status(404).json({ message: 'No document attached to this assignment' });
+    }
+
+    let buffer: Buffer | null = null;
+    let mimeType = targetDoc.mime_type || 'application/octet-stream';
+    const fileName = targetDoc.file_name || 'assignment-document.pdf';
+
+    if (targetDoc.storage_key) {
+      try {
+        const dl = await downloadFromStorage(targetDoc.storage_key);
+        buffer = dl.buffer;
+        mimeType = dl.mimeType || mimeType;
+      } catch (_e) {}
+    }
+
+    if (!buffer && targetDoc.file_data) {
+      const cleanBase64 = String(targetDoc.file_data).replace(/^data:[^;]+;base64,/, '');
+      buffer = Buffer.from(cleanBase64, 'base64');
+    }
+
+    if (!buffer) {
+      return res.status(404).json({ message: 'Document content is unavailable' });
+    }
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to download document' });
+  }
+});
+
 // GET /api/student/exams - Exams and test results
 router.get('/exams', async (req: AuthRequest, res: Response) => {
   try {

@@ -38,6 +38,7 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
 
   const query = `
     SELECT st.id, st.name, st.roll_number AS roll, st.roll_number, st.admission_number,
+           st.parent_name, st.parent_sms_number,
            st.class_id AS from_class_id, st.section_id AS from_section_id,
            CASE 
              WHEN c.class_number = -1 THEN 'Class-L-KG'
@@ -52,7 +53,14 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
              WHERE sp.student_id = st.id 
                AND (sp.from_academic_year_id::text = ANY($2::text[]))
                AND sp.status = 'CONFIRMED'
-           ) AS already_processed
+           ) AS already_processed,
+           (
+             SELECT sp.outcome FROM student_promotions sp
+             WHERE sp.student_id = st.id 
+               AND (sp.from_academic_year_id::text = ANY($2::text[]))
+               AND sp.status = 'CONFIRMED'
+             ORDER BY sp.created_at DESC LIMIT 1
+           ) AS promotion_outcome
     FROM students st
     LEFT JOIN classes c ON c.id = st.class_id
     LEFT JOIN sections sec ON sec.id = st.section_id
@@ -69,6 +77,7 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
     // If strict year match yielded 0, but candidates exist with NULL academic_year_id, fetch them
     const fallbackQ = await pool.query(
       `SELECT st.id, st.name, st.roll_number AS roll, st.roll_number, st.admission_number,
+              st.parent_name, st.parent_sms_number,
               st.class_id AS from_class_id, st.section_id AS from_section_id,
               CASE 
                 WHEN c.class_number = -1 THEN 'Class-L-KG'
@@ -78,7 +87,8 @@ export async function listPromotionCandidates(schoolId: string, fromYearId: stri
               END AS from_class_name,
               COALESCE(sec.name, 'A') AS from_section_name,
               st.enrollment_status,
-              false AS already_processed
+              false AS already_processed,
+              NULL AS promotion_outcome
        FROM students st
        LEFT JOIN classes c ON c.id = st.class_id
        LEFT JOIN sections sec ON sec.id = st.section_id

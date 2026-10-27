@@ -44,24 +44,16 @@ export interface TeacherLeaveItem {
   updated_at?: string;
 }
 
-const LEAVE_TYPES = [
-  { value: 'CASUAL', label: 'Casual Leave (CL)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.25)' },
-  { value: 'SICK', label: 'Sick / Medical Leave (SL)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.25)' },
-  { value: 'EARNED', label: 'Earned / Privilege Leave (EL)', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.25)' },
-  { value: 'EMERGENCY', label: 'Emergency Leave', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)' },
-  { value: 'DUTY', label: 'On Official Duty (OD)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.25)' },
-  { value: 'MATERNITY', label: 'Maternity / Paternity Leave', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.25)' },
-  { value: 'OTHER', label: 'Other Leave', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.25)' }
-];
-
 export default function TeacherLeaveRequest() {
   const [requests, setRequests] = useState<TeacherLeaveItem[]>([]);
+  const [configuredPolicies, setConfiguredPolicies] = useState<any[]>([]);
+  const [policiesLoading, setPoliciesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [openModal, setOpenModal] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [leaveType, setLeaveType] = useState('CASUAL');
+  const [leaveType, setLeaveType] = useState('');
   const [reason, setReason] = useState('');
   const [documentUrl, setDocumentUrl] = useState<string>('');
   const [documentName, setDocumentName] = useState<string>('');
@@ -158,9 +150,53 @@ export default function TeacherLeaveRequest() {
     }
   };
 
+  const loadLeavePolicies = async () => {
+    try {
+      setPoliciesLoading(true);
+      const res = await api.get('/leave-policies');
+      const list = res.data?.data || res.data || [];
+      if (Array.isArray(list)) {
+        const active = list.filter((p: any) => {
+          if (p.is_active === false) return false;
+          const audience = String(p.applicable_to || 'ALL').toUpperCase();
+          return audience === 'ALL' || audience === 'TEACHER';
+        });
+        setConfiguredPolicies(active);
+        if (active.length > 0) {
+          const firstVal = (active[0].code || active[0].name).toUpperCase().replace(/\s+/g, '_');
+          setLeaveType(firstVal);
+        } else {
+          setLeaveType('');
+        }
+      }
+    } catch (_err) {
+      // Fallback
+    } finally {
+      setPoliciesLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadMyLeaves();
+    loadLeavePolicies();
   }, []);
+
+  const dynamicLeaveTypes = useMemo(() => {
+    return configuredPolicies.map((p) => {
+      const val = (p.code || p.name).toUpperCase().replace(/\s+/g, '_');
+      const cycle = p.accrual_cycle === 'HALF_YEARLY' ? 'Half-Year' : 'Year';
+      const label = p.code ? `${p.name} (${p.code})` : p.name;
+      return {
+        value: val,
+        code: p.code,
+        name: p.name,
+        label: `${label} — ${p.days_count} Days / ${cycle}`,
+        color: p.accrual_cycle === 'YEARLY' ? '#3b82f6' : '#8b5cf6',
+        bg: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(139, 92, 246, 0.12)',
+        border: p.accrual_cycle === 'YEARLY' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(139, 92, 246, 0.25)'
+      };
+    });
+  }, [configuredPolicies]);
 
   const counts = useMemo(() => {
     return {
@@ -184,6 +220,74 @@ export default function TeacherLeaveRequest() {
     const diffTime = Math.abs(e.getTime() - s.getTime());
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
+
+  const matchesPolicy = (rawType: string, policy: { name: string; code?: string }) => {
+    if (!rawType || !policy) return false;
+    const rawUpper = rawType.toUpperCase().trim();
+    const pCodeUpper = (policy.code || '').toUpperCase().trim();
+    const pNameUpper = (policy.name || '').toUpperCase().trim();
+
+    if (pCodeUpper && rawUpper === pCodeUpper) return true;
+    if (pNameUpper && rawUpper === pNameUpper) return true;
+
+    const normalize = (s: string) => s.replace(/[^A-Z0-9]/gi, '').toUpperCase().replace(/LEAVE/g, '');
+    const rawNorm = normalize(rawType);
+    const pCodeNorm = normalize(policy.code || '');
+    const pNameNorm = normalize(policy.name || '');
+
+    if (pCodeNorm && rawNorm === pCodeNorm) return true;
+    if (pNameNorm && rawNorm === pNameNorm) return true;
+
+    if ((rawNorm === 'CASUAL' || rawNorm === 'CL') && (pCodeNorm === 'CL' || pNameNorm.includes('CASUAL'))) return true;
+    if ((rawNorm === 'SICK' || rawNorm === 'SL') && (pCodeNorm === 'SL' || pNameNorm.includes('SICK'))) return true;
+    if ((rawNorm === 'EARNED' || rawNorm === 'EL') && (pCodeNorm === 'EL' || pNameNorm.includes('EARNED'))) return true;
+    if ((rawNorm === 'HALFPAY' || rawNorm === 'HPL') && (pCodeNorm === 'HPL' || pNameNorm.includes('HALFPAY'))) return true;
+    if ((rawNorm === 'MATERNITY' || rawNorm === 'ML') && (pCodeNorm === 'ML' || pNameNorm.includes('MATERNITY'))) return true;
+
+    if (rawNorm && pNameNorm && (pNameNorm.startsWith(rawNorm) || rawNorm.startsWith(pNameNorm))) {
+      return true;
+    }
+    return false;
+  };
+
+  const leaveBalances = useMemo(() => {
+    // Dynamic leave policies configured by school admin, with fallback to standard defaults
+    const policies = configuredPolicies.length > 0
+      ? configuredPolicies.map((p) => ({
+          key: (p.code || p.name).toUpperCase().trim(),
+          name: p.name,
+          code: (p.code || p.name).toLowerCase().trim(),
+          allowedDays: Number(p.days_count) || 0
+        }))
+      : [
+          { key: 'CL', name: 'Casual Leave', code: 'cl', allowedDays: 14 },
+          { key: 'EL', name: 'Earned Leave', code: 'el', allowedDays: 10 },
+          { key: 'SL', name: 'Sick Leave', code: 'sl', allowedDays: 10 },
+          { key: 'HPL', name: 'Half Pay Leave', code: 'hpl', allowedDays: 20 }
+        ];
+
+    return policies.map((p) => {
+      let approvedDays = 0;
+      let pendingDays = 0;
+
+      requests.forEach((r) => {
+        if (matchesPolicy(r.leave_type, p)) {
+          const days = calculateDays(r.start_date, r.end_date);
+          if (r.status === 'APPROVED') {
+            approvedDays += days;
+          } else if (r.status === 'PENDING') {
+            pendingDays += days;
+          }
+        }
+      });
+
+      return {
+        ...p,
+        approvedDays,
+        pendingDays
+      };
+    });
+  }, [configuredPolicies, requests]);
 
   const currentDurationDays = useMemo(() => {
     return calculateDays(startDate, endDate);
@@ -220,7 +324,7 @@ export default function TeacherLeaveRequest() {
         setOpenModal(false);
         setStartDate('');
         setEndDate('');
-        setLeaveType('CASUAL');
+        setLeaveType(dynamicLeaveTypes[0]?.value || '');
         setReason('');
         setDocumentUrl('');
         setDocumentName('');
@@ -250,20 +354,29 @@ export default function TeacherLeaveRequest() {
   };
 
   const getLeaveTypeObj = (type: string) => {
-    const norm = String(type || 'CASUAL').toUpperCase();
-    return (
-      LEAVE_TYPES.find((t) => t.value === norm) || {
-        value: norm,
-        label: norm.charAt(0) + norm.slice(1).toLowerCase() + ' Leave',
-        color: '#4B5563',
-        bg: '#F3F4F6',
-        border: '#E5E7EB'
-      }
+    const norm = String(type || '').trim().toUpperCase();
+    const dynamicFound = dynamicLeaveTypes.find((t: any) =>
+      t.value === norm ||
+      (t.code && t.code.toUpperCase() === norm) ||
+      (t.name && t.name.toUpperCase().replace(/\s+/g, '_') === norm)
     );
+    if (dynamicFound) {
+      return dynamicFound;
+    }
+    const cleanLabel = norm.toUpperCase().endsWith('LEAVE')
+      ? norm.charAt(0) + norm.slice(1).toLowerCase()
+      : norm;
+    return {
+      value: norm || 'LEAVE',
+      label: cleanLabel || 'Leave',
+      color: '#4B5563',
+      bg: '#F3F4F6',
+      border: '#E5E7EB'
+    };
   };
 
   return (
-    <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
+    <div className="student-subpage" style={{ width: '100%', paddingBottom: 60 }}>
       {/* ── Header ── */}
       <div className="student-subpage-header" style={{ marginBottom: 20 }}>
         <div className="student-subpage-title-row">
@@ -522,6 +635,77 @@ export default function TeacherLeaveRequest() {
             }}
           >
             <XCircle size={22} />
+          </div>
+        </div>
+
+        {/* ── Pending Leave Card (Dynamic Admin Policies & Approved Counts) ── */}
+        <div
+          style={{
+            background: 'var(--surface, #FFF)',
+            border: '1px solid var(--border, #E2E8F0)',
+            borderRadius: 12,
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Pending Leave
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
+                Entitlement & Usage
+              </div>
+            </div>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: 'rgba(124, 58, 237, 0.12)',
+                color: '#7C3AED',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Calendar size={20} />
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: leaveBalances.length > 4 ? '1fr 1fr' : '1fr',
+              gap: '4px 16px'
+            }}
+          >
+            {leaveBalances.map((item) => (
+              <div
+                key={item.key}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+                }}
+                title={`${item.name}: ${item.approvedDays} approved out of ${item.allowedDays} allowed days`}
+              >
+                <span style={{ textTransform: 'lowercase', color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>
+                  {item.code.toLowerCase()}
+                </span>
+                <span style={{ color: 'var(--text-secondary, #94A3B8)', margin: '0 6px' }}>-</span>
+                <span style={{ color: item.approvedDays > 0 ? '#15803D' : 'var(--text, #0F172A)', fontWeight: 800 }}>
+                  {item.approvedDays}/{item.allowedDays}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -934,6 +1118,26 @@ export default function TeacherLeaveRequest() {
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
+              {!policiesLoading && dynamicLeaveTypes.length === 0 && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    marginBottom: 16,
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    fontSize: 12.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span>No leave policies have been configured by the School Admin yet. Please contact your school administrator to configure leave policies.</span>
+                </div>
+              )}
+
               {/* Leave Type */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)', marginBottom: 6 }}>
@@ -943,6 +1147,7 @@ export default function TeacherLeaveRequest() {
                   value={leaveType}
                   onChange={(e) => setLeaveType(e.target.value)}
                   required
+                  disabled={dynamicLeaveTypes.length === 0}
                   style={{
                     width: '100%',
                     padding: '9px 12px',
@@ -951,14 +1156,21 @@ export default function TeacherLeaveRequest() {
                     background: 'var(--surface, #FFF)',
                     color: 'var(--text, #0F172A)',
                     fontSize: 13.5,
-                    outline: 'none'
+                    outline: 'none',
+                    cursor: dynamicLeaveTypes.length === 0 ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {LEAVE_TYPES.map((lt) => (
-                    <option key={lt.value} value={lt.value}>
-                      {lt.label}
-                    </option>
-                  ))}
+                  {policiesLoading ? (
+                    <option value="" disabled>Loading leave policies...</option>
+                  ) : dynamicLeaveTypes.length === 0 ? (
+                    <option value="" disabled>No leave policy created by school admin</option>
+                  ) : (
+                    dynamicLeaveTypes.map((lt) => (
+                      <option key={lt.value} value={lt.value}>
+                        {lt.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -1203,20 +1415,20 @@ export default function TeacherLeaveRequest() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || dynamicLeaveTypes.length === 0 || !leaveType}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                     padding: '9px 18px',
                     borderRadius: 8,
-                    background: '#2563EB',
+                    background: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? '#94A3B8' : '#2563EB',
                     color: '#FFF',
                     border: 'none',
                     fontWeight: 600,
                     fontSize: 13,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    opacity: submitting ? 0.7 : 1
+                    cursor: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? 'not-allowed' : 'pointer',
+                    opacity: (submitting || dynamicLeaveTypes.length === 0 || !leaveType) ? 0.65 : 1
                   }}
                 >
                   <Send size={14} />

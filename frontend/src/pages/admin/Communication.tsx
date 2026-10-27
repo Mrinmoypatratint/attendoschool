@@ -12,7 +12,11 @@ import {
   Filter,
   Edit3,
   FileText,
-  Calendar
+  Calendar,
+  Paperclip,
+  Download,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { UniversalPreviewModal, DestructiveConfirmModal, PreviewSectionData } from '../../components/preview';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
@@ -34,6 +38,17 @@ interface AnnouncementItem {
   reply_count: number;
   created_at?: string;
   published_at?: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  attachment_type?: string;
+  attachment_size?: number;
+}
+
+export interface AttachedFile {
+  name: string;
+  size: number;
+  type: string;
+  data: string;
 }
 
 interface ReplyItem {
@@ -142,11 +157,85 @@ export default function Communication() {
 
   // Click popup modal state for viewing announcement message
   const [viewingNotice, setViewingNotice] = useState<AnnouncementItem | null>(null);
+  const [isNoticeMaximized, setIsNoticeMaximized] = useState(false);
+
+  // File Attachment State (New Announcement)
+  const [attachment, setAttachment] = useState<AttachedFile | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+
+  // File Attachment State (Edit Draft Announcement)
+  const [editAttachment, setEditAttachment] = useState<AttachedFile | null>(null);
+  const [editAttachmentError, setEditAttachmentError] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachmentError(`File "${file.name}" exceeds the 10MB limit.`);
+      e.target.value = '';
+      return;
+    }
+
+    setAttachmentError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachment({
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        data: reader.result as string
+      });
+    };
+    reader.onerror = () => {
+      setAttachmentError(`Failed to read file "${file.name}".`);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachment(null);
+    setAttachmentError(null);
+  };
+
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setEditAttachmentError(`File "${file.name}" exceeds the 10MB limit.`);
+      e.target.value = '';
+      return;
+    }
+
+    setEditAttachmentError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditAttachment({
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        data: reader.result as string
+      });
+    };
+    reader.onerror = () => {
+      setEditAttachmentError(`Failed to read file "${file.name}".`);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveEditAttachment = () => {
+    setEditAttachment(null);
+    setEditAttachmentError(null);
+  };
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && viewingNotice) {
         setViewingNotice(null);
+        setIsNoticeMaximized(false);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -236,33 +325,48 @@ export default function Communication() {
     });
   }, [selectedClass, sections]);
 
-  const secA = useMemo(() => {
-    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-  }, [classSections]);
+  // All unique section letters/names available for the chosen class (or school-wide if no class selected)
+  const availableSections = useMemo(() => {
+    const list = selectedClass ? classSections : sections;
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id?: string }[] = [];
+    
+    list.forEach(s => {
+      const name = String(s.name || s.section_name || '').trim();
+      const letter = name.toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({ letter, name: `Section ${letter}`, id: s.id });
+      }
+    });
 
-  const secB = useMemo(() => {
-    return classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-  }, [classSections]);
+    if (result.length === 0) {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}` });
+      });
+    }
 
-  // Determine currently selected section letter ('A' | 'B' | '')
+    result.sort((a, b) => a.letter.localeCompare(b.letter));
+    return result;
+  }, [selectedClass, classSections, sections]);
+
+  // Determine currently selected section letter
   const selectedSectionLetter = useMemo(() => {
     if (!form.sectionId) return '';
-    if (secA && (form.sectionId === secA.id || form.sectionId === 'sec-a')) return 'A';
-    if (secB && (form.sectionId === secB.id || form.sectionId === 'sec-b')) return 'B';
-    const found = classSections.find(s => s.id === form.sectionId);
-    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
-    return '';
-  }, [form.sectionId, secA, secB, classSections]);
+    const found = classSections.find(s => s.id === form.sectionId) || sections.find(s => s.id === form.sectionId);
+    if (found) return String(found.name || found.section_name || '').toUpperCase();
+    const m = String(form.sectionId).match(/sec-([a-z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+    return String(form.sectionId).toUpperCase();
+  }, [form.sectionId, classSections, sections]);
 
   // Change Handlers with synchronized targeting logic
   function handleAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
-    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT') {
       setForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
     } else if (val === 'CLASS') {
-      setForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
-    } else if (val === 'SECTION') {
-      setForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+      setForm(prev => ({ ...prev, audienceType: 'CLASS' }));
     }
   }
 
@@ -287,44 +391,37 @@ export default function Communication() {
     });
 
     let newSectionId = '';
-    if (selectedSectionLetter === 'A') {
-      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-      newSectionId = a?.id || 'sec-a';
-    } else if (selectedSectionLetter === 'B') {
-      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-      newSectionId = b?.id || 'sec-b';
+    if (selectedSectionLetter) {
+      const match = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === selectedSectionLetter);
+      newSectionId = match?.id || (chosenClassId ? `${chosenClassId}-sec-${selectedSectionLetter.toLowerCase()}` : `sec-${selectedSectionLetter.toLowerCase()}`);
     }
 
     setForm(prev => ({
       ...prev,
       classId: chosenClassId,
       sectionId: newSectionId,
-      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+      audienceType: prev.audienceType === 'CLASS' ? 'CLASS' : (prev.audienceType || 'CLASS')
     }));
   }
 
   function handleSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const letter = e.target.value;
+    const letter = e.target.value.toUpperCase();
     if (!letter) {
       setForm(prev => ({
         ...prev,
-        sectionId: '',
-        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+        sectionId: ''
       }));
       return;
     }
 
-    let targetSecId = '';
-    if (letter === 'A') {
-      targetSecId = secA?.id || (selectedClass ? `${selectedClass.id}-sec-a` : 'sec-a');
-    } else if (letter === 'B') {
-      targetSecId = secB?.id || (selectedClass ? `${selectedClass.id}-sec-b` : 'sec-b');
-    }
+    const target = classSections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter)
+      || sections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter);
+
+    const targetSecId = target?.id || (selectedClass ? `${selectedClass.id}-sec-${letter.toLowerCase()}` : `sec-${letter.toLowerCase()}`);
 
     setForm(prev => ({
       ...prev,
-      sectionId: targetSecId,
-      audienceType: 'SECTION'
+      sectionId: targetSecId
     }));
   }
 
@@ -343,22 +440,39 @@ export default function Communication() {
     });
   }, [editSelectedClass, sections]);
 
-  const editSecA = useMemo(() => {
-    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-  }, [editClassSections]);
+  // All unique section letters/names available for editForm
+  const editAvailableSections = useMemo(() => {
+    const list = editSelectedClass ? editClassSections : sections;
+    const seen = new Set<string>();
+    const result: { letter: string; name: string; id?: string }[] = [];
+    
+    list.forEach(s => {
+      const name = String(s.name || s.section_name || '').trim();
+      const letter = name.toUpperCase();
+      if (letter && !seen.has(letter)) {
+        seen.add(letter);
+        result.push({ letter, name: `Section ${letter}`, id: s.id });
+      }
+    });
 
-  const editSecB = useMemo(() => {
-    return editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-  }, [editClassSections]);
+    if (result.length === 0) {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
+        result.push({ letter, name: `Section ${letter}` });
+      });
+    }
+
+    result.sort((a, b) => a.letter.localeCompare(b.letter));
+    return result;
+  }, [editSelectedClass, editClassSections, sections]);
 
   const editSelectedSectionLetter = useMemo(() => {
     if (!editForm.sectionId) return '';
-    if (editSecA && (editForm.sectionId === editSecA.id || editForm.sectionId === 'sec-a')) return 'A';
-    if (editSecB && (editForm.sectionId === editSecB.id || editForm.sectionId === 'sec-b')) return 'B';
-    const found = editClassSections.find(s => s.id === editForm.sectionId);
-    if (found) return String(found.name || found.section_name || 'A').toUpperCase();
-    return '';
-  }, [editForm.sectionId, editSecA, editSecB, editClassSections]);
+    const found = editClassSections.find(s => s.id === editForm.sectionId) || sections.find(s => s.id === editForm.sectionId);
+    if (found) return String(found.name || found.section_name || '').toUpperCase();
+    const m = String(editForm.sectionId).match(/sec-([a-z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+    return String(editForm.sectionId).toUpperCase();
+  }, [editForm.sectionId, editClassSections, sections]);
 
   function handleOpenEditDraft(item: AnnouncementItem) {
     setEditingDraft(item);
@@ -372,12 +486,8 @@ export default function Communication() {
 
     let matchedSectionId = item.section_id || '';
     if (!matchedSectionId && item.section_name) {
-      const sLetter = String(item.section_name).toUpperCase();
-      if (sLetter.includes('B')) {
-        matchedSectionId = 'sec-b';
-      } else {
-        matchedSectionId = 'sec-a';
-      }
+      const sLetter = String(item.section_name).toUpperCase().trim();
+      matchedSectionId = `sec-${sLetter.toLowerCase()}`;
     }
 
     setEditForm({
@@ -388,16 +498,26 @@ export default function Communication() {
       classId: matchedClassId,
       sectionId: matchedSectionId
     });
+
+    if (item.attachment_url) {
+      setEditAttachment({
+        name: item.attachment_name || 'Attachment',
+        size: item.attachment_size || 0,
+        type: item.attachment_type || '',
+        data: item.attachment_url
+      });
+    } else {
+      setEditAttachment(null);
+    }
+    setEditAttachmentError(null);
   }
 
   function handleEditAudienceChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value;
-    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT' || val === 'PARENTS') {
+    if (val === 'SCHOOL' || val === 'TEACHER' || val === 'STUDENT') {
       setEditForm(prev => ({ ...prev, audienceType: val, classId: '', sectionId: '' }));
     } else if (val === 'CLASS') {
-      setEditForm(prev => ({ ...prev, audienceType: 'CLASS', sectionId: '' }));
-    } else if (val === 'SECTION') {
-      setEditForm(prev => ({ ...prev, audienceType: 'SECTION' }));
+      setEditForm(prev => ({ ...prev, audienceType: 'CLASS' }));
     }
   }
 
@@ -422,44 +542,37 @@ export default function Communication() {
     });
 
     let newSectionId = '';
-    if (editSelectedSectionLetter === 'A') {
-      const a = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'A');
-      newSectionId = a?.id || 'sec-a';
-    } else if (editSelectedSectionLetter === 'B') {
-      const b = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === 'B');
-      newSectionId = b?.id || 'sec-b';
+    if (editSelectedSectionLetter) {
+      const match = newClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === editSelectedSectionLetter);
+      newSectionId = match?.id || (chosenClassId ? `${chosenClassId}-sec-${editSelectedSectionLetter.toLowerCase()}` : `sec-${editSelectedSectionLetter.toLowerCase()}`);
     }
 
     setEditForm(prev => ({
       ...prev,
       classId: chosenClassId,
       sectionId: newSectionId,
-      audienceType: newSectionId ? 'SECTION' : (prev.audienceType === 'SECTION' ? 'SECTION' : 'CLASS')
+      audienceType: prev.audienceType === 'CLASS' ? 'CLASS' : (prev.audienceType || 'CLASS')
     }));
   }
 
   function handleEditSectionChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const letter = e.target.value;
+    const letter = e.target.value.toUpperCase();
     if (!letter) {
       setEditForm(prev => ({
         ...prev,
-        sectionId: '',
-        audienceType: prev.classId ? 'CLASS' : prev.audienceType
+        sectionId: ''
       }));
       return;
     }
 
-    let targetSecId = '';
-    if (letter === 'A') {
-      targetSecId = editSecA?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-a` : 'sec-a');
-    } else if (letter === 'B') {
-      targetSecId = editSecB?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-b` : 'sec-b');
-    }
+    const target = editClassSections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter)
+      || sections.find(s => String(s.name || s.section_name || '').toUpperCase() === letter);
+
+    const targetSecId = target?.id || (editSelectedClass ? `${editSelectedClass.id}-sec-${letter.toLowerCase()}` : `sec-${letter.toLowerCase()}`);
 
     setEditForm(prev => ({
       ...prev,
-      sectionId: targetSecId,
-      audienceType: 'SECTION'
+      sectionId: targetSecId
     }));
   }
 
@@ -476,7 +589,13 @@ export default function Communication() {
     setEditSaving(true);
     setEditError(null);
     try {
-      await api.put(`/communication/announcements/${editingDraft.id}`, editForm);
+      await api.put(`/communication/announcements/${editingDraft.id}`, {
+        ...editForm,
+        attachment_url: editAttachment ? editAttachment.data : null,
+        attachment_name: editAttachment ? editAttachment.name : null,
+        attachment_type: editAttachment ? editAttachment.type : null,
+        attachment_size: editAttachment ? editAttachment.size : null
+      });
       setMsg(`Draft announcement "${editForm.title}" saved successfully.`);
       setEditingDraft(null);
       load();
@@ -501,15 +620,19 @@ export default function Communication() {
       setEditError('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (editForm.audienceType === 'SECTION' && (!editForm.classId || !editSelectedSectionLetter)) {
-      setEditError('Please select both Class and Section.');
-      return;
-    }
     setEditSaving(true);
     setEditError(null);
     try {
       // 1. Update draft content first
-      await api.put(`/communication/announcements/${editingDraft.id}`, editForm);
+      const finalAudienceType = (editForm.audienceType === 'CLASS' && editForm.sectionId) ? 'SECTION' : editForm.audienceType;
+      await api.put(`/communication/announcements/${editingDraft.id}`, {
+        ...editForm,
+        audienceType: finalAudienceType,
+        attachment_url: editAttachment ? editAttachment.data : null,
+        attachment_name: editAttachment ? editAttachment.name : null,
+        attachment_type: editAttachment ? editAttachment.type : null,
+        attachment_size: editAttachment ? editAttachment.size : null
+      });
       // 2. Publish announcement to recipients
       await api.post(`/communication/announcements/${editingDraft.id}/publish`);
       setMsg(`Announcement "${editForm.title}" confirmed and published successfully!`);
@@ -536,10 +659,6 @@ export default function Communication() {
       alert('Please select a target class (L-KG to Class 12).');
       return;
     }
-    if (form.audienceType === 'SECTION' && (!form.classId || !selectedSectionLetter)) {
-      alert('Please select both Class (L-KG to 12) and a Section (Section A or B). If targeting the entire class, choose Audience Type: CLASS.');
-      return;
-    }
     setPreviewError(null);
     setPreviewOpen(true);
   }
@@ -554,10 +673,16 @@ export default function Communication() {
     setDraftLoading(true);
     setPreviewError(null);
     try {
+      const finalAudienceType = (form.audienceType === 'CLASS' && form.sectionId) ? 'SECTION' : form.audienceType;
       await api.post('/communication/announcements', {
         ...form,
+        audienceType: finalAudienceType,
         publish: false,
-        status: 'DRAFT'
+        status: 'DRAFT',
+        attachment_url: attachment ? attachment.data : undefined,
+        attachment_name: attachment ? attachment.name : undefined,
+        attachment_type: attachment ? attachment.type : undefined,
+        attachment_size: attachment ? attachment.size : undefined
       });
       setMsg('Announcement saved as draft successfully!');
       setForm({
@@ -568,6 +693,8 @@ export default function Communication() {
         classId: '',
         sectionId: ''
       });
+      setAttachment(null);
+      setAttachmentError(null);
       setPreviewOpen(false);
       load();
     } catch (e: any) {
@@ -588,10 +715,16 @@ export default function Communication() {
     setPreviewLoading(true);
     setPreviewError(null);
     try {
+      const finalAudienceType = (form.audienceType === 'CLASS' && form.sectionId) ? 'SECTION' : form.audienceType;
       const res = await api.post('/communication/announcements', {
         ...form,
+        audienceType: finalAudienceType,
         publish: true,
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        attachment_url: attachment ? attachment.data : undefined,
+        attachment_name: attachment ? attachment.name : undefined,
+        attachment_type: attachment ? attachment.type : undefined,
+        attachment_size: attachment ? attachment.size : undefined
       });
       const created = res.data;
 
@@ -613,6 +746,8 @@ export default function Communication() {
         classId: '',
         sectionId: ''
       });
+      setAttachment(null);
+      setAttachmentError(null);
       setPreviewOpen(false);
       load();
     } catch (e: any) {
@@ -653,34 +788,27 @@ export default function Communication() {
   }
 
   const selectedClassName = selectedClass?.label || 'Not Selected';
-  const selectedSectionDisplay = selectedSectionLetter ? `Section ${selectedSectionLetter}` : 'All Sections (A & B)';
+  const selectedSectionDisplay = selectedSectionLetter ? `Section ${selectedSectionLetter}` : 'All Sections';
 
   const previewSections: PreviewSectionData[] = [
     {
       title: 'Broadcast Scope & Delivery Target',
       fields: [
         { label: 'Audience Target', value: form.audienceType, type: 'badge', color: 'blue' },
-        ...(form.audienceType === 'CLASS' || form.audienceType === 'SECTION'
-          ? [{ label: 'Target Class', value: selectedClassName }]
-          : []),
-        ...(form.audienceType === 'SECTION'
+        ...(form.audienceType === 'CLASS'
           ? [
-              { label: 'Target Section', value: selectedSectionDisplay },
+              { label: 'Target Class', value: selectedClassName },
               {
                 label: 'Delivery Scope',
                 value: selectedSectionLetter
-                  ? `Strictly delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber}-${selectedSectionLetter} only (students & parents)`
-                  : `Delivered to Class ${selectedClass?.classNumber === -1 ? 'L-KG' : selectedClass?.classNumber === 0 ? 'U-KG' : selectedClass?.classNumber} (All Sections)`
+                  ? `Delivered to Class ${selectedClass?.label || 'Class'} · Section ${selectedSectionLetter} only (students & parents)`
+                  : `Delivered to all students & parents of ${selectedClassName} (All Sections)`
               }
             ]
-          : form.audienceType === 'CLASS'
-          ? [{ label: 'Delivery Scope', value: `Delivered to all students & parents of ${selectedClassName}` }]
           : form.audienceType === 'TEACHER'
           ? [{ label: 'Delivery Scope', value: 'Delivered to all teachers and faculty' }]
           : form.audienceType === 'STUDENT'
           ? [{ label: 'Delivery Scope', value: 'Delivered to all students portal accounts' }]
-          : form.audienceType === 'PARENTS'
-          ? [{ label: 'Delivery Scope', value: 'Delivered to all parents portal accounts' }]
           : [{ label: 'Delivery Scope', value: 'Delivered school-wide to students, parents, and teachers' }]),
         {
           label: 'Priority Level',
@@ -695,15 +823,23 @@ export default function Communication() {
       fields: [
         { label: 'Title', value: form.title },
         { label: 'Message Body', value: form.message },
+        ...(attachment
+          ? [
+              {
+                label: 'Attached Document',
+                value: `${attachment.name} (${(attachment.size / 1024).toFixed(1)} KB)`
+              }
+            ]
+          : [])
       ]
     }
   ];
 
   return (
-    <div className="feature-page as-communication-page" style={{ maxWidth: 1300, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-      <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+    <div className="as-communication-page" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0, marginTop: -8, boxSizing: 'border-box' }}>
+      <div className="as-communication-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Communication Center</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Announcement</h1>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Multi-channel institutional announcements, role-based audience broadcasts, and threaded replies.
           </p>
@@ -830,10 +966,92 @@ export default function Communication() {
                 }}
               />
 
+              {/* Attachment Option Row */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '2px 0 4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      border: '1px dashed var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #334155)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Attach a file to this announcement"
+                  >
+                    <Paperclip size={15} color="#2563eb" />
+                    <span>Attach Document / File</span>
+                    <input
+                      type="file"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt,.zip"
+                    />
+                  </label>
+
+                  {attachment ? (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #bfdbfe',
+                      backgroundColor: '#eff6ff',
+                      color: '#1e40af',
+                      fontSize: 12.5,
+                      maxWidth: '100%',
+                      boxSizing: 'border-box'
+                    }}>
+                      <Paperclip size={14} color="#2563eb" />
+                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>
+                        {attachment.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#2563eb', backgroundColor: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                        {(attachment.size / 1024).toFixed(1)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveAttachment}
+                        title="Remove attachment"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          padding: 2,
+                          display: 'inline-flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                      Supports PDF, Word, Excel, images, or documents (max 10MB)
+                    </span>
+                  )}
+                </div>
+
+                {attachmentError && (
+                  <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} /> {attachmentError}
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                 {/* Extended Audience Selector */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <select
                     value={form.audienceType}
                     onChange={handleAudienceChange}
@@ -851,10 +1069,8 @@ export default function Communication() {
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
                     <option value="CLASS">CLASS (Specific Class)</option>
-                    <option value="SECTION">SECTION (Class + Section)</option>
                     <option value="TEACHER">TEACHER (Faculty only)</option>
                     <option value="STUDENT">STUDENT (Student portal)</option>
-                    <option value="PARENTS">PARENTS</option>
                   </select>
                 </div>
 
@@ -863,9 +1079,15 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    lineHeight: 1,
                     color: (form.audienceType === 'CLASS' || form.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
-                    CLASS {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: '#ef4444' }}>*</span>}
+                    <span>CLASS</span>
+                    {(form.audienceType === 'CLASS' || form.audienceType === 'SECTION') && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={form.classId}
@@ -894,9 +1116,15 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    lineHeight: 1,
                     color: form.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
-                    SECTION {form.audienceType === 'SECTION' && <span style={{ color: '#ef4444' }}>*</span>}
+                    <span>SECTION</span>
+                    {form.audienceType === 'SECTION' && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={selectedSectionLetter}
@@ -906,22 +1134,23 @@ export default function Communication() {
                       minWidth: 0,
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: form.audienceType === 'SECTION' && !form.sectionId ? '1px solid #f87171' : '1px solid var(--border, #cbd5e1)',
+                      border: '1px solid var(--border, #cbd5e1)',
                       fontSize: 13,
                       boxSizing: 'border-box',
                       backgroundColor: 'var(--bg, #ffffff)',
                       color: 'var(--text, #0f172a)'
                     }}
                   >
-                    <option value="">{form.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
+                    <option value="">All Sections</option>
+                    {availableSections.map(s => (
+                      <option key={s.letter} value={s.letter}>{s.name}</option>
+                    ))}
                   </select>
                 </div>
 
                 {/* Priority Selector with Emergency Multi-channel Callout */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 0, maxWidth: '100%' }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>PRIORITY</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>PRIORITY</label>
                   <select
                     value={form.priority}
                     onChange={e => setForm({ ...form, priority: e.target.value })}
@@ -991,22 +1220,16 @@ export default function Communication() {
                 overflowWrap: 'anywhere'
               }}>
                 <span style={{ fontWeight: 700 }}>🎯 Target Audience:</span>
-                {form.audienceType === 'SECTION' && selectedClass && selectedSectionLetter ? (
-                  <span>
-                    <b>{selectedClass.label} · Section {selectedSectionLetter}</b> — The message will go <b>ONLY to {selectedClass.label}-{selectedSectionLetter}</b> (students and linked parents).
-                  </span>
-                ) : form.audienceType === 'SECTION' && selectedClass ? (
-                  <span style={{ color: '#d97706' }}>
-                    <b>{selectedClass.label}</b> selected. Please choose <b>Section A or Section B</b> to target that specific section.
-                  </span>
-                ) : form.audienceType === 'SECTION' ? (
-                  <span style={{ color: '#d97706' }}>
-                    Please select a <b>Class (L-KG to 12)</b> and <b>Section (A or B)</b>.
-                  </span>
-                ) : form.audienceType === 'CLASS' && selectedClass ? (
-                  <span>
-                    <b>{selectedClass.label} (All Sections)</b> — The message will go to all students and parents in {selectedClass.label}.
-                  </span>
+                {form.audienceType === 'CLASS' && selectedClass ? (
+                  selectedSectionLetter ? (
+                    <span>
+                      <b>{selectedClass.label} · Section ${selectedSectionLetter}</b> — Broadcast will go <b>ONLY to {selectedClass.label}-{selectedSectionLetter}</b> (students and linked parents).
+                    </span>
+                  ) : (
+                    <span>
+                      <b>{selectedClass.label} (All Sections)</b> — Broadcast will go to all students and parents in {selectedClass.label}.
+                    </span>
+                  )
                 ) : form.audienceType === 'CLASS' ? (
                   <span style={{ color: '#d97706' }}>
                     Please select a target <b>Class (L-KG to Class 12)</b>.
@@ -1015,8 +1238,6 @@ export default function Communication() {
                   <span><b>Faculty Only</b> — Visible exclusively to verified teachers.</span>
                 ) : form.audienceType === 'STUDENT' ? (
                   <span><b>Student Portal</b> — Broadcast to all registered students across all classes.</span>
-                ) : form.audienceType === 'PARENTS' ? (
-                  <span><b>Parents Portal</b> — Broadcast to all parent accounts.</span>
                 ) : (
                   <span><b>Entire School (All)</b> — Broadcast to all students, parents, and faculty school-wide.</span>
                 )}
@@ -1109,50 +1330,80 @@ export default function Communication() {
                     return (
                       <tr key={x.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
                         <td
-                          style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden' }}
+                          style={{ padding: '10px 12px', verticalAlign: 'middle', overflow: 'hidden', textAlign: 'left' }}
                         >
-                          <button
-                            type="button"
-                            onClick={() => setViewingNotice(x)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: 0,
-                              textAlign: 'left',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              cursor: 'pointer',
-                              maxWidth: '100%',
-                              color: 'inherit'
-                            }}
-                            title="Click to view announcement message"
-                          >
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                fontSize: 13,
-                                color: 'var(--text, #0f172a)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, maxWidth: '100%' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingNotice(x);
+                                setIsNoticeMaximized(false);
                               }}
-                            >
-                              {x.title}
-                            </span>
-                            <span
                               style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                textAlign: 'left',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                color: '#3b82f6',
-                                opacity: 0.85,
-                                flexShrink: 0
+                                justifyContent: 'flex-start',
+                                gap: 6,
+                                cursor: 'pointer',
+                                maxWidth: '100%',
+                                color: 'inherit',
+                                minWidth: 0,
+                                flex: '0 1 auto',
+                                boxShadow: 'none'
                               }}
-                              title="Click to view message"
+                              title="Click to view announcement message"
                             >
-                              <Eye size={12} />
-                            </span>
-                          </button>
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: 13,
+                                  color: 'var(--text, #0f172a)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  textAlign: 'left'
+                                }}
+                              >
+                                {x.title}
+                              </span>
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  color: '#3b82f6',
+                                  opacity: 0.85,
+                                  flexShrink: 0
+                                }}
+                                title="Click to view message"
+                              >
+                                <Eye size={12} />
+                              </span>
+                            </button>
+
+                            {x.attachment_url && (
+                              <span
+                                title={`Attachment: ${x.attachment_name || 'File attached'}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                                  color: '#2563eb',
+                                  fontWeight: 500,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Paperclip size={11} />
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }}>
                           <span style={{
@@ -1329,7 +1580,10 @@ export default function Communication() {
             <div
               className="overlay"
               onClick={(e) => {
-                if (e.target === e.currentTarget) setViewingNotice(null);
+                if (e.target === e.currentTarget) {
+                  setViewingNotice(null);
+                  setIsNoticeMaximized(false);
+                }
               }}
               style={{
                 zIndex: 10050,
@@ -1341,27 +1595,29 @@ export default function Communication() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: 16
+                padding: isNoticeMaximized ? 8 : 16
               }}
             >
               <div
                 className="modal"
                 style={{
-                  width: 'min(640px, 95vw)',
-                  maxHeight: '90vh',
+                  width: isNoticeMaximized ? 'min(1280px, 98vw)' : 'min(640px, 95vw)',
+                  height: isNoticeMaximized ? '94vh' : 'auto',
+                  maxHeight: '94vh',
                   background: 'var(--bg-card, #ffffff)',
                   border: '1px solid var(--border, #e2e8f0)',
-                  borderRadius: 16,
+                  borderRadius: isNoticeMaximized ? 12 : 16,
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
+                  transition: 'width 0.2s ease, height 0.2s ease, border-radius 0.2s ease',
                   animation: 'fadeIn 0.2s ease-out'
                 }}
               >
                 {/* Modal Header */}
                 <div style={{
-                  padding: '18px 24px',
+                  padding: isNoticeMaximized ? '16px 24px' : '18px 24px',
                   borderBottom: '1px solid var(--border, #e2e8f0)',
                   background: 'var(--card-subtle, #f8fafc)',
                   display: 'flex',
@@ -1434,7 +1690,7 @@ export default function Communication() {
 
                       <h2 style={{
                         margin: 0,
-                        fontSize: 17,
+                        fontSize: isNoticeMaximized ? 20 : 17,
                         fontWeight: 700,
                         color: 'var(--text, #0f172a)',
                         lineHeight: 1.35,
@@ -1445,34 +1701,63 @@ export default function Communication() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setViewingNotice(null)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted, #64748b)',
-                      cursor: 'pointer',
-                      padding: 4,
-                      borderRadius: 6,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                    title="Close"
-                  >
-                    <X size={20} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsNoticeMaximized(!isNoticeMaximized)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted, #64748b)',
+                        cursor: 'pointer',
+                        padding: 4,
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: 'none',
+                        transition: 'color 0.15s ease'
+                      }}
+                      title={isNoticeMaximized ? "Restore down" : "Maximize"}
+                      aria-label={isNoticeMaximized ? "Restore down" : "Maximize"}
+                    >
+                      {isNoticeMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewingNotice(null);
+                        setIsNoticeMaximized(false);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted, #64748b)',
+                        cursor: 'pointer',
+                        padding: 4,
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: 'none',
+                        transition: 'color 0.15s ease'
+                      }}
+                      title="Close"
+                      aria-label="Close"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Modal Body */}
                 <div style={{
-                  padding: '20px 24px',
+                  padding: isNoticeMaximized ? '24px 32px' : '20px 24px',
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 16
+                  gap: 16,
+                  flex: 1
                 }}>
                   {/* Meta details strip */}
                   <div style={{
@@ -1531,13 +1816,14 @@ export default function Communication() {
                       border: '1px solid var(--border, #cbd5e1)',
                       borderLeft: viewingNotice.status === 'PUBLISHED' ? '4px solid #10b981' : '4px solid #2563eb',
                       borderRadius: 8,
-                      padding: '16px 18px',
+                      padding: isNoticeMaximized ? '20px 22px' : '16px 18px',
                       fontSize: 14,
                       lineHeight: 1.7,
                       color: 'var(--text, #1e293b)',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
-                      maxHeight: 280,
+                      maxHeight: isNoticeMaximized ? 'calc(94vh - 360px)' : 280,
+                      minHeight: isNoticeMaximized ? 260 : 'auto',
                       overflowY: 'auto'
                     }}>
                       {viewingNotice.message ? (
@@ -1549,6 +1835,88 @@ export default function Communication() {
                       )}
                     </div>
                   </div>
+
+                  {viewingNotice.attachment_url && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        color: 'var(--text-muted, #64748b)',
+                        marginBottom: 8
+                      }}>
+                        Attached Document
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderRadius: 8,
+                        backgroundColor: 'var(--card-subtle, #f8fafc)',
+                        border: '1px solid var(--border, #cbd5e1)',
+                        gap: 12,
+                        flexWrap: 'wrap'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                          <div style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 6,
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Paperclip size={18} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{
+                              fontWeight: 600,
+                              fontSize: 13.5,
+                              color: 'var(--text, #0f172a)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {viewingNotice.attachment_name || 'Attached File'}
+                            </div>
+                            {viewingNotice.attachment_size ? (
+                              <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                                {(viewingNotice.attachment_size / 1024).toFixed(1)} KB
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <a
+                          href={viewingNotice.attachment_url}
+                          download={viewingNotice.attachment_name || 'announcement-attachment'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '7px 14px',
+                            borderRadius: 6,
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                          }}
+                        >
+                          <Download size={14} /> Download File
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Modal Footer */}
@@ -1568,6 +1936,7 @@ export default function Communication() {
                         onClick={() => {
                           const notice = viewingNotice;
                           setViewingNotice(null);
+                          setIsNoticeMaximized(false);
                           openNoticeReplies(notice);
                         }}
                         style={{
@@ -1597,6 +1966,7 @@ export default function Communication() {
                         onClick={() => {
                           const notice = viewingNotice;
                           setViewingNotice(null);
+                          setIsNoticeMaximized(false);
                           handleOpenEditDraft(notice);
                         }}
                         style={{
@@ -1620,7 +1990,10 @@ export default function Communication() {
 
                     <button
                       type="button"
-                      onClick={() => setViewingNotice(null)}
+                      onClick={() => {
+                        setViewingNotice(null);
+                        setIsNoticeMaximized(false);
+                      }}
                       style={{
                         padding: '8px 20px',
                         borderRadius: 6,
@@ -1991,10 +2364,91 @@ export default function Communication() {
                 />
               </div>
 
+              {/* Attachment Option in Edit Draft */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+                  ATTACHMENT
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      border: '1px dashed var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #334155)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Attach a file to this announcement"
+                  >
+                    <Paperclip size={15} color="#2563eb" />
+                    <span>{editAttachment ? 'Change File' : 'Attach File'}</span>
+                    <input
+                      type="file"
+                      onChange={handleEditFileChange}
+                      style={{ display: 'none' }}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt,.zip"
+                    />
+                  </label>
+
+                  {editAttachment && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      border: '1px solid #bfdbfe',
+                      backgroundColor: '#eff6ff',
+                      color: '#1e40af',
+                      fontSize: 12.5,
+                      maxWidth: '100%',
+                      boxSizing: 'border-box'
+                    }}>
+                      <Paperclip size={14} color="#2563eb" />
+                      <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
+                        {editAttachment.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#2563eb', backgroundColor: '#dbeafe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                        {(editAttachment.size / 1024).toFixed(1)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveEditAttachment}
+                        title="Remove attachment"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          padding: 2,
+                          display: 'inline-flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {editAttachmentError && (
+                  <div style={{ fontSize: 12, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <AlertTriangle size={13} /> {editAttachmentError}
+                  </div>
+                )}
+              </div>
+
               {/* Targeting Controls */}
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>AUDIENCE TYPE</label>
+                  <label style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted, #64748b)', display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>AUDIENCE TYPE</label>
                   <select
                     value={editForm.audienceType}
                     onChange={handleEditAudienceChange}
@@ -2011,10 +2465,8 @@ export default function Communication() {
                   >
                     <option value="SCHOOL">SCHOOL (All)</option>
                     <option value="CLASS">CLASS (Specific Class)</option>
-                    <option value="SECTION">SECTION (Class + Section)</option>
                     <option value="TEACHER">TEACHER (Faculty only)</option>
                     <option value="STUDENT">STUDENT (Student portal)</option>
-                    <option value="PARENTS">PARENTS</option>
                   </select>
                 </div>
 
@@ -2022,9 +2474,15 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    lineHeight: 1,
                     color: (editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
-                    CLASS {(editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') && <span style={{ color: '#ef4444' }}>*</span>}
+                    <span>CLASS</span>
+                    {(editForm.audienceType === 'CLASS' || editForm.audienceType === 'SECTION') && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={editForm.classId}
@@ -2051,9 +2509,15 @@ export default function Communication() {
                   <label style={{
                     fontSize: 11.5,
                     fontWeight: 600,
+                    display: 'inline-flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    lineHeight: 1,
                     color: editForm.audienceType === 'SECTION' ? '#3b82f6' : 'var(--text-muted, #64748b)'
                   }}>
-                    SECTION {editForm.audienceType === 'SECTION' && <span style={{ color: '#ef4444' }}>*</span>}
+                    <span>SECTION</span>
+                    {editForm.audienceType === 'SECTION' && <span style={{ color: '#ef4444', fontWeight: 700 }}>*</span>}
                   </label>
                   <select
                     value={editSelectedSectionLetter}
@@ -2069,9 +2533,10 @@ export default function Communication() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    <option value="">{editForm.audienceType === 'SECTION' ? 'Select Section (A / B)' : 'All Sections (A & B)'}</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
+                    <option value="">All Sections</option>
+                    {editAvailableSections.map(s => (
+                      <option key={s.letter} value={s.letter}>{s.name}</option>
+                    ))}
                   </select>
                 </div>
 

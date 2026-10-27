@@ -20,8 +20,11 @@ import {
   User,
   GraduationCap,
   Briefcase,
-  EyeOff
+  EyeOff,
+  Calendar,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -52,6 +55,13 @@ export interface SmtpLogItem {
   roll_number?: string;
 }
 
+export const getCurrentMonth = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
 export default function SmtpLogs() {
   const { user } = useAuth();
   const [logs, setLogs] = useState<SmtpLogItem[]>([]);
@@ -62,6 +72,7 @@ export default function SmtpLogs() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [monthFilter, setMonthFilter] = useState<string>(() => getCurrentMonth());
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -136,20 +147,56 @@ export default function SmtpLogs() {
     }
   };
 
-  // Metrics computation
-  const metrics = useMemo(() => {
-    const total = logs.length;
-    const sent = logs.filter(l => l.status === 'SENT').length;
-    const failed = logs.filter(l => l.status === 'FAILED').length;
-    const queued = logs.filter(l => l.status === 'QUEUED' || l.status === 'PROCESSING').length;
-    const retrying = logs.filter(l => l.status === 'RETRYING').length;
-    const unsent = logs.filter(l => l.status === 'UNSENT' || l.status === 'SKIPPED').length;
-    return { total, sent, failed, queued, retrying, unsent };
-  }, [logs]);
+  // Helper to extract YYYY-MM from timestamp
+  const getLogMonth = useCallback((item: SmtpLogItem): string => {
+    const ts = item.created_at || item.sent_at || item.scheduled_at;
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) {
+      if (typeof ts === 'string' && ts.length >= 7) {
+        return ts.slice(0, 7);
+      }
+      return '';
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }, []);
 
-  // Filtered logs
+  // Human-readable label for selected month (e.g. "Oct 2026")
+  const selectedMonthLabel = useMemo(() => {
+    if (!monthFilter || monthFilter === 'ALL') return null;
+    const parts = monthFilter.split('-');
+    if (parts.length !== 2) return monthFilter;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const d = new Date(year, month, 1);
+    if (isNaN(d.getTime())) return monthFilter;
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }, [monthFilter]);
+
+  // Logs scoped to selected month
+  const monthScopedLogs = useMemo(() => {
+    if (!monthFilter || monthFilter === 'ALL') {
+      return logs;
+    }
+    return logs.filter(item => getLogMonth(item) === monthFilter);
+  }, [logs, monthFilter, getLogMonth]);
+
+  // Metrics computation (dynamically updates when monthFilter changes)
+  const metrics = useMemo(() => {
+    const total = monthScopedLogs.length;
+    const sent = monthScopedLogs.filter(l => l.status === 'SENT').length;
+    const failed = monthScopedLogs.filter(l => l.status === 'FAILED').length;
+    const queued = monthScopedLogs.filter(l => l.status === 'QUEUED' || l.status === 'PROCESSING').length;
+    const retrying = monthScopedLogs.filter(l => l.status === 'RETRYING').length;
+    const unsent = monthScopedLogs.filter(l => l.status === 'UNSENT' || l.status === 'SKIPPED').length;
+    return { total, sent, failed, queued, retrying, unsent };
+  }, [monthScopedLogs]);
+
+  // Filtered logs (status, search query, and month)
   const filteredLogs = useMemo(() => {
-    return logs.filter(item => {
+    return monthScopedLogs.filter(item => {
       // Status filter
       if (statusFilter !== 'ALL' && item.status !== statusFilter) {
         return false;
@@ -166,7 +213,7 @@ export default function SmtpLogs() {
       }
       return true;
     });
-  }, [logs, statusFilter, searchQuery]);
+  }, [monthScopedLogs, statusFilter, searchQuery]);
 
   // Paginated slice
   const totalItems = filteredLogs.length;
@@ -174,6 +221,84 @@ export default function SmtpLogs() {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * pageSize;
   const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+
+  // Export logs to Excel (all details, dynamically scoped to active filters)
+  const handleExportExcel = () => {
+    if (filteredLogs.length === 0) return;
+
+    const exportRows = filteredLogs.map((item, index) => {
+      const admNumber = item.admission_number && item.admission_number.trim() !== ''
+        ? item.admission_number.trim()
+        : null;
+      const empNumber = item.employee_id && item.employee_id.trim() !== ''
+        ? item.employee_id.trim()
+        : null;
+
+      const rawType = (item.recipient_type || '').toUpperCase();
+      const isTeacher = rawType === 'TEACHER' || (Boolean(empNumber) && !admNumber);
+      const isStudent = rawType === 'STUDENT' || rawType === 'PARENT' || (Boolean(admNumber) && !empNumber);
+
+      const displayedId = isTeacher
+        ? (empNumber || admNumber || '—')
+        : (admNumber || empNumber || '—');
+
+      const displayName = item.recipient_name && item.recipient_name.trim() !== '—'
+        ? item.recipient_name.trim()
+        : (item.student_name && item.student_name.trim() !== '—' ? item.student_name.trim() : '—');
+
+      const roleType = isTeacher ? 'Teacher' : isStudent ? 'Student' : (item.recipient_type || 'Recipient');
+
+      const createdDateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '—';
+      const sentDateStr = item.sent_at ? new Date(item.sent_at).toLocaleString() : (item.failed_at ? `Failed: ${new Date(item.failed_at).toLocaleString()}` : '—');
+
+      return {
+        'SL No.': index + 1,
+        'Admission / Employee ID': displayedId,
+        'Student / Recipient Name': displayName,
+        'Recipient Role': roleType,
+        'Roll Number': item.roll_number || '—',
+        'Recipient Mail ID': item.recipient || '—',
+        'Delivery Status': item.status,
+        'Subject / Event': item.subject || '—',
+        'Template Key': item.template_key || '—',
+        'Created Timestamp': createdDateStr,
+        'Sent / Failure Timestamp': sentDateStr,
+        'Attempts': `${item.attempts ?? 0} / ${item.max_attempts ?? 3}`,
+        'Error / Diagnostic Details': item.last_error || '—',
+        'Provider Message ID': item.provider_message_id || item.id
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+
+    // Setup auto-fitted column widths for a clean Excel layout
+    worksheet['!cols'] = [
+      { wch: 8 },  // SL No.
+      { wch: 24 }, // Admission / Employee ID
+      { wch: 30 }, // Student / Recipient Name
+      { wch: 18 }, // Recipient Role
+      { wch: 14 }, // Roll Number
+      { wch: 34 }, // Recipient Mail ID
+      { wch: 16 }, // Delivery Status
+      { wch: 42 }, // Subject / Event
+      { wch: 24 }, // Template Key
+      { wch: 24 }, // Created Timestamp
+      { wch: 26 }, // Sent / Failure Timestamp
+      { wch: 12 }, // Attempts
+      { wch: 40 }, // Error / Diagnostic Details
+      { wch: 34 }  // Provider Message ID
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'SMTP Email Logs');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filterTag = statusFilter !== 'ALL' ? `_${statusFilter.toLowerCase()}` : '';
+    const monthTag = monthFilter !== 'ALL' ? `_${monthFilter}` : '';
+    const searchTag = searchQuery.trim() ? '_search' : '';
+
+    XLSX.writeFile(workbook, `SMTP_Email_Logs${monthTag}${filterTag}${searchTag}_${dateStr}.xlsx`);
+  };
 
   // Status Badge Component
   const renderStatusBadge = (status: string) => {
@@ -355,7 +480,33 @@ export default function SmtpLogs() {
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={loading || filteredLogs.length === 0}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              fontSize: 13.5,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: '1px solid #16a34a',
+              background: '#16a34a',
+              color: '#ffffff',
+              cursor: loading || filteredLogs.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: loading || filteredLogs.length === 0 ? 0.6 : 1,
+              transition: 'all 0.2s ease',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
+            title={filteredLogs.length === 0 ? 'No logs to export' : `Export ${filteredLogs.length} record(s) to Excel`}
+          >
+            <Download size={15} />
+            <span>Export Excel</span>
+          </button>
+
           <button
             type="button"
             onClick={() => fetchLogs(true)}
@@ -406,7 +557,9 @@ export default function SmtpLogs() {
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text, #0f172a)', marginTop: 6 }}>
             {loading ? '—' : metrics.total}
           </div>
-          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>School records fetched</div>
+          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+            {selectedMonthLabel ? `Logs for ${selectedMonthLabel}` : 'School records fetched'}
+          </div>
         </div>
 
         {/* Successfully Delivered */}
@@ -426,7 +579,9 @@ export default function SmtpLogs() {
           <div style={{ fontSize: 26, fontWeight: 800, color: '#15803d', marginTop: 6 }}>
             {loading ? '—' : metrics.sent}
           </div>
-          <div style={{ fontSize: 11.5, color: '#16a34a', marginTop: 2 }}>Successfully delivered</div>
+          <div style={{ fontSize: 11.5, color: '#16a34a', marginTop: 2 }}>
+            {selectedMonthLabel ? `Delivered in ${selectedMonthLabel}` : 'Successfully delivered'}
+          </div>
         </div>
 
         {/* Failed Alerts */}
@@ -446,7 +601,9 @@ export default function SmtpLogs() {
           <div style={{ fontSize: 26, fontWeight: 800, color: '#b91c1c', marginTop: 6 }}>
             {loading ? '—' : metrics.failed}
           </div>
-          <div style={{ fontSize: 11.5, color: '#dc2626', marginTop: 2 }}>Transmission errors</div>
+          <div style={{ fontSize: 11.5, color: '#dc2626', marginTop: 2 }}>
+            {selectedMonthLabel ? `Errors in ${selectedMonthLabel}` : 'Transmission errors'}
+          </div>
         </div>
 
         {/* In Queue / Retrying */}
@@ -466,7 +623,9 @@ export default function SmtpLogs() {
           <div style={{ fontSize: 26, fontWeight: 800, color: '#1d4ed8', marginTop: 6 }}>
             {loading ? '—' : (metrics.queued + metrics.retrying)}
           </div>
-          <div style={{ fontSize: 11.5, color: '#2563eb', marginTop: 2 }}>Pending dispatch worker</div>
+          <div style={{ fontSize: 11.5, color: '#2563eb', marginTop: 2 }}>
+            {selectedMonthLabel ? `Pending in ${selectedMonthLabel}` : 'Pending dispatch worker'}
+          </div>
         </div>
 
         {/* Dummy / Unsent */}
@@ -486,7 +645,9 @@ export default function SmtpLogs() {
           <div style={{ fontSize: 26, fontWeight: 800, color: '#334155', marginTop: 6 }}>
             {loading ? '—' : metrics.unsent}
           </div>
-          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>Suppressed mock / placeholder</div>
+          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+            {selectedMonthLabel ? `Suppressed in ${selectedMonthLabel}` : 'Suppressed mock / placeholder'}
+          </div>
         </div>
       </div>
 
@@ -583,44 +744,107 @@ export default function SmtpLogs() {
           )}
         </div>
 
-        {/* Status Filter Pill Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Filter size={13} /> Filter:
-          </span>
-          {[
-            { key: 'ALL', label: 'All Statuses' },
-            { key: 'SENT', label: 'Sent' },
-            { key: 'UNSENT', label: 'Unsent' },
-            { key: 'FAILED', label: 'Failed' },
-            { key: 'QUEUED', label: 'Queued' },
-            { key: 'RETRYING', label: 'Retrying' }
-          ].map(st => {
-            const isActive = statusFilter === st.key;
-            return (
+        {/* Right Controls: Month Filter + Status Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* Month Filter */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--bg, #f8fafc)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}
+            title="Filter email activity logs by month"
+          >
+            <Calendar size={14} color="#64748b" />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}>
+              Month:
+            </span>
+            <input
+              type="month"
+              value={monthFilter === 'ALL' ? '' : monthFilter}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMonthFilter(val || 'ALL');
+                setCurrentPage(1);
+              }}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text, #0f172a)',
+                cursor: 'pointer',
+                fontFamily: 'inherit'
+              }}
+            />
+            {monthFilter !== 'ALL' && (
               <button
-                key={st.key}
                 type="button"
                 onClick={() => {
-                  setStatusFilter(st.key);
+                  setMonthFilter('ALL');
                   setCurrentPage(1);
                 }}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  fontSize: 12.5,
-                  fontWeight: isActive ? 700 : 500,
-                  border: isActive ? '1px solid #2563eb' : '1px solid #e2e8f0',
-                  background: isActive ? '#2563eb' : '#ffffff',
-                  color: isActive ? '#ffffff' : '#475569',
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: 12,
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  padding: '2px 6px',
+                  borderRadius: 4
                 }}
               >
-                {st.label}
+                All Months
               </button>
-            );
-          })}
+            )}
+          </div>
+
+          {/* Status Filter Pill Tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Filter size={13} /> Filter:
+            </span>
+            {[
+              { key: 'ALL', label: 'All Statuses' },
+              { key: 'SENT', label: 'Sent' },
+              { key: 'UNSENT', label: 'Unsent' },
+              { key: 'FAILED', label: 'Failed' },
+              { key: 'QUEUED', label: 'Queued' },
+              { key: 'RETRYING', label: 'Retrying' }
+            ].map(st => {
+              const isActive = statusFilter === st.key;
+              return (
+                <button
+                  key={st.key}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(st.key);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    fontWeight: isActive ? 700 : 500,
+                    border: isActive ? '1px solid #2563eb' : '1px solid #e2e8f0',
+                    background: isActive ? '#2563eb' : '#ffffff',
+                    color: isActive ? '#ffffff' : '#475569',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {st.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -688,22 +912,23 @@ export default function SmtpLogs() {
                       </div>
                       <div style={{ maxWidth: 420 }}>
                         <h4 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-                          {searchQuery || statusFilter !== 'ALL'
+                          {searchQuery || statusFilter !== 'ALL' || monthFilter !== 'ALL'
                             ? 'No matching email activity records'
                             : 'No SMTP email activity logs found'}
                         </h4>
                         <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
-                          {searchQuery || statusFilter !== 'ALL'
-                            ? 'No records match your search or status filter. Try clearing filters to view all entries.'
+                          {searchQuery || statusFilter !== 'ALL' || monthFilter !== 'ALL'
+                            ? 'No records match your search, status, or month filter. Try clearing filters to view all entries.'
                             : 'Automated SMTP notifications sent for student attendance absences or account invitations belonging to your school will appear here.'}
                         </p>
                       </div>
-                      {(searchQuery || statusFilter !== 'ALL') && (
+                      {(searchQuery || statusFilter !== 'ALL' || monthFilter !== 'ALL') && (
                         <button
                           type="button"
                           onClick={() => {
                             setSearchQuery('');
                             setStatusFilter('ALL');
+                            setMonthFilter('ALL');
                             setCurrentPage(1);
                           }}
                           style={{

@@ -3,7 +3,7 @@ import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { pool, isPostgresConfigured } from '../db';
 import { verifyTeacherPublishingEligibility, getTeacherEligiblePublishingOptions } from '../services/mentorService';
 import { isSameSchool } from '../utils/tenant';
-import { downloadFromStorage, StorageConfigurationError } from '../utils/supabaseStorage';
+import { downloadFromStorage, uploadToStorage, validateAttachment, StorageConfigurationError } from '../utils/supabaseStorage';
 
 const router = Router();
 
@@ -22,6 +22,13 @@ export interface InMemoryAssignment {
   subject_name?: string;
   class_number?: number;
   section_name?: string;
+  document_url?: string | null;
+  document_name?: string | null;
+  document_size?: number | null;
+  document_mime?: string | null;
+  document_data?: string | null;
+  storage_key?: string | null;
+  attachments?: any[];
 }
 
 export interface InMemorySubmission {
@@ -93,13 +100,80 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Process optional documents/attachments uploaded by teacher
+    const processedAttachments: any[] = [];
+    let docName: string | null = null;
+    let docSize: number | null = null;
+    let docMime: string | null = null;
+    let docData: string | null = null;
+    let docStorageKey: string | null = null;
+    let docUrl: string | null = req.body?.document_url || null;
+
+    const rawAttachments = Array.isArray(req.body?.attachments)
+      ? req.body.attachments
+      : (req.body?.document_data || req.body?.fileData)
+      ? [{
+          fileName: req.body.document_name || req.body.fileName || 'assignment-document.pdf',
+          fileData: req.body.document_data || req.body.fileData,
+          size: req.body.document_size || req.body.fileSize,
+          mimeType: req.body.document_mime || req.body.mimeType
+        }]
+      : [];
+
+    for (const item of rawAttachments) {
+      if (!item || !item.fileData) continue;
+      const v = validateAttachment(item.fileName || 'document.pdf', item.fileData);
+      if (v.valid) {
+        const fileId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const storageKey = `teacher-assignments/${req.user!.schoolId}/${cId}/${fileId}_${v.sanitizedName}`;
+        let uploaded = false;
+        try {
+          await uploadToStorage(storageKey, v.buffer, v.mimeType);
+          uploaded = true;
+        } catch (_upErr) {
+          // If storage is unconfigured/fails, we still preserve document_data inline safely
+        }
+
+        const formattedData = typeof item.fileData === 'string' && item.fileData.startsWith('data:')
+          ? item.fileData
+          : `data:${v.mimeType};base64,${typeof item.fileData === 'string' ? item.fileData.replace(/^data:[^;]+;base64,/, '') : ''}`;
+
+        const fileEntry = {
+          id: fileId,
+          file_name: v.sanitizedName,
+          file_size: v.buffer.length,
+          mime_type: v.mimeType,
+          storage_key: uploaded ? storageKey : null,
+          file_data: formattedData
+        };
+        processedAttachments.push(fileEntry);
+
+        if (!docName) {
+          docName = fileEntry.file_name;
+          docSize = fileEntry.file_size;
+          docMime = fileEntry.mime_type;
+          docStorageKey = fileEntry.storage_key;
+          docData = fileEntry.file_data;
+        }
+      }
+    }
+
     // Insert into PostgreSQL student_assignments table
     if (isPostgresConfigured) {
       const q = await pool.query(
-        `INSERT INTO student_assignments (school_id, class_id, section_id, subject_id, teacher_id, title, description, due_date, max_marks, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        `INSERT INTO student_assignments (
+           school_id, class_id, section_id, subject_id, teacher_id,
+           title, description, due_date, max_marks,
+           document_url, document_name, document_size, document_mime, document_data, storage_key, attachments,
+           created_at, updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
          RETURNING *`,
-        [req.user!.schoolId!, cId, sId, subId, req.user!.id, tTitle, tDesc, dDate, marks]
+        [
+          req.user!.schoolId!, cId, sId, subId, req.user!.id,
+          tTitle, tDesc, dDate, marks,
+          docUrl, docName, docSize, docMime, docData, docStorageKey, JSON.stringify(processedAttachments)
+        ]
       );
 
       const rec = q.rows[0];
@@ -115,6 +189,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         description: rec.description,
         due_date: rec.due_date,
         max_marks: Number(rec.max_marks),
+        document_url: rec.document_url,
+        document_name: rec.document_name,
+        document_size: rec.document_size ? Number(rec.document_size) : null,
+        document_mime: rec.document_mime,
+        document_data: rec.document_data,
+        storage_key: rec.storage_key,
+        attachments: processedAttachments,
         created_at: rec.created_at
       });
 
@@ -133,6 +214,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       description: tDesc,
       due_date: dDate,
       max_marks: marks,
+      document_url: docUrl,
+      document_name: docName,
+      document_size: docSize,
+      document_mime: docMime,
+      document_data: docData,
+      storage_key: docStorageKey,
+      attachments: processedAttachments,
       created_at: new Date().toISOString()
     };
     inMemoryAssignments.push(mockAssignment);
@@ -455,6 +543,147 @@ router.put('/:id/submissions/:submissionId/grade', async (req: AuthRequest, res:
     });
   } catch (err: any) {
     res.status(400).json({ message: err.message || 'Failed to grade submission' });
+  }
+});
+
+/**
+ * 5a. GET /api/teacher/assignments/:id/document/preview - Preview teacher's uploaded assignment document
+ */
+router.get('/:id/document/preview', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId } = req.params;
+    let asg: any = null;
+
+    if (isPostgresConfigured) {
+      const q = await pool.query(
+        `SELECT * FROM student_assignments WHERE id = $1 AND school_id = $2`,
+        [assignmentId, req.user!.schoolId!]
+      );
+      if (q.rowCount && q.rowCount > 0) asg = q.rows[0];
+    } else {
+      asg = inMemoryAssignments.find(a => a.id === assignmentId && isSameSchool(a.school_id, req.user!.schoolId!));
+    }
+
+    if (!asg) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
+    let targetDoc: any = null;
+    if (attId && Array.isArray(asg.attachments)) {
+      targetDoc = asg.attachments.find((a: any) => a.id === attId);
+    }
+    if (!targetDoc) {
+      targetDoc = {
+        file_name: asg.document_name,
+        mime_type: asg.document_mime,
+        storage_key: asg.storage_key,
+        file_data: asg.document_data
+      };
+    }
+
+    if (!targetDoc.file_name && !targetDoc.file_data && !targetDoc.storage_key) {
+      return res.status(404).json({ message: 'No document attached to this assignment' });
+    }
+
+    let buffer: Buffer | null = null;
+    let mimeType = targetDoc.mime_type || 'application/octet-stream';
+    const fileName = targetDoc.file_name || 'assignment-document.pdf';
+
+    if (targetDoc.storage_key) {
+      try {
+        const dl = await downloadFromStorage(targetDoc.storage_key);
+        buffer = dl.buffer;
+        mimeType = dl.mimeType || mimeType;
+      } catch (_e) {}
+    }
+
+    if (!buffer && targetDoc.file_data) {
+      const cleanBase64 = String(targetDoc.file_data).replace(/^data:[^;]+;base64,/, '');
+      buffer = Buffer.from(cleanBase64, 'base64');
+    }
+
+    if (!buffer) {
+      return res.status(404).json({ message: 'Document content is unavailable' });
+    }
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to preview document' });
+  }
+});
+
+/**
+ * 5b. GET /api/teacher/assignments/:id/document/download - Download teacher's uploaded assignment document
+ */
+router.get('/:id/document/download', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId } = req.params;
+    let asg: any = null;
+
+    if (isPostgresConfigured) {
+      const q = await pool.query(
+        `SELECT * FROM student_assignments WHERE id = $1 AND school_id = $2`,
+        [assignmentId, req.user!.schoolId!]
+      );
+      if (q.rowCount && q.rowCount > 0) asg = q.rows[0];
+    } else {
+      asg = inMemoryAssignments.find(a => a.id === assignmentId && isSameSchool(a.school_id, req.user!.schoolId!));
+    }
+
+    if (!asg) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    const attId = req.query.attachmentId ? String(req.query.attachmentId) : null;
+    let targetDoc: any = null;
+    if (attId && Array.isArray(asg.attachments)) {
+      targetDoc = asg.attachments.find((a: any) => a.id === attId);
+    }
+    if (!targetDoc) {
+      targetDoc = {
+        file_name: asg.document_name,
+        mime_type: asg.document_mime,
+        storage_key: asg.storage_key,
+        file_data: asg.document_data
+      };
+    }
+
+    if (!targetDoc.file_name && !targetDoc.file_data && !targetDoc.storage_key) {
+      return res.status(404).json({ message: 'No document attached to this assignment' });
+    }
+
+    let buffer: Buffer | null = null;
+    let mimeType = targetDoc.mime_type || 'application/octet-stream';
+    const fileName = targetDoc.file_name || 'assignment-document.pdf';
+
+    if (targetDoc.storage_key) {
+      try {
+        const dl = await downloadFromStorage(targetDoc.storage_key);
+        buffer = dl.buffer;
+        mimeType = dl.mimeType || mimeType;
+      } catch (_e) {}
+    }
+
+    if (!buffer && targetDoc.file_data) {
+      const cleanBase64 = String(targetDoc.file_data).replace(/^data:[^;]+;base64,/, '');
+      buffer = Buffer.from(cleanBase64, 'base64');
+    }
+
+    if (!buffer) {
+      return res.status(404).json({ message: 'Document content is unavailable' });
+    }
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to download document' });
   }
 });
 

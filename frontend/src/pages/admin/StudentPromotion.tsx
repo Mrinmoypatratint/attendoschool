@@ -7,7 +7,8 @@ import {
   PreviewTableData
 } from '../../components/preview';
 import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
-import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles } from 'lucide-react';
+import { Search, Filter, CheckSquare, Square, ArrowUpDown, Sparkles, FileSpreadsheet, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function StudentPromotion() {
   const [fromYear, setFromYear] = useState('');
@@ -82,22 +83,50 @@ export default function StudentPromotion() {
   useEffect(() => { loadYears(); }, []);
   useEffect(() => { loadCandidates(); }, [fromYear]);
 
-  // Distinct classes and sections from current candidates
+  // Distinct classes and sections from current candidates sorted in natural academic order
   const availableClasses = useMemo(() => {
+    const parseClassRank = (className: string): number => {
+      const norm = String(className || '').trim().toLowerCase();
+      if (norm.includes('nursery') || norm.includes('pre-kg') || norm.includes('play')) return -3;
+      if (norm.includes('l-kg') || norm.includes('lkg') || norm.includes('lower kg')) return -2;
+      if (norm.includes('u-kg') || norm.includes('ukg') || norm.includes('upper kg')) return -1;
+      if (norm.includes('kg')) return -1;
+      const numMatch = norm.match(/\d+/);
+      if (numMatch) return parseInt(numMatch[0], 10);
+      const romanMap: Record<string, number> = {
+        'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5,
+        'vi': 6, 'vii': 7, 'viii': 8, 'ix': 9, 'x': 10,
+        'xi': 11, 'xii': 12
+      };
+      const parts = norm.split(/[\s-]+/);
+      for (const p of parts) {
+        if (romanMap[p]) return romanMap[p];
+      }
+      return 999;
+    };
+
     const s = new Set<string>();
     items.forEach(x => {
       if (x.from_class_name) s.add(x.from_class_name);
     });
-    return Array.from(s).sort();
+
+    return Array.from(s).sort((a, b) => {
+      const rankA = parseClassRank(a);
+      const rankB = parseClassRank(b);
+      if (rankA !== rankB) return rankA - rankB;
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
   }, [items]);
 
   const availableSections = useMemo(() => {
     const s = new Set<string>();
     items.forEach(x => {
-      if (x.from_section_name) s.add(x.from_section_name);
+      if (!classFilter || x.from_class_name === classFilter) {
+        if (x.from_section_name) s.add(x.from_section_name);
+      }
     });
-    return Array.from(s).sort();
-  }, [items]);
+    return Array.from(s).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [items, classFilter]);
 
   // Filtered candidate list
   const filteredItems = useMemo(() => {
@@ -208,6 +237,95 @@ export default function StudentPromotion() {
     }
   }
 
+  function handleExportExcel() {
+    // 1. Validation for particular Class and particular Section
+    if (!classFilter && !sectionFilter) {
+      alert('Please select both a Class and a Section using the filter dropdowns to export promoted students.');
+      return;
+    }
+    if (!classFilter) {
+      alert('Please select a Class using the filter dropdown to export promoted students.');
+      return;
+    }
+    if (!sectionFilter) {
+      alert('Please select a Section using the filter dropdown to export promoted students.');
+      return;
+    }
+
+    // 2. Filter students strictly belonging to this particular class and section who are PROMOTED
+    const targetPromoted = items.filter(x => {
+      if (x.from_class_name !== classFilter) return false;
+      if (x.from_section_name !== sectionFilter) return false;
+
+      if (statusFilter === 'PENDING' && x.already_processed) return false;
+      if (statusFilter === 'PROCESSED' && !x.already_processed) return false;
+
+      const currentOutcome = x.promotion_outcome || outcome[x.id] || 'PROMOTED';
+      return currentOutcome === 'PROMOTED';
+    });
+
+    if (targetPromoted.length === 0) {
+      alert(`No promoted students found for ${classFilter} - Section ${sectionFilter}${statusFilter !== 'ALL' ? ` (${statusFilter} only)` : ''}.`);
+      return;
+    }
+
+    // Sort by roll number naturally, then student name
+    const sortedStudents = [...targetPromoted].sort((a, b) => {
+      const rollA = parseInt(String(a.roll || a.roll_number || '0').replace(/\D/g, ''), 10) || 0;
+      const rollB = parseInt(String(b.roll || b.roll_number || '0').replace(/\D/g, ''), 10) || 0;
+      if (rollA !== rollB) return rollA - rollB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    // Resolve academic session names
+    const sourceYearObj = years.find(y => y.id === fromYear);
+    const targetYearObj = years.find(y => y.id === toYear);
+    const sourceSessionName = sourceYearObj ? sourceYearObj.name : 'Current Session';
+    const targetSessionName = targetYearObj ? targetYearObj.name : 'Next Session';
+
+    const excelRows = sortedStudents.map((st, idx) => ({
+      'Sl. No.': idx + 1,
+      'Roll No.': st.roll || st.roll_number || '—',
+      'Admission No.': st.admission_number || st.admissionNumber || '—',
+      'Student Name': st.name || '—',
+      'Current Class': st.from_class_name || classFilter,
+      'Current Section': st.from_section_name || sectionFilter,
+      'Source Session (From)': sourceSessionName,
+      'Target Session (To)': targetSessionName,
+      'Promotion Outcome': 'PROMOTED (Next Class)',
+      'Status': st.already_processed ? 'PROCESSED' : 'PENDING',
+      'Parent Name': st.parent_name || '—',
+      'Parent Contact': st.parent_sms_number || st.parentPhone || '—'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    ws['!cols'] = [
+      { wch: 8 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 15 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 18 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const sheetName = `${classFilter.replace(/[^a-zA-Z0-9]/g, '_')}_Sec_${sectionFilter}`.slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    const cleanClass = classFilter.replace(/\s+/g, '_');
+    const cleanSection = sectionFilter.replace(/\s+/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const fileName = `Promoted_Students_${cleanClass}_Sec_${cleanSection}_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+  }
+
   const eligibleCount = items.filter(x => !x.already_processed).length;
   const filteredEligible = filteredItems.filter(x => !x.already_processed);
   const selectedCount = Object.values(selected).filter(Boolean).length;
@@ -226,6 +344,32 @@ export default function StudentPromotion() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="btn-secondary"
+            style={{
+              padding: '9px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 8,
+              cursor: 'pointer',
+              background: '#ffffff',
+              border: '1px solid var(--border, #cbd5e1)',
+              color: '#15803d',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.15s ease'
+            }}
+            title={classFilter && sectionFilter 
+              ? `Export promoted students of ${classFilter} - Section ${sectionFilter} to Excel`
+              : 'Export promoted students to Excel for selected Class and Section'}
+          >
+            <FileSpreadsheet size={16} color="#16a34a" /> Export Excel
+          </button>
+
           <button
             onClick={initiateProcess}
             disabled={selectedCount === 0 || !toYear}
@@ -356,7 +500,11 @@ export default function StudentPromotion() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <select
               value={classFilter}
-              onChange={e => { setClassFilter(e.target.value); setPage(1); }}
+              onChange={e => {
+                setClassFilter(e.target.value);
+                setSectionFilter('');
+                setPage(1);
+              }}
               style={{ padding: '6px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--border, #cbd5e1)' }}
             >
               <option value="">All Classes ({availableClasses.length})</option>
@@ -412,6 +560,31 @@ export default function StudentPromotion() {
                 {allFilteredEligibleSelected ? 'Deselect Filtered' : `Select Filtered (${filteredEligible.length})`}
               </button>
             )}
+
+            {/* Quick Export Excel for selected Class & Section */}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleExportExcel}
+              style={{
+                padding: '6px 12px',
+                fontSize: 12.5,
+                borderRadius: 6,
+                border: '1px solid #86efac',
+                background: '#f0fdf4',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: '#15803d',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+              title={classFilter && sectionFilter 
+                ? `Export promoted students of ${classFilter} - Section ${sectionFilter} to Excel` 
+                : 'Select Class and Section to export promoted students to Excel'}
+            >
+              <FileSpreadsheet size={14} color="#16a34a" /> Export Promoted (Excel)
+            </button>
           </div>
         </div>
 

@@ -58,7 +58,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
 
   // Academic Sessions
   const [academicYears, setAcademicYears] = useState<any[]>([]);
-  const [activeSession, setActiveSession] = useState<string>('2025–26 Session');
+  const [activeSession, setActiveSession] = useState<string>('2026–27 ACADEMIC SESSION');
   const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false);
 
   // Notifications
@@ -136,7 +136,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
           const active = ayRes.data.find((x: any) => x.is_active) || ayRes.data[0];
           if (active) {
             const clean = active.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
-            setActiveSession(`${clean} Session`);
+            setActiveSession(`${clean} ACADEMIC SESSION`);
           }
         }
       } catch {}
@@ -374,15 +374,19 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
           <div className="sa-topbar-right">
             {/* Academic Session Selector */}
             <div className="sa-session-wrap" ref={sessionRef}>
-              <button
-                className="sa-session-btn"
+              <div
+                className="session-pill"
                 onClick={() => setSessionDropdownOpen(prev => !prev)}
                 title="Academic Session"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
               >
-                <Clock size={15} />
-                <span>{activeSession}</span>
-                <ChevronDown size={14} />
-              </button>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{(() => {
+                  const clean = String(activeSession || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim() || '2026–27';
+                  return `${clean} ACADEMIC SESSION`.toUpperCase();
+                })()}</span>
+                <ChevronDown size={14} style={{ opacity: 0.7, transform: sessionDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
 
               {sessionDropdownOpen && (
                 <div className="sa-popover sa-session-popover">
@@ -400,7 +404,7 @@ export function SuperAdminLayout({ children, currentPath, onNavigate }: SuperAdm
                         className={`sa-popover-item ${activeSession.includes(ay.name) ? 'active' : ''}`}
                         onClick={() => {
                           const clean = ay.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
-                          setActiveSession(`${clean} Session`);
+                          setActiveSession(`${clean} ACADEMIC SESSION`);
                           setSessionDropdownOpen(false);
                         }}
                       >

@@ -53,17 +53,6 @@ interface TeacherLeave {
   updated_at?: string;
 }
 
-const LEAVE_TYPES = [
-  { value: 'ALL', label: 'All Leave Types' },
-  { value: 'CASUAL', label: 'Casual Leave (CL)', color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-  { value: 'SICK', label: 'Sick / Medical Leave (SL)', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  { value: 'EARNED', label: 'Earned / Privilege Leave (EL)', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  { value: 'EMERGENCY', label: 'Emergency Leave', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  { value: 'DUTY', label: 'Official Duty (OD)', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  { value: 'MATERNITY', label: 'Maternity / Paternity', color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8' },
-  { value: 'OTHER', label: 'Other Leave', color: '#4B5563', bg: '#F3F4F6', border: '#E5E7EB' }
-];
-
 export default function TeacherLeaveApprove() {
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [leaves, setLeaves] = useState<TeacherLeave[]>([]);
@@ -80,6 +69,7 @@ export default function TeacherLeaveApprove() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
   const [teachersList, setTeachersList] = useState<any[]>([]);
+  const [configuredPolicies, setConfiguredPolicies] = useState<any[]>([]);
   const [exporting, setExporting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -141,6 +131,17 @@ export default function TeacherLeaveApprove() {
           setTeachersList(teachersRes.data);
         }
       } catch (_tErr) {
+        // Non-blocking fallback
+      }
+
+      // Load school-admin dynamic leave policies for the filter dropdown
+      try {
+        const polRes = await api.get('/leave-policies');
+        const polList = polRes.data?.data || polRes.data || [];
+        if (Array.isArray(polList)) {
+          setConfiguredPolicies(polList);
+        }
+      } catch (_pErr) {
         // Non-blocking fallback
       }
     } catch (err: any) {
@@ -249,15 +250,49 @@ export default function TeacherLeaveApprove() {
   };
 
   const availableMonths = useMemo(() => {
-    const set = new Set<string>();
-    const cur = new Date().toISOString().slice(0, 7);
-    set.add(cur);
+    const yearsSet = new Set<number>();
+    const now = new Date();
+    yearsSet.add(now.getFullYear());
+
+    // Extract any year mentioned in academic session name (e.g. "2026-2027", "2027-28", "2028-2029")
+    const sessionStr = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+    const sessionMatches = sessionStr.match(/\b(20\d{2})\b/g);
+    if (sessionMatches) {
+      sessionMatches.forEach((y) => {
+        const parsed = parseInt(y, 10);
+        if (parsed && !isNaN(parsed)) yearsSet.add(parsed);
+      });
+    }
+    const shortYearMatch = sessionStr.match(/20(\d{2})[-/](\d{2})/);
+    if (shortYearMatch) {
+      yearsSet.add(parseInt(`20${shortYearMatch[2]}`, 10));
+    }
+
+    // Include years from existing leave records
     leaves.forEach((l) => {
-      if (l.start_date) set.add(l.start_date.slice(0, 7));
-      if (l.end_date) set.add(l.end_date.slice(0, 7));
-      if (l.created_at) set.add(l.created_at.slice(0, 7));
+      if (l.start_date) {
+        const y = parseInt(l.start_date.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
+      if (l.end_date) {
+        const y = parseInt(l.end_date.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
+      if (l.created_at) {
+        const y = parseInt(l.created_at.slice(0, 4), 10);
+        if (y && !isNaN(y)) yearsSet.add(y);
+      }
     });
-    return Array.from(set).filter(Boolean).sort().reverse();
+
+    const months: string[] = [];
+    const sortedYears = Array.from(yearsSet).sort((a, b) => a - b);
+    sortedYears.forEach((year) => {
+      for (let m = 1; m <= 12; m++) {
+        months.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+    });
+
+    return months;
   }, [leaves]);
 
   // Real-time month-filtered leaves for KPI cards and tab badges
@@ -284,23 +319,250 @@ export default function TeacherLeaveApprove() {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getLeaveTypeStyle = (type: string) => {
-    const norm = String(type || 'CASUAL').toUpperCase();
-    const found = LEAVE_TYPES.find((t) => t.value === norm);
-    if (found && found.color) {
-      return found;
+  const dynamicFilterLeaveTypes = useMemo(() => {
+    const list = configuredPolicies
+      .filter((p: any) => p.is_active !== false)
+      .map((p: any) => {
+        const val = (p.code || p.name).toUpperCase().replace(/\s+/g, '_');
+        const cycle = p.accrual_cycle === 'HALF_YEARLY' ? 'Half-Year' : 'Year';
+        const label = p.code ? `${p.name} (${p.code})` : p.name;
+        return {
+          value: val,
+          code: (p.code || '').toUpperCase(),
+          name: p.name,
+          label: `${label} — ${p.days_count} Days / ${cycle}`,
+          color: p.accrual_cycle === 'YEARLY' ? '#2563EB' : '#7C3AED',
+          bg: p.accrual_cycle === 'YEARLY' ? '#EFF6FF' : '#F5F3FF',
+          border: p.accrual_cycle === 'YEARLY' ? '#BFDBFE' : '#DDD6FE'
+        };
+      });
+    return [{ value: 'ALL', label: 'All Leave Types' }, ...list];
+  }, [configuredPolicies]);
+
+  const normalizeTypeStr = (str: string) => {
+    return String(str || '')
+      .toUpperCase()
+      .replace(/[_\s-]+/g, '')
+      .replace(/LEAVE$/, '');
+  };
+
+  const matchesPolicy = (rawType: string, policy: any) => {
+    if (!rawType || !policy) return false;
+    const rawUpper = rawType.toUpperCase().trim();
+    const pCodeUpper = (policy.code || '').toUpperCase().trim();
+    const pNameUpper = (policy.name || '').toUpperCase().trim();
+
+    if (pCodeUpper && rawUpper === pCodeUpper) return true;
+    if (pNameUpper && rawUpper === pNameUpper) return true;
+
+    const rawNorm = normalizeTypeStr(rawType);
+    const pNameNorm = normalizeTypeStr(policy.name);
+    const pCodeNorm = normalizeTypeStr(policy.code || '');
+
+    if (pCodeNorm && rawNorm === pCodeNorm) return true;
+    if (pNameNorm && rawNorm === pNameNorm) return true;
+
+    // Common standard abbreviations & names
+    if ((rawNorm === 'CASUAL' || rawNorm === 'CL') && (pCodeNorm === 'CL' || pNameNorm.includes('CASUAL'))) return true;
+    if ((rawNorm === 'SICK' || rawNorm === 'SL') && (pCodeNorm === 'SL' || pNameNorm.includes('SICK'))) return true;
+    if ((rawNorm === 'EARNED' || rawNorm === 'EL') && (pCodeNorm === 'EL' || pNameNorm.includes('EARNED'))) return true;
+    if ((rawNorm === 'HALFPAY' || rawNorm === 'HPL') && (pCodeNorm === 'HPL' || pNameNorm.includes('HALFPAY'))) return true;
+    if ((rawNorm === 'MATERNITY' || rawNorm === 'ML') && (pCodeNorm === 'ML' || pNameNorm.includes('MATERNITY'))) return true;
+
+    if (rawNorm && pNameNorm && (pNameNorm.startsWith(rawNorm) || rawNorm.startsWith(pNameNorm))) {
+      return true;
     }
+
+    return false;
+  };
+
+  const getLeaveTypeStyle = (type: string) => {
+    const norm = String(type || '').trim().toUpperCase();
+    if (configuredPolicies.length > 0) {
+      const foundPolicy = configuredPolicies.find((p: any) => matchesPolicy(norm, p));
+      if (foundPolicy) {
+        const isYearly = foundPolicy.accrual_cycle === 'YEARLY';
+        return {
+          value: norm,
+          label: foundPolicy.code ? `${foundPolicy.name} (${foundPolicy.code})` : foundPolicy.name,
+          color: isYearly ? '#2563EB' : '#7C3AED',
+          bg: isYearly ? '#EFF6FF' : '#F5F3FF',
+          border: isYearly ? '#BFDBFE' : '#DDD6FE'
+        };
+      }
+    }
+    const cleanLabel = norm.toUpperCase().endsWith('LEAVE')
+      ? norm.charAt(0) + norm.slice(1).toLowerCase()
+      : norm;
     return {
-      value: norm,
-      label: norm + ' Leave',
+      value: norm || 'LEAVE',
+      label: cleanLabel || 'Leave',
       color: '#4B5563',
       bg: '#F3F4F6',
       border: '#E5E7EB'
     };
   };
 
+  // Extract all unique leave types dynamically from configuredPolicies + any existing leaves (0 hardcoding)
+  const allDynamicLeaveTypes = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; code?: string; label: string; allowedDays: number; cycle: string }>();
+
+    // 1. From School Admin Configured Policies
+    configuredPolicies.forEach((p: any) => {
+      const key = (p.code || p.name).toUpperCase().trim();
+      if (key && !map.has(key)) {
+        map.set(key, {
+          key,
+          name: p.name,
+          code: p.code ? p.code.toUpperCase() : undefined,
+          label: p.code ? `${p.name} (${p.code.toUpperCase()})` : p.name,
+          allowedDays: Number(p.days_count) || 0,
+          cycle: p.accrual_cycle || 'YEARLY'
+        });
+      }
+    });
+
+    // 2. From actual leave applications (in case leaves exist with types not yet in policy table)
+    leaves.forEach((l) => {
+      const raw = String(l.leave_type || '').toUpperCase().trim();
+      if (!raw) return;
+
+      const matchesExisting = Array.from(map.values()).some((pol) => matchesPolicy(raw, pol));
+      if (!matchesExisting && !map.has(raw)) {
+        map.set(raw, {
+          key: raw,
+          name: raw,
+          label: raw,
+          allowedDays: 0,
+          cycle: 'YEARLY'
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [configuredPolicies, leaves]);
+
+  const totalAllowedQuota = useMemo(() => {
+    return allDynamicLeaveTypes.reduce((acc, t) => acc + (t.allowedDays || 0), 0);
+  }, [allDynamicLeaveTypes]);
+
+  // Compute approved and applied leave counts & breakdown dynamically per faculty member
+  const getTeacherLeaveStats = (teacherQuery: { id?: string; email?: string; name?: string }, scopedMonth?: string) => {
+    const targetMonth = scopedMonth !== undefined ? scopedMonth : monthFilter;
+    const isMonthScoped = targetMonth && targetMonth !== 'ALL';
+
+    const teacherLeaves = leaves.filter((l) => {
+      const idMatch = teacherQuery.id && l.applicant_id && String(l.applicant_id).toLowerCase() === String(teacherQuery.id).toLowerCase();
+      const emailMatch = teacherQuery.email && l.teacher_email && l.teacher_email.toLowerCase() === teacherQuery.email.toLowerCase();
+      const nameMatch = teacherQuery.name && l.applicant_name && l.applicant_name.toLowerCase() === teacherQuery.name.toLowerCase();
+      return idMatch || emailMatch || nameMatch;
+    });
+
+    // Dynamic breakdown map
+    const byType: Record<string, {
+      days: number;           // Approved days in scope
+      approvedDays: number;   // Approved days in scope (alias)
+      count: number;          // Approved count in scope
+      totalDays: number;      // Total approved days
+      appliedDays: number;    // Total applied days for this type in scope
+      appliedCount: number;   // Total applications for this type
+      pendingDays: number;    // Pending days for this type
+      pendingCount: number;   // Pending count for this type
+      rejectedDays: number;   // Rejected days for this type
+      rejectedCount: number;  // Rejected count for this type
+    }> = {};
+
+    allDynamicLeaveTypes.forEach((t) => {
+      byType[t.key] = {
+        days: 0,
+        approvedDays: 0,
+        count: 0,
+        totalDays: 0,
+        appliedDays: 0,
+        appliedCount: 0,
+        pendingDays: 0,
+        pendingCount: 0,
+        rejectedDays: 0,
+        rejectedCount: 0
+      };
+    });
+
+    let totalApprovedDays = 0;
+    let totalApprovedCount = 0;
+    let totalAppliedDays = 0;
+    let totalPendingCount = 0;
+    let totalRejectedCount = 0;
+
+    teacherLeaves.forEach((l) => {
+      const lType = String(l.leave_type || '').toUpperCase().trim();
+      const matchedPolicy = allDynamicLeaveTypes.find((t) => matchesPolicy(lType, t));
+      const matchedKey = matchedPolicy ? matchedPolicy.key : lType;
+
+      if (!byType[matchedKey]) {
+        byType[matchedKey] = {
+          days: 0,
+          approvedDays: 0,
+          count: 0,
+          totalDays: 0,
+          appliedDays: 0,
+          appliedCount: 0,
+          pendingDays: 0,
+          pendingCount: 0,
+          rejectedDays: 0,
+          rejectedCount: 0
+        };
+      }
+
+      const allDays = calculateDays(l.start_date, l.end_date);
+      const mDays = isMonthScoped ? computeLeaveDaysInMonth(l, targetMonth) : allDays;
+
+      // Track applied days & count
+      if (!isMonthScoped || mDays > 0) {
+        const daysToAdd = isMonthScoped ? mDays : allDays;
+        byType[matchedKey].appliedDays += daysToAdd;
+        byType[matchedKey].appliedCount += 1;
+        totalAppliedDays += daysToAdd;
+      }
+
+      if (l.status === 'APPROVED') {
+        if (mDays > 0) {
+          byType[matchedKey].days += mDays;
+          byType[matchedKey].approvedDays += mDays;
+          byType[matchedKey].count += 1;
+          totalApprovedDays += mDays;
+          totalApprovedCount += 1;
+        }
+        byType[matchedKey].totalDays += allDays;
+      } else if (l.status === 'PENDING') {
+        if (!isMonthScoped || mDays > 0) {
+          byType[matchedKey].pendingDays += (isMonthScoped ? mDays : allDays);
+          byType[matchedKey].pendingCount += 1;
+          totalPendingCount += 1;
+        }
+      } else if (l.status === 'REJECTED') {
+        if (!isMonthScoped || mDays > 0) {
+          byType[matchedKey].rejectedDays += (isMonthScoped ? mDays : allDays);
+          byType[matchedKey].rejectedCount += 1;
+          totalRejectedCount += 1;
+        }
+      }
+    });
+
+    return {
+      byType,
+      totalApprovedDays,
+      totalApprovedCount,
+      totalAppliedDays,
+      totalAllowedQuota,
+      pendingCount: totalPendingCount,
+      rejectedCount: totalRejectedCount,
+      totalApplications: teacherLeaves.length,
+      teacherLeaves
+    };
+  };
+
   // Export Monthly Teacher Leave Report to Excel (.xlsx)
-  // Only exports teachers who have applied for leave, excluding teachers with no leaves
+  // Reflects exact table data dynamically with 0 hardcoded leave categories and 1/10 quota ratios
   const exportMonthlyLeaveReport = (targetMonth?: string) => {
     try {
       setExporting(true);
@@ -323,8 +585,6 @@ export default function TeacherLeaveApprove() {
         ? leaves
         : leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
 
-      // If activeTab is a specific status (e.g. APPROVED/REJECTED/PENDING) and has matching leaves, export them,
-      // otherwise export all month leaves
       const targetLeaves = (activeTab !== 'ALL' && monthLeaves.some((l) => l.status === activeTab))
         ? monthLeaves.filter((l) => l.status === activeTab)
         : monthLeaves;
@@ -337,35 +597,7 @@ export default function TeacherLeaveApprove() {
         return;
       }
 
-      // Sheet 1: The exact data from the Teacher Leave Review table list
-      const detailRows = targetLeaves.map((l, index) => {
-        const totalDuration = calculateDays(l.start_date, l.end_date);
-        const daysInMonth = computeLeaveDaysInMonth(l, ym);
-        const typeStyle = getLeaveTypeStyle(l.leave_type);
-        const statusLabel = l.status === 'APPROVED' ? 'Approved' : l.status === 'REJECTED' ? 'Rejected' : 'Pending Review';
-
-        return {
-          'SL No.': index + 1,
-          'Faculty Member': l.applicant_name || 'Faculty Member',
-          'Email Address': l.teacher_email || '—',
-          'Employee ID': l.identifier || '—',
-          'Leave Type': typeStyle.label || l.leave_type,
-          'Duration & Period': `${formatDate(l.start_date)} → ${formatDate(l.end_date)}`,
-          'Start Date': l.start_date || '—',
-          'End Date': l.end_date || '—',
-          'Total Duration (Days)': totalDuration,
-          'Days in Month': daysInMonth,
-          'Reason / Details': l.reason || '—',
-          'Applied Date': l.created_at ? formatDate(l.created_at) : '—',
-          'Status': statusLabel,
-          'Review Remarks': l.review_notes || l.rejection_reason || (l.status === 'APPROVED' ? 'Approved by School Administration' : '—'),
-          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
-          'Reviewed At': l.reviewed_at ? formatDate(l.reviewed_at) : '—',
-          'Supporting Document': l.document_name ? `${l.document_name}` : (l.document_url ? 'Attached' : 'None')
-        };
-      });
-
-      // Extract ONLY teachers who have applied for leave in this target month (excluding teachers who have not taken/applied for leave)
+      // Extract unique teachers who have applied for leave in this scope (one row per teacher in Sheet 1)
       const teacherMap = new Map<string, {
         id: string;
         name: string;
@@ -394,135 +626,193 @@ export default function TeacherLeaveApprove() {
 
       const facultyList = Array.from(teacherMap.values());
 
-      // Aggregate leaves taken per teacher for the target month
-      let grandTotalTaken = 0;
-      let grandTotalCL = 0;
-      let grandTotalSL = 0;
-      let grandTotalEL = 0;
-      let grandTotalEmergency = 0;
-      let grandTotalOD = 0;
-      let grandTotalOther = 0;
-      let grandApproved = 0;
-      let grandPending = 0;
-      let grandRejected = 0;
+      // Track grand totals across all faculty members
+      const grandTotalsByType: Record<string, { approvedDays: number; appliedDays: number }> = {};
+      allDynamicLeaveTypes.forEach((t) => {
+        grandTotalsByType[t.key] = { approvedDays: 0, appliedDays: 0 };
+      });
+      let grandApprovedDays = 0;
+      let grandApprovedCount = 0;
+      let grandAppliedDays = 0;
+      let grandPendingCount = 0;
+      let grandRejectedCount = 0;
+      let grandTotalApps = 0;
 
-      const summaryRows = facultyList.map((f) => {
+      // Sheet 1: Each faculty member appears ONCE ONLY.
+      // If a faculty member applied for 3-4 types of leave, their name appears one time only,
+      // and each leave section count increments for applied types or remains the same.
+      const facultyRows = facultyList.map((f, index) => {
+        const stats = getTeacherLeaveStats({ id: f.id, email: f.email, name: f.name }, ym);
         const tLeaves = targetLeaves.filter((l) => {
-          const idMatch = l.applicant_id && f.id && String(l.applicant_id).toLowerCase() === String(f.id).toLowerCase();
-          const emailMatch = l.teacher_email && f.email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
-          const nameMatch = l.applicant_name && f.name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
+          const idMatch = f.id && l.applicant_id && String(l.applicant_id).toLowerCase() === String(f.id).toLowerCase();
+          const emailMatch = f.email && l.teacher_email && l.teacher_email.toLowerCase() === f.email.toLowerCase();
+          const nameMatch = f.name && l.applicant_name && l.applicant_name.toLowerCase() === f.name.toLowerCase();
           return idMatch || emailMatch || nameMatch;
         });
 
-        let clDays = 0;
-        let slDays = 0;
-        let elDays = 0;
-        let emergencyDays = 0;
-        let odDays = 0;
-        let maternityDays = 0;
-        let otherDays = 0;
-        let approvedDays = 0;
+        grandApprovedDays += stats.totalApprovedDays;
+        grandApprovedCount += stats.totalApprovedCount;
+        grandAppliedDays += stats.totalAppliedDays;
+        grandPendingCount += stats.pendingCount;
+        grandRejectedCount += stats.rejectedCount;
+        grandTotalApps += tLeaves.length;
 
-        let appApproved = 0;
-        let appPending = 0;
-        let appRejected = 0;
+        const appliedTypeNames = Array.from(new Set(tLeaves.map((l) => getLeaveTypeStyle(l.leave_type).label)));
 
-        tLeaves.forEach((l) => {
-          const dInM = computeLeaveDaysInMonth(l, ym);
-          if (l.status === 'APPROVED') {
-            appApproved++;
-            approvedDays += dInM;
-            const norm = String(l.leave_type || 'CASUAL').toUpperCase();
-            if (norm === 'CASUAL') clDays += dInM;
-            else if (norm === 'SICK') slDays += dInM;
-            else if (norm === 'EARNED') elDays += dInM;
-            else if (norm === 'EMERGENCY') emergencyDays += dInM;
-            else if (norm === 'DUTY') odDays += dInM;
-            else if (norm === 'MATERNITY') maternityDays += dInM;
-            else otherDays += dInM;
-          } else if (l.status === 'PENDING') {
-            appPending++;
-          } else if (l.status === 'REJECTED') {
-            appRejected++;
-          }
-        });
+        // Itemized breakdown of all leave applications for this teacher
+        const applicationsSummary = tLeaves.map((l, i) => {
+          const typeStyle = getLeaveTypeStyle(l.leave_type);
+          const dur = calculateDays(l.start_date, l.end_date);
+          const statusText = l.status === 'APPROVED' ? 'Approved' : l.status === 'REJECTED' ? `Rejected (${l.review_notes || l.rejection_reason || 'Rejected'})` : 'Pending Review';
+          return `[${i + 1}] ${typeStyle.label}: ${formatDate(l.start_date)} → ${formatDate(l.end_date)} (${dur}d) - ${statusText} - Reason: "${l.reason || '—'}"`;
+        }).join('; ');
 
-        grandTotalTaken += approvedDays;
-        grandTotalCL += clDays;
-        grandTotalSL += slDays;
-        grandTotalEL += elDays;
-        grandTotalEmergency += emergencyDays;
-        grandTotalOD += odDays;
-        grandTotalOther += (maternityDays + otherDays);
-        grandApproved += appApproved;
-        grandPending += appPending;
-        grandRejected += appRejected;
-
-        return {
+        const fRow: Record<string, any> = {
+          'SL No.': index + 1,
           'Teacher / Faculty Member': f.name,
           'Email Address': f.email || '—',
           'Employee ID': f.identifier || '—',
           'Designation / Department': f.detail || 'Faculty Member',
           'Report Month': monthName,
-          'Total Leaves Taken (Days)': approvedDays,
-          'Casual Leave (CL Days)': clDays,
-          'Sick / Medical Leave (SL Days)': slDays,
-          'Earned Leave (EL Days)': elDays,
-          'Emergency Leave (Days)': emergencyDays,
-          'Official Duty (OD Days)': odDays,
-          'Maternity / Other (Days)': (maternityDays + otherDays),
-          'Approved Requests': appApproved,
-          'Pending Requests': appPending,
-          'Rejected Requests': appRejected,
-          'Total Applications': (appApproved + appPending + appRejected),
-          'Status Summary': approvedDays > 0 ? `${approvedDays} Day(s) Taken` : `${appPending} Pending, ${appRejected} Rejected`
+          'Total Approved Leaves': totalAllowedQuota > 0 ? `${stats.totalApprovedDays}/${totalAllowedQuota}` : `${stats.totalApprovedDays} Days`,
+          'Total Approved Count': stats.totalApprovedCount,
+          'Total Applied Days': `${stats.totalAppliedDays} Days`,
+          'Total Applications': tLeaves.length
         };
+
+        // LEAVE SECTION (BY TYPE) - Count increments if applied/approved, remains same if not applied
+        allDynamicLeaveTypes.forEach((t) => {
+          const tStat = stats.byType[t.key];
+          const appDays = tStat?.approvedDays || 0;
+          const reqDays = tStat?.appliedDays || 0;
+
+          grandTotalsByType[t.key].approvedDays += appDays;
+          grandTotalsByType[t.key].appliedDays += reqDays;
+
+          const colApproved = t.allowedDays > 0 ? `${t.label} (Approved / Allowed)` : `${t.label} (Approved Days)`;
+          fRow[colApproved] = t.allowedDays > 0 ? `${appDays}/${t.allowedDays}` : `${appDays} Days`;
+
+          const colApplied = t.allowedDays > 0 ? `${t.label} (Applied / Allowed)` : `${t.label} (Applied Days)`;
+          fRow[colApplied] = t.allowedDays > 0 ? `${reqDays}/${t.allowedDays}` : `${reqDays} Days`;
+        });
+
+        fRow['Applied Leave Types'] = appliedTypeNames.join(', ') || '—';
+        fRow['Approved Requests'] = stats.totalApprovedCount;
+        fRow['Pending Requests'] = stats.pendingCount;
+        fRow['Rejected Requests'] = stats.rejectedCount;
+        fRow['Applications Breakdown & Details'] = applicationsSummary || '—';
+        fRow['Status Summary'] = stats.totalApprovedDays > 0
+          ? `${stats.totalApprovedDays} Day(s) Approved`
+          : stats.pendingCount > 0
+            ? `${stats.pendingCount} Pending Review`
+            : `${stats.rejectedCount} Rejected`;
+
+        return fRow;
       });
 
-      // Sort: Teachers with leaves taken first, then by total applications
-      summaryRows.sort((a, b) => {
-        if (b['Total Leaves Taken (Days)'] !== a['Total Leaves Taken (Days)']) {
-          return b['Total Leaves Taken (Days)'] - a['Total Leaves Taken (Days)'];
-        }
-        return b['Total Applications'] - a['Total Applications'];
-      });
+      // Sort: Faculty with more applications first
+      facultyRows.sort((a, b) => (b['Total Applications'] || 0) - (a['Total Applications'] || 0));
 
       // Append institutional summary total row
-      summaryRows.push({
-        'Teacher / Faculty Member': 'TOTAL (FACULTY WHO APPLIED)',
+      const totalRow: Record<string, any> = {
+        'SL No.': 'TOTAL',
+        'Teacher / Faculty Member': 'INSTITUTION TOTAL (ALL FACULTY)',
         'Email Address': '',
         'Employee ID': '',
         'Designation / Department': `${facultyList.length} Faculty Member(s) Applied`,
         'Report Month': monthName,
-        'Total Leaves Taken (Days)': grandTotalTaken,
-        'Casual Leave (CL Days)': grandTotalCL,
-        'Sick / Medical Leave (SL Days)': grandTotalSL,
-        'Earned Leave (EL Days)': grandTotalEL,
-        'Emergency Leave (Days)': grandTotalEmergency,
-        'Official Duty (OD Days)': grandTotalOD,
-        'Maternity / Other (Days)': grandTotalOther,
-        'Approved Requests': grandApproved,
-        'Pending Requests': grandPending,
-        'Rejected Requests': grandRejected,
-        'Total Applications': (grandApproved + grandPending + grandRejected),
-        'Status Summary': `${grandTotalTaken} Total Approved Leave Day(s)`
-      } as any);
+        'Total Approved Leaves': totalAllowedQuota > 0 ? `${grandApprovedDays}/${totalAllowedQuota}` : `${grandApprovedDays} Days`,
+        'Total Approved Count': grandApprovedCount,
+        'Total Applied Days': `${grandAppliedDays} Days`,
+        'Total Applications': grandTotalApps
+      };
+
+      allDynamicLeaveTypes.forEach((t) => {
+        const colApproved = t.allowedDays > 0 ? `${t.label} (Approved / Allowed)` : `${t.label} (Approved Days)`;
+        totalRow[colApproved] = t.allowedDays > 0 ? `${grandTotalsByType[t.key].approvedDays}/${t.allowedDays}` : `${grandTotalsByType[t.key].approvedDays} Days`;
+
+        const colApplied = t.allowedDays > 0 ? `${t.label} (Applied / Allowed)` : `${t.label} (Applied Days)`;
+        totalRow[colApplied] = t.allowedDays > 0 ? `${grandTotalsByType[t.key].appliedDays}/${t.allowedDays}` : `${grandTotalsByType[t.key].appliedDays} Days`;
+      });
+
+      totalRow['Applied Leave Types'] = `${allDynamicLeaveTypes.length} Configured Types`;
+      totalRow['Approved Requests'] = grandApprovedCount;
+      totalRow['Pending Requests'] = grandPendingCount;
+      totalRow['Rejected Requests'] = grandRejectedCount;
+      totalRow['Applications Breakdown & Details'] = `${grandApprovedDays} Total Approved Days across institution`;
+      totalRow['Status Summary'] = `${grandApprovedDays} Days Approved, ${grandPendingCount} Pending, ${grandRejectedCount} Rejected`;
+
+      facultyRows.push(totalRow as any);
+
+      // Sheet 2: Itemized individual leave application transactions
+      const detailRows = targetLeaves.map((l, index) => {
+        const totalDuration = calculateDays(l.start_date, l.end_date);
+        const daysInMonth = computeLeaveDaysInMonth(l, ym);
+        const typeStyle = getLeaveTypeStyle(l.leave_type);
+        const statusLabel = l.status === 'APPROVED' ? 'Approved' : l.status === 'REJECTED' ? 'Rejected' : 'Pending Review';
+
+        const row: Record<string, any> = {
+          'SL No.': index + 1,
+          'Faculty Member': l.applicant_name || 'Faculty Member',
+          'Email Address': l.teacher_email || '—',
+          'Employee ID': l.identifier || '—',
+          'Applied Leave Type': typeStyle.label || l.leave_type,
+          'Duration & Period': `${formatDate(l.start_date)} → ${formatDate(l.end_date)}`,
+          'Start Date': l.start_date || '—',
+          'End Date': l.end_date || '—',
+          'Duration (Days)': totalDuration,
+          'Days in Month': daysInMonth,
+          'Reason / Details': l.reason || '—',
+          'Applied Date': l.created_at ? formatDate(l.created_at) : '—',
+          'Status': statusLabel,
+          'Review Remarks': l.review_notes || l.rejection_reason || (l.status === 'APPROVED' ? 'Approved by School Administration' : '—'),
+          'Reviewed By': l.reviewer_name || (l.status !== 'PENDING' ? 'School Administration' : '—'),
+          'Reviewed At': l.reviewed_at ? formatDate(l.reviewed_at) : '—',
+          'Supporting Document': l.document_name ? `${l.document_name}` : (l.document_url ? 'Attached' : 'None')
+        };
+
+        return row;
+      });
 
       // Build Workbook
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Exact table list data in Teacher Leave Review
+      // Sheet 1: Faculty Leave Review (One row per teacher, counts increment for applied leaves)
+      const wsFaculty = XLSX.utils.json_to_sheet(facultyRows);
+      const facultyCols = [
+        { wch: 8 },  // SL No.
+        { wch: 26 }, // Faculty Member
+        { wch: 28 }, // Email Address
+        { wch: 16 }, // Employee ID
+        { wch: 24 }, // Designation
+        { wch: 16 }, // Month
+        { wch: 24 }, // Total Approved Leaves
+        { wch: 20 }, // Total Approved Count
+        { wch: 18 }, // Total Applied Days
+        { wch: 18 }, // Total Applications
+        ...allDynamicLeaveTypes.flatMap(() => [{ wch: 28 }, { wch: 26 }]), // Approved and Applied columns per type
+        { wch: 30 }, // Applied Leave Types
+        { wch: 18 }, // Approved Requests
+        { wch: 18 }, // Pending Requests
+        { wch: 18 }, // Rejected Requests
+        { wch: 45 }, // Applications Breakdown & Details
+        { wch: 24 }  // Status Summary
+      ];
+      wsFaculty['!cols'] = facultyCols;
+      XLSX.utils.book_append_sheet(wb, wsFaculty, 'Teacher Leave Review');
+
+      // Sheet 2: Individual Applications Log
       const wsDetails = XLSX.utils.json_to_sheet(detailRows);
-      wsDetails['!cols'] = [
+      const detailCols = [
         { wch: 8 },  // SL No.
         { wch: 24 }, // Faculty Member
         { wch: 28 }, // Email Address
         { wch: 16 }, // Employee ID
-        { wch: 26 }, // Leave Type
+        { wch: 24 }, // Applied Leave Type
         { wch: 26 }, // Duration & Period
         { wch: 14 }, // Start Date
         { wch: 14 }, // End Date
-        { wch: 16 }, // Total Duration (Days)
+        { wch: 16 }, // Duration (Days)
         { wch: 16 }, // Days in Month
         { wch: 34 }, // Reason / Details
         { wch: 16 }, // Applied Date
@@ -532,30 +822,8 @@ export default function TeacherLeaveApprove() {
         { wch: 16 }, // Reviewed At
         { wch: 24 }  // Supporting Document
       ];
-      XLSX.utils.book_append_sheet(wb, wsDetails, 'Teacher Leave Review');
-
-      // Sheet 2: Monthly Summary for teachers who applied
-      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
-      wsSummary['!cols'] = [
-        { wch: 26 },
-        { wch: 28 },
-        { wch: 16 },
-        { wch: 24 },
-        { wch: 18 },
-        { wch: 24 },
-        { wch: 20 },
-        { wch: 24 },
-        { wch: 20 },
-        { wch: 22 },
-        { wch: 20 },
-        { wch: 22 },
-        { wch: 18 },
-        { wch: 18 },
-        { wch: 18 },
-        { wch: 18 },
-        { wch: 25 }
-      ];
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Leave Summary');
+      wsDetails['!cols'] = detailCols;
+      XLSX.utils.book_append_sheet(wb, wsDetails, 'All Applications Log');
 
       const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `Teacher_Leave_Review_${safeMonth}.xlsx`;
@@ -584,8 +852,18 @@ export default function TeacherLeaveApprove() {
       }
 
       // Leave Type filter
-      if (typeFilter !== 'ALL' && String(l.leave_type || 'CASUAL').toUpperCase() !== typeFilter) {
-        return false;
+      if (typeFilter !== 'ALL') {
+        const leaveTypeVal = String(l.leave_type || 'CASUAL').toUpperCase();
+        const selectedPolicy = configuredPolicies.find((p: any) => {
+          const pVal = (p.code || p.name).toUpperCase().replace(/\s+/g, '_');
+          return pVal === typeFilter || (p.code && p.code.toUpperCase() === typeFilter);
+        });
+
+        if (selectedPolicy) {
+          if (!matchesPolicy(leaveTypeVal, selectedPolicy)) return false;
+        } else {
+          if (leaveTypeVal !== typeFilter) return false;
+        }
       }
 
       // Search Query
@@ -600,10 +878,10 @@ export default function TeacherLeaveApprove() {
 
       return true;
     });
-  }, [monthScopedLeaves, activeTab, typeFilter, searchQuery]);
+  }, [monthScopedLeaves, activeTab, typeFilter, searchQuery, configuredPolicies]);
 
   return (
-    <div className="student-subpage" style={{ padding: '24px 28px', maxWidth: 1280, margin: '0 auto' }}>
+    <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
       {/* ── Page Header ── */}
       <div className="student-subpage-header" style={{ marginBottom: 20 }}>
         <div className="student-subpage-title-row">
@@ -1042,40 +1320,6 @@ export default function TeacherLeaveApprove() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          {/* Month Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
-              <Calendar size={14} />
-              <span>Month:</span>
-            </div>
-            <select
-              value={monthFilter}
-              onChange={(e) => {
-                const val = e.target.value;
-                setMonthFilter(val);
-                if (val !== 'ALL') {
-                  setReportMonth(val);
-                }
-              }}
-              style={{
-                padding: '7px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border, #E2E8F0)',
-                background: 'var(--surface, #FFF)',
-                fontSize: 13,
-                color: 'var(--text, #0F172A)',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="ALL">All Months</option>
-              {availableMonths.map((ym) => (
-                <option key={ym} value={ym}>
-                  {formatMonthDisplay(ym)}
-                </option>
-              ))}
-            </select>
-          </div>
 
           {/* Type Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1097,7 +1341,7 @@ export default function TeacherLeaveApprove() {
                 cursor: 'pointer'
               }}
             >
-              {LEAVE_TYPES.map((lt) => (
+              {dynamicFilterLeaveTypes.map((lt) => (
                 <option key={lt.value} value={lt.value}>
                   {lt.label}
                 </option>
@@ -1150,26 +1394,29 @@ export default function TeacherLeaveApprove() {
             </p>
           </div>
         ) : (
-          <div className="student-table-wrap" style={{ overflowX: 'auto' }}>
-            <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
+            <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ background: 'var(--table-header, #F8FAFC)', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 135 }}>
                     FACULTY MEMBER
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 155 }}>
+                    APPROVED LEAVES (BY TYPE)
+                  </th>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 95 }}>
                     LEAVE TYPE
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 110 }}>
                     DURATION & PERIOD
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 110 }}>
                     REASON / DETAILS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 85 }}>
                     STATUS
                   </th>
-                  <th style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', textAlign: 'right' }}>
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', textAlign: 'right', minWidth: 140 }}>
                     ACTIONS
                   </th>
                 </tr>
@@ -1186,6 +1433,8 @@ export default function TeacherLeaveApprove() {
                     .slice(0, 2)
                     .toUpperCase();
 
+                  const teacherStats = getTeacherLeaveStats({ id: l.applicant_id, email: l.teacher_email, name: l.applicant_name });
+
                   return (
                     <tr
                       key={l.id}
@@ -1195,19 +1444,19 @@ export default function TeacherLeaveApprove() {
                       }}
                     >
                       {/* Faculty Info */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {l.photo_url ? (
                             <img
                               src={l.photo_url}
                               alt={l.applicant_name}
-                              style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '1px solid #BFDBFE' }}
+                              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid #BFDBFE', flexShrink: 0 }}
                             />
                           ) : (
                             <div
                               style={{
-                                width: 38,
-                                height: 38,
+                                width: 32,
+                                height: 32,
                                 borderRadius: '50%',
                                 background: '#EFF6FF',
                                 color: '#2563EB',
@@ -1215,7 +1464,7 @@ export default function TeacherLeaveApprove() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: 700,
-                                fontSize: 13,
+                                fontSize: 12,
                                 flexShrink: 0
                               }}
                             >
@@ -1223,54 +1472,135 @@ export default function TeacherLeaveApprove() {
                             </div>
                           )}
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text, #0F172A)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text, #0F172A)' }}>
                               <PersonProfileLink kind="teacher" id={l.applicant_id} name={l.applicant_name} person={l as any} />
                             </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)' }}>
                               {l.teacher_email || l.identifier || 'Faculty Member'}
                             </div>
                           </div>
                         </div>
                       </td>
 
+                      {/* Approved Leaves Count (By Type) - Increases ONLY when admin approves */}
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: teacherStats.totalApprovedDays > 0 ? '#15803D' : '#64748B',
+                                background: teacherStats.totalApprovedDays > 0 ? '#DCFCE7' : '#F1F5F9',
+                                border: `1px solid ${teacherStats.totalApprovedDays > 0 ? '#86EFAC' : '#E2E8F0'}`,
+                                padding: '2px 6px',
+                                borderRadius: 5,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                              title={`Total approved leave days out of policy entitlement`}
+                            >
+                              <CheckCircle2 size={11} color={teacherStats.totalApprovedDays > 0 ? '#15803D' : '#94A3B8'} />
+                              <span>
+                                Total Approved: {teacherStats.totalApprovedDays}
+                                {totalAllowedQuota > 0 ? `/${totalAllowedQuota}` : ''}{' '}
+                                {teacherStats.totalApprovedDays === 1 ? 'Day' : 'Days'}
+                              </span>
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                            {allDynamicLeaveTypes.map((t) => {
+                              const tStat = teacherStats.byType[t.key];
+                              const countDays = tStat?.days || 0;
+                              const isTaken = countDays > 0;
+                              const quotaDisplay = t.allowedDays > 0 ? `${countDays}/${t.allowedDays}` : `${countDays}d`;
+                              return (
+                                <span
+                                  key={t.key}
+                                  title={`${t.label}: ${countDays} approved out of ${t.allowedDays || 'unlimited'} allowed. Increases when admin approves.`}
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: isTaken ? 700 : 500,
+                                    color: isTaken ? '#1E40AF' : '#64748B',
+                                    background: isTaken ? '#EFF6FF' : '#F8FAFC',
+                                    border: `1px solid ${isTaken ? '#BFDBFE' : '#E2E8F0'}`,
+                                    padding: '1px 5px',
+                                    borderRadius: 3,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2
+                                  }}
+                                >
+                                  <span>{t.code || t.name}:</span>
+                                  <span style={{ fontWeight: 800 }}>{quotaDisplay}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </td>
+
                       {/* Leave Type */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '4px 9px',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            background: typeObj.bg,
-                            color: typeObj.color,
-                            border: `1px solid ${typeObj.border}`
-                          }}
-                        >
-                          {typeObj.label}
-                        </span>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        {(() => {
+                          const currentLeavePolicy = allDynamicLeaveTypes.find((t) => matchesPolicy(l.leave_type, t));
+                          const currentLeaveQuota = currentLeavePolicy?.allowedDays || 0;
+
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                background: typeObj.bg,
+                                color: typeObj.color,
+                                border: `1px solid ${typeObj.border}`
+                              }}
+                            >
+                              <span>{typeObj.label}</span>
+                              <span
+                                style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 800,
+                                  padding: '1px 4px',
+                                  borderRadius: 3,
+                                  background: 'rgba(255, 255, 255, 0.8)',
+                                  border: `1px solid ${typeObj.border}`
+                                }}
+                                title={`Current application: ${days} day(s)${currentLeaveQuota > 0 ? ` out of ${currentLeaveQuota} allowed ${currentLeavePolicy?.name || ''} days` : ''}`}
+                              >
+                                {currentLeaveQuota > 0 ? `${days}/${currentLeaveQuota}d` : `${days}d`}
+                              </span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Duration & Period */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #0F172A)' }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text, #0F172A)' }}>
                           {formatDate(l.start_date)} → {formatDate(l.end_date)}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Calendar size={12} />
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Calendar size={11} />
                           <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
                         </div>
                       </td>
 
                       {/* Reason */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', maxWidth: 280 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         <p
                           style={{
                             margin: 0,
-                            fontSize: 13.5,
+                            fontSize: 12.5,
                             color: 'var(--text, #0F172A)',
-                            lineHeight: 1.45,
+                            lineHeight: 1.4,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
@@ -1281,58 +1611,58 @@ export default function TeacherLeaveApprove() {
                         >
                           {l.reason}
                         </p>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-muted, #94A3B8)', marginTop: 3 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted, #94A3B8)', marginTop: 2 }}>
                           Applied: {formatDate(l.created_at)}
                         </div>
                         {l.document_url && (
-                          <div style={{ marginTop: 6 }}>
+                          <div style={{ marginTop: 4 }}>
                             <button
                               type="button"
                               onClick={() => setViewingDoc({ url: l.document_url!, name: l.document_name || `${l.applicant_name} Leave Document` })}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '3px 8px',
-                                borderRadius: 5,
+                                gap: 4,
+                                padding: '2px 6px',
+                                borderRadius: 4,
                                 border: '1px solid #BFDBFE',
                                 background: '#EFF6FF',
                                 color: '#1D4ED8',
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 fontWeight: 600,
                                 cursor: 'pointer',
                                 transition: 'background 0.15s'
                               }}
                               title="View Supporting Document"
                             >
-                              <Paperclip size={11} />
-                              <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {l.document_name || 'View Document'}
+                              <Paperclip size={10} />
+                              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {l.document_name || 'View Doc'}
                               </span>
-                              <Eye size={11} />
+                              <Eye size={10} />
                             </button>
                           </div>
                         )}
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top' }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         {l.status === 'PENDING' && (
                           <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 9px',
-                              borderRadius: 6,
-                              fontSize: 12,
+                              gap: 4,
+                              padding: '3px 7px',
+                              borderRadius: 5,
+                              fontSize: 11.5,
                               fontWeight: 700,
                               background: '#FEF3C7',
                               color: '#B45309',
                               border: '1px solid #FDE68A'
                             }}
                           >
-                            <Clock size={12} />
+                            <Clock size={11} />
                             Pending
                           </span>
                         )}
@@ -1342,21 +1672,21 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                fontSize: 12,
+                                gap: 4,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
                                 fontWeight: 700,
                                 background: '#DCFCE7',
                                 color: '#15803D',
                                 border: '1px solid #BBF7D0'
                               }}
                             >
-                              <CheckCircle2 size={12} />
+                              <CheckCircle2 size={11} />
                               Approved
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 3 }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1368,21 +1698,21 @@ export default function TeacherLeaveApprove() {
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 5,
-                                padding: '4px 9px',
-                                borderRadius: 6,
-                                fontSize: 12,
+                                gap: 4,
+                                padding: '3px 7px',
+                                borderRadius: 5,
+                                fontSize: 11.5,
                                 fontWeight: 700,
                                 background: '#FEE2E2',
                                 color: '#B91C1C',
                                 border: '1px solid #FECACA'
                               }}
                             >
-                              <XCircle size={12} />
+                              <XCircle size={11} />
                               Rejected
                             </span>
                             {l.review_notes && (
-                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 3 }}>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
                                 "{l.review_notes}"
                               </div>
                             )}
@@ -1391,27 +1721,27 @@ export default function TeacherLeaveApprove() {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '14px 18px', verticalAlign: 'top', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <td style={{ padding: '10px 10px', verticalAlign: 'top', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           <button
                             type="button"
                             onClick={() => setViewingLeave(l)}
                             title="View Full Details"
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: 6,
+                              padding: '4px 8px',
+                              borderRadius: 5,
                               border: '1px solid var(--border, #E2E8F0)',
                               background: 'var(--surface, #FFF)',
                               color: 'var(--text, #0F172A)',
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 4,
-                              fontSize: 12.5,
+                              gap: 3,
+                              fontSize: 11.5,
                               fontWeight: 600
                             }}
                           >
-                            <Eye size={13} />
+                            <Eye size={12} />
                             <span>Details</span>
                           </button>
 
@@ -1426,21 +1756,21 @@ export default function TeacherLeaveApprove() {
                                 }}
                                 title="Approve Request"
                                 style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  borderRadius: 5,
                                   border: 'none',
                                   background: '#16A34A',
                                   color: '#FFF',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12.5,
+                                  gap: 3,
+                                  fontSize: 11.5,
                                   fontWeight: 600,
                                   boxShadow: '0 1px 2px rgba(22,163,74,0.2)'
                                 }}
                               >
-                                <Check size={13} />
+                                <Check size={12} />
                                 <span>Approve</span>
                               </button>
 
@@ -1453,20 +1783,20 @@ export default function TeacherLeaveApprove() {
                                 }}
                                 title="Reject Request"
                                 style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  borderRadius: 5,
                                   border: '1px solid #FECACA',
                                   background: '#FEF2F2',
                                   color: '#DC2626',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12.5,
+                                  gap: 3,
+                                  fontSize: 11.5,
                                   fontWeight: 600
                                 }}
                               >
-                                <X size={13} />
+                                <X size={12} />
                                 <span>Reject</span>
                               </button>
                             </>
@@ -1581,6 +1911,56 @@ export default function TeacherLeaveApprove() {
                 </div>
               </div>
 
+              {/* Faculty's Approved Leave Ledger by Type */}
+              {(() => {
+                const modalStats = getTeacherLeaveStats({ id: viewingLeave.applicant_id, email: viewingLeave.teacher_email, name: viewingLeave.applicant_name });
+                return (
+                  <div style={{
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    background: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    marginBottom: 16
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Approved Leave Record ({formatMonthDisplay(monthFilter)})
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#15803D' }}>
+                        Total Approved: {modalStats.totalApprovedDays}{totalAllowedQuota > 0 ? `/${totalAllowedQuota}` : ''} {modalStats.totalApprovedDays === 1 ? 'Day' : 'Days'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {allDynamicLeaveTypes.map((t) => {
+                        const tStat = modalStats.byType[t.key];
+                        const days = tStat?.days || 0;
+                        const isPos = days > 0;
+                        const ratio = t.allowedDays > 0 ? `${days}/${t.allowedDays}` : `${days}d`;
+                        return (
+                          <span
+                            key={t.key}
+                            style={{
+                              fontSize: 11.5,
+                              fontWeight: isPos ? 700 : 500,
+                              color: isPos ? '#1E40AF' : '#475569',
+                              background: isPos ? '#EFF6FF' : '#FFF',
+                              border: `1px solid ${isPos ? '#BFDBFE' : '#CBD5E1'}`,
+                              padding: '2px 8px',
+                              borderRadius: 5
+                            }}
+                          >
+                            {t.label}: <strong>{ratio}</strong>
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#15803D', marginTop: 6, fontStyle: 'italic' }}>
+                      Approved leave counts increment only when a request is approved by school admin.
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Details grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
                 <div>
@@ -1589,6 +1969,8 @@ export default function TeacherLeaveApprove() {
                     <span
                       style={{
                         display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
                         padding: '4px 9px',
                         borderRadius: 6,
                         fontSize: 12,
@@ -1596,7 +1978,16 @@ export default function TeacherLeaveApprove() {
                         ...getLeaveTypeStyle(viewingLeave.leave_type)
                       }}
                     >
-                      {getLeaveTypeStyle(viewingLeave.leave_type).label}
+                      <span>{getLeaveTypeStyle(viewingLeave.leave_type).label}</span>
+                      {(() => {
+                        const pol = allDynamicLeaveTypes.find((t) => matchesPolicy(viewingLeave.leave_type, t));
+                        const dur = calculateDays(viewingLeave.start_date, viewingLeave.end_date);
+                        return (
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: 'rgba(255, 255, 255, 0.75)' }}>
+                            {pol && pol.allowedDays > 0 ? `${dur}/${pol.allowedDays}d` : `${dur}d`}
+                          </span>
+                        );
+                      })()}
                     </span>
                   </div>
                 </div>
