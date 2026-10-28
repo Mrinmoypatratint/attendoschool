@@ -5,6 +5,7 @@ import { FileSpreadsheet, Plus, Download, UploadCloud, KeyRound, AlertCircle, Ch
 import { StudentProfileHoverCard } from '../../components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from '../../components/TeacherProfileHoverCard';
 import { formatGender } from '../../utils/gender';
+import { formatCapitalizedName } from '../../utils/formatters';
 import { convertRomanClassToDigital, parseImportClassAndSection } from '../../utils/roman';
 
 /* ────── Teacher DOB Validation & Formatting Helpers ────── */
@@ -221,16 +222,26 @@ export default function PeopleManagement() {
   function prepareExportData() {
     return rows.map(r => {
       let fn = r.first_name || r.firstName || '';
+      let mn = r.middle_name || r.middleName || '';
       let ln = r.last_name || r.lastName || '';
       if (!fn && !ln && (r.name || r.fullName)) {
-        const parts = (r.name || r.fullName).split(' ');
-        fn = parts[0] || '';
-        ln = parts.slice(1).join(' ') || '';
+        const parts = String(r.name || r.fullName).trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+          fn = parts[0] || '';
+        } else if (parts.length === 2) {
+          fn = parts[0] || '';
+          ln = parts[1] || '';
+        } else if (parts.length >= 3) {
+          fn = parts[0] || '';
+          mn = parts.slice(1, -1).join(' ') || '';
+          ln = parts[parts.length - 1] || '';
+        }
       }
-      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || r.fullName || `${fn} ${ln}`.trim());
+      const fullName = (fn || mn || ln) ? formatCapitalizedName(fn, mn, ln) : (r.name || r.fullName || '');
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
-        'Fist Name': fn,
+        'First Name': fn,
+        'Middle Name': mn,
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
@@ -246,6 +257,7 @@ export default function PeopleManagement() {
   function handleExportExcel() {
     const data = prepareExportData();
     const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [16, 14, 14, 14, 26, 26, 12, 14, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
     XLSX.writeFile(wb, 'Faculty_Export.xlsx');
@@ -314,7 +326,11 @@ export default function PeopleManagement() {
   async function handleAddTeacher(e: React.FormEvent) {
     e.preventDefault();
     const joiningDateVal = teacherForm.joiningDate || teacherForm.joining_date;
-    if (joiningDateVal && !isValidDdMmYyyy(joiningDateVal)) {
+    if (!joiningDateVal) {
+      alert('Validation Error: Joining Date is a required field.');
+      return;
+    }
+    if (!isValidDdMmYyyy(joiningDateVal)) {
       alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
       return;
     }
@@ -323,6 +339,7 @@ export default function PeopleManagement() {
     const middleName = String(teacherForm.middleName || '').trim();
     const lastName = String(teacherForm.lastName || '').trim();
     const email = String(teacherForm.email || '').trim().toLowerCase();
+    const employeeId = String(teacherForm.employeeId || teacherForm.saviorNo || '').trim();
 
     if (!firstName) {
       alert('Validation Error: First Name is required.');
@@ -344,7 +361,15 @@ export default function PeopleManagement() {
       alert('Validation Error: Middle Name must contain only letters, spaces or numbers are not allowed.');
       return;
     }
-    if (lastName && /\d/.test(lastName)) {
+    if (!lastName) {
+      alert('Validation Error: Last Name is required.');
+      return;
+    }
+    if (lastName.length < 3 || lastName.length > 15) {
+      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\d/.test(lastName)) {
       alert('Validation Error: Last Name must contain only letters, numbers are not allowed.');
       return;
     }
@@ -360,9 +385,29 @@ export default function PeopleManagement() {
       return;
     }
 
+    if (!employeeId) {
+      alert('Validation Error: Employee ID / Savior_No is a required field.');
+      return;
+    }
+
+    if (!teacherForm.designation || !String(teacherForm.designation).trim()) {
+      alert('Validation Error: Designation is a required field. Please select a designation.');
+      return;
+    }
+
+    const cleanMobile = String(teacherForm.mobile || '').replace(/\D/g, '');
+    if (!cleanMobile) {
+      alert('Validation Error: Mobile Number is a required field.');
+      return;
+    }
+    if (cleanMobile.length < 10) {
+      alert('Validation Error: Mobile Number must be a valid 10-digit number.');
+      return;
+    }
+
     setSavingTeacher(true);
     try {
-      const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (teacherForm.name || '').trim();
+      const fullName = formatCapitalizedName(firstName, middleName, lastName) || (teacherForm.name || '').trim();
       const payload = {
         ...teacherForm,
         firstName,
@@ -409,12 +454,12 @@ export default function PeopleManagement() {
   // Teacher Bulk Template Download
   function downloadTeacherTemplate() {
     const sample = [
-      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      { "Savior_No": "EMP010", "First Name": "Sunita", "Middle Name": "Kumar", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Kumar Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "First Name": "Alok", "Middle Name": "", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "First Name": "Rekha", "Middle Name": "Devi", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Devi Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    ws['!cols'] = [16, 14, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -468,6 +513,7 @@ export default function PeopleManagement() {
           ]);
 
           let firstName = getExcelCell(r, ['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+          let middleName = getExcelCell(r, ['Middle Name', 'middleName', 'middle_name', 'MIDDLE NAME', 'MiddleName']);
           let lastName = getExcelCell(r, ['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
           const explicitFullName = getExcelCell(r, [
             'Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName',
@@ -476,10 +522,18 @@ export default function PeopleManagement() {
 
           if ((!firstName || !lastName) && explicitFullName) {
             const parts = explicitFullName.split(/\s+/).filter(Boolean);
-            if (!firstName) firstName = parts[0] || '';
-            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+            if (parts.length === 1) {
+              if (!firstName) firstName = parts[0] || '';
+            } else if (parts.length === 2) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!lastName) lastName = parts[1] || '';
+            } else if (parts.length >= 3) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
+              if (!lastName) lastName = parts[parts.length - 1] || '';
+            }
           }
-          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+          const name = formatCapitalizedName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
 
           let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
           if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -546,6 +600,8 @@ export default function PeopleManagement() {
             saviorNo: saviorNo || `EMP0${idx + 10}`,
             employeeId: saviorNo || `EMP0${idx + 10}`,
             firstName,
+            middleName,
+            middle_name: middleName,
             lastName,
             name: name || `Faculty ${rowNum}`,
             email,
@@ -645,6 +701,7 @@ export default function PeopleManagement() {
       r.saviorNo,
       r.employeeId,
       r.firstName,
+      r.middleName,
       r.lastName,
       r.name,
       r.email,
@@ -1194,7 +1251,7 @@ export default function PeopleManagement() {
       {/* ─── ADD TEACHER MODAL WITH PREVIEW ─── */}
       {addTeacherOpen && (
         <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 540 }}>
+          <div className="modal" style={{ maxWidth: 620 }}>
             <div className="modal-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: 18 }}>{addTeacherPreview ? "Preview Teacher Details" : "Add Faculty Member / Teacher"}</h2>
               <button
@@ -1246,12 +1303,15 @@ export default function PeopleManagement() {
                   const lnVal = teacherForm.lastName || '';
                   const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
                   const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-                  const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
+                  const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
 
                   return (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-                        <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
+                        <label>
+                          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                            First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                          </span>
                           <input
                             required
                             placeholder="e.g. Rahul"
@@ -1263,7 +1323,8 @@ export default function PeopleManagement() {
                             }}
                             onChange={e => {
                               const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                              setTeacherForm({ ...teacherForm, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                              const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                              setTeacherForm({ ...teacherForm, firstName: fn, name: fullName });
                             }}
                           />
                           {fnVal && /\d/.test(fnVal) ? (
@@ -1280,7 +1341,10 @@ export default function PeopleManagement() {
                             </span>
                           ) : null}
                         </label>
-                        <label>Middle Name <span style={{ fontSize: 11, color: '#64748b', fontWeight: 'normal' }}>(Optional)</span>
+                        <label>
+                          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                            Middle Name <span style={{ fontSize: 11, color: '#64748b', fontWeight: 'normal' }}>(Optional)</span>
+                          </span>
                           <input
                             placeholder="e.g. Kumar"
                             maxLength={15}
@@ -1291,7 +1355,8 @@ export default function PeopleManagement() {
                             }}
                             onChange={e => {
                               const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                              setTeacherForm({ ...teacherForm, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                              const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                              setTeacherForm({ ...teacherForm, middleName: mn, name: fullName });
                             }}
                           />
                           {mnVal && /\d/.test(mnVal) && (
@@ -1300,41 +1365,59 @@ export default function PeopleManagement() {
                             </span>
                           )}
                         </label>
-                        <label>Last Name
+                        <label style={{ gridColumn: '1 / -1' }}>
+                          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                            Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                          </span>
                           <input
+                            required
                             placeholder="e.g. Sharma"
-                            maxLength={25}
+                            maxLength={15}
                             value={lnVal}
                             style={{
                               borderColor: isLnInvalid ? '#ef4444' : undefined,
                               boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                             }}
                             onChange={e => {
-                              const ln = e.target.value.replace(/\d/g, '');
-                              setTeacherForm({ ...teacherForm, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                              const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                              const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                              setTeacherForm({ ...teacherForm, lastName: ln, name: fullName });
                             }}
                           />
-                          {isLnInvalid && (
+                          {lnVal && /\d/.test(lnVal) ? (
                             <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Enter a string not a number
                             </span>
-                          )}
+                          ) : lnVal && lnVal.length < 3 ? (
+                            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                              Must be 3 to 15 characters
+                            </span>
+                          ) : null}
                         </label>
                       </div>
 
                       {/* Full Name — auto-computed, read-only */}
-                      <label style={{ color: '#64748b', fontSize: 12 }}>
-                        Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+                      <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+                        <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
+                          <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                            Auto-generated
+                          </span>
+                        </span>
                         <input
                           readOnly
                           tabIndex={-1}
-                          style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text-muted, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
-                          value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || teacherForm.name || ''}
+                          style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                          value={formatCapitalizedName(fnVal, mnVal, lnVal) || teacherForm.name || ''}
                           placeholder="Full name will appear here automatically"
                         />
                       </label>
 
-                      <label>Email Address (for Faculty Portal Login)
+                      <label>
+                        <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
+                        </span>
                         <input
                           required
                           type="email"
@@ -1360,7 +1443,10 @@ export default function PeopleManagement() {
                   );
                 })()}
 
-                <label>Employee Id/Savior_NO
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
                   <input
                     required
                     placeholder="e.g. EMP001 or SAVIOR_101"
@@ -1371,7 +1457,10 @@ export default function PeopleManagement() {
 
                 {/* Row 1: Gender & Joining Date */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <label>Gender
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Gender
+                    </span>
                     <select
                       value={formatGender(teacherForm.gender) || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, gender: formatGender(e.target.value) })}
@@ -1383,9 +1472,13 @@ export default function PeopleManagement() {
                       <option value="Other">Other</option>
                     </select>
                   </label>
-                  <label>Joining Date <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                    </span>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
                       <input
+                        required
                         type="text"
                         placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
                         maxLength={10}
@@ -1448,13 +1541,17 @@ export default function PeopleManagement() {
 
                 {/* Row 2: Designation */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-                  <label>Designation
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Designation <span style={{ color: '#ef4444' }}>*</span>
+                    </span>
                     <select
+                      required
                       value={teacherForm.designation || ''}
                       onChange={e => setTeacherForm({ ...teacherForm, designation: e.target.value })}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
                     >
-                      <option value="">Select Designation (Optional)</option>
+                      <option value="">Select Designation</option>
                       {teacherForm.designation && !allocDesignations.some(d => (d.title || d.name) === teacherForm.designation) && (
                         <option value={teacherForm.designation}>{teacherForm.designation}</option>
                       )}
@@ -1469,8 +1566,12 @@ export default function PeopleManagement() {
 
                 {/* Row 3: Mobile Number & Qualification */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <label>Mobile Number
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                    </span>
                     <input
+                      required
                       placeholder="10-digit mobile number"
                       maxLength={10}
                       inputMode="numeric"
@@ -1492,7 +1593,10 @@ export default function PeopleManagement() {
                       </span>
                     )}
                   </label>
-                  <label>Qualification
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Qualification
+                    </span>
                     <input
                       placeholder="e.g. M.Sc, B.Ed"
                       value={teacherForm.qualification || ''}
@@ -2028,6 +2132,7 @@ export default function PeopleManagement() {
                         <th style={{ width: 44, textAlign: 'center' }}>#</th>
                         <th>Savior_No</th>
                         <th>First Name</th>
+                        <th>Middle Name</th>
                         <th>Last Name</th>
                         <th>Full Name</th>
                         <th>Email ID</th>
@@ -2042,7 +2147,7 @@ export default function PeopleManagement() {
                     <tbody>
                       {displayedTeacherPreviewRows.length === 0 ? (
                         <tr>
-                          <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                          <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                             No teachers match the current search or error filter.
                           </td>
                         </tr>
@@ -2062,6 +2167,7 @@ export default function PeopleManagement() {
                                 ))}
                               </td>
                               <td>{r.firstName || '—'}</td>
+                              <td>{r.middleName || r.middle_name || '—'}</td>
                               <td>{r.lastName || '—'}</td>
                               <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
                                 <b>{r.name}</b>

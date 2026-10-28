@@ -58,6 +58,9 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
 
   const fieldMap: Record<string, any> = {};
   if (body.name !== undefined) fieldMap['name'] = body.name === '' ? null : body.name;
+  if (body.first_name !== undefined || body.firstName !== undefined) fieldMap['first_name'] = (body.first_name ?? body.firstName) === '' ? null : (body.first_name ?? body.firstName);
+  if (body.middle_name !== undefined || body.middleName !== undefined) fieldMap['middle_name'] = (body.middle_name ?? body.middleName) === '' ? null : (body.middle_name ?? body.middleName);
+  if (body.last_name !== undefined || body.lastName !== undefined) fieldMap['last_name'] = (body.last_name ?? body.lastName) === '' ? null : (body.last_name ?? body.lastName);
   if (body.roll_number !== undefined || body.roll !== undefined) {
     fieldMap['roll_number'] = (body.roll_number ?? body.roll) === '' ? null : String(body.roll_number ?? body.roll);
   }
@@ -168,6 +171,7 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
   }
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.is_active AS user_active,
+            tp.first_name, tp.middle_name, tp.last_name,
             tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
             tp.qualification, tp.designation, tp.photo_url, tp.class_name, tp.section_name,
             COALESCE(tp.is_active, TRUE) AS is_active
@@ -177,12 +181,36 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
      ORDER BY u.name`,
     params
   );
-  return rows.map((r: any) => ({
-    ...r,
-    gender: normalizeGender(r.gender) || '',
-    joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
-    joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
-  }));
+  return rows.map((r: any) => {
+    let fn = r.first_name || '';
+    let mn = r.middle_name || '';
+    let ln = r.last_name || '';
+    if (!fn && !ln && r.name) {
+      const parts = String(r.name).trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        fn = parts[0];
+      } else if (parts.length === 2) {
+        fn = parts[0];
+        ln = parts[1];
+      } else if (parts.length >= 3) {
+        fn = parts[0];
+        mn = parts.slice(1, -1).join(' ');
+        ln = parts[parts.length - 1];
+      }
+    }
+    return {
+      ...r,
+      first_name: fn,
+      firstName: fn,
+      middle_name: mn,
+      middleName: mn,
+      last_name: ln,
+      lastName: ln,
+      gender: normalizeGender(r.gender) || '',
+      joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
+      joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
+    };
+  });
 }
 
 export async function updateTeacher(schoolId: string, id: string, body: any) {

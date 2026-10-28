@@ -64,6 +64,7 @@ const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
+import { formatCapitalizedName } from './utils/formatters';
 import { convertRomanClassToDigital, parseImportClassAndSection } from './utils/roman';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
@@ -4005,7 +4006,7 @@ function Modal({
 }: {
   title: string;
   close: () => void;
-  children: React.ReactNode;
+  children: React.ReactNode | ((props: { isFull: boolean }) => React.ReactNode);
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   fullWindow?: boolean;
   maxWidth?: string | number;
@@ -4050,7 +4051,7 @@ function Modal({
             ...bodyStyle
           }}
         >
-          {children}
+          {typeof children === 'function' ? (children as (props: { isFull: boolean }) => React.ReactNode)({ isFull }) : children}
         </div>
       </div>
     </div>
@@ -5757,7 +5758,7 @@ function Students(){
     const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
     const middleName = String(f.middleName || '').trim();
     const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
-    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || f.name || '';
+    const fullName = formatCapitalizedName(firstName, middleName, lastName) || f.name || '';
     if (!firstName) {
       alert('Validation Error: Please enter student first name.');
       return;
@@ -5778,10 +5779,24 @@ function Students(){
       alert('Validation Error: Enter a string not a number in Middle Name.');
       return;
     }
-    if (lastName && /\d/.test(lastName)) {
+    if (!lastName) {
+      alert('Validation Error: Please enter student last name.');
+      return;
+    }
+    if (lastName.length < 3 || lastName.length > 15) {
+      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\d/.test(lastName)) {
       alert('Validation Error: Enter a string not a number in Last Name.');
       return;
     }
+
+    if (!f.session && !activeSession) {
+      alert('Validation Error: Academic Session is a required field. Please select a session.');
+      return;
+    }
+
     const fatherName = String(f.fatherName || '').trim();
     const fatherPhone = String(f.fatherPhone || '').trim();
     const fatherOccupation = String(f.fatherOccupation || '').trim();
@@ -5790,19 +5805,37 @@ function Students(){
     const motherOccupation = String(f.motherOccupation || '').trim();
     const parentWhatsappNo = String(f.parentWhatsappNo || f.parent_whatsapp_no || '').trim();
 
-    if (parentWhatsappNo && parentWhatsappNo.replace(/\D/g, '').length < 10) {
+    if (fatherName) {
+      if (fatherName.length < 2) {
+        alert('Validation Error: Father Name must be at least 2 characters.');
+        return;
+      }
+      if (/\d/.test(fatherName)) {
+        alert('Validation Error: Enter a string not a number in Father Name.');
+        return;
+      }
+    }
+
+    if (motherName) {
+      if (motherName.length < 2) {
+        alert('Validation Error: Mother Name must be at least 2 characters.');
+        return;
+      }
+      if (/\d/.test(motherName)) {
+        alert('Validation Error: Enter a string not a number in Mother Name.');
+        return;
+      }
+    }
+
+    if (!parentWhatsappNo) {
+      alert('Validation Error: Parent WhatsApp No. is a required field.');
+      return;
+    }
+    if (parentWhatsappNo.replace(/\D/g, '').length < 10) {
       alert('Validation Error: Parent WhatsApp No. must be a valid 10-digit number.');
       return;
     }
 
-    if (fatherName && /\d/.test(fatherName)) {
-      alert('Validation Error: Enter a string not a number in Father Name.');
-      return;
-    }
-    if (motherName && /\d/.test(motherName)) {
-      alert('Validation Error: Enter a string not a number in Mother Name.');
-      return;
-    }
     if (f.parentName && /\d/.test(f.parentName)) {
       alert('Validation Error: Enter a string not a number in parent name.');
       return;
@@ -5817,13 +5850,16 @@ function Students(){
       alert('Validation Error: Date of Birth year cannot exceed 4 digits.');
       return;
     }
-    if (f.admissionDate || f.admission_date) {
-      const admStr = f.admissionDate || f.admission_date;
-      const admYr = String(admStr).split('-')[0];
-      if (admYr && (admYr.length > 4 || parseInt(admYr, 10) > 9999 || parseInt(admYr, 10) < 1000)) {
-        alert('Validation Error: Admission Date year cannot exceed 4 digits.');
-        return;
-      }
+
+    const admStr = f.admissionDate || f.admission_date;
+    if (!admStr) {
+      alert('Validation Error: Admission Date is a required field.');
+      return;
+    }
+    const admYr = String(admStr).split('-')[0];
+    if (admYr && (admYr.length > 4 || parseInt(admYr, 10) > 9999 || parseInt(admYr, 10) < 1000)) {
+      alert('Validation Error: Admission Date year cannot exceed 4 digits.');
+      return;
     }
 
     const code = f.countryCode || '+91';
@@ -5864,8 +5900,8 @@ function Students(){
     }
 
     const cleanAdm = String(f.admissionNumber || f.admission_number || '').trim();
-    if (cleanAdm && !/^\d+$/.test(cleanAdm)) {
-      alert('Validation Error: Admission Number must contain only numbers.');
+    if (!cleanAdm) {
+      alert('Validation Error: Admission Number is a required field.');
       return;
     }
 
@@ -5902,27 +5938,31 @@ function Students(){
 
     const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const cleanStuEmail = String(f.studentEmail || f.email || '').trim().toLowerCase();
-    if (cleanStuEmail) {
-      if (!EMAIL_FORMAT_REGEX.test(cleanStuEmail)) {
-        alert('Validation Error: Please enter a valid student email address (e.g. student@school.edu).');
-        return;
-      }
-      const dupEmail = rows.find(r =>
-        (!editingStudent || r.id !== editingStudent.id) &&
-        (r.email || r.student_email || '').trim().toLowerCase() === cleanStuEmail
-      );
-      if (dupEmail) {
-        alert(`Validation Error: Student email already exists. Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
-        return;
-      }
+    if (!cleanStuEmail) {
+      alert('Validation Error: Student email address is a required field.');
+      return;
+    }
+    if (!EMAIL_FORMAT_REGEX.test(cleanStuEmail)) {
+      alert('Validation Error: Please enter a valid student email address (e.g. student@school.edu).');
+      return;
+    }
+    const dupEmail = rows.find(r =>
+      (!editingStudent || r.id !== editingStudent.id) &&
+      (r.email || r.student_email || '').trim().toLowerCase() === cleanStuEmail
+    );
+    if (dupEmail) {
+      alert(`Validation Error: Student email already exists. Student email '${cleanStuEmail}' is already registered to student '${dupEmail.name || dupEmail.full_name || 'Existing Student'}'.`);
+      return;
     }
 
     const cleanParentEmail = String(f.parentEmail || '').trim().toLowerCase();
-    if (cleanParentEmail) {
-      if (!EMAIL_FORMAT_REGEX.test(cleanParentEmail)) {
-        alert('Validation Error: Please enter a valid parent email address (e.g. parent@example.com).');
-        return;
-      }
+    if (!cleanParentEmail) {
+      alert('Validation Error: Parent email address is a required field.');
+      return;
+    }
+    if (!EMAIL_FORMAT_REGEX.test(cleanParentEmail)) {
+      alert('Validation Error: Please enter a valid parent email address (e.g. parent@example.com).');
+      return;
     }
     if (f.loginOption === 'PARENT' && !cleanParentEmail) {
       alert('Validation Error: Parent email is required when using parent email for student portal login.');
@@ -6350,13 +6390,22 @@ function Students(){
     const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : filtered;
     return list.map((r, idx) => {
       let fn = r.first_name || r.firstName || '';
+      let mn = r.middle_name || r.middleName || '';
       let ln = r.last_name || r.lastName || '';
       if (!fn && !ln && r.name) {
-        const parts = r.name.split(' ');
-        fn = parts[0] || '';
-        ln = parts.slice(1).join(' ') || '';
+        const parts = r.name.split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+          fn = parts[0] || '';
+        } else if (parts.length === 2) {
+          fn = parts[0] || '';
+          ln = parts[1] || '';
+        } else if (parts.length >= 3) {
+          fn = parts[0] || '';
+          mn = parts.slice(1, -1).join(' ') || '';
+          ln = parts[parts.length - 1] || '';
+        }
       }
-      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || `${fn} ${ln}`.trim());
+      const fullName = formatCapitalizedName(fn, mn, ln) || r.name || `${fn} ${ln}`.trim();
 
       const cNum = Number(r.class_number);
       const cId = String(r.class_id || '');
@@ -6373,6 +6422,7 @@ function Students(){
         'Admission Number': r.admission_number || r.admissionNumber || '',
         'Admission Date': toDdMmYyyy(r.admission_date || r.admissionDate),
         'First Name': fn,
+        'Middle Name': mn,
         'Last Name': ln,
         'Full Name': fullName,
         'Gender': formatGender(r.gender) || '',
@@ -6401,7 +6451,7 @@ function Students(){
       return;
     }
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [12, 16, 14, 14, 14, 20, 10, 12, 10, 14, 14, 18, 16, 16, 18, 16, 16, 18, 22, 22, 10].map(wch => ({ wch }));
+    ws['!cols'] = [12, 16, 14, 14, 14, 14, 20, 10, 12, 10, 14, 14, 18, 16, 16, 18, 16, 16, 18, 22, 22, 10].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
     const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (classFilter ? `Class_${classFilter}` : 'All');
@@ -6430,8 +6480,9 @@ function Students(){
     const sample = [
       { 
         "First Name": "Aarav", 
+        "Middle Name": "Kumar", 
         "Last Name": "Sharma", 
-        "Full Name": "Aarav Sharma", 
+        "Full Name": "Aarav Kumar Sharma", 
         "Admission Number": "ADM-2025-001", 
         "Admission Date": "2025-04-01",
         "Roll Number": "101", 
@@ -6452,6 +6503,7 @@ function Students(){
       },
       { 
         "First Name": "Diya",  
+        "Middle Name": "", 
         "Last Name": "Patel",  
         "Full Name": "Diya Patel",   
         "Admission Number": "ADM-2025-002", 
@@ -6474,8 +6526,9 @@ function Students(){
       },
       { 
         "First Name": "Rohan", 
+        "Middle Name": "Kumar", 
         "Last Name": "Gupta",  
-        "Full Name": "Rohan Gupta",  
+        "Full Name": "Rohan Kumar Gupta",  
         "Admission Number": "ADM-2025-003", 
         "Admission Date": "2025-04-02",
         "Roll Number": "103", 
@@ -6496,6 +6549,7 @@ function Students(){
       },
       { 
         "First Name": "Amit", 
+        "Middle Name": "", 
         "Last Name": "Verma",  
         "Full Name": "Amit Verma",  
         "Admission Number": "ADM-2025-004", 
@@ -6518,8 +6572,9 @@ function Students(){
       },
       { 
         "First Name": "Ananya", 
+        "Middle Name": "Kumari", 
         "Last Name": "Singh",  
-        "Full Name": "Ananya Singh",  
+        "Full Name": "Ananya Kumari Singh",  
         "Admission Number": "ADM-2025-005", 
         "Admission Date": "2025-04-05",
         "Roll Number": "105", 
@@ -6540,7 +6595,7 @@ function Students(){
       }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [14, 14, 20, 18, 16, 14, 12, 12, 10, 16, 12, 20, 18, 18, 20, 18, 18, 20, 24, 26].map(wch => ({ wch }));
+    ws['!cols'] = [14, 14, 14, 20, 18, 16, 14, 12, 12, 10, 16, 12, 20, 18, 18, 20, 18, 18, 20, 24, 26].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
     XLSX.writeFile(wb, 'students_import_template.xlsx');
@@ -6677,14 +6732,23 @@ function Students(){
         const mapped = json.map((r, idx) => {
           const rowNum = idx + 1;
           let firstName = String(r['First Name'] || r['first_name'] || r['FirstName'] || '').trim();
+          let middleName = String(r['Middle Name'] || r['middle_name'] || r['MiddleName'] || '').trim();
           let lastName  = String(r['Last Name']  || r['last_name']  || r['LastName']  || '').trim();
           const rawFullName = String(r['Full Name'] || r['full_name'] || r['FullName'] || r['Student Name'] || r['Full Name (Auto)'] || r['Name'] || r['name'] || '').trim();
           if ((!firstName || !lastName) && rawFullName) {
-            const parts = rawFullName.split(' ');
-            if (!firstName) firstName = parts[0] || '';
-            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+            const parts = rawFullName.split(/\s+/).filter(Boolean);
+            if (parts.length === 1) {
+              if (!firstName) firstName = parts[0] || '';
+            } else if (parts.length === 2) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!lastName) lastName = parts[1] || '';
+            } else if (parts.length >= 3) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
+              if (!lastName) lastName = parts[parts.length - 1] || '';
+            }
           }
-          const fullName = rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
+          const fullName = formatCapitalizedName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
           const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
           const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
 
@@ -6823,6 +6887,8 @@ function Students(){
           rowErrors.push(...rowErrs);
           return {
             firstName,
+            middleName,
+            middle_name: middleName,
             lastName,
             name: fullName,
             admissionNumber,
@@ -7005,6 +7071,7 @@ function Students(){
     const q = importPreviewSearch.toLowerCase();
     const searchTarget = [
       r.firstName,
+      r.middleName,
       r.lastName,
       r.name,
       r.admissionNumber,
@@ -7902,7 +7969,7 @@ function Students(){
       const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
 
       const isDobYearInvalidInUi = Boolean(
         f.dob && (String(f.dob).split('-')[0]?.length > 4 || parseInt(String(f.dob).split('-')[0], 10) > 9999)
@@ -7914,7 +7981,8 @@ function Students(){
       );
 
       return (
-        <Modal title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
+        <Modal maxWidth={620} title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
+          {({ isFull }) => (
           <form className="modal-form" onSubmit={handleInitiateSave}>
             {/* Last Registered Student Banner in Red */}
             {lastRegisteredStudentInfo && (
@@ -7939,8 +8007,16 @@ function Students(){
             )}
 
             {/* First Name + Middle Name + Last Name */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-              <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
+              gap: 14,
+              alignItems: 'start'
+            }}>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                </span>
                 <input
                   required
                   placeholder="e.g. Aarav"
@@ -7952,7 +8028,8 @@ function Students(){
                   }}
                   onChange={e => {
                     const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    setF({ ...f, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
                 {fnVal && /\d/.test(fnVal) ? (
@@ -7969,7 +8046,10 @@ function Students(){
                   </span>
                 ) : null}
               </label>
-              <label>Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                </span>
                 <input
                   placeholder="e.g. Kumar"
                   maxLength={15}
@@ -7980,7 +8060,8 @@ function Students(){
                   }}
                   onChange={e => {
                     const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    setF({ ...f, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
                 {mnVal && /\d/.test(mnVal) && (
@@ -7989,43 +8070,62 @@ function Students(){
                   </span>
                 )}
               </label>
-              <label>Last Name
+              <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                </span>
                 <input
+                  required
                   placeholder="e.g. Sharma"
-                  maxLength={25}
+                  maxLength={15}
                   value={lnVal || ''}
                   style={{
                     borderColor: isLnInvalid ? '#ef4444' : undefined,
                     boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '');
-                    setF({ ...f, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
-                {isLnInvalid && (
+                {lnVal && /\d/.test(lnVal) ? (
                   <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                     Enter a string not a number
                   </span>
-                )}
+                ) : lnVal && lnVal.length < 3 ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Must be 3 to 15 characters
+                  </span>
+                ) : null}
               </label>
             </div>
 
             {/* Full Name — auto-computed, read-only */}
             <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
-              Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
+                <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                  Auto-generated
+                </span>
+              </span>
               <input
                 readOnly
                 tabIndex={-1}
-                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)' }}
-                value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || f.name || ''}
+                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
                 placeholder="Full name will appear here automatically"
               />
             </label>
 
             {/* Session Selection */}
-            <label>Session
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Session <span style={{ color: '#ef4444' }}>*</span>
+              </span>
               <select
+                required
                 value={f.session || ''}
                 onChange={e => setF({ ...f, session: e.target.value })}
               >
@@ -8041,7 +8141,10 @@ function Students(){
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <label>Roll Number <span style={{ color: '#ef4444' }}>*</span>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Roll Number <span style={{ color: '#ef4444' }}>*</span>
+                </span>
                 <input
                   required
                   inputMode="numeric"
@@ -8062,17 +8165,20 @@ function Students(){
                   </span>
                 )}
               </label>
-              <label>Admission Number
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                </span>
                 <input
-                  inputMode="numeric"
-                  placeholder="Admission Number (e.g. 1001)"
+                  required
+                  placeholder="e.g. 1001 or ADM-101"
                   value={f.admissionNumber || ''}
                   style={{
                     borderColor: isAdmDuplicateInUi ? '#ef4444' : undefined,
                     boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
+                    const val = e.target.value.trimStart();
                     setF({ ...f, admissionNumber: val });
                   }}
                 />
@@ -8087,10 +8193,11 @@ function Students(){
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Admission Date
+                  Admission Date <span style={{ color: '#ef4444' }}>*</span>
                 </span>
                 <input
                   type="date"
+                  required
                   min="1900-01-01"
                   max="9999-12-31"
                   value={f.admissionDate || f.admission_date || ''}
@@ -8151,7 +8258,10 @@ function Students(){
             </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-          <label>Gender
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Gender
+            </span>
             <select
               value={formatGender(f.gender) || ''}
               onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
@@ -8163,7 +8273,10 @@ function Students(){
             </select>
           </label>
         </div>
-        <label>Class
+        <label>
+          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            Class <span style={{ color: '#ef4444' }}>*</span>
+          </span>
           <select 
             required 
             value={f.classId||''} 
@@ -8183,7 +8296,10 @@ function Students(){
             {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
           </select>
         </label>
-        <label>Section
+        <label>
+          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            Section <span style={{ color: '#ef4444' }}>*</span>
+          </span>
           <select 
             required 
             value={(() => {
@@ -8230,8 +8346,12 @@ function Students(){
           </select>
         </label>
 
-        <label>Student Email Address
+        <label>
+          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            Student Email Address <span style={{ color: '#ef4444' }}>*</span>
+          </span>
           <input
+            required
             type="email"
             placeholder="student@school.edu"
             value={f.studentEmail || f.email || ''}
@@ -8267,9 +8387,12 @@ function Students(){
             <span>Father's Details</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-            <label>Father Name
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Father Name
+              </span>
               <input
-                placeholder="Father Name"
+                placeholder="Father Name (Optional)"
                 value={f.fatherName || ''}
                 style={{
                   borderColor: /\d/.test(f.fatherName || '') ? '#ef4444' : undefined,
@@ -8283,7 +8406,10 @@ function Students(){
                 </span>
               )}
             </label>
-            <label>Father Contact No.
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Father Contact No.
+              </span>
               <input
                 placeholder="10-digit mobile"
                 maxLength={10}
@@ -8304,7 +8430,10 @@ function Students(){
                 </span>
               )}
             </label>
-            <label>Father Occupation
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Father Occupation
+              </span>
               <input
                 placeholder="Father Occupation"
                 value={f.fatherOccupation || ''}
@@ -8328,9 +8457,12 @@ function Students(){
             <span>Mother's Details</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-            <label>Mother Name
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Mother Name
+              </span>
               <input
-                placeholder="Mother Name"
+                placeholder="Mother Name (Optional)"
                 value={f.motherName || ''}
                 style={{
                   borderColor: /\d/.test(f.motherName || '') ? '#ef4444' : undefined,
@@ -8344,7 +8476,10 @@ function Students(){
                 </span>
               )}
             </label>
-            <label>Mother Contact No.
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Mother Contact No.
+              </span>
               <input
                 placeholder="10-digit mobile"
                 maxLength={10}
@@ -8365,7 +8500,10 @@ function Students(){
                 </span>
               )}
             </label>
-            <label>Mother Occupation
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Mother Occupation
+              </span>
               <input
                 placeholder="Mother Occupation"
                 value={f.motherOccupation || ''}
@@ -8376,8 +8514,12 @@ function Students(){
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>Parent WhatsApp No.
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Parent WhatsApp No. <span style={{ color: '#ef4444' }}>*</span>
+            </span>
             <input
+              required
               placeholder="10-digit mobile"
               maxLength={10}
               inputMode="numeric"
@@ -8397,8 +8539,12 @@ function Students(){
               </span>
             )}
           </label>
-          <label>Parent Email Address (for Login / Absent Alerts)
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Parent Email Address (for Login / Absent Alerts) <span style={{ color: '#ef4444' }}>*</span>
+            </span>
             <input
+              required
               type="email"
               placeholder="parent@example.com"
               value={f.parentEmail||''}
@@ -8524,6 +8670,7 @@ function Students(){
           <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
         </div>
       </form>
+      )}
     </Modal>
   );
 })()}
@@ -8643,7 +8790,7 @@ function Students(){
                 </div>
                 <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
                 <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Last Name, Admission Number, Admission Date, Roll Number, Session, Class, Section, Date of Birth, Gender, Father Name, Father Contact No, Father Occupation, Mother Name, Mother Contact No, Mother Occupation, Parent WhatsApp No, Parent Email, Student Email</span>
+                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Middle Name, Last Name, Admission Number, Admission Date, Roll Number, Session, Class, Section, Date of Birth, Gender, Father Name, Father Contact No, Father Occupation, Mother Name, Mother Contact No, Mother Occupation, Parent WhatsApp No, Parent Email, Student Email</span>
               </label>
               <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between' }}>
                 <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
@@ -8805,6 +8952,7 @@ function Students(){
                     <tr>
                       <th style={{ width: 44, textAlign: 'center' }}>#</th>
                       <th style={{ minWidth: 120 }}>First Name</th>
+                      <th style={{ minWidth: 120 }}>Middle Name</th>
                       <th style={{ minWidth: 120 }}>Last Name</th>
                       <th style={{ minWidth: 150 }}>Full Name</th>
                       <th style={{ minWidth: 120 }}>Adm. No.</th>
@@ -8823,7 +8971,7 @@ function Students(){
                   <tbody>
                     {displayedStudentPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={15} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={16} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No students match the current search or error filter.
                         </td>
                       </tr>
@@ -8840,6 +8988,9 @@ function Students(){
                               {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
                                 <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
                               )}
+                            </td>
+                            <td>
+                              {r.middleName || r.middle_name || '—'}
                             </td>
                             <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
                               {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
@@ -9147,6 +9298,9 @@ function Students(){
                   <th>Roll No</th>
                   <th>Admission No</th>
                   <th>Admission Date</th>
+                  <th>First Name</th>
+                  <th>Middle Name</th>
+                  <th>Last Name</th>
                   <th>Full Name</th>
                   <th>Gender</th>
                   <th>Class</th>
@@ -9164,6 +9318,9 @@ function Students(){
                     <td><code>{r['Roll Number'] || '—'}</code></td>
                     <td><code>{r['Admission Number'] || '—'}</code></td>
                     <td>{r['Admission Date'] || '—'}</td>
+                    <td>{r['First Name'] || '—'}</td>
+                    <td>{r['Middle Name'] || '—'}</td>
+                    <td>{r['Last Name'] || '—'}</td>
                     <td><b>{r['Full Name'] || `${r['First Name'] || ''} ${r['Last Name'] || ''}`.trim()}</b></td>
                     <td>
                       {r['Gender'] ? (
@@ -9183,7 +9340,7 @@ function Students(){
                 ))}
                 {prepareStudentExportData().length === 0 && (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                    <td colSpan={15} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
                       No student records match the selected filters or manual selection.
                     </td>
                   </tr>
@@ -9654,18 +9811,28 @@ function Teachers(){
     const list = selectedIds.size > 0 ? rows.filter(r => selectedIds.has(r.id)) : filtered;
     return list.map(r => {
       let fn = r.first_name || r.firstName || '';
+      let mn = r.middle_name || r.middleName || '';
       let ln = r.last_name || r.lastName || '';
       if (!fn && !ln && r.name) {
-        const parts = r.name.split(' ');
-        fn = parts[0] || '';
-        ln = parts.slice(1).join(' ') || '';
+        const parts = String(r.name).trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 1) {
+          fn = parts[0] || '';
+        } else if (parts.length === 2) {
+          fn = parts[0] || '';
+          ln = parts[1] || '';
+        } else if (parts.length >= 3) {
+          fn = parts[0] || '';
+          mn = parts.slice(1, -1).join(' ') || '';
+          ln = parts[parts.length - 1] || '';
+        }
       }
-      const fullName = (fn && ln) ? `${fn} ${ln}` : (r.name || `${fn} ${ln}`.trim());
+      const fullName = (fn || mn || ln) ? formatCapitalizedName(fn, mn, ln) : (r.name || '');
       const allocSummary = getTeacherAllocSummary(r.id);
       
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
         'First Name': fn,
+        'Middle Name': mn,
         'Last Name': ln,
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
@@ -9687,6 +9854,7 @@ function Teachers(){
       return;
     }
     const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [16, 14, 14, 14, 26, 26, 12, 16, 14, 10, 12, 20, 16].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
     const filterDesc = selectedIds.size > 0 
@@ -9721,7 +9889,7 @@ function Teachers(){
     const firstName = String(f.firstName || '').trim();
     const middleName = String(f.middleName || '').trim();
     const lastName = String(f.lastName || '').trim();
-    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (f.name || '').trim();
+    const fullName = formatCapitalizedName(firstName, middleName, lastName) || (f.name || '').trim();
     const name = fullName;
     const email = String(f.email || '').trim().toLowerCase();
     const employeeId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim();
@@ -9746,7 +9914,15 @@ function Teachers(){
       alert('Validation Error: Enter a string not a number in Middle Name.');
       return;
     }
-    if (lastName && /\d/.test(lastName)) {
+    if (!lastName) {
+      alert('Validation Error: Please enter faculty member last name.');
+      return;
+    }
+    if (lastName.length < 3 || lastName.length > 15) {
+      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+      return;
+    }
+    if (/\d/.test(lastName)) {
       alert('Validation Error: Enter a string not a number in Last Name.');
       return;
     }
@@ -9769,8 +9945,25 @@ function Teachers(){
       return;
     }
     const joiningDateVal = f.joiningDate || f.joining_date;
-    if (joiningDateVal && !isValidDdMmYyyy(joiningDateVal)) {
+    if (!joiningDateVal) {
+      alert('Validation Error: Joining Date is a required field.');
+      return;
+    }
+    if (!isValidDdMmYyyy(joiningDateVal)) {
       alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).');
+      return;
+    }
+    if (!f.designation || !String(f.designation).trim()) {
+      alert('Validation Error: Designation is a required field. Please select or enter a designation.');
+      return;
+    }
+    const cleanMobile = String(f.mobile || '').replace(/\D/g, '');
+    if (!cleanMobile) {
+      alert('Validation Error: Mobile Number is a required field.');
+      return;
+    }
+    if (cleanMobile.length < 10) {
+      alert('Validation Error: Mobile Number must be a valid 10-digit number.');
       return;
     }
 
@@ -10123,12 +10316,12 @@ function Teachers(){
 
   function downloadTemplate() {
     const sample = [
-      { "Savior_No": "EMP010", "First Name": "Sunita", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
-      { "Savior_No": "EMP011", "First Name": "Alok", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
-      { "Savior_No": "EMP012", "First Name": "Rekha", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
+      { "Savior_No": "EMP010", "First Name": "Sunita", "Middle Name": "Kumar", "Last Name": "Verma", "Full Name(Automatically generated)": "Sunita Kumar Verma", "Email_id": "sunita.v@school.local", "Gender": "Female", "Joining_Date": "01-07-2020", "Class": "Class 10", "Section": "A", "Status": "Active", "Designation": "Senior Teacher" },
+      { "Savior_No": "EMP011", "First Name": "Alok", "Middle Name": "", "Last Name": "Mishra", "Full Name(Automatically generated)": "Alok Mishra", "Email_id": "alok.m@school.local", "Gender": "Male", "Joining_Date": "15-01-2019", "Class": "Class 9", "Section": "B", "Status": "Active", "Designation": "TGT Mathematics" },
+      { "Savior_No": "EMP012", "First Name": "Rekha", "Middle Name": "Devi", "Last Name": "Sengupta", "Full Name(Automatically generated)": "Rekha Devi Sengupta", "Email_id": "rekha.s@school.local", "Gender": "Female", "Joining_Date": "10-08-2021", "Class": "Class 8", "Section": "A", "Status": "Active", "Designation": "PRT Science" }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [16, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
+    ws['!cols'] = [16, 14, 14, 14, 24, 26, 12, 16, 12, 10, 12, 20].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teachers Import Template");
     XLSX.writeFile(wb, "teachers_import_template.xlsx");
@@ -10181,6 +10374,7 @@ function Teachers(){
           ]);
 
           let firstName = getExcelCell(r, ['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+          let middleName = getExcelCell(r, ['Middle Name', 'middleName', 'middle_name', 'MIDDLE NAME', 'MiddleName']);
           let lastName = getExcelCell(r, ['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
           const explicitFullName = getExcelCell(r, [
             'Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName',
@@ -10189,10 +10383,18 @@ function Teachers(){
 
           if ((!firstName || !lastName) && explicitFullName) {
             const parts = explicitFullName.split(/\s+/).filter(Boolean);
-            if (!firstName) firstName = parts[0] || '';
-            if (!lastName) lastName = parts.slice(1).join(' ') || '';
+            if (parts.length === 1) {
+              if (!firstName) firstName = parts[0] || '';
+            } else if (parts.length === 2) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!lastName) lastName = parts[1] || '';
+            } else if (parts.length >= 3) {
+              if (!firstName) firstName = parts[0] || '';
+              if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
+              if (!lastName) lastName = parts[parts.length - 1] || '';
+            }
           }
-          const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+          const name = formatCapitalizedName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
 
           let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
           if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -10259,6 +10461,8 @@ function Teachers(){
             saviorNo: saviorNo || `EMP0${idx + 10}`,
             employeeId: saviorNo || `EMP0${idx + 10}`,
             firstName,
+            middleName,
+            middle_name: middleName,
             lastName,
             name: name || `Faculty ${rowNum}`,
             email,
@@ -10354,6 +10558,7 @@ function Teachers(){
       r.saviorNo,
       r.employeeId,
       r.firstName,
+      r.middleName,
       r.lastName,
       r.name,
       r.email,
@@ -11001,10 +11206,11 @@ function Teachers(){
       const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name||'').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && /\d/.test(lnVal));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
 
       return (
-        <Modal title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
+        <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
+          {({ isFull }) => (
           <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
             {/* Last Registered Teacher Banner in Red */}
             {lastRegisteredTeacherInfo && (
@@ -11029,11 +11235,19 @@ function Teachers(){
             )}
 
             {/* First Name + Middle Name + Last Name */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-              <label>First Name <span style={{ color: '#ef4444' }}>*</span>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
+              gap: 14,
+              alignItems: 'start'
+            }}>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                </span>
                 <input
                   required
-                  placeholder="First Name (e.g. Rahul)"
+                  placeholder="e.g. Rahul"
                   maxLength={15}
                   value={fnVal || ''}
                   style={{
@@ -11042,7 +11256,8 @@ function Teachers(){
                   }}
                   onChange={e => {
                     const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    setF({ ...f, firstName: fn, name: [fn, mnVal, lnVal].filter(Boolean).join(' ') });
+                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
                 {fnVal && /\d/.test(fnVal) ? (
@@ -11059,9 +11274,12 @@ function Teachers(){
                   </span>
                 ) : null}
               </label>
-              <label>Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                </span>
                 <input
-                  placeholder="Middle Name (e.g. Kumar)"
+                  placeholder="e.g. Kumar"
                   maxLength={15}
                   value={mnVal}
                   style={{
@@ -11070,7 +11288,8 @@ function Teachers(){
                   }}
                   onChange={e => {
                     const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    setF({ ...f, middleName: mn, name: [fnVal, mn, lnVal].filter(Boolean).join(' ') });
+                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
                 {mnVal && /\d/.test(mnVal) && (
@@ -11079,41 +11298,59 @@ function Teachers(){
                   </span>
                 )}
               </label>
-              <label>Last Name
+              <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                </span>
                 <input
-                  placeholder="Last Name (e.g. Sharma)"
-                  maxLength={25}
+                  required
+                  placeholder="e.g. Sharma"
+                  maxLength={15}
                   value={lnVal || ''}
                   style={{
                     borderColor: isLnInvalid ? '#ef4444' : undefined,
                     boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '');
-                    setF({ ...f, lastName: ln, name: [fnVal, mnVal, ln].filter(Boolean).join(' ') });
+                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
-                {isLnInvalid && (
+                {lnVal && /\d/.test(lnVal) ? (
                   <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                     Enter a string not a number
                   </span>
-                )}
+                ) : lnVal && lnVal.length < 3 ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Must be 3 to 15 characters
+                  </span>
+                ) : null}
               </label>
             </div>
 
             {/* Full Name — auto-computed, read-only */}
-            <label style={{ color: 'var(--text-muted, #64748b)', fontSize: 12 }}>
-              Full Name <span style={{ color: '#10b981', fontSize: 11 }}>● Auto-generated</span>
+            <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
+                <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                  Auto-generated
+                </span>
+              </span>
               <input
                 readOnly
                 tabIndex={-1}
-                style={{ cursor: 'default', opacity: 0.85 }}
-                value={[fnVal, mnVal, lnVal].filter(Boolean).join(' ') || f.name || ''}
+                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
                 placeholder="Full name will appear here automatically"
               />
             </label>
 
-            <label>Email Address (for Faculty Portal Login)
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
+              </span>
               <input
                 required
                 type="email"
@@ -11135,12 +11372,18 @@ function Teachers(){
                 </span>
               ) : null}
             </label>
-        <label>Employee Id / Savior_NO
+        <label>
+          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+          </span>
           <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
         </label>
         {/* Row 1: Gender & Joining Date */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>Gender
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Gender
+            </span>
             <select
               value={formatGender(f.gender) || ''}
               onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
@@ -11154,10 +11397,11 @@ function Teachers(){
           </label>
           <label>
             <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Joining Date <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+              Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
             </span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
               <input
+                required
                 type="text"
                 placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
                 maxLength={10}
@@ -11220,13 +11464,17 @@ function Teachers(){
 
         {/* Row 2: Designation & Mobile Number */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>Designation
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Designation <span style={{ color: '#ef4444' }}>*</span>
+            </span>
             <select
+              required
               value={f.designation || ''}
               onChange={e => setF({ ...f, designation: e.target.value })}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
             >
-              <option value="">Select Designation (Optional)</option>
+              <option value="">Select Designation</option>
               {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
                 <option value={f.designation}>{f.designation}</option>
               )}
@@ -11237,8 +11485,12 @@ function Teachers(){
               ))}
             </select>
           </label>
-          <label>Mobile Number
+          <label>
+            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+            </span>
             <input
+              required
               placeholder="10-digit mobile number"
               maxLength={10}
               inputMode="numeric"
@@ -11432,6 +11684,7 @@ function Teachers(){
           </button>
         </div>
       </form>
+      )}
     </Modal>
   );
 })()}
@@ -11751,6 +12004,7 @@ function Teachers(){
                       <th style={{ width: 44, textAlign: 'center' }}>#</th>
                       <th style={{ minWidth: 110 }}>Savior_No</th>
                       <th style={{ minWidth: 120 }}>First Name</th>
+                      <th style={{ minWidth: 120 }}>Middle Name</th>
                       <th style={{ minWidth: 120 }}>Last Name</th>
                       <th style={{ minWidth: 150 }}>Full Name</th>
                       <th style={{ minWidth: 180 }}>Email ID</th>
@@ -11765,7 +12019,7 @@ function Teachers(){
                   <tbody>
                     {displayedTeacherPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={12} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={13} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No teachers match the current search or error filter.
                         </td>
                       </tr>
@@ -11785,6 +12039,7 @@ function Teachers(){
                               ))}
                             </td>
                             <td>{r.firstName || '—'}</td>
+                            <td>{r.middleName || r.middle_name || '—'}</td>
                             <td>{r.lastName || '—'}</td>
                             <td style={{ color: r._errors?.some((e: any) => e.field === 'Full Name' || e.field === 'First Name') ? '#dc2626' : undefined }}>
                               <b>{r.name}</b>
@@ -12057,6 +12312,7 @@ function Teachers(){
               <tr>
                 <th>Savior_No</th>
                 <th>First Name</th>
+                <th>Middle Name</th>
                 <th>Last Name</th>
                 <th>Full Name</th>
                 <th>Email_id</th>
@@ -12073,6 +12329,7 @@ function Teachers(){
                 <tr key={i}>
                   <td><code>{r['Savior_No'] || '—'}</code></td>
                   <td>{r['First Name'] || '—'}</td>
+                  <td>{r['Middle Name'] || '—'}</td>
                   <td>{r['Last Name'] || '—'}</td>
                   <td><b>{r['Full Name(Automatically generated)']}</b></td>
                   <td>{r['Email_id']}</td>
@@ -12092,7 +12349,7 @@ function Teachers(){
               ))}
               {prepareExportData().length === 0 && (
                 <tr>
-                  <td colSpan={12} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                  <td colSpan={13} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
                     No faculty records match the selected filters or manual selection.
                   </td>
                 </tr>
