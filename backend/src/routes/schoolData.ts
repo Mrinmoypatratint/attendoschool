@@ -1909,15 +1909,24 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   for (let i = 0; i < students.length; i++) {
     const st = students[i];
     const rowNum = i + 1;
-    let firstName = String(st.firstName || st['First Name'] || st.first_name || '').trim();
-    let lastName  = String(st.lastName || st['Last Name'] || st.last_name || '').trim();
+    let firstName = String(st.firstName || st['First Name'] || st.first_name || st['first_name'] || '').trim();
+    let middleName = String(st.middleName || st['Middle Name'] || st.middle_name || st['middle_name'] || st.MiddleName || '').trim();
+    let lastName  = String(st.lastName || st['Last Name'] || st.last_name || st['last_name'] || '').trim();
     const rawFullName = String(st.fullName || st['Full Name'] || st.full_name || st.name || '').trim();
     if ((!firstName || !lastName) && rawFullName) {
-      const parts = rawFullName.split(' ');
-      if (!firstName) firstName = parts[0] || '';
-      if (!lastName) lastName = parts.slice(1).join(' ') || '';
+      const parts = rawFullName.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        if (!firstName) firstName = parts[0] || '';
+      } else if (parts.length === 2) {
+        if (!firstName) firstName = parts[0] || '';
+        if (!lastName) lastName = parts[1] || '';
+      } else if (parts.length >= 3) {
+        if (!firstName) firstName = parts[0] || '';
+        if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
+        if (!lastName) lastName = parts[parts.length - 1] || '';
+      }
     }
-    const name = rawFullName || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()));
+    const name = rawFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()));
     const rollNumber = String(st.rollNumber || st['Roll Number'] || st.roll_number || '').trim();
     const admissionNumber = String(st.admissionNumber || st['Admission Number'] || st.admission_number || '').trim();
 
@@ -2011,7 +2020,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
     if (errors.filter(e => e.row === rowNum).length === 0) {
       validRows.push({
-        rowNum, firstName, lastName, name, rollNumber, admissionNumber, gender,
+        rowNum, firstName, middleName, lastName, name, rollNumber, admissionNumber, gender,
         dob, admissionDate,
         parentName, parentPhone, parentEmail, studentEmail,
         fatherName, fatherPhone, fatherOccupation,
@@ -2067,7 +2076,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
           let pIdx = 3;
 
           for (const st of chunk) {
-            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, null)`);
+            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19}, $${pIdx+20}, $${pIdx+21}, null)`);
             params.push(
               st.classId,
               st.sectionId,
@@ -2087,9 +2096,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               st.motherOccupation || null,
               st.parentWhatsapp || null,
               st.dob || null,
-              st.admissionDate || null
+              st.admissionDate || null,
+              st.firstName || null,
+              st.middleName || null,
+              st.lastName || null
             );
-            pIdx += 19;
+            pIdx += 22;
           }
 
           const insertSql = `
@@ -2099,6 +2111,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               father_name, father_phone, father_occupation,
               mother_name, mother_phone, mother_occupation,
               parent_whatsapp, date_of_birth, admission_date,
+              first_name, middle_name, last_name,
               user_id
             )
             VALUES ${valuesChunks.join(', ')}
@@ -2115,6 +2128,12 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
             const meta = metaMap.get(`${row.class_id}_${row.section_id}_${row.roll_number}`);
             createdList.push({
               ...row,
+              first_name: row.first_name || meta?.firstName || null,
+              firstName: row.first_name || meta?.firstName || null,
+              middle_name: row.middle_name || meta?.middleName || null,
+              middleName: row.middle_name || meta?.middleName || null,
+              last_name: row.last_name || meta?.lastName || null,
+              lastName: row.last_name || meta?.lastName || null,
               gender: row.gender || meta?.gender || null,
               date_of_birth: row.date_of_birth || meta?.dob || null,
               dob: row.date_of_birth || meta?.dob || null,
@@ -2257,7 +2276,11 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
             id: studentId,
             name: st.name,
             first_name: st.firstName || null,
+            middle_name: st.middleName || null,
             last_name: st.lastName || null,
+            firstName: st.firstName || null,
+            middleName: st.middleName || null,
+            lastName: st.lastName || null,
             roll_number: st.rollNumber,
             admission_number: st.admissionNumber,
             admissionNumber: st.admissionNumber,
@@ -2299,7 +2322,11 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
           id: `st-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           name: st.name,
           first_name: st.firstName || null,
+          middle_name: st.middleName || null,
           last_name: st.lastName || null,
+          firstName: st.firstName || null,
+          middleName: st.middleName || null,
+          lastName: st.lastName || null,
           roll_number: st.rollNumber,
           admission_number: st.admissionNumber,
           admissionNumber: st.admissionNumber,
@@ -3250,7 +3277,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
  }
 
  try {
-  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.employee_id,tp.mobile,tp.gender,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
+  const q=await pool.query(`SELECT u.id,u.name,u.email,tp.first_name,tp.middle_name,tp.last_name,tp.employee_id,tp.mobile,tp.gender,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
   if (q.rows) {
@@ -3789,15 +3816,24 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
 
     const saviorNo = getVal(['Savior_No', 'SAVIOR_NO', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'ID']);
     let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
+    let middleName = getVal(['Middle Name', 'middleName', 'middle_name', 'MIDDLE NAME', 'MiddleName']);
     let lastName  = getVal(['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
     const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName', 'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name']);
 
     if ((!firstName || !lastName) && explicitFullName) {
       const parts = explicitFullName.split(/\s+/).filter(Boolean);
-      if (!firstName) firstName = parts[0] || '';
-      if (!lastName) lastName = parts.slice(1).join(' ') || '';
+      if (parts.length === 1) {
+        if (!firstName) firstName = parts[0] || '';
+      } else if (parts.length === 2) {
+        if (!firstName) firstName = parts[0] || '';
+        if (!lastName) lastName = parts[1] || '';
+      } else if (parts.length >= 3) {
+        if (!firstName) firstName = parts[0] || '';
+        if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
+        if (!lastName) lastName = parts[parts.length - 1] || '';
+      }
     }
-    const name = explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Faculty ${rowNum}`));
+    const name = explicitFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || `Faculty ${rowNum}`;
     const email = getVal(['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase() || `${saviorNo ? `teacher.${saviorNo.toLowerCase()}` : `teacher${rowNum}`}@school.local`;
     const rawClass = getVal(['Class', 'CLASS', 'class', 'Standard', 'Grade']);
     const rawSection = (getVal(['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
@@ -3837,6 +3873,8 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
       validRows.push({
         saviorNo,
         firstName,
+        middleName,
+        middle_name: middleName,
         lastName,
         name,
         email,
@@ -3930,7 +3968,10 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
           name: t.name,
           full_name: t.name,
           first_name: t.firstName,
+          middle_name: t.middleName || null,
+          middleName: t.middleName || null,
           last_name: t.lastName,
+          lastName: t.lastName,
           employee_id: t.saviorNo,
           savior_no: t.saviorNo,
           mobile: t.mobile,
@@ -4037,7 +4078,10 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
             name: t.name,
             full_name: t.name,
             first_name: t.firstName,
+            middle_name: t.middleName || null,
+            middleName: t.middleName || null,
             last_name: t.lastName,
+            lastName: t.lastName,
             email: t.email,
             employee_id: t.saviorNo,
             savior_no: t.saviorNo,
