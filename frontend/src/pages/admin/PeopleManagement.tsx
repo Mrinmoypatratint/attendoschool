@@ -1916,7 +1916,7 @@ export default function PeopleManagement() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: 12, color: '#475569' }}>
-                Required headers: <code>Savior_No</code>, <code>Fist Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Gender</code>, <code>Date_of_Birth</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
+                Required headers: <code>Savior_No</code>, <code>First Name</code>, <code>Middle Name</code>, <code>Last Name</code>, <code>Full Name(Automatically generated)</code>, <code>Email_id</code>, <code>Gender</code>, <code>Date_of_Birth</code>, <code>Class</code>, <code>Section</code>, <code>Status</code>, <code>Designation</code>
               </span>
               <button
                 type="button"
@@ -2377,7 +2377,8 @@ export default function PeopleManagement() {
                 <thead>
                   <tr>
                     <th>Savior_No</th>
-                    <th>Fist Name</th>
+                    <th>First Name</th>
+                    <th>Middle Name</th>
                     <th>Last Name</th>
                     <th>Full Name(Automatically generated)</th>
                     <th>Email_id</th>
@@ -2392,7 +2393,8 @@ export default function PeopleManagement() {
                   {prepareExportData().slice(0, 15).map((r, i) => (
                     <tr key={i}>
                       <td><code>{r['Savior_No'] || '—'}</code></td>
-                      <td>{r['Fist Name'] || '—'}</td>
+                      <td>{r['First Name'] || '—'}</td>
+                      <td>{r['Middle Name'] || '—'}</td>
                       <td>{r['Last Name'] || '—'}</td>
                       <td><b>{r['Full Name(Automatically generated)']}</b></td>
                       <td>{r['Email_id']}</td>
