@@ -646,11 +646,11 @@ export const demoStudents: any[] = [
 ];
 
 export const demoTeachers: any[] = [
-  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', savior_no: 'EMP001', mobile: '9000000001', gender: 'Male', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
-  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', savior_no: 'EMP002', mobile: '9000000002', gender: 'Female', school_id: '00000000-0000-0000-0000-000000000001', is_active: true },
-  { id: 'c3737d42-6f11-4f08-9001-8e052722cc54', name: 'Debashis Das', email: 'teacher1@dav.com', employee_id: '50359', savior_no: '50359', mobile: '9876543210', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' },
-  { id: 'd7a18f43-8e22-4a09-9112-9e163722dd65', name: 'Sunita Rao', email: 'teacher2@dav.com', employee_id: '50360', savior_no: '50360', mobile: '9876543211', gender: 'Female', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' },
-  { id: 'b149cd21-7f33-4c12-8854-8e354911aa78', name: 'Rajesh Sen', email: 'teacher@dav.com', employee_id: '50361', savior_no: '50361', mobile: '9876543212', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png' }
+  { id: '00000000-0000-0000-0000-000000000022', name: 'Rahul Sharma', email: 'rahul@demo-school.local', employee_id: 'EMP001', savior_no: 'EMP001', mobile: '9000000001', gender: 'Male', school_id: '00000000-0000-0000-0000-000000000001', is_active: true, designation: 'PRT' },
+  { id: '00000000-0000-0000-0000-000000000023', name: 'Priya Patel', email: 'priya@demo-school.local', employee_id: 'EMP002', savior_no: 'EMP002', mobile: '9000000002', gender: 'Female', school_id: '00000000-0000-0000-0000-000000000001', is_active: true, designation: 'TGT' },
+  { id: 'c3737d42-6f11-4f08-9001-8e052722cc54', name: 'Debashis Das', email: 'teacher1@dav.com', employee_id: '50359', savior_no: '50359', mobile: '9876543210', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png', designation: 'PRT' },
+  { id: 'd7a18f43-8e22-4a09-9112-9e163722dd65', name: 'Sunita Rao', email: 'teacher2@dav.com', employee_id: '50360', savior_no: '50360', mobile: '9876543211', gender: 'Female', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png', designation: 'TGT' },
+  { id: 'b149cd21-7f33-4c12-8854-8e354911aa78', name: 'Rajesh Sen', email: 'teacher@dav.com', employee_id: '50361', savior_no: '50361', mobile: '9876543212', gender: 'Male', school_id: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3', is_active: true, photo_url: '/dav-logo.png', designation: 'PRT' }
 ];
 
 // In-memory teacher teaching allocations (empty - no mock data)
@@ -3280,7 +3280,7 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
   const q=await pool.query(`SELECT u.id,u.name,u.email,tp.first_name,tp.middle_name,tp.last_name,tp.employee_id,tp.mobile,tp.gender,tp.joining_date,tp.designation,tp.class_name,tp.section_name,u.is_active,u.created_at
   FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
   WHERE u.school_id=$1 AND u.role='TEACHER' ORDER BY u.name`,[userSchoolId]);
-  if (q.rows) {
+  if (q.rows && q.rows.length > 0) {
     const formatted = q.rows.map(r => {
       const nameParts = String(r.name || '').trim().split(/\s+/);
       let fn = r.first_name || '';
