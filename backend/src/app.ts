@@ -49,6 +49,7 @@ import mentor from './routes/mentor';
 import teacherAssignments from './routes/teacherAssignments';
 import designations from './routes/designations';
 import leavePolicies from './routes/leavePolicies';
+import demoRequest from './routes/demoRequest';
 
 const app = express();
 app.disable('x-powered-by');
@@ -126,6 +127,8 @@ app.use('/api/final-integration', finalIntegration);
 app.use('/api/final-v28', finalIntegration);
 app.use('/api/production', production);
 app.use('/api/production-v26', production);
+app.use('/api/demo-request', demoRequest);
+app.use('/demo-request', demoRequest);
 
 // Authenticated operational routes (mounted on clean paths + backward-compatible aliases)
 app.use('/api/communication', requireAuth, communication);
