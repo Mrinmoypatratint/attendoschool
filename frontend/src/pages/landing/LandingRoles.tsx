@@ -45,7 +45,7 @@ const ROLES: RoleData[] = [
       'Leave approval workflows with teacher proxy substitution',
       'CBSE Form 14 registers, monthly percentages, and board reports'
     ],
-    photo: '/teacher_dav.jpg',
+    photo: '/school_office_admin.jpg',
     sampleUi: {
       badge: 'SCHOOL OPERATIONS DESK',
       kpi1Label: 'ACTIVE STUDENTS',
