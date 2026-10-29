@@ -769,6 +769,7 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
   COALESCE(st.is_active, true) AS is_active,
   st.father_name, st.father_phone, st.father_occupation,
   st.mother_name, st.mother_phone, st.mother_occupation,
+  st.guardian_name,
   st.parent_whatsapp, st.admission_date,
   c.id class_id,c.class_number,sec.id section_id,sec.name section_name
   FROM students st 
@@ -819,6 +820,8 @@ r.get('/students',...reader,async(req:AuthRequest,res)=>{
         motherPhone: st.mother_phone || '',
         mother_occupation: st.mother_occupation || '',
         motherOccupation: st.mother_occupation || '',
+        guardian_name: st.guardian_name || '',
+        guardianName: st.guardian_name || '',
         parent_whatsapp: st.parent_whatsapp || '',
         parentWhatsapp: st.parent_whatsapp || '',
         student_email: st.student_email || st.email,
@@ -1099,6 +1102,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
   const motherName = String(b.motherName || b.mother_name || '').trim();
   const motherPhone = String(b.motherPhone || b.mother_phone || b.motherContact || b.mother_contact || b.motherContactNo || b['Mother Contact No'] || '').trim();
   const motherOccupation = String(b.motherOccupation || b.mother_occupation || '').trim();
+
+  // Guardian details
+  const guardianName = String(b.guardianName || b.guardian_name || b['Guardian Name'] || b['Guardian\'s Name'] || '').trim();
 
   // Additional parent & admission details
   const parentWhatsapp = String(b.parentWhatsapp || b.parent_whatsapp || b.parentWhatsappNo || b.parent_whatsapp_no || b['Parent WhatsApp No'] || '').trim();
@@ -1482,10 +1488,10 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           father_name, father_phone, father_occupation,
           mother_name, mother_phone, mother_occupation,
           parent_whatsapp, admission_date,
-          first_name, middle_name, last_name
+          first_name, middle_name, last_name, guardian_name
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
         )
         RETURNING *`,
         [
@@ -1514,7 +1520,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
           admissionDate || null,
           firstName || null,
           middleName || null,
-          lastName || null
+          lastName || null,
+          guardianName || null
         ]
       );
       
@@ -1553,6 +1560,8 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
         motherPhone: motherPhone || q.rows[0].mother_phone,
         mother_occupation: motherOccupation || q.rows[0].mother_occupation,
         motherOccupation: motherOccupation || q.rows[0].mother_occupation,
+        guardian_name: guardianName || q.rows[0].guardian_name || null,
+        guardianName: guardianName || q.rows[0].guardian_name || null,
         parent_whatsapp: parentWhatsapp || q.rows[0].parent_whatsapp,
         parentWhatsapp: parentWhatsapp || q.rows[0].parent_whatsapp,
         student_email: cleanStudentEmail,
@@ -1940,6 +1949,9 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const motherPhone = String(st.motherPhone || st.motherContactNo || st['Mother Contact No'] || st['Mother Contact'] || st['Mother Phone'] || st.mother_phone || '').trim();
     const motherOccupation = String(st.motherOccupation || st['Mother Occupation'] || st['Mother\'s Occupation'] || st.mother_occupation || '').trim();
 
+    // Guardian details
+    const guardianName = String(st.guardianName || st['Guardian Name'] || st['Guardian\'s Name'] || st.guardian_name || '').trim();
+
     // Parent WhatsApp, DOB, Admission Date
     const parentWhatsapp = String(st.parentWhatsapp || st['Parent WhatsApp No'] || st['WhatsApp No'] || st.parent_whatsapp || '').trim();
     const rawDob = st.dob || st.dateOfBirth || st['Date of Birth'] || st['DOB'] || st.date_of_birth || null;
@@ -1948,8 +1960,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
     const admissionDate = rawAdmissionDate ? (toDbDate(rawAdmissionDate) || rawAdmissionDate) : null;
 
     let parentName = String(st.parentName || st['Parent Name'] || st.parent_name || '').trim();
-    if (!parentName && (fatherName || motherName)) {
-      parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || '');
+    if (!parentName && (fatherName || motherName || guardianName)) {
+      parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || guardianName || '');
     }
     let parentPhone = String(st.parentPhone || st['Parent Phone'] || st.parentSmsNumber || st.parent_sms_number || '').trim();
     if (!parentPhone && (fatherPhone || motherPhone || parentWhatsapp)) {
@@ -2024,7 +2036,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
         dob, admissionDate,
         parentName, parentPhone, parentEmail, studentEmail,
         fatherName, fatherPhone, fatherOccupation,
-        motherName, motherPhone, motherOccupation, parentWhatsapp,
+        motherName, motherPhone, motherOccupation, guardianName, parentWhatsapp,
         classId, classNumber, classLabel, sectionId, sectionName
       });
     }
@@ -2076,7 +2088,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
           let pIdx = 3;
 
           for (const st of chunk) {
-            valuesChunks.push(`($1, $2, $${pIdx}, $${pIdx+1}, $${pIdx+2}, $${pIdx+3}, $${pIdx+4}, $${pIdx+5}, $${pIdx+6}, $${pIdx+7}, $${pIdx+8}, $${pIdx+9}, $${pIdx+10}, $${pIdx+11}, $${pIdx+12}, $${pIdx+13}, $${pIdx+14}, $${pIdx+15}, $${pIdx+16}, $${pIdx+17}, $${pIdx+18}, $${pIdx+19}, $${pIdx+20}, $${pIdx+21}, null)`);
+            valuesChunks.push(`($1, $2, ${pIdx}, ${pIdx+1}, ${pIdx+2}, ${pIdx+3}, ${pIdx+4}, ${pIdx+5}, ${pIdx+6}, ${pIdx+7}, ${pIdx+8}, ${pIdx+9}, ${pIdx+10}, ${pIdx+11}, ${pIdx+12}, ${pIdx+13}, ${pIdx+14}, ${pIdx+15}, ${pIdx+16}, ${pIdx+17}, ${pIdx+18}, ${pIdx+19}, ${pIdx+20}, ${pIdx+21}, ${pIdx+22}, null)`);
             params.push(
               st.classId,
               st.sectionId,
@@ -2099,9 +2111,10 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               st.admissionDate || null,
               st.firstName || null,
               st.middleName || null,
-              st.lastName || null
+              st.lastName || null,
+              st.guardianName || null
             );
-            pIdx += 22;
+            pIdx += 23;
           }
 
           const insertSql = `
@@ -2111,7 +2124,7 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               father_name, father_phone, father_occupation,
               mother_name, mother_phone, mother_occupation,
               parent_whatsapp, date_of_birth, admission_date,
-              first_name, middle_name, last_name,
+              first_name, middle_name, last_name, guardian_name,
               user_id
             )
             VALUES ${valuesChunks.join(', ')}
@@ -2151,6 +2164,8 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
               motherPhone: row.mother_phone || meta?.motherPhone || null,
               mother_occupation: row.mother_occupation || meta?.motherOccupation || null,
               motherOccupation: row.mother_occupation || meta?.motherOccupation || null,
+              guardian_name: row.guardian_name || meta?.guardianName || null,
+              guardianName: row.guardian_name || meta?.guardianName || null,
               parent_whatsapp: row.parent_whatsapp || meta?.parentWhatsapp || null,
               parentWhatsapp: row.parent_whatsapp || meta?.parentWhatsapp || null,
               academic_year_id: bulkSessionId,
@@ -2431,6 +2446,7 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
        COALESCE(st.is_active, true) AS is_active,
    st.father_name, st.father_phone, st.father_occupation,
    st.mother_name, st.mother_phone, st.mother_occupation,
+   st.guardian_name,
    st.parent_whatsapp, st.admission_date,
        c.id class_id,c.class_number,sec.id section_id,sec.name section_name
        FROM students st 
@@ -2445,6 +2461,8 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
       return res.json({
         ...row,
         gender: normalizeGender(row.gender) || '',
+        guardian_name: row.guardian_name || '',
+        guardianName: row.guardian_name || '',
         is_active: row.is_active !== false,
         status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE'
       });
@@ -2479,6 +2497,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     motherName, mother_name,
     motherPhone, mother_phone, motherContact, mother_contact, motherContactNo,
     motherOccupation, mother_occupation,
+    guardianName, guardian_name,
     parentWhatsapp, parent_whatsapp, parentWhatsappNo, parent_whatsapp_no,
     admissionDate, admission_date,
     studentEmail, email, parentEmail, parent_email,
@@ -2548,6 +2567,9 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     : undefined;
   const cleanMotherOccupation = (motherOccupation !== undefined || mother_occupation !== undefined)
     ? String(motherOccupation || mother_occupation || '').trim()
+    : undefined;
+  const cleanGuardianName = (guardianName !== undefined || guardian_name !== undefined)
+    ? String(guardianName || guardian_name || '').trim()
     : undefined;
   const cleanParentWhatsapp = (parentWhatsapp !== undefined || parent_whatsapp !== undefined || parentWhatsappNo !== undefined || parent_whatsapp_no !== undefined)
     ? String(parentWhatsapp || parent_whatsapp || parentWhatsappNo || parent_whatsapp_no || '').trim()
@@ -2726,6 +2748,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
            first_name=COALESCE(NULLIF($25, ''), first_name),
            middle_name=COALESCE(NULLIF($26, ''), middle_name),
            last_name=COALESCE(NULLIF($27, ''), last_name),
+           guardian_name=COALESCE($28, guardian_name),
            updated_at=NOW()
          WHERE id=$11 AND school_id=$12 RETURNING *`,
         [
@@ -2755,7 +2778,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           cleanAdmissionDate !== undefined ? (cleanAdmissionDate || null) : null,
           firstName || null,
           middleName || null,
-          lastName || null
+          lastName || null,
+          cleanGuardianName !== undefined ? (cleanGuardianName || null) : null
         ]
       );
       if (q.rowCount && q.rows.length > 0) {
@@ -2859,6 +2883,8 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
           section_id: realPutSectionId || q.rows[0].section_id,
           sectionId: realPutSectionId || q.rows[0].section_id,
           section_name: putSecName,
+          guardian_name: cleanGuardianName !== undefined ? (cleanGuardianName || null) : (q.rows[0].guardian_name || null),
+          guardianName: cleanGuardianName !== undefined ? (cleanGuardianName || null) : (q.rows[0].guardian_name || null),
           session: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           session_name: resolvedSession || q.rows[0].session_name || q.rows[0].academic_year_id,
           academic_year_id: resolvedSession || q.rows[0].academic_year_id,

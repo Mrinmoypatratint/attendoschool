@@ -2174,15 +2174,25 @@ function Layout({children}:{children:React.ReactNode}){
   async function loadAcademicYears() {
     setAyLoading(true);
     try {
-      const res = await api.get('/academic-years');
+      const res = await api.get('/academic-years?fresh=1');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        setAcademicYears(res.data);
-        const active = res.data.find((ay: any) => ay.is_active) || res.data[0];
-        if (active) {
-          const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
-          const matched = stored ? res.data.find((ay: any) => ay.name === stored || stored.includes(ay.name) || ay.name.includes(stored)) : null;
-          const current = matched || active;
+        const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+        const storedId = localStorage.getItem('attendo_active_academic_year_id');
+        // Authoritative active year: strictly one active session from database
+        const activeFromDb = res.data.find((ay: any) => ay.is_active);
+        const current = activeFromDb 
+          || (storedId ? res.data.find((ay: any) => ay.id === storedId) : null)
+          || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null) 
+          || res.data[0];
 
+        // Enforce strictly 1 active session in the state list
+        const normalized = res.data.map((ay: any) => ({
+          ...ay,
+          is_active: ay.id === current.id
+        }));
+        setAcademicYears(normalized);
+
+        if (current) {
           setSchoolInfo((prev: any) => ({
             ...(prev || {}),
             activeAcademicYear: current
@@ -2202,7 +2212,7 @@ function Layout({children}:{children:React.ReactNode}){
   async function switchAcademicYear(yearId: string) {
     setAySwitching(yearId);
 
-    // 1. Optimistically update local dropdown state immediately
+    // 1. Optimistically update local dropdown state immediately: strictly ONE is_active
     setAcademicYears(prev => prev.map(ay => ({
       ...ay,
       is_active: ay.id === yearId,
@@ -2220,7 +2230,7 @@ function Layout({children}:{children:React.ReactNode}){
       localStorage.setItem('attendo_active_academic_year', target.name);
       localStorage.setItem('attendo_academic_session', target.name);
       localStorage.setItem('attendo_active_academic_year_id', target.id);
-      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target }));
+      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target.name }));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -2237,9 +2247,13 @@ function Layout({children}:{children:React.ReactNode}){
           setSchoolInfo(res.data);
         }
       }
-      const refreshedYears = await api.get('/academic-years');
+      const refreshedYears = await api.get('/academic-years?fresh=1');
       if (Array.isArray(refreshedYears.data) && refreshedYears.data.length > 0) {
-        setAcademicYears(refreshedYears.data);
+        const activeFound = refreshedYears.data.find((y: any) => y.id === yearId) || refreshedYears.data.find((y: any) => y.is_active) || refreshedYears.data[0];
+        setAcademicYears(refreshedYears.data.map((y: any) => ({
+          ...y,
+          is_active: y.id === activeFound.id
+        })));
       }
     } catch (err) {
       console.warn('Academic year activation sync warning:', err);
@@ -2881,9 +2895,18 @@ function Layout({children}:{children:React.ReactNode}){
     }
   };
 
-  const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
-  const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
+  const storedSessionId = localStorage.getItem('attendo_active_academic_year_id');
+  const authoritativeActiveYear = 
+    academicYears.find((ay: any) => ay.is_active) ||
+    (storedSessionId ? academicYears.find((ay: any) => ay.id === storedSessionId) : null) ||
+    (schoolInfo?.activeAcademicYear?.id ? academicYears.find((ay: any) => ay.id === schoolInfo.activeAcademicYear.id) : null) ||
+    (schoolInfo?.activeAcademicYear?.name ? academicYears.find((ay: any) => ay.name === schoolInfo.activeAcademicYear.name) : null) ||
+    (storedSession ? academicYears.find((ay: any) => ay.name === storedSession) : null) ||
+    (academicYears.length > 0 ? academicYears[0] : null);
+
+  const authoritativeActiveYearId = authoritativeActiveYear?.id || null;
+  const rawSessionName = authoritativeActiveYear?.name || schoolInfo?.activeAcademicYear?.name || storedSession || '2026–27';
   const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   const activeSessionName = cleanSessionName || '2026–27';
 
@@ -3081,7 +3104,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}
@@ -3203,7 +3226,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}
@@ -3439,7 +3462,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}
@@ -5804,6 +5827,7 @@ function Students(){
     const motherName = String(f.motherName || '').trim();
     const motherPhone = String(f.motherPhone || '').trim();
     const motherOccupation = String(f.motherOccupation || '').trim();
+    const guardianName = String(f.guardianName || f.guardian_name || '').trim();
     const parentWhatsappNo = String(f.parentWhatsappNo || f.parent_whatsapp_no || '').trim();
 
     if (fatherName) {
@@ -5824,6 +5848,17 @@ function Students(){
       }
       if (/\d/.test(motherName)) {
         alert('Validation Error: Enter a string not a number in Mother Name.');
+        return;
+      }
+    }
+
+    if (guardianName) {
+      if (guardianName.length < 2) {
+        alert('Validation Error: Guardian Name must be at least 2 characters.');
+        return;
+      }
+      if (/\d/.test(guardianName)) {
+        alert('Validation Error: Enter a string not a number in Guardian Name.');
         return;
       }
     }
@@ -5879,7 +5914,7 @@ function Students(){
       return;
     }
     const fullParentPhone = primaryPhone.startsWith('+') ? primaryPhone : `${code} ${phoneDigits.slice(-10)}`;
-    const compositeParentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || f.parentName || '');
+    const compositeParentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || guardianName || f.parentName || '');
 
     if (!f.classId) {
       alert('Validation Error: Please select an enrolled class.');
@@ -6002,6 +6037,8 @@ function Students(){
       motherContactNo: motherPhone,
       motherOccupation,
       mother_occupation: motherOccupation,
+      guardianName,
+      guardian_name: guardianName,
       parentWhatsappNo,
       parent_whatsapp_no: parentWhatsappNo,
       parentWhatsapp: parentWhatsappNo,
@@ -6066,6 +6103,7 @@ function Students(){
           { label: 'Mother Name', value: motherName || editingStudent?.mother_name || '—' },
           { label: 'Mother Contact No.', value: motherPhone || editingStudent?.mother_phone || '—', type: 'phone' },
           { label: 'Mother Occupation', value: motherOccupation || editingStudent?.mother_occupation || '—' },
+          { label: 'Guardian Name', value: guardianName || editingStudent?.guardian_name || '—' },
           { label: 'Parent WhatsApp No.', value: parentWhatsappNo || editingStudent?.parent_whatsapp_no || '—', type: 'phone' },
         ]
       },
@@ -6103,6 +6141,7 @@ function Students(){
         mother_name: motherName,
         mother_phone: motherPhone,
         mother_occupation: motherOccupation,
+        guardian_name: guardianName,
         parent_whatsapp_no: parentWhatsappNo || editingStudent.parent_whatsapp_no,
         parent_name: compositeParentName,
         parent_phone: fullParentPhone,
@@ -6123,6 +6162,7 @@ function Students(){
         mother_name: 'Mother Name',
         mother_phone: 'Mother Contact No',
         mother_occupation: 'Mother Occupation',
+        guardian_name: 'Guardian Name',
         parent_whatsapp_no: 'Parent WhatsApp No',
         parent_name: 'Parent Name',
         parent_phone: 'Parent Phone',
@@ -6437,6 +6477,7 @@ function Students(){
         'Mother Name': r.mother_name || r.motherName || '',
         'Mother Contact No': r.mother_phone || r.motherPhone || '',
         'Mother Occupation': r.mother_occupation || r.motherOccupation || '',
+        'Guardian Name': r.guardian_name || r.guardianName || '',
         'Parent WhatsApp No': r.parent_whatsapp_no || r.parentWhatsappNo || r.parent_whatsapp || '',
         'Parent Email': r.parent_email || r.parentEmail || '',
         'Student Email': r.student_email || r.email || '',
@@ -6452,7 +6493,7 @@ function Students(){
       return;
     }
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols'] = [12, 16, 14, 14, 14, 14, 20, 10, 12, 10, 14, 14, 18, 16, 16, 18, 16, 16, 18, 22, 22, 10].map(wch => ({ wch }));
+    ws['!cols'] = [12, 16, 14, 14, 14, 14, 20, 10, 12, 10, 14, 14, 18, 16, 16, 18, 16, 16, 18, 18, 22, 22, 10].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
     const filterDesc = selectedIds.size > 0 ? `Selected_${selectedIds.size}` : (classFilter ? `Class_${classFilter}` : 'All');
@@ -6498,6 +6539,7 @@ function Students(){
         "Mother Name": "Sunita Sharma",
         "Mother Contact No": "9876543219",
         "Mother Occupation": "Teacher",
+        "Guardian Name": "",
         "Parent WhatsApp No": "9876543210",
         "Parent Email": "rajesh@example.com", 
         "Student Email": "aarav@school.edu" 
@@ -6521,6 +6563,7 @@ function Students(){
         "Mother Name": "Bhavna Patel",
         "Mother Contact No": "9876543218",
         "Mother Occupation": "Doctor",
+        "Guardian Name": "Vikram Patel",
         "Parent WhatsApp No": "9876543211",
         "Parent Email": "kirit@example.com",  
         "Student Email": "" 
@@ -6544,6 +6587,7 @@ function Students(){
         "Mother Name": "Rekha Gupta",
         "Mother Contact No": "9876543217",
         "Mother Occupation": "Home Maker",
+        "Guardian Name": "",
         "Parent WhatsApp No": "9876543212",
         "Parent Email": "manoj@example.com", 
         "Student Email": "" 
@@ -6567,6 +6611,7 @@ function Students(){
         "Mother Name": "Pooja Verma",
         "Mother Contact No": "9876543216",
         "Mother Occupation": "Architect",
+        "Guardian Name": "",
         "Parent WhatsApp No": "9876543213",
         "Parent Email": "sunil@example.com", 
         "Student Email": "" 
@@ -6590,13 +6635,14 @@ function Students(){
         "Mother Name": "Meena Singh",
         "Mother Contact No": "9876543215",
         "Mother Occupation": "Scientist",
+        "Guardian Name": "",
         "Parent WhatsApp No": "9876543214",
         "Parent Email": "sanjay@example.com", 
         "Student Email": "" 
       }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
-    ws['!cols'] = [14, 14, 14, 20, 18, 16, 14, 12, 12, 10, 16, 12, 20, 18, 18, 20, 18, 18, 20, 24, 26].map(wch => ({ wch }));
+    ws['!cols'] = [14, 14, 14, 20, 18, 16, 14, 12, 12, 10, 16, 12, 20, 18, 18, 20, 18, 18, 18, 20, 24, 26].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students Import Template');
     XLSX.writeFile(wb, 'students_import_template.xlsx');
@@ -6760,6 +6806,7 @@ function Students(){
           const motherName = String(r['Mother Name'] || r['Mother\'s Name'] || r['mother_name'] || r['MotherName'] || '').trim();
           const motherPhone = String(r['Mother Contact No'] || r['Mother Contact'] || r['Mother Phone'] || r['mother_phone'] || r['MotherPhone'] || '').trim();
           const motherOccupation = String(r['Mother Occupation'] || r['Mother\'s Occupation'] || r['mother_occupation'] || r['MotherOccupation'] || '').trim();
+          const guardianName = String(r['Guardian Name'] || r['Guardian\'s Name'] || r['guardian_name'] || r['GuardianName'] || '').trim();
 
           const rawAdmDate = r['Admission Date'] || r['admission_date'] || r['AdmissionDate'] || r['Adm Date'] || '';
           const admissionDate = rawAdmDate ? (toIsoDate(rawAdmDate) || String(rawAdmDate)) : '';
@@ -6770,8 +6817,8 @@ function Students(){
           const parentWhatsappNo = String(r['Parent WhatsApp No'] || r['Parent Whatsapp No'] || r['WhatsApp No'] || r['Whatsapp No'] || r['parent_whatsapp_no'] || r['parent_whatsapp'] || '').trim();
 
           let parentName  = String(r['Parent Name']||r['parent_name']||'').trim();
-          if (!parentName && (fatherName || motherName)) {
-            parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || '');
+          if (!parentName && (fatherName || motherName || guardianName)) {
+            parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || guardianName || '');
           }
           let parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
           if (!parentPhone && (fatherPhone || motherPhone)) {
@@ -6914,6 +6961,8 @@ function Students(){
             motherContactNo: motherPhone,
             motherOccupation,
             mother_occupation: motherOccupation,
+            guardianName,
+            guardian_name: guardianName,
             parentWhatsappNo,
             parent_whatsapp_no: parentWhatsappNo,
             parentName,
@@ -7784,6 +7833,7 @@ function Students(){
                       motherName: x.mother_name || x.motherName || '',
                       motherPhone: x.mother_phone || x.motherPhone || '',
                       motherOccupation: x.mother_occupation || x.motherOccupation || '',
+                      guardianName: x.guardian_name || x.guardianName || '',
                       countryCode: cCode,
                       parentSmsNumber: pNum,
                       parentWhatsappNo: x.parent_whatsapp_no || x.parentWhatsappNo || x.parent_whatsapp || x.parentWhatsapp || '',
@@ -8514,6 +8564,42 @@ function Students(){
           </div>
         </div>
 
+        {/* Guardian's Information */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--card-subtle, #f8fafc)',
+          borderRadius: 8,
+          border: '1px solid var(--border, #e2e8f0)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Guardian's Details</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+            <label>
+              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Guardian Name
+              </span>
+              <input
+                placeholder="Guardian Name (Optional)"
+                value={f.guardianName || f.guardian_name || ''}
+                style={{
+                  borderColor: /\d/.test(f.guardianName || f.guardian_name || '') ? '#ef4444' : undefined,
+                  boxShadow: /\d/.test(f.guardianName || f.guardian_name || '') ? '0 0 0 1px #ef4444' : undefined
+                }}
+                onChange={e => setF({ ...f, guardianName: e.target.value, guardian_name: e.target.value })}
+              />
+              {/\d/.test(f.guardianName || f.guardian_name || '') && (
+                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                  Enter a string not a number
+                </span>
+              )}
+            </label>
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <label>
             <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -8791,7 +8877,7 @@ function Students(){
                 </div>
                 <strong style={{ fontSize: 15 }}>Click to browse or drop Excel file here</strong>
                 <span className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>Supports Microsoft Excel (.xlsx, .xls) and CSV (.csv)</span>
-                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Middle Name, Last Name, Admission Number, Admission Date, Roll Number, Session, Class, Section, Date of Birth, Gender, Father Name, Father Contact No, Father Occupation, Mother Name, Mother Contact No, Mother Occupation, Parent WhatsApp No, Parent Email, Student Email</span>
+                <span className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Columns: First Name, Middle Name, Last Name, Admission Number, Admission Date, Roll Number, Session, Class, Section, Date of Birth, Gender, Father Name, Father Contact No, Father Occupation, Mother Name, Mother Contact No, Mother Occupation, Guardian Name, Parent WhatsApp No, Parent Email, Student Email</span>
               </label>
               <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between' }}>
                 <button type="button" className="btn-secondary" onClick={() => setImportStep(1)}>← Back</button>
@@ -8966,13 +9052,14 @@ function Students(){
                       <th style={{ minWidth: 90 }}>Gender</th>
                       <th style={{ minWidth: 160 }}>Father Details</th>
                       <th style={{ minWidth: 160 }}>Mother Details</th>
+                      <th style={{ minWidth: 140 }}>Guardian Name</th>
                       <th style={{ minWidth: 160 }}>Student Email</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedStudentPreviewRows.length === 0 ? (
                       <tr>
-                        <td colSpan={16} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                        <td colSpan={17} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
                           No students match the current search or error filter.
                         </td>
                       </tr>
@@ -9050,6 +9137,9 @@ function Students(){
                               <div><b>{r.motherName || '—'}</b></div>
                               <div style={{ fontSize: 11, color: '#64748b' }}>{r.motherPhone || ''}</div>
                               {r.motherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.motherOccupation}</div>}
+                            </td>
+                            <td style={{ fontSize: 12 }}>
+                              <div><b>{r.guardianName || r.guardian_name || '—'}</b></div>
                             </td>
                             <td style={{ fontSize: 12 }}>{r.studentEmail || '—'}</td>
                           </tr>
@@ -9310,6 +9400,7 @@ function Students(){
                   <th>Parent WhatsApp</th>
                   <th>Father Name</th>
                   <th>Mother Name</th>
+                  <th>Guardian Name</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -9336,12 +9427,13 @@ function Students(){
                     <td>{r['Parent WhatsApp No'] ? <code>{r['Parent WhatsApp No']}</code> : '—'}</td>
                     <td>{r['Father Name'] || '—'}</td>
                     <td>{r['Mother Name'] || '—'}</td>
+                    <td>{r['Guardian Name'] || '—'}</td>
                     <td><span className="badge active">{r['Status']}</span></td>
                   </tr>
                 ))}
                 {prepareStudentExportData().length === 0 && (
                   <tr>
-                    <td colSpan={15} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                    <td colSpan={16} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
                       No student records match the selected filters or manual selection.
                     </td>
                   </tr>

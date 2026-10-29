@@ -72,6 +72,24 @@ export default function TeacherLeaveApprove() {
   const [configuredPolicies, setConfiguredPolicies] = useState<any[]>([]);
   const [exporting, setExporting] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectedTeacherKeys, setSelectedTeacherKeys] = useState<Set<string>>(new Set());
+
+  const getTeacherKey = (l: any) => {
+    return String(l.applicant_id || l.teacher_email || l.applicant_name || '').toLowerCase().trim();
+  };
+
+  const toggleTeacherSelection = (key: string) => {
+    if (!key) return;
+    setSelectedTeacherKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   // Detail Modal State
   const [viewingLeave, setViewingLeave] = useState<TeacherLeave | null>(null);
@@ -585,14 +603,24 @@ export default function TeacherLeaveApprove() {
         ? leaves
         : leaves.filter((l) => computeLeaveDaysInMonth(l, ym) > 0);
 
-      const targetLeaves = (activeTab !== 'ALL' && monthLeaves.some((l) => l.status === activeTab))
+      let targetLeaves = (activeTab !== 'ALL' && monthLeaves.some((l) => l.status === activeTab))
         ? monthLeaves.filter((l) => l.status === activeTab)
         : monthLeaves;
+
+      // Filter by selected teachers if selection boxes are checked
+      if (selectedTeacherKeys.size > 0) {
+        targetLeaves = targetLeaves.filter((l) => {
+          const k = String(l.applicant_id || l.teacher_email || l.applicant_name).toLowerCase().trim();
+          return selectedTeacherKeys.has(k);
+        });
+      }
 
       if (targetLeaves.length === 0) {
         setFeedback({
           type: 'error',
-          message: `No faculty leave applications found for ${monthName} to export.`
+          message: selectedTeacherKeys.size > 0
+            ? `No faculty leave applications found for the ${selectedTeacherKeys.size} selected teacher(s) in ${monthName}.`
+            : `No faculty leave applications found for ${monthName} to export.`
         });
         return;
       }
@@ -826,12 +854,15 @@ export default function TeacherLeaveApprove() {
       XLSX.utils.book_append_sheet(wb, wsDetails, 'All Applications Log');
 
       const safeMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `Teacher_Leave_Review_${safeMonth}.xlsx`;
+      const teacherSuffix = selectedTeacherKeys.size > 0 ? `_${selectedTeacherKeys.size}_Selected_Teachers` : '';
+      const filename = `Teacher_Leave_Review_${safeMonth}${teacherSuffix}.xlsx`;
       XLSX.writeFile(wb, filename);
 
       setFeedback({
         type: 'success',
-        message: `Teacher Leave Review report downloaded for ${monthName} (${targetLeaves.length} application(s) across ${facultyList.length} faculty member(s)).`
+        message: selectedTeacherKeys.size > 0
+          ? `Downloaded leave report for ${selectedTeacherKeys.size} selected teacher(s) in ${monthName} (${targetLeaves.length} application(s)).`
+          : `Teacher Leave Review report downloaded for ${monthName} (${targetLeaves.length} application(s) across ${facultyList.length} faculty member(s)).`
       });
     } catch (err: any) {
       console.error('Failed to export leave report:', err);
@@ -879,6 +910,34 @@ export default function TeacherLeaveApprove() {
       return true;
     });
   }, [monthScopedLeaves, activeTab, typeFilter, searchQuery, configuredPolicies]);
+
+  const uniqueVisibleTeacherKeys = useMemo(() => {
+    const set = new Set<string>();
+    filteredLeaves.forEach((l) => {
+      const k = getTeacherKey(l);
+      if (k) set.add(k);
+    });
+    return Array.from(set);
+  }, [filteredLeaves]);
+
+  const isAllVisibleSelected = uniqueVisibleTeacherKeys.length > 0 && uniqueVisibleTeacherKeys.every((k) => selectedTeacherKeys.has(k));
+  const isSomeVisibleSelected = uniqueVisibleTeacherKeys.some((k) => selectedTeacherKeys.has(k)) && !isAllVisibleSelected;
+
+  const toggleSelectAllVisible = () => {
+    if (isAllVisibleSelected) {
+      setSelectedTeacherKeys((prev) => {
+        const next = new Set(prev);
+        uniqueVisibleTeacherKeys.forEach((k) => next.delete(k));
+        return next;
+      });
+    } else {
+      setSelectedTeacherKeys((prev) => {
+        const next = new Set(prev);
+        uniqueVisibleTeacherKeys.forEach((k) => next.add(k));
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
@@ -993,7 +1052,13 @@ export default function TeacherLeaveApprove() {
             title={`Download monthly leave report for ${formatMonthDisplay(reportMonth)}`}
           >
             <FileSpreadsheet size={15} />
-            <span>{exporting ? 'Exporting...' : 'Export Excel'}</span>
+            <span>
+              {exporting
+                ? 'Exporting...'
+                : selectedTeacherKeys.size > 0
+                  ? `Export Selected (${selectedTeacherKeys.size})`
+                  : 'Export Excel'}
+            </span>
           </button>
 
           {/* Refresh Button */}
@@ -1394,12 +1459,95 @@ export default function TeacherLeaveApprove() {
             </p>
           </div>
         ) : (
-          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
+          <div>
+            {/* Active Faculty Selection Banner */}
+            {selectedTeacherKeys.size > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 16px',
+                  background: 'linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)',
+                  border: '1px solid #BFDBFE',
+                  borderRadius: 8,
+                  marginBottom: 12,
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <CheckCircle2 size={16} style={{ color: '#2563EB' }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#1E40AF' }}>
+                    {selectedTeacherKeys.size} faculty member{selectedTeacherKeys.size === 1 ? '' : 's'} selected for export
+                  </span>
+                  <span style={{ fontSize: 12, color: '#64748B' }}>
+                    &bull; Clicking &ldquo;Export Excel&rdquo; will export data only for these selected teachers
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => exportMonthlyLeaveReport(reportMonth)}
+                    disabled={exporting}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 14px',
+                      borderRadius: 6,
+                      background: '#16A34A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 12.5,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FileSpreadsheet size={14} />
+                    <span>Export {selectedTeacherKeys.size} Selected</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTeacherKeys(new Set())}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      background: '#FFFFFF',
+                      color: '#475569',
+                      border: '1px solid #CBD5E1',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={13} />
+                    <span>Clear Selection</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
             <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
               <thead>
                 <tr style={{ background: 'var(--table-header, #F8FAFC)', borderBottom: '1px solid var(--border, #E2E8F0)' }}>
-                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 135 }}>
-                    FACULTY MEMBER
+                  <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 160 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={isAllVisibleSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSomeVisibleSelected;
+                        }}
+                        onChange={toggleSelectAllVisible}
+                        title={isAllVisibleSelected ? 'Deselect all visible faculty' : 'Select all visible faculty for export'}
+                        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB', margin: 0 }}
+                      />
+                      <span>FACULTY MEMBER</span>
+                    </div>
                   </th>
                   <th style={{ padding: '10px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #64748B)', textTransform: 'uppercase', minWidth: 155 }}>
                     APPROVED LEAVES (BY TYPE)
@@ -1439,6 +1587,7 @@ export default function TeacherLeaveApprove() {
                     <tr
                       key={l.id}
                       style={{
+                        background: selectedTeacherKeys.has(getTeacherKey(l)) ? 'rgba(239, 246, 255, 0.65)' : undefined,
                         borderBottom: '1px solid var(--border, #E2E8F0)',
                         transition: 'background 0.15s'
                       }}
@@ -1446,6 +1595,13 @@ export default function TeacherLeaveApprove() {
                       {/* Faculty Info */}
                       <td style={{ padding: '10px 10px', verticalAlign: 'top' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTeacherKeys.has(getTeacherKey(l))}
+                            onChange={() => toggleTeacherSelection(getTeacherKey(l))}
+                            title={`Select ${l.applicant_name || 'faculty'} for export`}
+                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB', margin: 0, flexShrink: 0 }}
+                          />
                           {l.photo_url ? (
                             <img
                               src={l.photo_url}
@@ -1458,14 +1614,15 @@ export default function TeacherLeaveApprove() {
                                 width: 32,
                                 height: 32,
                                 borderRadius: '50%',
-                                background: '#EFF6FF',
+                                background: selectedTeacherKeys.has(getTeacherKey(l)) ? '#DBEAFE' : '#EFF6FF',
                                 color: '#2563EB',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: 700,
                                 fontSize: 12,
-                                flexShrink: 0
+                                flexShrink: 0,
+                                border: selectedTeacherKeys.has(getTeacherKey(l)) ? '1px solid #3B82F6' : 'none'
                               }}
                             >
                               {initials}
@@ -1808,6 +1965,7 @@ export default function TeacherLeaveApprove() {
                 })}
               </tbody>
             </table>
+          </div>
           </div>
         )}
       </div>
