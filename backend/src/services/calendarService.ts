@@ -401,11 +401,11 @@ export async function updateSchoolHoliday(
 
   if (data.name !== undefined) {
     params.push(data.name.trim());
-    setClauses.push(`name = ${params.length}`);
+    setClauses.push(`name = $${params.length}`);
   }
   if (data.holiday_date !== undefined) {
     params.push(data.holiday_date);
-    setClauses.push(`holiday_date = ${params.length}`);
+    setClauses.push(`holiday_date = $${params.length}`);
   }
   if (data.holiday_type !== undefined) {
     params.push(data.holiday_type);
