@@ -521,6 +521,77 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     }
   }
 
+  // Edit Holiday Modal State
+  const [editHolidayModal, setEditHolidayModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    date: string;
+    type: 'GAZETTED' | 'NATIONAL' | 'FESTIVAL' | 'REGIONAL' | 'INSTITUTIONAL';
+    description: string;
+    isActive: boolean;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    id: '',
+    name: '',
+    date: '',
+    type: 'GAZETTED',
+    description: '',
+    isActive: true,
+    loading: false,
+    error: null
+  });
+
+  function openEditHolidayModal(h: any) {
+    setEditHolidayModal({
+      isOpen: true,
+      id: h.id,
+      name: h.name || '',
+      date: h.holiday_date || '',
+      type: h.holiday_type || 'GAZETTED',
+      description: h.description || '',
+      isActive: Boolean(h.is_active),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function handleSaveEditHoliday(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!editHolidayModal.name.trim()) {
+      setEditHolidayModal(prev => ({ ...prev, error: 'Holiday name is mandatory.' }));
+      return;
+    }
+    const dYear = editHolidayModal.date.split('-')[0];
+    if (!/^\d{4}$/.test(dYear)) {
+      setEditHolidayModal(prev => ({ ...prev, error: 'Holiday date year must be exactly 4 digits.' }));
+      return;
+    }
+
+    setEditHolidayModal(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await api.put(`/calendar/holidays/${editHolidayModal.id}`, {
+        name: editHolidayModal.name.trim(),
+        holiday_date: editHolidayModal.date,
+        holiday_type: editHolidayModal.type,
+        description: editHolidayModal.description.trim(),
+        is_active: editHolidayModal.isActive
+      });
+
+      setEditHolidayModal(prev => ({ ...prev, isOpen: false, loading: false }));
+      await loadHolidaysList();
+      executeCalculation();
+    } catch (err: any) {
+      setEditHolidayModal(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Failed to update holiday'
+      }));
+    }
+  }
+
   /* ─────────────────────────────────────────────────────────────
      Holiday Handlers (TC-SET-003)
   ───────────────────────────────────────────────────────────── */
@@ -531,6 +602,16 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
     if (!holidayName.trim() || !from) {
       alert('Please provide holiday name and valid From date.');
+      return;
+    }
+    const fromYear = from.split('-')[0];
+    const toYear = to.split('-')[0];
+    if (!/^\d{4}$/.test(fromYear)) {
+      alert('Validation Error: From Date year must be exactly 4 digits.');
+      return;
+    }
+    if (!/^\d{4}$/.test(toYear)) {
+      alert('Validation Error: To Date year must be exactly 4 digits.');
       return;
     }
     if (from > to) {
@@ -1117,13 +1198,16 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>From Date *</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={holidayFromDate}
                   onChange={e => {
-                    const val = e.target.value;
-                    setHolidayFromDate(val);
-                    if (!holidayToDate || holidayToDate < val) {
-                      setHolidayToDate(val);
-                    }
+                    handleDateInput(e.target.value, val => {
+                      setHolidayFromDate(val);
+                      if (!holidayToDate || holidayToDate < val) {
+                        setHolidayToDate(val);
+                      }
+                    });
                   }}
                   required
                 />
@@ -1133,9 +1217,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>To Date *</span>
                 <input
                   type="date"
-                  min={holidayFromDate}
+                  min={holidayFromDate || '1900-01-01'}
+                  max="2099-12-31"
                   value={holidayToDate}
-                  onChange={e => setHolidayToDate(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setHolidayToDate)}
                   required
                 />
               </label>
@@ -1403,8 +1488,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Start Date</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={calcStart}
-                  onChange={e => setCalcStart(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setCalcStart)}
                 />
               </label>
 
@@ -1412,8 +1499,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>End Date</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={calcEnd}
-                  onChange={e => setCalcEnd(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setCalcEnd)}
                 />
               </label>
 
@@ -1822,6 +1911,272 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   }}
                 >
                   {editModal.loading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Edit School Holiday Modal */}
+      {editHolidayModal.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => { if (!editHolidayModal.loading) setEditHolidayModal(prev => ({ ...prev, isOpen: false })); }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              borderRadius: 12,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              maxWidth: 480,
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--card-subtle, #f8fafc)'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                  <span>Edit School Holiday</span>
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Update holiday name, date, category, and status
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditHolidayModal(prev => ({ ...prev, isOpen: false }))}
+                disabled={editHolidayModal.loading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 6,
+                  color: 'var(--text-muted, #64748b)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveEditHoliday} style={{ padding: 20 }}>
+              {editHolidayModal.error && (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{editHolidayModal.error}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    Holiday Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editHolidayModal.name}
+                    onChange={e => setEditHolidayModal(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. Durga Puja / Summer Break"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13.5,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Holiday Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editHolidayModal.date}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditHolidayModal(prev => ({ ...prev, date: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Category / Type
+                    </label>
+                    <select
+                      value={editHolidayModal.type}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, type: e.target.value as any }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="GAZETTED">Gazetted Holiday</option>
+                      <option value="NATIONAL">National Holiday</option>
+                      <option value="FESTIVAL">Festival Holiday</option>
+                      <option value="REGIONAL">Regional Holiday</option>
+                      <option value="INSTITUTIONAL">Institutional / School</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Status
+                    </label>
+                    <select
+                      value={editHolidayModal.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, isActive: e.target.value === 'ACTIVE' }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Description (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={editHolidayModal.description}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Optional context"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  marginTop: 24,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditHolidayModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={editHolidayModal.loading}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #334155)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editHolidayModal.loading}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {editHolidayModal.loading ? (
                     <>
                       <RefreshCw size={14} className="animate-spin" />
                       <span>Saving...</span>
