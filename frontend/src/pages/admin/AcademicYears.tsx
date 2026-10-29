@@ -23,11 +23,16 @@ import {
   ChevronRight,
   Filter,
   Edit2,
-  X
+  X,
+  ChevronLeft,
+  Search,
+  Printer,
+  Tag,
+  Sparkles
 } from 'lucide-react';
 
 type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
-type TabKey = 'sessions' | 'working-days' | 'holidays' | 'calculator';
+type TabKey = 'sessions' | 'working-days' | 'holidays' | 'calculator' | 'academic-calendar';
 
 const DAY_LABELS = [
   { day: 0, name: 'Sunday', short: 'Sun' },
@@ -38,6 +43,29 @@ const DAY_LABELS = [
   { day: 5, name: 'Friday', short: 'Fri' },
   { day: 6, name: 'Saturday', short: 'Sat' },
 ];
+
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+function getHolidayCategoryStyle(type: string) {
+  switch (type) {
+    case 'NATIONAL':
+      return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5', badgeBg: '#ef4444', label: 'National Holiday' };
+    case 'FESTIVAL':
+      return { bg: '#f3e8ff', color: '#7e22ce', border: '#d8b4fe', badgeBg: '#a855f7', label: 'Festival & Celebration' };
+    case 'GAZETTED':
+      return { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc', badgeBg: '#6366f1', label: 'Gazetted Holiday' };
+    case 'REGIONAL':
+      return { bg: '#ccfbf1', color: '#0f766e', border: '#99f6e4', badgeBg: '#14b8a6', label: 'Regional Holiday' };
+    case 'INSTITUTIONAL':
+      return { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1', badgeBg: '#64748b', label: 'Institutional Break' };
+    default:
+      return { bg: '#e2e8f0', color: '#475569', border: '#cbd5e1', badgeBg: '#94a3b8', label: type || 'Holiday' };
+  }
+}
 
 export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab || 'sessions');
@@ -254,6 +282,106 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [calcResult, setCalcResult] = useState<any>(null);
   const [calculating, setCalculating] = useState<boolean>(false);
   const [calcError, setCalcError] = useState<string | null>(null);
+
+
+  /* ─────────────────────────────────────────────────────────────
+     5. Academic Holiday Calendar State (Dynamic Institutional Schedule)
+  ───────────────────────────────────────────────────────────── */
+  const [calSessionFilter, setCalSessionFilter] = useState<string>('ALL');
+  const [calYearFilter, setCalYearFilter] = useState<string>('ALL');
+  const [calCategoryFilter, setCalCategoryFilter] = useState<string>('ALL');
+  const [calSearchQuery, setCalSearchQuery] = useState<string>('');
+  const [calViewMode, setCalViewMode] = useState<'calendar' | 'agenda'>('calendar');
+  const [calMonthViewMode, setCalMonthViewMode] = useState<'all-months' | 'single-month'>('all-months');
+  const [calActiveMonth, setCalActiveMonth] = useState<number>(new Date().getMonth());
+  const [calInspectHoliday, setCalInspectHoliday] = useState<any | null>(null);
+
+  const calDistinctYears = useMemo(() => {
+    const years = new Set<string>();
+    holidays.forEach(h => {
+      if (h.holiday_date) years.add(h.holiday_date.slice(0, 4));
+    });
+    items.forEach(s => {
+      if (s.start_date) years.add(String(s.start_date).slice(0, 4));
+      if (s.end_date) years.add(String(s.end_date).slice(0, 4));
+    });
+    const currentY = String(new Date().getFullYear());
+    years.add(currentY);
+    return Array.from(years).filter(Boolean).sort();
+  }, [holidays, items]);
+
+  // Dynamically filtered holidays from Holiday Manager
+  const calFilteredHolidays = useMemo(() => {
+    return holidays.filter(h => {
+      if (!h.holiday_date) return false;
+
+      // 1. Session filter
+      if (calSessionFilter !== 'ALL') {
+        const sess = items.find(s => s.id === calSessionFilter);
+        if (sess) {
+          const sStart = String(sess.start_date).slice(0, 10);
+          const sEnd = String(sess.end_date).slice(0, 10);
+          if (h.holiday_date < sStart || h.holiday_date > sEnd) return false;
+        }
+      }
+
+      // 2. Year filter
+      if (calYearFilter !== 'ALL') {
+        if (h.holiday_date.slice(0, 4) !== calYearFilter) return false;
+      }
+
+      // 3. Category filter
+      if (calCategoryFilter !== 'ALL') {
+        if (h.holiday_type !== calCategoryFilter) return false;
+      }
+
+      // 4. Search query
+      if (calSearchQuery.trim()) {
+        const q = calSearchQuery.trim().toLowerCase();
+        const mName = (h.name || '').toLowerCase().includes(q);
+        const mDesc = (h.description || '').toLowerCase().includes(q);
+        const mType = (h.holiday_type || '').toLowerCase().includes(q);
+        const mDate = (h.holiday_date || '').includes(q);
+        if (!mName && !mDesc && !mType && !mDate) return false;
+      }
+
+      return true;
+    }).sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
+  }, [holidays, items, calSessionFilter, calYearFilter, calCategoryFilter, calSearchQuery]);
+
+  // Aggregated KPI Stats
+  const calKpiStats = useMemo(() => {
+    const totalDays = calFilteredHolidays.length;
+    const nationalHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'NATIONAL').length;
+    const festivalHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'FESTIVAL').length;
+    const gazettedHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'GAZETTED').length;
+    const otherHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'REGIONAL' || h.holiday_type === 'INSTITUTIONAL').length;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const upcoming = holidays
+      .filter(h => h.holiday_date >= todayStr && h.is_active)
+      .sort((a, b) => a.holiday_date.localeCompare(b.holiday_date))[0] || null;
+
+    let daysUntilUpcoming: number | null = null;
+    if (upcoming) {
+      const t1 = new Date(todayStr).getTime();
+      const t2 = new Date(upcoming.holiday_date).getTime();
+      daysUntilUpcoming = Math.max(0, Math.round((t2 - t1) / (1000 * 60 * 60 * 24)));
+    }
+
+    return { totalDays, nationalHolidays, festivalHolidays, gazettedHolidays, otherHolidays, upcoming, daysUntilUpcoming };
+  }, [calFilteredHolidays, holidays]);
+
+  // Group holidays by month for agenda view
+  const calHolidaysByMonth = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    calFilteredHolidays.forEach(h => {
+      const monthKey = h.holiday_date.slice(0, 7); // 'YYYY-MM'
+      if (!map[monthKey]) map[monthKey] = [];
+      map[monthKey].push(h);
+    });
+    return map;
+  }, [calFilteredHolidays]);
 
   /* ─────────────────────────────────────────────────────────────
      Data Fetching
@@ -1707,6 +1835,969 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
           )}
         </div>
       )}
+
+            {/* ─────────────────────────────────────────────────────────────
+          TAB 5: ACADEMIC HOLIDAY CALENDAR (FULL YEAR NATIONAL & FESTIVAL SCHEDULE)
+      ───────────────────────────────────────────────────────────── */}
+      {activeTab === 'academic-calendar' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Header & Controls Bar */}
+          <div className="panel" style={{ padding: '20px 24px', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Calendar size={20} style={{ color: '#2563eb' }} />
+                  <span>Academic Holiday Calendar</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#dbeafe', color: '#1e40af' }}>
+                    {calFilteredHolidays.length} Holidays
+                  </span>
+                </h3>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                  Official institutional annual calendar: View full-year national holidays, cultural festivals, gazetted observances, and school vacations dynamically synchronized with Holiday Manager.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Switch to Holiday Manager shortcut */}
+                <button
+                  type="button"
+                  className="small-btn primary-btn"
+                  onClick={() => setActiveTab('holidays')}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Manage in Holiday Manager</span>
+                </button>
+
+                {/* Print Calendar */}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => window.print()}
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                  title="Print official academic holiday schedule"
+                >
+                  <Printer size={14} />
+                  <span>Print Calendar</span>
+                </button>
+
+                {/* Refresh list */}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={loadHolidaysList}
+                  disabled={loadingHolidays}
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: 12.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Refresh holidays from database"
+                >
+                  <RefreshCw size={14} className={loadingHolidays ? 'animate-spin' : ''} />
+                </button>
+
+                {/* View switcher: Grid vs Agenda */}
+                <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', overflow: 'hidden', marginLeft: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalViewMode('calendar')}
+                    style={{
+                      background: calViewMode === 'calendar' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calViewMode === 'calendar' ? '#fff' : 'var(--text, #334155)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Calendar size={13} />
+                    <span>Monthly Grid</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalViewMode('agenda')}
+                    style={{
+                      background: calViewMode === 'agenda' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calViewMode === 'agenda' ? '#fff' : 'var(--text, #334155)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Sliders size={13} />
+                    <span>Agenda Schedule</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Session Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Academic Session
+                </span>
+                <select
+                  value={calSessionFilter}
+                  onChange={e => {
+                    setCalSessionFilter(e.target.value);
+                    if (e.target.value !== 'ALL') setCalYearFilter('ALL');
+                  }}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 160
+                  }}
+                >
+                  <option value="ALL">All Academic Sessions</option>
+                  {items.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.is_active ? '(Active)' : s.is_archived ? '(Archived)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Year Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Calendar Year
+                </span>
+                <select
+                  value={calYearFilter}
+                  onChange={e => {
+                    setCalYearFilter(e.target.value);
+                    if (e.target.value !== 'ALL') setCalSessionFilter('ALL');
+                  }}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 110
+                  }}
+                >
+                  <option value="ALL">All Years</option>
+                  {calDistinctYears.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Category / Observance
+                </span>
+                <select
+                  value={calCategoryFilter}
+                  onChange={e => setCalCategoryFilter(e.target.value)}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 170
+                  }}
+                >
+                  <option value="ALL">All Categories &amp; Observances</option>
+                  <option value="NATIONAL">🇮🇳 National Holidays</option>
+                  <option value="FESTIVAL">🪔 Festivals &amp; Cultural Celebrations</option>
+                  <option value="GAZETTED">🏛️ Gazetted Holidays</option>
+                  <option value="REGIONAL">🌴 Regional Observances</option>
+                  <option value="INSTITUTIONAL">🏫 Institutional / School Breaks</option>
+                </select>
+              </div>
+
+              {/* Search query */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Search Holidays
+                </span>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)' }} />
+                  <input
+                    type="text"
+                    value={calSearchQuery}
+                    onChange={e => setCalSearchQuery(e.target.value)}
+                    placeholder="Search holiday name, festival or description..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 12px 7px 32px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {calSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCalSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        padding: 2,
+                        color: 'var(--text-muted)'
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+            {/* Total Holidays Card */}
+            <div style={{ background: '#f8fafc', padding: '16px 18px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Annual Holidays
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span>{calKpiStats.totalDays}</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>days listed</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
+                Configured in Holiday Manager
+              </div>
+            </div>
+
+            {/* National Holidays Card */}
+            <div style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#b91c1c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🇮🇳 National Holidays
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+                {calKpiStats.nationalHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 3 }}>
+                Republic, Independence, Gandhi Jayanti
+              </div>
+            </div>
+
+            {/* Cultural Festivals Card */}
+            <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#7e22ce', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🪔 Festivals &amp; Cultural
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#9333ea', marginTop: 4 }}>
+                {calKpiStats.festivalHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#7e22ce', marginTop: 3 }}>
+                Durga Puja, Diwali, Holi, Kali Pujo
+              </div>
+            </div>
+
+            {/* Gazetted / Institutional Card */}
+            <div style={{ background: 'rgba(59, 130, 246, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🏛️ Gazetted &amp; Institutional
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+                {calKpiStats.gazettedHolidays + calKpiStats.otherHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 3 }}>
+                Good Friday, Christmas, Guru Nanak
+              </div>
+            </div>
+
+            {/* Upcoming Holiday Countdown Card */}
+            <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)', padding: '16px 18px', borderRadius: 10, border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Sparkles size={13} style={{ color: '#2563eb' }} />
+                <span>Next Upcoming Holiday</span>
+              </div>
+              {calKpiStats.upcoming ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {calKpiStats.upcoming.name}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#15803d', fontWeight: 700, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{calKpiStats.upcoming.holiday_date}</span>
+                    <span style={{ background: '#dcfce7', padding: '1px 6px', borderRadius: 10 }}>
+                      {calKpiStats.daysUntilUpcoming === 0 ? 'Today!' : `in ${calKpiStats.daysUntilUpcoming} day${calKpiStats.daysUntilUpcoming === 1 ? '' : 's'}`}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
+                  No upcoming holidays scheduled
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Legend Bar */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 16px', background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, fontSize: 12 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text, #334155)' }}>Legend:</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+              <span>National Holiday</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#a855f7' }} />
+              <span>Cultural Festival</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#6366f1' }} />
+              <span>Gazetted Holiday</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#14b8a6' }} />
+              <span>Regional / Institutional</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#e2e8f0' }} />
+              <span>Weekend (Sun/Off Sat)</span>
+            </span>
+          </div>
+
+          {/* VIEW MODE 1: MONTHLY CALENDAR GRID */}
+          {calViewMode === 'calendar' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Month quick jumper */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalMonthViewMode('all-months')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: calMonthViewMode === 'all-months' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calMonthViewMode === 'all-months' ? '#fff' : 'var(--text, #334155)'
+                    }}
+                  >
+                    Full Year (12 Months)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalMonthViewMode('single-month')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: calMonthViewMode === 'single-month' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calMonthViewMode === 'single-month' ? '#fff' : 'var(--text, #334155)'
+                    }}
+                  >
+                    Single Month View
+                  </button>
+                </div>
+
+                {calMonthViewMode === 'single-month' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalActiveMonth(prev => (prev === 0 ? 11 : prev - 1))}
+                      style={{ padding: '4px 8px' }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontSize: 14, fontWeight: 700, minWidth: 120, textAlign: 'center' }}>
+                      {MONTH_NAMES[calActiveMonth]} {calYearFilter !== 'ALL' ? calYearFilter : new Date().getFullYear()}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalActiveMonth(prev => (prev === 11 ? 0 : prev + 1))}
+                      style={{ padding: '4px 8px' }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Grid Render */}
+              {calMonthViewMode === 'all-months' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 16 }}>
+                  {MONTH_NAMES.map((mName, mIdx) => {
+                    const displayY = calYearFilter !== 'ALL' ? Number(calYearFilter) : new Date().getFullYear();
+                    const firstDayOfWeek = new Date(Date.UTC(displayY, mIdx, 1)).getUTCDay();
+                    const totalDaysInMonth = new Date(Date.UTC(displayY, mIdx + 1, 0)).getUTCDate();
+                    const monthPaddedStr = String(mIdx + 1).padStart(2, '0');
+
+                    // Filter holidays for this month
+                    const monthHolidays = calFilteredHolidays.filter(h => {
+                      const [hy, hm] = h.holiday_date.split('-');
+                      return Number(hy) === displayY && hm === monthPaddedStr;
+                    });
+
+                    const holidaysMap: Record<number, any[]> = {};
+                    monthHolidays.forEach(h => {
+                      const dayNum = Number(h.holiday_date.split('-')[2]);
+                      if (!holidaysMap[dayNum]) holidaysMap[dayNum] = [];
+                      holidaysMap[dayNum].push(h);
+                    });
+
+                    return (
+                      <div
+                        key={mName}
+                        style={{
+                          background: 'var(--bg-card, #ffffff)',
+                          border: monthHolidays.length > 0 ? '1px solid #bfdbfe' : '1px solid var(--border, #e2e8f0)',
+                          borderRadius: 10,
+                          padding: 14,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        {/* Month Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                            {mName}
+                          </span>
+                          {monthHolidays.length > 0 ? (
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1e40af' }}>
+                              {monthHolidays.length} holiday{monthHolidays.length === 1 ? '' : 's'}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>0 holidays</span>
+                          )}
+                        </div>
+
+                        {/* Calendar Day Labels */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                            <div key={d} style={{ padding: '2px 0', color: i === 0 ? '#ef4444' : 'inherit' }}>{d}</div>
+                          ))}
+                        </div>
+
+                        {/* Calendar Day Matrix */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                          {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                            <div key={'empty-' + i} style={{ height: 32 }} />
+                          ))}
+
+                          {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                            const dayNum = i + 1;
+                            const dayOfWeek = (firstDayOfWeek + i) % 7;
+                            const isWeekend = weekendDays.includes(dayOfWeek) || (dayOfWeek === 6 && saturdayRule === 'OFF');
+                            const dayHolidays = holidaysMap[dayNum];
+                            const primaryHol = dayHolidays?.[0];
+                            const styleInfo = primaryHol ? getHolidayCategoryStyle(primaryHol.holiday_type) : null;
+
+                            return (
+                              <div
+                                key={dayNum}
+                                onClick={() => { if (dayHolidays && dayHolidays.length > 0) setCalInspectHoliday(dayHolidays[0]); }}
+                                title={dayHolidays ? dayHolidays.map(h => `${h.name} (${h.holiday_type})`).join('; ') : undefined}
+                                style={{
+                                  height: 32,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 5,
+                                  fontSize: 11,
+                                  fontWeight: dayHolidays ? 800 : isWeekend ? 600 : 500,
+                                  cursor: dayHolidays ? 'pointer' : 'default',
+                                  position: 'relative',
+                                  background: styleInfo
+                                    ? styleInfo.bg
+                                    : isWeekend
+                                      ? 'var(--card-subtle, #f1f5f9)'
+                                      : 'transparent',
+                                  color: styleInfo
+                                    ? styleInfo.color
+                                    : isWeekend
+                                      ? '#64748b'
+                                      : 'var(--text, #1e293b)',
+                                  border: styleInfo ? `1px solid ${styleInfo.border}` : '1px solid transparent',
+                                  transition: 'transform 0.1s'
+                                }}
+                              >
+                                <span>{dayNum}</span>
+                                {dayHolidays && (
+                                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: styleInfo?.badgeBg, marginTop: 1 }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* SINGLE MONTH DETAILED VIEW */
+                <div style={{ background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, padding: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
+                      <div key={d} style={{ color: i === 0 ? '#ef4444' : 'var(--text, #334155)' }}>{d}</div>
+                    ))}
+                  </div>
+
+                  {(() => {
+                    const displayY = calYearFilter !== 'ALL' ? Number(calYearFilter) : new Date().getFullYear();
+                    const firstDayOfWeek = new Date(Date.UTC(displayY, calActiveMonth, 1)).getUTCDay();
+                    const totalDaysInMonth = new Date(Date.UTC(displayY, calActiveMonth + 1, 0)).getUTCDate();
+                    const monthPaddedStr = String(calActiveMonth + 1).padStart(2, '0');
+
+                    const monthHolidays = calFilteredHolidays.filter(h => {
+                      const [hy, hm] = h.holiday_date.split('-');
+                      return Number(hy) === displayY && hm === monthPaddedStr;
+                    });
+
+                    const holidaysMap: Record<number, any[]> = {};
+                    monthHolidays.forEach(h => {
+                      const dayNum = Number(h.holiday_date.split('-')[2]);
+                      if (!holidaysMap[dayNum]) holidaysMap[dayNum] = [];
+                      holidaysMap[dayNum].push(h);
+                    });
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+                        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                          <div key={'empty-' + i} style={{ minHeight: 90, background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, border: '1px dashed #e2e8f0' }} />
+                        ))}
+
+                        {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                          const dayNum = i + 1;
+                          const dayOfWeek = (firstDayOfWeek + i) % 7;
+                          const isWeekend = weekendDays.includes(dayOfWeek) || (dayOfWeek === 6 && saturdayRule === 'OFF');
+                          const dayHolidays = holidaysMap[dayNum];
+
+                          return (
+                            <div
+                              key={dayNum}
+                              style={{
+                                minHeight: 90,
+                                background: dayHolidays ? '#fefce8' : isWeekend ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
+                                border: dayHolidays ? '1px solid #fde047' : '1px solid var(--border, #e2e8f0)',
+                                borderRadius: 8,
+                                padding: 8,
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: dayHolidays ? 800 : 600, color: dayHolidays ? '#b45309' : isWeekend ? '#64748b' : 'var(--text)' }}>
+                                  {dayNum}
+                                </span>
+                                {isWeekend && !dayHolidays && (
+                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Weekend</span>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                                {dayHolidays && dayHolidays.map(h => {
+                                  const cStyle = getHolidayCategoryStyle(h.holiday_type);
+                                  return (
+                                    <div
+                                      key={h.id}
+                                      onClick={() => setCalInspectHoliday(h)}
+                                      style={{
+                                        background: cStyle.bg,
+                                        border: `1px solid ${cStyle.border}`,
+                                        color: cStyle.color,
+                                        borderRadius: 5,
+                                        padding: '4px 6px',
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        lineHeight: 1.2
+                                      }}
+                                    >
+                                      <div>{h.name}</div>
+                                      <div style={{ fontSize: 9.5, opacity: 0.85, marginTop: 2 }}>{h.holiday_type}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW MODE 2: CHRONOLOGICAL AGENDA / LIST VIEW */}
+          {calViewMode === 'agenda' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {Object.keys(calHolidaysByMonth).length === 0 ? (
+                <div className="panel" style={{ padding: 40, textAlign: 'center', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)' }}>
+                  <Calendar size={36} style={{ color: '#94a3b8', marginBottom: 12 }} />
+                  <h4 style={{ margin: 0, fontSize: 16 }}>No Holidays Found in Selected Filters</h4>
+                  <p className="muted" style={{ margin: '6px 0 16px', fontSize: 13 }}>
+                    No holidays match the selected academic session, calendar year, or search query.
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => { setCalSessionFilter('ALL'); setCalYearFilter('ALL'); setCalCategoryFilter('ALL'); setCalSearchQuery(''); }}
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              ) : (
+                Object.entries(calHolidaysByMonth).map(([monthKey, monthItems]) => {
+                  const [yStr, mStr] = monthKey.split('-');
+                  const monthName = MONTH_NAMES[Number(mStr) - 1];
+
+                  return (
+                    <div key={monthKey} style={{ background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', overflow: 'hidden' }}>
+                      {/* Month Header Banner */}
+                      <div style={{ padding: '12px 20px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Calendar size={16} style={{ color: '#2563eb' }} />
+                          <span>{monthName} {yStr}</span>
+                        </h4>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#e0e7ff', color: '#3730a3' }}>
+                          {monthItems.length} holiday{monthItems.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+
+                      {/* Holiday Items */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {monthItems.map((h, hIdx) => {
+                          const [hy, hm, hd] = h.holiday_date.split('-').map(Number);
+                          const dt = new Date(Date.UTC(hy, hm - 1, hd));
+                          const dayName = DAY_NAMES[dt.getUTCDay()];
+                          const isWeekend = weekendDays.includes(dt.getUTCDay()) || (dt.getUTCDay() === 6 && saturdayRule === 'OFF');
+                          const cStyle = getHolidayCategoryStyle(h.holiday_type);
+                          const isMulti = (nameCounts[h.name] || 0) > 1;
+
+                          // Match academic session
+                          const matchedSession = items.find(s => {
+                            const startStr = String(s.start_date).slice(0, 10);
+                            const endStr = String(s.end_date).slice(0, 10);
+                            return h.holiday_date >= startStr && h.holiday_date <= endStr;
+                          });
+
+                          return (
+                            <div
+                              key={h.id}
+                              style={{
+                                padding: '14px 20px',
+                                borderBottom: hIdx < monthItems.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 16,
+                                flexWrap: 'wrap',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              {/* Left: Date block + Holiday Info */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                {/* Big Date Box */}
+                                <div
+                                  style={{
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: 8,
+                                    background: cStyle.bg,
+                                    border: `1px solid ${cStyle.border}`,
+                                    color: cStyle.color,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{hd}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginTop: 2 }}>{dayName.slice(0, 3)}</span>
+                                </div>
+
+                                {/* Holiday Name & Metadata */}
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                                      {h.name}
+                                    </span>
+
+                                    {/* Multi-day series badge */}
+                                    {isMulti && (
+                                      <span
+                                        style={{
+                                          fontSize: 10.5,
+                                          background: '#fef3c7',
+                                          color: '#92400e',
+                                          padding: '2px 7px',
+                                          borderRadius: 6,
+                                          fontWeight: 700
+                                        }}
+                                      >
+                                        Series ({nameCounts[h.name]}d)
+                                      </span>
+                                    )}
+
+                                    {/* Category pill */}
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        padding: '2px 8px',
+                                        borderRadius: 10,
+                                        background: cStyle.bg,
+                                        color: cStyle.color,
+                                        fontWeight: 700,
+                                        border: `1px solid ${cStyle.border}`
+                                      }}
+                                    >
+                                      {cStyle.label}
+                                    </span>
+
+                                    {/* Matching academic session */}
+                                    {matchedSession && (
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          padding: '2px 8px',
+                                          borderRadius: 10,
+                                          background: '#f1f5f9',
+                                          color: '#475569',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        Session {matchedSession.name}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Description & weekend overlap */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                                    <span>{h.holiday_date} ({dayName})</span>
+                                    <span>•</span>
+                                    {isWeekend ? (
+                                      <span style={{ color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <Info size={13} /> Falls on {dayName} (Deduplicated)
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: '#15803d', fontWeight: 600 }}>Instructional Day Off (Weekday)</span>
+                                    )}
+                                    {h.description && (
+                                      <>
+                                        <span>•</span>
+                                        <span style={{ fontStyle: 'italic' }}>{h.description}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Right: Actions */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  className="small-btn edit-btn"
+                                  onClick={() => openEditHolidayModal(h)}
+                                  style={{
+                                    background: '#0284c7',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '5px 10px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                  title="Edit holiday details in modal"
+                                >
+                                  <Edit2 size={12} />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Inspect Holiday Detail Modal */}
+          {calInspectHoliday && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(3px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: 16
+              }}
+              onClick={() => setCalInspectHoliday(null)}
+            >
+              <div
+                style={{
+                  background: 'var(--bg-card, #ffffff)',
+                  borderRadius: 12,
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+                  width: '100%',
+                  maxWidth: 440,
+                  overflow: 'hidden',
+                  border: '1px solid var(--border, #cbd5e1)'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={16} style={{ color: '#2563eb' }} />
+                    <span>Holiday Inspection</span>
+                  </h3>
+                  <button type="button" onClick={() => setCalInspectHoliday(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)' }}>
+                    {calInspectHoliday.name}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    {(() => {
+                      const c = getHolidayCategoryStyle(calInspectHoliday.holiday_type);
+                      return (
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: c.bg, color: c.color, fontWeight: 700, border: `1px solid ${c.border}` }}>
+                          {c.label}
+                        </span>
+                      );
+                    })()}
+
+                    <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: calInspectHoliday.is_active ? '#dcfce7' : '#fee2e2', color: calInspectHoliday.is_active ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                      {calInspectHoliday.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Date</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{calInspectHoliday.holiday_date}</div>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Day of Week</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>
+                        {(() => {
+                          const [y, m, d] = calInspectHoliday.holiday_date.split('-').map(Number);
+                          return DAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {calInspectHoliday.description && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Description / Note</div>
+                      <div style={{ fontSize: 13, color: '#334155', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        {calInspectHoliday.description}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalInspectHoliday(null)}
+                      style={{ padding: '7px 14px', fontSize: 12.5 }}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      onClick={() => {
+                        const h = calInspectHoliday;
+                        setCalInspectHoliday(null);
+                        openEditHolidayModal(h);
+                      }}
+                      style={{
+                        padding: '7px 16px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        background: '#0284c7',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Edit2 size={13} />
+                      <span>Edit Holiday</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Universal Session Creation Preview Modal */}
       <UniversalPreviewModal
