@@ -6,14 +6,13 @@ import {
   ArrowRight,
   Menu,
   X,
-  Wifi,
-  Calendar,
-  MessageSquare,
-  HelpCircle,
-  FileCheck2,
-  ShieldCheck,
+  Sparkles,
   Briefcase,
-  ExternalLink
+  Users,
+  Workflow,
+  ShieldCheck,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 
 interface LandingNavProps {
@@ -26,15 +25,24 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
   const [dotMenuOpen, setDotMenuOpen] = useState(false);
   const dotMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close 3-dot menu when clicking outside
+  // Close 3-dot menu on click outside or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dotMenuRef.current && !dotMenuRef.current.contains(e.target as Node)) {
         setDotMenuOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDotMenuOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleNavClick = (sectionId: string) => {
@@ -46,12 +54,66 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
   const handleLoginClick = () => {
     navigate('/login');
     setMobileMenuOpen(false);
+    setDotMenuOpen(false);
   };
+
+  const navSections = [
+    {
+      id: 'capabilities',
+      title: 'Capabilities',
+      desc: 'Bento Grid, RFID Telemetry & CBSE Form 14',
+      badge: 'Campus360',
+      badgeClass: 'badge-blue',
+      icon: Sparkles,
+      iconColor: '#0284C7',
+      iconBg: '#EFF6FF'
+    },
+    {
+      id: 'hrms',
+      title: 'HRMS & Staff',
+      desc: 'Faculty Biometrics, Payroll & Leave Suite',
+      badge: 'Live Suite',
+      badgeClass: 'badge-green',
+      icon: Briefcase,
+      iconColor: '#059669',
+      iconBg: '#ECFDF5'
+    },
+    {
+      id: 'roles',
+      title: 'Roles & Workspaces',
+      desc: 'Super Admin, Principal, Teacher & Student',
+      badge: 'Multi-Role',
+      badgeClass: 'badge-purple',
+      icon: Users,
+      iconColor: '#7C3AED',
+      iconBg: '#F5F3FF'
+    },
+    {
+      id: 'flow',
+      title: 'How It Works',
+      desc: '01–05 Live Gate Turnstile to Instant Alert Flow',
+      badge: 'Automated',
+      badgeClass: 'badge-amber',
+      icon: Workflow,
+      iconColor: '#D97706',
+      iconBg: '#FFFBEB'
+    },
+    {
+      id: 'trust',
+      title: 'Trust & Security',
+      desc: 'CBSE & State Board Masking, 99.9% Cloud SLA',
+      badge: 'Encrypted',
+      badgeClass: 'badge-blue',
+      icon: ShieldCheck,
+      iconColor: '#2563EB',
+      iconBg: '#EFF6FF'
+    }
+  ];
 
   return (
     <header className="c360-nav-wrapper">
       <div className="c360-container c360-nav-content">
-        {/* Brand Left: AttendoSchool Logo ONLY (No DAV logo in header) */}
+        {/* Brand Left: AttendoSchool Logo */}
         <div className="c360-brand-link" onClick={() => handleNavClick('top')} role="button" tabIndex={0}>
           <img
             src="/attendo-logo-transparent.png"
@@ -63,100 +125,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           </span>
         </div>
 
-        {/* Center Navigation Links (Matching Campus360 layout) */}
-        <nav className="c360-nav-links" aria-label="Main Navigation">
-          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('capabilities')}>
-            Capabilities
-          </button>
-          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('hrms')}>
-            HRMS &amp; Staff
-          </button>
-          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('roles')}>
-            Roles
-          </button>
-          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('flow')}>
-            How It Works
-          </button>
-          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('trust')}>
-            Trust
-          </button>
-        </nav>
-
-        {/* Right Actions: 3-Dot Menu, HRMS Portal Button, Green Login Button & Demo CTA */}
+        {/* Right Actions Area */}
         <div className="c360-nav-actions" ref={dotMenuRef}>
-          {/* 3-DOT QUICK ACTION BUTTON & DROPDOWN */}
-          <button
-            type="button"
-            className={`c360-dot-btn ${dotMenuOpen ? 'active' : ''}`}
-            onClick={() => setDotMenuOpen(!dotMenuOpen)}
-            aria-label="Quick Access Menu"
-            title="Quick Options"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2.2" />
-              <circle cx="12" cy="12" r="2.2" />
-              <circle cx="19" cy="12" r="2.2" />
-            </svg>
-          </button>
-
-          {dotMenuOpen && (
-            <div className="c360-dot-menu" role="menu">
-              <a
-                href="https://hrms.attendoschool.online/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="c360-dot-item"
-                style={{ textDecoration: 'none' }}
-              >
-                <Briefcase size={14} />
-                <span>AttendoSchool HRMS Portal</span>
-                <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
-              </a>
-              <div style={{ height: 1, background: 'var(--color-border-muted)', margin: '4px 0' }} />
-              <button
-                type="button"
-                className="c360-dot-item"
-                onClick={() => handleNavClick('capabilities')}
-              >
-                <Wifi size={14} />
-                <span>Live Gate RFID Scanner</span>
-              </button>
-              <button
-                type="button"
-                className="c360-dot-item"
-                onClick={() => handleNavClick('roles')}
-              >
-                <Calendar size={14} />
-                <span>Teacher Timetable &amp; Routines</span>
-              </button>
-              <button
-                type="button"
-                className="c360-dot-item"
-                onClick={() => handleNavClick('capabilities')}
-              >
-                <MessageSquare size={14} />
-                <span>Parent SMS Alerts</span>
-              </button>
-              <button
-                type="button"
-                className="c360-dot-item"
-                onClick={() => handleNavClick('trust')}
-              >
-                <ShieldCheck size={14} />
-                <span>Data Privacy Masking (**)</span>
-              </button>
-              <div style={{ height: 1, background: 'var(--color-border-muted)', margin: '4px 0' }} />
-              <button
-                type="button"
-                className="c360-dot-item"
-                onClick={() => handleNavClick('demo')}
-              >
-                <HelpCircle size={14} />
-                <span>School Implementation Support</span>
-              </button>
-            </div>
-          )}
-
           {/* HRMS PORTAL BUTTON (Redirects to https://hrms.attendoschool.online/) */}
           <a
             href="https://hrms.attendoschool.online/"
@@ -171,7 +141,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
             <ExternalLink size={12} />
           </a>
 
-          {/* GREEN LOGIN BUTTON (Strict user constraint) */}
+          {/* GREEN LOGIN BUTTON */}
           <button
             type="button"
             className="c360-btn-login-green"
@@ -192,6 +162,96 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
             <span>Request a Demo</span>
             <ArrowRight size={14} />
           </button>
+
+          {/* 3-DOT CORNER MENU BUTTON (In top right side corner) */}
+          <button
+            type="button"
+            className={`c360-dot-btn ${dotMenuOpen ? 'active' : ''}`}
+            onClick={() => setDotMenuOpen(!dotMenuOpen)}
+            aria-label="Navigation & Sections Menu"
+            aria-expanded={dotMenuOpen}
+            title={dotMenuOpen ? 'Close Menu' : 'Explore Sections & Quick Access'}
+            id="nav-dots-menu-btn"
+          >
+            <MoreHorizontal size={20} />
+          </button>
+
+          {/* ATTRACTIVE 3-DOT FLOATING POPOVER */}
+          {dotMenuOpen && (
+            <div className="c360-dot-menu" role="menu" aria-label="AttendoSchool Sections Navigation">
+              {/* Header Label */}
+              <div className="c360-dot-menu-header">
+                <span className="c360-dot-menu-title">EXPLORE SECTIONS</span>
+                <span className="c360-dot-menu-badge">5 Sections</span>
+              </div>
+
+              {/* 5 Core Navigation Sections (Moved from Center Navbar) */}
+              <div className="c360-dot-items-list">
+                {navSections.map(item => {
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="c360-dot-nav-item"
+                      onClick={() => handleNavClick(item.id)}
+                    >
+                      <div className="c360-dot-nav-icon" style={{ background: item.iconBg, color: item.iconColor }}>
+                        <IconComp size={18} />
+                      </div>
+                      <div className="c360-dot-nav-text">
+                        <div className="c360-dot-nav-top">
+                          <span className="c360-dot-nav-title">{item.title}</span>
+                          <span className={`c360-dot-pill ${item.badgeClass}`}>{item.badge}</span>
+                        </div>
+                        <span className="c360-dot-nav-desc">{item.desc}</span>
+                      </div>
+                      <ChevronRight size={15} className="c360-dot-nav-arrow" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sleek Divider */}
+              <div className="c360-dot-divider" />
+
+              {/* Quick Actions Footer */}
+              <div className="c360-dot-menu-header">
+                <span className="c360-dot-menu-title">QUICK ACCESS</span>
+              </div>
+
+              <div className="c360-dot-quick-grid">
+                <a
+                  href="https://hrms.attendoschool.online/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="c360-dot-quick-link"
+                >
+                  <Briefcase size={13} style={{ color: '#0284C7' }} />
+                  <span>HRMS</span>
+                  <ExternalLink size={10} style={{ opacity: 0.55 }} />
+                </a>
+
+                <button
+                  type="button"
+                  className="c360-dot-quick-link"
+                  onClick={handleLoginClick}
+                >
+                  <UserCheck size={13} style={{ color: '#059669' }} />
+                  <span>Login</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="c360-dot-quick-link highlight"
+                  onClick={() => handleNavClick('demo')}
+                >
+                  <ArrowRight size={13} style={{ color: '#2563EB' }} />
+                  <span>Demo</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Mobile Menu Toggle */}
           <button
