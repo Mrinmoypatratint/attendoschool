@@ -1391,71 +1391,96 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                             </span>
                           </td>
                           <td>
-                            {isMulti ? (
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  className="small-btn danger-btn"
-                                  title="Delete only this specific date"
-                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
-                                  style={{
-                                    background: '#ef4444',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3
-                                  }}
-                                >
-                                  <Trash2 size={12} /> Day
-                                </button>
-                                <button
-                                  type="button"
-                                  className="small-btn danger-btn"
-                                  title="Delete all dates in this holiday series"
-                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
-                                  style={{
-                                    background: '#b91c1c',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3
-                                  }}
-                                >
-                                  <Trash2 size={12} /> All ({nameCounts[h.name]}d)
-                                </button>
-                              </div>
-                            ) : (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                               <button
                                 type="button"
-                                className="small-btn danger-btn"
-                                onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                className="small-btn edit-btn"
+                                title="Edit holiday details"
+                                onClick={() => openEditHolidayModal(h)}
                                 style={{
-                                  background: '#dc2626',
+                                  background: '#0284c7',
                                   color: '#fff',
                                   border: 'none',
-                                  padding: '4px 10px',
+                                  padding: '4px 9px',
                                   borderRadius: 6,
                                   cursor: 'pointer',
-                                  fontSize: 12,
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: 4
                                 }}
                               >
-                                <Trash2 size={13} /> Delete
+                                <Edit2 size={12} />
+                                <span>Edit</span>
                               </button>
-                            )}
+
+                              {isMulti ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="small-btn danger-btn"
+                                    title="Delete only this specific date"
+                                    onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                    style={{
+                                      background: '#ef4444',
+                                      color: '#fff',
+                                      border: 'none',
+                                      padding: '4px 8px',
+                                      borderRadius: 6,
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Trash2 size={12} /> Day
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="small-btn danger-btn"
+                                    title="Delete all dates in this holiday series"
+                                    onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
+                                    style={{
+                                      background: '#b91c1c',
+                                      color: '#fff',
+                                      border: 'none',
+                                      padding: '4px 8px',
+                                      borderRadius: 6,
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Trash2 size={12} /> All ({nameCounts[h.name]}d)
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="small-btn danger-btn"
+                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                  style={{
+                                    background: '#dc2626',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 12,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <Trash2 size={13} /> Delete
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
