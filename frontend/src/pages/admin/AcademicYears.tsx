@@ -895,6 +895,27 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         >
           <CalendarDays size={16} /> Working Day &amp; Weekend/Holiday Calculator
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('academic-calendar')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '12px 18px',
+            fontSize: 14,
+            fontWeight: activeTab === 'academic-calendar' ? 700 : 500,
+            color: activeTab === 'academic-calendar' ? '#2563eb' : 'var(--text-muted, #64748b)',
+            borderBottom: activeTab === 'academic-calendar' ? '2px solid #2563eb' : '2px solid transparent',
+            marginBottom: -2,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Calendar size={16} /> Academic Holiday Calendar
+        </button>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
