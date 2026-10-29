@@ -120,6 +120,57 @@ export async function createAcademicYear(
   } finally { client.release(); }
 }
 
+
+export async function updateAcademicYear(
+  schoolId: string,
+  id: string,
+  data: { name?: string; startDate?: string; endDate?: string }
+) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const check = await client.query(
+      `SELECT id FROM academic_years WHERE id=$1 AND school_id=$2`,
+      [id, schoolId]
+    );
+    if (!check.rowCount) throw new Error('Academic year not found');
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let pIdx = 1;
+
+    if (data.name !== undefined) {
+      updates.push(`name = ${pIdx++}`);
+      values.push(data.name.trim());
+    }
+    if (data.startDate !== undefined) {
+      updates.push(`start_date = ${pIdx++}`);
+      values.push(data.startDate);
+    }
+    if (data.endDate !== undefined) {
+      updates.push(`end_date = ${pIdx++}`);
+      values.push(data.endDate);
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+    values.push(schoolId);
+
+    const { rows } = await client.query(
+      `UPDATE academic_years SET ${updates.join(', ')} WHERE id = ${pIdx++} AND school_id = ${pIdx++} RETURNING *`,
+      values
+    );
+
+    await client.query('COMMIT');
+    return rows[0];
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 export async function setActiveAcademicYear(schoolId: string, id: string) {
   const client = await pool.connect();
   try {

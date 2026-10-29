@@ -21,7 +21,9 @@ import {
   Info,
   ShieldAlert,
   ChevronRight,
-  Filter
+  Filter,
+  Edit2,
+  X
 } from 'lucide-react';
 
 type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
@@ -49,6 +51,111 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [endDate, setEndDate] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Date Year Formatter helper (restrict year to max 4 digits)
+  function handleDateInput(val: string, setter: (v: string) => void) {
+    if (!val) {
+      setter('');
+      return;
+    }
+    const parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setter(parts.join('-'));
+      return;
+    }
+    setter(val);
+  }
+
+  const SESSION_FORMAT_REGEX = /^\d{4}-\d{4}$/;
+
+  // Edit Modal State
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    id: '',
+    name: '',
+    startDate: '',
+    endDate: '',
+    loading: false,
+    error: null
+  });
+
+  function openEditModal(session: any) {
+    setEditModal({
+      isOpen: true,
+      id: session.id,
+      name: session.name || '',
+      startDate: String(session.start_date || '').slice(0, 10),
+      endDate: String(session.end_date || '').slice(0, 10),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function handleSaveEdit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const cleanName = editModal.name.trim();
+
+    if (!SESSION_FORMAT_REGEX.test(cleanName)) {
+      setEditModal(prev => ({
+        ...prev,
+        error: 'Session name must be in YYYY-YYYY format (e.g. 2028-2029).'
+      }));
+      return;
+    }
+
+    const startYear = editModal.startDate.split('-')[0];
+    const endYear = editModal.endDate.split('-')[0];
+    if (!/^\d{4}$/.test(startYear)) {
+      setEditModal(prev => ({ ...prev, error: 'Start Date year must be exactly 4 digits.' }));
+      return;
+    }
+    if (!/^\d{4}$/.test(endYear)) {
+      setEditModal(prev => ({ ...prev, error: 'End Date year must be exactly 4 digits.' }));
+      return;
+    }
+
+    if (new Date(editModal.startDate) >= new Date(editModal.endDate)) {
+      setEditModal(prev => ({ ...prev, error: 'Start date must precede end date.' }));
+      return;
+    }
+
+    setEditModal(prev => ({ ...prev, loading: true, error: null }));
+
+    try {
+      await api.put(`/academic-years/${editModal.id}`, {
+        name: cleanName,
+        startDate: editModal.startDate,
+        endDate: editModal.endDate
+      });
+
+      const currentActiveId = localStorage.getItem('attendo_active_academic_year_id');
+      const isTargetActive = items.find(it => it.id === editModal.id)?.is_active || currentActiveId === editModal.id;
+      if (isTargetActive) {
+        localStorage.setItem('attendo_active_academic_year', cleanName);
+        localStorage.setItem('attendo_academic_session', cleanName);
+        window.dispatchEvent(new CustomEvent('sessionChanged', { detail: cleanName }));
+        window.dispatchEvent(new Event('storage'));
+      }
+
+      setEditModal(prev => ({ ...prev, isOpen: false, loading: false }));
+      await loadSessions(true);
+    } catch (err: any) {
+      setEditModal(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Failed to update academic session'
+      }));
+    }
+  }
 
   // Preview State for Session Creation
   const [createPreview, setCreatePreview] = useState<{
@@ -151,10 +258,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   /* ─────────────────────────────────────────────────────────────
      Data Fetching
   ───────────────────────────────────────────────────────────── */
-  async function loadSessions() {
+  async function loadSessions(force = false) {
     setLoading(true);
     try {
-      const r = await api.get('/academic-years');
+      const r = await api.get('/academic-years', { params: force ? { fresh: '1' } : {} });
       setItems(Array.isArray(r.data) ? r.data : []);
     } catch (e: any) {
       setMessage(e?.response?.data?.message || e?.message || 'Unable to load academic sessions');
@@ -224,11 +331,25 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     setMessage('');
 
     if (!name.trim()) {
-      alert('Validation Error: Please enter session name (e.g. 2026–27).');
+      alert('Validation Error: Please enter session name (e.g. 2028-2029).');
+      return;
+    }
+    if (!SESSION_FORMAT_REGEX.test(name.trim())) {
+      alert('Validation Error: Session Name must be in YYYY-YYYY format (e.g. 2028-2029).');
       return;
     }
     if (!startDate || !endDate) {
       alert('Validation Error: Both start date and end date are mandatory.');
+      return;
+    }
+    const startYear = startDate.split('-')[0];
+    const endYear = endDate.split('-')[0];
+    if (!/^\d{4}$/.test(startYear)) {
+      alert('Validation Error: Start Date year must be exactly 4 digits.');
+      return;
+    }
+    if (!/^\d{4}$/.test(endYear)) {
+      alert('Validation Error: End Date year must be exactly 4 digits.');
       return;
     }
     if (new Date(startDate) >= new Date(endDate)) {
@@ -576,11 +697,12 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             <h3>Create Academic Session</h3>
             <form onSubmit={initiateCreate} className="form-inline" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Session Name</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Session Name (YYYY-YYYY)</span>
                 <input
-                  placeholder="e.g. 2026–27"
+                  placeholder="e.g. 2028-2029"
                   value={name}
                   onChange={e => setName(e.target.value)}
+                  maxLength={9}
                   required
                   style={{ minWidth: 160 }}
                 />
@@ -590,7 +712,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
+                  min="1900-01-01"
+                  max="2099-12-31"
+                  onChange={e => handleDateInput(e.target.value, setStartDate)}
                   required
                 />
               </label>
@@ -599,7 +723,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
+                  min="1900-01-01"
+                  max="2099-12-31"
+                  onChange={e => handleDateInput(e.target.value, setEndDate)}
                   required
                 />
               </label>
@@ -649,6 +775,29 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       </td>
                       <td>
                         <div className="action-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="small-btn edit-btn"
+                            style={{
+                              background: '#0284c7',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '6px 14px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              fontSize: '0.82rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5
+                            }}
+                            onClick={() => openEditModal(x)}
+                            title="Edit session details"
+                          >
+                            <Edit2 size={12} />
+                            <span>Edit</span>
+                          </button>
+
                           {x.is_active ? (
                             <button
                               type="button"
@@ -1461,6 +1610,231 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         loading={createPreview.loading}
         error={createPreview.error}
       />
+
+
+      {/* Edit Academic Session Modal */}
+      {editModal.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => { if (!editModal.loading) setEditModal(prev => ({ ...prev, isOpen: false })); }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              borderRadius: 12,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              maxWidth: 480,
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--card-subtle, #f8fafc)'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                  <span>Edit Academic Session</span>
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Update session name and date ranges
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                disabled={editModal.loading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 6,
+                  color: 'var(--text-muted, #64748b)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveEdit} style={{ padding: 20 }}>
+              {editModal.error && (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{editModal.error}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    Session Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editModal.name}
+                    onChange={e => setEditModal(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. 2028-2029"
+                    maxLength={9}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13.5,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', marginTop: 4 }}>
+                    Must follow <b>YYYY-YYYY</b> format (e.g. 2028-2029)
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Start Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editModal.startDate}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditModal(prev => ({ ...prev, startDate: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      End Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editModal.endDate}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditModal(prev => ({ ...prev, endDate: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  marginTop: 24,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={editModal.loading}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #334155)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editModal.loading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editModal.loading}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editModal.loading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {editModal.loading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Destructive Confirm Modal for Session Activate / Deactivate / Archive / Unarchive */}
       <DestructiveConfirmModal
