@@ -52,7 +52,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
         {/* Brand Left: AttendoSchool Logo ONLY (No DAV logo in header) */}
         <div className="c360-brand-link" onClick={() => handleNavClick('top')} role="button" tabIndex={0}>
           <img
-            src="/attendo-new-logo.png"
+            src="/attendo-logo-transparent.png"
             alt="AttendoSchool"
             className="c360-brand-logo"
           />

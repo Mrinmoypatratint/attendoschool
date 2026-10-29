@@ -29,7 +29,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
         <div className="c360-footer-top">
           <div className="c360-brand-link" onClick={() => handleNav('top')} role="button" tabIndex={0}>
             <img
-              src="/attendo-new-logo.png"
+              src="/attendo-logo-transparent.png"
               alt="AttendoSchool"
               className="c360-brand-logo"
             />
