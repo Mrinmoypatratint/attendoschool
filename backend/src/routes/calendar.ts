@@ -194,11 +194,20 @@ router.put('/holidays/:id', adminOnly, async (req: Request, res: Response) => {
   }
 
   const holidayId = (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id) as string;
-  const { name, holiday_type, description, is_active } = req.body;
+  const { name, holiday_date, date, holiday_type, description, is_active } = req.body;
+
+  const targetDate = (holiday_date || date || '').trim();
+  if (targetDate) {
+    const dYear = targetDate.split('-')[0];
+    if (!/^\d{4}$/.test(dYear)) {
+      return res.status(400).json({ success: false, message: 'Holiday date year must be exactly 4 digits.' });
+    }
+  }
 
   try {
     const updated = await updateSchoolHoliday(schoolId, holidayId, {
       name,
+      holiday_date: targetDate || undefined,
       holiday_type,
       description,
       is_active

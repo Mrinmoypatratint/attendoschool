@@ -375,6 +375,7 @@ export async function updateSchoolHoliday(
   holidayId: string,
   data: {
     name?: string;
+    holiday_date?: string;
     holiday_type?: 'GAZETTED' | 'NATIONAL' | 'REGIONAL' | 'INSTITUTIONAL' | 'FESTIVAL';
     description?: string;
     is_active?: boolean;
@@ -387,6 +388,7 @@ export async function updateSchoolHoliday(
     const item = list.find(h => h.id === holidayId);
     if (!item) return null;
     if (data.name !== undefined) item.name = data.name.trim();
+    if (data.holiday_date !== undefined) item.holiday_date = data.holiday_date;
     if (data.holiday_type !== undefined) item.holiday_type = data.holiday_type;
     if (data.description !== undefined) item.description = data.description;
     if (data.is_active !== undefined) item.is_active = data.is_active;
@@ -400,6 +402,10 @@ export async function updateSchoolHoliday(
   if (data.name !== undefined) {
     params.push(data.name.trim());
     setClauses.push(`name = $${params.length}`);
+  }
+  if (data.holiday_date !== undefined) {
+    params.push(data.holiday_date);
+    setClauses.push(`holiday_date = $${params.length}`);
   }
   if (data.holiday_type !== undefined) {
     params.push(data.holiday_type);

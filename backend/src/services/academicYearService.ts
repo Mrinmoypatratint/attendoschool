@@ -4,7 +4,33 @@ export async function listAcademicYears(schoolId: string) {
   let { rows } = await pool.query(
     `SELECT ay.*,
       (SELECT COUNT(*)::int FROM students st WHERE st.school_id=ay.school_id AND st.academic_year_id=ay.id) AS student_count,
-      (SELECT COUNT(*)::int FROM classes c WHERE c.school_id=ay.school_id AND (c.academic_year_id=ay.id OR (c.academic_year_id IS NULL AND ay.is_active=TRUE))) AS class_count
+      (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM classes c
+        WHERE c.school_id = ay.school_id
+          AND (
+            (ay.is_active = TRUE)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.class_id = c.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_class_id = c.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.class_id = c.id
+            )
+          )
+      ) AS class_count
      FROM academic_years ay
      WHERE ay.school_id=$1
      ORDER BY ay.start_date DESC`,
@@ -27,7 +53,33 @@ export async function listAcademicYears(schoolId: string) {
       const refreshed = await pool.query(
         `SELECT ay.*,
           (SELECT COUNT(*)::int FROM students st WHERE st.school_id=ay.school_id AND st.academic_year_id=ay.id) AS student_count,
-          (SELECT COUNT(*)::int FROM classes c WHERE c.school_id=ay.school_id AND (c.academic_year_id=ay.id OR (c.academic_year_id IS NULL AND ay.is_active=TRUE))) AS class_count
+          (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM classes c
+        WHERE c.school_id = ay.school_id
+          AND (
+            (ay.is_active = TRUE)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.class_id = c.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_class_id = c.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.class_id = c.id
+            )
+          )
+      ) AS class_count
          FROM academic_years ay
          WHERE ay.school_id=$1
          ORDER BY ay.start_date DESC`,
@@ -67,6 +119,55 @@ export async function createAcademicYear(
     await client.query('ROLLBACK'); throw e;
   } finally { client.release(); }
 }
+
+
+export async function updateAcademicYear(
+  schoolId: string,
+  id: string,
+  data: { name?: string; startDate?: string; endDate?: string }
+) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const check = await client.query(
+      `SELECT id FROM academic_years WHERE id=$1 AND school_id=$2`,
+      [id, schoolId]
+    );
+    if (!check.rowCount) throw new Error('Academic year not found');
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let pIdx = 1;
+
+    if (data.name !== undefined) {
+      updates.push("name = $" + pIdx++);
+      values.push(data.name.trim());
+    }
+    if (data.startDate !== undefined) {
+      updates.push("start_date = $" + pIdx++);
+      values.push(data.startDate);
+    }
+    if (data.endDate !== undefined) {
+      updates.push("end_date = $" + pIdx++);
+      values.push(data.endDate);
+    }
+
+    updates.push("updated_at = NOW()");
+    values.push(id);
+    const idParam = pIdx++;
+    values.push(schoolId);
+    const schoolIdParam = pIdx++;
+
+    const query = "UPDATE academic_years SET " + updates.join(', ') + " WHERE id = $" + idParam + " AND school_id = $" + schoolIdParam + " RETURNING *";
+    const { rows } = await client.query(query, values);
+
+    await client.query('COMMIT');
+    return rows[0];
+  } catch(e) {
+    await client.query('ROLLBACK'); throw e;
+  } finally { client.release(); }
+}
+
 
 export async function setActiveAcademicYear(schoolId: string, id: string) {
   const client = await pool.connect();

@@ -431,6 +431,19 @@ router.post('/promote', adminOnly, async (req: AuthRequest, res: Response) => {
 
   const cleanNewPosition = String(current_position).trim();
   let cleanOldPosition = previous_position ? String(previous_position).trim() : 'Teacher';
+
+  if (cleanOldPosition.toLowerCase() === cleanNewPosition.toLowerCase()) {
+    return res.status(400).json({ message: 'Promoted position cannot be the same as previous position.' });
+  }
+
+  if (promotion_date) {
+    const pDate = String(promotion_date);
+    const yearMatch = pDate.match(/^(\d{4})/);
+    const yr = yearMatch ? parseInt(yearMatch[1], 10) : NaN;
+    if (isNaN(yr) || yr < 1900 || yr > 2099) {
+      return res.status(400).json({ message: 'Effective promotion date year must be a valid 4-digit year between 1900 and 2099.' });
+    }
+  }
   let teacherName = 'Teacher';
   let employeeId = '';
   let email = '';
@@ -442,7 +455,7 @@ router.post('/promote', adminOnly, async (req: AuthRequest, res: Response) => {
         `SELECT u.name, u.email, tp.employee_id, tp.designation 
          FROM users u 
          LEFT JOIN teacher_profiles tp ON tp.user_id = u.id 
-         WHERE u.id = $1 AND u.school_id = $2`,
+         WHERE u.id = $1 AND (u.school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`,
         [teacher_id, sid]
       );
 
@@ -455,11 +468,45 @@ router.post('/promote', adminOnly, async (req: AuthRequest, res: Response) => {
         }
       }
 
-      // Update teacher profile designation
-      await pool.query(
+      // Update teacher profile designation (with upsert fallback)
+      const updRes = await pool.query(
         `UPDATE teacher_profiles SET designation = $1 WHERE user_id = $2`,
         [cleanNewPosition, teacher_id]
       );
+      if (updRes.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO teacher_profiles (user_id, employee_id, designation)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id) DO UPDATE SET designation = EXCLUDED.designation`,
+          [teacher_id, employeeId || `EMP-${Date.now().toString().slice(-4)}`, cleanNewPosition]
+        ).catch(async () => {
+          await pool.query(
+            `INSERT INTO teacher_profiles (user_id, designation)
+             VALUES ($1, $2)
+             ON CONFLICT (user_id) DO UPDATE SET designation = EXCLUDED.designation`,
+            [teacher_id, cleanNewPosition]
+          ).catch(() => {});
+        });
+      }
+
+      // Touch users table updated_at
+      await pool.query(
+        `UPDATE users SET updated_at = NOW() WHERE id = $1`,
+        [teacher_id]
+      ).catch(() => {});
+
+      // Ensure the promoted designation exists in designations table
+      const desigCheck = await pool.query(
+        `SELECT id FROM designations WHERE school_id = $1 AND LOWER(TRIM(title)) = LOWER(TRIM($2)) LIMIT 1`,
+        [sid, cleanNewPosition]
+      );
+      if (desigCheck.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO designations (school_id, title, category, is_active)
+           VALUES ($1, $2, 'Teaching', TRUE)`,
+          [sid, cleanNewPosition]
+        ).catch(() => {});
+      }
 
       // Insert promotion record
       const promoDate = promotion_date ? new Date(promotion_date) : new Date();
@@ -482,7 +529,19 @@ router.post('/promote', adminOnly, async (req: AuthRequest, res: Response) => {
         ]
       );
 
+      // In-memory demo fallback update
+      try {
+        const { demoTeachers } = await import('./schoolData');
+        const dt = demoTeachers.find((t: any) => t.id === teacher_id);
+        if (dt) {
+          dt.designation = cleanNewPosition;
+          dt.previous_position = cleanOldPosition;
+          dt.previousDesignation = cleanOldPosition;
+        }
+      } catch {}
+
       fastCache.delete(`designations:${sid}`);
+      fastCache.delete(`teachers:${sid}`);
       return res.status(201).json(ins.rows[0]);
     } catch (err: any) {
       console.error('[Designations] Error promoting teacher:', err);
@@ -491,6 +550,31 @@ router.post('/promote', adminOnly, async (req: AuthRequest, res: Response) => {
   }
 
   // Fallback memory
+  try {
+    const { demoTeachers } = await import('./schoolData');
+    const dt = demoTeachers.find((t: any) => t.id === teacher_id);
+    if (dt) {
+      teacherName = dt.name || teacherName;
+      employeeId = dt.employee_id || dt.savior_no || employeeId;
+      email = dt.email || email;
+      dt.designation = cleanNewPosition;
+      dt.previous_position = cleanOldPosition;
+      dt.previousDesignation = cleanOldPosition;
+    }
+  } catch {}
+
+  const memExist = memDesignations.find(d => d.school_id === sid && d.title.trim().toLowerCase() === cleanNewPosition.toLowerCase());
+  if (!memExist) {
+    memDesignations.unshift({
+      id: `desig-${Date.now()}`,
+      school_id: sid,
+      title: cleanNewPosition,
+      category: 'Teaching',
+      is_active: true,
+      teacher_count: 1,
+      created_at: new Date().toISOString()
+    });
+  }
   const promo: TeacherPromotionRecord = {
     id: `promo-${Date.now()}`,
     school_id: sid,
