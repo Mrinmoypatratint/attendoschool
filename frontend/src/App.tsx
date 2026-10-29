@@ -37,6 +37,7 @@ const Designations = lazy(() => import('./pages/admin/Designations'));
 const LeavePolicy = lazy(() => import('./pages/admin/LeavePolicy'));
 const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
+const LandingPage = lazy(() => import('./pages/landing/LandingPage'));
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, Users, User, GraduationCap, BookOpen, Layers, LogOut, Plus, Megaphone,
@@ -18387,6 +18388,9 @@ function App(){
   return (
     <Suspense fallback={<RouteFallbackLoader />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<Login/>}/>
         <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
         <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>

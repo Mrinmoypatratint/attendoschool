@@ -60,6 +60,14 @@ export interface TeacherPromotion {
   created_at?: string;
 }
 
+function getTodayLocalDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatDisplayDate(dateStr?: string) {
   if (!dateStr) return '—';
   try {
@@ -105,7 +113,7 @@ export default function Designations() {
   const [promoteTeacherId, setPromoteTeacherId] = useState<string>('');
   const [promoteCurrentPosition, setPromoteCurrentPosition] = useState<string>('');
   const [promoteNewPosition, setPromoteNewPosition] = useState<string>('');
-  const [promoteDate, setPromoteDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [promoteDate, setPromoteDate] = useState<string>(getTodayLocalDate());
   const [promoteNotes, setPromoteNotes] = useState<string>('');
   const [promoting, setPromoting] = useState<boolean>(false);
 
@@ -141,7 +149,11 @@ export default function Designations() {
       ]);
       const desigData = Array.isArray(desigRes.data) ? desigRes.data : (desigRes.data?.data || []);
       const promoData = Array.isArray(promoRes.data) ? promoRes.data : (promoRes.data?.data || []);
-      const teachData = Array.isArray(teachRes.data) ? teachRes.data : (teachRes.data?.data || []);
+      let teachData = Array.isArray(teachRes.data) ? teachRes.data : (teachRes.data?.data || teachRes.data?.teachers || []);
+      if (!teachData || teachData.length === 0) {
+        const pRes = await api.get('/people/teachers?limit=1000').catch(() => ({ data: [] }));
+        teachData = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.data || []);
+      }
       setDesignations(desigData);
       setPromotions(promoData);
       setTeachersList(teachData);
@@ -156,20 +168,53 @@ export default function Designations() {
     loadData();
   }, []);
 
-  function handleOpenPromoteModal(prefillTeacher?: any) {
-    if (prefillTeacher) {
-      setPromoteTeacherId(prefillTeacher.id);
-      setPromoteCurrentPosition(prefillTeacher.designation || 'Teacher');
-      const otherDesig = designations.find(d => d.title.toLowerCase() !== (prefillTeacher.designation || '').toLowerCase());
-      setPromoteNewPosition(otherDesig?.title || '');
-    } else {
-      const first = teachersList[0];
-      setPromoteTeacherId(first?.id || '');
-      setPromoteCurrentPosition(first?.designation || 'Teacher');
-      const otherDesig = designations.find(d => d.title.toLowerCase() !== (first?.designation || '').toLowerCase());
-      setPromoteNewPosition(otherDesig?.title || '');
+  useEffect(() => {
+    if (isPromoteModalOpen && (!promoteTeacherId || !teachersList.some(t => t.id === promoteTeacherId)) && teachersList.length > 0) {
+      handleSelectTeacherForPromotion(teachersList[0].id);
     }
-    setPromoteDate(new Date().toISOString().slice(0, 10));
+  }, [isPromoteModalOpen, teachersList, promoteTeacherId]);
+
+  // Comprehensive list of available designation titles (institutional + active + standard)
+  const allAvailableDesignationTitles = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+
+    const addTitle = (val?: string | null) => {
+      const trimmed = (val || '').trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(trimmed);
+      }
+    };
+
+    // 1. Existing user-created designations
+    designations.forEach(d => addTitle(d.title));
+
+    // 2. Existing teacher designations
+    teachersList.forEach(t => addTitle(t.designation));
+
+    // 3. Common institutional school designations
+    ['PRT', 'TGT', 'PGT', 'NTT', 'Primary Teacher', 'Senior Teacher', 'Coordinator', 'Activity Incharge', 'Vice Principal', 'Principal'].forEach(addTitle);
+
+    return list;
+  }, [designations, teachersList]);
+
+  function handleOpenPromoteModal(prefillTeacher?: any) {
+    const target = prefillTeacher || teachersList[0];
+    const tId = target?.id || '';
+    const curr = (target?.designation || (selectedDesignationFaculty ? selectedDesignationFaculty.title : 'PRT')).trim();
+
+    setPromoteTeacherId(tId);
+    setPromoteCurrentPosition(curr);
+
+    const validDesigs = allAvailableDesignationTitles.filter(
+      d => d.trim().toLowerCase() !== curr.toLowerCase()
+    );
+    setPromoteNewPosition(validDesigs[0] || '');
+
+    setPromoteDate(getTodayLocalDate());
     setPromoteNotes('');
     setIsPromoteModalOpen(true);
   }
@@ -177,47 +222,105 @@ export default function Designations() {
   function handleSelectTeacherForPromotion(tId: string) {
     setPromoteTeacherId(tId);
     const t = teachersList.find(x => x.id === tId);
-    if (t) {
-      const curr = t.designation || 'Teacher';
-      setPromoteCurrentPosition(curr);
-      if (promoteNewPosition.toLowerCase() === curr.toLowerCase()) {
-        const other = designations.find(d => d.title.toLowerCase() !== curr.toLowerCase());
-        setPromoteNewPosition(other?.title || '');
-      }
+    const curr = (t?.designation || 'PRT').trim();
+    setPromoteCurrentPosition(curr);
+
+    const validDesigs = allAvailableDesignationTitles.filter(
+      d => d.trim().toLowerCase() !== curr.toLowerCase()
+    );
+
+    if (
+      !promoteNewPosition ||
+      promoteNewPosition.trim().toLowerCase() === curr.toLowerCase() ||
+      !validDesigs.some(d => d.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase())
+    ) {
+      setPromoteNewPosition(validDesigs[0] || '');
+    }
+  }
+
+  function handleSelectPreviousPosition(prevPos: string) {
+    const cleanPrev = prevPos.trim();
+    setPromoteCurrentPosition(cleanPrev);
+
+    const validDesigs = allAvailableDesignationTitles.filter(
+      d => d.trim().toLowerCase() !== cleanPrev.toLowerCase()
+    );
+
+    if (
+      !promoteNewPosition ||
+      promoteNewPosition.trim().toLowerCase() === cleanPrev.toLowerCase() ||
+      !validDesigs.some(d => d.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase())
+    ) {
+      setPromoteNewPosition(validDesigs[0] || '');
     }
   }
 
   async function handleConfirmPromotion(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!promoteTeacherId) {
-      alert('Please select a teacher to promote.');
+      alert('Please select a faculty member to promote.');
       return;
     }
-    if (!promoteNewPosition.trim()) {
+    const cleanPrev = (promoteCurrentPosition || '').trim();
+    const cleanNew = (promoteNewPosition || '').trim();
+
+    if (!cleanNew) {
       alert('Please select the new designation/position.');
       return;
     }
-    if (promoteCurrentPosition.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase()) {
-      alert('The new designation must be different from current position.');
+    if (cleanPrev.toLowerCase() === cleanNew.toLowerCase()) {
+      alert(`Previous position (${cleanPrev}) and Promoted To position cannot be the same.`);
+      return;
+    }
+    if (!promoteDate) {
+      alert('Please select an effective promotion date.');
+      return;
+    }
+    const yearPart = promoteDate.split('-')[0];
+    const yearNum = Number(yearPart);
+    if (!yearPart || yearPart.length !== 4 || isNaN(yearNum) || yearNum < 1900 || yearNum > 2099) {
+      alert('Effective promotion date year must be a valid 4-digit year between 1900 and 2099 (e.g. 2026).');
       return;
     }
 
     setPromoting(true);
     try {
       const teacher = teachersList.find(t => t.id === promoteTeacherId);
-      await api.post('/designations/promote', {
+
+      // 1. Call promotion endpoint
+      const promoRes = await api.post('/designations/promote', {
         teacher_id: promoteTeacherId,
-        previous_position: promoteCurrentPosition,
-        current_position: promoteNewPosition.trim(),
-        promotion_date: promoteDate || new Date().toISOString(),
-        notes: promoteNotes.trim() || `Promoted from ${promoteCurrentPosition} to ${promoteNewPosition.trim()}`
+        previous_position: cleanPrev,
+        current_position: cleanNew,
+        promotion_date: promoteDate,
+        notes: promoteNotes.trim() || `Promoted from ${cleanPrev} to ${cleanNew}`
       });
+
+      // 2. Also ensure teacher profile is updated in teachers/faculty directory
+      await api.put(`/teachers/${promoteTeacherId}`, {
+        designation: cleanNew,
+        previous_position: cleanPrev,
+        previousDesignation: cleanPrev
+      }).catch(() => null);
+
+      // 3. Immediately update local state
+      setTeachersList(prev => prev.map(t => (t.id === promoteTeacherId ? {
+        ...t,
+        designation: cleanNew,
+        previous_position: cleanPrev
+      } : t)));
+
+      if (promoRes.data) {
+        setPromotions(prev => [promoRes.data, ...prev]);
+      }
 
       setFeedback({
         type: 'success',
-        message: `Successfully promoted ${teacher?.name || 'teacher'} from ${promoteCurrentPosition} to ${promoteNewPosition.trim()}!`
+        message: `Successfully promoted ${teacher?.name || 'teacher'} from ${cleanPrev} to ${cleanNew}!`
       });
       setIsPromoteModalOpen(false);
+
+      // 4. Reload data so designation teacher_count and faculty list update
       await loadData();
     } catch (err: any) {
       console.error('Failed to promote teacher:', err);
@@ -1629,11 +1732,15 @@ export default function Designations() {
                       color: 'var(--text)'
                     }}
                   >
-                    {teachersList.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} — Current: {t.designation || 'Teacher'} ({t.employee_id || t.savior_no || 'No ID'})
-                      </option>
-                    ))}
+                    {teachersList.length === 0 ? (
+                      <option value="">No faculty members found</option>
+                    ) : (
+                      teachersList.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} — Current: {t.designation || 'PRT'} ({t.employee_id || t.savior_no || 'No ID'})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </label>
 
@@ -1650,25 +1757,33 @@ export default function Designations() {
                     border: '1px solid var(--border)'
                   }}
                 >
-                  {/* Previous Position Box */}
+                  {/* Previous Position Dropdown */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>
                       Previous Position
                     </div>
-                    <div
+                    <select
+                      value={promoteCurrentPosition}
+                      onChange={e => handleSelectPreviousPosition(e.target.value)}
                       style={{
-                        marginTop: 4,
-                        padding: '6px 10px',
+                        width: '100%',
+                        padding: '8px 10px',
                         borderRadius: 6,
-                        background: '#fef2f2',
                         border: '1px solid #fecaca',
+                        background: '#fef2f2',
                         color: '#991b1b',
                         fontWeight: 700,
-                        fontSize: 13
+                        fontSize: 13,
+                        cursor: 'pointer'
                       }}
+                      title="Current / Previous Designation"
                     >
-                      {promoteCurrentPosition || 'Teacher'}
-                    </div>
+                      {allAvailableDesignationTitles.map(title => (
+                        <option key={title} value={title}>
+                          {title}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Arrow */}
@@ -1676,57 +1791,130 @@ export default function Designations() {
                     <ArrowRight size={20} />
                   </div>
 
-                  {/* New Position Dropdown */}
+                  {/* New Position Dropdown (Excludes Previous Position) */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       Promoted To <span style={{ color: '#ef4444' }}>*</span>
                     </div>
-                    <select
-                      value={promoteNewPosition}
-                      onChange={e => setPromoteNewPosition(e.target.value)}
-                      style={{
-                        marginTop: 4,
-                        width: '100%',
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                        border: '1px solid #a7f3d0',
-                        background: '#ecfdf5',
-                        color: '#065f46',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {designations.map(d => (
-                        <option key={d.id} value={d.title}>
-                          {d.title}
-                        </option>
-                      ))}
-                    </select>
+                    {(() => {
+                      const availableDesigs = allAvailableDesignationTitles.filter(
+                        title => title.trim().toLowerCase() !== (promoteCurrentPosition || '').trim().toLowerCase()
+                      );
+
+                      if (availableDesigs.length === 0) {
+                        return (
+                          <div
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 6,
+                              border: '1px dashed #fca5a5',
+                              background: '#fff1f2',
+                              color: '#b91c1c',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            No other designation available
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <select
+                          value={promoteNewPosition}
+                          onChange={e => setPromoteNewPosition(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #a7f3d0',
+                            background: '#ecfdf5',
+                            color: '#065f46',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {availableDesigs.map(title => (
+                            <option key={title} value={title}>
+                              {title}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
                 </div>
 
-                {/* Promotion Date */}
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Effective Promotion Date <span style={{ color: '#ef4444' }}>*</span>
-                  </span>
-                  <input
-                    type="date"
-                    value={promoteDate}
-                    onChange={e => setPromoteDate(e.target.value)}
+                {/* Warning if positions match */}
+                {promoteCurrentPosition && promoteNewPosition && promoteCurrentPosition.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase() && (
+                  <div
                     style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 6,
-                      border: '1px solid var(--border)',
-                      marginTop: 6,
-                      fontSize: 13.5,
-                      background: 'var(--bg-card)',
-                      color: 'var(--text)'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      color: '#dc2626',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      padding: '8px 12px',
+                      borderRadius: 6
                     }}
-                  />
-                </label>
+                  >
+                    <AlertCircle size={15} />
+                    <span>Previous position and Promoted To position cannot be the same ({promoteCurrentPosition}).</span>
+                  </div>
+                )}
+
+                {/* Effective Promotion Date */}
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', display: 'block' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Effective Promotion Date <span style={{ color: '#ef4444' }}>*</span>
+                    </span>
+                    <input
+                      type="date"
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      value={promoteDate}
+                      onChange={e => {
+                        let val = e.target.value;
+                        if (!val) {
+                          setPromoteDate('');
+                          return;
+                        }
+                        const parts = val.split('-');
+                        // Ensure year is strictly at most 4 digits (prevent 5-digit year)
+                        if (parts[0] && parts[0].length > 4) {
+                          parts[0] = parts[0].slice(0, 4);
+                          val = parts.join('-');
+                        }
+                        setPromoteDate(val);
+                      }}
+                      onBlur={() => {
+                        if (promoteDate) {
+                          const parts = promoteDate.split('-');
+                          if (parts[0] && parts[0].length > 4) {
+                            parts[0] = parts[0].slice(0, 4);
+                            setPromoteDate(parts.join('-'));
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        marginTop: 6,
+                        fontSize: 13.5,
+                        background: 'var(--bg-card)',
+                        color: 'var(--text)',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </label>
+                </div>
 
                 {/* Remarks / Justification */}
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
@@ -1773,7 +1961,17 @@ export default function Designations() {
                 </button>
                 <button
                   type="submit"
-                  disabled={promoting}
+                  disabled={
+                    promoting ||
+                    !promoteTeacherId ||
+                    !promoteNewPosition ||
+                    promoteCurrentPosition.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase() ||
+                    !promoteDate ||
+                    (promoteDate.split('-')[0]?.length !== 4) ||
+                    !/^\d{4}$/.test(promoteDate.split('-')[0] || '') ||
+                    Number(promoteDate.split('-')[0]) < 1900 ||
+                    Number(promoteDate.split('-')[0]) > 2099
+                  }
                   style={{
                     padding: '8px 20px',
                     borderRadius: 6,
@@ -1782,7 +1980,25 @@ export default function Designations() {
                     color: '#ffffff',
                     fontSize: 13,
                     fontWeight: 600,
-                    cursor: promoting ? 'not-allowed' : 'pointer',
+                    cursor: (
+                      promoting ||
+                      !promoteTeacherId ||
+                      !promoteNewPosition ||
+                      promoteCurrentPosition.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase() ||
+                      !promoteDate ||
+                      (promoteDate.split('-')[0]?.length !== 4) ||
+                      !/^\d{4}$/.test(promoteDate.split('-')[0] || '') ||
+                      Number(promoteDate.split('-')[0]) < 1900 ||
+                      Number(promoteDate.split('-')[0]) > 2099
+                    ) ? 'not-allowed' : 'pointer',
+                    opacity: (
+                      !promoteTeacherId ||
+                      !promoteNewPosition ||
+                      promoteCurrentPosition.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase() ||
+                      !promoteDate ||
+                      (promoteDate.split('-')[0]?.length !== 4) ||
+                      !/^\d{4}$/.test(promoteDate.split('-')[0] || '')
+                    ) ? 0.6 : 1,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
