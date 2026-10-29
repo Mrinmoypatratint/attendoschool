@@ -140,36 +140,34 @@ export async function updateAcademicYear(
     let pIdx = 1;
 
     if (data.name !== undefined) {
-      updates.push(`name = ${pIdx++}`);
+      updates.push("name = $" + pIdx++);
       values.push(data.name.trim());
     }
     if (data.startDate !== undefined) {
-      updates.push(`start_date = ${pIdx++}`);
+      updates.push("start_date = $" + pIdx++);
       values.push(data.startDate);
     }
     if (data.endDate !== undefined) {
-      updates.push(`end_date = ${pIdx++}`);
+      updates.push("end_date = $" + pIdx++);
       values.push(data.endDate);
     }
 
-    updates.push(`updated_at = NOW()`);
+    updates.push("updated_at = NOW()");
     values.push(id);
+    const idParam = pIdx++;
     values.push(schoolId);
+    const schoolIdParam = pIdx++;
 
-    const { rows } = await client.query(
-      `UPDATE academic_years SET ${updates.join(', ')} WHERE id = ${pIdx++} AND school_id = ${pIdx++} RETURNING *`,
-      values
-    );
+    const query = "UPDATE academic_years SET " + updates.join(', ') + " WHERE id = $" + idParam + " AND school_id = $" + schoolIdParam + " RETURNING *";
+    const { rows } = await client.query(query, values);
 
     await client.query('COMMIT');
     return rows[0];
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
-  }
+  } catch(e) {
+    await client.query('ROLLBACK'); throw e;
+  } finally { client.release(); }
 }
+
 
 export async function setActiveAcademicYear(schoolId: string, id: string) {
   const client = await pool.connect();
