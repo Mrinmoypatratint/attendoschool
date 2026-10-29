@@ -2173,15 +2173,25 @@ function Layout({children}:{children:React.ReactNode}){
   async function loadAcademicYears() {
     setAyLoading(true);
     try {
-      const res = await api.get('/academic-years');
+      const res = await api.get('/academic-years?fresh=1');
       if (Array.isArray(res.data) && res.data.length > 0) {
-        setAcademicYears(res.data);
-        const active = res.data.find((ay: any) => ay.is_active) || res.data[0];
-        if (active) {
-          const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
-          const matched = stored ? res.data.find((ay: any) => ay.name === stored || stored.includes(ay.name) || ay.name.includes(stored)) : null;
-          const current = matched || active;
+        const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+        const storedId = localStorage.getItem('attendo_active_academic_year_id');
+        // Authoritative active year: strictly one active session from database
+        const activeFromDb = res.data.find((ay: any) => ay.is_active);
+        const current = activeFromDb 
+          || (storedId ? res.data.find((ay: any) => ay.id === storedId) : null)
+          || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null) 
+          || res.data[0];
 
+        // Enforce strictly 1 active session in the state list
+        const normalized = res.data.map((ay: any) => ({
+          ...ay,
+          is_active: ay.id === current.id
+        }));
+        setAcademicYears(normalized);
+
+        if (current) {
           setSchoolInfo((prev: any) => ({
             ...(prev || {}),
             activeAcademicYear: current
@@ -2201,7 +2211,7 @@ function Layout({children}:{children:React.ReactNode}){
   async function switchAcademicYear(yearId: string) {
     setAySwitching(yearId);
 
-    // 1. Optimistically update local dropdown state immediately
+    // 1. Optimistically update local dropdown state immediately: strictly ONE is_active
     setAcademicYears(prev => prev.map(ay => ({
       ...ay,
       is_active: ay.id === yearId,
@@ -2219,7 +2229,7 @@ function Layout({children}:{children:React.ReactNode}){
       localStorage.setItem('attendo_active_academic_year', target.name);
       localStorage.setItem('attendo_academic_session', target.name);
       localStorage.setItem('attendo_active_academic_year_id', target.id);
-      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target }));
+      window.dispatchEvent(new CustomEvent('sessionChanged', { detail: target.name }));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -2236,9 +2246,13 @@ function Layout({children}:{children:React.ReactNode}){
           setSchoolInfo(res.data);
         }
       }
-      const refreshedYears = await api.get('/academic-years');
+      const refreshedYears = await api.get('/academic-years?fresh=1');
       if (Array.isArray(refreshedYears.data) && refreshedYears.data.length > 0) {
-        setAcademicYears(refreshedYears.data);
+        const activeFound = refreshedYears.data.find((y: any) => y.id === yearId) || refreshedYears.data.find((y: any) => y.is_active) || refreshedYears.data[0];
+        setAcademicYears(refreshedYears.data.map((y: any) => ({
+          ...y,
+          is_active: y.id === activeFound.id
+        })));
       }
     } catch (err) {
       console.warn('Academic year activation sync warning:', err);
@@ -2880,9 +2894,18 @@ function Layout({children}:{children:React.ReactNode}){
     }
   };
 
-  const dbActiveSession = academicYears.find(a => a.is_active)?.name;
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
-  const rawSessionName = schoolInfo?.activeAcademicYear?.name || dbActiveSession || storedSession || '2026–27';
+  const storedSessionId = localStorage.getItem('attendo_active_academic_year_id');
+  const authoritativeActiveYear = 
+    academicYears.find((ay: any) => ay.is_active) ||
+    (storedSessionId ? academicYears.find((ay: any) => ay.id === storedSessionId) : null) ||
+    (schoolInfo?.activeAcademicYear?.id ? academicYears.find((ay: any) => ay.id === schoolInfo.activeAcademicYear.id) : null) ||
+    (schoolInfo?.activeAcademicYear?.name ? academicYears.find((ay: any) => ay.name === schoolInfo.activeAcademicYear.name) : null) ||
+    (storedSession ? academicYears.find((ay: any) => ay.name === storedSession) : null) ||
+    (academicYears.length > 0 ? academicYears[0] : null);
+
+  const authoritativeActiveYearId = authoritativeActiveYear?.id || null;
+  const rawSessionName = authoritativeActiveYear?.name || schoolInfo?.activeAcademicYear?.name || storedSession || '2026–27';
   const cleanSessionName = String(rawSessionName || '').replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   const activeSessionName = cleanSessionName || '2026–27';
 
@@ -3080,7 +3103,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}
@@ -3202,7 +3225,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}
@@ -3438,7 +3461,7 @@ function Layout({children}:{children:React.ReactNode}){
                   ) : (
                     <div className="ay-dropdown-list">
                       {academicYears.map((ay: any) => {
-                        const isActive = Boolean(ay.is_active || (activeSessionName && ay.name.includes(activeSessionName)));
+                        const isActive = ay.id === authoritativeActiveYearId;
                         return (
                           <div
                             key={ay.id}

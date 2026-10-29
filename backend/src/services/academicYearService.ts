@@ -4,7 +4,33 @@ export async function listAcademicYears(schoolId: string) {
   let { rows } = await pool.query(
     `SELECT ay.*,
       (SELECT COUNT(*)::int FROM students st WHERE st.school_id=ay.school_id AND st.academic_year_id=ay.id) AS student_count,
-      (SELECT COUNT(*)::int FROM classes c WHERE c.school_id=ay.school_id AND (c.academic_year_id=ay.id OR (c.academic_year_id IS NULL AND ay.is_active=TRUE))) AS class_count
+      (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM classes c
+        WHERE c.school_id = ay.school_id
+          AND (
+            (ay.is_active = TRUE)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.class_id = c.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_class_id = c.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.class_id = c.id
+            )
+          )
+      ) AS class_count
      FROM academic_years ay
      WHERE ay.school_id=$1
      ORDER BY ay.start_date DESC`,
@@ -27,7 +53,33 @@ export async function listAcademicYears(schoolId: string) {
       const refreshed = await pool.query(
         `SELECT ay.*,
           (SELECT COUNT(*)::int FROM students st WHERE st.school_id=ay.school_id AND st.academic_year_id=ay.id) AS student_count,
-          (SELECT COUNT(*)::int FROM classes c WHERE c.school_id=ay.school_id AND (c.academic_year_id=ay.id OR (c.academic_year_id IS NULL AND ay.is_active=TRUE))) AS class_count
+          (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM classes c
+        WHERE c.school_id = ay.school_id
+          AND (
+            (ay.is_active = TRUE)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.class_id = c.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_class_id = c.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.class_id = c.id
+            )
+          )
+      ) AS class_count
          FROM academic_years ay
          WHERE ay.school_id=$1
          ORDER BY ay.start_date DESC`,

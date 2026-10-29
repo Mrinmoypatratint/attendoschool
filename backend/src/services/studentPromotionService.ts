@@ -1,4 +1,5 @@
 import { pool } from '../db';
+import { fastCache } from '../utils/cache';
 import { isSameSchool, isTestSchool, isTintSchool, isGreenwoodSchool } from '../utils/tenant';
 import { demoStudents } from '../routes/schoolData';
 
@@ -378,6 +379,8 @@ export async function promoteStudents(
     }
 
     await client.query('COMMIT');
+    fastCache.invalidatePattern('academic_years');
+    fastCache.invalidatePattern('dashboard');
     return results;
   } catch (e: any) {
     await client.query('ROLLBACK');

@@ -161,7 +161,8 @@ router.get('/', staffOrAdmin, async (req, res) => {
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
   const cacheKey = `academic_years:${sid}:list`;
-  const cached = fastCache.get<any>(cacheKey);
+  const forceFresh = req.query.fresh === '1' || req.query.fresh === 'true';
+  const cached = forceFresh ? null : fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   try {
@@ -185,7 +186,8 @@ router.get('/active', async (req, res) => {
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
   const cacheKey = `academic_years:${sid}:active`;
-  const cached = fastCache.get<any>(cacheKey);
+  const forceFresh = req.query.fresh === '1' || req.query.fresh === 'true';
+  const cached = forceFresh ? null : fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   try {
