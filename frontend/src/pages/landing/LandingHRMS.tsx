@@ -30,14 +30,13 @@ export const LandingHRMS: React.FC<LandingHRMSProps> = ({ onScrollToDemo }) => {
   return (
     <section className="c360-hrms-section" id="hrms">
       <div className="c360-container">
-        {/* Section Header */}
-        <div className="c360-section-header">
-          <div className="c360-badge-pill">
-            <Briefcase size={14} />
-            <span>Dedicated Staff &amp; Faculty Ecosystem</span>
-          </div>
+        {/* Section Header (Consistent Campus360 styling across all sections) */}
+        <div style={{ maxWidth: 680, marginBottom: 40, textAlign: 'left' }}>
+          <span className="c360-section-tag" style={{ color: 'var(--color-primary)' }}>
+            Dedicated Staff &amp; Faculty Ecosystem
+          </span>
           <h2 className="c360-section-title">
-            AttendoSchool <span className="text-gradient">HRMS &amp; Staff Suite</span>
+            AttendoSchool <span className="gradient-text">HRMS &amp; Staff Suite</span>
           </h2>
           <p className="c360-section-desc">
             A comprehensive, cloud-native Human Resource Management System tailored for K-12 schools, CBSE/ICSE institutions, and multi-campus educational societies.
@@ -103,7 +102,7 @@ export const LandingHRMS: React.FC<LandingHRMSProps> = ({ onScrollToDemo }) => {
               className={`c360-hrms-tab ${activeTab === 'payroll' ? 'active' : ''}`}
               onClick={() => setActiveTab('payroll')}
             >
-              <DollarSign size={15} />
+              <FileText size={15} />
               <span>Automated School Payroll</span>
             </button>
             <button
