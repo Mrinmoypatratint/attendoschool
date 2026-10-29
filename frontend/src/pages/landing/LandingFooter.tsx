@@ -73,6 +73,11 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
                   Parent Arrival SMS Alerts
                 </button>
               </li>
+              <li>
+                <button type="button" className="c360-footer-link" onClick={() => handleNav('hrms')}>
+                  Faculty HRMS &amp; Payroll
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -118,6 +123,11 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
                 </button>
               </li>
               <li>
+                <button type="button" className="c360-footer-link" onClick={() => handleNav('hrms')}>
+                  HRMS &amp; Staff Suite
+                </button>
+              </li>
+              <li>
                 <button type="button" className="c360-footer-link" onClick={() => handleNav('roles')}>
                   Role Access
                 </button>
@@ -131,6 +141,19 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onScrollTo }) => {
                 <button type="button" className="c360-footer-link" onClick={() => handleNav('trust')}>
                   Trust &amp; Engineering
                 </button>
+              </li>
+              <li>
+                {/* HRMS PORTAL EXTERNAL LINK */}
+                <a
+                  href="https://hrms.attendoschool.online/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="c360-footer-link"
+                  style={{ color: '#0284C7', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                >
+                  <span>Staff HRMS Portal</span>
+                  <ExternalLink size={12} />
+                </a>
               </li>
               <li>
                 {/* GREEN LOGIN LINK */}

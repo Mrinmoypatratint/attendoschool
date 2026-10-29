@@ -11,7 +11,9 @@ import {
   MessageSquare,
   HelpCircle,
   FileCheck2,
-  ShieldCheck
+  ShieldCheck,
+  Briefcase,
+  ExternalLink
 } from 'lucide-react';
 
 interface LandingNavProps {
@@ -66,6 +68,9 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           <button type="button" className="c360-nav-link" onClick={() => handleNavClick('capabilities')}>
             Capabilities
           </button>
+          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('hrms')}>
+            HRMS &amp; Staff
+          </button>
           <button type="button" className="c360-nav-link" onClick={() => handleNavClick('roles')}>
             Roles
           </button>
@@ -77,7 +82,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           </button>
         </nav>
 
-        {/* Right Actions: 3-Dot Menu, Green Login Button & Demo CTA */}
+        {/* Right Actions: 3-Dot Menu, HRMS Portal Button, Green Login Button & Demo CTA */}
         <div className="c360-nav-actions" ref={dotMenuRef}>
           {/* 3-DOT QUICK ACTION BUTTON & DROPDOWN */}
           <button
@@ -96,6 +101,18 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
 
           {dotMenuOpen && (
             <div className="c360-dot-menu" role="menu">
+              <a
+                href="https://hrms.attendoschool.online/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="c360-dot-item"
+                style={{ textDecoration: 'none' }}
+              >
+                <Briefcase size={14} />
+                <span>AttendoSchool HRMS Portal</span>
+                <ExternalLink size={12} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+              </a>
+              <div style={{ height: 1, background: 'var(--color-border-muted)', margin: '4px 0' }} />
               <button
                 type="button"
                 className="c360-dot-item"
@@ -110,7 +127,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
                 onClick={() => handleNavClick('roles')}
               >
                 <Calendar size={14} />
-                <span>Teacher Timetable & Routines</span>
+                <span>Teacher Timetable &amp; Routines</span>
               </button>
               <button
                 type="button"
@@ -139,6 +156,20 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
               </button>
             </div>
           )}
+
+          {/* HRMS PORTAL BUTTON (Redirects to https://hrms.attendoschool.online/) */}
+          <a
+            href="https://hrms.attendoschool.online/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="c360-btn-hrms"
+            id="nav-hrms-btn"
+            title="Launch AttendoSchool HRMS & Staff Portal"
+          >
+            <Briefcase size={14} />
+            <span>HRMS Portal</span>
+            <ExternalLink size={12} />
+          </a>
 
           {/* GREEN LOGIN BUTTON (Strict user constraint) */}
           <button
@@ -180,6 +211,9 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
           <button type="button" className="c360-nav-link" onClick={() => handleNavClick('capabilities')}>
             Capabilities
           </button>
+          <button type="button" className="c360-nav-link" onClick={() => handleNavClick('hrms')}>
+            HRMS &amp; Staff Suite
+          </button>
           <button type="button" className="c360-nav-link" onClick={() => handleNavClick('roles')}>
             Roles
           </button>
@@ -190,6 +224,17 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
             Trust
           </button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+            <a
+              href="https://hrms.attendoschool.online/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="c360-btn-hrms"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              <Briefcase size={14} />
+              <span>Open HRMS Portal (hrms.attendoschool.online)</span>
+              <ExternalLink size={13} />
+            </a>
             <button
               type="button"
               className="c360-btn-login-green"
@@ -214,3 +259,4 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onScrollTo }) => {
     </header>
   );
 };
+
