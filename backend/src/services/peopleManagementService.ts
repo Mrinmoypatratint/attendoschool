@@ -207,9 +207,13 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
             tp.first_name, tp.middle_name, tp.last_name,
             tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
             tp.qualification, tp.designation, tp.photo_url, tp.class_name, tp.section_name,
+            cm.class_id, cm.section_id, c.class_number AS assignedClass, s.name AS assignedSection,
             COALESCE(tp.is_active, TRUE) AS is_active
      FROM users u
      LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
+     LEFT JOIN class_mentors cm ON cm.teacher_id = u.id AND cm.school_id = u.school_id
+     LEFT JOIN classes c ON c.id = cm.class_id
+     LEFT JOIN sections s ON s.id = cm.section_id
      ${where}
      ORDER BY u.name`,
     params

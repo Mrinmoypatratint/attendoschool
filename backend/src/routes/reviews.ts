@@ -240,7 +240,7 @@ router.put('/photos/:id/approve', async (req: AuthRequest, res: Response) => {
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
     const isTeacher = req.user?.role === 'TEACHER';
-    const reviewerName = req.user?.name || (isTeacher ? 'Class Mentor' : 'School Admin');
+    const reviewerName = req.user?.name || (isTeacher ? 'Class Teacher' : 'School Admin');
     const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
@@ -391,7 +391,7 @@ router.put('/photos/:id/reject', async (req: AuthRequest, res: Response) => {
     const schoolId = req.user?.schoolId;
     const reviewerId = req.user?.id;
     const isTeacher = req.user?.role === 'TEACHER';
-    const reviewerName = req.user?.name || (isTeacher ? 'Class Mentor' : 'School Admin');
+    const reviewerName = req.user?.name || (isTeacher ? 'Class Teacher' : 'School Admin');
     const pgSchoolId = resolvePostgresSchoolId(schoolId) || schoolId;
 
     if (isPostgresConfigured) {
