@@ -13775,6 +13775,48 @@ header {
   border-left-color: #3b82f6;
 }
 
+
+.as-sections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.as-section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  gap: 16px;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .as-section-row {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: var(--border, #334155);
+}
+
+.as-section-row:hover {
+  border-color: var(--primary-400, #93c5fd);
+  box-shadow: 0 2px 6px 0 rgba(37, 99, 235, 0.06);
+}
+
+[data-theme="dark"] .as-section-row:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .as-section-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
 .as-sections-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

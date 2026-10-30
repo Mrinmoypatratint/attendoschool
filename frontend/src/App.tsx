@@ -52,6 +52,7 @@ import {
   Camera, CalendarCheck, CalendarPlus, Award
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
+import { listAssignments } from './services/temporaryAssignmentApi';
 import { validatePassword } from './utils/passwordPolicy';
 import { StudentLayout } from './components/student/StudentLayout';
 
@@ -2305,11 +2306,11 @@ function Layout({children}:{children:React.ReactNode}){
         },
         {
           path: '/classes',
-          label: 'Classes & Sections',
+          label: 'Classes, Sections & Teachers',
           category: 'Main Navigation',
-          description: 'Manage grade levels, classrooms, divisions & section capacities',
+          description: 'Manage grade levels, classrooms, divisions & class teacher allocations',
           icon: Layers,
-          keywords: ['classes', 'sections', 'grades', 'classrooms', 'divisions', 'rooms']
+          keywords: ['classes', 'sections', 'grades', 'classrooms', 'divisions', 'rooms', 'teachers', 'class administration']
         },
         {
           path: '/attendance-reports',
@@ -2400,12 +2401,12 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['leave policy', 'casual leave', 'sick leave', 'earned leave', 'leave rules', 'yearly leave', 'half yearly leave']
         },
         {
-          path: '/admin/temporary-assignments',
-          label: 'Temporary Assignments',
-          category: 'Management',
-          description: 'Assign substitute or temporary class teachers for specific dates',
+          path: '/classes?tab=temporary',
+          label: 'Teacher Substitution',
+          category: 'Academics',
+          description: 'Assign substitute teachers and manage temporary class allocations for specific dates',
           icon: ClipboardCheck,
-          keywords: ['temporary assignment', 'substitute teacher', 'temp mentor', 'proxy attendance']
+          keywords: ['teacher substitution', 'substitute teacher', 'temporary assignment', 'temp mentor', 'proxy attendance', 'substitution']
         },
         {
           path: '/teacher-leave-approvals',
@@ -2432,12 +2433,12 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['photo approvals', 'student photos', 'profile picture review', 'id photos']
         },
         {
-          path: '/classes?tab=mentors',
-          label: 'Class Mentors',
+          path: '/classes',
+          label: 'Class Administration',
           category: 'Academics',
-          description: 'Allocate and manage teacher class mentors for sections in Classes & Sections',
+          description: 'Manage grade levels, sections, and allocate permanent class teachers',
           icon: Users,
-          keywords: ['class mentor', 'mentor', 'mentors', 'class mentors', 'teacher mentor', 'section mentor', 'mentor allocation']
+          keywords: ['class administration', 'class teacher', 'class mentor', 'mentor', 'mentors', 'class teachers', 'teacher mentor', 'section mentor', 'teacher allocation']
         },
         {
           path: '/analytics',
@@ -2786,7 +2787,7 @@ function Layout({children}:{children:React.ReactNode}){
     ['/students', 'Students', Users],
     ['/teachers', 'Teachers', GraduationCap],
     ['/designations', 'Designations', Award],
-    ['/classes', 'Classes & Sections', Layers],
+    ['/classes', 'Classes, Sections & Teachers', Layers],
     ['/attendance-reports', 'Attendance', ClipboardCheck],
     ['/timetable', 'Timetable', CalendarDays],
     ['—', 'ACADEMICS'],
@@ -2802,7 +2803,6 @@ function Layout({children}:{children:React.ReactNode}){
     ['/analytics', 'Reports & Analytics', BarChart3],
     ['/leave-policy', 'Leave Policy', FileText],
     ['/photo-approvals', 'Photo Approvals', Camera],
-    ['/admin/temporary-assignments', 'Temporary Assignments', ClipboardCheck],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
     ['/invoices', 'Invoices', FileText],
@@ -4736,6 +4736,8 @@ function TeacherHome(){
   const [loading,setLoading]=useState(true);
   const [pendingPhotos, setPendingPhotos] = useState(0);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
+  const [schoolDate, setSchoolDate] = useState<string>('');
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4746,11 +4748,16 @@ function TeacherHome(){
   async function loadSchedule(showSpinner = true) {
     if (showSpinner) setLoading(true);
     try {
-      const [routineRes, historyRes, noticesRes] = await Promise.all([
+      const [routineRes, historyRes, noticesRes, authSecRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
-        api.get('/communication/teacher/inbox').catch(() => ({ data: [] }))
+        api.get('/communication/teacher/inbox').catch(() => ({ data: [] })),
+        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } }))
       ]);
+
+      const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
+      setAuthorizedSections(secData);
+      setSchoolDate(authSecRes.data?.schoolDate || new Date().toISOString().slice(0, 10));
 
       const routineData = Array.isArray(routineRes.data) ? routineRes.data : [];
       setR(routineData);
@@ -5048,8 +5055,8 @@ function TeacherHome(){
               </div>
               <div>
                 <div className="td-card-label">Attendance Pending</div>
-                <div className="td-card-value">{loading ? '...' : pendingClasses.length}</div>
-                <div className="td-card-sub">Classes to mark</div>
+                <div className="td-card-value">{loading ? '...' : (authorizedSections.length > 0 ? authorizedSections.filter(s => !s.hasSubmitted).length : pendingClasses.length)}</div>
+                <div className="td-card-sub">{authorizedSections.length > 0 ? 'Assigned sections to mark' : 'Classes to mark'}</div>
               </div>
             </div>
             <ChevronRight size={18} className="td-card-arrow" />
@@ -5101,6 +5108,110 @@ function TeacherHome(){
             <ChevronRight size={18} className="td-card-arrow" />
           </div>
 
+        </div>
+
+        {/* Daily Class Teacher Attendance Card */}
+        <div className="td-section-card" style={{ marginBottom: 20 }}>
+          <div className="td-section-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+              <h3 className="td-section-title">
+                <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
+                Daily Class Attendance — My Assigned Sections ({authorizedSections.length})
+              </h3>
+              <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (Asia/Kolkata)
+              </span>
+            </div>
+            <button
+              onClick={() => fetchTodayRoutine(true)}
+              type="button"
+              title="Refresh"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading assigned sections...</p>
+          ) : authorizedSections.length === 0 ? (
+            <div style={{ padding: '24px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No class mentor or temporary assignments found</p>
+              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                You are not currently assigned as a permanent mentor or temporary substitute for any section. Class attendance is restricted to assigned class teachers.
+              </p>
+            </div>
+          ) : (
+            <div className="td-table-wrap">
+              <table className="td-table">
+                <thead>
+                  <tr>
+                    <th>CLASS & SECTION</th>
+                    <th>ASSIGNMENT TYPE</th>
+                    <th>ATTENDANCE STATUS</th>
+                    <th>SUMMARY</th>
+                    <th>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {authorizedSections.map((sec: any) => {
+                    const formattedTime = sec.submittedAt
+                      ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : null;
+
+                    return (
+                      <tr key={`${sec.classId}-${sec.sectionId}`}>
+                        <td style={{ fontWeight: 700 }}>
+                          Class {sec.classNumber} - Section {sec.sectionName}
+                        </td>
+                        <td>
+                          {sec.isTemporary ? (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '3px 8px', borderRadius: 4 }}>
+                              Temporary Substitute
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 8px', borderRadius: 4 }}>
+                              Class Mentor
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {sec.hasSubmitted ? (
+                            <span className="td-status-pill completed">
+                              <CheckCircle2 size={12} /> Attendance Submitted
+                            </span>
+                          ) : (
+                            <span className="td-status-pill in-progress" style={{ background: '#fef3c7', color: '#b45309' }}>
+                              <Clock size={12} /> Pending Submission
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                          {sec.hasSubmitted ? (
+                            <span>
+                              Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{sec.presentCount}P / {sec.absentCount}A</strong> ({sec.totalCount} total)
+                            </span>
+                          ) : (
+                            <span>Not yet marked for today</span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}`)}
+                            className={sec.hasSubmitted ? 'td-btn-secondary' : 'td-btn-primary'}
+                            style={{ minWidth: 140 }}
+                          >
+                            <ClipboardCheck size={13} />
+                            {sec.hasSubmitted ? 'View Attendance' : 'Take Attendance'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* 3. Middle Grid: Schedule Table (Left) + Today at a Glance (Right) */}
@@ -12515,18 +12626,22 @@ function Classes(){
   const loc = useLocation();
   const nav = useNavigate();
   const searchParams = new URLSearchParams(loc.search);
-  const [activeTab, setActiveTab] = useState<'CLASSES' | 'MENTORS'>(
-    searchParams.get('tab') === 'mentors' ? 'MENTORS' : 'CLASSES'
+  const [activeTab, setActiveTab] = useState<'CLASSES' | 'TEMPORARY'>(
+    searchParams.get('tab') === 'temporary' ? 'TEMPORARY' : 'CLASSES'
   );
 
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
-    if (params.get('tab') === 'mentors') {
-      setActiveTab('MENTORS');
-    } else if (params.get('tab') === 'classes') {
+    const tab = params.get('tab');
+    if (tab === 'temporary') {
+      setActiveTab('TEMPORARY');
+    } else if (tab === 'mentors') {
+      setActiveTab('CLASSES');
+      nav('/classes', { replace: true });
+    } else if (tab === 'classes') {
       setActiveTab('CLASSES');
     }
-  }, [loc.search]);
+  }, [loc.search, nav]);
   const [c,setC]=useState<any[]>([]);
   const [s,setS]=useState<any[]>([]);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
@@ -12545,6 +12660,39 @@ function Classes(){
   const [mentorsLoading, setMentorsLoading] = useState(false);
   const [mentorError, setMentorError] = useState<string | null>(null);
   const [mentorSearch, setMentorSearch] = useState('');
+
+  // Active Temporary Teacher Substitutions Count
+  const [activeSubstitutionsCount, setActiveSubstitutionsCount] = useState<number>(0);
+
+  const loadActiveSubstitutionsCount = useCallback(async () => {
+    try {
+      const res = await listAssignments({ status: 'active' });
+      const raw = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      const now = new Date();
+      const count = raw.filter((a: any) => {
+        const start = new Date(a.start_at);
+        const end = new Date(a.end_at);
+        return (a.status === 'active' || (start <= now && end > now)) && start <= now && end > now;
+      }).length;
+      setActiveSubstitutionsCount(count);
+    } catch (err) {
+      console.error('Failed to load active substitutions count:', err);
+    }
+  }, []);
+
+  const handleAssignmentsUpdated = useCallback((e?: Event) => {
+    const customEvt = e as CustomEvent<{ count?: number }> | undefined;
+    if (typeof customEvt?.detail?.count === 'number') {
+      setActiveSubstitutionsCount(customEvt.detail.count);
+    } else {
+      loadActiveSubstitutionsCount();
+    }
+  }, [loadActiveSubstitutionsCount]);
+
+  useEffect(() => {
+    window.addEventListener('temporary-assignments-updated', handleAssignmentsUpdated);
+    return () => window.removeEventListener('temporary-assignments-updated', handleAssignmentsUpdated);
+  }, [handleAssignmentsUpdated]);
   
   // Assign / Change Modal State
   const [assignModal, setAssignModal] = useState<{
@@ -12674,13 +12822,14 @@ function Classes(){
   useEffect(() => {
     load();
     loadMentors();
-  }, []);
+    loadActiveSubstitutionsCount();
+  }, [loadActiveSubstitutionsCount]);
 
   useEffect(() => {
-    if (activeTab === 'MENTORS') {
-      loadMentors();
+    if (activeTab === 'TEMPORARY') {
+      loadActiveSubstitutionsCount();
     }
-  }, [activeTab]);
+  }, [activeTab, loadActiveSubstitutionsCount]);
 
   async function handleAddSectionForClass(classItem: any){
     const classKey = String(classItem.id || classItem.class_number);
@@ -12812,7 +12961,7 @@ function Classes(){
   const combinedMentors = useMemo(() => {
     return s.map(sec => {
       const cls = c.find(item => item.id === sec.class_id || Number(item.class_number) === Number(sec.class_number));
-      const mRec = mentors.find(m => 
+      const mRec = mentors.find(m =>
         (m.section_id === sec.id || (m.section_name === sec.name && Number(m.class_number) === Number(sec.class_number)))
       );
       const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
@@ -12832,24 +12981,52 @@ function Classes(){
     }).sort((a, b) => (Number(a.class_number) - Number(b.class_number)) || String(a.section_name).localeCompare(String(b.section_name)));
   }, [s, c, mentors, teachers]);
 
-  const filteredMentors = useMemo(() => {
-    if (!mentorSearch.trim()) return combinedMentors;
-    const term = mentorSearch.trim().toLowerCase();
-    return combinedMentors.filter(m => 
-      `class ${m.class_number}`.includes(term) ||
-      `section ${m.section_name}`.toLowerCase().includes(term) ||
-      (m.teacher_name && m.teacher_name.toLowerCase().includes(term)) ||
-      (m.employee_id && String(m.employee_id).toLowerCase().includes(term)) ||
-      (m.teacher_email && m.teacher_email.toLowerCase().includes(term))
-    );
-  }, [combinedMentors, mentorSearch]);
-
   const unassignedCount = combinedMentors.filter(m => !m.teacher_id).length;
   const assignedCount = combinedMentors.filter(m => Boolean(m.teacher_id)).length;
 
+  const isSearching = mentorSearch.trim().length > 0;
+  const searchLower = mentorSearch.trim().toLowerCase();
+
+  const doesSectionMatch = (sec: any, classItem: any) => {
+    if (!isSearching) return true;
+    const secLabel = String(sec.name || sec.section_name || 'A').toUpperCase();
+    const classNum = classItem.class_number ?? 10;
+    const mRec = mentors.find(m =>
+      m.section_id === sec.id || (m.section_name === secLabel && Number(m.class_number) === Number(classNum))
+    );
+    const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
+    const teacherName = teacherObj?.name || mRec?.teacher_name || '';
+    const employeeId = teacherObj?.employee_id || teacherObj?.savior_no || mRec?.employee_id || '';
+    const teacherEmail = teacherObj?.email || mRec?.teacher_email || '';
+
+    return (
+      `section ${secLabel.toLowerCase()}`.includes(searchLower) ||
+      secLabel.toLowerCase() === searchLower ||
+      teacherName.toLowerCase().includes(searchLower) ||
+      String(employeeId).toLowerCase().includes(searchLower) ||
+      teacherEmail.toLowerCase().includes(searchLower) ||
+      (searchLower === 'unassigned' && !mRec?.teacher_id) ||
+      (searchLower === 'assigned' && Boolean(mRec?.teacher_id))
+    );
+  };
+
+  const doesClassMatch = (classItem: any) => {
+    if (!isSearching) return true;
+    const classTitle = formatClassTitle(classItem.class_number, classItem.label).toLowerCase();
+    const classNumStr = `class ${classItem.class_number}`.toLowerCase();
+    const gradeStr = `grade ${classItem.class_number}`.toLowerCase();
+    if (classTitle.includes(searchLower) || classNumStr.includes(searchLower) || gradeStr.includes(searchLower) || String(classItem.class_number) === searchLower) {
+      return true;
+    }
+    const classSections = getSectionsForClass(classItem);
+    return classSections.some(sec => doesSectionMatch(sec, classItem));
+  };
+
+  const displayedClasses = isSearching ? c.filter(doesClassMatch) : c;
+
   return <Layout>
     <div style={{ '--text-muted': dark ? '#94a3b8' : 'var(--text-secondary, #475569)' } as React.CSSProperties}>
-      <PageHead title="Classes, Sections & Mentors" sub="Manage school classes, sections, and class mentor assignments."/>
+      <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments."/>
     </div>
 
     {/* Tab Navigation */}
@@ -12868,289 +13045,37 @@ function Classes(){
           fontWeight: 600,
         }}
       >
-        Classes & Sections ({s.length})
+        Class Administration ({s.length})
       </button>
       <button
         type="button"
-        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'MENTORS' ? 'active' : ''}`}
+        className={`student-tab-btn as-classes-tab-btn ${activeTab === 'TEMPORARY' ? 'active' : ''}`}
         onClick={() => {
-          setActiveTab('MENTORS');
-          nav('/classes?tab=mentors', { replace: true });
+          setActiveTab('TEMPORARY');
+          nav('/classes?tab=temporary', { replace: true });
         }}
         style={{
-          color: activeTab === 'MENTORS' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
-          backgroundColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
-          borderColor: activeTab === 'MENTORS' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
+          color: activeTab === 'TEMPORARY' ? '#ffffff' : (dark ? '#cbd5e1' : '#475569'),
+          backgroundColor: activeTab === 'TEMPORARY' ? '#2563eb' : (dark ? '#1e293b' : '#f1f5f9'),
+          borderColor: activeTab === 'TEMPORARY' ? '#2563eb' : (dark ? '#334155' : '#e2e8f0'),
           fontWeight: 600,
         }}
       >
-        Class Mentors ({assignedCount}/{combinedMentors.length})
+        Teacher Substitution ({activeSubstitutionsCount})
       </button>
     </div>
 
-    {activeTab === 'CLASSES' ? (
-      /* TAB 1: Centered A4-Inspired Classes & Sections Management View */
-      <div className="as-classes-management-container">
-        <div className="as-classes-card">
-          {/* Document Header Bar */}
-          <div className="as-classes-card-header">
-            <div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-                Classes & Sections Directory
-              </h3>
-              <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                Manage school grades, expandable sections, and sequential divisions.
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: '4px 10px',
-                  borderRadius: 9999,
-                  background: dark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(37, 99, 235, 0.08)',
-                  color: dark ? '#818cf8' : '#2563eb',
-                  border: dark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(37, 99, 235, 0.2)'
-                }}
-              >
-                {c.length} Classes · {s.length} Total Sections
-              </span>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={toggleAllClasses}
-                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              >
-                {expandedClasses.size === c.length ? 'Collapse All' : 'Expand All'}
-              </button>
-            </div>
-          </div>
-
-          {/* Class rows */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {c.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
-                <Layers size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
-                <p>No classes available.</p>
-              </div>
-            ) : (
-              c.map((classItem, idx) => {
-                const classKey = String(classItem.id || classItem.class_number);
-                const classSections = getSectionsForClass(classItem);
-                const isExpanded = expandedClasses.has(classKey);
-                const isAdding = addingClassId === classKey;
-                const isRemoveDisabled = classSections.length <= 1 || Boolean(addingClassId) || removingSection;
-                const nextLabel = getNextAvailableLabel(classSections);
-                const highestSec = getHighestSequentialSection(classSections);
-                const classTitle = formatClassTitle(classItem.class_number, classItem.label);
-
-                return (
-                  <div
-                    key={classItem.id || classKey}
-                    style={{
-                      borderBottom: idx < c.length - 1 ? '1px solid var(--border)' : 'none'
-                    }}
-                  >
-                    {/* Row Header */}
-                    <div
-                      className={`as-class-row-header ${isExpanded ? 'expanded' : ''}`}
-                      onClick={() => toggleClassExpanded(classKey)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          toggleClassExpanded(classKey);
-                        }
-                      }}
-                    >
-                      {/* Left: Chevron + Class Title + Section Count Pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200 }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 24,
-                            height: 24,
-                            borderRadius: 6,
-                            background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                            color: 'var(--text-secondary)',
-                            transition: 'transform 0.2s ease',
-                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                          }}
-                        >
-                          <ChevronDown size={15} />
-                        </div>
-
-                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                          {classTitle}
-                        </span>
-
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 9999,
-                            background: classSections.length > 0
-                              ? (dark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0')
-                              : (dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'),
-                            color: classSections.length > 0
-                              ? (dark ? '#cbd5e1' : '#475569')
-                              : (dark ? '#f87171' : '#dc2626')
-                          }}
-                        >
-                          {classSections.length} {classSections.length === 1 ? 'section' : 'sections'}
-                        </span>
-                      </div>
-
-                      {/* Right: Action Buttons (Add Section & Remove Section) */}
-                      <div
-                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          disabled={Boolean(addingClassId) || removingSection}
-                          onClick={() => handleAddSectionForClass(classItem)}
-                          title={`Add next sequential section (${nextLabel})`}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 14px',
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            borderRadius: 6
-                          }}
-                        >
-                          {isAdding ? (
-                            <>
-                              <Loader2 size={13} className="animate-spin" />
-                              <span>Adding...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus size={14} />
-                              <span>Add Section</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isRemoveDisabled}
-                          onClick={() => handleOpenRemoveModal(classItem)}
-                          title={
-                            classSections.length === 0
-                              ? 'No sections to remove'
-                              : classSections.length === 1
-                              ? 'Minimum 1 section required per class'
-                              : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
-                          }
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '6px 12px',
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            borderRadius: 6,
-                            cursor: isRemoveDisabled ? 'not-allowed' : 'pointer',
-                            opacity: isRemoveDisabled ? 0.45 : 1,
-                            background: dark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)',
-                            color: dark ? '#f87171' : '#dc2626',
-                            border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)'
-                          }}
-                        >
-                          <Trash2 size={13} />
-                          <span>Remove Section</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Collapsible Section List (Visually nested inside parent class) */}
-                    {isExpanded && (
-                      <div className="as-nested-sections-panel">
-                        {classSections.length === 0 ? (
-                          <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', padding: '6px 0' }}>
-                            No sections allocated for this class. Click <strong>Add Section</strong> above to create Section A.
-                          </div>
-                        ) : (
-                          <div className="as-sections-grid">
-                            {classSections.map(sec => {
-                              const secLabel = String(sec.name || sec.section_name || 'A').toUpperCase();
-                              // Find assigned mentor if available
-                              const mRec = mentors.find(m => 
-                                m.section_id === sec.id || (m.section_name === secLabel && Number(m.class_number) === Number(classItem.class_number))
-                              );
-                              const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
-                              const teacherName = teacherObj?.name || mRec?.teacher_name;
-
-                              return (
-                                <div
-                                  key={sec.id}
-                                  className="as-section-item-pill"
-                                >
-                                  <span
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      width: 28,
-                                      height: 28,
-                                      borderRadius: '50%',
-                                      background: dark ? 'rgba(37, 99, 235, 0.2)' : 'rgba(37, 99, 235, 0.1)',
-                                      color: dark ? '#60a5fa' : '#2563eb',
-                                      fontWeight: 700,
-                                      fontSize: 13,
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    {secLabel}
-                                  </span>
-                                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>
-                                      Section {secLabel}
-                                    </span>
-                                    {teacherName ? (
-                                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Class Mentor: ${teacherName}`}>
-                                        Mentor: {teacherName}
-                                      </span>
-                                    ) : (
-                                      <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
-                                        No mentor
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </div>
-    ) : (
-      /* TAB 2: Class Mentors Management View */
-      <div className="as-mentors-view">
-        {/* Summary Metric Cards */}
+    {activeTab === 'CLASSES' && (
+      /* TAB 1: Class Administration Integrated View */
+      <div className="as-classes-tab-content">
+        {/* Dynamic Statistics Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
           <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sections</span>
             <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: 'var(--text)' }}>{combinedMentors.length}</h2>
           </div>
           <div className="panel" style={{ padding: '16px 20px', margin: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: dark ? '#10b981' : '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mentors Assigned</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: dark ? '#10b981' : '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Teachers Assigned</span>
             <h2 style={{ fontSize: 24, fontWeight: 700, margin: '6px 0 0', color: dark ? '#10b981' : '#047857' }}>{assignedCount}</h2>
           </div>
           <div className="panel" style={{ padding: '16px 20px', margin: 0, borderLeft: unassignedCount > 0 ? (dark ? '4px solid #f59e0b' : '4px solid #d97706') : undefined }}>
@@ -13163,165 +13088,467 @@ function Classes(){
           </div>
         </div>
 
-        {/* Unassigned Warning Banner */}
-        {unassignedCount > 0 && (
-          <div className="as-alert-warning" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 8, background: dark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.12)', border: dark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.35)', color: dark ? '#f59e0b' : '#92400e', marginBottom: 20 }}>
-            <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 13.5, fontWeight: 500 }}>
-              <strong>{unassignedCount} Class Section{unassignedCount > 1 ? 's' : ''}</strong> currently have no assigned Class Mentor. Select a section below to assign a faculty member.
-            </span>
-          </div>
-        )}
-
         {/* Search & Action Bar */}
         <div className="panel" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-              <Search size={16} style={{ color: 'var(--text-secondary)' }} />
+              <Search size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
               <input
                 type="text"
-                placeholder="Search class, section, or teacher name..."
+                placeholder="Search by class, section, teacher name, or employee ID..."
                 value={mentorSearch}
                 onChange={e => setMentorSearch(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-card)', color: 'var(--text)' }}
               />
+              {mentorSearch && (
+                <button
+                  type="button"
+                  onClick={() => setMentorSearch('')}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={loadMentors}
-              disabled={mentorsLoading}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <RefreshCw size={14} className={mentorsLoading ? 'animate-spin' : ''} />
-              <span>Refresh Allocations</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={async () => {
+                  await Promise.all([load(), loadMentors()]);
+                }}
+                disabled={mentorsLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 12.5, fontWeight: 600 }}
+              >
+                <RefreshCw size={14} className={mentorsLoading ? 'animate-spin' : ''} />
+                <span>Refresh Allocations</span>
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={toggleAllClasses}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 12.5, fontWeight: 600 }}
+              >
+                {expandedClasses.size === c.length ? 'Collapse All' : 'Expand All'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Mentor Allocations List / Table */}
-        {mentorsLoading ? (
+        {/* Classes & Sections Directory Card */}
+        <div className="as-classes-management-container">
+          <div className="as-classes-card">
+            {/* Document Header Bar */}
+            <div className="as-classes-card-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                  Classes & Sections Directory
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  Manage school grades, expandable sections, sequential divisions, and assigned class teachers.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    borderRadius: 9999,
+                    background: dark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(37, 99, 235, 0.08)',
+                    color: dark ? '#818cf8' : '#2563eb',
+                    border: dark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(37, 99, 235, 0.2)'
+                  }}
+                >
+                  {c.length} Classes · {s.length} Total Sections
+                </span>
+              </div>
+            </div>
+
+            {/* Class rows */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {displayedClasses.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                  {isSearching ? (
+                    <>
+                      <UserX size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                      <p>No classes or sections matching &ldquo;{mentorSearch}&rdquo;.</p>
+                    </>
+                  ) : (
+                    <>
+                      <Layers size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                      <p>No classes available.</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                displayedClasses.map((classItem, idx) => {
+                  const classKey = String(classItem.id || classItem.class_number);
+                  const classSections = getSectionsForClass(classItem);
+                  const classTitleStr = formatClassTitle(classItem.class_number, classItem.label).toLowerCase();
+                  const classTitleMatched = classTitleStr.includes(searchLower) || `class ${classItem.class_number}`.includes(searchLower) || String(classItem.class_number) === searchLower;
+                  const displayedSections = isSearching && !classTitleMatched
+                    ? classSections.filter(sec => doesSectionMatch(sec, classItem))
+                    : classSections;
+                  const isExpanded = isSearching || expandedClasses.has(classKey);
+                  const isAdding = addingClassId === classKey;
+                  const isRemoveDisabled = classSections.length <= 1 || Boolean(addingClassId) || removingSection;
+                  const nextLabel = getNextAvailableLabel(classSections);
+                  const highestSec = getHighestSequentialSection(classSections);
+                  const classTitle = formatClassTitle(classItem.class_number, classItem.label);
+
+                  return (
+                    <div
+                      key={classItem.id || classKey}
+                      style={{
+                        borderBottom: idx < displayedClasses.length - 1 ? '1px solid var(--border)' : 'none'
+                      }}
+                    >
+                      {/* Row Header */}
+                      <div
+                        className={`as-class-row-header ${isExpanded ? 'expanded' : ''}`}
+                        onClick={() => toggleClassExpanded(classKey)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleClassExpanded(classKey);
+                          }
+                        }}
+                      >
+                        {/* Left: Chevron + Class Title + Section Count Pill */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                              color: 'var(--text-secondary)',
+                              transition: 'transform 0.2s ease',
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                            }}
+                          >
+                            <ChevronDown size={15} />
+                          </div>
+
+                          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                            {classTitle}
+                          </span>
+
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 9999,
+                              background: classSections.length > 0
+                                ? (dark ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0')
+                                : (dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'),
+                              color: classSections.length > 0
+                                ? (dark ? '#cbd5e1' : '#475569')
+                                : (dark ? '#f87171' : '#dc2626')
+                            }}
+                          >
+                            {classSections.length} {classSections.length === 1 ? 'section' : 'sections'}
+                          </span>
+                        </div>
+
+                        {/* Right: Action Buttons (Add Section & Remove Section) */}
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            disabled={Boolean(addingClassId) || removingSection}
+                            onClick={() => handleAddSectionForClass(classItem)}
+                            title={`Add next sequential section (${nextLabel})`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '6px 14px',
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              borderRadius: 6
+                            }}
+                          >
+                            {isAdding ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" />
+                                <span>Adding...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Plus size={14} />
+                                <span>Add Section</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isRemoveDisabled}
+                            onClick={() => handleOpenRemoveModal(classItem)}
+                            title={
+                              classSections.length === 0
+                                ? 'No sections to remove'
+                                : classSections.length === 1
+                                ? 'Minimum 1 section required per class'
+                                : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
+                            }
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '6px 12px',
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              cursor: isRemoveDisabled ? 'not-allowed' : 'pointer',
+                              opacity: isRemoveDisabled ? 0.45 : 1,
+                              background: dark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)',
+                              color: dark ? '#f87171' : '#dc2626',
+                              border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)'
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Section</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Collapsible Section List */}
+                      {isExpanded && (
+                        <div className="as-nested-sections-panel">
+                          {displayedSections.length === 0 ? (
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontStyle: 'italic', padding: '6px 0' }}>
+                              {isSearching ? 'No sections matching search criteria in this class.' : 'No sections allocated for this class. Click Add Section above to create Section A.'}
+                            </div>
+                          ) : (
+                            <div className="as-sections-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {displayedSections.map(sec => {
+                                const secLabel = String(sec.name || sec.section_name || 'A').toUpperCase();
+                                const targetClassId = classItem.id || sec.class_id;
+                                const classNum = classItem.class_number ?? 10;
+                                const mRec = mentors.find(m =>
+                                  m.section_id === sec.id || (m.section_name === secLabel && Number(m.class_number) === Number(classNum))
+                                );
+                                const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
+                                const teacherName = teacherObj?.name || mRec?.teacher_name;
+                                const isAssigned = Boolean(mRec?.teacher_id);
+
+                                return (
+                                  <div
+                                    key={sec.id}
+                                    className="as-section-row"
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      flexWrap: 'wrap',
+                                      gap: 14,
+                                      padding: '10px 16px',
+                                      borderRadius: 8,
+                                      background: dark ? 'rgba(30, 41, 59, 0.7)' : 'var(--bg-card, #ffffff)',
+                                      border: isAssigned
+                                        ? (dark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #e2e8f0')
+                                        : (dark ? '1px dashed rgba(245, 158, 11, 0.35)' : '1px dashed #cbd5e1')
+                                    }}
+                                  >
+                                    {/* Left: Section Identity */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 130 }}>
+                                      <span
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          width: 28,
+                                          height: 28,
+                                          borderRadius: '50%',
+                                          background: isAssigned
+                                            ? (dark ? 'rgba(37, 99, 235, 0.25)' : 'rgba(37, 99, 235, 0.1)')
+                                            : (dark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.12)'),
+                                          color: isAssigned
+                                            ? (dark ? '#60a5fa' : '#2563eb')
+                                            : (dark ? '#fbbf24' : '#d97706'),
+                                          fontWeight: 700,
+                                          fontSize: 13,
+                                          flexShrink: 0
+                                        }}
+                                      >
+                                        {secLabel}
+                                      </span>
+                                      <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                                        Section {secLabel}
+                                      </span>
+                                    </div>
+
+                                    {/* Status Badge */}
+                                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                      {isAssigned ? (
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: dark ? '#34d399' : '#047857', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                          <Check size={12} /> Assigned
+                                        </span>
+                                      ) : (
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: dark ? '#fbbf24' : '#b45309', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                                          <AlertTriangle size={12} /> Unassigned
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Middle: Class Teacher Info */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+                                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        Class Teacher:
+                                      </span>
+                                      {isAssigned ? (
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                          <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>
+                                            {teacherName}
+                                          </span>
+                                          {(teacherObj?.employee_id || mRec?.employee_id) && (
+                                            <span style={{ fontSize: 11.5, color: 'var(--text-secondary)', background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', padding: '1px 6px', borderRadius: 4 }}>
+                                              [{teacherObj?.employee_id || mRec?.employee_id}]
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span style={{ fontSize: 13, color: dark ? '#fbbf24' : '#b45309', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                          <AlertTriangle size={13} style={{ flexShrink: 0 }} /> No Teacher Assigned
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Right: Teacher Action Controls */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                      {isAssigned ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="btn-secondary"
+                                            onClick={() => {
+                                              setSelectedTeacherId(mRec.teacher_id);
+                                              setAssignModal({
+                                                section_id: sec.id,
+                                                class_id: targetClassId,
+                                                class_number: classNum,
+                                                section_name: secLabel,
+                                                current_teacher_id: mRec.teacher_id,
+                                                is_change: true
+                                              });
+                                            }}
+                                            title={`Change permanent class teacher for Class ${classNum} Section ${secLabel}`}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 5,
+                                              padding: '5px 12px',
+                                              fontSize: 12,
+                                              fontWeight: 600,
+                                              borderRadius: 6
+                                            }}
+                                          >
+                                            <UserCheck size={13} />
+                                            <span>Change Teacher</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setRemoveModal({
+                                                section_id: sec.id,
+                                                class_id: targetClassId,
+                                                class_number: classNum,
+                                                section_name: secLabel,
+                                                teacher_name: teacherName || 'Teacher'
+                                              });
+                                            }}
+                                            title={`Remove class teacher assignment for Section ${secLabel}`}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 4,
+                                              padding: '5px 10px',
+                                              fontSize: 12,
+                                              fontWeight: 600,
+                                              borderRadius: 6,
+                                              background: dark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
+                                              color: dark ? '#f87171' : '#dc2626',
+                                              border: dark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                              cursor: 'pointer'
+                                            }}
+                                          >
+                                            <Trash2 size={13} />
+                                            <span>Remove Teacher</span>
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="btn-primary"
+                                          onClick={() => {
+                                            setSelectedTeacherId(teachers[0]?.id || '');
+                                            setAssignModal({
+                                              section_id: sec.id,
+                                              class_id: targetClassId,
+                                              class_number: classNum,
+                                              section_name: secLabel,
+                                              current_teacher_id: null,
+                                              is_change: false
+                                            });
+                                          }}
+                                          title={`Assign permanent class teacher for Class ${classNum} Section ${secLabel}`}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 5,
+                                            padding: '5px 14px',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            borderRadius: 6
+                                          }}
+                                        >
+                                          <UserPlus size={13} />
+                                          <span>Assign Teacher</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {activeTab === 'TEMPORARY' && (
+      /* TAB 2: Teacher Substitution View */
+      <div className="as-temporary-tab-content">
+        <Suspense fallback={
           <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
             <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
-            <p>Loading Class Mentor allocations...</p>
+            <p>Loading Teacher Substitution...</p>
           </div>
-        ) : mentorError ? (
-          <div className="panel" style={{ textAlign: 'center', padding: 30, color: '#ef4444' }}>
-            <AlertCircle size={24} style={{ margin: '0 auto 10px' }} />
-            <p>{mentorError}</p>
-            <button type="button" className="btn-secondary" onClick={loadMentors} style={{ marginTop: 12 }}>Retry</button>
-          </div>
-        ) : filteredMentors.length === 0 ? (
-          <div className="panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
-            <UserX size={28} style={{ margin: '0 auto 10px', opacity: 0.6 }} />
-            <p>No class section allocations matching search criteria.</p>
-          </div>
-        ) : (
-          <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ background: dark ? 'rgba(255,255,255,0.03)' : 'var(--bg, #f4f6fb)', borderBottom: '1px solid var(--border-strong)' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Class & Section</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Assigned Class Mentor</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Employee ID</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMentors.map((item) => (
-                  <tr key={item.section_id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text)' }}>
-                      {formatClassTitle(item.class_number)} — Section {item.section_name}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {item.teacher_name ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text)' }}>{item.teacher_name}</span>
-                          {item.teacher_email && <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{item.teacher_email}</span>}
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No Mentor Assigned</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
-                      {item.employee_id || '—'}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      {item.teacher_id ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', color: dark ? '#34d399' : '#047857', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                          <Check size={12} /> Assigned
-                        </span>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', color: dark ? '#fbbf24' : '#b45309', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                          <AlertTriangle size={12} /> Unassigned
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      {item.teacher_id ? (
-                        <div style={{ display: 'inline-flex', gap: 8 }}>
-                          <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={() => {
-                              setSelectedTeacherId(item.teacher_id);
-                              setAssignModal({
-                                section_id: item.section_id,
-                                class_id: item.class_id,
-                                class_number: item.class_number,
-                                section_name: item.section_name,
-                                current_teacher_id: item.teacher_id,
-                                is_change: true
-                              });
-                            }}
-                            style={{ padding: '4px 10px', fontSize: 12 }}
-                          >
-                            Change
-                          </button>
-                          <button
-                            type="button"
-                            style={{ padding: '4px 10px', fontSize: 12, background: dark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', color: dark ? '#f87171' : '#dc2626', border: dark ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, cursor: 'pointer' }}
-                            onClick={() => {
-                              setRemoveModal({
-                                section_id: item.section_id,
-                                class_id: item.class_id,
-                                class_number: item.class_number,
-                                section_name: item.section_name,
-                                teacher_name: item.teacher_name || 'Teacher'
-                              });
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          onClick={() => {
-                            setSelectedTeacherId(teachers[0]?.id || '');
-                            setAssignModal({
-                              section_id: item.section_id,
-                              class_id: item.class_id,
-                              class_number: item.class_number,
-                              section_name: item.section_name,
-                              current_teacher_id: null,
-                              is_change: false
-                            });
-                          }}
-                          style={{ padding: '5px 12px', fontSize: 12 }}
-                        >
-                          Assign Mentor
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        }>
+          <TemporaryAssignments embedded onAssignmentsChange={loadActiveSubstitutionsCount} />
+        </Suspense>
       </div>
     )}
 
@@ -13331,7 +13558,7 @@ function Classes(){
         <div style={{ width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-              {assignModal.is_change ? 'Change Class Mentor' : 'Assign Class Mentor'}
+              {assignModal.is_change ? 'Change Class Teacher' : 'Assign Class Teacher'}
             </h3>
             <button type="button" onClick={() => setAssignModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }} aria-label="Close modal">
               <X size={18} />
@@ -13389,7 +13616,7 @@ function Classes(){
                 Cancel
               </button>
               <button type="submit" className="btn-primary" disabled={assigning || !selectedTeacherId}>
-                {assigning ? 'Saving...' : assignModal.is_change ? 'Update Mentor' : 'Assign Mentor'}
+                {assigning ? 'Saving...' : assignModal.is_change ? 'Update Teacher' : 'Assign Teacher'}
               </button>
             </div>
           </form>
@@ -13397,7 +13624,7 @@ function Classes(){
       </div>
     )}
 
-    {/* Remove Mentor Confirmation Modal */}
+    {/* Remove Teacher Confirmation Modal */}
     {removeModal && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <div style={{ width: '100%', maxWidth: 440, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', padding: 24 }}>
@@ -13406,13 +13633,13 @@ function Classes(){
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Remove Class Mentor</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Remove Class Teacher</h3>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>Class {removeModal.class_number} — Section {removeModal.section_name}</p>
             </div>
           </div>
 
           <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 20 }}>
-            Are you sure you want to remove <strong>{removeModal.teacher_name}</strong> as Class Mentor for <strong>Class {removeModal.class_number} Section {removeModal.section_name}</strong>? The section will remain available but unassigned.
+            Are you sure you want to remove <strong>{removeModal.teacher_name}</strong> as Class Teacher for <strong>Class {removeModal.class_number} Section {removeModal.section_name}</strong>? The section will remain available but unassigned.
           </p>
 
           <form onSubmit={submitMentorRemove} style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -13907,6 +14134,7 @@ function Attendance(){
   const [sections,setSections]=useState<any[]>([]);
   const [subjects,setSubjects]=useState<any[]>([]);
   const [routines,setRoutines]=useState<any[]>([]);
+  const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
 
   const [selectedClassId,setSelectedClassId]=useState<string>('');
   const [selectedSectionId,setSelectedSectionId]=useState<string>('');
@@ -14146,14 +14374,30 @@ function Attendance(){
   useEffect(()=>{
     async function init(){
       try {
-        const [cRes,sRes,subRes,rRes] = await Promise.all([
+        const [cRes,sRes,subRes,rRes,authSecRes] = await Promise.all([
           api.get('/classes'),
           api.get('/sections'),
           api.get('/subjects'),
-          api.get('/teacher/routine/today').catch(()=>({data:[]}))
+          api.get('/teacher/routine/today').catch(()=>({data:[]})),
+          api.get('/teacher/attendance/authorized-sections').catch(()=>({data:{sections:[], schoolDate:''}}))
         ]);
-        setClasses(cRes.data || []);
-        setSections(sRes.data || []);
+
+        const isTeacherRole = user?.role === 'TEACHER';
+        const myAuthorized = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
+        setAuthorizedSections(myAuthorized);
+
+        let cList = cRes.data || [];
+        let sList = sRes.data || [];
+
+        if (isTeacherRole && myAuthorized.length > 0) {
+          const authClassIds = new Set(myAuthorized.map((a: any) => String(a.classId)));
+          const authSecIds = new Set(myAuthorized.map((a: any) => String(a.sectionId)));
+          cList = cList.filter((c: any) => authClassIds.has(String(c.id)));
+          sList = sList.filter((s: any) => authSecIds.has(String(s.id)));
+        }
+
+        setClasses(cList);
+        setSections(sList);
         setSubjects(subRes.data || []);
         const rList = rRes.data || [];
         setRoutines(rList);
@@ -14180,13 +14424,14 @@ function Attendance(){
             const bN = Number(b.class_number ?? b.classNumber ?? 0);
             return aN - bN;
           });
+          const defaultSec = isTeacherRole && myAuthorized.length > 0 ? myAuthorized[0] : null;
           const targetClass = sortedClasses.find((c: any) => Number(c.class_number ?? c.classNumber) >= 1) || sortedClasses[0];
-          const targetClassId = classIdParam || targetClass?.id || (cRes.data?.length > 0 ? cRes.data[0].id : '');
+          const targetClassId = classIdParam || (defaultSec ? defaultSec.classId : targetClass?.id) || (cRes.data?.length > 0 ? cRes.data[0].id : '');
           setSelectedClassId(targetClassId);
-          const availableSecs = (sRes.data || []).filter((s:any)=>
+          const availableSecs = (sList || []).filter((s:any)=>
             !targetClassId || s.class_id === targetClassId || s.classId === targetClassId || String(s.class_number) === String(targetClassId)
           );
-          const targetSecId = sectionIdParam || (availableSecs.length > 0 ? availableSecs[0].id : (sRes.data?.[0]?.id || ''));
+          const targetSecId = sectionIdParam || (defaultSec ? defaultSec.sectionId : (availableSecs.length > 0 ? availableSecs[0].id : (sRes.data?.[0]?.id || '')));
           setSelectedSectionId(targetSecId);
           const targetSubId = subjectIdParam || (subRes.data?.length > 0 ? subRes.data[0].id : '');
           setSelectedSubjectId(targetSubId);
@@ -14646,6 +14891,11 @@ function Attendance(){
       setDone(true);
       checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
     } catch (e: any) {
+      if (e?.response?.status === 409 || e?.response?.data?.code === 'DAILY_ATTENDANCE_ALREADY_SUBMITTED') {
+        alert(e?.response?.data?.message || 'Attendance has already been submitted for this class and section today.');
+        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+        return;
+      }
       alert(e?.response?.data?.message || 'Attendance submission failed');
     } finally {
       setBusy(false);
@@ -14797,7 +15047,9 @@ function Attendance(){
               </span>
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
-              {existingSession.is_reattendance
+              {user?.role === 'TEACHER'
+                ? 'Attendance for this class section has already been submitted for today. Submissions are strictly once per calendar day. Submitted attendance is locked in read-only mode.'
+                : existingSession.is_reattendance
                 ? `Last modified by ${existingSession.last_modified_name || 'Faculty'}. Any assigned subject teacher can adjust early departures (e.g. left after 1st period) or late arrivals.`
                 : 'All teachers assigned to this class can view submitted records and make official re-attendance adjustments (e.g. early departure or late arrival).'}
             </p>
@@ -14810,13 +15062,15 @@ function Attendance(){
             >
               <HistoryIcon size={14} /> Audit Trail ({auditLogs.length})
             </button>
-            <button
-              onClick={submitWholeClassReattendance}
-              disabled={busy}
-              style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-            >
-              <RefreshCw size={14} className={busy ? 'spin' : ''} /> {busy ? 'Saving...' : 'Save Re-attendance'}
-            </button>
+            {user?.role !== 'TEACHER' && (
+              <button
+                onClick={submitWholeClassReattendance}
+                disabled={busy}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+              >
+                <RefreshCw size={14} className={busy ? 'spin' : ''} /> {busy ? 'Saving...' : 'Save Re-attendance'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -15389,77 +15643,83 @@ function Attendance(){
                   </span>
 
                   {/* Attendance Action Buttons */}
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {/* 1. Present Button */}
-                    <button
-                      type="button"
-                      onClick={() => quickToggleStudent(s, 'PRESENT')}
-                      title="Mark Present"
-                      style={{
-                        fontSize: 11.5,
-                        padding: '5px 12px',
-                        borderRadius: 6,
-                        border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
-                        background: isPresent ? '#10b981' : 'var(--bg-subtle)',
-                        color: isPresent ? '#ffffff' : 'var(--text)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontWeight: isPresent ? 700 : 600,
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      ✓ Present
-                    </button>
+                  {Boolean(existingSession && user?.role === 'TEACHER') ? (
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 8px' }}>
+                      Locked (Submitted)
+                    </span>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {/* 1. Present Button */}
+                      <button
+                        type="button"
+                        onClick={() => quickToggleStudent(s, 'PRESENT')}
+                        title="Mark Present"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
+                          background: isPresent ? '#10b981' : 'var(--bg-subtle)',
+                          color: isPresent ? '#ffffff' : 'var(--text)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontWeight: isPresent ? 700 : 600,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        ✓ Present
+                      </button>
 
-                    {/* 2. Left Early Button */}
-                    <button
-                      type="button"
-                      onClick={() => openEarlyDeparture(s)}
-                      title="Mark student early departure"
-                      style={{
-                        fontSize: 11.5,
-                        padding: '5px 12px',
-                        borderRadius: 6,
-                        border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
-                        background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
-                        color: isLeftEarly ? '#ffffff' : 'var(--text)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontWeight: isLeftEarly ? 700 : 600,
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <DoorOpen size={13} />
-                      {isLeftEarly ? 'Left Early' : 'Left Early'}
-                    </button>
+                      {/* 2. Left Early Button */}
+                      <button
+                        type="button"
+                        onClick={() => openEarlyDeparture(s)}
+                        title="Mark student early departure"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
+                          background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
+                          color: isLeftEarly ? '#ffffff' : 'var(--text)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontWeight: isLeftEarly ? 700 : 600,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <DoorOpen size={13} />
+                        Left Early
+                      </button>
 
-                    {/* 3. Mark Absent Button */}
-                    <button
-                      type="button"
-                      onClick={() => quickToggleStudent(s, 'ABSENT')}
-                      title="Mark Absent"
-                      style={{
-                        fontSize: 11.5,
-                        padding: '5px 12px',
-                        borderRadius: 6,
-                        border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
-                        background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
-                        color: isAbsent ? '#ffffff' : 'var(--text)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontWeight: isAbsent ? 700 : 600,
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      Mark Absent
-                    </button>
-                  </div>
+                      {/* 3. Mark Absent Button */}
+                      <button
+                        type="button"
+                        onClick={() => quickToggleStudent(s, 'ABSENT')}
+                        title="Mark Absent"
+                        style={{
+                          fontSize: 11.5,
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
+                          background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
+                          color: isAbsent ? '#ffffff' : 'var(--text)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontWeight: isAbsent ? 700 : 600,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Mark Absent
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -15502,13 +15762,22 @@ function Attendance(){
                 📜 Audit Trail ({auditLogs.length})
               </button>
             )}
-            <button
-              disabled={busy}
-              onClick={() => initiateAttendancePreview(Boolean(existingSession))}
-              style={{ minWidth: 160 }}
-            >
-              {busy ? 'Saving…' : existingSession ? '🔄 Review & Save Re-attendance' : 'Review & Submit Attendance'}
-            </button>
+            {existingSession && user?.role === 'TEACHER' ? (
+              <button
+                disabled={true}
+                style={{ minWidth: 200, opacity: 0.65, cursor: 'not-allowed', background: '#059669', color: '#ffffff' }}
+              >
+                ✓ Attendance Submitted Today
+              </button>
+            ) : (
+              <button
+                disabled={busy}
+                onClick={() => initiateAttendancePreview(Boolean(existingSession))}
+                style={{ minWidth: 160 }}
+              >
+                {busy ? 'Saving…' : existingSession ? '🔄 Review & Save Re-attendance' : 'Review & Submit Attendance'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -18441,8 +18710,8 @@ function App(){
         <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
         <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeavePolicy/></Layout></RoleGuard>}/>
-        <Route path="/admin/temporary-assignments" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TemporaryAssignments/></Layout></RoleGuard>}/>
-        <Route path="/temporary-assignments" element={<Navigate to="/admin/temporary-assignments" replace/>}/>
+        <Route path="/admin/temporary-assignments" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Navigate to="/classes?tab=temporary" replace/></RoleGuard>}/>
+        <Route path="/temporary-assignments" element={<Navigate to="/classes?tab=temporary" replace/>}/>
         <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace/>}/>
         <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>

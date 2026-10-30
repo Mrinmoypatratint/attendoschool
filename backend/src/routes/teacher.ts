@@ -14,6 +14,16 @@ import { memEntries } from './timetable';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { fastCache } from '../utils/cache';
 import { normalizeGender } from '../utils/gender';
+import { inMemoryClassMentors } from '../services/mentorService';
+import { inMemoryTemporaryAssignments } from '../services/temporaryAssignmentService';
+
+export function getSchoolToday(timeZone = 'Asia/Kolkata'): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
 
 export interface MemAttendanceSession {
   id: string;
@@ -1014,6 +1024,227 @@ const todayStatusHandler = async (req: AuthRequest, res: any) => {
 r.get('/attendance/today-status', ...teacher, todayStatusHandler);
 r.get('/today-status', ...teacher, todayStatusHandler);
 
+// ── GET /api/teacher/attendance/authorized-sections & GET /api/attendance/authorized-sections ──
+const authorizedSectionsHandler = async (req: AuthRequest, res: any) => {
+  const user = req.user!;
+  const sid = user.schoolId!;
+  const role = user.role;
+  const schoolDate = getSchoolToday('Asia/Kolkata');
+
+  const isAdmin = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ADMIN', 'PRINCIPAL'].includes(role);
+
+  if (isPostgresConfigured) {
+    try {
+      let teacherId = user.id;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teacherId);
+      if (!isUuid) {
+        const uRes = await pool.query('SELECT id FROM users WHERE school_id = $1 AND (email = $2 OR role = $3) LIMIT 1', [sid, user.email, user.role]);
+        if (uRes.rowCount) teacherId = uRes.rows[0].id;
+      }
+
+      let rows: any[] = [];
+      if (isAdmin) {
+        const q = await pool.query(
+          `SELECT
+             s.class_id,
+             s.id AS section_id,
+             c.class_number,
+             s.name AS section_name,
+             FALSE AS is_temporary,
+             NULL::timestamptz AS temp_start_at,
+             NULL::timestamptz AS temp_end_at,
+             (att.id IS NOT NULL) AS has_submitted,
+             att.id AS session_id,
+             att.submitted_at AS submitted_at,
+             COALESCE(att.present_count, 0) AS present_count,
+             COALESCE(att.absent_count, 0) AS absent_count,
+             COALESCE(att.late_count, 0) AS late_count,
+             COALESCE(att.left_early_count, 0) AS left_early_count,
+             COALESCE(att.total_count, 0) AS total_count,
+             u.name AS submitted_by_name
+           FROM sections s
+           JOIN classes c ON c.id = s.class_id
+           LEFT JOIN attendance_sessions att ON (
+             att.school_id = $1
+             AND att.class_id = s.class_id
+             AND att.section_id = s.id
+             AND att.attendance_date = $2
+           )
+           LEFT JOIN users u ON u.id = att.teacher_id
+           WHERE s.school_id = $1
+           ORDER BY c.class_number ASC, s.name ASC, att.submitted_at DESC NULLS LAST`,
+          [sid, schoolDate]
+        );
+        rows = q.rows;
+      } else {
+        const q = await pool.query(
+          `WITH user_authorized AS (
+             SELECT
+               cm.class_id,
+               cm.section_id,
+               c.class_number,
+               s.name AS section_name,
+               FALSE AS is_temporary,
+               NULL::timestamptz AS temp_start_at,
+               NULL::timestamptz AS temp_end_at
+             FROM class_mentors cm
+             JOIN classes c ON c.id = cm.class_id
+             JOIN sections s ON s.id = cm.section_id
+             WHERE cm.school_id = $1 AND cm.teacher_id = $2
+
+             UNION ALL
+
+             SELECT
+               tca.class_id,
+               tca.section_id,
+               c.class_number,
+               s.name AS section_name,
+               TRUE AS is_temporary,
+               tca.start_at AS temp_start_at,
+               tca.end_at AS temp_end_at
+             FROM temporary_class_assignments tca
+             JOIN classes c ON c.id = tca.class_id
+             JOIN sections s ON s.id = tca.section_id
+             WHERE tca.school_id = $1 AND tca.teacher_id = $2
+               AND tca.start_at <= NOW() AND tca.end_at > NOW()
+           )
+           SELECT DISTINCT ON (ua.class_id, ua.section_id)
+             ua.class_id,
+             ua.section_id,
+             ua.class_number,
+             ua.section_name,
+             ua.is_temporary,
+             ua.temp_start_at,
+             ua.temp_end_at,
+             (att.id IS NOT NULL) AS has_submitted,
+             att.id AS session_id,
+             att.submitted_at AS submitted_at,
+             COALESCE(att.present_count, 0) AS present_count,
+             COALESCE(att.absent_count, 0) AS absent_count,
+             COALESCE(att.late_count, 0) AS late_count,
+             COALESCE(att.left_early_count, 0) AS left_early_count,
+             COALESCE(att.total_count, 0) AS total_count,
+             u.name AS submitted_by_name
+           FROM user_authorized ua
+           LEFT JOIN attendance_sessions att ON (
+             att.school_id = $1
+             AND att.class_id = ua.class_id
+             AND att.section_id = ua.section_id
+             AND att.attendance_date = $3
+           )
+           LEFT JOIN users u ON u.id = att.teacher_id
+           ORDER BY ua.class_id, ua.section_id, ua.is_temporary ASC, att.submitted_at DESC NULLS LAST`,
+          [sid, teacherId, schoolDate]
+        );
+        rows = q.rows;
+      }
+
+      const sections = rows.map(r => ({
+        classId: r.class_id,
+        sectionId: r.section_id,
+        classNumber: r.class_number,
+        sectionName: r.section_name,
+        isTemporary: Boolean(r.is_temporary),
+        tempStartAt: r.temp_start_at,
+        tempEndAt: r.temp_end_at,
+        hasSubmitted: Boolean(r.has_submitted),
+        sessionId: r.session_id,
+        submittedAt: r.submitted_at,
+        presentCount: Number(r.present_count || 0),
+        absentCount: Number(r.absent_count || 0),
+        lateCount: Number(r.late_count || 0),
+        leftEarlyCount: Number(r.left_early_count || 0),
+        totalCount: Number(r.total_count || 0),
+        submittedByName: r.submitted_by_name || null
+      }));
+
+      return res.json({
+        schoolDate,
+        timeZone: 'Asia/Kolkata',
+        sections
+      });
+    } catch (err: any) {
+      console.warn('[authorizedSectionsHandler] DB query failed, falling back to in-memory:', err.message);
+    }
+  }
+
+  // In-memory fallback
+  let authorizedList: any[] = [];
+  if (isAdmin) {
+    demoClasses.filter(c => isSameSchool(c.school_id, sid)).forEach(c => {
+      const secs = demoSections.filter(s => s.class_id === c.id);
+      secs.forEach(s => {
+        authorizedList.push({
+          classId: c.id,
+          sectionId: s.id,
+          classNumber: c.class_number,
+          sectionName: s.name,
+          isTemporary: false
+        });
+      });
+    });
+  } else {
+    inMemoryClassMentors.filter(m => isSameSchool(m.school_id, sid) && m.teacher_id === user.id).forEach(m => {
+      authorizedList.push({
+        classId: m.class_id,
+        sectionId: m.section_id,
+        classNumber: (m as any).class_number || 10,
+        sectionName: (m as any).section_name || 'A',
+        isTemporary: false
+      });
+    });
+    const now = new Date();
+    inMemoryTemporaryAssignments.filter(a =>
+      isSameSchool(a.school_id, sid) &&
+      a.teacher_id === user.id &&
+      new Date(a.start_at) <= now &&
+      new Date(a.end_at) > now
+    ).forEach(a => {
+      if (!authorizedList.some(al => al.classId === a.class_id && al.sectionId === a.section_id)) {
+        authorizedList.push({
+          classId: a.class_id,
+          sectionId: a.section_id,
+          classNumber: a.class_number || 10,
+          sectionName: a.section_name || 'A',
+          isTemporary: true,
+          tempStartAt: a.start_at,
+          tempEndAt: a.end_at
+        });
+      }
+    });
+  }
+
+  const sections = authorizedList.map(a => {
+    const existing = memAttendanceSessions.find(s =>
+      isSameSchool(s.schoolId, sid) &&
+      String(s.classId) === String(a.classId) &&
+      String(s.sectionId) === String(a.sectionId) &&
+      (s.attendanceDate === schoolDate || s.attendance_date === schoolDate)
+    );
+    return {
+      ...a,
+      hasSubmitted: Boolean(existing),
+      sessionId: existing?.id || null,
+      submittedAt: existing?.createdAt || existing?.created_at || null,
+      presentCount: existing?.presentCount ?? existing?.present_count ?? 0,
+      absentCount: existing?.absentCount ?? existing?.absent_count ?? 0,
+      lateCount: existing?.lateCount ?? existing?.late_count ?? 0,
+      leftEarlyCount: existing?.leftEarlyCount ?? existing?.left_early_count ?? 0,
+      totalCount: existing?.totalCount ?? existing?.total_count ?? 0,
+      submittedByName: existing?.teacherName ?? existing?.teacher_name ?? null
+    };
+  });
+
+  return res.json({
+    schoolDate,
+    timeZone: 'Asia/Kolkata',
+    sections
+  });
+};
+
+r.get('/attendance/authorized-sections', ...teacher, authorizedSectionsHandler);
+r.get('/authorized-sections', ...teacher, authorizedSectionsHandler);
+
 // ── GET /api/teacher/attendance/:sessionId/records & GET /api/attendance/:sessionId/records ──
 const sessionRecordsHandler = async (req: AuthRequest, res: any) => {
   const sid = req.user!.schoolId!;
@@ -1188,6 +1419,12 @@ r.get('/:sessionId/records', ...teacher, sessionRecordsHandler);
 
 // ── PUT /api/teacher/attendance/:sessionId/student/:studentId & PUT /api/attendance/:sessionId/student/:studentId ──
 const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
+  if (req.user?.role === 'TEACHER') {
+    return res.status(403).json({
+      message: 'Attendance session is already submitted and locked for editing. Please submit an attendance correction request.',
+      code: 'ATTENDANCE_SESSION_LOCKED',
+    });
+  }
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
   const studentId = String(req.params.studentId);
@@ -1427,6 +1664,12 @@ r.put('/:sessionId/student/:studentId', ...teacher, updateStudentAttendanceHandl
 
 // ── POST /api/teacher/attendance/:sessionId/reattendance & POST /api/attendance/:sessionId/reattendance ──
 const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
+  if (req.user?.role === 'TEACHER') {
+    return res.status(403).json({
+      message: 'Attendance session is already submitted and locked for editing. Please submit an attendance correction request.',
+      code: 'ATTENDANCE_SESSION_LOCKED',
+    });
+  }
   const sid = req.user!.schoolId!;
   const sessionId = String(req.params.sessionId);
   const { records, reason, notifyParents } = req.body || {};
@@ -2033,7 +2276,7 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
 
   const classId = x.classId || x.class_id;
   const sectionId = x.sectionId || x.section_id;
-  const attendanceDate = x.attendanceDate || x.attendance_date || x.date || new Date().toISOString().slice(0, 10);
+  const attendanceDate = x.attendanceDate || x.attendance_date || x.date || getSchoolToday('Asia/Kolkata');
   const startTime = x.startTime || x.start_time || '09:00:00';
   const endTime = x.endTime || x.end_time || '09:45:00';
 
@@ -2105,24 +2348,30 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
         }
 
         const duplicate = await client.query(
-          `SELECT id FROM attendance_sessions
+          `SELECT id, submitted_at
+           FROM attendance_sessions
            WHERE school_id=$1 AND class_id=$2 AND section_id=$3 AND attendance_date=$4`,
           [schoolId, classId, sectionId, x.attendanceDate]
         );
 
         if (duplicate.rowCount) {
-          sessionId = duplicate.rows[0].id;
-          isExistingSession = true;
-          await client.query('DELETE FROM attendance_records WHERE attendance_session_id = $1', [sessionId]);
-        } else {
-          const session = (await client.query(
-            `INSERT INTO attendance_sessions
-             (id,school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time,class_number,section_name,subject_name)
-             VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-            [sessionId, schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime, finalClassNum, finalSecName, finalSubName]
-          )).rows[0];
-          sessionId = session.id;
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            message: 'Attendance has already been submitted for this class and section today.',
+            code: 'DAILY_ATTENDANCE_ALREADY_SUBMITTED',
+            sessionId: duplicate.rows[0].id,
+            submittedAt: duplicate.rows[0].submitted_at,
+            teacherName: undefined
+          });
         }
+
+        const session = (await client.query(
+          `INSERT INTO attendance_sessions
+           (id,school_id,class_id,section_id,subject_id,teacher_id,attendance_date,start_time,end_time,class_number,section_name,subject_name,submitted_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW()) RETURNING id`,
+          [sessionId, schoolId, classId, sectionId, subjectId, teacherId, x.attendanceDate, x.startTime, x.endTime, finalClassNum, finalSecName, finalSubName]
+        )).rows[0];
+        sessionId = session.id;
 
         // Fetch students enrolled in this section in Postgres
         let students = (await client.query(
@@ -2284,13 +2533,25 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
           await client.query('COMMIT');
           sessionSavedInDb = true;
         }
-      } catch (err) {
-        await client.query('ROLLBACK');
+      } catch (err: any) {
+        await client.query('ROLLBACK').catch(() => {});
+        if (err.code === '23505') {
+          return res.status(409).json({
+            message: 'Attendance has already been submitted for this class and section today.',
+            code: 'DAILY_ATTENDANCE_ALREADY_SUBMITTED',
+          });
+        }
         throw err;
       } finally {
         client.release();
       }
     } catch (pgErr: any) {
+      if (pgErr.code === '23505') {
+        return res.status(409).json({
+          message: 'Attendance has already been submitted for this class and section today.',
+          code: 'DAILY_ATTENDANCE_ALREADY_SUBMITTED',
+        });
+      }
       console.warn('[PostAttendance] Supabase execution warning:', pgErr.message);
     }
   }
@@ -2419,28 +2680,20 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   };
 
   // 3. Cache in shared in-memory store for instant reflection
-  const existingMemIdx = memAttendanceSessions.findIndex(s => s.id === sessionId || (isSameSchool(s.schoolId, schoolId) && String(s.classId) === String(x.classId) && String(s.sectionId) === String(x.sectionId) && s.attendanceDate === x.attendanceDate));
+  const existingMemIdx = memAttendanceSessions.findIndex(s =>
+    isSameSchool(s.schoolId, schoolId) &&
+    String(s.classId) === String(x.classId) &&
+    String(s.sectionId) === String(x.sectionId) &&
+    (s.attendanceDate === x.attendanceDate || s.attendance_date === x.attendanceDate)
+  );
   if (existingMemIdx >= 0) {
-    const prior = memAttendanceSessions[existingMemIdx];
-    sessionId = prior.id;
-    isExistingSession = true;
-    sessionMeta.id = prior.id;
-    sessionMeta.is_reattendance = true;
-    sessionMeta.isReattendance = true;
-    sessionMeta.reattendance_count = (prior.reattendanceCount || prior.reattendance_count || 0) + 1;
-    sessionMeta.reattendanceCount = (prior.reattendanceCount || prior.reattendance_count || 0) + 1;
-    sessionMeta.last_modified_by = req.user!.id;
-    sessionMeta.lastModifiedBy = req.user!.id;
-    sessionMeta.last_modified_name = req.user?.name || 'Class Faculty';
-    sessionMeta.lastModifiedName = req.user?.name || 'Class Faculty';
-    sessionMeta.last_modified_at = new Date().toISOString();
-    sessionMeta.lastModifiedAt = new Date().toISOString();
-    sessionMeta.created_at = prior.createdAt || prior.created_at || sessionMeta.created_at;
-    sessionMeta.createdAt = prior.createdAt || prior.created_at || sessionMeta.createdAt;
-    memAttendanceSessions[existingMemIdx] = sessionMeta;
-  } else {
-    memAttendanceSessions.unshift(sessionMeta);
+    return res.status(409).json({
+      message: 'Attendance has already been submitted for this class and section today.',
+      code: 'DAILY_ATTENDANCE_ALREADY_SUBMITTED',
+      sessionId: memAttendanceSessions[existingMemIdx].id
+    });
   }
+  memAttendanceSessions.unshift(sessionMeta);
   if (memAttendanceSessions.length > 200) memAttendanceSessions.length = 200;
 
   // Prune prior records for this session in memory
