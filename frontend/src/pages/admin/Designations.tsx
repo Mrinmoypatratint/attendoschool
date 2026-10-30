@@ -203,10 +203,7 @@ export default function Designations() {
       const curr = (prefillTeacher.designation || (selectedDesignationFaculty ? selectedDesignationFaculty.title : 'PRT')).trim();
       setPromoteTeacherId(tId);
       setPromoteCurrentPosition(curr);
-      const validDesigs = allAvailableDesignationTitles.filter(
-        d => d.trim().toLowerCase() !== curr.toLowerCase()
-      );
-      setPromoteNewPosition(validDesigs[0] || '');
+      setPromoteNewPosition('');
     } else {
       setPromoteTeacherId('');
       setPromoteCurrentPosition('');
@@ -228,34 +225,15 @@ export default function Designations() {
     const t = teachersList.find(x => x.id === tId);
     const curr = (t?.designation || 'PRT').trim();
     setPromoteCurrentPosition(curr);
-
-    const validDesigs = allAvailableDesignationTitles.filter(
-      d => d.trim().toLowerCase() !== curr.toLowerCase()
-    );
-
-    if (
-      !promoteNewPosition ||
-      promoteNewPosition.trim().toLowerCase() === curr.toLowerCase() ||
-      !validDesigs.some(d => d.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase())
-    ) {
-      setPromoteNewPosition(validDesigs[0] || '');
-    }
+    // User must choose the new promoted position from the dropdown
+    setPromoteNewPosition('');
   }
 
   function handleSelectPreviousPosition(prevPos: string) {
     const cleanPrev = prevPos.trim();
     setPromoteCurrentPosition(cleanPrev);
-
-    const validDesigs = allAvailableDesignationTitles.filter(
-      d => d.trim().toLowerCase() !== cleanPrev.toLowerCase()
-    );
-
-    if (
-      !promoteNewPosition ||
-      promoteNewPosition.trim().toLowerCase() === cleanPrev.toLowerCase() ||
-      !validDesigs.some(d => d.trim().toLowerCase() === promoteNewPosition.trim().toLowerCase())
-    ) {
-      setPromoteNewPosition(validDesigs[0] || '');
+    if (promoteNewPosition && promoteNewPosition.trim().toLowerCase() === cleanPrev.toLowerCase()) {
+      setPromoteNewPosition('');
     }
   }
 
@@ -1843,7 +1821,7 @@ export default function Designations() {
                             cursor: 'pointer'
                           }}
                         >
-                          {!promoteNewPosition && <option value="">Select promoted position</option>}
+                          <option value="">-- Select Promoted Position --</option>
                           {availableDesigs.map(title => (
                             <option key={title} value={title}>
                               {title}
