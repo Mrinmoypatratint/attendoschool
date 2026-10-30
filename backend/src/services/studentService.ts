@@ -1046,7 +1046,7 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
       [schoolId, st.id, fromDate, toDate]
     );
 
-    if (q.rowCount && q.rows.length > 0) {
+    if (q && Array.isArray(q.rows)) {
       const rows = q.rows;
       const present = rows.filter((r) => r.status === 'PRESENT').length;
       const absent = rows.filter((r) => r.status === 'ABSENT').length;
@@ -1158,12 +1158,20 @@ export async function getStudentAttendance(schoolId: string, userId: string, fro
 
   // 3. Fallback for test school
   if (isTestSchool(schoolId)) {
+    const fallbackList = [
+      { attendance_date: new Date().toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' },
+      { attendance_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' }
+    ].filter(r => {
+      if (fromDate && r.attendance_date < fromDate) return false;
+      if (toDate && r.attendance_date > toDate) return false;
+      return true;
+    });
+    const present = fallbackList.filter(r => r.status === 'PRESENT').length;
+    const absent = fallbackList.filter(r => r.status === 'ABSENT').length;
+    const total = fallbackList.length;
     return {
-      records: [
-        { attendance_date: new Date().toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' },
-        { attendance_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), status: 'PRESENT', start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma' }
-      ],
-      summary: { present: 2, absent: 0, total: 2, percentage: 100 }
+      records: fallbackList,
+      summary: { present, absent, total, percentage: total > 0 ? Math.round((present / total) * 100) : 0 }
     };
   }
 

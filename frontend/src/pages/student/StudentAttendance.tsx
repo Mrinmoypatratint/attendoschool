@@ -84,7 +84,7 @@ export function StudentAttendance() {
     load();
   }, []);
 
-  const summary = data?.summary || { present: 138, absent: 12, total: 150, percentage: 92 };
+  const summary = data?.summary || { present: 0, absent: 0, total: 0, percentage: 0 };
   const records = data?.records || [];
 
   return (
@@ -102,8 +102,8 @@ export function StudentAttendance() {
 
         {/* Date Filter */}
         <div className="student-filter-bar">
-          <label>
-            <span>From:</span>
+          <label className="student-filter-field">
+            <span className="student-filter-label">From:</span>
             <input
               type="date"
               min="1900-01-01"
@@ -112,8 +112,8 @@ export function StudentAttendance() {
               onChange={(e) => handleDateInput(e.target.value, setFrom)}
             />
           </label>
-          <label>
-            <span>To:</span>
+          <label className="student-filter-field">
+            <span className="student-filter-label">To:</span>
             <input
               type="date"
               min="1900-01-01"
@@ -122,7 +122,7 @@ export function StudentAttendance() {
               onChange={(e) => handleDateInput(e.target.value, setTo)}
             />
           </label>
-          <button type="button" onClick={load} className="student-btn-primary">
+          <button type="button" onClick={load} className="student-btn-primary student-filter-btn">
             <Filter size={14} /> Filter
           </button>
         </div>
