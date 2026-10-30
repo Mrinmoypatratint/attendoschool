@@ -7,22 +7,22 @@ export const getApiBaseUrl = (): string => {
       window.location.replace('https://attendoschool.online' + window.location.pathname + window.location.search + window.location.hash);
       return 'https://attendoschool.online/api';
     }
-    // For localhost or 127.0.0.1:
+    // For localhost or 127.0.0.1: route through Vite development proxy via relative '/api'
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       const customLocal = import.meta.env.VITE_API_URL;
-      if (customLocal && !customLocal.includes('onrender.com')) {
+      if (customLocal && !customLocal.includes('localhost:5001') && !customLocal.includes('onrender.com')) {
         return customLocal;
       }
-      return 'http://localhost:5001/api';
+      return '/api';
     }
     // For attendoschool.online, www.attendoschool.online, or any public hostname:
     return '/api';
   }
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl) {
+  if (envUrl && !envUrl.includes('localhost:5001')) {
     return envUrl;
   }
-  return 'http://localhost:5001/api';
+  return '/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

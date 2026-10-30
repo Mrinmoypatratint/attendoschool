@@ -246,31 +246,34 @@ async function runTestSuite() {
   // ---------------------------------------------------------
   console.log('\n🌐 6. HTTP Server & Route Integration:');
   const server = http.createServer(app);
-  await new Promise<void>(resolve => server.listen(5002, resolve));
+  const preferredPort = process.env.TEST_PORT ? parseInt(process.env.TEST_PORT, 10) : 0;
+  await new Promise<void>(resolve => server.listen(preferredPort, resolve));
+  const serverAddress = server.address();
+  const testPort = typeof serverAddress === 'object' && serverAddress ? serverAddress.port : preferredPort;
 
   try {
-    const apiRes = await fetch('http://localhost:5002/api');
+    const apiRes = await fetch(`http://localhost:${testPort}/api`);
     const apiJson = await apiRes.json();
     assert(apiRes.status === 200, 'GET /api returns 200 OK');
     assert(apiJson.name === 'School Attendance SaaS API', 'GET /api returns correct API name');
 
-    const healthRes = await fetch('http://localhost:5002/api/health');
+    const healthRes = await fetch(`http://localhost:${testPort}/api/health`);
     const healthJson = await healthRes.json();
     assert(healthRes.status === 200 || healthRes.status === 503, 'GET /api/health responds with valid HTTP status (200 or 503 depending on live DB)');
     assert(healthJson.status === 'ok' || healthJson.status === 'error', 'GET /api/health returns valid structured health status object');
 
-    const v26HealthRes = await fetch('http://localhost:5002/api/production-v26/health');
+    const v26HealthRes = await fetch(`http://localhost:${testPort}/api/production-v26/health`);
     const v26HealthJson = await v26HealthRes.json();
     assert(v26HealthRes.status === 200 || v26HealthRes.status === 503, 'GET /api/production-v26/health responds with valid HTTP status');
     assert(v26HealthJson.checks?.memory?.status === 'ok', 'GET /api/production-v26/health checks server memory usage');
 
-    const notFoundRes = await fetch('http://localhost:5002/api/unknown-route-12345');
+    const notFoundRes = await fetch(`http://localhost:${testPort}/api/unknown-route-12345`);
     assert(notFoundRes.status === 404, 'GET /api/unknown-route-12345 returns 404 Not Found');
 
-    const authCheckRes = await fetch('http://localhost:5002/api/auth/me');
+    const authCheckRes = await fetch(`http://localhost:${testPort}/api/auth/me`);
     assert(authCheckRes.status === 401, 'GET /api/auth/me without token returns 401 Unauthorized');
 
-    const authWithTokenRes = await fetch('http://localhost:5002/api/auth/me', {
+    const authWithTokenRes = await fetch(`http://localhost:${testPort}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const authWithTokenJson = await authWithTokenRes.json();
@@ -284,7 +287,7 @@ async function runTestSuite() {
 
     // Test A: Student Bulk Import rejects invalid rows and stores 0 records
     const invalidBatchUniqueId = `TEST_STU_${Date.now()}`;
-    const studentImportRes = await fetch('http://localhost:5002/api/students/bulk-import', {
+    const studentImportRes = await fetch(`http://localhost:${testPort}/api/students/bulk-import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -320,7 +323,7 @@ async function runTestSuite() {
     assert(studentImportJson.message?.includes('cancelled') || studentImportJson.message?.includes('zero records stored'), 'Student import confirms entire operation cancelled with zero records stored');
 
     // Test B: Verify zero students from the failed batch were stored in DB or memory
-    const studentCheckRes = await fetch('http://localhost:5002/api/students', {
+    const studentCheckRes = await fetch(`http://localhost:${testPort}/api/students`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const studentsList = await studentCheckRes.json();
@@ -329,7 +332,7 @@ async function runTestSuite() {
 
     // Test C: Faculty / Teacher Bulk Import rejects invalid rows and stores 0 records
     const invalidTeacherEmpId = `EMP_FAIL_${Date.now()}`;
-    const teacherImportRes = await fetch('http://localhost:5002/api/teachers/bulk-import', {
+    const teacherImportRes = await fetch(`http://localhost:${testPort}/api/teachers/bulk-import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -362,7 +365,7 @@ async function runTestSuite() {
     assert(teacherImportJson.message?.includes('cancelled') || teacherImportJson.message?.includes('no faculty data was stored'), 'Faculty import confirms entire operation cancelled');
 
     // Test D: Verify zero teachers from failed batch were stored
-    const teacherCheckRes = await fetch('http://localhost:5002/api/teachers', {
+    const teacherCheckRes = await fetch(`http://localhost:${testPort}/api/teachers`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const teachersList = await teacherCheckRes.json();
@@ -370,7 +373,7 @@ async function runTestSuite() {
     assert(!leakedTeacher, 'Zero teachers stored in database/memory when import contains errors (atomic guarantee)');
 
     // Test E: Offline Attendance Import rejects records missing student identification
-    const offAttendanceRes = await fetch('http://localhost:5002/api/attendance-reports/import-offline', {
+    const offAttendanceRes = await fetch(`http://localhost:${testPort}/api/attendance-reports/import-offline`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

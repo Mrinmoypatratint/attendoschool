@@ -25,6 +25,18 @@ function computeChecksum(content: string): string {
 async function checkMigrationSignature(client: PoolClient, filename: string): Promise<boolean> {
   try {
     switch (filename) {
+      case '049_submission_updated_at.sql': {
+        const res = await client.query(
+          "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'student_assignment_submissions' AND column_name = 'updated_at'"
+        );
+        return (res.rowCount ?? 0) > 0;
+      }
+      case '048_assignments_and_attachments.sql': {
+        const res = await client.query(
+          "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'assignment_attachments'"
+        );
+        return (res.rowCount ?? 0) > 0;
+      }
       case '047_daily_class_teacher_attendance.sql': {
         const res = await client.query(
           "SELECT 1 FROM pg_constraint WHERE conname = 'uq_attendance_sessions_daily'"

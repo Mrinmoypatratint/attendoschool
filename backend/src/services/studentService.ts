@@ -10,7 +10,7 @@ import { calculateWorkingCalendar } from './calendarService';
 import { inMemoryLeaves } from '../store/leavesStore';
 import { validatePasswordStrength } from '../utils/passwordPolicy';
 import { normalizeGender } from '../utils/gender';
-import { validateAttachment, uploadToStorage, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/supabaseStorage';
+import { validateAttachment, uploadToStorage, deleteFromStorage, buildStudentSubmissionStorageKey, MAX_FILES_COUNT, MAX_TOTAL_SIZE } from '../utils/firebaseStorage';
 
 export function toDdMmYyyy(val: any): string {
   if (!val) return '';
@@ -1367,18 +1367,78 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
 /**
  * Returns student assignments
  */
+
+let hasAssignedDateColStudent: boolean | null = null;
+async function checkHasAssignedDateStudent(): Promise<boolean> {
+  if (hasAssignedDateColStudent !== null) return hasAssignedDateColStudent;
+  try {
+    const res = await pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'student_assignments' AND column_name = 'assigned_date'"
+    );
+    hasAssignedDateColStudent = (res.rowCount ?? 0) > 0;
+  } catch (_e) {
+    hasAssignedDateColStudent = false;
+  }
+  return hasAssignedDateColStudent;
+}
+
+let hasUpdatedAtColStudentSub: boolean | null = null;
+export async function checkHasUpdatedAtStudentSub(): Promise<boolean> {
+  if (hasUpdatedAtColStudentSub !== null) return hasUpdatedAtColStudentSub;
+  if (!isPostgresConfigured) {
+    hasUpdatedAtColStudentSub = false;
+    return false;
+  }
+  try {
+    const res = await pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'student_assignment_submissions' AND column_name = 'updated_at'"
+    );
+    hasUpdatedAtColStudentSub = (res.rowCount ?? 0) > 0;
+  } catch (_e) {
+    hasUpdatedAtColStudentSub = false;
+  }
+  return hasUpdatedAtColStudentSub;
+}
+
+let hasResubmittedStatusStudentSub: boolean | null = null;
+export async function checkSupportsResubmittedStatus(): Promise<boolean> {
+  if (hasResubmittedStatusStudentSub !== null) return hasResubmittedStatusStudentSub;
+  if (!isPostgresConfigured) {
+    hasResubmittedStatusStudentSub = true;
+    return true;
+  }
+  try {
+    const res = await pool.query(
+      "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c WHERE c.conname = 'student_assignment_submissions_status_check'"
+    );
+    if (res.rowCount && res.rowCount > 0) {
+      const def = res.rows[0].def || '';
+      hasResubmittedStatusStudentSub = def.includes('RESUBMITTED');
+    } else {
+      hasResubmittedStatusStudentSub = true;
+    }
+  } catch (_e) {
+    hasResubmittedStatusStudentSub = false;
+  }
+  return hasResubmittedStatusStudentSub;
+}
+
 export async function getStudentAssignments(schoolId: string, userId: string) {
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) return [];
+  const hasAssigned = await checkHasAssignedDateStudent();
+  const dateCol = hasAssigned ? 'COALESCE(a.assigned_date, a.created_at::date)' : 'a.created_at::date';
+  const hasUpd = await checkHasUpdatedAtStudentSub();
+  const updCol = hasUpd ? 'COALESCE(s.updated_at, s.submitted_at) AS updated_at' : 's.submitted_at AS updated_at';
   try {
     const q = await pool.query(
-      `SELECT a.id, a.title, a.description, a.due_date, a.max_marks,
+      `SELECT a.id, a.title, a.description, a.due_date, ${dateCol} AS assigned_date, a.created_at, a.max_marks,
               a.document_url, a.document_name, a.document_size, a.document_mime, a.document_data,
               COALESCE(a.attachments, '[]'::jsonb) AS teacher_attachments,
               sub.name AS subject_name, u.name AS teacher_name,
               COALESCE(s.status, 'PENDING') AS submission_status,
               s.id AS submission_id,
-              s.submitted_at, s.submission_text, s.marks_obtained, s.feedback
+              s.submitted_at, ${updCol}, s.submission_text, s.marks_obtained, s.feedback
        FROM student_assignments a
        LEFT JOIN subjects sub ON sub.id = a.subject_id
        LEFT JOIN users u ON u.id = a.teacher_id
@@ -1408,10 +1468,39 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
         } catch (_attErr) {}
       }
 
-      return rows.map((r: any) => ({
-        ...r,
-        attachments: r.submission_id ? (attachmentsMap.get(r.submission_id) || []) : []
-      }));
+      const asgIds = rows.map((r: any) => r.id);
+      let teacherAttMap = new Map<string, any[]>();
+      if (asgIds.length > 0) {
+        try {
+          const tAttQ = await pool.query(
+            `SELECT id, assignment_id, file_name, file_size, mime_type, storage_key, uploaded_at FROM assignment_attachments WHERE assignment_id = ANY($1::uuid[]) ORDER BY uploaded_at ASC`,
+            [asgIds]
+          );
+          tAttQ.rows.forEach((att: any) => {
+            const list = teacherAttMap.get(att.assignment_id) || [];
+            list.push(att);
+            teacherAttMap.set(att.assignment_id, list);
+          });
+        } catch (_tAttErr) {}
+      }
+
+      return rows.map((r: any) => {
+        let tAtts = Array.isArray(r.teacher_attachments) && r.teacher_attachments.length > 0
+          ? r.teacher_attachments
+          : (teacherAttMap.get(r.id) || []);
+        if (tAtts.length === 0 && (r.document_name || r.document_url)) {
+          tAtts = [{ id: 'doc-0', file_name: r.document_name, file_size: r.document_size, mime_type: r.document_mime }];
+        }
+        return {
+          ...r,
+          teacher_attachments: tAtts,
+          attachments: r.submission_id ? (attachmentsMap.get(r.submission_id) || []) : []
+        };
+      });
+
+
+
+
     }
   } catch (_e) {}
 
@@ -1419,21 +1508,22 @@ export async function getStudentAssignments(schoolId: string, userId: string) {
 }
 
 /**
- * Submit assignment text and optional attachments
+ * Submit or resubmit assignment text and optional attachments
  */
 export async function submitStudentAssignment(
   schoolId: string,
   userId: string,
   assignmentId: string,
   text: string,
-  attachments?: Array<{ fileName: string; fileData: string; mimeType?: string }>
+  attachments?: Array<{ fileName: string; fileData: string; mimeType?: string }>,
+  removedAttachmentIds?: string[]
 ) {
   const st = await resolveStudentRecord(schoolId, userId);
   if (!st) {
     throw new Error('Student profile not found');
   }
 
-  // 1. Verify assignment exists and belongs to school
+  // 1. Verify assignment exists and belongs to school, class, and section
   const asgQ = await pool.query(
     `SELECT id, class_id, section_id, due_date FROM student_assignments WHERE id = $1 AND school_id = $2`,
     [assignmentId, schoolId]
@@ -1450,33 +1540,75 @@ export async function submitStudentAssignment(
     throw new Error('Access denied: Assignment is not assigned to your section');
   }
 
-  const trimmedText = String(text || '').trim();
-  const fileList = Array.isArray(attachments) ? attachments : [];
+  // 2. Fetch existing submission (if any)
+  const existQ = await pool.query(
+    `SELECT id, status, submitted_at, submission_text, marks_obtained, feedback
+     FROM student_assignment_submissions
+     WHERE assignment_id = $1 AND student_id = $2 AND school_id = $3`,
+    [assignmentId, st.id, schoolId]
+  );
+  const existingSub = existQ.rowCount && existQ.rowCount > 0 ? existQ.rows[0] : null;
 
-  if (!trimmedText && fileList.length === 0) {
-    throw new Error('Submission content required: please provide submission text or attach at least one file');
+  // 3. Fetch current attachments for this submission
+  let currentAtts: any[] = [];
+  if (existingSub) {
+    const curAttQ = await pool.query(
+      `SELECT id, file_name, file_size, mime_type, storage_key, created_at
+       FROM student_assignment_attachments
+       WHERE submission_id = $1 AND student_id = $2 AND school_id = $3
+       ORDER BY created_at ASC`,
+      [existingSub.id, st.id, schoolId]
+    );
+    currentAtts = curAttQ.rows || [];
   }
 
-  // 2. Validate attachments if present
-  if (fileList.length > MAX_FILES_COUNT) {
-    throw new Error(`Maximum ${MAX_FILES_COUNT} files allowed per submission`);
+  // 4. Safely handle removal of attachments
+  const toRemoveIds: string[] = Array.isArray(removedAttachmentIds) ? removedAttachmentIds.filter(Boolean) : [];
+  if (toRemoveIds.length > 0 && currentAtts.length > 0) {
+    const toDeleteList = currentAtts.filter((att) => toRemoveIds.includes(att.id));
+    for (const delAtt of toDeleteList) {
+      if (delAtt.storage_key) {
+        try {
+          await deleteFromStorage(delAtt.storage_key);
+        } catch (_delErr) {
+          console.warn('[Storage] Failed to delete storage key:', delAtt.storage_key);
+        }
+      }
+    }
+    const delIds = toDeleteList.map((a) => a.id);
+    if (delIds.length > 0) {
+      await pool.query(
+        `DELETE FROM student_assignment_attachments
+         WHERE id = ANY($1::uuid[]) AND student_id = $2 AND school_id = $3`,
+        [delIds, st.id, schoolId]
+      );
+      currentAtts = currentAtts.filter((att) => !toRemoveIds.includes(att.id));
+    }
   }
 
-  let totalSize = 0;
+  // 5. Enforce cumulative attachment count limit (<= 5)
+  const newFilesList = Array.isArray(attachments) ? attachments.filter((a) => a && a.fileData) : [];
+  const remainingCount = currentAtts.length;
+  if (remainingCount + newFilesList.length > MAX_FILES_COUNT) {
+    throw new Error(`Maximum ${MAX_FILES_COUNT} files allowed per submission (currently ${remainingCount} attached, cannot add ${newFilesList.length})`);
+  }
+
+  // 6. Calculate cumulative size and validate new attachments
+  let cumulativeSize = currentAtts.reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
   const validatedFiles: Array<{ id: string; fileName: string; mimeType: string; buffer: Buffer; storageKey: string }> = [];
 
-  for (const item of fileList) {
-    const valRes = validateAttachment(item.fileName, item.fileData);
+  for (const item of newFilesList) {
+    const valRes = validateAttachment(item.fileName || 'attachment.pdf', item.fileData);
     if (!valRes.valid) {
       throw new Error(`File validation error for "${item.fileName}": ${valRes.error}`);
     }
-    totalSize += valRes.buffer.length;
-    if (totalSize > MAX_TOTAL_SIZE) {
+    cumulativeSize += valRes.buffer.length;
+    if (cumulativeSize > MAX_TOTAL_SIZE) {
       throw new Error(`Total submission size exceeds the 25MB limit`);
     }
 
     const attId = crypto.randomUUID();
-    const storageKey = `schools/${schoolId}/assignments/${assignmentId}/submissions/${st.id}/${attId}_${valRes.sanitizedName}`;
+    const storageKey = buildStudentSubmissionStorageKey(schoolId, assignmentId, attId, valRes.sanitizedName);
 
     validatedFiles.push({
       id: attId,
@@ -1487,37 +1619,141 @@ export async function submitStudentAssignment(
     });
   }
 
-  // 3. Upsert submission record
-  const subQ = await pool.query(
-    `INSERT INTO student_assignment_submissions (school_id, assignment_id, student_id, status, submitted_at, submission_text)
-     VALUES ($1, $2, $3, 'SUBMITTED', NOW(), $4)
-     ON CONFLICT (assignment_id, student_id)
-     DO UPDATE SET status = 'SUBMITTED', submitted_at = NOW(), submission_text = $4
-     RETURNING *`,
-    [schoolId, assignmentId, st.id, trimmedText]
-  );
-  const subRecord = subQ.rows[0];
+  // 7. Verify non-empty submission
+  const trimmedText = String(text || '').trim();
+  if (!trimmedText && currentAtts.length === 0 && validatedFiles.length === 0) {
+    throw new Error('Submission content required: please provide submission text or attach at least one file');
+  }
 
-  // 4. Upload validated files to private Supabase Storage and record in student_assignment_attachments
-  const savedAttachments: any[] = [];
+  // 8. Determine status while safeguarding grading and feedback
+  const hasUpd = await checkHasUpdatedAtStudentSub();
+  const supportsResubmit = await checkSupportsResubmittedStatus();
+
+  let targetStatus = 'SUBMITTED';
+  if (existingSub) {
+    // If already submitted or graded, keep feedback & marks intact and transition to RESUBMITTED (or SUBMITTED if constraint hasn't been migrated)
+    if (existingSub.status === 'GRADED') {
+      targetStatus = supportsResubmit ? 'RESUBMITTED' : 'SUBMITTED';
+    } else if (existingSub.status === 'SUBMITTED' || existingSub.status === 'RESUBMITTED') {
+      targetStatus = supportsResubmit ? 'RESUBMITTED' : 'SUBMITTED';
+    } else {
+      targetStatus = 'SUBMITTED';
+    }
+  } else {
+    // Initial submission: check due date
+    const now = new Date();
+    if (asg.due_date && now > new Date(`${asg.due_date}T23:59:59.999`)) {
+      targetStatus = 'OVERDUE';
+    } else {
+      targetStatus = 'SUBMITTED';
+    }
+  }
+
+  // 9. Upsert or update submission record without clearing original submitted_at or grades
+  let subRecord: any;
+  if (existingSub) {
+    const updateSql = hasUpd
+      ? `UPDATE student_assignment_submissions
+         SET submission_text = $1, status = $2, updated_at = NOW()
+         WHERE id = $3 AND school_id = $4 AND student_id = $5
+         RETURNING *`
+      : `UPDATE student_assignment_submissions
+         SET submission_text = $1, status = $2
+         WHERE id = $3 AND school_id = $4 AND student_id = $5
+         RETURNING *`;
+    const updQ = await pool.query(updateSql, [trimmedText, targetStatus, existingSub.id, schoolId, st.id]);
+    subRecord = updQ.rows[0];
+  } else {
+    const insertSql = hasUpd
+      ? `INSERT INTO student_assignment_submissions
+           (school_id, assignment_id, student_id, status, submitted_at, submission_text, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
+         RETURNING *`
+      : `INSERT INTO student_assignment_submissions
+           (school_id, assignment_id, student_id, status, submitted_at, submission_text)
+         VALUES ($1, $2, $3, $4, NOW(), $5)
+         RETURNING *`;
+    const insQ = await pool.query(insertSql, [schoolId, assignmentId, st.id, targetStatus, trimmedText]);
+    subRecord = insQ.rows[0];
+  }
+
+  // 10. Upload new attachments to storage and record in DB
+  const savedNewAttachments: any[] = [];
   for (const file of validatedFiles) {
     await uploadToStorage(file.storageKey, file.buffer, file.mimeType);
 
     const attInsert = await pool.query(
       `INSERT INTO student_assignment_attachments
          (id, school_id, assignment_id, submission_id, student_id, file_name, file_size, mime_type, storage_provider, storage_key, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SUPABASE', $9, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FIREBASE', $9, NOW())
        RETURNING id, file_name, file_size, mime_type, created_at`,
       [file.id, schoolId, assignmentId, subRecord.id, st.id, file.fileName, file.buffer.length, file.mimeType, file.storageKey]
     );
-    savedAttachments.push(attInsert.rows[0]);
+    savedNewAttachments.push(attInsert.rows[0]);
   }
 
   clearStudentDashboardCache(userId);
   return {
     ...subRecord,
-    attachments: savedAttachments
+    attachments: [...currentAtts, ...savedNewAttachments]
   };
+}
+
+/**
+ * Remove an individual attachment from a student's submission
+ */
+export async function deleteStudentSubmissionAttachment(
+  schoolId: string,
+  userId: string,
+  assignmentId: string,
+  attachmentId: string
+) {
+  const st = await resolveStudentRecord(schoolId, userId);
+  if (!st) {
+    throw new Error('Student profile not found');
+  }
+
+  const attQ = await pool.query(
+    `SELECT id, storage_key, submission_id FROM student_assignment_attachments
+     WHERE id = $1 AND assignment_id = $2 AND school_id = $3 AND student_id = $4`,
+    [attachmentId, assignmentId, schoolId, st.id]
+  );
+
+  if (attQ.rowCount === 0) {
+    const err: any = new Error('Attachment not found or access denied');
+    err.status = 404;
+    throw err;
+  }
+
+  const att = attQ.rows[0];
+  if (att.storage_key) {
+    try {
+      await deleteFromStorage(att.storage_key);
+    } catch (delErr: any) {
+      console.warn('[Storage] Could not prune file from storage:', att.storage_key);
+      const err: any = new Error(`Failed to remove attachment file from storage: ${delErr.message || 'Storage error'}. Database record preserved.`);
+      err.status = 502;
+      throw err;
+    }
+  }
+
+  await pool.query(
+    `DELETE FROM student_assignment_attachments WHERE id = $1 AND student_id = $2 AND school_id = $3`,
+    [attachmentId, st.id, schoolId]
+  );
+
+  const hasUpd = await checkHasUpdatedAtStudentSub();
+  if (hasUpd) {
+    try {
+      await pool.query(
+        `UPDATE student_assignment_submissions SET updated_at = NOW() WHERE id = $1`,
+        [att.submission_id]
+      );
+    } catch (_e) {}
+  }
+
+  clearStudentDashboardCache(userId);
+  return { success: true, message: 'Attachment deleted successfully' };
 }
 
 /**

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip,
-  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search
+  FileCheck, ArrowLeft, Send, CheckCircle2, Clock, Paperclip, Calendar,
+  Upload, X, Download, Eye, FileText, AlertCircle, Loader2, Search, Edit3, RotateCcw
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Assignment, AssignmentAttachment } from '../../services/studentApi';
@@ -19,10 +19,11 @@ interface PreviewState {
   blobUrl: string | null;
   mimeType: string;
   fileName: string;
-  assignmentId: string;
-  attachmentId: string;
+  assignmentId?: string;
+  attachmentId?: string;
   loading: boolean;
   error: string | null;
+  isLocalFile?: boolean;
 }
 
 const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.xlsx', '.doc', '.docx'];
@@ -48,6 +49,7 @@ export function StudentAssignments() {
   const [activeModal, setActiveModal] = useState<Assignment | null>(null);
   const [submissionText, setSubmissionText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<UploadFileItem[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -76,17 +78,38 @@ export function StudentAssignments() {
     load();
   }, []);
 
+  const handleOpenSubmitModal = (a: Assignment) => {
+    setActiveModal(a);
+    setSubmissionText(a.submission_text || '');
+    setSelectedFiles([]);
+    setRemovedAttachmentIds([]);
+    setFileError(null);
+  };
+
+  const handleToggleRemoveExistingAttachment = (attId: string) => {
+    setRemovedAttachmentIds((prev) =>
+      prev.includes(attId) ? prev.filter((id) => id !== attId) : [...prev, attId]
+    );
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     if (!e.target.files || e.target.files.length === 0) return;
 
+    const existingCount = (activeModal?.attachments || []).filter(
+      (a) => !removedAttachmentIds.includes(a.id)
+    ).length;
+    const existingSize = (activeModal?.attachments || [])
+      .filter((a) => !removedAttachmentIds.includes(a.id))
+      .reduce((sum, a) => sum + (Number(a.file_size) || 0), 0);
+
     const newFiles = Array.from(e.target.files);
-    if (selectedFiles.length + newFiles.length > MAX_FILE_COUNT) {
-      setFileError(`You can attach a maximum of ${MAX_FILE_COUNT} files.`);
+    if (existingCount + selectedFiles.length + newFiles.length > MAX_FILE_COUNT) {
+      setFileError(`You can attach a maximum of ${MAX_FILE_COUNT} files cumulatively (currently has ${existingCount} active attached).`);
       return;
     }
 
-    let currentTotalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+    let currentTotalSize = existingSize + selectedFiles.reduce((acc, f) => acc + f.size, 0);
 
     for (const file of newFiles) {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -102,7 +125,7 @@ export function StudentAssignments() {
 
       currentTotalSize += file.size;
       if (currentTotalSize > MAX_TOTAL_SIZE) {
-        setFileError(`Total attachment size exceeds the 25MB limit.`);
+        setFileError(`Total attachment size exceeds the 25MB cumulative limit.`);
         return;
       }
     }
@@ -137,7 +160,26 @@ export function StudentAssignments() {
     e.target.value = '';
   };
 
+  const openLocalFilePreview = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setPreviewState({
+      title: file.name,
+      blobUrl: url,
+      mimeType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream'),
+      fileName: file.name,
+      assignmentId: activeModal?.id,
+      attachmentId: 'local',
+      loading: false,
+      error: null,
+      isLocalFile: true
+    });
+  };
+
   const handleRemoveFile = (index: number) => {
+    const removed = selectedFiles[index];
+    if (previewState && previewState.isLocalFile && previewState.fileName === removed?.name) {
+      closePreview();
+    }
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     setFileError(null);
   };
@@ -145,7 +187,12 @@ export function StudentAssignments() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeModal) return;
-    if (!submissionText.trim() && selectedFiles.length === 0) {
+
+    const remainingExisting = (activeModal.attachments || []).filter(
+      (a) => !removedAttachmentIds.includes(a.id)
+    );
+
+    if (!submissionText.trim() && selectedFiles.length === 0 && remainingExisting.length === 0) {
       setFileError('Please provide either submission text or at least one file attachment.');
       return;
     }
@@ -158,11 +205,21 @@ export function StudentAssignments() {
         fileData: f.base64
       }));
 
-      await studentApi.submitAssignment(activeModal.id, submissionText, attachmentsPayload);
-      setFeedbackMsg('Assignment submitted successfully!');
+      await studentApi.submitAssignment(
+        activeModal.id,
+        submissionText,
+        attachmentsPayload,
+        removedAttachmentIds
+      );
+      setFeedbackMsg(
+        activeModal.submission_status === 'PENDING'
+          ? 'Assignment submitted successfully!'
+          : 'Assignment updated and resubmitted successfully!'
+      );
       setActiveModal(null);
       setSubmissionText('');
       setSelectedFiles([]);
+      setRemovedAttachmentIds([]);
       load();
     } catch (err: any) {
       setFileError(err?.response?.data?.message || 'Failed to submit assignment. Please try again.');
@@ -308,14 +365,23 @@ export function StudentAssignments() {
 
   const handlePreviewDownload = () => {
     if (!previewState) return;
-    if (previewState.attachmentId === 'doc' || previewState.attachmentId.startsWith('doc-')) {
+    if (previewState.isLocalFile && previewState.blobUrl) {
+      const link = document.createElement('a');
+      link.href = previewState.blobUrl;
+      link.download = previewState.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    if (previewState.assignmentId && (previewState.attachmentId === 'doc' || previewState.attachmentId?.startsWith('doc-'))) {
       handleTeacherDocDownload(
         previewState.assignmentId,
         previewState.fileName,
         undefined,
         previewState.attachmentId === 'doc' ? undefined : previewState.attachmentId
       );
-    } else {
+    } else if (previewState.assignmentId && previewState.attachmentId) {
       studentApi.downloadAttachment(
         previewState.assignmentId,
         previewState.attachmentId,
@@ -442,17 +508,42 @@ export function StudentAssignments() {
               <div className="assignment-card-top">
                 <span className="assignment-subject-badge">{a.subject_name}</span>
                 <span className={`assignment-status-badge status-${a.submission_status.toLowerCase()}`}>
-                  {a.submission_status}
+                  {a.submission_status === 'RESUBMITTED'
+                    ? 'Resubmitted / Awaiting Review'
+                    : a.submission_status === 'OVERDUE'
+                    ? 'Overdue / Late'
+                    : a.submission_status}
                 </span>
               </div>
               <h3 className="assignment-title">{a.title}</h3>
               <p className="assignment-desc">{a.description}</p>
 
-              <div className="assignment-meta-row">
+              <div className="assignment-meta-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+                {a.teacher_name && (
+                  <div className="meta-item">
+                    <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>Teacher: {a.teacher_name}</span>
+                  </div>
+                )}
+                <div className="meta-item">
+                  <Calendar size={14} style={{ color: '#6366f1' }} />
+                  <span>Assigned: {a.assigned_date || (a.created_at ? a.created_at.slice(0, 10) : 'Today')}</span>
+                </div>
                 <div className="meta-item">
                   <Clock size={14} />
                   <span>Due: {a.due_date}</span>
                 </div>
+                {a.submitted_at && (
+                  <div className="meta-item">
+                    <CheckCircle2 size={14} style={{ color: '#10b981' }} />
+                    <span>Submitted: {new Date(a.submitted_at).toLocaleDateString()} {new Date(a.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
+                {a.updated_at && a.submitted_at && new Date(a.updated_at).getTime() - new Date(a.submitted_at).getTime() > 2000 && (
+                  <div className="meta-item">
+                    <Clock size={14} style={{ color: '#f59e0b' }} />
+                    <span>Updated: {new Date(a.updated_at).toLocaleDateString()} {new Date(a.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
                 <div className="meta-item">
                   <span>Max Marks: {a.max_marks}</span>
                 </div>
@@ -543,7 +634,7 @@ export function StudentAssignments() {
                               className="student-attachment-preview-btn"
                               style={{ padding: '4px 8px', fontSize: 11.5 }}
                             >
-                              <Eye size={12} /> Preview
+                              <Eye size={12} /> Preview Attachment
                             </button>
                           )}
                           <button
@@ -552,7 +643,7 @@ export function StudentAssignments() {
                             className="student-attachment-download-btn"
                             style={{ padding: '4px 8px', fontSize: 11.5 }}
                           >
-                            <Download size={12} /> Download
+                            <Download size={12} /> Download Attachment
                           </button>
                         </div>
                       </div>
@@ -610,7 +701,7 @@ export function StudentAssignments() {
                                     onClick={() => openPreview(a.id, att)}
                                     className="student-attachment-preview-btn"
                                   >
-                                    <Eye size={12} /> Preview
+                                    <Eye size={12} /> Preview Attachment
                                   </button>
                                 )}
                                 <button
@@ -618,7 +709,7 @@ export function StudentAssignments() {
                                   onClick={() => handleDownload(a.id, att)}
                                   className="student-attachment-download-btn"
                                 >
-                                  <Download size={12} /> Download
+                                  <Download size={12} /> Download Attachment
                                 </button>
                               </div>
                             </div>
@@ -637,24 +728,29 @@ export function StudentAssignments() {
                 </div>
               )}
 
-              <div className="assignment-card-actions">
+              <div className="assignment-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {a.submission_status === 'PENDING' ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveModal(a);
-                      setSubmissionText('');
-                      setSelectedFiles([]);
-                      setFileError(null);
-                    }}
+                    onClick={() => handleOpenSubmitModal(a)}
                     className="student-btn-primary"
                   >
                     Submit Work
                   </button>
                 ) : (
-                  <span className="assignment-submitted-notice">
-                    <CheckCircle2 size={14} /> Submitted
-                  </span>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenSubmitModal(a)}
+                      className="student-btn-primary"
+                      style={{ background: '#4f46e5', borderColor: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <Edit3 size={14} /> Edit / Resubmit Work
+                    </button>
+                    <span className="assignment-submitted-notice" style={{ margin: 0 }}>
+                      <CheckCircle2 size={14} /> {a.submission_status === 'GRADED' ? 'Graded' : a.submission_status === 'RESUBMITTED' ? 'Awaiting Review' : 'Submitted'}
+                    </span>
+                  </>
                 )}
               </div>
             </div>
@@ -667,12 +763,13 @@ export function StudentAssignments() {
         <div className="student-modal-overlay">
           <div className="student-modal" style={{ width: 'min(580px, 95%)' }}>
             <div className="student-modal-header">
-              <h3>Submit: {activeModal.title}</h3>
+              <h3>{activeModal.submission_status === 'PENDING' ? `Submit: ${activeModal.title}` : `Edit / Resubmit: ${activeModal.title}`}</h3>
               <button
                 type="button"
                 onClick={() => {
                   setActiveModal(null);
                   setSelectedFiles([]);
+                  setRemovedAttachmentIds([]);
                   setFileError(null);
                 }}
                 className="close-btn"
@@ -684,6 +781,17 @@ export function StudentAssignments() {
               <p className="modal-sub">
                 Subject: <b>{activeModal.subject_name}</b> &nbsp;|&nbsp; Due: {activeModal.due_date}
               </p>
+
+              {/* Informational banner if editing a graded submission */}
+              {activeModal.submission_status === 'GRADED' && (
+                <div style={{ margin: '8px 0 12px', padding: '10px 12px', borderRadius: 6, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 12.5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, marginBottom: 2 }}>
+                    <AlertCircle size={15} />
+                    <span>Graded Submission Notice</span>
+                  </div>
+                  <span>Your current score is <b>{activeModal.marks_obtained} / {activeModal.max_marks}</b>. Submitting updated work preserves your previous evaluation history while notifying your teacher that your solution has been updated for review.</span>
+                </div>
+              )}
 
               {/* Display Teacher Attached Document if available */}
               {(activeModal.document_name || (activeModal.teacher_attachments && activeModal.teacher_attachments.length > 0)) && (
@@ -775,14 +883,130 @@ export function StudentAssignments() {
                 />
               </label>
 
+              {/* Existing Submitted Attachments (When editing) */}
+              {activeModal.attachments && activeModal.attachments.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                      Current Submitted Attachments:
+                    </span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                      {activeModal.attachments.filter(a => !removedAttachmentIds.includes(a.id)).length} kept / {activeModal.attachments.length} total
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {activeModal.attachments.map((att) => {
+                      const isRemoved = removedAttachmentIds.includes(att.id);
+                      return (
+                        <div
+                          key={att.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: `1px solid ${isRemoved ? '#fca5a5' : '#e2e8f0'}`,
+                            background: isRemoved ? '#fef2f2' : 'var(--bg-card, #ffffff)',
+                            opacity: isRemoved ? 0.65 : 1,
+                            fontSize: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '60%' }}>
+                            <Paperclip size={13} color={isRemoved ? '#ef4444' : 'var(--text-muted, #64748b)'} />
+                            <span
+                              style={{
+                                fontWeight: 500,
+                                textDecoration: isRemoved ? 'line-through' : 'none',
+                                color: isRemoved ? '#991b1b' : 'var(--text, #1e293b)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {att.file_name}
+                            </span>
+                            <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                              ({formatBytes(att.file_size)})
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            {!isRemoved && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openPreview(activeModal.id, att)}
+                                  className="student-attachment-preview-btn"
+                                  style={{ padding: '3px 8px', fontSize: 11 }}
+                                >
+                                  <Eye size={11} /> Preview
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownload(activeModal.id, att)}
+                                  className="student-attachment-download-btn"
+                                  style={{ padding: '3px 8px', fontSize: 11 }}
+                                >
+                                  <Download size={11} /> Download
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleRemoveExistingAttachment(att.id)}
+                                  style={{
+                                    border: '1px solid #fecaca',
+                                    borderRadius: 4,
+                                    background: '#fee2e2',
+                                    color: '#dc2626',
+                                    padding: '3px 8px',
+                                    fontSize: 11,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}
+                                  title="Remove attachment on resubmission"
+                                >
+                                  <X size={12} /> Remove
+                                </button>
+                              </>
+                            )}
+                            {isRemoved && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleRemoveExistingAttachment(att.id)}
+                                style={{
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: 4,
+                                  background: '#f1f5f9',
+                                  color: '#334155',
+                                  padding: '3px 8px',
+                                  fontSize: 11,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3
+                                }}
+                              >
+                                <RotateCcw size={11} /> Undo Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Attachments Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #334155)' }}>
-                    Attachments (Max 5 files, 10MB each, 25MB total):
+                    Add Attachments (Max 5 cumulative files, 10MB each, 25MB total):
                   </span>
                   <span style={{ fontSize: 11, color: '#64748b' }}>
-                    {selectedFiles.length} / {MAX_FILE_COUNT} files
+                    {((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length)} / {MAX_FILE_COUNT} files
                   </span>
                 </div>
 
@@ -797,7 +1021,7 @@ export function StudentAssignments() {
                     accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
                     style={{ display: 'none' }}
                     onChange={handleFileChange}
-                    disabled={selectedFiles.length >= MAX_FILE_COUNT}
+                    disabled={((activeModal.attachments || []).filter(a => !removedAttachmentIds.includes(a.id)).length + selectedFiles.length) >= MAX_FILE_COUNT}
                   />
                   <Upload size={22} color="var(--text-muted, #64748b)" style={{ margin: '0 auto 6px' }} />
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
@@ -815,8 +1039,9 @@ export function StudentAssignments() {
                       <div
                         key={idx}
                         className="student-selected-file-item"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
                           <FileText size={14} color="#3b82f6" />
                           <span style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {f.name}
@@ -825,19 +1050,31 @@ export function StudentAssignments() {
                             ({formatBytes(f.size)})
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(idx)}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            cursor: 'pointer',
-                            color: '#ef4444',
-                            padding: 2
-                          }}
-                        >
-                          <X size={14} />
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => openLocalFilePreview(f.file)}
+                            className="student-attachment-preview-btn"
+                            style={{ padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                            title="Preview file before submitting"
+                          >
+                            <Eye size={11} /> Preview
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              color: '#ef4444',
+                              padding: 2
+                            }}
+                            title="Remove file"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -850,6 +1087,7 @@ export function StudentAssignments() {
                   onClick={() => {
                     setActiveModal(null);
                     setSelectedFiles([]);
+                    setRemovedAttachmentIds([]);
                     setFileError(null);
                   }}
                   className="student-btn-secondary"
@@ -868,7 +1106,7 @@ export function StudentAssignments() {
                     </>
                   ) : (
                     <>
-                      <Send size={14} /> Submit Assignment
+                      <Send size={14} /> {activeModal.submission_status === 'PENDING' ? 'Submit Assignment' : 'Resubmit Work'}
                     </>
                   )}
                 </button>
