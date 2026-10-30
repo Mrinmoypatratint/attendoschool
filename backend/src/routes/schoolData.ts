@@ -2460,6 +2460,7 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
       return res.json({
         ...row,
         gender: normalizeGender(row.gender) || '',
+        date_of_birth: row.date_of_birth instanceof Date ? row.date_of_birth.toISOString().slice(0, 10) : (row.date_of_birth ? String(row.date_of_birth).split('T')[0].split(' ')[0] : null),
         guardian_name: row.guardian_name || '',
         guardianName: row.guardian_name || '',
         is_active: row.is_active !== false,

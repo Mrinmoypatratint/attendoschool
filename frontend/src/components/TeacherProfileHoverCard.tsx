@@ -1,3 +1,19 @@
+function formatCleanDateOnly(val: unknown): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (!s || s === '—' || s === 'null' || s === 'undefined') return '';
+  const dateOnly = s.split('T')[0].split(' ')[0].trim();
+  const ymd = dateOnly.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (ymd) {
+    return `${ymd[3].padStart(2, '0')}-${ymd[2].padStart(2, '0')}-${ymd[1]}`;
+  }
+  const dmy = dateOnly.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmy) {
+    return `${dmy[1].padStart(2, '0')}-${dmy[2].padStart(2, '0')}-${dmy[3]}`;
+  }
+  return dateOnly;
+}
+
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -113,7 +129,8 @@ export function TeacherProfileHoverCard({
   const mobile = teacher.mobile || teacher.phone;
   const genderStr = teacher.gender && teacher.gender.trim() ? teacher.gender : 'Not Specified';
   const joiningDateRaw = teacher.joining_date || teacher.joiningDate || '';
-  const joiningDateStr = joiningDateRaw && joiningDateRaw !== '—' ? joiningDateRaw : null;
+  const joiningDateClean = formatCleanDateOnly(joiningDateRaw);
+  const joiningDateStr = joiningDateClean && joiningDateClean !== '—' ? joiningDateClean : null;
   const qualification = teacher.qualification && teacher.qualification.trim() ? teacher.qualification : null;
   const address = teacher.address;
   const isActive = teacher.is_active !== undefined ? teacher.is_active : (teacher.active !== undefined ? teacher.active : teacher.status !== 'INACTIVE');

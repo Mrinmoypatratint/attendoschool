@@ -1,3 +1,9 @@
+function cleanDateStr(d: any) {
+  if (!d) return null;
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return String(d).split('T')[0].split(' ')[0].trim();
+}
+
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
@@ -26,7 +32,7 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
      ORDER BY c.class_number NULLS LAST, sec.name NULLS LAST, st.roll_number NULLS LAST, st.name`,
     params
   );
-  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '' }));
+  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) }));
 }
 
 export async function getStudentById(schoolId: string, id: string) {
@@ -47,7 +53,7 @@ export async function getStudentById(schoolId: string, id: string) {
   );
   if (!rows.length) return null;
   const r = rows[0];
-  return { ...r, gender: normalizeGender(r.gender) || '' };
+  return { ...r, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) };
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {

@@ -1,3 +1,22 @@
+export function formatDobOnly(val: unknown): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (!s || s === '—' || s === 'null' || s === 'undefined') return '';
+  // Strip ISO time part (T...) or space-separated time
+  const dateOnly = s.split('T')[0].split(' ')[0].trim();
+  // If YYYY-MM-DD, convert to standard DD-MM-YYYY
+  const ymd = dateOnly.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (ymd) {
+    return `${ymd[3].padStart(2, '0')}-${ymd[2].padStart(2, '0')}-${ymd[1]}`;
+  }
+  // If already DD-MM-YYYY
+  const dmy = dateOnly.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dmy) {
+    return `${dmy[1].padStart(2, '0')}-${dmy[2].padStart(2, '0')}-${dmy[3]}`;
+  }
+  return dateOnly;
+}
+
 import { api } from '../api';
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -178,7 +197,8 @@ export function StudentProfileHoverCard({
   // Gender & DOB
   const genderStr = formatGender(studentData.gender || (studentData as any).sex) || 'Not Specified';
   const dobRaw = studentData.date_of_birth || studentData.dob || (studentData as any).birth_date || '';
-  const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
+  const dobClean = formatDobOnly(dobRaw);
+  const dobStr = dobClean && dobClean !== '—' ? dobClean : null;
 
   // Emails & parent contact
   const studentEmail = studentData.student_email || studentData.email || (studentData as any).user_email;
