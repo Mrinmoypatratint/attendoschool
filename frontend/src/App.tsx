@@ -7007,7 +7007,21 @@ function Students(){
           const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
 
           // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
-          const excelClassVal = r['Class'] ?? r['Class Number'] ?? r['class_number'];
+          let excelClassVal: any = undefined;
+          if (r && typeof r === 'object') {
+            for (const k of Object.keys(r)) {
+              const cleanKey = k.trim().toLowerCase();
+              if (['class', 'class number', 'class_number', 'classnumber', 'grade', 'std', 'standard', 'class / grade', 'class/grade', 'class name'].includes(cleanKey)) {
+                if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+                  excelClassVal = r[k];
+                  break;
+                }
+              }
+            }
+          }
+          if (excelClassVal === undefined || excelClassVal === null || String(excelClassVal).trim() === '') {
+            excelClassVal = r['Class'] ?? r['Class Number'] ?? r['class_number'] ?? r['CLASS'] ?? r['class'] ?? r['Grade'] ?? r['grade'];
+          }
           const parsedCls = parseClassValue(excelClassVal, importClass);
           const classId = parsedCls.classId;
           const classNumber = parsedCls.classNumber;
@@ -12686,6 +12700,12 @@ function Classes(){
     searchParams.get('tab') === 'temporary' ? 'TEMPORARY' : 'CLASSES'
   );
 
+  const getStoredSession = () => localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+  const getStoredYearId = () => localStorage.getItem('attendo_active_academic_year_id') || '';
+
+  const [activeSession, setActiveSession] = useState<string>(getStoredSession);
+  const [activeYearId, setActiveYearId] = useState<string>(getStoredYearId);
+
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
     const tab = params.get('tab');
@@ -12838,9 +12858,16 @@ function Classes(){
     }
   }
 
-  async function load(){
+  async function load(targetYearId = activeYearId, targetSession = activeSession){
     try {
-      const [cr, sr]=await Promise.all([api.get('/classes'), api.get('/sections')]);
+      const params: any = {};
+      if (targetYearId) params.academic_year_id = targetYearId;
+      if (targetSession) params.session = targetSession;
+
+      const [cr, sr]=await Promise.all([
+        api.get('/classes', { params }), 
+        api.get('/sections', { params })
+      ]);
       const classesData = [...(cr.data || [])].sort((a: any, b: any) => Number(a.class_number ?? 0) - Number(b.class_number ?? 0));
       const sectionsData = [...(sr.data || [])].sort((a: any, b: any) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       setC(classesData);
@@ -12850,12 +12877,16 @@ function Classes(){
     }
   }
 
-  async function loadMentors(){
+  async function loadMentors(targetYearId = activeYearId, targetSession = activeSession){
     setMentorsLoading(true);
     setMentorError(null);
     try {
+      const params: any = {};
+      if (targetYearId) params.academic_year_id = targetYearId;
+      if (targetSession) params.session = targetSession;
+
       const [mRes, tRes] = await Promise.all([
-        api.get('/admin/mentors'),
+        api.get('/admin/mentors', { params }),
         api.get('/teachers')
       ]);
       const rawMentors = Array.isArray(mRes.data) ? mRes.data : [];
@@ -12876,10 +12907,40 @@ function Classes(){
   }
 
   useEffect(() => {
-    load();
-    loadMentors();
+    const s = getStoredSession();
+    const y = getStoredYearId();
+    load(y, s);
+    loadMentors(y, s);
     loadActiveSubstitutionsCount();
   }, [loadActiveSubstitutionsCount]);
+
+  useEffect(() => {
+    const handleSessionChange = (e: any) => {
+      const targetObj = typeof e?.detail === 'object' ? e.detail : null;
+      const newSessionName = targetObj?.name || (typeof e?.detail === 'string' ? e.detail : '') || getStoredSession();
+      const newYearId = targetObj?.id || getStoredYearId();
+      setActiveSession(newSessionName);
+      setActiveYearId(newYearId);
+      load(newYearId, newSessionName);
+      loadMentors(newYearId, newSessionName);
+    };
+
+    const handleStorage = () => {
+      const s = getStoredSession();
+      const y = getStoredYearId();
+      setActiveSession(s);
+      setActiveYearId(y);
+      load(y, s);
+      loadMentors(y, s);
+    };
+
+    window.addEventListener('sessionChanged', handleSessionChange);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'TEMPORARY') {
@@ -12900,7 +12961,7 @@ function Classes(){
     setAddingClassId(classKey);
 
     try {
-      const res = await api.post('/sections', { classId: targetCid, name: nextLabel });
+      const res = await api.post('/sections', { classId: targetCid, name: nextLabel, academic_year_id: activeYearId });
       const created = res.data;
       setS(prev => {
         const filtered = prev.filter(x => 
@@ -12915,8 +12976,8 @@ function Classes(){
         }
         return cls;
       }));
-      await load();
-      await loadMentors();
+      await load(activeYearId, activeSession);
+      await loadMentors(activeYearId, activeSession);
     } catch(err: any){
       alert(err?.response?.data?.message || `Failed to add Section ${nextLabel} for ${formatClassTitle(classItem.class_number, classItem.label)}.`);
     } finally {
