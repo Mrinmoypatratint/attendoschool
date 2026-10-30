@@ -21,6 +21,8 @@ import {
   Moon,
   Building2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -388,6 +390,22 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               </span>
             </div>
           </div>
+                    <button
+            type="button"
+            className="sidebar-collapse-toggle-btn student-sidebar-collapse-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSidebarCollapsed(previous => {
+                const next = !previous;
+                localStorage.setItem('attendo_student_nav_collapsed', String(next));
+                return next;
+              });
+            }}
+            aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+            title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+          >
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
           <button 
             type="button" 
             className="student-mobile-close-btn"
@@ -442,22 +460,15 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         {/* Topbar */}
         <header className="student-topbar">
           <div className="student-topbar-left">
-            <SidebarToggle
-              collapsed={sidebarCollapsed}
-              className="student-hamburger-btn"
-              iconSize={20}
-              onToggle={() => {
-                if (window.matchMedia('(max-width: 1180px)').matches) {
-                  setMobileNavOpen(previous => !previous);
-                } else {
-                  setSidebarCollapsed(previous => {
-                    const next = !previous;
-                    localStorage.setItem('attendo_student_nav_collapsed', String(next));
-                    return next;
-                  });
-                }
-              }}
-            />
+            <button
+              type="button"
+              className="student-hamburger-btn mobile-only-menu-btn"
+              onClick={() => setMobileNavOpen(previous => !previous)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={20} />
+            </button>
             <StudentSearchBar />
           </div>
 

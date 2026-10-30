@@ -14087,3 +14087,104 @@ header {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ─── Sidebar Collapse Toggle Button (< / > beside School Name) ─── */
+.sidebar-collapse-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 8px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  margin-left: auto;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.sidebar-collapse-toggle-btn:hover {
+  background: var(--bg-hover, #f1f5f9);
+  color: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18);
+  transform: scale(1.05);
+}
+
+.sidebar-collapse-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+[data-theme="dark"] .sidebar-collapse-toggle-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .sidebar-collapse-toggle-btn:hover {
+  background: #334155;
+  color: #60a5fa;
+  border-color: #60a5fa;
+}
+
+/* Ensure mobile-only menu buttons are completely hidden on desktop */
+@media (min-width: 1181px) {
+  .mobile-only-menu-btn {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .mobile-only-menu-btn {
+    display: inline-flex !important;
+  }
+  .sidebar-collapse-toggle-btn {
+    display: none !important;
+  }
+}
+
+/* Collapsed Header Layout on Desktop */
+@media (min-width: 1181px) {
+  aside.sidebar-collapsed .sidebar-header,
+  .student-sidebar.student-sidebar-collapsed .student-sidebar-brand,
+  .sa-sidebar.sa-sidebar-collapsed .sa-sidebar-brand {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 14px 6px 12px !important;
+    gap: 8px !important;
+  }
+
+  aside.sidebar-collapsed .sidebar-brand-interactive,
+  .student-sidebar.student-sidebar-collapsed .student-logo-wrap {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  aside.sidebar-collapsed .school-crest,
+  .student-sidebar.student-sidebar-collapsed .school-crest {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+
+  aside.sidebar-collapsed .sidebar-collapse-toggle-btn,
+  .student-sidebar.student-sidebar-collapsed .sidebar-collapse-toggle-btn,
+  .sa-sidebar.sa-sidebar-collapsed .sidebar-collapse-toggle-btn {
+    display: inline-flex !important;
+    margin: 0 auto !important;
+    width: 26px !important;
+    height: 26px !important;
+  }
+}

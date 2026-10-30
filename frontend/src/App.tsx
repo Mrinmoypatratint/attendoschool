@@ -2963,6 +2963,18 @@ function Layout({children}:{children:React.ReactNode}){
             </span>
           </div>
         </div>
+                <button
+          type="button"
+          className="sidebar-collapse-toggle-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNavigationToggle();
+          }}
+          aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+          title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+        >
+          {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
         <button
           type="button"
           className="sidebar-mobile-close-btn"
@@ -3072,7 +3084,15 @@ function Layout({children}:{children:React.ReactNode}){
       {user.role === 'SUPER_ADMIN' ? (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" iconSize={18} />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
@@ -3162,7 +3182,15 @@ function Layout({children}:{children:React.ReactNode}){
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div 
               style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -3396,7 +3424,15 @@ function Layout({children}:{children:React.ReactNode}){
       ) : (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div 
               style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
