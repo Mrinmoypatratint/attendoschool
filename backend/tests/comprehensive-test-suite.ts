@@ -246,31 +246,32 @@ async function runTestSuite() {
   // ---------------------------------------------------------
   console.log('\n🌐 6. HTTP Server & Route Integration:');
   const server = http.createServer(app);
-  await new Promise<void>(resolve => server.listen(5002, resolve));
+  const testPort = process.env.TEST_PORT ? parseInt(process.env.TEST_PORT, 10) : 5099;
+  await new Promise<void>(resolve => server.listen(testPort, resolve));
 
   try {
-    const apiRes = await fetch('http://localhost:5002/api');
+    const apiRes = await fetch(`http://localhost:${testPort}/api`);
     const apiJson = await apiRes.json();
     assert(apiRes.status === 200, 'GET /api returns 200 OK');
     assert(apiJson.name === 'School Attendance SaaS API', 'GET /api returns correct API name');
 
-    const healthRes = await fetch('http://localhost:5002/api/health');
+    const healthRes = await fetch(`http://localhost:${testPort}/api/health`);
     const healthJson = await healthRes.json();
     assert(healthRes.status === 200 || healthRes.status === 503, 'GET /api/health responds with valid HTTP status (200 or 503 depending on live DB)');
     assert(healthJson.status === 'ok' || healthJson.status === 'error', 'GET /api/health returns valid structured health status object');
 
-    const v26HealthRes = await fetch('http://localhost:5002/api/production-v26/health');
+    const v26HealthRes = await fetch(`http://localhost:${testPort}/api/production-v26/health`);
     const v26HealthJson = await v26HealthRes.json();
     assert(v26HealthRes.status === 200 || v26HealthRes.status === 503, 'GET /api/production-v26/health responds with valid HTTP status');
     assert(v26HealthJson.checks?.memory?.status === 'ok', 'GET /api/production-v26/health checks server memory usage');
 
-    const notFoundRes = await fetch('http://localhost:5002/api/unknown-route-12345');
+    const notFoundRes = await fetch(`http://localhost:${testPort}/api/unknown-route-12345`);
     assert(notFoundRes.status === 404, 'GET /api/unknown-route-12345 returns 404 Not Found');
 
-    const authCheckRes = await fetch('http://localhost:5002/api/auth/me');
+    const authCheckRes = await fetch(`http://localhost:${testPort}/api/auth/me`);
     assert(authCheckRes.status === 401, 'GET /api/auth/me without token returns 401 Unauthorized');
 
-    const authWithTokenRes = await fetch('http://localhost:5002/api/auth/me', {
+    const authWithTokenRes = await fetch(`http://localhost:${testPort}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const authWithTokenJson = await authWithTokenRes.json();
