@@ -1,3 +1,9 @@
+function cleanDateStr(d: any) {
+  if (!d) return null;
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return String(d).split('T')[0].split(' ')[0].trim();
+}
+
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
@@ -12,15 +18,42 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
     where += ` AND (st.name ILIKE $2 OR CAST(st.roll_number AS TEXT) ILIKE $2 OR COALESCE(st.admission_number,'') ILIKE $2 OR COALESCE(st.gender,'') ILIKE $2)`;
   }
   const { rows } = await pool.query(
-    `SELECT st.*, c.name AS class_name, sec.name AS section_name
+    `SELECT st.*, c.class_number, sec.name AS section_name,
+            CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                 WHEN c.class_number = 0 THEN 'U-KG' 
+                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                 ELSE '' END AS class_name,
+            ay.name AS session_name
      FROM students st
      LEFT JOIN classes c ON c.id=st.class_id
      LEFT JOIN sections sec ON sec.id=st.section_id
+     LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
      ${where}
-     ORDER BY c.name, sec.name, st.roll_number, st.name`,
+     ORDER BY c.class_number NULLS LAST, sec.name NULLS LAST, st.roll_number NULLS LAST, st.name`,
     params
   );
-  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '' }));
+  return rows.map((r: any) => ({ ...r, name: String(r.name || '').toUpperCase(), first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name, last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) }));
+}
+
+export async function getStudentById(schoolId: string, id: string) {
+  const { rows } = await pool.query(
+    `SELECT st.*, c.class_number, sec.name AS section_name,
+            CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                 WHEN c.class_number = 0 THEN 'U-KG' 
+                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                 ELSE '' END AS class_name,
+            ay.name AS session_name
+     FROM students st
+     LEFT JOIN classes c ON c.id=st.class_id
+     LEFT JOIN sections sec ON sec.id=st.section_id
+     LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
+     WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2
+     LIMIT 1`,
+    [id, schoolId]
+  );
+  if (!rows.length) return null;
+  const r = rows[0];
+  return { ...r, name: String(r.name || '').toUpperCase(), first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name, last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) };
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {
@@ -57,10 +90,10 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   }
 
   const fieldMap: Record<string, any> = {};
-  if (body.name !== undefined) fieldMap['name'] = body.name === '' ? null : body.name;
-  if (body.first_name !== undefined || body.firstName !== undefined) fieldMap['first_name'] = (body.first_name ?? body.firstName) === '' ? null : (body.first_name ?? body.firstName);
-  if (body.middle_name !== undefined || body.middleName !== undefined) fieldMap['middle_name'] = (body.middle_name ?? body.middleName) === '' ? null : (body.middle_name ?? body.middleName);
-  if (body.last_name !== undefined || body.lastName !== undefined) fieldMap['last_name'] = (body.last_name ?? body.lastName) === '' ? null : (body.last_name ?? body.lastName);
+  if (body.name !== undefined) fieldMap['name'] = body.name === '' ? null : String(body.name).trim().toUpperCase();
+  if (body.first_name !== undefined || body.firstName !== undefined) fieldMap['first_name'] = (body.first_name ?? body.firstName) === '' ? null : String(body.first_name ?? body.firstName).trim().toUpperCase();
+  if (body.middle_name !== undefined || body.middleName !== undefined) fieldMap['middle_name'] = (body.middle_name ?? body.middleName) === '' ? null : String(body.middle_name ?? body.middleName).trim().toUpperCase();
+  if (body.last_name !== undefined || body.lastName !== undefined) fieldMap['last_name'] = (body.last_name ?? body.lastName) === '' ? null : String(body.last_name ?? body.lastName).trim().toUpperCase();
   if (body.roll_number !== undefined || body.roll !== undefined) {
     fieldMap['roll_number'] = (body.roll_number ?? body.roll) === '' ? null : String(body.roll_number ?? body.roll);
   }
@@ -202,14 +235,19 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
         ln = parts[parts.length - 1];
       }
     }
+    const upperName = String(r.name || '').toUpperCase();
+    const upperFn = String(fn || '').toUpperCase();
+    const upperMn = String(mn || '').toUpperCase();
+    const upperLn = String(ln || '').toUpperCase();
     return {
       ...r,
-      first_name: fn,
-      firstName: fn,
-      middle_name: mn,
-      middleName: mn,
-      last_name: ln,
-      lastName: ln,
+      name: upperName,
+      first_name: upperFn,
+      firstName: upperFn,
+      middle_name: upperMn,
+      middleName: upperMn,
+      last_name: upperLn,
+      lastName: upperLn,
       gender: normalizeGender(r.gender) || '',
       joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
       joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
@@ -229,7 +267,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
 
     const userFields: string[] = [];
     const userValues: any[] = [];
-    if (body.name !== undefined) { userValues.push(body.name); userFields.push(`name=$${userValues.length}`); }
+    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=${userValues.length}`); }
     if (body.email !== undefined) { userValues.push(body.email); userFields.push(`email=$${userValues.length}`); }
     if (userFields.length) {
       userValues.push(id, schoolId);

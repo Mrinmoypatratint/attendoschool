@@ -74,6 +74,20 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
      1. Academic Sessions State
   ───────────────────────────────────────────────────────────── */
   const [items, setItems] = useState<any[]>([]);
+
+  const sortAcademicYearsAsc = (list: any[]) => {
+    return [...list].sort((a, b) => {
+      const yearA = parseInt((String(a.name || '').match(/\d{4}/) || ['0'])[0], 10);
+      const yearB = parseInt((String(b.name || '').match(/\d{4}/) || ['0'])[0], 10);
+      if (yearA !== yearB && yearA > 0 && yearB > 0) return yearA - yearB;
+      const dateA = new Date(a.start_date || a.startDate || 0).getTime();
+      const dateB = new Date(b.start_date || b.startDate || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+  };
+
+  const sortedItems = useMemo(() => sortAcademicYearsAsc(items), [items]);
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -390,7 +404,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     setLoading(true);
     try {
       const r = await api.get('/academic-years', { params: force ? { fresh: '1' } : {} });
-      setItems(Array.isArray(r.data) ? r.data : []);
+      setItems(sortAcademicYearsAsc(Array.isArray(r.data) ? r.data : []));
     } catch (e: any) {
       setMessage(e?.response?.data?.message || e?.message || 'Unable to load academic sessions');
     } finally {
@@ -978,7 +992,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map(x => (
+                  {sortedItems.map(x => (
                     <tr key={x.id}>
                       <td><b>{x.name}</b></td>
                       <td>{String(x.start_date).slice(0, 10)}</td>
@@ -2006,7 +2020,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   }}
                 >
                   <option value="ALL">All Academic Sessions</option>
-                  {items.map(s => (
+                  {sortedItems.map(s => (
                     <option key={s.id} value={s.id}>
                       {s.name} {s.is_active ? '(Active)' : s.is_archived ? '(Archived)' : ''}
                     </option>

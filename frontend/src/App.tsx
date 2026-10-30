@@ -67,7 +67,7 @@ const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
-import { formatCapitalizedName } from './utils/formatters';
+import { formatCapitalizedName, formatStudentFullName, formatTeacherFullName } from './utils/formatters';
 import { convertRomanClassToDigital, parseImportClassAndSection } from './utils/roman';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
@@ -111,6 +111,18 @@ function useTheme(){
   }, []);
   return {dark,toggle:()=>setDark(d=>!d)};
 }
+
+export const sortAcademicYearsAscending = (list: any[]) => {
+  return [...list].sort((a: any, b: any) => {
+    const yearA = parseInt((String(a.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    const yearB = parseInt((String(b.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    if (yearA !== yearB && yearA > 0 && yearB > 0) return yearA - yearB;
+    const dateA = new Date(a.start_date || a.startDate || 0).getTime();
+    const dateB = new Date(b.start_date || b.startDate || 0).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+};
 
 function AttendoEmblem({ size = 32 }: { size?: number }) {
   return (
@@ -1275,7 +1287,8 @@ function SuperAdminHeader({
     api.get('/academic-years')
       .then(res => {
         if (Array.isArray(res.data) && res.data.length > 0) {
-          setSessions(res.data);
+          const sortedSessions = sortAcademicYearsAscending(res.data);
+          setSessions(sortedSessions);
           const active = res.data.find((s: any) => s.is_active);
           if (active && !localStorage.getItem('attendo_academic_session')) {
             setCurrentSession(active.name);
@@ -2187,8 +2200,9 @@ function Layout({children}:{children:React.ReactNode}){
           || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null) 
           || res.data[0];
 
-        // Enforce strictly 1 active session in the state list
-        const normalized = res.data.map((ay: any) => ({
+        // Enforce strictly 1 active session in the state list (sorted ascending)
+        const sortedRes = sortAcademicYearsAscending(res.data);
+        const normalized = sortedRes.map((ay: any) => ({
           ...ay,
           is_active: ay.id === current.id
         }));
@@ -2974,6 +2988,18 @@ function Layout({children}:{children:React.ReactNode}){
             </span>
           </div>
         </div>
+                <button
+          type="button"
+          className="sidebar-collapse-toggle-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNavigationToggle();
+          }}
+          aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+          title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+        >
+          {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
         <button
           type="button"
           className="sidebar-mobile-close-btn"
@@ -3083,7 +3109,15 @@ function Layout({children}:{children:React.ReactNode}){
       {user.role === 'SUPER_ADMIN' ? (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" iconSize={18} />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
               <Search size={15}/>
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
@@ -3173,7 +3207,15 @@ function Layout({children}:{children:React.ReactNode}){
       ) : user.role === 'SCHOOL_ADMIN' ? (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div 
               style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -3407,7 +3449,15 @@ function Layout({children}:{children:React.ReactNode}){
       ) : (
         <header className="app-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <SidebarToggle collapsed={sidebarCollapsed} onToggle={handleNavigationToggle} className="header-icon-btn mobile-menu-btn" />
+            <button
+              type="button"
+              className="header-icon-btn mobile-menu-btn mobile-only-menu-btn"
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
             <div 
               style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
@@ -5904,7 +5954,7 @@ function Students(){
     const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
     const middleName = String(f.middleName || '').trim();
     const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
-    const fullName = formatCapitalizedName(firstName, middleName, lastName) || f.name || '';
+    const fullName = (formatStudentFullName(firstName, middleName, lastName) || f.name || '').toUpperCase();
     if (!firstName) {
       alert('Validation Error: Please enter student first name.');
       return;
@@ -6568,7 +6618,7 @@ function Students(){
           ln = parts[parts.length - 1] || '';
         }
       }
-      const fullName = formatCapitalizedName(fn, mn, ln) || r.name || `${fn} ${ln}`.trim();
+      const fullName = (formatStudentFullName(fn, mn, ln) || r.name || `${fn} ${ln}`.trim()).toUpperCase();
 
       const cNum = Number(r.class_number);
       const cId = String(r.class_id || '');
@@ -6917,7 +6967,7 @@ function Students(){
               if (!lastName) lastName = parts[parts.length - 1] || '';
             }
           }
-          const fullName = formatCapitalizedName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
+          const fullName = (formatStudentFullName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `STUDENT ${idx+1}`))).toUpperCase();
           const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
           const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
 
@@ -7833,7 +7883,7 @@ function Students(){
               </td>
               <td>
                 <StudentProfileHoverCard student={x} activeSession={activeSession}>
-                  <b>{x.name}</b>
+                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                 </StudentProfileHoverCard>
               </td>
               <td style={{ whiteSpace: 'nowrap' }}>
@@ -7940,10 +7990,10 @@ function Students(){
                       }
                     }
                     setF({
-                      name: x.name,
-                      firstName: fName,
-                      middleName: mName,
-                      lastName: lName,
+                      name: String(x.name || '').toUpperCase(),
+                      firstName: String(fName || '').toUpperCase(),
+                      middleName: String(mName || '').toUpperCase(),
+                      lastName: String(lName || '').toUpperCase(),
                       rollNumber: x.roll_number,
                       admissionNumber: x.admission_number || x.admissionNumber || '',
                       admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
@@ -8201,7 +8251,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    const fullName = formatStudentFullName(fn, mnVal, lnVal);
                     setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
@@ -8233,7 +8283,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    const fullName = formatStudentFullName(fnVal, mn, lnVal);
                     setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
@@ -8258,7 +8308,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    const fullName = formatStudentFullName(fnVal, mnVal, ln);
                     setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
@@ -8287,7 +8337,7 @@ function Students(){
                 readOnly
                 tabIndex={-1}
                 style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
+                value={(formatStudentFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                 placeholder="Full name will appear here automatically"
               />
             </label>
@@ -8749,8 +8799,8 @@ function Students(){
             )}
           </label>
           <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Parent Email Address (for Login / Absent Alerts) <span style={{ color: '#ef4444' }}>*</span>
+            <span className="label-text">
+              Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#ef4444' }}>*</span></span>
             </span>
             <input
               required
@@ -10041,14 +10091,14 @@ function Teachers(){
           ln = parts[parts.length - 1] || '';
         }
       }
-      const fullName = (fn || mn || ln) ? formatCapitalizedName(fn, mn, ln) : (r.name || '');
+      const fullName = (fn || mn || ln) ? formatTeacherFullName(fn, mn, ln) : String(r.name || '').toUpperCase();
       const allocSummary = getTeacherAllocSummary(r.id);
       
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
-        'First Name': fn,
-        'Middle Name': mn,
-        'Last Name': ln,
+        'First Name': String(fn || '').toUpperCase(),
+        'Middle Name': String(mn || '').toUpperCase(),
+        'Last Name': String(ln || '').toUpperCase(),
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
         'Gender': r.gender || '',
@@ -10101,10 +10151,10 @@ function Teachers(){
   async function handleInitiateTeacherSave(e: React.FormEvent) {
     if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
-    const firstName = String(f.firstName || '').trim();
-    const middleName = String(f.middleName || '').trim();
-    const lastName = String(f.lastName || '').trim();
-    const fullName = formatCapitalizedName(firstName, middleName, lastName) || (f.name || '').trim();
+    const firstName = String(f.firstName || '').trim().toUpperCase();
+    const middleName = String(f.middleName || '').trim().toUpperCase();
+    const lastName = String(f.lastName || '').trim().toUpperCase();
+    const fullName = formatTeacherFullName(firstName, middleName, lastName) || String(f.name || '').trim().toUpperCase();
     const name = fullName;
     const email = String(f.email || '').trim().toLowerCase();
     const employeeId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim();
@@ -10609,7 +10659,10 @@ function Teachers(){
               if (!lastName) lastName = parts[parts.length - 1] || '';
             }
           }
-          const name = formatCapitalizedName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+          if (firstName) firstName = firstName.toUpperCase();
+          if (middleName) middleName = middleName.toUpperCase();
+          if (lastName) lastName = lastName.toUpperCase();
+          const name = (formatTeacherFullName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''))).toUpperCase();
 
           let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
           if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -11166,7 +11219,7 @@ function Teachers(){
               <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
                 <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
-                  <b>{x.name}</b>
+                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                 </TeacherProfileHoverCard>
               </td>
               <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
@@ -11466,12 +11519,13 @@ function Teachers(){
                   maxLength={15}
                   value={fnVal || ''}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isFnInvalid ? '#ef4444' : undefined,
                     boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fn, mnVal, lnVal);
                     setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
@@ -11498,12 +11552,13 @@ function Teachers(){
                   maxLength={15}
                   value={mnVal}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isMnInvalid ? '#ef4444' : undefined,
                     boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fnVal, mn, lnVal);
                     setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
@@ -11523,12 +11578,13 @@ function Teachers(){
                   maxLength={15}
                   value={lnVal || ''}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isLnInvalid ? '#ef4444' : undefined,
                     boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fnVal, mnVal, ln);
                     setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
@@ -11556,8 +11612,8 @@ function Teachers(){
               <input
                 readOnly
                 tabIndex={-1}
-                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
+                style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                value={(formatTeacherFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                 placeholder="Full name will appear here automatically"
               />
             </label>

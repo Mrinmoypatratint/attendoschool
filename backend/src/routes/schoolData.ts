@@ -1607,15 +1607,15 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
       : rawName
         ? String(rawName).split(" ")[0]
         : "",
-  ).trim();
-  const middleName = String(rawMiddle || "").trim();
+  ).trim().toUpperCase();
+  const middleName = String(rawMiddle || "").trim().toUpperCase();
   const lastName = String(
     rawLast !== undefined
       ? rawLast
       : rawName
         ? String(rawName).split(" ").slice(1).join(" ")
         : "",
-  ).trim();
+  ).trim().toUpperCase();
 
   if (!firstName) {
     return res.status(400).json({ message: "First Name is a required field." });
@@ -1655,9 +1655,10 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
       });
   }
 
-  const name =
+  const name = (
     [firstName, middleName, lastName].filter(Boolean).join(" ") ||
-    String(rawName || "").trim();
+    String(rawName || "").trim()
+  ).toUpperCase();
   if (!name || !rollNumber || !classId || !sectionId) {
     return res
       .status(400)
@@ -2695,7 +2696,7 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
         st.first_name ||
         st["first_name"] ||
         "",
-    ).trim();
+    ).trim().toUpperCase();
     let middleName = String(
       st.middleName ||
         st["Middle Name"] ||
@@ -2703,32 +2704,33 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
         st["middle_name"] ||
         st.MiddleName ||
         "",
-    ).trim();
+    ).trim().toUpperCase();
     let lastName = String(
       st.lastName || st["Last Name"] || st.last_name || st["last_name"] || "",
-    ).trim();
+    ).trim().toUpperCase();
     const rawFullName = String(
       st.fullName || st["Full Name"] || st.full_name || st.name || "",
-    ).trim();
+    ).trim().toUpperCase();
     if ((!firstName || !lastName) && rawFullName) {
       const parts = rawFullName.split(/\s+/).filter(Boolean);
       if (parts.length === 1) {
-        if (!firstName) firstName = parts[0] || "";
+        if (!firstName) firstName = (parts[0] || "").toUpperCase();
       } else if (parts.length === 2) {
-        if (!firstName) firstName = parts[0] || "";
-        if (!lastName) lastName = parts[1] || "";
+        if (!firstName) firstName = (parts[0] || "").toUpperCase();
+        if (!lastName) lastName = (parts[1] || "").toUpperCase();
       } else if (parts.length >= 3) {
-        if (!firstName) firstName = parts[0] || "";
-        if (!middleName) middleName = parts.slice(1, -1).join(" ") || "";
-        if (!lastName) lastName = parts[parts.length - 1] || "";
+        if (!firstName) firstName = (parts[0] || "").toUpperCase();
+        if (!middleName) middleName = (parts.slice(1, -1).join(" ") || "").toUpperCase();
+        if (!lastName) lastName = (parts[parts.length - 1] || "").toUpperCase();
       }
     }
-    const name =
+    const name = (
       rawFullName ||
       [firstName, middleName, lastName].filter(Boolean).join(" ") ||
       (firstName && lastName
         ? `${firstName} ${lastName}`
-        : firstName || lastName || String(st.name || "").trim());
+        : firstName || lastName || String(st.name || "").trim())
+    ).toUpperCase();
     const rollNumber = String(
       st.rollNumber || st["Roll Number"] || st.roll_number || "",
     ).trim();
@@ -3503,19 +3505,18 @@ r.get("/students/:id", ...admin, async (req: AuthRequest, res) => {
 
   try {
     const q = await pool.query(
-      `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
-       st.academic_year_id, ay.name AS session_name,
-       COALESCE(st.is_active, true) AS is_active,
-   st.father_name, st.father_phone, st.father_occupation,
-   st.mother_name, st.mother_phone, st.mother_occupation,
-   st.guardian_name,
-   st.parent_whatsapp, st.admission_date,
-       c.id class_id,c.class_number,sec.id section_id,sec.name section_name
+      `SELECT st.*, st.email AS student_email,
+       c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
+       ay.name AS session_name,
+       CASE WHEN c.class_number = -1 THEN 'L-KG' 
+            WHEN c.class_number = 0 THEN 'U-KG' 
+            WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+            ELSE '' END AS class_name
        FROM students st 
-       JOIN classes c ON c.id=st.class_id 
-       JOIN sections sec ON sec.id=st.section_id
+       LEFT JOIN classes c ON c.id=st.class_id 
+       LEFT JOIN sections sec ON sec.id=st.section_id
        LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-       WHERE st.id=$1 AND st.school_id=$2 LIMIT 1`,
+       WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2 LIMIT 1`,
       [studentId, schoolId],
     );
     if (q.rowCount && q.rows.length > 0) {
@@ -3523,6 +3524,7 @@ r.get("/students/:id", ...admin, async (req: AuthRequest, res) => {
       return res.json({
         ...row,
         gender: normalizeGender(row.gender) || "",
+        date_of_birth: row.date_of_birth instanceof Date ? row.date_of_birth.toISOString().slice(0, 10) : (row.date_of_birth ? String(row.date_of_birth).split('T')[0].split(' ')[0] : null),
         guardian_name: row.guardian_name || "",
         guardianName: row.guardian_name || "",
         is_active: row.is_active !== false,
@@ -3804,9 +3806,9 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
   }
 
   const rawMiddle = req.body.middleName || req.body.middle_name;
-  const firstName = String(rawFirst !== undefined ? rawFirst : "").trim();
-  const middleName = String(rawMiddle !== undefined ? rawMiddle : "").trim();
-  const lastName = String(rawLast !== undefined ? rawLast : "").trim();
+  const firstName = String(rawFirst !== undefined ? rawFirst : "").trim().toUpperCase();
+  const middleName = String(rawMiddle !== undefined ? rawMiddle : "").trim().toUpperCase();
+  const lastName = String(rawLast !== undefined ? rawLast : "").trim().toUpperCase();
 
   if (rawFirst !== undefined) {
     if (!firstName) {
@@ -3850,11 +3852,12 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
       });
   }
 
-  const fullName =
+  const fullName = (
     [firstName, middleName, lastName].filter(Boolean).join(" ") ||
     (firstName && lastName
       ? `${firstName} ${lastName}`
-      : firstName || lastName || String(name || "").trim());
+      : firstName || lastName || String(name || "").trim())
+  ).toUpperCase();
 
   const resolvedClassId = String(classId || class_id || "").trim();
   const resolvedSectionId = String(sectionId || section_id || "").trim();
@@ -4805,15 +4808,20 @@ r.get("/teachers", ...reader, async (req: AuthRequest, res) => {
             ln = nameParts[nameParts.length - 1];
           }
         }
+        const upperName = String(r.name || "").toUpperCase();
+        const upperFn = String(fn || "").toUpperCase();
+        const upperMn = String(mn || "").toUpperCase();
+        const upperLn = String(ln || "").toUpperCase();
         return {
           ...r,
-          first_name: fn,
-          firstName: fn,
-          middle_name: mn,
-          middleName: mn,
-          last_name: ln,
-          lastName: ln,
-          full_name: r.name,
+          name: upperName,
+          first_name: upperFn,
+          firstName: upperFn,
+          middle_name: upperMn,
+          middleName: upperMn,
+          last_name: upperLn,
+          lastName: upperLn,
+          full_name: upperName,
           class_name: convertRomanClassToDigital(r.class_name),
           class: convertRomanClassToDigital(r.class_name),
           section_name: r.section_name || null,
@@ -4952,17 +4960,17 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       : rawName
         ? String(rawName).split(" ")[0]
         : "",
-  ).trim();
+  ).trim().toUpperCase();
   const middleName = String(
     rawMiddle !== undefined ? rawMiddle : rawMiddleName || "",
-  ).trim();
+  ).trim().toUpperCase();
   const lastName = String(
     rawLast !== undefined
       ? rawLast
       : rawName
         ? String(rawName).split(" ").slice(1).join(" ")
         : "",
-  ).trim();
+  ).trim().toUpperCase();
 
   // First Name validation: 3 to 15 characters, no spaces, letters only
   if (!firstName) {
@@ -5007,9 +5015,10 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
       });
   }
 
-  const name =
+  const name = (
     [firstName, middleName, lastName].filter(Boolean).join(" ") ||
-    String(rawFull || rawName || "").trim();
+    String(rawFull || rawName || "").trim()
+  ).toUpperCase();
   const employeeId = String(
     rawEmp || req.body?.employee_id || saviorNo || Savior_No || "",
   ).trim();
@@ -5579,21 +5588,21 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
       "firstName",
       "first_name",
       "FIRST NAME",
-    ]);
+    ]).toUpperCase();
     let middleName = getVal([
       "Middle Name",
       "middleName",
       "middle_name",
       "MIDDLE NAME",
       "MiddleName",
-    ]);
+    ]).toUpperCase();
     let lastName = getVal([
       "Last Name",
       "lastName",
       "last_name",
       "LAST NAME",
       "Surname",
-    ]);
+    ]).toUpperCase();
     const explicitFullName = getVal([
       "Full Name(Automatically generated)",
       "Full Name",
@@ -5606,7 +5615,7 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
       "name",
       "Faculty Name",
       "Staff Name",
-    ]);
+    ]).toUpperCase();
 
     if ((!firstName || !lastName) && explicitFullName) {
       const parts = explicitFullName.split(/\s+/).filter(Boolean);
@@ -5621,10 +5630,14 @@ r.post("/teachers/bulk-import", ...admin, async (req: AuthRequest, res) => {
         if (!lastName) lastName = parts[parts.length - 1] || "";
       }
     }
-    const name =
+    if (firstName) firstName = firstName.toUpperCase();
+    if (middleName) middleName = middleName.toUpperCase();
+    if (lastName) lastName = lastName.toUpperCase();
+    const name = (
       explicitFullName ||
       [firstName, middleName, lastName].filter(Boolean).join(" ") ||
-      `Faculty ${rowNum}`;
+      `Faculty ${rowNum}`
+    ).toUpperCase();
     const email =
       getVal([
         "Email_id",
@@ -6441,11 +6454,11 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
     req.body.lastName !== undefined ? req.body.lastName : req.body.last_name;
 
   const computedFirst =
-    rawFirst !== undefined ? String(rawFirst).trim() : undefined;
+    rawFirst !== undefined ? String(rawFirst).trim().toUpperCase() : undefined;
   const computedMiddle =
-    rawMiddle !== undefined ? String(rawMiddle).trim() : undefined;
+    rawMiddle !== undefined ? String(rawMiddle).trim().toUpperCase() : undefined;
   const computedLast =
-    rawLast !== undefined ? String(rawLast).trim() : undefined;
+    rawLast !== undefined ? String(rawLast).trim().toUpperCase() : undefined;
 
   if (computedFirst !== undefined) {
     if (!computedFirst) {
@@ -6489,12 +6502,13 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
       });
   }
 
-  const resolvedName =
+  const resolvedName = (
     computedFirst !== undefined ||
     computedMiddle !== undefined ||
     computedLast !== undefined
       ? [computedFirst, computedMiddle, computedLast].filter(Boolean).join(" ")
-      : name || existingDocData.name || demoTeachers[idx]?.name || "";
+      : name || existingDocData.name || demoTeachers[idx]?.name || ""
+  ).toUpperCase();
 
   // Email format & uniqueness on edit
   if (email) {
