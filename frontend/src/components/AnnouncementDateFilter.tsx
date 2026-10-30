@@ -55,7 +55,35 @@ export function AnnouncementDateFilter({
     }
   }, [fromDate, toDate]);
 
+  function handleDateInput(val: string, setter: (v: string) => void) {
+    if (!val) {
+      setter('');
+      return;
+    }
+    const parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setter(parts.join('-'));
+      return;
+    }
+    setter(val);
+  }
+
   function validate(from: string, to: string): boolean {
+    if (from) {
+      const yr = from.split('-')[0];
+      if (yr.length > 4 || Number(yr) > 9999) {
+        setErrorMessage('Year must be a 4-digit year.');
+        return false;
+      }
+    }
+    if (to) {
+      const yr = to.split('-')[0];
+      if (yr.length > 4 || Number(yr) > 9999) {
+        setErrorMessage('Year must be a 4-digit year.');
+        return false;
+      }
+    }
     if (from && to && from > to) {
       setErrorMessage('"From" date cannot be after "To" date.');
       return false;
@@ -65,21 +93,25 @@ export function AnnouncementDateFilter({
   }
 
   function handleFromChange(val: string) {
-    setInternalFrom(val);
-    if (errorMessage) {
-      if (!val || !internalTo || val <= internalTo) {
-        setErrorMessage(null);
+    handleDateInput(val, (cleanVal) => {
+      setInternalFrom(cleanVal);
+      if (errorMessage) {
+        if (!cleanVal || !internalTo || cleanVal <= internalTo) {
+          setErrorMessage(null);
+        }
       }
-    }
+    });
   }
 
   function handleToChange(val: string) {
-    setInternalTo(val);
-    if (errorMessage) {
-      if (!internalFrom || !val || internalFrom <= val) {
-        setErrorMessage(null);
+    handleDateInput(val, (cleanVal) => {
+      setInternalTo(cleanVal);
+      if (errorMessage) {
+        if (!internalFrom || !cleanVal || internalFrom <= cleanVal) {
+          setErrorMessage(null);
+        }
       }
-    }
+    });
   }
 
   function handleApply() {
@@ -254,6 +286,8 @@ export function AnnouncementDateFilter({
           </label>
           <input
             type="date"
+            min="1900-01-01"
+            max="9999-12-31"
             value={internalFrom}
             onChange={(e) => handleFromChange(e.target.value)}
             disabled={loading}
@@ -279,6 +313,8 @@ export function AnnouncementDateFilter({
           </label>
           <input
             type="date"
+            min="1900-01-01"
+            max="9999-12-31"
             value={internalTo}
             onChange={(e) => handleToChange(e.target.value)}
             disabled={loading}
