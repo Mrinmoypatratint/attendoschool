@@ -18,6 +18,7 @@ export interface AcademicYearItem {
   is_archived: boolean;
   student_count: number;
   class_count: number;
+  section_count?: number;
 }
 
 // In-memory store per school tenant (fallback only when database is unavailable)
@@ -25,9 +26,9 @@ const inMemoryAcademicYears: Record<string, AcademicYearItem[]> = {};
 
 function createDefaultSessions(schoolId: string): AcademicYearItem[] {
   return [
-    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 0, class_count: 0 },
-    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 0, class_count: 0 },
-    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 0, class_count: 0 }
+    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 0, class_count: 0, section_count: 0 },
+    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 0, class_count: 0, section_count: 0 },
+    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 0, class_count: 0, section_count: 0 }
   ];
 }
 
@@ -149,7 +150,7 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
     is_active: isAct,
     is_archived: false,
     student_count: 0,
-    class_count: 0
+    class_count: 0, section_count: 0
   };
   list.unshift(newItem);
   return newItem;

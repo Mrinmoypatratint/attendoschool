@@ -9,8 +9,7 @@ export async function listAcademicYears(schoolId: string) {
         FROM classes c
         WHERE c.school_id = ay.school_id
           AND (
-            (ay.is_active = TRUE)
-            OR (c.academic_year_id = ay.id)
+            (c.academic_year_id = ay.id)
             OR EXISTS (
               SELECT 1 FROM students st
               WHERE st.school_id = ay.school_id
@@ -30,7 +29,35 @@ export async function listAcademicYears(schoolId: string) {
                 AND seh.class_id = c.id
             )
           )
-      ) AS class_count
+      ) AS class_count,
+      (
+        SELECT COUNT(DISTINCT s.id)::int
+        FROM sections s
+        JOIN classes c ON c.id = s.class_id
+        WHERE s.school_id = ay.school_id
+          AND (
+            (s.academic_year_id = ay.id)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.section_id = s.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_section_id = s.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.section_id = s.id
+            )
+          )
+      ) AS section_count
      FROM academic_years ay
      WHERE ay.school_id=$1
      ORDER BY 
@@ -61,8 +88,7 @@ export async function listAcademicYears(schoolId: string) {
         FROM classes c
         WHERE c.school_id = ay.school_id
           AND (
-            (ay.is_active = TRUE)
-            OR (c.academic_year_id = ay.id)
+            (c.academic_year_id = ay.id)
             OR EXISTS (
               SELECT 1 FROM students st
               WHERE st.school_id = ay.school_id
@@ -82,7 +108,35 @@ export async function listAcademicYears(schoolId: string) {
                 AND seh.class_id = c.id
             )
           )
-      ) AS class_count
+      ) AS class_count,
+      (
+        SELECT COUNT(DISTINCT s.id)::int
+        FROM sections s
+        JOIN classes c ON c.id = s.class_id
+        WHERE s.school_id = ay.school_id
+          AND (
+            (s.academic_year_id = ay.id)
+            OR (c.academic_year_id = ay.id)
+            OR EXISTS (
+              SELECT 1 FROM students st
+              WHERE st.school_id = ay.school_id
+                AND st.academic_year_id = ay.id
+                AND st.section_id = s.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_promotions sp
+              WHERE sp.school_id = ay.school_id
+                AND sp.to_academic_year_id = ay.id
+                AND sp.to_section_id = s.id
+                AND sp.status = 'CONFIRMED'
+            )
+            OR EXISTS (
+              SELECT 1 FROM student_enrollment_history_v28 seh
+              WHERE seh.academic_year_id = ay.id
+                AND seh.section_id = s.id
+            )
+          )
+      ) AS section_count
          FROM academic_years ay
          WHERE ay.school_id=$1
          ORDER BY 

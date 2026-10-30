@@ -986,7 +986,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               <table>
                 <thead>
                   <tr>
-                    {['YEAR', 'START', 'END', 'STUDENTS', 'CLASSES', 'STATUS', 'ACTIONS'].map(h => (
+                    {['YEAR', 'START', 'END', 'STUDENTS', 'CLASSES', 'SECTIONS', 'STATUS', 'ACTIONS'].map(h => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
@@ -999,6 +999,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       <td>{String(x.end_date).slice(0, 10)}</td>
                       <td>{x.student_count ?? 0}</td>
                       <td>{x.class_count ?? 0}</td>
+                      <td>{x.section_count ?? 0}</td>
                       <td>
                         <span
                           className={`badge ${x.is_archived ? 'expired' : x.is_active ? 'active' : ''}`}
@@ -1123,7 +1124,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   ))}
                   {!items.length && (
                     <tr>
-                      <td colSpan={7} className="muted" style={{ padding: 20 }}>
+                      <td colSpan={8} className="muted" style={{ padding: 20 }}>
                         No academic years created in database. Use the form above to create one.
                       </td>
                     </tr>
