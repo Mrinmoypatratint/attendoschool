@@ -2441,19 +2441,18 @@ r.get('/students/:id', ...admin, async (req: AuthRequest, res) => {
 
   try {
     const q = await pool.query(
-      `SELECT st.id,st.name,st.roll_number,st.admission_number,st.parent_name,st.parent_sms_number,st.email AS student_email,st.parent_email,st.user_id,st.photo_url,
-       st.academic_year_id, ay.name AS session_name,
-       COALESCE(st.is_active, true) AS is_active,
-   st.father_name, st.father_phone, st.father_occupation,
-   st.mother_name, st.mother_phone, st.mother_occupation,
-   st.guardian_name,
-   st.parent_whatsapp, st.admission_date,
-       c.id class_id,c.class_number,sec.id section_id,sec.name section_name
+      `SELECT st.*, st.email AS student_email,
+       c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
+       ay.name AS session_name,
+       CASE WHEN c.class_number = -1 THEN 'L-KG' 
+            WHEN c.class_number = 0 THEN 'U-KG' 
+            WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+            ELSE '' END AS class_name
        FROM students st 
-       JOIN classes c ON c.id=st.class_id 
-       JOIN sections sec ON sec.id=st.section_id
+       LEFT JOIN classes c ON c.id=st.class_id 
+       LEFT JOIN sections sec ON sec.id=st.section_id
        LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-       WHERE st.id=$1 AND st.school_id=$2 LIMIT 1`,
+       WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2 LIMIT 1`,
       [studentId, schoolId]
     );
     if (q.rowCount && q.rows.length > 0) {

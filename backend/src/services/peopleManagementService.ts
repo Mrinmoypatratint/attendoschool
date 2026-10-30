@@ -12,15 +12,42 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
     where += ` AND (st.name ILIKE $2 OR CAST(st.roll_number AS TEXT) ILIKE $2 OR COALESCE(st.admission_number,'') ILIKE $2 OR COALESCE(st.gender,'') ILIKE $2)`;
   }
   const { rows } = await pool.query(
-    `SELECT st.*, c.name AS class_name, sec.name AS section_name
+    `SELECT st.*, c.class_number, sec.name AS section_name,
+            CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                 WHEN c.class_number = 0 THEN 'U-KG' 
+                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                 ELSE '' END AS class_name,
+            ay.name AS session_name
      FROM students st
      LEFT JOIN classes c ON c.id=st.class_id
      LEFT JOIN sections sec ON sec.id=st.section_id
+     LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
      ${where}
-     ORDER BY c.name, sec.name, st.roll_number, st.name`,
+     ORDER BY c.class_number NULLS LAST, sec.name NULLS LAST, st.roll_number NULLS LAST, st.name`,
     params
   );
   return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '' }));
+}
+
+export async function getStudentById(schoolId: string, id: string) {
+  const { rows } = await pool.query(
+    `SELECT st.*, c.class_number, sec.name AS section_name,
+            CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                 WHEN c.class_number = 0 THEN 'U-KG' 
+                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                 ELSE '' END AS class_name,
+            ay.name AS session_name
+     FROM students st
+     LEFT JOIN classes c ON c.id=st.class_id
+     LEFT JOIN sections sec ON sec.id=st.section_id
+     LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
+     WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2
+     LIMIT 1`,
+    [id, schoolId]
+  );
+  if (!rows.length) return null;
+  const r = rows[0];
+  return { ...r, gender: normalizeGender(r.gender) || '' };
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {

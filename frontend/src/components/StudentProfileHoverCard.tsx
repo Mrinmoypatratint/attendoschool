@@ -1,3 +1,4 @@
+import { api } from '../api';
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatGender } from '../utils/gender';
@@ -71,9 +72,38 @@ export function StudentProfileHoverCard({
   children
 }: StudentProfileHoverCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [studentData, setStudentData] = useState<StudentHoverData>(student);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setStudentData(student);
+  }, [student]);
+
+  // When card opens, if essential fields are missing, fetch fresh details
+  useEffect(() => {
+    if (!isOpen) return;
+    const studentId = studentData.id || (studentData as any).student_id || (studentData as any).studentId;
+    const isMissingDetails = 
+      (!studentData.admission_number && !studentData.admissionNumber && !(studentData as any).admission_no) ||
+      (!studentData.email && !studentData.student_email) ||
+      (!studentData.gender);
+
+    if (isMissingDetails && studentId) {
+      api.get('/people/students/' + studentId).then(({ data }) => {
+        if (data) {
+          setStudentData(prev => ({ ...prev, ...data }));
+        }
+      }).catch(() => {
+        api.get('/students/' + studentId).then(({ data }) => {
+          if (data) {
+            setStudentData(prev => ({ ...prev, ...data }));
+          }
+        }).catch(() => {});
+      });
+    }
+  }, [isOpen, studentData.id, (studentData as any).student_id, (studentData as any).studentId]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -107,7 +137,7 @@ export function StudentProfileHoverCard({
   }, [isOpen]);
 
   // Derived student attributes
-  const fullName = student.name || 'Student';
+  const fullName = studentData.name || 'Student';
   const initials = fullName
     .split(' ')
     .filter(Boolean)
@@ -116,46 +146,46 @@ export function StudentProfileHoverCard({
     .slice(0, 2)
     .toUpperCase() || 'ST';
 
-  const roll = student.roll_number ?? student.rollNumber ?? '—';
-  const adm = student.admission_number || student.admissionNumber || '—';
-  const photo = student.photo_url || student.photoUrl;
+  const roll = studentData.roll_number ?? studentData.rollNumber ?? (studentData as any).roll ?? (studentData as any).roll_no ?? (studentData as any).rollNo ?? '—';
+  const adm = studentData.admission_number || studentData.admissionNumber || (studentData as any).admission_no || (studentData as any).admissionNo || (studentData as any).adm_no || (studentData as any).admNo || '—';
+  const photo = studentData.photo_url || studentData.photoUrl;
 
   // Class label
-  const cNum = Number(student.class_number);
-  const cId = String(student.class_id || '');
+  const cNum = Number(studentData.class_number);
+  const cId = String(studentData.class_id || '');
   let classStr = 'Class 1';
   if (cNum === -1 || /l.?kg/i.test(cId)) classStr = 'L-KG';
   else if (cNum === 0 || /u.?kg/i.test(cId)) classStr = 'U-KG';
-  else if (!isNaN(cNum) && cNum > 0) classStr = `Class ${cNum}`;
-  else if (student.class_label || student.class_name || student.className) {
-    const raw = String(student.class_label || student.class_name || student.className);
-    classStr = raw.startsWith('Class') ? raw : `Class ${raw}`;
+  else if (!isNaN(cNum) && cNum > 0) classStr = 'Class ' + cNum;
+  else if (studentData.class_label || studentData.class_name || studentData.className) {
+    const raw = String(studentData.class_label || studentData.class_name || studentData.className);
+    classStr = raw.startsWith('Class') ? raw : ('Class ' + raw);
   }
 
   // Section label
-  const rawSec = String(student.section_name || student.sectionName || student.section || 'A').trim();
+  const rawSec = String(studentData.section_name || studentData.sectionName || studentData.section || 'A').trim();
   const secStr = rawSec.replace(/^section\s*/i, '').trim() || 'A';
 
   // Session
   const sessionStr =
-    student.session ||
-    student.session_name ||
-    student.academic_session ||
-    student.academicSession ||
+    studentData.session ||
+    studentData.session_name ||
+    studentData.academic_session ||
+    studentData.academicSession ||
     activeSession ||
-    '2025–2026 Academic Session';
+    '2026–2027 Academic Session';
 
   // Gender & DOB
-  const genderStr = formatGender(student.gender) || 'Not Specified';
-  const dobRaw = student.date_of_birth || student.dob || '';
+  const genderStr = formatGender(studentData.gender || (studentData as any).sex) || 'Not Specified';
+  const dobRaw = studentData.date_of_birth || studentData.dob || (studentData as any).birth_date || '';
   const dobStr = dobRaw && dobRaw !== '—' ? dobRaw : null;
 
   // Emails & parent contact
-  const studentEmail = student.student_email || student.email;
-  const parentName = student.parent_name || student.parentName || 'Parent / Guardian';
-  const parentPhone = student.parent_sms_number || student.parent_phone || student.parentPhone;
-  const parentEmail = student.parent_email || student.parentEmail;
-  const address = student.address;
+  const studentEmail = studentData.student_email || studentData.email || (studentData as any).user_email;
+  const parentName = studentData.parent_name || studentData.parentName || (studentData as any).father_name || (studentData as any).mother_name || (studentData as any).guardian_name || 'Parent / Guardian';
+  const parentPhone = studentData.parent_sms_number || studentData.parent_phone || studentData.parentPhone || (studentData as any).parent_whatsapp || (studentData as any).parent_whatsapp_no || (studentData as any).phone || (studentData as any).father_phone || (studentData as any).mother_phone;
+  const parentEmail = studentData.parent_email || studentData.parentEmail;
+  const address = studentData.address;
 
   return (
     <>
