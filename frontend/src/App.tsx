@@ -8663,8 +8663,8 @@ function Students(){
             )}
           </label>
           <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Parent Email Address (for Login / Absent Alerts) <span style={{ color: '#ef4444' }}>*</span>
+            <span className="label-text">
+              Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#ef4444' }}>*</span></span>
             </span>
             <input
               required
