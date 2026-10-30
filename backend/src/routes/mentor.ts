@@ -23,7 +23,7 @@ router.get('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async 
     const list = await mentorSvc.getAllClassMentors(req.user!.schoolId!);
     res.json(list);
   } catch (err: any) {
-    res.status(500).json({ message: err.message || 'Unable to load class mentors' });
+    res.status(500).json({ message: err.message || 'Unable to load class teachers' });
   }
 });
 
@@ -40,9 +40,9 @@ router.post('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async
     }
 
     const data = await mentorSvc.assignClassMentor(req.user!.schoolId!, cId, sId, tId);
-    res.json({ success: true, message: 'Class Mentor assigned successfully', data });
+    res.json({ success: true, message: 'Class Teacher assigned successfully', data });
   } catch (err: any) {
-    res.status(400).json({ message: err.message || 'Failed to assign class mentor' });
+    res.status(400).json({ message: err.message || 'Failed to assign class teacher' });
   }
 });
 
@@ -60,7 +60,7 @@ router.delete('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), asy
     const data = await mentorSvc.removeClassMentor(req.user!.schoolId!, cId, sId);
     res.json(data);
   } catch (err: any) {
-    res.status(400).json({ message: err.message || 'Failed to remove class mentor' });
+    res.status(400).json({ message: err.message || 'Failed to remove class teacher' });
   }
 });
 
@@ -142,7 +142,7 @@ router.get('/teacher/mentor/attendance-analysis', requireRoles('TEACHER', 'SCHOO
     // Verify mentor status
     const isMentor = await mentorSvc.isClassMentor(req.user!.schoolId!, classId, sectionId, req.user!.id);
     if (!isMentor && req.user!.role !== 'SCHOOL_ADMIN' && req.user!.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ message: 'Access denied: User is not the Class Mentor for this section' });
+      return res.status(403).json({ message: 'Access denied: User is not the Class Teacher for this section' });
     }
 
     const report = await attendanceSvc.studentAttendanceReport(req.user!.schoolId!, from, to);

@@ -191,4 +191,3 @@ CREATE INDEX idx_routines_school ON class_routines(school_id);
 CREATE INDEX idx_attendance_school_date ON attendance_sessions(school_id, attendance_date);
 CREATE INDEX idx_sms_school ON sms_logs(school_id);
 CREATE INDEX idx_payments_school ON payments(school_id);
-
