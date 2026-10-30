@@ -113,7 +113,7 @@ export function TeacherProfileHoverCard({
   }, [isOpen]);
 
   // Derived teacher attributes
-  const fullName = teacher.name || teacher.full_name || 'Faculty Member';
+  const fullName = String(teacher.name || teacher.full_name || 'FACULTY MEMBER').toUpperCase();
   const initials = fullName
     .split(' ')
     .filter(Boolean)

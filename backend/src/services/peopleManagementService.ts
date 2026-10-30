@@ -231,14 +231,19 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
         ln = parts[parts.length - 1];
       }
     }
+    const upperName = String(r.name || '').toUpperCase();
+    const upperFn = String(fn || '').toUpperCase();
+    const upperMn = String(mn || '').toUpperCase();
+    const upperLn = String(ln || '').toUpperCase();
     return {
       ...r,
-      first_name: fn,
-      firstName: fn,
-      middle_name: mn,
-      middleName: mn,
-      last_name: ln,
-      lastName: ln,
+      name: upperName,
+      first_name: upperFn,
+      firstName: upperFn,
+      middle_name: upperMn,
+      middleName: upperMn,
+      last_name: upperLn,
+      lastName: upperLn,
       gender: normalizeGender(r.gender) || '',
       joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
       joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
@@ -258,7 +263,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
 
     const userFields: string[] = [];
     const userValues: any[] = [];
-    if (body.name !== undefined) { userValues.push(body.name); userFields.push(`name=$${userValues.length}`); }
+    if (body.name !== undefined) { userValues.push(String(body.name).toUpperCase()); userFields.push(`name=${userValues.length}`); }
     if (body.email !== undefined) { userValues.push(body.email); userFields.push(`email=$${userValues.length}`); }
     if (userFields.length) {
       userValues.push(id, schoolId);

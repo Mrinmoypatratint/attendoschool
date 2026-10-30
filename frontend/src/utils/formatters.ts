@@ -35,11 +35,18 @@ export function formatCapitalizedName(first?: string, middle?: string, last?: st
     .join(' ');
 }
 
-
 /**
  * Formats first, middle, and last names into all uppercase Full Name for students
  */
 export function formatStudentFullName(first?: string, middle?: string, last?: string): string {
+  const parts = [first, middle, last].filter(Boolean).map(s => String(s).trim()).filter(Boolean);
+  return parts.join(' ').replace(/\s+/g, ' ').toUpperCase();
+}
+
+/**
+ * Formats first, middle, and last names into all uppercase Full Name for teachers
+ */
+export function formatTeacherFullName(first?: string, middle?: string, last?: string): string {
   const parts = [first, middle, last].filter(Boolean).map(s => String(s).trim()).filter(Boolean);
   return parts.join(' ').replace(/\s+/g, ' ').toUpperCase();
 }

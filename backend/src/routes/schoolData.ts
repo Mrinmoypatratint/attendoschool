@@ -3324,15 +3324,20 @@ r.get('/teachers',...reader,async(req:AuthRequest,res)=>{
           ln = nameParts[nameParts.length - 1];
         }
       }
+      const upperName = String(r.name || '').toUpperCase();
+      const upperFn = String(fn || '').toUpperCase();
+      const upperMn = String(mn || '').toUpperCase();
+      const upperLn = String(ln || '').toUpperCase();
       return {
         ...r,
-        first_name: fn,
-        firstName: fn,
-        middle_name: mn,
-        middleName: mn,
-        last_name: ln,
-        lastName: ln,
-        full_name: r.name,
+        name: upperName,
+        first_name: upperFn,
+        firstName: upperFn,
+        middle_name: upperMn,
+        middleName: upperMn,
+        last_name: upperLn,
+        lastName: upperLn,
+        full_name: upperName,
         class_name: convertRomanClassToDigital(r.class_name),
         class: convertRomanClassToDigital(r.class_name),
         section_name: r.section_name || null,
@@ -3419,9 +3424,9 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     classId, sectionId, sendInviteEmail=true
   } = req.body;
 
-  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim();
-  const middleName = String(rawMiddle !== undefined ? rawMiddle : (rawMiddleName || '')).trim();
-  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim();
+  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim().toUpperCase();
+  const middleName = String(rawMiddle !== undefined ? rawMiddle : (rawMiddleName || '')).trim().toUpperCase();
+  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim().toUpperCase();
 
   // First Name validation: 3 to 15 characters, no spaces, letters only
   if (!firstName) {
@@ -3447,7 +3452,7 @@ r.post('/teachers',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
   }
 
-  const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawFull || rawName || '').trim();
+  const name = ([firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawFull || rawName || '').trim()).toUpperCase();
   const employeeId = String(rawEmp || req.body?.employee_id || saviorNo || Savior_No || '').trim();
   const cleanEmail = String(email || '').trim().toLowerCase();
   const mobile = String(rawMobile || '').trim();
@@ -3841,10 +3846,10 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
     }
 
     const saviorNo = getVal(['Savior_No', 'SAVIOR_NO', 'savior_no', 'saviorNo', 'Savior No', 'employeeId', 'employee_id', 'Employee ID', 'Employee Id/Savior_NO', 'Emp ID', 'EMP_ID', 'ID']);
-    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']);
-    let middleName = getVal(['Middle Name', 'middleName', 'middle_name', 'MIDDLE NAME', 'MiddleName']);
-    let lastName  = getVal(['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']);
-    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName', 'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name']);
+    let firstName = getVal(['Fist Name', 'First Name', 'firstName', 'first_name', 'FIRST NAME']).toUpperCase();
+    let middleName = getVal(['Middle Name', 'middleName', 'middle_name', 'MIDDLE NAME', 'MiddleName']).toUpperCase();
+    let lastName  = getVal(['Last Name', 'lastName', 'last_name', 'LAST NAME', 'Surname']).toUpperCase();
+    const explicitFullName = getVal(['Full Name(Automatically generated)', 'Full Name', 'FULL NAME', 'fullName', 'Teacher Name', 'TEACHER NAME', 'Name', 'NAME', 'name', 'Faculty Name', 'Staff Name']).toUpperCase();
 
     if ((!firstName || !lastName) && explicitFullName) {
       const parts = explicitFullName.split(/\s+/).filter(Boolean);
@@ -3859,7 +3864,10 @@ r.post('/teachers/bulk-import',...admin,async(req:AuthRequest,res)=>{
         if (!lastName) lastName = parts[parts.length - 1] || '';
       }
     }
-    const name = explicitFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || `Faculty ${rowNum}`;
+    if (firstName) firstName = firstName.toUpperCase();
+    if (middleName) middleName = middleName.toUpperCase();
+    if (lastName) lastName = lastName.toUpperCase();
+    const name = (explicitFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || `Faculty ${rowNum}`).toUpperCase();
     const email = getVal(['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase() || `${saviorNo ? `teacher.${saviorNo.toLowerCase()}` : `teacher${rowNum}`}@school.local`;
     const rawClass = getVal(['Class', 'CLASS', 'class', 'Standard', 'Grade']);
     const rawSection = (getVal(['Section', 'SECTION', 'section', 'Sec', 'SEC']) || 'A').toUpperCase();
@@ -4314,9 +4322,9 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
   const rawMiddle = req.body.middleName !== undefined ? req.body.middleName : req.body.middle_name;
   const rawLast = req.body.lastName !== undefined ? req.body.lastName : req.body.last_name;
 
-  const computedFirst = rawFirst !== undefined ? String(rawFirst).trim() : undefined;
-  const computedMiddle = rawMiddle !== undefined ? String(rawMiddle).trim() : undefined;
-  const computedLast = rawLast !== undefined ? String(rawLast).trim() : undefined;
+  const computedFirst = rawFirst !== undefined ? String(rawFirst).trim().toUpperCase() : undefined;
+  const computedMiddle = rawMiddle !== undefined ? String(rawMiddle).trim().toUpperCase() : undefined;
+  const computedLast = rawLast !== undefined ? String(rawLast).trim().toUpperCase() : undefined;
 
   if (computedFirst !== undefined) {
     if (!computedFirst) {
@@ -4339,9 +4347,9 @@ r.put('/teachers/:id',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
   }
 
-  const resolvedName = (computedFirst !== undefined || computedMiddle !== undefined || computedLast !== undefined)
+  const resolvedName = ((computedFirst !== undefined || computedMiddle !== undefined || computedLast !== undefined)
     ? [computedFirst, computedMiddle, computedLast].filter(Boolean).join(' ')
-    : (name || existingDocData.name || demoTeachers[idx]?.name || '');
+    : (name || existingDocData.name || demoTeachers[idx]?.name || '')).toUpperCase();
 
   // Email format & uniqueness on edit
   if (email) {

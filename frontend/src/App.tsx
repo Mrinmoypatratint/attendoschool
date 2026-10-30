@@ -65,7 +65,7 @@ const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
-import { formatCapitalizedName, formatStudentFullName } from './utils/formatters';
+import { formatCapitalizedName, formatStudentFullName, formatTeacherFullName } from './utils/formatters';
 import { convertRomanClassToDigital, parseImportClassAndSection } from './utils/roman';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
@@ -7868,10 +7868,10 @@ function Students(){
                       }
                     }
                     setF({
-                      name: x.name,
-                      firstName: fName,
-                      middleName: mName,
-                      lastName: lName,
+                      name: String(x.name || '').toUpperCase(),
+                      firstName: String(fName || '').toUpperCase(),
+                      middleName: String(mName || '').toUpperCase(),
+                      lastName: String(lName || '').toUpperCase(),
                       rollNumber: x.roll_number,
                       admissionNumber: x.admission_number || x.admissionNumber || '',
                       admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
@@ -9969,14 +9969,14 @@ function Teachers(){
           ln = parts[parts.length - 1] || '';
         }
       }
-      const fullName = (fn || mn || ln) ? formatCapitalizedName(fn, mn, ln) : (r.name || '');
+      const fullName = (fn || mn || ln) ? formatTeacherFullName(fn, mn, ln) : String(r.name || '').toUpperCase();
       const allocSummary = getTeacherAllocSummary(r.id);
       
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
-        'First Name': fn,
-        'Middle Name': mn,
-        'Last Name': ln,
+        'First Name': String(fn || '').toUpperCase(),
+        'Middle Name': String(mn || '').toUpperCase(),
+        'Last Name': String(ln || '').toUpperCase(),
         'Full Name(Automatically generated)': fullName,
         'Email_id': r.email || '',
         'Gender': r.gender || '',
@@ -10029,10 +10029,10 @@ function Teachers(){
   async function handleInitiateTeacherSave(e: React.FormEvent) {
     if (e && e.preventDefault) e.preventDefault();
     // STAGE 1 VALIDATION
-    const firstName = String(f.firstName || '').trim();
-    const middleName = String(f.middleName || '').trim();
-    const lastName = String(f.lastName || '').trim();
-    const fullName = formatCapitalizedName(firstName, middleName, lastName) || (f.name || '').trim();
+    const firstName = String(f.firstName || '').trim().toUpperCase();
+    const middleName = String(f.middleName || '').trim().toUpperCase();
+    const lastName = String(f.lastName || '').trim().toUpperCase();
+    const fullName = formatTeacherFullName(firstName, middleName, lastName) || String(f.name || '').trim().toUpperCase();
     const name = fullName;
     const email = String(f.email || '').trim().toLowerCase();
     const employeeId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim();
@@ -10537,7 +10537,10 @@ function Teachers(){
               if (!lastName) lastName = parts[parts.length - 1] || '';
             }
           }
-          const name = formatCapitalizedName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''));
+          if (firstName) firstName = firstName.toUpperCase();
+          if (middleName) middleName = middleName.toUpperCase();
+          if (lastName) lastName = lastName.toUpperCase();
+          const name = (formatTeacherFullName(firstName, middleName, lastName) || explicitFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || ''))).toUpperCase();
 
           let email = getExcelCell(r, ['Email_id', 'EMAIL_ID', 'email_id', 'Email ID', 'emailId', 'Email', 'EMAIL', 'email', 'Email Address']).toLowerCase();
           if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -11094,7 +11097,7 @@ function Teachers(){
               <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
               <td>
                 <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
-                  <b>{x.name}</b>
+                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                 </TeacherProfileHoverCard>
               </td>
               <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
@@ -11394,12 +11397,13 @@ function Teachers(){
                   maxLength={15}
                   value={fnVal || ''}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isFnInvalid ? '#ef4444' : undefined,
                     boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fn, mnVal, lnVal);
                     setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
@@ -11426,12 +11430,13 @@ function Teachers(){
                   maxLength={15}
                   value={mnVal}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isMnInvalid ? '#ef4444' : undefined,
                     boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fnVal, mn, lnVal);
                     setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
@@ -11451,12 +11456,13 @@ function Teachers(){
                   maxLength={15}
                   value={lnVal || ''}
                   style={{
+                    textTransform: 'uppercase',
                     borderColor: isLnInvalid ? '#ef4444' : undefined,
                     boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                   }}
                   onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                    const fullName = formatTeacherFullName(fnVal, mnVal, ln);
                     setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
@@ -11484,8 +11490,8 @@ function Teachers(){
               <input
                 readOnly
                 tabIndex={-1}
-                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
+                style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                value={(formatTeacherFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                 placeholder="Full name will appear here automatically"
               />
             </label>

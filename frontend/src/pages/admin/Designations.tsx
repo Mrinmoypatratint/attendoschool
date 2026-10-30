@@ -1720,7 +1720,7 @@ export default function Designations() {
                     ) : (
                       teachersList.map(t => (
                         <option key={t.id} value={t.id}>
-                          {t.name} — Current: {t.designation || 'PRT'} ({t.employee_id || t.savior_no || 'No ID'})
+                          {String(t.name || '').toUpperCase()} — Current: {t.designation || 'PRT'} ({t.employee_id || t.savior_no || 'No ID'})
                         </option>
                       ))
                     )}
