@@ -246,8 +246,10 @@ async function runTestSuite() {
   // ---------------------------------------------------------
   console.log('\n🌐 6. HTTP Server & Route Integration:');
   const server = http.createServer(app);
-  const testPort = process.env.TEST_PORT ? parseInt(process.env.TEST_PORT, 10) : 5099;
-  await new Promise<void>(resolve => server.listen(testPort, resolve));
+  const preferredPort = process.env.TEST_PORT ? parseInt(process.env.TEST_PORT, 10) : 0;
+  await new Promise<void>(resolve => server.listen(preferredPort, resolve));
+  const serverAddress = server.address();
+  const testPort = typeof serverAddress === 'object' && serverAddress ? serverAddress.port : preferredPort;
 
   try {
     const apiRes = await fetch(`http://localhost:${testPort}/api`);
@@ -285,7 +287,7 @@ async function runTestSuite() {
 
     // Test A: Student Bulk Import rejects invalid rows and stores 0 records
     const invalidBatchUniqueId = `TEST_STU_${Date.now()}`;
-    const studentImportRes = await fetch('http://localhost:5002/api/students/bulk-import', {
+    const studentImportRes = await fetch(`http://localhost:${testPort}/api/students/bulk-import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -321,7 +323,7 @@ async function runTestSuite() {
     assert(studentImportJson.message?.includes('cancelled') || studentImportJson.message?.includes('zero records stored'), 'Student import confirms entire operation cancelled with zero records stored');
 
     // Test B: Verify zero students from the failed batch were stored in DB or memory
-    const studentCheckRes = await fetch('http://localhost:5002/api/students', {
+    const studentCheckRes = await fetch(`http://localhost:${testPort}/api/students`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const studentsList = await studentCheckRes.json();
@@ -330,7 +332,7 @@ async function runTestSuite() {
 
     // Test C: Faculty / Teacher Bulk Import rejects invalid rows and stores 0 records
     const invalidTeacherEmpId = `EMP_FAIL_${Date.now()}`;
-    const teacherImportRes = await fetch('http://localhost:5002/api/teachers/bulk-import', {
+    const teacherImportRes = await fetch(`http://localhost:${testPort}/api/teachers/bulk-import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -363,7 +365,7 @@ async function runTestSuite() {
     assert(teacherImportJson.message?.includes('cancelled') || teacherImportJson.message?.includes('no faculty data was stored'), 'Faculty import confirms entire operation cancelled');
 
     // Test D: Verify zero teachers from failed batch were stored
-    const teacherCheckRes = await fetch('http://localhost:5002/api/teachers', {
+    const teacherCheckRes = await fetch(`http://localhost:${testPort}/api/teachers`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const teachersList = await teacherCheckRes.json();
@@ -371,7 +373,7 @@ async function runTestSuite() {
     assert(!leakedTeacher, 'Zero teachers stored in database/memory when import contains errors (atomic guarantee)');
 
     // Test E: Offline Attendance Import rejects records missing student identification
-    const offAttendanceRes = await fetch('http://localhost:5002/api/attendance-reports/import-offline', {
+    const offAttendanceRes = await fetch(`http://localhost:${testPort}/api/attendance-reports/import-offline`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
