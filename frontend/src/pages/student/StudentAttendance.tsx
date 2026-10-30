@@ -43,7 +43,31 @@ export function StudentAttendance() {
   });
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
 
+  // Date Year Formatter helper (restrict year to max 4 digits)
+  function handleDateInput(val: string, setter: (v: string) => void) {
+    if (!val) {
+      setter('');
+      return;
+    }
+    const parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setter(parts.join('-'));
+      return;
+    }
+    setter(val);
+  }
+
   const load = () => {
+    // Validate year length <= 4 digits
+    const checkValidYear = (val: string) => {
+      if (!val) return true;
+      const yr = val.split('-')[0];
+      return yr.length <= 4 && !isNaN(Number(yr)) && Number(yr) <= 9999;
+    };
+    if (!checkValidYear(from) || !checkValidYear(to)) {
+      return;
+    }
     setLoading(true);
     studentApi
       .getAttendance(from, to)
@@ -80,11 +104,23 @@ export function StudentAttendance() {
         <div className="student-filter-bar">
           <label>
             <span>From:</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input
+              type="date"
+              min="1900-01-01"
+              max="9999-12-31"
+              value={from}
+              onChange={(e) => handleDateInput(e.target.value, setFrom)}
+            />
           </label>
           <label>
             <span>To:</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <input
+              type="date"
+              min="1900-01-01"
+              max="9999-12-31"
+              value={to}
+              onChange={(e) => handleDateInput(e.target.value, setTo)}
+            />
           </label>
           <button type="button" onClick={load} className="student-btn-primary">
             <Filter size={14} /> Filter
