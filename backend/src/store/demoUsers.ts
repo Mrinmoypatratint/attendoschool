@@ -144,7 +144,7 @@ const demoUsers: DemoUser[] = [
     id: 'd7a18f43-8e22-4a09-9112-9e163722dd65',
     schoolId: '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3',
     name: 'Sunita Rao',
-    email: 'teacher2@dav.com',
+    email: 'sunita.rao@dav.com',
     employeeId: '50360',
     role: 'TEACHER',
     password: 'ChangeMe123!',
