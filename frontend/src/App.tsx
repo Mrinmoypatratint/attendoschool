@@ -110,6 +110,18 @@ function useTheme(){
   return {dark,toggle:()=>setDark(d=>!d)};
 }
 
+export const sortAcademicYearsAscending = (list: any[]) => {
+  return [...list].sort((a: any, b: any) => {
+    const yearA = parseInt((String(a.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    const yearB = parseInt((String(b.name || '').match(/\d{4}/) || ['0'])[0], 10);
+    if (yearA !== yearB && yearA > 0 && yearB > 0) return yearA - yearB;
+    const dateA = new Date(a.start_date || a.startDate || 0).getTime();
+    const dateB = new Date(b.start_date || b.startDate || 0).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+};
+
 function AttendoEmblem({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
@@ -1273,7 +1285,8 @@ function SuperAdminHeader({
     api.get('/academic-years')
       .then(res => {
         if (Array.isArray(res.data) && res.data.length > 0) {
-          setSessions(res.data);
+          const sortedSessions = sortAcademicYearsAscending(res.data);
+          setSessions(sortedSessions);
           const active = res.data.find((s: any) => s.is_active);
           if (active && !localStorage.getItem('attendo_academic_session')) {
             setCurrentSession(active.name);
@@ -2185,8 +2198,9 @@ function Layout({children}:{children:React.ReactNode}){
           || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null) 
           || res.data[0];
 
-        // Enforce strictly 1 active session in the state list
-        const normalized = res.data.map((ay: any) => ({
+        // Enforce strictly 1 active session in the state list (sorted ascending)
+        const sortedRes = sortAcademicYearsAscending(res.data);
+        const normalized = sortedRes.map((ay: any) => ({
           ...ay,
           is_active: ay.id === current.id
         }));

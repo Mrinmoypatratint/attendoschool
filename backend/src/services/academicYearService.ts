@@ -33,7 +33,10 @@ export async function listAcademicYears(schoolId: string) {
       ) AS class_count
      FROM academic_years ay
      WHERE ay.school_id=$1
-     ORDER BY ay.start_date DESC`,
+     ORDER BY 
+       COALESCE(NULLIF(SUBSTRING(ay.name FROM '\\d{4}'), ''), '0')::int ASC,
+       ay.start_date ASC,
+       ay.name ASC`,
     [schoolId]
   );
 
@@ -82,7 +85,10 @@ export async function listAcademicYears(schoolId: string) {
       ) AS class_count
          FROM academic_years ay
          WHERE ay.school_id=$1
-         ORDER BY ay.start_date DESC`,
+         ORDER BY 
+       COALESCE(NULLIF(SUBSTRING(ay.name FROM '\\d{4}'), ''), '0')::int ASC,
+       ay.start_date ASC,
+       ay.name ASC`,
         [schoolId]
       );
       rows = refreshed.rows;
