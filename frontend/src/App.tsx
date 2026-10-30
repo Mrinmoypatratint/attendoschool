@@ -1067,7 +1067,7 @@ function Login() {
                   className="as-simple-forgot-link"
                   onClick={e => {
                     e.preventDefault();
-                    setForgotEmail(email && email.includes('@') ? email : '');
+                    setForgotEmail(email ? email.trim() : '');
                     setForgotNotice(null);
                     setForgotOpen(true);
                   }}
@@ -1173,11 +1173,11 @@ function Login() {
 
             <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                Registered Email Address
+                Registered Email Address, Employee ID, or Admission No.
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="e.g. student@school.local or teacher@school.local"
+                  placeholder="e.g. teacher2@dav.com, EMP300, or Admission No."
                   value={forgotEmail}
                   onChange={e => setForgotEmail(e.target.value)}
                   style={{

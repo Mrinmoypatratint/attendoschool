@@ -901,7 +901,7 @@ export const demoTeachers: any[] = [
   {
     id: "d7a18f43-8e22-4a09-9112-9e163722dd65",
     name: "Sunita Rao",
-    email: "teacher2@dav.com",
+    email: "sunita.rao@school.local",
     employee_id: "50360",
     savior_no: "50360",
     mobile: "9876543211",
