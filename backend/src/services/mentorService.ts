@@ -171,23 +171,66 @@ export async function removeClassMentor(
 /**
  * 3. Admin: Get all class-sections with mentor status
  */
-export async function getAllClassMentors(schoolId: string): Promise<any[]> {
+export async function getAllClassMentors(schoolId: string, options?: any): Promise<any[]> {
+  const requestedYearId = String(options?.academic_year_id || options?.academicYearId || options?.sessionId || '').trim();
+  const requestedSession = String(options?.session || options?.sessionName || '').trim();
+
+  let targetYearId: string | null = null;
+  if (requestedYearId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedYearId)) {
+    targetYearId = requestedYearId;
+  } else if (requestedYearId || requestedSession) {
+    const term = requestedYearId || requestedSession;
+    try {
+      const ayRes = await pool.query(
+        "SELECT id FROM academic_years WHERE school_id = $1 AND (name = $2 OR name ILIKE $3 OR code = $2) LIMIT 1",
+        [schoolId, term, `%${term}%`]
+      );
+      if (ayRes.rows.length > 0) {
+        targetYearId = ayRes.rows[0].id;
+      }
+    } catch {}
+  }
+
   if (isPostgresConfigured) {
     try {
-      const q = await pool.query(
-        `SELECT sec.id AS section_id, sec.name AS section_name, c.id AS class_id, c.class_number,
-                cm.id AS mentor_record_id, cm.teacher_id, cm.assigned_at,
-                u.name AS teacher_name, u.email AS teacher_email, tp.employee_id
-         FROM sections sec
-         JOIN classes c ON c.id = sec.class_id
-         LEFT JOIN class_mentors cm ON cm.class_id = c.id AND cm.section_id = sec.id AND cm.school_id = sec.school_id
-         LEFT JOIN users u ON u.id = cm.teacher_id
-         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
-         WHERE sec.school_id = $1
-         ORDER BY c.class_number, sec.name`,
-        [schoolId],
-      );
-      if (q.rowCount && q.rowCount > 0) return q.rows;
+      let q;
+      if (targetYearId) {
+        q = await pool.query(
+          `SELECT sec.id AS section_id, sec.name AS section_name, c.id AS class_id, c.class_number,
+                  cm.id AS mentor_record_id, cm.teacher_id, cm.assigned_at,
+                  u.name AS teacher_name, u.email AS teacher_email, tp.employee_id
+           FROM sections sec
+           JOIN classes c ON c.id = sec.class_id
+           LEFT JOIN class_mentors cm ON cm.class_id = c.id AND cm.section_id = sec.id AND cm.school_id = sec.school_id
+           LEFT JOIN users u ON u.id = cm.teacher_id
+           LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+           WHERE sec.school_id = $1
+             AND (
+               (sec.academic_year_id = $2)
+               OR (c.academic_year_id = $2)
+               OR EXISTS (SELECT 1 FROM students st WHERE st.school_id = $1 AND st.academic_year_id = $2 AND st.section_id = sec.id)
+               OR EXISTS (SELECT 1 FROM student_promotions sp WHERE sp.school_id = $1 AND sp.to_academic_year_id = $2 AND sp.to_section_id = sec.id AND sp.status = 'CONFIRMED')
+               OR EXISTS (SELECT 1 FROM student_enrollment_history_v28 seh WHERE seh.academic_year_id = $2 AND seh.section_id = sec.id)
+             )
+           ORDER BY c.class_number, sec.name`,
+          [schoolId, targetYearId],
+        );
+      } else {
+        q = await pool.query(
+          `SELECT sec.id AS section_id, sec.name AS section_name, c.id AS class_id, c.class_number,
+                  cm.id AS mentor_record_id, cm.teacher_id, cm.assigned_at,
+                  u.name AS teacher_name, u.email AS teacher_email, tp.employee_id
+           FROM sections sec
+           JOIN classes c ON c.id = sec.class_id
+           LEFT JOIN class_mentors cm ON cm.class_id = c.id AND cm.section_id = sec.id AND cm.school_id = sec.school_id
+           LEFT JOIN users u ON u.id = cm.teacher_id
+           LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+           WHERE sec.school_id = $1
+           ORDER BY c.class_number, sec.name`,
+          [schoolId],
+        );
+      }
+      if (q.rows) return q.rows;
     } catch (err: any) {
       console.warn(
         "[MentorService] DB query for class teachers failed, using in-memory fallback:",

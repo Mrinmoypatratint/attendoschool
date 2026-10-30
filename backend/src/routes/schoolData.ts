@@ -241,11 +241,74 @@ export async function ensureSchoolClassesAndSections(
 
 r.get("/classes", ...reader, async (req: AuthRequest, res) => {
   const sid = req.user!.schoolId;
-  const cacheKey = `classes:${sid}`;
+  const requestedYearId = String(req.query.academic_year_id || req.query.academicYearId || req.query.sessionId || "").trim();
+  const requestedSession = String(req.query.session || req.query.sessionName || "").trim();
+
+  let targetYearId: string | null = null;
+  if (requestedYearId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedYearId)) {
+    targetYearId = requestedYearId;
+  } else if (requestedYearId || requestedSession) {
+    const term = requestedYearId || requestedSession;
+    try {
+      const ayRes = await pool.query(
+        "SELECT id FROM academic_years WHERE school_id = $1 AND (name = $2 OR name ILIKE $3 OR code = $2) LIMIT 1",
+        [sid, term, `%${term}%`]
+      );
+      if (ayRes.rows.length > 0) {
+        targetYearId = ayRes.rows[0].id;
+      }
+    } catch {}
+  }
+
+  const cacheKey = targetYearId ? `classes:${sid}:${targetYearId}` : `classes:${sid}`;
   const cached = fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   await ensureSchoolClassesAndSections(sid);
+
+  if (targetYearId) {
+    try {
+      const q = await pool.query(
+        `SELECT c.id, c.class_number, COUNT(s.id)::int as section_count
+         FROM classes c
+         LEFT JOIN sections s ON s.class_id = c.id AND (
+           (s.academic_year_id = $2)
+           OR (c.academic_year_id = $2)
+           OR EXISTS (SELECT 1 FROM students st WHERE st.school_id = $1 AND st.academic_year_id = $2 AND st.section_id = s.id)
+           OR EXISTS (SELECT 1 FROM student_promotions sp WHERE sp.school_id = $1 AND sp.to_academic_year_id = $2 AND sp.to_section_id = s.id AND sp.status = 'CONFIRMED')
+           OR EXISTS (SELECT 1 FROM student_enrollment_history_v28 seh WHERE seh.academic_year_id = $2 AND seh.section_id = s.id)
+         )
+         WHERE c.school_id = $1
+           AND (
+             (c.academic_year_id = $2)
+             OR EXISTS (SELECT 1 FROM students st WHERE st.school_id = $1 AND st.academic_year_id = $2 AND st.class_id = c.id)
+             OR EXISTS (SELECT 1 FROM student_promotions sp WHERE sp.school_id = $1 AND sp.to_academic_year_id = $2 AND sp.to_class_id = c.id AND sp.status = 'CONFIRMED')
+             OR EXISTS (SELECT 1 FROM student_enrollment_history_v28 seh WHERE seh.academic_year_id = $2 AND seh.class_id = c.id)
+           )
+         GROUP BY c.id, c.class_number
+         ORDER BY c.class_number`,
+        [sid, targetYearId]
+      );
+      const list = q.rows.map((r: any) => {
+        const cNum = Number(r.class_number);
+        const matchGrade = CLASS_GRADES.find((g) => g.class_number === cNum);
+        const lbl = matchGrade?.label || (cNum === -1 ? "Class L KG" : cNum === 0 ? "Class U KG" : `Class ${cNum}`);
+        return {
+          id: r.id,
+          class_number: cNum,
+          label: lbl,
+          name: lbl,
+          section_count: r.section_count,
+          school_id: sid,
+          academic_year_id: targetYearId,
+        };
+      });
+      fastCache.set(cacheKey, list, 30);
+      return res.json(list);
+    } catch (err: any) {
+      console.warn('[Classes] Scoped query error:', err.message);
+    }
+  }
 
   // Build standard class list from CLASS_GRADES — always the full L-KG → Class 12 set
   const standardClasses = CLASS_GRADES.map((g) => ({
@@ -455,11 +518,63 @@ r.delete("/classes/:id", ...admin, async (req: AuthRequest, res) => {
 
 r.get("/sections", ...reader, async (req: AuthRequest, res) => {
   const sid = req.user!.schoolId;
-  const cacheKey = `sections:${sid}`;
+  const requestedYearId = String(req.query.academic_year_id || req.query.academicYearId || req.query.sessionId || "").trim();
+  const requestedSession = String(req.query.session || req.query.sessionName || "").trim();
+
+  let targetYearId: string | null = null;
+  if (requestedYearId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedYearId)) {
+    targetYearId = requestedYearId;
+  } else if (requestedYearId || requestedSession) {
+    const term = requestedYearId || requestedSession;
+    try {
+      const ayRes = await pool.query(
+        "SELECT id FROM academic_years WHERE school_id = $1 AND (name = $2 OR name ILIKE $3 OR code = $2) LIMIT 1",
+        [sid, term, `%${term}%`]
+      );
+      if (ayRes.rows.length > 0) {
+        targetYearId = ayRes.rows[0].id;
+      }
+    } catch {}
+  }
+
+  const cacheKey = targetYearId ? `sections:${sid}:${targetYearId}` : `sections:${sid}`;
   const cached = fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   await ensureSchoolClassesAndSections(sid);
+
+  if (targetYearId) {
+    try {
+      const q = await pool.query(
+        `SELECT s.id, s.name, c.id AS class_id, c.class_number
+         FROM sections s
+         JOIN classes c ON c.id = s.class_id
+         WHERE s.school_id = $1
+           AND (
+             (s.academic_year_id = $2)
+             OR (c.academic_year_id = $2)
+             OR EXISTS (SELECT 1 FROM students st WHERE st.school_id = $1 AND st.academic_year_id = $2 AND st.section_id = s.id)
+             OR EXISTS (SELECT 1 FROM student_promotions sp WHERE sp.school_id = $1 AND sp.to_academic_year_id = $2 AND sp.to_section_id = s.id AND sp.status = 'CONFIRMED')
+             OR EXISTS (SELECT 1 FROM student_enrollment_history_v28 seh WHERE seh.academic_year_id = $2 AND seh.section_id = s.id)
+           )
+         ORDER BY c.class_number, s.name`,
+        [sid, targetYearId]
+      );
+      const list = q.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        section_name: r.name,
+        class_id: r.class_id,
+        class_number: Number(r.class_number),
+        school_id: sid,
+        academic_year_id: targetYearId,
+      }));
+      fastCache.set(cacheKey, list, 30);
+      return res.json(list);
+    } catch (err: any) {
+      console.warn('[Sections] Scoped query error:', err.message);
+    }
+  }
 
   // Standard sections: Section A and Section B for each class in CLASS_GRADES
   const standardSections: any[] = [];
@@ -654,11 +769,12 @@ r.post("/sections", ...admin, async (req: AuthRequest, res) => {
     }
 
     if (realClassId) {
+      const requestedAyId = req.body?.academic_year_id || req.body?.academicYearId || null;
       const q = await pool.query(
-        `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-        ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name
-        RETURNING id, name, class_id`,
-        [sid, realClassId, cleanName],
+        `INSERT INTO sections(school_id, class_id, name, academic_year_id) VALUES($1, $2, $3, $4)
+        ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name, academic_year_id=COALESCE(EXCLUDED.academic_year_id, sections.academic_year_id)
+        RETURNING id, name, class_id, academic_year_id`,
+        [sid, realClassId, cleanName, requestedAyId],
       );
       const created = {
         id: q.rows[0].id,
@@ -676,8 +792,8 @@ r.post("/sections", ...admin, async (req: AuthRequest, res) => {
           Number(a.class_number ?? 0) - Number(b.class_number ?? 0) ||
           String(a.name).localeCompare(String(b.name)),
       );
-      fastCache.delete(`classes:${sid}`);
-      fastCache.delete(`sections:${sid}`);
+      fastCache.deletePattern(`classes:${sid}*`);
+      fastCache.deletePattern(`sections:${sid}*`);
       if (sid) invalidateSchoolCache(sid);
       syncSectionToFirestore(created).catch(() => {});
       return res.status(201).json(created);
@@ -703,8 +819,8 @@ r.post("/sections", ...admin, async (req: AuthRequest, res) => {
       Number(a.class_number ?? 0) - Number(b.class_number ?? 0) ||
       String(a.name).localeCompare(String(b.name)),
   );
-  fastCache.delete(`classes:${sid}`);
-  fastCache.delete(`sections:${sid}`);
+  fastCache.deletePattern(`classes:${sid}*`);
+  fastCache.deletePattern(`sections:${sid}*`);
   if (sid) invalidateSchoolCache(sid);
   syncSectionToFirestore(newSection).catch(() => {});
   res.status(201).json(newSection);
@@ -771,8 +887,8 @@ r.delete("/sections/:id", ...admin, async (req: AuthRequest, res) => {
   );
   if (idx >= 0) demoSections.splice(idx, 1);
   deleteSectionFromFirestore(secId).catch(() => {});
-  fastCache.delete(`classes:${sid}`);
-  fastCache.delete(`sections:${sid}`);
+  fastCache.deletePattern(`classes:${sid}*`);
+  fastCache.deletePattern(`sections:${sid}*`);
   if (sid) invalidateSchoolCache(sid);
   res.json({ success: true });
 });
@@ -2612,69 +2728,125 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
     );
   }
 
+  const extractClassRaw = (rec: any) => {
+    if (rec.classNumber !== undefined && rec.classNumber !== null && rec.classNumber !== "") return rec.classNumber;
+    if (rec.class_number !== undefined && rec.class_number !== null && rec.class_number !== "") return rec.class_number;
+    if (rec.classLabel !== undefined && rec.classLabel !== null && rec.classLabel !== "") return rec.classLabel;
+    if (rec.className !== undefined && rec.className !== null && rec.className !== "") return rec.className;
+    if (rec["Class"] !== undefined && rec["Class"] !== null && rec["Class"] !== "") return rec["Class"];
+    if (rec["class"] !== undefined && rec["class"] !== null && rec["class"] !== "") return rec["class"];
+    if (rec["CLASS"] !== undefined && rec["CLASS"] !== null && rec["CLASS"] !== "") return rec["CLASS"];
+    if (rec["Grade"] !== undefined && rec["Grade"] !== null && rec["Grade"] !== "") return rec["Grade"];
+    if (rec["grade"] !== undefined && rec["grade"] !== null && rec["grade"] !== "") return rec["grade"];
+    if (rec["Standard"] !== undefined && rec["Standard"] !== null && rec["Standard"] !== "") return rec["Standard"];
+    if (rec["std"] !== undefined && rec["std"] !== null && rec["std"] !== "") return rec["std"];
+    for (const k of Object.keys(rec || {})) {
+      const lk = k.trim().toLowerCase();
+      if (["class", "grade", "standard", "std", "class name", "class / grade", "class/grade"].includes(lk)) {
+        if (rec[k] !== undefined && rec[k] !== null && String(rec[k]).trim() !== "") return rec[k];
+      }
+    }
+    return "";
+  };
+
+  const extractSectionRaw = (rec: any) => {
+    if (rec.sectionName !== undefined && rec.sectionName !== null && rec.sectionName !== "") return rec.sectionName;
+    if (rec.section_name !== undefined && rec.section_name !== null && rec.section_name !== "") return rec.section_name;
+    if (rec["Section"] !== undefined && rec["Section"] !== null && rec["Section"] !== "") return rec["Section"];
+    if (rec["section"] !== undefined && rec["section"] !== null && rec["section"] !== "") return rec["section"];
+    if (rec["SECTION"] !== undefined && rec["SECTION"] !== null && rec["SECTION"] !== "") return rec["SECTION"];
+    for (const k of Object.keys(rec || {})) {
+      const lk = k.trim().toLowerCase();
+      if (["section", "sec", "section name", "sec name"].includes(lk)) {
+        if (rec[k] !== undefined && rec[k] !== null && String(rec[k]).trim() !== "") return rec[k];
+      }
+    }
+    return "A";
+  };
+
+  // Dynamic helper: Auto-create class if not exists; if already created (e.g. from previous student in sheet), reuse it!
+  const ensureClassInDb = async (cn: number): Promise<string> => {
+    let cid = classMap.get(cn);
+    if (cid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)) {
+      return cid;
+    }
+    if (isSchoolInPostgres) {
+      try {
+        const clsQ = await pool.query(
+          `INSERT INTO classes(school_id, class_number, academic_year_id)
+           VALUES($1, $2, $3)
+           ON CONFLICT (school_id, class_number)
+           DO UPDATE SET class_number=EXCLUDED.class_number,
+                         academic_year_id=COALESCE(classes.academic_year_id, EXCLUDED.academic_year_id)
+           RETURNING id`,
+          [schoolId, cn, bulkSessionId || null],
+        );
+        if (clsQ.rows.length > 0) {
+          cid = clsQ.rows[0].id;
+          classMap.set(cn, cid);
+          return cid;
+        }
+      } catch (csErr: any) {
+        console.warn("[bulk-import] Failed to create class:", csErr.message);
+      }
+    }
+    return cid || `cls-${cn}`;
+  };
+
+  // Dynamic helper: Auto-create section if not exists; if already created, reuse it!
+  const ensureSectionInDb = async (cId: string, sn: string): Promise<string> => {
+    const cleanSec = (sn || "A").trim().toUpperCase();
+    const secKey = `${cId}_${cleanSec}`;
+    let sid = sectionMap.get(secKey);
+    if (sid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)) {
+      return sid;
+    }
+    if (isSchoolInPostgres && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cId)) {
+      try {
+        const secQ = await pool.query(
+          `INSERT INTO sections(school_id, class_id, name, academic_year_id)
+           VALUES($1, $2, $3, $4)
+           ON CONFLICT (class_id, name)
+           DO UPDATE SET name=EXCLUDED.name,
+                         academic_year_id=COALESCE(sections.academic_year_id, EXCLUDED.academic_year_id)
+           RETURNING id`,
+          [schoolId, cId, cleanSec, bulkSessionId || null],
+        );
+        if (secQ.rows.length > 0) {
+          sid = secQ.rows[0].id;
+          sectionMap.set(secKey, sid);
+          return sid;
+        }
+      } catch (secErr: any) {
+        console.warn("[bulk-import] Failed to create section:", secErr.message);
+      }
+    }
+    return sid || `sec-${cId}-${cleanSec.toLowerCase()}`;
+  };
+
   // Pre-resolve all classes & sections needed in this batch in a single pass before the row loop
   const neededClasses = new Set<number>();
   const neededSections = new Set<string>(); // "classNumber:sectionName"
   for (const st of students) {
-    const rawClassVal =
-      st.classNumber !== undefined &&
-      st.classNumber !== null &&
-      st.classNumber !== ""
-        ? st.classNumber
-        : st.classLabel || st["Class"] || st.class_number || "";
+    const rawClassVal = extractClassRaw(st);
     const parsed = parseClassValue(rawClassVal);
     if (parsed.valid) {
       neededClasses.add(parsed.classNumber);
-    }
-
-    let sn =
-      String(st.sectionName || st["Section"] || st.section_name || "A")
-        .replace(/^section\s*/i, "")
-        .trim()
-        .toUpperCase() || "A";
-    if (parsed.valid) {
+      const sn = String(extractSectionRaw(st)).replace(/^section\s*/i, "").trim().toUpperCase() || "A";
       neededSections.add(`${parsed.classNumber}:${sn}`);
     }
   }
 
   if (isSchoolInPostgres) {
     for (const cn of neededClasses) {
-      if (!classMap.has(cn)) {
-        try {
-          const clsQ = await pool.query(
-            `INSERT INTO classes(school_id, class_number) VALUES($1, $2)
-             ON CONFLICT (school_id, class_number) DO UPDATE SET class_number=EXCLUDED.class_number RETURNING id`,
-            [schoolId, cn],
-          );
-          if (clsQ.rows.length > 0) {
-            classMap.set(cn, clsQ.rows[0].id);
-          }
-        } catch (csErr: any) {
-          console.warn("[bulk-import] Failed to create class:", csErr.message);
-        }
-      }
+      await ensureClassInDb(cn);
     }
-
     for (const item of neededSections) {
       const [cnStr, sn] = item.split(":");
       const cn = Number(cnStr);
       const cId = classMap.get(cn);
-      if (cId && !sectionMap.has(`${cId}_${sn}`)) {
-        try {
-          const secQ = await pool.query(
-            `INSERT INTO sections(school_id, class_id, name) VALUES($1, $2, $3)
-             ON CONFLICT (class_id, name) DO UPDATE SET name=EXCLUDED.name RETURNING id`,
-            [schoolId, cId, sn],
-          );
-          if (secQ.rows.length > 0) {
-            sectionMap.set(`${cId}_${sn}`, secQ.rows[0].id);
-          }
-        } catch (csErr: any) {
-          console.warn(
-            "[bulk-import] Failed to create section:",
-            csErr.message,
-          );
-        }
+      if (cId) {
+        await ensureSectionInDb(cId, sn);
       }
     }
   }
@@ -2849,30 +3021,21 @@ r.post("/students/bulk-import", ...admin, async (req: AuthRequest, res) => {
       st.gender || st["Gender"] || st["gender"] || st.sex || st["Sex"] || "",
     );
 
-    // Class/section resolution from in-memory preloaded maps
-    const rawClassVal =
-      st.classNumber !== undefined &&
-      st.classNumber !== null &&
-      st.classNumber !== ""
-        ? st.classNumber
-        : st.classLabel || st["Class"] || st.class_number || "";
-    const rawSection = String(
-      st.sectionName || st["Section"] || st.section_name || "A",
-    );
+    // Class/section resolution: auto-creates on the fly and reuses for subsequent students in the same sheet
+    const rawClassVal = extractClassRaw(st);
+    const rawSection = extractSectionRaw(st);
     const parsedCls = parseClassValue(rawClassVal);
     const classNumber = parsedCls.classNumber;
     const classLabel = parsedCls.classLabel;
 
     let sectionName =
-      rawSection
+      String(rawSection)
         .replace(/^section\s*/i, "")
         .trim()
         .toUpperCase() || "A";
 
-    let classId = classMap.get(classNumber) || `cls-${classNumber}`;
-    let sectionId =
-      (classId && sectionMap.get(`${classId}_${sectionName}`)) ||
-      `sec-${classId}-${sectionName.toLowerCase()}`;
+    const classId = await ensureClassInDb(classNumber);
+    const sectionId = await ensureSectionInDb(classId, sectionName);
 
     if (!firstName)
       errors.push({
@@ -4160,7 +4323,11 @@ r.put("/students/:id", ...admin, async (req: AuthRequest, res) => {
         }
 
         if (schoolId) {
-          fastCache.delete(`students:${schoolId}`);
+          fastCache.deletePattern(`classes:${schoolId}*`);
+      fastCache.deletePattern(`sections:${schoolId}*`);
+      fastCache.deletePattern(`reports:${schoolId}*`);
+      fastCache.deletePattern(`dashboard:${schoolId}*`);
+      fastCache.deletePattern(`students:${schoolId}*`);
           fastCache.deletePattern(`student:`);
         }
 

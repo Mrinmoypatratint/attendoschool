@@ -20,7 +20,7 @@ router.use(['/admin/mentors', '/teacher/mentor'], requireAuth, (req: AuthRequest
 // GET /api/admin/mentors - List all class-sections and assigned mentors for the school
 router.get('/admin/mentors', requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const list = await mentorSvc.getAllClassMentors(req.user!.schoolId!);
+    const list = await mentorSvc.getAllClassMentors(req.user!.schoolId!, req.query);
     res.json(list);
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Unable to load class teachers' });
