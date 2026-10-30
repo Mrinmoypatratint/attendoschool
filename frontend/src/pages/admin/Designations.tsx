@@ -168,11 +168,7 @@ export default function Designations() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (isPromoteModalOpen && (!promoteTeacherId || !teachersList.some(t => t.id === promoteTeacherId)) && teachersList.length > 0) {
-      handleSelectTeacherForPromotion(teachersList[0].id);
-    }
-  }, [isPromoteModalOpen, teachersList, promoteTeacherId]);
+
 
   // Comprehensive list of available designation titles (institutional + active + standard)
   const allAvailableDesignationTitles = useMemo(() => {
@@ -196,23 +192,26 @@ export default function Designations() {
     teachersList.forEach(t => addTitle(t.designation));
 
     // 3. Common institutional school designations
-    ['PRT', 'TGT', 'PGT', 'NTT', 'Primary Teacher', 'Senior Teacher', 'Coordinator', 'Activity Incharge', 'Vice Principal', 'Principal'].forEach(addTitle);
+    ['PRT', 'TGT', 'PGT', 'NTT'].forEach(addTitle);
 
     return list;
   }, [designations, teachersList]);
 
   function handleOpenPromoteModal(prefillTeacher?: any) {
-    const target = prefillTeacher || teachersList[0];
-    const tId = target?.id || '';
-    const curr = (target?.designation || (selectedDesignationFaculty ? selectedDesignationFaculty.title : 'PRT')).trim();
-
-    setPromoteTeacherId(tId);
-    setPromoteCurrentPosition(curr);
-
-    const validDesigs = allAvailableDesignationTitles.filter(
-      d => d.trim().toLowerCase() !== curr.toLowerCase()
-    );
-    setPromoteNewPosition(validDesigs[0] || '');
+    if (prefillTeacher) {
+      const tId = prefillTeacher.id || '';
+      const curr = (prefillTeacher.designation || (selectedDesignationFaculty ? selectedDesignationFaculty.title : 'PRT')).trim();
+      setPromoteTeacherId(tId);
+      setPromoteCurrentPosition(curr);
+      const validDesigs = allAvailableDesignationTitles.filter(
+        d => d.trim().toLowerCase() !== curr.toLowerCase()
+      );
+      setPromoteNewPosition(validDesigs[0] || '');
+    } else {
+      setPromoteTeacherId('');
+      setPromoteCurrentPosition('');
+      setPromoteNewPosition('');
+    }
 
     setPromoteDate(getTodayLocalDate());
     setPromoteNotes('');
@@ -221,6 +220,11 @@ export default function Designations() {
 
   function handleSelectTeacherForPromotion(tId: string) {
     setPromoteTeacherId(tId);
+    if (!tId) {
+      setPromoteCurrentPosition('');
+      setPromoteNewPosition('');
+      return;
+    }
     const t = teachersList.find(x => x.id === tId);
     const curr = (t?.designation || 'PRT').trim();
     setPromoteCurrentPosition(curr);
@@ -1732,8 +1736,9 @@ export default function Designations() {
                       color: 'var(--text)'
                     }}
                   >
+                    <option value="">-- Select Faculty Member --</option>
                     {teachersList.length === 0 ? (
-                      <option value="">No faculty members found</option>
+                      <option value="" disabled>No faculty members found</option>
                     ) : (
                       teachersList.map(t => (
                         <option key={t.id} value={t.id}>
@@ -1765,6 +1770,7 @@ export default function Designations() {
                     <select
                       value={promoteCurrentPosition}
                       onChange={e => handleSelectPreviousPosition(e.target.value)}
+                      disabled={!promoteTeacherId}
                       style={{
                         width: '100%',
                         padding: '8px 10px',
@@ -1778,6 +1784,7 @@ export default function Designations() {
                       }}
                       title="Current / Previous Designation"
                     >
+                      {!promoteCurrentPosition && <option value="">Select previous position</option>}
                       {allAvailableDesignationTitles.map(title => (
                         <option key={title} value={title}>
                           {title}
@@ -1823,6 +1830,7 @@ export default function Designations() {
                         <select
                           value={promoteNewPosition}
                           onChange={e => setPromoteNewPosition(e.target.value)}
+                          disabled={!promoteTeacherId}
                           style={{
                             width: '100%',
                             padding: '8px 10px',
@@ -1835,6 +1843,7 @@ export default function Designations() {
                             cursor: 'pointer'
                           }}
                         >
+                          {!promoteNewPosition && <option value="">Select promoted position</option>}
                           {availableDesigs.map(title => (
                             <option key={title} value={title}>
                               {title}
