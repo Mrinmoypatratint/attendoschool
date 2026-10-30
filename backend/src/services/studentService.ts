@@ -269,11 +269,12 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
 
   let academicSessionName = '';
   try {
+    const isAyUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(st.academic_year_id || ''));
     const ayQ = await pool.query(
       `SELECT name FROM academic_years 
        WHERE (id = $1 OR (school_id = $2 AND is_active = true)) 
-       ORDER BY is_active DESC LIMIT 1`,
-      [st.academic_year_id || '00000000-0000-0000-0000-000000000000', schoolId]
+       ORDER BY CASE WHEN id = $1 THEN 0 ELSE 1 END, is_active DESC LIMIT 1`,
+      [isAyUuid ? st.academic_year_id : '00000000-0000-0000-0000-000000000000', schoolId]
     );
     if (ayQ.rowCount && ayQ.rows.length > 0) {
       academicSessionName = ayQ.rows[0].name;
@@ -353,7 +354,7 @@ export async function getStudentProfile(schoolId: string, userId: string, studen
     parentEmail: st.parent_email || '',
     dateOfBirth: st.date_of_birth ? toDdMmYyyy(st.date_of_birth) : (st.dob ? toDdMmYyyy(st.dob) : ''),
     gender: normalizeGender(st.gender) || '',
-    academicSession: academicSessionName || st.session_name || '',
+    academicSession: academicSessionName || st.session_name || st.session || '',
     photoUrl: st.photo_url || '',
     pendingPhotoUrl,
     hasPendingPhotoApproval: photoApprovalStatus === 'PENDING',

@@ -62,11 +62,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     );
   });
   const [academicSession, setAcademicSession] = useState<string>(() => {
-    const raw = (typeof window !== 'undefined' ? (localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session')) : '') ||
+    const raw = (user as any)?.academicSession ||
       (user as any)?.session ||
-      (user as any)?.academicSession ||
-      '2026–2027';
-    return String(raw).replace(/\b(academic\s+)?sessions?\b/gi, '').trim() || '2026–2027';
+      (typeof window !== 'undefined' ? localStorage.getItem('attendo_student_session') : '') ||
+      '';
+    return String(raw).replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   });
 
   useEffect(() => {
@@ -94,6 +94,17 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         if (p?.rollNumber) {
           identityUpdates.rollNumber = p.rollNumber;
         }
+        if (p?.academicSession) {
+          const cleanSession = String(p.academicSession).replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+          if (cleanSession) {
+            setAcademicSession(cleanSession);
+            identityUpdates.academicSession = cleanSession;
+            identityUpdates.session = cleanSession;
+            try {
+              localStorage.setItem('attendo_student_session', cleanSession);
+            } catch {}
+          }
+        }
         if (p?.id) {
           identityUpdates.studentId = p.id;
         }
@@ -116,15 +127,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       })
       .catch(() => {});
 
-    api.get('/academic-years').then(res => {
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        const active = res.data.find((x: any) => x.is_active) || res.data[0];
-        if (active?.name) {
-          const clean = active.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
-          setAcademicSession(clean);
-        }
-      }
-    }).catch(() => {});
+
 
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
@@ -459,16 +462,17 @@ export function StudentLayout({ children }: StudentLayoutProps) {
           </div>
 
           <div className="student-topbar-right">
-            {/* Academic Session Pill */}
-            <div
-              className="session-pill"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
-              title="Active Academic Session"
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
-              <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
-              <ChevronDown size={14} style={{ opacity: 0.7 }} />
-            </div>
+            {/* Academic Session Pill (Read-only enrolled session, no dropdown) */}
+            {academicSession && (
+              <div
+                className="session-pill"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
+                title={`Enrolled Academic Session: ${academicSession}`}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
+              </div>
+            )}
 
             {/* Institute Pill */}
             <div 
