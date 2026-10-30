@@ -32,7 +32,7 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
      ORDER BY c.class_number NULLS LAST, sec.name NULLS LAST, st.roll_number NULLS LAST, st.name`,
     params
   );
-  return rows.map((r: any) => ({ ...r, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) }));
+  return rows.map((r: any) => ({ ...r, name: String(r.name || '').toUpperCase(), first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name, last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) }));
 }
 
 export async function getStudentById(schoolId: string, id: string) {
@@ -53,7 +53,7 @@ export async function getStudentById(schoolId: string, id: string) {
   );
   if (!rows.length) return null;
   const r = rows[0];
-  return { ...r, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) };
+  return { ...r, name: String(r.name || '').toUpperCase(), first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name, last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) };
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {
@@ -90,10 +90,10 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
   }
 
   const fieldMap: Record<string, any> = {};
-  if (body.name !== undefined) fieldMap['name'] = body.name === '' ? null : body.name;
-  if (body.first_name !== undefined || body.firstName !== undefined) fieldMap['first_name'] = (body.first_name ?? body.firstName) === '' ? null : (body.first_name ?? body.firstName);
-  if (body.middle_name !== undefined || body.middleName !== undefined) fieldMap['middle_name'] = (body.middle_name ?? body.middleName) === '' ? null : (body.middle_name ?? body.middleName);
-  if (body.last_name !== undefined || body.lastName !== undefined) fieldMap['last_name'] = (body.last_name ?? body.lastName) === '' ? null : (body.last_name ?? body.lastName);
+  if (body.name !== undefined) fieldMap['name'] = body.name === '' ? null : String(body.name).trim().toUpperCase();
+  if (body.first_name !== undefined || body.firstName !== undefined) fieldMap['first_name'] = (body.first_name ?? body.firstName) === '' ? null : String(body.first_name ?? body.firstName).trim().toUpperCase();
+  if (body.middle_name !== undefined || body.middleName !== undefined) fieldMap['middle_name'] = (body.middle_name ?? body.middleName) === '' ? null : String(body.middle_name ?? body.middleName).trim().toUpperCase();
+  if (body.last_name !== undefined || body.lastName !== undefined) fieldMap['last_name'] = (body.last_name ?? body.lastName) === '' ? null : String(body.last_name ?? body.lastName).trim().toUpperCase();
   if (body.roll_number !== undefined || body.roll !== undefined) {
     fieldMap['roll_number'] = (body.roll_number ?? body.roll) === '' ? null : String(body.roll_number ?? body.roll);
   }

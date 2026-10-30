@@ -448,7 +448,7 @@ export function StudentProfile() {
             </div>
           )}
 
-          <h2 className="profile-hero-name">{profile?.name || 'Student'}</h2>
+          <h2 className="profile-hero-name">{String(profile?.name || 'STUDENT').toUpperCase()}</h2>
           <p className="profile-hero-role">{profile?.className} - Section {profile?.sectionName}</p>
           <div 
             className="profile-hero-badge"

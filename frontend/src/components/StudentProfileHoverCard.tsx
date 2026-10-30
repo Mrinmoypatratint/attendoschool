@@ -156,7 +156,7 @@ export function StudentProfileHoverCard({
   }, [isOpen]);
 
   // Derived student attributes
-  const fullName = studentData.name || 'Student';
+  const fullName = String(studentData.name || 'STUDENT').toUpperCase();
   const initials = fullName
     .split(' ')
     .filter(Boolean)

@@ -232,7 +232,7 @@ export function StudentDashboard() {
         <div className="student-hero-content">
           <div className="student-greeting-row">
             <h1 className="student-greeting-title">
-              {greetingText}, <span className="student-greeting-name">{student?.name || authUser?.name || 'Student'}</span> {greetingEmoji}
+              {greetingText}, <span className="student-greeting-name">{String(student?.name || authUser?.name || 'STUDENT').toUpperCase()}</span> {greetingEmoji}
             </h1>
           </div>
           <div className="student-greeting-meta">

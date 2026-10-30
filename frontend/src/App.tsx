@@ -65,7 +65,7 @@ const StudentProfile = lazy(() => import('./pages/student/StudentProfile').then(
 import { StudentProfileHoverCard } from './components/StudentProfileHoverCard';
 import { TeacherProfileHoverCard } from './components/TeacherProfileHoverCard';
 import { formatGender } from './utils/gender';
-import { formatCapitalizedName } from './utils/formatters';
+import { formatCapitalizedName, formatStudentFullName } from './utils/formatters';
 import { convertRomanClassToDigital, parseImportClassAndSection } from './utils/roman';
 import { ThreeDBackground } from './components/ThreeDBackground';
 import { HandwritingQuoteTyping } from './components/HandwritingQuoteTyping';
@@ -5832,7 +5832,7 @@ function Students(){
     const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
     const middleName = String(f.middleName || '').trim();
     const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
-    const fullName = formatCapitalizedName(firstName, middleName, lastName) || f.name || '';
+    const fullName = (formatStudentFullName(firstName, middleName, lastName) || f.name || '').toUpperCase();
     if (!firstName) {
       alert('Validation Error: Please enter student first name.');
       return;
@@ -6496,7 +6496,7 @@ function Students(){
           ln = parts[parts.length - 1] || '';
         }
       }
-      const fullName = formatCapitalizedName(fn, mn, ln) || r.name || `${fn} ${ln}`.trim();
+      const fullName = (formatStudentFullName(fn, mn, ln) || r.name || `${fn} ${ln}`.trim()).toUpperCase();
 
       const cNum = Number(r.class_number);
       const cId = String(r.class_id || '');
@@ -6845,7 +6845,7 @@ function Students(){
               if (!lastName) lastName = parts[parts.length - 1] || '';
             }
           }
-          const fullName = formatCapitalizedName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `Student ${idx+1}`));
+          const fullName = (formatStudentFullName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `STUDENT ${idx+1}`))).toUpperCase();
           const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
           const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
 
@@ -7761,7 +7761,7 @@ function Students(){
               </td>
               <td>
                 <StudentProfileHoverCard student={x} activeSession={activeSession}>
-                  <b>{x.name}</b>
+                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                 </StudentProfileHoverCard>
               </td>
               <td style={{ whiteSpace: 'nowrap' }}>
@@ -8129,7 +8129,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fn, mnVal, lnVal);
+                    const fullName = formatStudentFullName(fn, mnVal, lnVal);
                     setF({ ...f, firstName: fn, name: fullName });
                   }}
                 />
@@ -8161,7 +8161,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mn, lnVal);
+                    const fullName = formatStudentFullName(fnVal, mn, lnVal);
                     setF({ ...f, middleName: mn, name: fullName });
                   }}
                 />
@@ -8186,7 +8186,7 @@ function Students(){
                   }}
                   onChange={e => {
                     const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
-                    const fullName = formatCapitalizedName(fnVal, mnVal, ln);
+                    const fullName = formatStudentFullName(fnVal, mnVal, ln);
                     setF({ ...f, lastName: ln, name: fullName });
                   }}
                 />
@@ -8215,7 +8215,7 @@ function Students(){
                 readOnly
                 tabIndex={-1}
                 style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={formatCapitalizedName(fnVal, mnVal, lnVal) || f.name || ''}
+                value={(formatStudentFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
                 placeholder="Full name will appear here automatically"
               />
             </label>

@@ -289,7 +289,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     nav('/login');
   };
 
-  const studentName = user?.name || 'Student';
+  const studentName = String(user?.name || 'STUDENT').toUpperCase();
   const studentClass = user?.className 
     ? (user?.sectionName ? `${user.className} · Section ${user.sectionName}` : user.className) 
     : '';
@@ -327,7 +327,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     }
   };
 
-  const resolvedStudentName = user?.name?.trim() || 'Student';
+  const resolvedStudentName = String(user?.name?.trim() || 'STUDENT').toUpperCase();
   const resolvedSchoolName = isDav ? 'DAV MODEL SCHOOL' : (user?.schoolName?.trim() || 'School');
   const resolvedLogoUrl = displaySchoolPhoto;
 

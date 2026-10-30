@@ -1148,9 +1148,9 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
 
   // Name normalization and validation
   const rawMiddle = b.middleName || b.middle_name;
-  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim();
-  const middleName = String(rawMiddle || '').trim();
-  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim();
+  const firstName = String(rawFirst !== undefined ? rawFirst : (rawName ? String(rawName).split(' ')[0] : '')).trim().toUpperCase();
+  const middleName = String(rawMiddle || '').trim().toUpperCase();
+  const lastName = String(rawLast !== undefined ? rawLast : (rawName ? String(rawName).split(' ').slice(1).join(' ') : '')).trim().toUpperCase();
 
   if (!firstName) {
     return res.status(400).json({ message: 'First Name is a required field.' });
@@ -1171,7 +1171,7 @@ r.post('/students',...admin,async(req:AuthRequest,res)=>{
     return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
   }
 
-  const name = [firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawName || '').trim();
+  const name = ([firstName, middleName, lastName].filter(Boolean).join(' ') || String(rawName || '').trim()).toUpperCase();
   if (!name || !rollNumber || !classId || !sectionId) {
     return res.status(400).json({ message: 'First Name, Roll Number, Class and Section are required.' });
   }
@@ -1918,24 +1918,24 @@ r.post('/students/bulk-import',...admin,async(req:AuthRequest,res)=>{
   for (let i = 0; i < students.length; i++) {
     const st = students[i];
     const rowNum = i + 1;
-    let firstName = String(st.firstName || st['First Name'] || st.first_name || st['first_name'] || '').trim();
-    let middleName = String(st.middleName || st['Middle Name'] || st.middle_name || st['middle_name'] || st.MiddleName || '').trim();
-    let lastName  = String(st.lastName || st['Last Name'] || st.last_name || st['last_name'] || '').trim();
-    const rawFullName = String(st.fullName || st['Full Name'] || st.full_name || st.name || '').trim();
+    let firstName = String(st.firstName || st['First Name'] || st.first_name || st['first_name'] || '').trim().toUpperCase();
+    let middleName = String(st.middleName || st['Middle Name'] || st.middle_name || st['middle_name'] || st.MiddleName || '').trim().toUpperCase();
+    let lastName  = String(st.lastName || st['Last Name'] || st.last_name || st['last_name'] || '').trim().toUpperCase();
+    const rawFullName = String(st.fullName || st['Full Name'] || st.full_name || st.name || '').trim().toUpperCase();
     if ((!firstName || !lastName) && rawFullName) {
       const parts = rawFullName.split(/\s+/).filter(Boolean);
       if (parts.length === 1) {
-        if (!firstName) firstName = parts[0] || '';
+        if (!firstName) firstName = (parts[0] || '').toUpperCase();
       } else if (parts.length === 2) {
-        if (!firstName) firstName = parts[0] || '';
-        if (!lastName) lastName = parts[1] || '';
+        if (!firstName) firstName = (parts[0] || '').toUpperCase();
+        if (!lastName) lastName = (parts[1] || '').toUpperCase();
       } else if (parts.length >= 3) {
-        if (!firstName) firstName = parts[0] || '';
-        if (!middleName) middleName = parts.slice(1, -1).join(' ') || '';
-        if (!lastName) lastName = parts[parts.length - 1] || '';
+        if (!firstName) firstName = (parts[0] || '').toUpperCase();
+        if (!middleName) middleName = (parts.slice(1, -1).join(' ') || '').toUpperCase();
+        if (!lastName) lastName = (parts[parts.length - 1] || '').toUpperCase();
       }
     }
-    const name = rawFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()));
+    const name = (rawFullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(st.name || '').trim()))).toUpperCase();
     const rollNumber = String(st.rollNumber || st['Roll Number'] || st.roll_number || '').trim();
     const admissionNumber = String(st.admissionNumber || st['Admission Number'] || st.admission_number || '').trim();
 
@@ -2606,9 +2606,9 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
   }
 
   const rawMiddle = req.body.middleName || req.body.middle_name;
-  const firstName = String(rawFirst !== undefined ? rawFirst : '').trim();
-  const middleName = String(rawMiddle !== undefined ? rawMiddle : '').trim();
-  const lastName = String(rawLast !== undefined ? rawLast : '').trim();
+  const firstName = String(rawFirst !== undefined ? rawFirst : '').trim().toUpperCase();
+  const middleName = String(rawMiddle !== undefined ? rawMiddle : '').trim().toUpperCase();
+  const lastName = String(rawLast !== undefined ? rawLast : '').trim().toUpperCase();
 
   if (rawFirst !== undefined) {
     if (!firstName) {
@@ -2631,7 +2631,7 @@ r.put('/students/:id', ...admin, async (req: AuthRequest, res) => {
     return res.status(400).json({ message: 'Last Name must contain only letters, numbers are not allowed.' });
   }
 
-  const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(name || '').trim()));
+  const fullName = ([firstName, middleName, lastName].filter(Boolean).join(' ') || (firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || String(name || '').trim()))).toUpperCase();
 
   const resolvedClassId = String(classId || class_id || '').trim();
   const resolvedSectionId = String(sectionId || section_id || '').trim();
