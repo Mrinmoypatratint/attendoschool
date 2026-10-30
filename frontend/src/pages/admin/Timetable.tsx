@@ -158,7 +158,7 @@ export default function Timetable() {
         api.get('/classes').catch(() => ({ data: [] })),
         api.get('/sections').catch(() => ({ data: [] })),
         api.get('/subjects').catch(() => ({ data: [] })),
-        api.get('/teachers').catch(() => ({ data: [] }))
+        api.get('/teachers?full=true').catch(() => ({ data: [] }))
       ]);
       if (Array.isArray(pRes.data) && pRes.data.length > 0) setPeriods(pRes.data);
       if (Array.isArray(eRes.data)) setEntries(eRes.data);

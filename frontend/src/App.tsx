@@ -35,6 +35,7 @@ const TeacherAssignments = lazy(() => import('./pages/teacher/TeacherAssignments
 const SmtpLogs = lazy(() => import('./pages/admin/SmtpLogs'));
 const Designations = lazy(() => import('./pages/admin/Designations'));
 const LeavePolicy = lazy(() => import('./pages/admin/LeavePolicy'));
+const TemporaryAssignments = lazy(() => import('./pages/admin/TemporaryAssignments'));
 const SuperAdminModule = lazy(() => import('./super-admin/SuperAdminModule').then(m => ({ default: m.SuperAdminModule })));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const LandingPage = lazy(() => import('./pages/landing/LandingPage'));
@@ -2399,6 +2400,14 @@ function Layout({children}:{children:React.ReactNode}){
           keywords: ['leave policy', 'casual leave', 'sick leave', 'earned leave', 'leave rules', 'yearly leave', 'half yearly leave']
         },
         {
+          path: '/admin/temporary-assignments',
+          label: 'Temporary Assignments',
+          category: 'Management',
+          description: 'Assign substitute or temporary class teachers for specific dates',
+          icon: ClipboardCheck,
+          keywords: ['temporary assignment', 'substitute teacher', 'temp mentor', 'proxy attendance']
+        },
+        {
           path: '/teacher-leave-approvals',
           label: 'Teacher Leave Review',
           category: 'Reviews & Approvals',
@@ -2792,6 +2801,8 @@ function Layout({children}:{children:React.ReactNode}){
     // ['/attendance-corrections', 'Corrections', CheckCircle2], // Temporarily commented out as requested
     ['/analytics', 'Reports & Analytics', BarChart3],
     ['/leave-policy', 'Leave Policy', FileText],
+    ['/photo-approvals', 'Photo Approvals', Camera],
+    ['/admin/temporary-assignments', 'Temporary Assignments', ClipboardCheck],
     ['/teacher-leave-approvals', "Teacher's Leave Review", CalendarCheck],
     ['—', 'BILLING'],
     ['/invoices', 'Invoices', FileText],
@@ -18430,6 +18441,8 @@ function App(){
         <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
         <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeavePolicy/></Layout></RoleGuard>}/>
+        <Route path="/admin/temporary-assignments" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TemporaryAssignments/></Layout></RoleGuard>}/>
+        <Route path="/temporary-assignments" element={<Navigate to="/admin/temporary-assignments" replace/>}/>
         <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace/>}/>
         <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
         <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>

@@ -1,4 +1,5 @@
 import { queueAbsentNotifications } from '../services/notificationService';
+import { requireAttendanceTeacher } from '../middleware/attendanceAuth';
 import { Router } from 'express';
 import crypto from 'crypto';
 import * as XLSX from 'xlsx';
@@ -1421,7 +1422,7 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
   });
 };
 
-r.put('/attendance/:sessionId/student/:studentId', ...teacher, updateStudentAttendanceHandler);
+r.put('/attendance/:sessionId/student/:studentId', ...teacher, requireAttendanceTeacher, updateStudentAttendanceHandler);
 r.put('/:sessionId/student/:studentId', ...teacher, updateStudentAttendanceHandler);
 
 // ── POST /api/teacher/attendance/:sessionId/reattendance & POST /api/attendance/:sessionId/reattendance ──
@@ -2501,8 +2502,8 @@ const postAttendanceHandler = async (req: AuthRequest, res: any) => {
   });
 };
 
-r.post('/attendance', ...teacher, postAttendanceHandler);
-r.post('/', ...teacher, postAttendanceHandler);
+r.post('/attendance', ...teacher, requireAttendanceTeacher, postAttendanceHandler);
+r.post('/', ...teacher, requireAttendanceTeacher, postAttendanceHandler);
 
 // ── GET /api/teacher/attendance/history & GET /api/attendance/history ──
 const attendanceHistoryHandler = async (req: AuthRequest, res: any) => {
