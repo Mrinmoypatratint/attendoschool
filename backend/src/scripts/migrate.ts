@@ -151,9 +151,24 @@ async function checkMigrationSignature(client: PoolClient, filename: string): Pr
         );
         return (res.rowCount ?? 0) > 0;
       }
-      case '028_final_integrated.sql':
-      case '027_final_integration.sql':
-      case '026_production.sql':
+      case '028_final_integrated.sql': {
+        const res = await client.query(
+          "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'v28_test_runs'"
+        );
+        return (res.rowCount ?? 0) > 0;
+      }
+      case '027_final_integration.sql': {
+        const res = await client.query(
+          "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'student_enrollments_v27'"
+        );
+        return (res.rowCount ?? 0) > 0;
+      }
+      case '026_production.sql': {
+        const res = await client.query(
+          "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'system_health_checks'"
+        );
+        return (res.rowCount ?? 0) > 0;
+      }
       case '025_communication.sql': {
         const res = await client.query(
           "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'announcements'"
@@ -398,23 +413,27 @@ async function runMigrations() {
           adoptedCount++;
           continue;
         }
-      }
 
-      // If migration 047 is not yet adopted, double check constraint uq_attendance_sessions_daily specifically
-      if (file === '047_daily_class_teacher_attendance.sql') {
-        const uqCheck = await client.query(
-          "SELECT 1 FROM pg_constraint WHERE conname = 'uq_attendance_sessions_daily'"
-        );
-        if ((uqCheck.rowCount ?? 0) > 0) {
-          console.log(`  [Adopted] ${file} (uq_attendance_sessions_daily constraint detected; safely recording without re-running SQL)`);
-          await client.query(
-            `INSERT INTO schema_migrations (filename, checksum, applied_at, execution_time_ms)
-             VALUES ($1, $2, NOW(), 0)
-             ON CONFLICT (filename) DO NOTHING`,
-            [file, checksum]
+        // CRITICAL PROTECTION: Never execute 047 blindly against an established database
+        if (file === '047_daily_class_teacher_attendance.sql') {
+          const uqCheck = await client.query(
+            "SELECT 1 FROM pg_constraint WHERE conname = 'uq_attendance_sessions_daily'"
           );
-          adoptedCount++;
-          continue;
+          if ((uqCheck.rowCount ?? 0) > 0) {
+            console.log(`  [Adopted] ${file} (uq_attendance_sessions_daily constraint detected; safely recording without re-running SQL)`);
+            await client.query(
+              `INSERT INTO schema_migrations (filename, checksum, applied_at, execution_time_ms)
+               VALUES ($1, $2, NOW(), 0)
+               ON CONFLICT (filename) DO NOTHING`,
+              [file, checksum]
+            );
+            adoptedCount++;
+            continue;
+          } else {
+            throw new Error(
+              `CRITICAL SAFETY STOP: Migration 047 contains DELETE statements and cannot be executed automatically on an established database without manual review.`
+            );
+          }
         }
       }
 
