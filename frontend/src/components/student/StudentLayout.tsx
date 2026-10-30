@@ -21,7 +21,6 @@ import {
   Moon,
   Building2,
   ChevronDown,
-  Globe,
   ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -383,11 +382,6 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
               <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #4b6b94)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
                 Code: {displaySchoolCode} · Affiliated
-                {schoolWebsite && (
-                  <span className="student-sidebar-website" style={{ marginLeft: 6 }}>
-                    <Globe size={10} /> Website
-                  </span>
-                )}
               </span>
             </div>
           </div>
