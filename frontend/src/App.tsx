@@ -4450,7 +4450,7 @@ function AdminHome() {
             </div>
           </div>
           <div className="hero-actions">
-            <button className="action-btn-primary" onClick={() => nav('/teachers')}>
+            <button className="action-btn-secondary" onClick={() => nav('/teachers')}>
               <UserPlus size={16} /> Enroll Teacher
             </button>
             <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
