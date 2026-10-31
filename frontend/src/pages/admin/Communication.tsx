@@ -636,6 +636,13 @@ export default function Communication() {
       // 2. Publish announcement to recipients
       await api.post(`/communication/announcements/${editingDraft.id}/publish`);
       setMsg(`Announcement "${editForm.title}" confirmed and published successfully!`);
+      // Notify Teacher portal and topbar bell immediately
+      window.dispatchEvent(new CustomEvent('reviews-updated'));
+      window.dispatchEvent(new CustomEvent('announcements-updated'));
+      try {
+        localStorage.setItem('announcements_last_updated', Date.now().toString());
+        localStorage.setItem('reviews_last_updated', Date.now().toString());
+      } catch {}
       setEditingDraft(null);
       load();
     } catch (e: any) {
@@ -738,6 +745,13 @@ export default function Communication() {
       }
 
       setMsg('Announcement confirmed and published successfully!');
+      // Notify Teacher portal and topbar bell immediately
+      window.dispatchEvent(new CustomEvent('reviews-updated'));
+      window.dispatchEvent(new CustomEvent('announcements-updated'));
+      try {
+        localStorage.setItem('announcements_last_updated', Date.now().toString());
+        localStorage.setItem('reviews_last_updated', Date.now().toString());
+      } catch {}
       setForm({
         title: '',
         message: '',
@@ -765,6 +779,13 @@ export default function Communication() {
     try {
       await api.post(`/communication/announcements/${publishTarget.id}/publish`);
       setMsg(`Announcement "${publishTarget.title}" published and delivered to recipients!`);
+      // Notify Teacher portal and topbar bell immediately
+      window.dispatchEvent(new CustomEvent('reviews-updated'));
+      window.dispatchEvent(new CustomEvent('announcements-updated'));
+      try {
+        localStorage.setItem('announcements_last_updated', Date.now().toString());
+        localStorage.setItem('reviews_last_updated', Date.now().toString());
+      } catch {}
       setPublishTarget(null);
       load();
     } catch (e: any) {

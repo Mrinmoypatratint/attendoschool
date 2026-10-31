@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { BrandedWelcomeLoader } from '../BrandedWelcomeLoader';
 import { ErrorBoundary } from '../ErrorBoundary';
@@ -22,13 +22,34 @@ import {
   Building2,
   ChevronDown,
   Globe,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../api';
-import { studentApi } from '../../services/studentApi';
+import { studentApi, Announcement } from '../../services/studentApi';
 import { StudentSearchBar } from './StudentSearchBar';
 import { SidebarToggle } from '../SidebarToggle';
+
+function formatNotifTime(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return (
+    d.toLocaleDateString([], { day: 'numeric', month: 'short' }) +
+    ', ' +
+    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+}
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -44,6 +65,10 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     return localStorage.getItem('theme') === 'dark';
   });
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [studentNotifOpen, setStudentNotifOpen] = useState<boolean>(false);
+  const [studentNotifs, setStudentNotifs] = useState<Announcement[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = useState<boolean>(false);
+  const studentNotifRef = useRef<HTMLDivElement>(null);
   const [studentPhoto, setStudentPhoto] = useState<string | null>(
     (user as any)?.photoUrl || (user as any)?.photo_url || (user as any)?.avatarUrl || null
   );
@@ -224,17 +249,18 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  // Dynamic notification count from School Admin announcements
-  useEffect(() => {
-    let isMounted = true;
+  // Dynamic notification count & super-notif announcements list
+  const loadStudentNotifs = useCallback(() => {
+    setLoadingNotifs(true);
     studentApi
       .getAnnouncements()
       .then((list) => {
-        if (!isMounted) return;
         if (!Array.isArray(list)) {
+          setStudentNotifs([]);
           setUnreadCount(0);
           return;
         }
+        setStudentNotifs(list);
 
         let readIds: string[] = [];
         try {
@@ -250,25 +276,99 @@ export function StudentLayout({ children }: StudentLayoutProps) {
           } catch {}
           setUnreadCount(0);
         } else {
-          const unread = list.filter((a) => !readIds.includes(a.id));
+          const unread = list.filter((a) => !a.read_at && !readIds.includes(a.id));
           setUnreadCount(unread.length);
         }
       })
       .catch(() => {
-        if (isMounted) setUnreadCount(0);
+        setStudentNotifs([]);
+        setUnreadCount(0);
+      })
+      .finally(() => {
+        setLoadingNotifs(false);
       });
-
-    return () => {
-      isMounted = false;
-    };
   }, [location.pathname, user?.id]);
 
-  // Close mobile sidebar on route change
+  useEffect(() => {
+    loadStudentNotifs();
+    const interval = setInterval(loadStudentNotifs, 15000);
+
+    const handleRefresh = () => loadStudentNotifs();
+    window.addEventListener('announcements-read', handleRefresh);
+    window.addEventListener('storage', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('announcements-read', handleRefresh);
+      window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
+  }, [loadStudentNotifs]);
+
+  // Outside click listener for notification dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (studentNotifRef.current && !studentNotifRef.current.contains(e.target as Node)) {
+        setStudentNotifOpen(false);
+      }
+    }
+    if (studentNotifOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [studentNotifOpen]);
+
+  // Close mobile sidebar and dropdown on route change
   useEffect(() => {
     setMobileNavOpen(false);
+    setStudentNotifOpen(false);
   }, [location.pathname]);
 
-  const navItems = [
+  const handleNoticeClick = async (notice: Announcement) => {
+    setStudentNotifOpen(false);
+    try {
+      let readIds: string[] = [];
+      try {
+        const stored = localStorage.getItem(`read_announcements_${user?.id || 'guest'}`);
+        if (stored) readIds = JSON.parse(stored);
+      } catch {}
+      if (!readIds.includes(notice.id)) {
+        readIds.push(notice.id);
+        localStorage.setItem(`read_announcements_${user?.id || 'guest'}`, JSON.stringify(readIds));
+      }
+      setStudentNotifs(prev =>
+        prev.map(n => (n.id === notice.id ? { ...n, read_at: new Date().toISOString() } : n))
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (notice.id) {
+        studentApi.markAnnouncementRead(notice.id).catch(() => {});
+      }
+      window.dispatchEvent(new Event('announcements-read'));
+    } catch {}
+    nav(`/student/announcements?q=${encodeURIComponent(notice.title)}`);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const allIds = studentNotifs.map(n => n.id);
+      localStorage.setItem(`read_announcements_${user?.id || 'guest'}`, JSON.stringify(allIds));
+      setStudentNotifs(prev =>
+        prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
+      );
+      setUnreadCount(0);
+      for (const notice of studentNotifs) {
+        if (!notice.read_at) {
+          studentApi.markAnnouncementRead(notice.id).catch(() => {});
+        }
+      }
+      window.dispatchEvent(new Event('announcements-read'));
+    } catch {}
+  };
+
+    const navItems = [
     { to: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/student/attendance', label: 'My Attendance', icon: CalendarCheck },
     { to: '/student/timetable', label: 'Timetable', icon: Calendar },
@@ -500,18 +600,169 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               )}
             </div>
 
-            {/* Notification Bell */}
-            <NavLink
-              to="/student/announcements"
-              className="student-topbar-icon-btn"
-              aria-label="Notifications"
-              title={unreadCount > 0 ? `${unreadCount} new notifications` : 'Notifications'}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="student-notification-badge">{unreadCount}</span>
+            {/* Connected Review Notifications Bell & Popover (Student Announcements) */}
+            <div className="super-notif-wrap" ref={studentNotifRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="student-topbar-icon-btn"
+                aria-label="Notifications"
+                title={unreadCount > 0 ? `${unreadCount} new notifications` : 'Notifications'}
+                onClick={() => {
+                  setStudentNotifOpen(prev => !prev);
+                  if (!studentNotifOpen) loadStudentNotifs();
+                }}
+                style={{ position: 'relative', cursor: 'pointer' }}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="student-notification-badge">{unreadCount}</span>
+                )}
+              </button>
+
+              {studentNotifOpen && (
+                <div
+                  className="super-notif-dropdown"
+                  style={{
+                    right: -70,
+                    width: 410,
+                    maxWidth: 'calc(100vw - 32px)'
+                  }}
+                >
+                  <div className="super-notif-header">
+                    <div className="super-notif-title-row">
+                      <h4 className="super-notif-title">Notifications</h4>
+                      {unreadCount > 0 && (
+                        <span className="super-notif-count-pill">
+                          {unreadCount} pending
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="super-notif-readall-btn"
+                        title="Announcements"
+                        style={{ color: '#d97706', background: '#fffbeb', borderColor: '#fde68a', cursor: 'pointer' }}
+                        onClick={() => {
+                          setStudentNotifOpen(false);
+                          nav('/student/announcements');
+                        }}
+                      >
+                        <Megaphone size={12} />
+                        <span>Announcements</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="super-notif-list" style={{ maxHeight: 360, overflowY: 'auto' }}>
+                    {loadingNotifs && studentNotifs.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading announcements...</div>
+                      </div>
+                    ) : studentNotifs.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending school announcements.</div>
+                      </div>
+                    ) : (
+                      studentNotifs.slice(0, 8).map((notice) => {
+                        let readIds = [];
+                        try {
+                          const stored = localStorage.getItem(`read_announcements_${user?.id || 'guest'}`);
+                          if (stored) readIds = JSON.parse(stored);
+                        } catch {}
+                        const isUnread = !notice.read_at && !readIds.includes(notice.id);
+
+                        return (
+                          <div
+                            key={notice.id}
+                            className={`super-notif-item ${isUnread ? 'unread' : ''}`}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleNoticeClick(notice)}
+                          >
+                            <div
+                              className="super-notif-icon-wrap"
+                              style={{
+                                background: '#fef3c7',
+                                color: '#d97706',
+                                borderRadius: 10,
+                                width: 38,
+                                height: 38,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Megaphone size={18} />
+                            </div>
+
+                            <div className="super-notif-body">
+                              <div className="super-notif-item-title">
+                                <span className="super-notif-item-title-text" style={{ fontWeight: 700 }}>
+                                  {notice.title}
+                                </span>
+                                <span className="super-notif-time">
+                                  {formatNotifTime(notice.published_at || notice.created_at)}
+                                </span>
+                              </div>
+                              <p
+                                className="super-notif-msg"
+                                style={{
+                                  margin: '3px 0 6px',
+                                  fontSize: 12,
+                                  lineHeight: 1.4,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {notice.message}
+                              </p>
+                              <span className="super-notif-action-tag">
+                                View Announcement →
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="super-notif-footer">
+                    <button
+                      type="button"
+                      className="super-notif-footer-link"
+                      onClick={() => {
+                        setStudentNotifOpen(false);
+                        nav('/student/announcements');
+                      }}
+                    >
+                      <Megaphone size={13} />
+                      <span>All Announcements</span>
+                    </button>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAllRead();
+                        }}
+                      >
+                        <Check size={12} />
+                        <span>Mark all read</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
-            </NavLink>
+            </div>
 
             {/* Dark Mode Toggle */}
             <button

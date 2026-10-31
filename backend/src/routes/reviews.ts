@@ -1721,7 +1721,7 @@ function formatLeaveDate(d: any) {
 router.get('/notifications', async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
-    const schoolId = req.user?.schoolId;
+    const schoolId = req.user?.schoolId || (req.user as any)?.school_id || (req.headers['x-school-id'] as string) || (req.headers['x-tenant-id'] as string) || '00000000-0000-0000-0000-000000000001';
     const userRole = req.user?.role;
     if (!schoolId) {
       return res.json({ success: true, pendingPhotosCount: 0, pendingLeavesCount: 0, pendingTeacherLeavesCount: 0, totalPendingCount: 0, notifications: [] });
@@ -1734,6 +1734,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       let studentLeavesRes;
       let teacherLeavesRes;
       let countRes;
+      let announcementsRes: any = { rows: [] };
 
       if (userRole === 'TEACHER') {
         // For TEACHER: student photos awaiting review in their mentored class-sections
@@ -1770,6 +1771,32 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         // Teacher does not review teacher leaves
         teacherLeavesRes = { rows: [] };
 
+        // For TEACHER: School Announcements awaiting read
+        try {
+          announcementsRes = await pool.query(`
+            SELECT a.id, a.title, a.message, a.priority, a.audience_type, a.created_at, a.published_at,
+                   a.attachment_url, a.attachment_name,
+                   COALESCE(u.name, 'School Administration') as author_name
+            FROM announcements a
+            LEFT JOIN users u ON u.id = a.created_by
+            LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $3
+            WHERE (a.school_id = $1 OR a.school_id::text = $2)
+              AND a.status = 'PUBLISHED'
+              AND (
+                a.audience_type IN ('TEACHER', 'SCHOOL')
+                OR u.role IN ('SCHOOL_ADMIN', 'SUPER_ADMIN')
+                OR a.created_by != $3
+                OR a.created_by IS NULL
+              )
+              AND (r.read_at IS NULL)
+              AND (a.expires_at IS NULL OR a.expires_at > NOW())
+            ORDER BY a.priority = 'EMERGENCY' DESC, COALESCE(a.published_at, a.created_at) DESC
+            LIMIT 10
+          `, [pgSchoolId, String(schoolId), req.user?.id]);
+        } catch (_annErr) {
+          announcementsRes = { rows: [] };
+        }
+
         countRes = await pool.query(`
           SELECT 
             (
@@ -1794,7 +1821,21 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
                AND cm.teacher_id = $3
               WHERE (l.school_id = $1 OR l.school_id::text = $2) AND l.status = 'PENDING'
             ) as pending_student_leaves,
-            0 as pending_teacher_leaves
+            0 as pending_teacher_leaves,
+            (
+              SELECT COUNT(*)
+              FROM announcements a
+              LEFT JOIN announcement_recipients r ON r.announcement_id = a.id AND r.parent_user_id = $3
+              WHERE (a.school_id = $1 OR a.school_id::text = $2)
+                AND a.status = 'PUBLISHED'
+                AND (
+                  a.audience_type IN ('TEACHER', 'SCHOOL')
+                  OR a.created_by != $3
+                  OR a.created_by IS NULL
+                )
+                AND (r.read_at IS NULL)
+                AND (a.expires_at IS NULL OR a.expires_at > NOW())
+            ) as pending_announcements
         `, [pgSchoolId, String(schoolId), req.user?.id]);
       } else {
         photosRes = await pool.query(`
@@ -1837,6 +1878,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       const rawPhotosCount = parseInt(countRes.rows[0]?.pending_photos || '0', 10);
       const rawStudentLeavesCount = parseInt(countRes.rows[0]?.pending_student_leaves || '0', 10);
       const rawTeacherLeavesCount = parseInt(countRes.rows[0]?.pending_teacher_leaves || '0', 10);
+      const rawAnnouncementsCount = parseInt(countRes.rows[0]?.pending_announcements || (announcementsRes?.rows?.length || 0), 10);
 
       // Photos go to TEACHER, not SCHOOL_ADMIN
       const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : rawPhotosCount;
@@ -1844,6 +1886,7 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         ? rawTeacherLeavesCount
         : rawStudentLeavesCount;
       const pendingTeacherLeavesCount = (userRole === 'TEACHER') ? 0 : rawTeacherLeavesCount;
+      const pendingAnnouncementsCount = (userRole === 'TEACHER') ? rawAnnouncementsCount : 0;
 
       const notifications: any[] = [
         ...photosRes.rows.map(p => ({
@@ -1891,6 +1934,18 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
           documentName: l.document_name,
           startDate: l.start_date,
           endDate: l.end_date
+        })),
+        ...(announcementsRes?.rows || []).map((a: any) => ({
+          id: `ann-${a.id}`,
+          rawId: a.id,
+          type: 'ANNOUNCEMENT',
+          category: 'ANNOUNCEMENT',
+          title: `School Notice: ${a.title}`,
+          message: a.message,
+          authorName: a.author_name || 'School Administration',
+          priority: a.priority,
+          link: '/announcements',
+          createdAt: a.published_at || a.created_at
         }))
       ];
 
@@ -1901,7 +1956,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
         pendingPhotosCount,
         pendingLeavesCount,
         pendingTeacherLeavesCount,
-        totalPendingCount: pendingPhotosCount + pendingLeavesCount,
+        pendingAnnouncementsCount,
+        totalPendingCount: pendingPhotosCount + pendingLeavesCount + pendingAnnouncementsCount,
         notifications
       });
     }
@@ -1923,9 +1979,54 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       return true;
     });
 
+    let memAnnouncementsList: any[] = [];
+    if (isTeacher) {
+      try {
+        const { memAnnouncements } = await import('../services/communicationService');
+        memAnnouncementsList = (memAnnouncements || []).filter((a: any) => {
+          if (a.status !== 'PUBLISHED') return false;
+
+          // Check if already read by this teacher
+          if (Array.isArray(a.read_by) && (a.read_by.includes(teacherId) || a.read_by.includes(String(teacherId)))) {
+            return false;
+          }
+
+          // Flexible multi-tenant school matching
+          const matchesSchool = !a.school_id || !schoolId ||
+            isSameSchool(a.school_id, schoolId) ||
+            a.school_id === schoolId ||
+            String(a.school_id).toLowerCase() === String(schoolId).toLowerCase() ||
+            a.school_id === '00000000-0000-0000-0000-000000000001' ||
+            schoolId === '00000000-0000-0000-0000-000000000001';
+
+          if (!matchesSchool) return false;
+
+          // Do not notify a teacher about announcements they themselves created
+          if (a.created_by && (a.created_by === teacherId || a.created_by === String(teacherId)) && a.author_role === 'TEACHER') {
+            return false;
+          }
+
+          // Audience & origin checks:
+          // Include any announcement from School Admin, Super Admin, Principal, or sent to Faculty/School/Students
+          const aud = String(a.audience_type || '').toUpperCase();
+          const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
+          const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
+                              a.created_by_role === 'SCHOOL_ADMIN' ||
+                              a.author_role === 'SUPER_ADMIN' ||
+                              !a.created_by ||
+                              (a.created_by !== teacherId && a.created_by !== String(teacherId));
+
+          return isTargetAudience && isFromAdmin;
+        });
+      } catch (annMemErr) {
+        console.warn('[notifications] Error filtering memAnnouncements:', annMemErr);
+      }
+    }
+
     const pendingPhotosCount = (userRole === 'SCHOOL_ADMIN') ? 0 : memPhotos.length;
     const pendingLeavesCount = (userRole === 'SCHOOL_ADMIN') ? memTeacherLeaves.length : memStudentLeaves.length;
     const pendingTeacherLeavesCount = isTeacher ? 0 : memTeacherLeaves.length;
+    const pendingAnnouncementsCount = isTeacher ? memAnnouncementsList.length : 0;
 
     const notifications: any[] = [
       ...memPhotos.map(p => ({
@@ -1973,12 +2074,34 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
       }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+    if (isTeacher && memAnnouncementsList.length > 0) {
+      memAnnouncementsList.forEach((a: any) => {
+        const rawTitle = a.title || 'Notice';
+        const cleanTitle = rawTitle.toLowerCase().startsWith('school notice') ? rawTitle : `School Notice: ${rawTitle}`;
+        const authorName = a.author_name || a.created_by_name || 'School Administration';
+        notifications.push({
+          id: `ann-${a.id}`,
+          rawId: a.id,
+          type: 'ANNOUNCEMENT',
+          category: 'ANNOUNCEMENT',
+          title: cleanTitle,
+          message: a.message,
+          authorName: authorName,
+          priority: a.priority || 'NORMAL',
+          link: '/announcements',
+          createdAt: a.published_at || a.created_at || new Date().toISOString()
+        });
+      });
+      notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
     return res.json({
       success: true,
       pendingPhotosCount,
       pendingLeavesCount,
       pendingTeacherLeavesCount: memTeacherLeaves.length,
-      totalPendingCount: pendingPhotosCount + pendingLeavesCount,
+      pendingAnnouncementsCount,
+      totalPendingCount: pendingPhotosCount + pendingLeavesCount + pendingAnnouncementsCount,
       notifications
     });
   } catch (error: any) {

@@ -1996,6 +1996,7 @@ function Layout({children}:{children:React.ReactNode}){
   const teacherNotifRef = useRef<HTMLDivElement>(null);
   const [pendingPhotoCount, setPendingPhotoCount] = useState(0);
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
+  const [pendingAnnouncementCount, setPendingAnnouncementCount] = useState(0);
 
   const loadAdminNotifications = useCallback(async () => {
     try {
@@ -2004,6 +2005,7 @@ function Layout({children}:{children:React.ReactNode}){
         setAdminNotifs(res.data.notifications || []);
         setPendingPhotoCount(res.data.pendingPhotosCount || 0);
         setPendingLeaveCount(res.data.pendingLeavesCount || 0);
+        setPendingAnnouncementCount(res.data.pendingAnnouncementsCount || 0);
       }
     } catch {}
   }, []);
@@ -2011,18 +2013,34 @@ function Layout({children}:{children:React.ReactNode}){
   useEffect(() => {
     if (user && (user.role === 'SCHOOL_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'TEACHER')) {
       loadAdminNotifications();
-      const interval = setInterval(loadAdminNotifications, 10000);
+      const interval = setInterval(loadAdminNotifications, 5000);
       return () => clearInterval(interval);
     }
   }, [user?.role, loadAdminNotifications]);
 
   useEffect(() => {
-    const handleReviewsUpdated = () => {
+    const handleSync = () => {
       loadAdminNotifications();
+      if (user?.role === 'TEACHER') {
+        loadTeacherNotices();
+      }
     };
-    window.addEventListener('reviews-updated', handleReviewsUpdated);
-    return () => window.removeEventListener('reviews-updated', handleReviewsUpdated);
-  }, [loadAdminNotifications]);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'announcements_last_updated' || e.key === 'reviews_last_updated') {
+        handleSync();
+      }
+    };
+    window.addEventListener('reviews-updated', handleSync);
+    window.addEventListener('announcements-updated', handleSync);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('reviews-updated', handleSync);
+      window.removeEventListener('announcements-updated', handleSync);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, [loadAdminNotifications, user?.role]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -3476,14 +3494,14 @@ function Layout({children}:{children:React.ReactNode}){
                 <button
                   type="button"
                   className="header-icon-btn"
-                  title="Student Reviews & Photo Approvals"
+                  title="Notifications & Announcements"
                   onClick={() => { setTeacherNotifOpen(prev => !prev); if (!teacherNotifOpen) loadAdminNotifications(); }}
                   style={{ position: 'relative' }}
                 >
                   <Bell size={16} />
-                  {(pendingLeaveCount + pendingPhotoCount) > 0 && (
+                  {(pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount) > 0 && (
                     <span className="header-badge-num" style={{ background: '#ef4444' }}>
-                      {pendingLeaveCount + pendingPhotoCount}
+                      {pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount}
                     </span>
                   )}
                 </button>
@@ -3493,9 +3511,9 @@ function Layout({children}:{children:React.ReactNode}){
                     <div className="super-notif-header">
                       <div className="super-notif-title-row">
                         <h4 className="super-notif-title">Notifications</h4>
-                        {(pendingLeaveCount + pendingPhotoCount) > 0 && (
+                        {(pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount) > 0 && (
                           <span className="super-notif-count-pill">
-                            {pendingLeaveCount + pendingPhotoCount} pending
+                            {pendingLeaveCount + pendingPhotoCount + pendingAnnouncementCount} pending
                           </span>
                         )}
                       </div>
@@ -3541,20 +3559,99 @@ function Layout({children}:{children:React.ReactNode}){
                           <CalendarCheck size={12} />
                           <span>Leaves{pendingLeaveCount > 0 ? ` (${pendingLeaveCount})` : ''}</span>
                         </button>
+                        {pendingAnnouncementCount > 0 && (
+                          <button
+                            type="button"
+                            className="super-notif-readall-btn"
+                            style={{ color: '#2563eb', background: 'rgba(37, 99, 235, 0.12)', borderColor: 'rgba(37, 99, 235, 0.25)', cursor: 'pointer' }}
+                            title="View School Announcements"
+                            onClick={() => { setTeacherNotifOpen(false); nav('/announcements'); }}
+                          >
+                            <Megaphone size={12} />
+                            <span>Notices ({pendingAnnouncementCount})</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
                     <div className="super-notif-list">
-                      {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').length === 0 ? (
+                      {adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL' || n.type === 'ANNOUNCEMENT').length === 0 ? (
                         <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                           <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
                             <CheckCircle2 size={24} />
                           </div>
                           <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>All Caught Up!</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending student leaves or photo approvals for your class.</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>No pending notices, student leaves, or photo approvals.</div>
                         </div>
                       ) : (
-                        adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL').map((n: any) => (
+                        adminNotifs.filter((n: any) => n.type === 'LEAVE_REQUEST' || n.type === 'PHOTO_APPROVAL' || n.type === 'ANNOUNCEMENT').map((n: any) => (
+                          n.type === 'ANNOUNCEMENT' ? (
+                            <div
+                              key={n.id}
+                              className="super-notif-item unread"
+                              style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', cursor: 'pointer' }}
+                              onClick={async () => {
+                                setTeacherNotifOpen(false);
+                                if (n.rawId) {
+                                  api.post(`/communication/teacher/read/${n.rawId}`).catch(() => {});
+                                  setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                  setPendingAnnouncementCount(p => Math.max(0, p - 1));
+                                }
+                                nav('/announcements');
+                              }}
+                            >
+                              <div style={{ display: 'flex', gap: 10, flex: 1, minWidth: 0 }}>
+                                <div className="super-notif-icon-wrap notif-announcement" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', flexShrink: 0 }}>
+                                  <Megaphone size={18} />
+                                </div>
+                                <div className="super-notif-body">
+                                  <div className="super-notif-item-title">
+                                    <span className="super-notif-item-title-text">{n.title}</span>
+                                    <span className="super-notif-time">
+                                      {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </span>
+                                  </div>
+                                  <p className="super-notif-msg">{n.message}</p>
+                                  <span className="super-notif-action-tag" style={{ color: '#2563eb' }}>
+                                    From: {n.authorName || 'School Administration'} · View Notice →
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                title="Mark as Read"
+                                style={{
+                                  background: 'rgba(37, 99, 235, 0.12)',
+                                  border: '1px solid rgba(37, 99, 235, 0.3)',
+                                  color: '#2563eb',
+                                  borderRadius: 6,
+                                  padding: '4px 7px',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  cursor: 'pointer',
+                                  marginLeft: 8,
+                                  flexShrink: 0
+                                }}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (n.rawId) {
+                                    try {
+                                      await api.post(`/communication/teacher/read/${n.rawId}`);
+                                      setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
+                                      setPendingAnnouncementCount(p => Math.max(0, p - 1));
+                                    } catch {}
+                                  }
+                                }}
+                              >
+                                <Check size={12} />
+                                <span>Read</span>
+                              </button>
+                            </div>
+                          ) : 
                           <div
                             key={n.id}
                             className="super-notif-item unread"
@@ -3663,6 +3760,14 @@ function Layout({children}:{children:React.ReactNode}){
                       >
                         <Camera size={13} />
                         <span>Photo Approvals</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="super-notif-footer-link"
+                        onClick={() => { setTeacherNotifOpen(false); nav('/announcements'); }}
+                      >
+                        <Megaphone size={13} />
+                        <span>Announcements</span>
                       </button>
                     </div>
                   </div>

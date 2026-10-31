@@ -185,9 +185,20 @@ export interface Announcement {
   message: string;
   priority: string;
   published_at: string;
+  created_at?: string;
+  audience_type?: string;
   author_name?: string;
+  author_role?: string;
+  created_by?: string;
+  created_by_role?: string;
   read_at?: string | null;
   recipient_id?: string | null;
+  attachment_url?: string;
+  attachment_name?: string;
+  attachment_type?: string;
+  attachment_size?: number;
+  class_number?: number;
+  section_name?: string;
 }
 
 export interface LeaveRequest {
