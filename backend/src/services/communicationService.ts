@@ -200,6 +200,10 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     id: `ann-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     school_id: schoolId,
     created_by: userId,
+    author_name: d.author_name || d.created_by_name || 'School Administration',
+    created_by_name: d.created_by_name || d.author_name || 'School Administration',
+    author_role: d.author_role || d.created_by_role || 'SCHOOL_ADMIN',
+    created_by_role: d.created_by_role || d.author_role || 'SCHOOL_ADMIN',
     title: d.title,
     message: d.message,
     audience_type: audience,
@@ -216,6 +220,7 @@ export async function createAnnouncement(schoolId: string, userId: string, d: an
     updated_at: new Date().toISOString(),
     recipient_count: audience === 'SCHOOL' ? 25 : audience === 'TEACHER' ? 12 : audience === 'SECTION' ? 15 : 30,
     read_count: 0,
+    read_by: [],
     reply_count: 0,
     attachment_url: attachmentUrl,
     attachment_name: attachmentName,
@@ -309,6 +314,20 @@ export async function updateAnnouncement(schoolId: string, id: string, d: any) {
     status: 'DRAFT',
     updated_at: new Date().toISOString()
   };
+}
+
+export async function deleteAnnouncement(schoolId: string, id: string) {
+  await ensureTables();
+  if (isPostgresConfigured) {
+    try {
+      await pool.query(`DELETE FROM announcement_recipients WHERE announcement_id = $1`, [id]).catch(() => {});
+      await pool.query(`DELETE FROM notification_replies WHERE announcement_id = $1`, [id]).catch(() => {});
+      await pool.query(`DELETE FROM announcements WHERE id = $1 AND (school_id = $2 OR $2 = '00000000-0000-0000-0000-000000000001')`, [id, schoolId]);
+    } catch (_e) {}
+  }
+  const idx = memAnnouncements.findIndex(a => a.id === id);
+  if (idx >= 0) memAnnouncements.splice(idx, 1);
+  return { success: true };
 }
 
 /**
@@ -586,6 +605,7 @@ export async function listSchoolAnnouncements(schoolId: string) {
 
   return memAnnouncements.map(a => ({
     ...a,
+    read_count: Array.isArray(a.read_by) ? a.read_by.length : (a.read_count || 0),
     reply_count: memReplies.filter(r => r.announcement_id === a.id).length || a.reply_count || 0
   }));
 }
@@ -631,9 +651,30 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
   }
 
   // Filter in-memory announcements strictly for faculty
-  let facultyNotices = memAnnouncements.filter(
-    a => a.status === 'PUBLISHED' && ['TEACHER', 'SCHOOL'].includes(a.audience_type) && isSameSchool(a.school_id, schoolId)
-  );
+  let facultyNotices = memAnnouncements.filter(a => {
+    if (a.status !== 'PUBLISHED') return false;
+
+    // School match check with full multi-tenant compatibility
+    const matchesSchool = !a.school_id || !schoolId ||
+      isSameSchool(a.school_id, schoolId) ||
+      a.school_id === schoolId ||
+      String(a.school_id).toLowerCase() === String(schoolId).toLowerCase() ||
+      a.school_id === '00000000-0000-0000-0000-000000000001' ||
+      schoolId === '00000000-0000-0000-0000-000000000001';
+
+    if (!matchesSchool) return false;
+
+    // Audience & creator checks: announcements from Admin or targeting school/faculty
+    const aud = String(a.audience_type || '').toUpperCase();
+    const isTargetAudience = ['TEACHER', 'SCHOOL', 'STUDENT', 'CLASS', 'SECTION', 'PARENTS', 'ALL'].includes(aud);
+    const isFromAdmin = a.author_role === 'SCHOOL_ADMIN' ||
+                        a.created_by_role === 'SCHOOL_ADMIN' ||
+                        a.author_role === 'SUPER_ADMIN' ||
+                        !a.created_by ||
+                        a.created_by !== teacherUserId;
+
+    return isTargetAudience && isFromAdmin;
+  });
 
   if (fromDate && fromDate.trim()) {
     const fromTime = new Date(`${fromDate.trim()}T00:00:00`).getTime();
@@ -663,11 +704,14 @@ export async function teacherInbox(teacherUserId: string, schoolId: string, from
     return tB - tA;
   });
 
-  return facultyNotices.map(n => ({
-    ...n,
-    author_name: n.created_by_name || 'Principal Office',
-    read_at: null
-  }));
+  return facultyNotices.map(n => {
+    const isRead = Array.isArray(n.read_by) && (n.read_by.includes(teacherUserId) || n.read_by.includes(String(teacherUserId)));
+    return {
+      ...n,
+      author_name: n.author_name || n.created_by_name || 'School Administration',
+      read_at: isRead ? (n.read_at || new Date().toISOString()) : null
+    };
+  });
 }
 
 /**
@@ -965,6 +1009,7 @@ export async function markRead(userId: string, recipientIdOrNoticeId: string) {
           [resolvedAnnId, userId]
         );
         if (insRes.rowCount && insRes.rowCount > 0) {
+          pool.query(`UPDATE announcements SET read_count = (SELECT COUNT(DISTINCT parent_user_id) FROM announcement_recipients WHERE announcement_id = $1 AND read_at IS NOT NULL) WHERE id = $1`, [resolvedAnnId]).catch(() => {});
           return insRes.rows[0];
         }
       }
@@ -975,8 +1020,13 @@ export async function markRead(userId: string, recipientIdOrNoticeId: string) {
 
   // Update in-memory announcements as fallback
   try {
-    const memMatch = memAnnouncements.find(a => a.id === recipientIdOrNoticeId);
+    const memMatch = memAnnouncements.find(a => a.id === recipientIdOrNoticeId || a.id === String(recipientIdOrNoticeId).trim());
     if (memMatch) {
+      if (!Array.isArray(memMatch.read_by)) memMatch.read_by = [];
+      if (!memMatch.read_by.includes(userId)) {
+        memMatch.read_by.push(userId);
+      }
+      memMatch.read_count = memMatch.read_by.length;
       memMatch.read_at = new Date().toISOString();
       memMatch.delivery_status = 'READ';
     }

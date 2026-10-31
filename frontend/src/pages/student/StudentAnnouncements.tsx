@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Megaphone, ArrowLeft, AlertCircle, Calendar, MessageSquare, Send, CheckCircle2, CornerDownRight, Search, X, Check, RotateCcw, Building2, GraduationCap, Paperclip, Download, Filter } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { studentApi, Announcement } from '../../services/studentApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,6 +20,11 @@ export function StudentAnnouncements() {
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replySuccessId, setReplySuccessId] = useState<string | null>(null);
+
+  // Source Filter: 'ALL' | 'SCHOOL' | 'TEACHER'
+  const [sourceFilter, setSourceFilter] = useState<'ALL' | 'SCHOOL' | 'TEACHER'>('ALL');
+  // Selected Teacher Name
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('ALL');
 
   useEffect(() => {
     setSearchFilter(queryParam);
@@ -98,11 +103,60 @@ export function StudentAnnouncements() {
     }
   }
 
-  const displayedAnnouncements = announcements.filter(a => {
-    if (!searchFilter.trim()) return true;
-    const q = searchFilter.toLowerCase();
-    return a.title.toLowerCase().includes(q) || a.message.toLowerCase().includes(q) || (a.author_name && a.author_name.toLowerCase().includes(q)) || a.priority.toLowerCase().includes(q);
-  });
+  function isTeacherNotice(a: Announcement): boolean {
+    if (a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER') return true;
+    const author = (a.author_name || '').toLowerCase();
+    if (author.includes('school admin') || author.includes('dav admin') || author.includes('administration') || author.includes('principal') || author.includes('management')) {
+      return false;
+    }
+    const role = (a.author_role || a.created_by_role || '').toUpperCase();
+    if (['SCHOOL_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      return false;
+    }
+    if (a.author_name && !author.includes('admin') && !author.includes('administration')) {
+      return true;
+    }
+    return false;
+  }
+
+  const teacherNames = useMemo(() => {
+    const set = new Set<string>();
+    announcements.forEach(a => {
+      if (isTeacherNotice(a) && a.author_name && a.author_name.trim()) {
+        set.add(a.author_name.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [announcements]);
+
+  const schoolCount = useMemo(() => announcements.filter(a => !isTeacherNotice(a)).length, [announcements]);
+  const teacherCount = useMemo(() => announcements.filter(a => isTeacherNotice(a)).length, [announcements]);
+
+  const displayedAnnouncements = useMemo(() => {
+    return announcements.filter(a => {
+      const isTeacher = isTeacherNotice(a);
+      // Source Filter
+      if (sourceFilter === 'SCHOOL' && isTeacher) return false;
+      if (sourceFilter === 'TEACHER') {
+        if (!isTeacher) return false;
+        if (selectedTeacherName !== 'ALL' && a.author_name !== selectedTeacherName) return false;
+      }
+
+      // Search Query Filter
+      if (searchFilter.trim()) {
+        const q = searchFilter.toLowerCase();
+        const matchesTitle = a.title?.toLowerCase().includes(q);
+        const matchesMessage = a.message?.toLowerCase().includes(q);
+        const matchesAuthor = a.author_name?.toLowerCase().includes(q);
+        const matchesPriority = a.priority?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesMessage && !matchesAuthor && !matchesPriority) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [announcements, sourceFilter, selectedTeacherName, searchFilter]);
 
   return (
     <div className="student-subpage">
@@ -173,6 +227,152 @@ export function StudentAnnouncements() {
         )}
       </div>
 
+      {/* Source Filter Options: All, School, Teacher (with Teacher Name selector) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 16,
+        padding: '10px 14px',
+        borderRadius: 8,
+        backgroundColor: 'var(--card-subtle, #f8fafc)',
+        border: '1px solid var(--border, #e2e8f0)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #475569)', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Filter size={13} /> Filter:
+          </span>
+
+          {/* ALL */}
+          <button
+            type="button"
+            onClick={() => {
+              setSourceFilter('ALL');
+              setSelectedTeacherName('ALL');
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: sourceFilter === 'ALL' ? '1px solid #2563eb' : '1px solid var(--border, #cbd5e1)',
+              backgroundColor: sourceFilter === 'ALL' ? '#2563eb' : 'var(--bg-card, #ffffff)',
+              color: sourceFilter === 'ALL' ? '#ffffff' : 'var(--text, #0f172a)',
+              boxShadow: sourceFilter === 'ALL' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            All <span style={{
+              fontSize: 11,
+              padding: '1px 6px',
+              borderRadius: 10,
+              backgroundColor: sourceFilter === 'ALL' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f1f5f9)',
+              color: sourceFilter === 'ALL' ? '#ffffff' : 'var(--text-muted, #64748b)'
+            }}>{announcements.length}</span>
+          </button>
+
+          {/* SCHOOL */}
+          <button
+            type="button"
+            onClick={() => {
+              setSourceFilter('SCHOOL');
+              setSelectedTeacherName('ALL');
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: sourceFilter === 'SCHOOL' ? '1px solid #2563eb' : '1px solid var(--border, #cbd5e1)',
+              backgroundColor: sourceFilter === 'SCHOOL' ? '#2563eb' : 'var(--bg-card, #ffffff)',
+              color: sourceFilter === 'SCHOOL' ? '#ffffff' : 'var(--text, #0f172a)',
+              boxShadow: sourceFilter === 'SCHOOL' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Building2 size={13} />
+            School <span style={{
+              fontSize: 11,
+              padding: '1px 6px',
+              borderRadius: 10,
+              backgroundColor: sourceFilter === 'SCHOOL' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f1f5f9)',
+              color: sourceFilter === 'SCHOOL' ? '#ffffff' : 'var(--text-muted, #64748b)'
+            }}>{schoolCount}</span>
+          </button>
+
+          {/* TEACHER */}
+          <button
+            type="button"
+            onClick={() => setSourceFilter('TEACHER')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: sourceFilter === 'TEACHER' ? '1px solid #2563eb' : '1px solid var(--border, #cbd5e1)',
+              backgroundColor: sourceFilter === 'TEACHER' ? '#2563eb' : 'var(--bg-card, #ffffff)',
+              color: sourceFilter === 'TEACHER' ? '#ffffff' : 'var(--text, #0f172a)',
+              boxShadow: sourceFilter === 'TEACHER' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <GraduationCap size={14} />
+            Teacher <span style={{
+              fontSize: 11,
+              padding: '1px 6px',
+              borderRadius: 10,
+              backgroundColor: sourceFilter === 'TEACHER' ? 'rgba(255,255,255,0.25)' : 'var(--card-subtle, #f1f5f9)',
+              color: sourceFilter === 'TEACHER' ? '#ffffff' : 'var(--text-muted, #64748b)'
+            }}>{teacherCount}</span>
+          </button>
+        </div>
+
+        {/* Specific Teacher Name Filter */}
+        {sourceFilter === 'TEACHER' && teacherNames.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+              Teacher:
+            </label>
+            <select
+              value={selectedTeacherName}
+              onChange={(e) => setSelectedTeacherName(e.target.value)}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 6,
+                fontSize: 12.5,
+                border: '1px solid var(--border, #cbd5e1)',
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                color: 'var(--text, #0f172a)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">All Teachers ({teacherCount})</option>
+              {teacherNames.map(name => {
+                const count = announcements.filter(a => isTeacherNotice(a) && a.author_name === name).length;
+                return (
+                  <option key={name} value={name}>{name} ({count})</option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <div className="student-loading-spinner">Loading announcements...</div>
       ) : displayedAnnouncements.length === 0 ? (
@@ -213,14 +413,47 @@ export function StudentAnnouncements() {
             return (
               <div key={a.id} className="student-card student-notice-card" style={{ marginBottom: 16 }}>
                 <div className="notice-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div className="notice-badge-group" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div className="notice-badge-group" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className={`notice-priority-badge priority-${a.priority.toLowerCase()}`}>
                       {a.priority}
                     </span>
+
+                    {/* School vs Teacher Badge */}
+                    {isTeacherNotice(a) ? (
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        backgroundColor: '#ecfdf5',
+                        color: '#047857',
+                        border: '1px solid #a7f3d0',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <GraduationCap size={12} /> Teacher
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        backgroundColor: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <Building2 size={12} /> School
+                      </span>
+                    )}
+
                     <span className="notice-date">
-                      <Calendar size={13} /> {new Date(a.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <Calendar size={13} /> {new Date(a.published_at || a.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
-                    {a.author_name && <span className="notice-author" style={{ marginLeft: 2 }}>By: <b>{a.author_name}</b></span>}
                   </div>
 
                   {/* Read status / Mark as Read */}
@@ -264,6 +497,77 @@ export function StudentAnnouncements() {
 
               <h3 className="notice-title" style={{ marginTop: 8 }}>{a.title}</h3>
               <p className="notice-body" style={{ whiteSpace: 'pre-wrap' }}>{a.message}</p>
+
+              {/* Document / File Attachment */}
+              {a.attachment_url && (
+                <div style={{
+                  marginTop: 14,
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  backgroundColor: 'var(--card-subtle, #f8fafc)',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 6,
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <Paperclip size={18} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontWeight: 600,
+                        fontSize: 13.5,
+                        color: 'var(--text, #0f172a)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {a.attachment_name || 'Attached Document'}
+                      </div>
+                      {a.attachment_size ? (
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)' }}>
+                          {(a.attachment_size / 1024).toFixed(1)} KB
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <a
+                    href={a.attachment_url}
+                    download={a.attachment_name || 'announcement-attachment'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 6,
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      boxShadow: '0 1px 2px rgba(37,99,235,0.2)'
+                    }}
+                  >
+                    <Download size={14} /> Download Document
+                  </a>
+                </div>
+              )}
 
               {/* Reply Action Row — Hidden for Student profile, available only for School Admin / Teacher */}
               {!isStudent && (

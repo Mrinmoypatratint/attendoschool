@@ -127,12 +127,18 @@ router.get('/announcements', async (req: AuthRequest, res: Response) => {
 // POST /api/student/announcements/:id/read - Mark announcement as read
 router.post('/announcements/:id/read', async (req: AuthRequest, res: Response) => {
   try {
-    const targetId = req.params.id;
+    const targetId = String(req.params.id);
     const userId = req.user!.id;
 
     // Invalidate cached dashboard so updated unread announcements reflect instantly
     svc.clearStudentDashboardCache(userId);
     fastCache.delete(`student:${userId}:dashboard`);
+
+    const { markRead } = await import('../services/communicationService');
+    const readResult = await markRead(userId, targetId);
+    if (readResult) {
+      return res.json({ success: true, read_at: (readResult as any).read_at || new Date().toISOString() });
+    }
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(targetId).trim());
     if (isUuid) {

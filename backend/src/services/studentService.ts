@@ -1274,7 +1274,11 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
 
       const q = await pool.query(
         `SELECT a.id, a.title, a.message, a.priority, a.published_at, a.created_at,
-                u.name AS author_name,
+                a.audience_type,
+                a.attachment_url, a.attachment_name, a.attachment_type, a.attachment_size,
+                a.created_by,
+                COALESCE(u.name, 'School Administration') AS author_name,
+                COALESCE(u.role, 'SCHOOL_ADMIN') AS author_role,
                 c.class_number, sec.name AS section_name,
                 r.read_at, r.id AS recipient_id
          FROM announcements a
@@ -1352,7 +1356,16 @@ export async function getStudentAnnouncements(schoolId: string, userId: string, 
       return tB - tA;
     });
 
-    return filteredMem;
+    return filteredMem.map((a: any) => {
+      const isReadByMe = Array.isArray(a.read_by) && a.read_by.includes(userId);
+      const isTeacherRole = a.author_role === 'TEACHER' || a.created_by_role === 'TEACHER';
+      return {
+        ...a,
+        author_name: a.author_name || a.created_by_name || (isTeacherRole ? 'Teacher' : 'School Administration'),
+        author_role: isTeacherRole ? 'TEACHER' : (a.author_role || a.created_by_role || 'SCHOOL_ADMIN'),
+        read_at: isReadByMe ? (a.read_at || new Date().toISOString()) : (Array.isArray(a.read_by) ? null : (a.read_at || null))
+      };
+    });
   } catch {}
 
   return [];
