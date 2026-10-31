@@ -110,7 +110,7 @@ function formatLastFetched(date: Date | null): string {
   const now = new Date();
   const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  
+
   if (diffSec < 8) return `${timeStr} (Just now)`;
   if (diffSec < 60) return `${timeStr} (${diffSec}s ago)`;
   const diffMin = Math.floor(diffSec / 60);
@@ -168,7 +168,7 @@ export default function PeopleManagement() {
         const parsed = JSON.parse(stored);
         if (parsed?.name) return parsed;
       }
-    } catch {}
+    } catch { }
 
     if (!rows || rows.length === 0) return null;
 
@@ -298,7 +298,7 @@ export default function PeopleManagement() {
       setLastFetchedAt(now);
       try {
         localStorage.setItem('attendo_people_last_fetched', now.toISOString());
-      } catch {}
+      } catch { }
     } catch (e: any) {
       setMessage(e?.response?.data?.message || 'Unable to load people records');
     } finally {
@@ -312,9 +312,9 @@ export default function PeopleManagement() {
 
   useEffect(() => {
     load();
-    api.get('/classes').then(r => setAllocClasses(r.data || [])).catch(() => {});
-    api.get('/sections').then(r => setAllocSections(r.data || [])).catch(() => {});
-    api.get('/designations').then(r => setAllocDesignations(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => {});
+    api.get('/classes').then(r => setAllocClasses(r.data || [])).catch(() => { });
+    api.get('/sections').then(r => setAllocSections(r.data || [])).catch(() => { });
+    api.get('/designations').then(r => setAllocDesignations(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => { });
   }, [tab]);
 
   function handleSearchSubmit(e: React.FormEvent) {
@@ -435,7 +435,7 @@ export default function PeopleManagement() {
           name: fullName,
           employeeId: teacherForm.employeeId || teacherForm.saviorNo || res.data?.employee_id || '—'
         }));
-      } catch {}
+      } catch { }
       setToastNotice({
         type: 'success',
         message: `Faculty member ${fullName} added! Automatic welcome email dispatched via SMTP to ${res.data.email}.`,
@@ -654,7 +654,7 @@ export default function PeopleManagement() {
             name: teacherName,
             employeeId: teacherEmpId
           }));
-        } catch {}
+        } catch { }
       }
       setToastNotice({
         type: 'success',
@@ -807,135 +807,368 @@ export default function PeopleManagement() {
         )}
         {/* Box Header (Tabs & Search Controls) */}
         <div className="directory-box-header">
-        {/* Segmented Tab Switcher */}
-        <div className="tabs" style={{ margin: 0 }}>
-          <button
-            type="button"
-            className={tab === 'students' ? 'tab-active' : ''}
-            onClick={() => setTab('students')}
-          >
-            Enrolled Students
-          </button>
-          <button
-            type="button"
-            className={tab === 'teachers' ? 'tab-active' : ''}
-            onClick={() => setTab('teachers')}
-          >
-            Teaching Faculty
-          </button>
-        </div>
-
-        {/* Search Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <form onSubmit={handleSearchSubmit} className="filter-row" style={{ margin: 0 }}>
-            <input
-              placeholder={tab === 'students' ? 'Search by name, roll, or parent…' : 'Search by name, employee ID/Savior_NO, or email…'}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ width: 300, background: '#ffffff' }}
-            />
-            <button type="submit" disabled={loading}>
-              {loading ? 'Searching…' : 'Search'}
+          {/* Segmented Tab Switcher */}
+          <div className="tabs" style={{ margin: 0 }}>
+            <button
+              type="button"
+              className={tab === 'students' ? 'tab-active' : ''}
+              onClick={() => setTab('students')}
+            >
+              Enrolled Students
             </button>
-            {search && (
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  setSearch('');
-                  setTimeout(load, 10);
-                }}
-              >
-                Clear
+            <button
+              type="button"
+              className={tab === 'teachers' ? 'tab-active' : ''}
+              onClick={() => setTab('teachers')}
+            >
+              Teaching Faculty
+            </button>
+          </div>
+
+          {/* Search Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <form onSubmit={handleSearchSubmit} className="filter-row" style={{ margin: 0 }}>
+              <input
+                placeholder={tab === 'students' ? 'Search by name, roll, or parent…' : 'Search by name, employee ID/Savior_NO, or email…'}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: 300, background: '#ffffff' }}
+              />
+              <button type="submit" disabled={loading}>
+                {loading ? 'Searching…' : 'Search'}
               </button>
-            )}
-          </form>
+              {search && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setSearch('');
+                    setTimeout(load, 10);
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </form>
 
-          {/* Refresh Button */}
-          <button 
-            type="button"
-            onClick={() => load()}
-            disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
-              border: '1px solid var(--border, #cbd5e1)',
-              borderRadius: 'var(--radius-sm, 6px)',
-              fontSize: 12.5,
-              color: loading ? '#64748b' : 'var(--text, #1e293b)',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 500,
-              transition: 'all 0.15s ease'
-            }}
-            title={`Refetch ${tab === 'students' ? 'students' : 'faculty'} from database`}
-            id="people-refresh-btn"
-          >
-            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-          </button>
-
-          {/* Last Fetched Time Badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 9px',
-            borderRadius: 6,
-            background: 'var(--bg-muted, #f8fafc)',
-            border: '1px solid var(--border, #e2e8f0)',
-            fontSize: 12,
-            color: 'var(--text-secondary, #475569)'
-          }} title="Last successful synchronization with database">
-            <Clock size={12} style={{ color: '#64748b' }} />
-            <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
-            {loading && (
-              <span style={{
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => load()}
+              disabled={loading}
+              style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 4,
-                marginLeft: 3,
-                padding: '1px 5px',
-                borderRadius: 4,
-                background: '#dbeafe',
-                color: '#1d4ed8',
-                fontWeight: 600,
-                fontSize: 11
-              }}>
-                <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-                {loadProgress}%
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
-            <span>Rows per page:</span>
-            <select
-              value={directoryPageSize}
-              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
-              style={{
-                padding: '4px 8px',
-                fontSize: 12.5,
-                borderRadius: 6,
+                gap: 6,
+                padding: '6px 12px',
+                background: loading ? '#f1f5f9' : 'var(--card-bg, #ffffff)',
                 border: '1px solid var(--border, #cbd5e1)',
-                background: 'var(--card-bg, #ffffff)',
-                color: 'var(--text, #1e293b)',
-                cursor: 'pointer'
+                borderRadius: 'var(--radius-sm, 6px)',
+                fontSize: 12.5,
+                color: loading ? '#64748b' : 'var(--text, #1e293b)',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+                transition: 'all 0.15s ease'
               }}
+              title={`Refetch ${tab === 'students' ? 'students' : 'faculty'} from database`}
+              id="people-refresh-btn"
             >
-              <option value={10}>10</option>
-              <option value={25}>25 (Default)</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={250}>250</option>
-              <option value={500}>500</option>
-              <option value={100000}>All ({rows.length})</option>
-            </select>
-          </div>
+              <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+              <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+            </button>
 
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {/* Last Fetched Time Badge */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 9px',
+              borderRadius: 6,
+              background: 'var(--bg-muted, #f8fafc)',
+              border: '1px solid var(--border, #e2e8f0)',
+              fontSize: 12,
+              color: 'var(--text-secondary, #475569)'
+            }} title="Last successful synchronization with database">
+              <Clock size={12} style={{ color: '#64748b' }} />
+              <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+              {loading && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginLeft: 3,
+                  padding: '1px 5px',
+                  borderRadius: 4,
+                  background: '#dbeafe',
+                  color: '#1d4ed8',
+                  fontWeight: 600,
+                  fontSize: 11
+                }}>
+                  <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+                  {loadProgress}%
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+              <span>Rows per page:</span>
+              <select
+                value={directoryPageSize}
+                onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12.5,
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--card-bg, #ffffff)',
+                  color: 'var(--text, #1e293b)',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25 (Default)</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={250}>250</option>
+                <option value={500}>500</option>
+                <option value={100000}>All ({rows.length})</option>
+              </select>
+            </div>
+
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {rows.length === 0 ? (
+                `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
+              ) : (
+                <>
+                  Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{rows.length}</b> {tab === 'students' ? 'students' : 'faculty members'}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {message && <div className="error" style={{ margin: '8px 16px 0' }}>{message}</div>}
+
+        {/* Box Body (Scrollable Table Area) */}
+        <div className="directory-box-body" ref={tableBodyRef}>
+          {loading && rows.length > 0 && (
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 20,
+              background: 'rgba(239, 246, 255, 0.95)',
+              backdropFilter: 'blur(4px)',
+              borderBottom: '1px solid #bfdbfe',
+              padding: '6px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 12,
+              color: '#1d4ed8',
+              fontWeight: 500
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+                <span>Refetching {tab === 'students' ? 'students' : 'faculty'} from database...</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+                <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+                </div>
+              </div>
+            </div>
+          )}
+          <table>
+            {tab === 'students' ? (
+              <>
+                <thead>
+                  <tr>
+                    <th>Roll No</th>
+                    <th>Adm No</th>
+                    <th>Student Name</th>
+                    <th>Gender</th>
+                    <th>Class</th>
+                    <th>Section</th>
+                    <th>Parent</th>
+                    <th>SMS Mobile</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedDirectoryRows.map((r: any) => (
+                    <tr key={r.id}>
+                      <td>
+                        <span className="roll" style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
+                          {r.roll_number || r.roll || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        {(r.admission_number || r.admissionNumber) ? (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                            {r.admission_number || r.admissionNumber}
+                          </span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 11 }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <StudentProfileHoverCard student={r} mode="student">
+                          <b>{r.name}</b>
+                        </StudentProfileHoverCard>
+                      </td>
+                      <td>
+                        {r.gender ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            fontSize: 11.5,
+                            fontWeight: 500,
+                            background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                            color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                            border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                          }}>
+                            {formatGender(r.gender)}
+                          </span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {String(r.section_name || r.section || 'A').replace(/^section\s*/i, '').trim() || 'A'}
+                        </span>
+                      </td>
+                      <td>{r.parent_name || 'Parent'}</td>
+                      <td>{r.parent_sms_number || r.parent_phone || r.email || '—'}</td>
+                      <td>
+                        <span className={`badge ${r.active === false ? 'failed' : 'active'}`}>
+                          {r.active === false ? 'Inactive' : 'Active'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {!rows.length && (
+                    <tr>
+                      <td colSpan={9} style={{ padding: 36, textAlign: 'center' }}>
+                        {loading ? (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                            </div>
+                            <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="muted">No student records found matching this criteria.</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead>
+                  <tr style={{ verticalAlign: 'middle' }}>
+                    <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Employee Id /<br />Savior_NO</th>
+                    <th>Faculty Name</th>
+                    <th>Gender</th>
+                    <th>Designation</th>
+                    <th>Official Email</th>
+                    <th>Mobile Contact</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedDirectoryRows.map((r: any) => (
+                    <tr key={r.id}>
+                      <td>
+                        <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-700)' }}>
+                          {r.savior_no || r.employee_id || r.Savior_No || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <TeacherProfileHoverCard teacher={r}>
+                          <b>{r.name || r.fullName}</b>
+                        </TeacherProfileHoverCard>
+                      </td>
+                      <td>
+                        {r.gender ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            fontSize: 11.5,
+                            fontWeight: 500,
+                            background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                            color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
+                            border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                          }}>
+                            {formatGender(r.gender)}
+                          </span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td>{r.designation || 'Teacher'}</td>
+                      <td>{r.email}</td>
+                      <td>{r.mobile || r.phone || '—'}</td>
+                      <td>
+                        <span className={`badge ${r.is_active === false || r.active === false ? 'failed' : 'active'}`}>
+                          {r.is_active === false || r.active === false ? 'Inactive' : 'Active'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {!rows.length && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 36, textAlign: 'center' }}>
+                        {loading ? (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                              <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records from database ({loadProgress}%)</div>
+                            </div>
+                            <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="muted">No faculty records found matching this criteria.</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </>
+            )}
+          </table>
+        </div>
+
+        {/* Box Footer (Pagination Bar) */}
+        <div className="directory-box-footer">
+          <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
             {rows.length === 0 ? (
               `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
             ) : (
@@ -944,308 +1177,75 @@ export default function PeopleManagement() {
               </>
             )}
           </div>
-        </div>
-      </div>
 
-      {message && <div className="error" style={{ margin: '8px 16px 0' }}>{message}</div>}
-
-      {/* Box Body (Scrollable Table Area) */}
-      <div className="directory-box-body" ref={tableBodyRef}>
-        {loading && rows.length > 0 && (
-          <div style={{
-            position: 'sticky',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 20,
-            background: 'rgba(239, 246, 255, 0.95)',
-            backdropFilter: 'blur(4px)',
-            borderBottom: '1px solid #bfdbfe',
-            padding: '6px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 12,
-            color: '#1d4ed8',
-            fontWeight: 500
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-              <span>Refetching {tab === 'students' ? 'students' : 'faculty'} from database...</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
-              </div>
-            </div>
-          </div>
-        )}
-        <table>
-          {tab === 'students' ? (
-            <>
-              <thead>
-                <tr>
-                  <th>Roll No</th>
-                  <th>Adm No</th>
-                  <th>Student Name</th>
-                  <th>Gender</th>
-                  <th>Class</th>
-                  <th>Section</th>
-                  <th>Parent</th>
-                  <th>SMS Mobile</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedDirectoryRows.map((r: any) => (
-                  <tr key={r.id}>
-                    <td>
-                      <span className="roll" style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        {r.roll_number || r.roll || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      {(r.admission_number || r.admissionNumber) ? (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                          {r.admission_number || r.admissionNumber}
-                        </span>
-                      ) : (
-                        <span className="muted" style={{ fontSize: 11 }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <StudentProfileHoverCard student={r} mode="student">
-                        <b>{r.name}</b>
-                      </StudentProfileHoverCard>
-                    </td>
-                    <td>
-                      {r.gender ? (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px 8px',
-                          borderRadius: 999,
-                          fontSize: 11.5,
-                          fontWeight: 500,
-                          background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                          color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                          border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                        }}>
-                          {formatGender(r.gender)}
-                        </span>
-                      ) : (
-                        <span className="muted" style={{ fontSize: 12 }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        {r.class_number === -1 ? 'L-KG' : r.class_number === 0 ? 'U-KG' : (r.class_number || String(r.class_name || '1').replace(/^class\s*/i, ''))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        {String(r.section_name || r.section || 'A').replace(/^section\s*/i, '').trim() || 'A'}
-                      </span>
-                    </td>
-                    <td>{r.parent_name || 'Parent'}</td>
-                    <td>{r.parent_sms_number || r.parent_phone || r.email || '—'}</td>
-                    <td>
-                      <span className={`badge ${r.active === false ? 'failed' : 'active'}`}>
-                        {r.active === false ? 'Inactive' : 'Active'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {!rows.length && (
-                  <tr>
-                    <td colSpan={9} style={{ padding: 36, textAlign: 'center' }}>
-                      {loading ? (
-                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
-                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                            <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
-                          </div>
-                          <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                            <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="muted">No student records found matching this criteria.</span>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </>
-          ) : (
-            <>
-              <thead>
-                <tr style={{ verticalAlign: 'middle' }}>
-                  <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Employee Id /<br />Savior_NO</th>
-                  <th>Faculty Name</th>
-                  <th>Gender</th>
-                  <th>Designation</th>
-                  <th>Official Email</th>
-                  <th>Mobile Contact</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedDirectoryRows.map((r: any) => (
-                  <tr key={r.id}>
-                    <td>
-                      <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--primary-700)' }}>
-                        {r.savior_no || r.employee_id || r.Savior_No || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <TeacherProfileHoverCard teacher={r}>
-                        <b>{r.name || r.fullName}</b>
-                      </TeacherProfileHoverCard>
-                    </td>
-                    <td>
-                      {r.gender ? (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px 8px',
-                          borderRadius: 999,
-                          fontSize: 11.5,
-                          fontWeight: 500,
-                          background: formatGender(r.gender) === 'Female' ? '#fdf2f8' : formatGender(r.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                          color: formatGender(r.gender) === 'Female' ? '#db2777' : formatGender(r.gender) === 'Male' ? '#0284c7' : '#64748b',
-                          border: `1px solid ${formatGender(r.gender) === 'Female' ? '#fbcfe8' : formatGender(r.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                        }}>
-                          {formatGender(r.gender)}
-                        </span>
-                      ) : (
-                        <span className="muted" style={{ fontSize: 12 }}>—</span>
-                      )}
-                    </td>
-                    <td>{r.designation || 'Teacher'}</td>
-                    <td>{r.email}</td>
-                    <td>{r.mobile || r.phone || '—'}</td>
-                    <td>
-                      <span className={`badge ${r.is_active === false || r.active === false ? 'failed' : 'active'}`}>
-                        {r.is_active === false || r.active === false ? 'Inactive' : 'Active'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {!rows.length && (
-                  <tr>
-                    <td colSpan={7} style={{ padding: 36, textAlign: 'center' }}>
-                      {loading ? (
-                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, maxWidth: 320, margin: '0 auto' }}>
-                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Loader2 size={36} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                            <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records from database ({loadProgress}%)</div>
-                          </div>
-                          <div style={{ width: '100%', height: 5, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                            <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="muted">No faculty records found matching this criteria.</span>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </>
-          )}
-        </table>
-      </div>
-
-      {/* Box Footer (Pagination Bar) */}
-      <div className="directory-box-footer">
-        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
-          {rows.length === 0 ? (
-            `Showing 0 ${tab === 'students' ? 'students' : 'faculty members'}`
-          ) : (
-            <>
-              Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{rows.length}</b> {tab === 'students' ? 'students' : 'faculty members'}
-            </>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn-secondary"
-            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-            disabled={currentDirectoryPage <= 1}
-            onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
-            title="First Page"
-          >
-            <ChevronsLeft size={14} /> First
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-            disabled={currentDirectoryPage <= 1}
-            onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
-            title="Previous Page"
-          >
-            <ChevronLeft size={14} /> Previous
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
-            <span>Page</span>
-            <select
-              value={currentDirectoryPage}
-              onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
-              style={{
-                padding: '3px 6px',
-                fontSize: 12,
-                borderRadius: 4,
-                border: '1px solid var(--border, #cbd5e1)',
-                background: 'var(--card-bg, #ffffff)',
-                color: 'var(--text, #1e293b)',
-                cursor: 'pointer'
-              }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              disabled={currentDirectoryPage <= 1}
+              onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
+              title="First Page"
             >
-              {Array.from({ length: totalDirectoryPages }, (_, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {idx + 1}
-                </option>
-              ))}
-            </select>
-            <span>of <b>{totalDirectoryPages}</b></span>
-          </div>
+              <ChevronsLeft size={14} /> First
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              disabled={currentDirectoryPage <= 1}
+              onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
+              title="Previous Page"
+            >
+              <ChevronLeft size={14} /> Previous
+            </button>
 
-          <button
-            type="button"
-            className="btn-secondary"
-            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-            disabled={currentDirectoryPage >= totalDirectoryPages}
-            onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
-            title="Next Page"
-          >
-            Next <ChevronRight size={14} />
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-            disabled={currentDirectoryPage >= totalDirectoryPages}
-            onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
-            title="Last Page"
-          >
-            Last <ChevronsRight size={14} />
-          </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+              <span>Page</span>
+              <select
+                value={currentDirectoryPage}
+                onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
+                style={{
+                  padding: '3px 6px',
+                  fontSize: 12,
+                  borderRadius: 4,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--card-bg, #ffffff)',
+                  color: 'var(--text, #1e293b)',
+                  cursor: 'pointer'
+                }}
+              >
+                {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+                  <option key={idx + 1} value={idx + 1}>
+                    {idx + 1}
+                  </option>
+                ))}
+              </select>
+              <span>of <b>{totalDirectoryPages}</b></span>
+            </div>
+
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              disabled={currentDirectoryPage >= totalDirectoryPages}
+              onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
+              title="Next Page"
+            >
+              Next <ChevronRight size={14} />
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              disabled={currentDirectoryPage >= totalDirectoryPages}
+              onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
+              title="Last Page"
+            >
+              Last <ChevronsRight size={14} />
+            </button>
+          </div>
         </div>
-      </div>
       </div>
 
       {/* ─── ADD TEACHER MODAL WITH PREVIEW ─── */}
@@ -1512,7 +1512,7 @@ export default function PeopleManagement() {
                         onClick={(e) => {
                           try {
                             e.currentTarget.showPicker?.();
-                          } catch {}
+                          } catch { }
                         }}
                         onChange={e => {
                           if (e.target.value) {
@@ -1727,9 +1727,9 @@ export default function PeopleManagement() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                  <button 
-                    type="button" 
-                    className="btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn-secondary"
                     onClick={() => {
                       const fn = String(teacherForm.firstName || '').trim();
                       const mn = String(teacherForm.middleName || '').trim();
