@@ -51,6 +51,7 @@ export async function schoolOverview(
   let attendanceSessions = 0;
   let todayPresent = 0;
   let todayAbsent = 0;
+  let todayLeftEarly = 0;
   let presentRecords = 0;
   let absentRecords = 0;
   let attendancePercentage = 0;
@@ -200,7 +201,8 @@ export async function schoolOverview(
         // 5. Today's attendance (Real-time live metric, filtered by class, section, session)
         pool.query(`SELECT 
           COUNT(*) FILTER(WHERE ar.is_present=true OR ar.status='PRESENT')::int present, 
-          COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent
+          COUNT(*) FILTER(WHERE (ar.is_present=false OR ar.status='ABSENT') AND ar.status != 'LEFT_EARLY')::int absent,
+          COUNT(*) FILTER(WHERE ar.status='LEFT_EARLY')::int left_early
           FROM attendance_records ar 
           JOIN attendance_sessions s ON s.id = ar.attendance_session_id
           LEFT JOIN classes c ON c.id = s.class_id
@@ -223,14 +225,20 @@ export async function schoolOverview(
           ), 0)::int as present_records,
           COALESCE(SUM(
             CASE 
-              WHEN s.present_count > 0 OR s.absent_count > 0 THEN s.absent_count
+              WHEN s.present_count > 0 OR s.absent_count > 0 OR s.left_early_count > 0 THEN s.absent_count
               ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND (ar.is_present = false OR ar.status = 'ABSENT') AND ar.status != 'LEFT_EARLY')
             END
           ), 0)::int as absent_records,
           COALESCE(SUM(
             CASE 
+              WHEN s.left_early_count > 0 THEN s.left_early_count
+              ELSE (SELECT COUNT(*) FROM attendance_records ar WHERE ar.attendance_session_id = s.id AND ar.status = 'LEFT_EARLY')
+            END
+          ), 0)::int as left_early_records,
+          COALESCE(SUM(
+            CASE 
               WHEN s.total_count > 0 THEN s.total_count
-              ELSE (s.present_count + s.absent_count)
+              ELSE (s.present_count + s.absent_count + COALESCE(s.left_early_count, 0))
             END
           ), 0)::int as total_students
           FROM attendance_sessions s
@@ -254,6 +262,7 @@ export async function schoolOverview(
           COALESCE(s.class_number::text, 'Class') as class_name,
           COALESCE(SUM(s.present_count), 0)::int as present,
           COALESCE(SUM(s.absent_count), 0)::int as absent,
+          COALESCE(SUM(s.left_early_count), 0)::int as left_early,
           COALESCE(SUM(s.total_count), 0)::int as total
           FROM attendance_sessions s
           LEFT JOIN classes c ON c.id = s.class_id
@@ -330,11 +339,12 @@ export async function schoolOverview(
       absentRecords = recordsRes.rows[0]?.absent || 0;
       todayPresent = todayAttendanceRes.rows[0]?.present || 0;
       todayAbsent = todayAttendanceRes.rows[0]?.absent || 0;
+      todayLeftEarly = todayAttendanceRes.rows[0]?.left_early || 0;
 
       // If today records in attendance_records were 0, check attendance_sessions
-      if (todayPresent === 0 && todayAbsent === 0 && attendanceSessions > 0) {
+      if (todayPresent === 0 && todayAbsent === 0 && todayLeftEarly === 0 && attendanceSessions > 0) {
         const sessToday = await pool.query(
-          `SELECT COALESCE(SUM(s.present_count), 0)::int as present, COALESCE(SUM(s.absent_count), 0)::int as absent 
+          `SELECT COALESCE(SUM(s.present_count), 0)::int as present, COALESCE(SUM(s.absent_count), 0)::int as absent, COALESCE(SUM(s.left_early_count), 0)::int as left_early 
            FROM attendance_sessions s
            LEFT JOIN classes c ON c.id = s.class_id
            WHERE s.school_id = $1 AND s.attendance_date = $2
@@ -342,9 +352,10 @@ export async function schoolOverview(
              AND ($5::text IS NULL OR s.section_id::text = $5::text OR LOWER(s.section_name) = LOWER($6::text))
              AND ($7::uuid IS NULL OR c.academic_year_id = $7::uuid)`,
           [schoolId, todayStr, matchedClassId, matchedClassNumber, matchedSectionId, matchedSectionName, targetAyId]
-        ).catch(() => ({ rows: [{ present: 0, absent: 0 }] }));
+        ).catch(() => ({ rows: [{ present: 0, absent: 0, left_early: 0 }] }));
         todayPresent = sessToday.rows[0]?.present || 0;
         todayAbsent = sessToday.rows[0]?.absent || 0;
+        todayLeftEarly = sessToday.rows[0]?.left_early || 0;
       }
 
       // If period records were 0, check attendance_sessions
@@ -364,12 +375,13 @@ export async function schoolOverview(
       }
 
       // Build date lookup map for 14-day daily rhythm from real-time DB rows
-      const dbDateMap = new Map<string, { present: number; absent: number; total: number }>();
+      const dbDateMap = new Map<string, { present: number; absent: number; left_early: number; total: number }>();
       for (const r of dailyRes.rows) {
         const dStr = String(r.snapshot_date).slice(0, 10);
         dbDateMap.set(dStr, {
           present: Number(r.present_records || 0),
           absent: Number(r.absent_records || 0),
+          left_early: Number(r.left_early_records || 0),
           total: Number(r.total_students || 0)
         });
       }
@@ -377,15 +389,17 @@ export async function schoolOverview(
       // Format 14-day daily rhythm ensuring all 14 consecutive calendar days are present
       daily = fourteenDaysList.map(dateKey => {
         const row = dbDateMap.get(dateKey);
-        if (row && (row.present > 0 || row.absent > 0 || row.total > 0)) {
+        if (row && (row.present > 0 || row.absent > 0 || row.left_early > 0 || row.total > 0)) {
           const p = row.present;
           const a = row.absent;
-          const tot = (p + a) > 0 ? (p + a) : row.total;
+          const le = row.left_early || 0;
+          const tot = (p + a + le) > 0 ? (p + a + le) : row.total;
           const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
           return {
             snapshot_date: dateKey,
             present_records: p,
             absent_records: a,
+            left_early_records: le,
             total_students: row.total > 0 ? row.total : tot,
             attendance_percentage: pct,
             has_attendance: true
@@ -395,6 +409,7 @@ export async function schoolOverview(
           snapshot_date: dateKey,
           present_records: 0,
           absent_records: 0,
+          left_early_records: 0,
           total_students: 0,
           attendance_percentage: 0,
           has_attendance: false
@@ -405,7 +420,8 @@ export async function schoolOverview(
       classBreakdown = classRes.rows.map(r => {
         const p = r.present || 0;
         const a = r.absent || 0;
-        const tot = p + a;
+        const le = r.left_early || 0;
+        const tot = (p + a + le) > 0 ? (p + a + le) : (r.total || 0);
         const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
         const cNum = Number(r.class_number);
         const cName = cNum === -1 ? 'Class L-KG' : cNum === 0 ? 'Class U-KG' : `Class ${r.class_number}`;
@@ -415,6 +431,7 @@ export async function schoolOverview(
           className: cName,
           present: p,
           absent: a,
+          leftEarly: le,
           total: tot,
           percentage: pct
         };
@@ -474,32 +491,61 @@ export async function schoolOverview(
       if (memTodaySessions.length > 0) {
         const memTodayPres = memTodaySessions.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
         const memTodayAbs = memTodaySessions.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
-        if (todayPresent === 0 && todayAbsent === 0) {
+        const memTodayLE = memTodaySessions.reduce((sum, s) => sum + (s.leftEarlyCount || s.left_early_count || 0), 0);
+        if (todayPresent === 0 && todayAbsent === 0 && todayLeftEarly === 0) {
           todayPresent = memTodayPres;
           todayAbsent = memTodayAbs;
+          todayLeftEarly = memTodayLE;
+        } else if (memTodayLE > 0 && todayLeftEarly === 0) {
+          todayLeftEarly = memTodayLE;
+          if (todayAbsent >= memTodayLE) todayAbsent -= memTodayLE;
         }
       }
 
       // Reconcile daily 14-day rhythm if in-memory session has recent data
       daily = daily.map(d => {
-        if (!d.has_attendance) {
-          const memMatch = memSchoolSessions.filter(s => (s.attendanceDate || s.attendance_date) === d.snapshot_date);
-          if (memMatch.length > 0) {
-            const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
-            const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
-            const tot = p + a;
-            const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+        const memMatch = memSchoolSessions.filter(s => (s.attendanceDate || s.attendance_date) === d.snapshot_date);
+        if (memMatch.length > 0) {
+          const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
+          const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
+          const le = memMatch.reduce((sum, s) => sum + (s.leftEarlyCount || s.left_early_count || 0), 0);
+          const tot = (p + a + le) > 0 ? (p + a + le) : 0;
+          const pct = tot > 0 ? Number(((p / tot) * 100).toFixed(1)) : 0;
+          if (!d.has_attendance || (le > 0 && (!d.left_early_records || d.left_early_records === 0))) {
             return {
               ...d,
-              present_records: p,
-              absent_records: a,
-              total_students: tot,
-              attendance_percentage: pct,
-              has_attendance: tot > 0
+              present_records: p > 0 ? p : d.present_records,
+              absent_records: a > 0 ? a : (d.absent_records >= le ? d.absent_records - le : d.absent_records),
+              left_early_records: le,
+              total_students: tot > 0 ? tot : d.total_students,
+              attendance_percentage: pct > 0 ? pct : d.attendance_percentage,
+              has_attendance: true
             };
           }
         }
         return d;
+      });
+
+      // Reconcile classBreakdown with in-memory sessions
+      classBreakdown = classBreakdown.map(c => {
+        const memMatch = memSchoolSessions.filter(s =>
+          (c.classId && String(s.classId || s.class_id) === String(c.classId)) ||
+          (c.classNumber !== undefined && Number(s.classNumber ?? s.class_number) === Number(c.classNumber))
+        );
+        if (memMatch.length > 0) {
+          const le = memMatch.reduce((sum, s) => sum + (s.leftEarlyCount || s.left_early_count || 0), 0);
+          const a = memMatch.reduce((sum, s) => sum + (s.absentCount || s.absent_count || 0), 0);
+          const p = memMatch.reduce((sum, s) => sum + (s.presentCount || s.present_count || 0), 0);
+          if (le > 0) {
+            return {
+              ...c,
+              leftEarly: le,
+              absent: a > 0 ? a : (c.absent >= le ? c.absent - le : c.absent),
+              present: p > 0 ? p : c.present
+            };
+          }
+        }
+        return c;
       });
     }
   } catch {}
@@ -540,6 +586,7 @@ export async function schoolOverview(
     attendanceSessions,
     todayPresent,
     todayAbsent,
+    todayLeftEarly,
     presentRecords,
     absentRecords,
     attendancePercentage,

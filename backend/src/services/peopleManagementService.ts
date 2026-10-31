@@ -9,13 +9,37 @@ import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
 import { normalizeGender } from '../utils/gender';
 
-export async function listStudents(schoolId: string, search = '', activeOnly = true) {
+export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '') {
   const params: any[] = [schoolId];
   let where = 'WHERE st.school_id=$1';
   if (activeOnly) where += ' AND st.is_active=TRUE';
   if (search.trim()) {
     params.push(`%${search.trim()}%`);
-    where += ` AND (st.name ILIKE $2 OR CAST(st.roll_number AS TEXT) ILIKE $2 OR COALESCE(st.admission_number,'') ILIKE $2 OR COALESCE(st.gender,'') ILIKE $2)`;
+    where += ` AND (st.name ILIKE ${params.length} OR CAST(st.roll_number AS TEXT) ILIKE ${params.length} OR COALESCE(st.admission_number,'') ILIKE ${params.length} OR COALESCE(st.gender,'') ILIKE ${params.length})`;
+  }
+  if (academicYearId) {
+    params.push(academicYearId);
+    where += ` AND st.academic_year_id = ${params.length}::uuid`;
+  } else if (session && !/^all(\s+sessions?)?$/i.test(session)) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session);
+    if (isUuid) {
+      params.push(session);
+      where += ` AND st.academic_year_id = ${params.length}::uuid`;
+    } else {
+      const cleanSessionName = session.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+      params.push(session);
+      const sIdx = params.length;
+      params.push(`%${cleanSessionName}%`);
+      const cIdx = params.length;
+      where += ` AND (
+        st.academic_year_id IN (
+          SELECT id FROM academic_years 
+          WHERE school_id = $1::uuid AND (LOWER(name) = LOWER(${sIdx}) OR name ILIKE ${cIdx} OR LOWER(code) = LOWER(${sIdx}) OR code ILIKE ${cIdx})
+        )
+        OR ay.name ILIKE ${cIdx}
+        OR ay.code ILIKE ${cIdx}
+      )`;
+    }
   }
   const { rows } = await pool.query(
     `SELECT st.*, c.class_number, sec.name AS section_name,
@@ -36,24 +60,76 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
 }
 
 export async function getStudentById(schoolId: string, id: string) {
-  const { rows } = await pool.query(
-    `SELECT st.*, c.class_number, sec.name AS section_name,
-            CASE WHEN c.class_number = -1 THEN 'L-KG' 
-                 WHEN c.class_number = 0 THEN 'U-KG' 
-                 WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
-                 ELSE '' END AS class_name,
-            ay.name AS session_name
-     FROM students st
-     LEFT JOIN classes c ON c.id=st.class_id
-     LEFT JOIN sections sec ON sec.id=st.section_id
-     LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
-     WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2
-     LIMIT 1`,
-    [id, schoolId]
-  );
+  let rows: any[] = [];
+  try {
+    const q = await pool.query(
+      `SELECT st.*, c.class_number, sec.name AS section_name,
+              CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                   WHEN c.class_number = 0 THEN 'U-KG' 
+                   WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                   ELSE '' END AS class_name,
+              ay.name AS session_name,
+              COALESCE(
+                (
+                  SELECT COUNT(*)::int
+                  FROM student_assignment_submissions sub
+                  WHERE sub.student_id = st.id
+                ), 0
+              ) AS assignment_submissions_count,
+              COALESCE(
+                (
+                  SELECT ROUND(
+                    CASE WHEN COUNT(ar.id) = 0 THEN 0
+                    ELSE COUNT(ar.id) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::numeric / COUNT(ar.id)::numeric * 100
+                    END, 2
+                  )::float
+                  FROM attendance_records ar
+                  WHERE ar.student_id = st.id
+                ), 0
+              ) AS attendance_percentage
+       FROM students st
+       LEFT JOIN classes c ON c.id=st.class_id
+       LEFT JOIN sections sec ON sec.id=st.section_id
+       LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
+       WHERE (st.id::text=$1 OR st.user_id::text=$1) AND (st.school_id=$2 OR st.school_id IS NOT NULL)
+       LIMIT 1`,
+      [id, schoolId]
+    );
+    rows = q.rows;
+  } catch (err) {
+    try {
+      const fallbackQ = await pool.query(
+        `SELECT st.*, c.class_number, sec.name AS section_name,
+                CASE WHEN c.class_number = -1 THEN 'L-KG' 
+                     WHEN c.class_number = 0 THEN 'U-KG' 
+                     WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number 
+                     ELSE '' END AS class_name,
+                ay.name AS session_name
+         FROM students st
+         LEFT JOIN classes c ON c.id=st.class_id
+         LEFT JOIN sections sec ON sec.id=st.section_id
+         LEFT JOIN academic_years ay ON ay.id=st.academic_year_id
+         WHERE (st.id::text=$1 OR st.user_id::text=$1) AND st.school_id=$2
+         LIMIT 1`,
+        [id, schoolId]
+      );
+      rows = fallbackQ.rows;
+    } catch (_f) {
+      rows = [];
+    }
+  }
   if (!rows.length) return null;
   const r = rows[0];
-  return { ...r, name: String(r.name || '').toUpperCase(), first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name, last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name, gender: normalizeGender(r.gender) || '', date_of_birth: cleanDateStr(r.date_of_birth) };
+  return {
+    ...r,
+    name: String(r.name || '').toUpperCase(),
+    first_name: r.first_name ? String(r.first_name).toUpperCase() : r.first_name,
+    last_name: r.last_name ? String(r.last_name).toUpperCase() : r.last_name,
+    gender: normalizeGender(r.gender) || '',
+    date_of_birth: cleanDateStr(r.date_of_birth),
+    attendance_percentage: r.attendance_percentage !== undefined ? Number(r.attendance_percentage) : 0,
+    assignment_submissions_count: r.assignment_submissions_count !== undefined ? Number(r.assignment_submissions_count) : 0
+  };
 }
 
 export async function updateStudent(schoolId: string, id: string, body: any) {
@@ -207,13 +283,23 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
             tp.first_name, tp.middle_name, tp.last_name,
             tp.employee_id, tp.phone, tp.gender, tp.address, tp.joining_date,
             tp.qualification, tp.designation, tp.photo_url, tp.class_name, tp.section_name,
-            cm.class_id, cm.section_id, c.class_number AS assignedClass, s.name AS assignedSection,
-            COALESCE(tp.is_active, TRUE) AS is_active
+            COALESCE(tp.is_active, TRUE) AS is_active,
+            (
+              SELECT STRING_AGG(
+                CASE 
+                  WHEN cl.class_number = -1 THEN 'Class L-KG'
+                  WHEN cl.class_number = 0 THEN 'Class U-KG'
+                  ELSE 'Class ' || cl.class_number
+                END || '-' || sec.name,
+                ', '
+              )
+              FROM class_mentors c_m
+              JOIN classes cl ON cl.id = c_m.class_id
+              JOIN sections sec ON sec.id = c_m.section_id
+              WHERE c_m.teacher_id = u.id AND c_m.school_id = u.school_id
+            ) AS mentor_allocations
      FROM users u
      LEFT JOIN teacher_profiles tp ON tp.user_id=u.id
-     LEFT JOIN class_mentors cm ON cm.teacher_id = u.id AND cm.school_id = u.school_id
-     LEFT JOIN classes c ON c.id = cm.class_id
-     LEFT JOIN sections s ON s.id = cm.section_id
      ${where}
      ORDER BY u.name`,
     params
@@ -239,6 +325,13 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
     const upperFn = String(fn || '').toUpperCase();
     const upperMn = String(mn || '').toUpperCase();
     const upperLn = String(ln || '').toUpperCase();
+    const mentorAlloc = r.mentor_allocations || null;
+    let fallbackAlloc = null;
+    if (r.class_name) {
+      fallbackAlloc = `${r.class_name}${r.section_name ? `-${r.section_name}` : ''}`;
+    }
+    const finalAlloc = mentorAlloc || fallbackAlloc || null;
+
     return {
       ...r,
       name: upperName,
@@ -250,7 +343,11 @@ export async function listTeachers(schoolId: string, search = '', activeOnly = t
       lastName: upperLn,
       gender: normalizeGender(r.gender) || '',
       joining_date: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
-      joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : ''
+      joiningDate: r.joining_date ? String(r.joining_date).slice(0, 10) : '',
+      mentor_allocations: mentorAlloc,
+      assigned_classes: finalAlloc,
+      assigned_class: finalAlloc,
+      allocationsSummary: finalAlloc
     };
   });
 }

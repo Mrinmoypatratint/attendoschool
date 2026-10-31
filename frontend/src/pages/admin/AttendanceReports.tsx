@@ -16,7 +16,8 @@ import {
   Search,
   ChevronDown,
   Edit2,
-  RefreshCw
+  RefreshCw,
+  Lock
 } from 'lucide-react';
 import { TableSubToolbar, TablePaginationFooter } from '../../components/TablePagination';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
@@ -39,9 +40,36 @@ type Row = {
   attendance_percentage: number;
 };
 
-export default function AttendanceReports() {
+export interface AttendanceReportsProps {
+  embedded?: boolean;
+  defaultClassId?: string;
+  defaultSectionId?: string;
+  defaultClassNumber?: number | string;
+  defaultSectionName?: string;
+}
+
+export function formatStrict4DigitDate(val: string): string {
+  if (!val) return '';
+  const parts = val.trim().split('-');
+  if (parts.length === 3) {
+    let [y, m, d] = parts;
+    if (y.length > 4) {
+      y = y.slice(0, 4);
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+  }
+  return val.trim();
+}
+
+export default function AttendanceReports({
+  embedded = false,
+  defaultClassId,
+  defaultSectionId,
+  defaultClassNumber,
+  defaultSectionName
+}: AttendanceReportsProps = {}) {
   const { user } = useAuth();
-  if (user?.role === 'SUPER_ADMIN') {
+  if (!embedded && user?.role === 'SUPER_ADMIN') {
     return <Navigate to="/super-admin/reports" replace />;
   }
 
@@ -65,6 +93,26 @@ export default function AttendanceReports() {
   const [sections, setSections] = useState<any[]>([]);
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
 
+  const displayClassLabel = useMemo(() => {
+    if (defaultClassNumber !== undefined && defaultClassNumber !== null) {
+      const n = Number(defaultClassNumber);
+      return n === -1 ? 'Class L KG' : n === 0 ? 'Class U KG' : `Class ${n}`;
+    }
+    const found = classes.find(c => c.id === selectedClass);
+    if (found) {
+      const num = found.class_number !== undefined ? Number(found.class_number) : (found.classNumber !== undefined ? Number(found.classNumber) : null);
+      return num === -1 ? 'Class L KG' : num === 0 ? 'Class U KG' : (found.label || (num !== null ? `Class ${num}` : found.id));
+    }
+    return selectedClass !== 'ALL' ? `Class ${selectedClass}` : 'Assigned Class';
+  }, [defaultClassNumber, classes, selectedClass]);
+
+  const displaySectionLabel = useMemo(() => {
+    if (defaultSectionName) return defaultSectionName.toUpperCase();
+    if (selectedSection !== 'ALL') return selectedSection.toUpperCase();
+    return 'A';
+  }, [defaultSectionName, selectedSection]);
+
+
   // Report Data
   const [rows, setRows] = useState<Row[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -76,6 +124,8 @@ export default function AttendanceReports() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(new Date());
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const tableTopRef = useRef<HTMLDivElement>(null);
 
   // Combined Export Dropdown State
@@ -161,13 +211,60 @@ export default function AttendanceReports() {
     fetchMetadata();
   }, []);
 
+  // Sync defaultClass when classes load or props change
+  useEffect(() => {
+    if (defaultClassId) {
+      setSelectedClass(String(defaultClassId));
+    } else if (classes.length > 0 && defaultClassNumber !== undefined) {
+      const match = classes.find(c => Number(c.class_number) === Number(defaultClassNumber));
+      if (match) setSelectedClass(match.id);
+      else setSelectedClass(String(defaultClassNumber));
+    }
+  }, [classes, defaultClassId, defaultClassNumber]);
+
+  // Sync defaultSection when sections load or props change
+  useEffect(() => {
+    if (defaultSectionId) {
+      setSelectedSection(String(defaultSectionId));
+    } else if (defaultSectionName) {
+      setSelectedSection(defaultSectionName.toUpperCase());
+    }
+  }, [sections, defaultSectionId, defaultSectionName]);
+
+  // Sync active academic session from localStorage and navbar event
+  useEffect(() => {
+    const syncActiveSession = () => {
+      const activeYId = localStorage.getItem('attendo_active_academic_year_id');
+      const activeYName = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
+      if (sessions.length > 0) {
+        const match = sessions.find(s =>
+          (activeYId && (s.id === activeYId || String(s.id) === String(activeYId))) ||
+          (activeYName && s.name.toLowerCase().includes(activeYName.toLowerCase()))
+        );
+        if (match) {
+          setSelectedSession(match.id);
+        }
+      }
+    };
+    syncActiveSession();
+    window.addEventListener('sessionChanged', syncActiveSession);
+    window.addEventListener('storage', syncActiveSession);
+    return () => {
+      window.removeEventListener('sessionChanged', syncActiveSession);
+      window.removeEventListener('storage', syncActiveSession);
+    };
+  }, [sessions]);
+
   async function load() {
     setLoading(true);
     setError('');
     try {
+      const cleanFrom = formatStrict4DigitDate(from);
+      const cleanTo = formatStrict4DigitDate(toDate);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(cleanTo)) return;
       const [s, r] = await Promise.all([
-        api.get('/attendance-reports/summary', { params: { from, to: toDate } }),
-        api.get('/attendance-reports/students', { params: { from, to: toDate } })
+        api.get('/attendance-reports/summary', { params: { from: cleanFrom, to: cleanTo } }),
+        api.get('/attendance-reports/students', { params: { from: cleanFrom, to: cleanTo } })
       ]);
       setSummary(s.data);
       setRows(Array.isArray(r.data) ? r.data : []);
@@ -231,6 +328,25 @@ export default function AttendanceReports() {
   };
 
   const isClassMatch = (selectedCls: string, r: any): boolean => {
+    if (embedded && defaultClassNumber !== undefined && defaultClassNumber !== null) {
+      const targetNum = Number(defaultClassNumber);
+      let rowNum: number | null = null;
+      if (r.class_number !== undefined && r.class_number !== null && !isNaN(Number(r.class_number))) {
+        rowNum = Number(r.class_number);
+      } else if (r.class_id && defaultClassId && r.class_id === defaultClassId) {
+        return true;
+      }
+      if (rowNum === null) {
+        rowNum = extractClassNumber(r.class_name || r.className);
+      }
+      if (rowNum !== null) {
+        return targetNum === rowNum;
+      }
+      if (defaultClassId && r.class_id) {
+        return r.class_id === defaultClassId;
+      }
+      return false;
+    }
     if (!selectedCls || selectedCls === 'ALL') return true;
 
     const selectedClsObj = classes.find(c => c.id === selectedCls || String(c.class_number) === String(selectedCls));
@@ -278,6 +394,17 @@ export default function AttendanceReports() {
   };
 
   const isSectionMatch = (selectedSec: string, r: any): boolean => {
+    if (embedded && (defaultSectionName || defaultSectionId)) {
+      if (defaultSectionId && r.section_id && r.section_id === defaultSectionId) {
+        return true;
+      }
+      const targetSec = normalizeSection(defaultSectionName || '');
+      const rowSec = normalizeSection(r.section_name || r.section);
+      if (targetSec !== '' && rowSec !== '') {
+        return targetSec === rowSec;
+      }
+      return false;
+    }
     if (!selectedSec || selectedSec === 'ALL') return true;
 
     if (r.section_id && (r.section_id === selectedSec || sections.some(s => s.id === selectedSec && s.id === r.section_id))) {
@@ -289,9 +416,43 @@ export default function AttendanceReports() {
     return targetSec !== '' && rowSec !== '' && targetSec === rowSec;
   };
 
-  // Multi-dimensional filtering logic
+  // Merge enrolledStudents with rows so any student without attendance taken yet is always visible
+  const allStudentRows = useMemo(() => {
+    const map = new Map<string, any>();
+    enrolledStudents.forEach(st => {
+      const id = String(st.id || st.student_id || '');
+      if (!id) return;
+      map.set(id, {
+        student_id: id,
+        student_name: st.name || st.fullName || 'Student',
+        roll: st.roll_number || st.roll || '—',
+        class_id: st.class_id || st.classId,
+        section_id: st.section_id || st.sectionId,
+        class_number: st.class_number !== undefined ? Number(st.class_number) : (st.classNumber !== undefined ? Number(st.classNumber) : undefined),
+        class_name: st.className || st.class_name || (st.class_number ? `Class ${st.class_number}` : '—'),
+        section_name: st.section_name || st.section || 'A',
+        academic_year_id: st.academic_year_id || st.academicYearId,
+        present_days: 0,
+        absent_days: 0,
+        left_early_days: 0,
+        marked_days: 0,
+        attendance_percentage: 0
+      });
+    });
+
+    rows.forEach(r => {
+      const id = String(r.student_id || (r as any).id || '');
+      if (id) {
+        map.set(id, { ...(map.get(id) || {}), ...r });
+      }
+    });
+
+    return map.size > 0 ? Array.from(map.values()) : rows;
+  }, [rows, enrolledStudents]);
+
+  // Multi-dimensional filtering logic with numerical roll number-wise sorting
   const filteredRows = useMemo(() => {
-    return rows.filter((r: any) => {
+    const list = allStudentRows.filter((r: any) => {
       // 1. Class filter
       if (!isClassMatch(selectedClass, r)) return false;
 
@@ -329,32 +490,55 @@ export default function AttendanceReports() {
 
       return true;
     });
-  }, [rows, selectedClass, selectedSection, selectedSession, searchQuery, classes, sections, sessions]);
+
+    // Sort strictly roll number-wise (ascending numerical order: 1, 2, 3... 10, 11...)
+    return list.sort((a: any, b: any) => {
+      const rollA = a.roll ?? a.roll_number ?? '';
+      const rollB = b.roll ?? b.roll_number ?? '';
+      const numA = parseInt(String(rollA).replace(/[^\d]/g, ''), 10);
+      const numB = parseInt(String(rollB).replace(/[^\d]/g, ''), 10);
+
+      const validA = !isNaN(numA);
+      const validB = !isNaN(numB);
+
+      if (validA && validB) {
+        if (numA !== numB) return numA - numB;
+      } else if (validA) {
+        return -1;
+      } else if (validB) {
+        return 1;
+      }
+
+      const rollComp = String(rollA).localeCompare(String(rollB), undefined, { numeric: true });
+      if (rollComp !== 0) return rollComp;
+      return String(a.student_name || '').localeCompare(String(b.student_name || ''));
+    });
+  }, [allStudentRows, selectedClass, selectedSection, selectedSession, searchQuery, classes, sections, sessions]);
 
   // Compute 4 KPI totals dynamically from filtered rows
   const totalPresent = useMemo(() => {
-    if (summary && summary.present > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+    if (!embedded && summary && summary.present > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
       return summary.present;
     }
     return filteredRows.reduce((acc, r) => acc + (Number(r.present_days) || 0), 0);
   }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
 
   const totalAbsent = useMemo(() => {
-    if (summary && summary.absent > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+    if (!embedded && summary && summary.absent > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
       return summary.absent;
     }
     return filteredRows.reduce((acc, r) => acc + (Number(r.absent_days) || 0), 0);
   }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
 
   const totalLeftEarly = useMemo(() => {
-    if (summary && (summary.left_early !== undefined || summary.leftEarly !== undefined) && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+    if (!embedded && summary && (summary.left_early !== undefined || summary.leftEarly !== undefined) && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
       return Number(summary.left_early ?? summary.leftEarly ?? 0);
     }
     return filteredRows.reduce((acc, r: any) => acc + (Number(r.left_early_days || r.leftEarlyDays || r.left_early || r.leftEarly) || 0), 0);
   }, [summary, filteredRows, selectedClass, selectedSection, selectedSession, searchQuery]);
 
   const totalMarked = useMemo(() => {
-    if (summary && summary.marked > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
+    if (!embedded && summary && summary.marked > 0 && selectedClass === 'ALL' && selectedSection === 'ALL' && selectedSession === 'ALL' && !searchQuery.trim()) {
       return summary.marked;
     }
     return filteredRows.reduce((acc, r) => acc + (Number(r.marked_days) || 0), 0);
@@ -382,8 +566,46 @@ export default function AttendanceReports() {
     }
   };
 
+  // Selection Helpers
+  const isAllSelected = useMemo(() => {
+    return filteredRows.length > 0 && filteredRows.every(r => selectedStudentIds.has(r.student_id));
+  }, [filteredRows, selectedStudentIds]);
+
+  const isSomeSelected = useMemo(() => {
+    return selectedStudentIds.size > 0 && !isAllSelected;
+  }, [selectedStudentIds, isAllSelected]);
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected;
+    }
+  }, [isSomeSelected]);
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedStudentIds(new Set());
+    } else {
+      setSelectedStudentIds(new Set(filteredRows.map(r => r.student_id)));
+    }
+  };
+
+  const handleToggleStudent = (studentId: string) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(studentId)) {
+        next.delete(studentId);
+      } else {
+        next.add(studentId);
+      }
+      return next;
+    });
+  };
+
   // Combined Export Handlers
   function getRowsForExport() {
+    if (selectedStudentIds.size > 0) {
+      return filteredRows.filter(r => selectedStudentIds.has(r.student_id));
+    }
     if (filteredRows.length > 0) return filteredRows;
     if (enrolledStudents.length > 0) {
       return enrolledStudents
@@ -657,11 +879,13 @@ export default function AttendanceReports() {
   }
 
   return (
-    <div className="feature-page" style={{ padding: '24px 28px', maxWidth: 1380, margin: '0 auto' }}>
+    <div className={embedded ? 'embedded-reports-pane' : 'feature-page'} style={{ padding: embedded ? '8px 0 20px' : '24px 28px', maxWidth: embedded ? '100%' : 1380, margin: '0 auto' }}>
       {/* ─── Header: Title & Right Corner Controls ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Attendance Reports</h1>
+          <h2 style={{ margin: 0, fontSize: embedded ? 19 : 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            {embedded ? 'Class Attendance Reports' : 'Attendance Reports'}
+          </h2>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
             Student-wise attendance verified from institutional Firestore logs.
           </p>
@@ -721,7 +945,7 @@ export default function AttendanceReports() {
               }}
               title="Export report in Excel (.xlsx) or CSV (.csv) format"
             >
-              <Download size={15} color="#2563eb" /> Export Report <ChevronDown size={14} />
+              <Download size={15} color="#2563eb" /> {selectedStudentIds.size > 0 ? `Export Selected (${selectedStudentIds.size})` : 'Export Report'} <ChevronDown size={14} />
             </button>
 
             {exportDropdownOpen && (
@@ -757,7 +981,7 @@ export default function AttendanceReports() {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <FileSpreadsheet size={16} color="#10b981" />
-                  <span>Export as Excel (.xlsx)</span>
+                  <span>{selectedStudentIds.size > 0 ? `Export (${selectedStudentIds.size} Selected) as Excel (.xlsx)` : 'Export as Excel (.xlsx)'}</span>
                 </button>
                 <div style={{ height: 1, backgroundColor: 'var(--border, #f1f5f9)' }} />
                 <button
@@ -780,7 +1004,7 @@ export default function AttendanceReports() {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <Download size={16} color="#3b82f6" />
-                  <span>Export as CSV (.csv)</span>
+                  <span>{selectedStudentIds.size > 0 ? `Export (${selectedStudentIds.size} Selected) as CSV (.csv)` : 'Export as CSV (.csv)'}</span>
                 </button>
               </div>
             )}
@@ -830,8 +1054,8 @@ export default function AttendanceReports() {
 
       {/* ─── Multi-Dimensional Filter Bar ─── */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        display: 'flex',
+        flexDirection: 'column',
         gap: 12,
         backgroundColor: 'var(--card-subtle, #f8fafc)',
         padding: '14px 16px',
@@ -839,76 +1063,119 @@ export default function AttendanceReports() {
         border: '1px solid var(--border, #e2e8f0)',
         marginBottom: 20
       }}>
-        {/* Academic Session */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
-          <span>Academic Session</span>
-          <select
-            value={selectedSession}
-            onChange={e => setSelectedSession(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
-          >
-            <option value="ALL">All Academic Sessions</option>
-            {sessions.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </label>
+        {/* Row 1: Session, Class Grade, Section, From Date, To Date */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: embedded ? 'repeat(auto-fit, minmax(180px, 1fr))' : 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 12
+        }}>
+        {/* Academic Session (Hidden for Class Mentor) */}
+        {!embedded && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+            <span>Academic Session</span>
+            <select
+              value={selectedSession}
+              onChange={e => setSelectedSession(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+            >
+              <option value="ALL">All Academic Sessions</option>
+              {sessions.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
 
-        {/* Class Grade */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
-          <span>Class Grade</span>
-          <select
-            value={selectedClass}
-            onChange={e => setSelectedClass(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
-          >
-            <option value="ALL">All Classes</option>
-            {classes.map(c => {
-              const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : null);
-              const label = num === -1 || /l.?kg/i.test(String(c.label || c.id || '')) ? 'Class L KG' :
-                num === 0 || /u.?kg/i.test(String(c.label || c.id || '')) ? 'Class U KG' :
-                (c.label || (num !== null ? `Class ${num}` : c.id));
-              return <option key={c.id} value={c.id}>{label}</option>;
-            })}
-          </select>
-        </label>
-
-        {/* Section */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
-          <span>Section</span>
-          <select
-            value={selectedSection}
-            onChange={e => setSelectedSection(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
-          >
-            <option value="ALL">All Sections</option>
-            {Array.from(new Set(['A', 'B', ...sections.map(s => String(s.name || s.section_name || '').replace(/^sec(tion)?[-_\s]*/i, '').trim().toUpperCase()).filter(Boolean)])).map(sec => (
-              <option key={sec} value={sec}>Section {sec}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Search */}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
-          <span>Search Student</span>
-          <div style={{ position: 'relative' }}>
-            <input
-              placeholder="Name or roll number…"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '7px 10px 7px 28px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)', boxSizing: 'border-box' }}
-            />
-            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }} />
+        {/* Class Grade (Read-Only Locked Badge for Class Mentor, Dropdown for Admin) */}
+        {!embedded ? (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+            <span>Class Grade</span>
+            <select
+              value={selectedClass}
+              onChange={e => setSelectedClass(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+            >
+              <option value="ALL">All Classes</option>
+              {classes.map(c => {
+                const num = c.class_number !== undefined ? Number(c.class_number) : (c.classNumber !== undefined ? Number(c.classNumber) : null);
+                const label = num === -1 || /l.?kg/i.test(String(c.label || c.id || '')) ? 'Class L KG' :
+                  num === 0 || /u.?kg/i.test(String(c.label || c.id || '')) ? 'Class U KG' :
+                  (c.label || (num !== null ? `Class ${num}` : c.id));
+                return <option key={c.id} value={c.id}>{label}</option>;
+              })}
+            </select>
+          </label>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+            <span>Class Grade</span>
+            <div style={{
+              padding: '7px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border, #cbd5e1)',
+              fontSize: 13,
+              fontWeight: 600,
+              backgroundColor: 'var(--bg-muted, rgba(148, 163, 184, 0.08))',
+              color: 'var(--text, #0f172a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              minHeight: 35,
+              boxSizing: 'border-box'
+            }}>
+              <Lock size={13} style={{ color: 'var(--text-muted, #94a3b8)' }} />
+              <span>{displayClassLabel}</span>
+            </div>
           </div>
-        </label>
+        )}
+
+        {/* Section (Read-Only Locked Badge for Class Mentor, Dropdown for Admin) */}
+        {!embedded ? (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+            <span>Section</span>
+            <select
+              value={selectedSection}
+              onChange={e => setSelectedSection(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
+            >
+              <option value="ALL">All Sections</option>
+              {Array.from(new Set(['A', 'B', ...sections.map(s => String(s.name || s.section_name || '').replace(/^sec(tion)?[-_\s]*/i, '').trim().toUpperCase()).filter(Boolean)])).map(sec => (
+                <option key={sec} value={sec}>Section {sec}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
+            <span>Section</span>
+            <div style={{
+              padding: '7px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border, #cbd5e1)',
+              fontSize: 13,
+              fontWeight: 600,
+              backgroundColor: 'var(--bg-muted, rgba(148, 163, 184, 0.08))',
+              color: 'var(--text, #0f172a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              minHeight: 35,
+              boxSizing: 'border-box'
+            }}>
+              <Lock size={13} style={{ color: 'var(--text-muted, #94a3b8)' }} />
+              <span>Section {displaySectionLabel}</span>
+            </div>
+          </div>
+        )}
 
         {/* From Date */}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)' }}>
           <span>From Date</span>
           <input
             type="date"
+            min="1900-01-01"
+            max="2099-12-31"
             value={from}
-            onChange={e => setFrom(e.target.value)}
+            onChange={e => setFrom(formatStrict4DigitDate(e.target.value))}
+            onBlur={e => setFrom(formatStrict4DigitDate(e.target.value))}
             style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
           />
         </label>
@@ -918,10 +1185,37 @@ export default function AttendanceReports() {
           <span>To Date</span>
           <input
             type="date"
+            min="1900-01-01"
+            max="2099-12-31"
             value={toDate}
-            onChange={e => setTo(e.target.value)}
+            onChange={e => setTo(formatStrict4DigitDate(e.target.value))}
+            onBlur={e => setTo(formatStrict4DigitDate(e.target.value))}
             style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13, backgroundColor: 'var(--bg-card, #ffffff)', color: 'var(--text, #0f172a)' }}
           />
+        </label>
+        </div>
+
+        {/* Row 2: Search Student (Shifted to Next Line) */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #475569)', width: '100%' }}>
+          <span>Search Student</span>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input
+              placeholder="Search by student name or roll number…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px 8px 32px',
+                borderRadius: 6,
+                border: '1px solid var(--border, #cbd5e1)',
+                fontSize: 13,
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                color: 'var(--text, #0f172a)',
+                boxSizing: 'border-box'
+              }}
+            />
+            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+          </div>
         </label>
       </div>
 
@@ -1058,10 +1352,55 @@ export default function AttendanceReports() {
           itemLabel="students"
           pageSizeOptions={[10, 25, 50, 100, 250, 500]}
         />
+        {selectedStudentIds.size > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 14px',
+            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+            border: '1px solid rgba(37, 99, 235, 0.25)',
+            borderRadius: 6,
+            marginBottom: 10,
+            fontSize: 13,
+            color: '#1d4ed8'
+          }}>
+            <span style={{ fontWeight: 600 }}>
+              {selectedStudentIds.size} of {filteredRows.length} students selected for export
+            </span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedStudentIds(new Set(filteredRows.map(r => r.student_id)))}
+                style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
+              >
+                Select All
+              </button>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={() => setSelectedStudentIds(new Set())}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
         <div className="table-wrap" style={{ overflowX: 'auto', minHeight: 280 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--table-header, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+              <th style={{ width: 44, padding: '12px 12px', textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  ref={headerCheckboxRef}
+                  checked={isAllSelected}
+                  onChange={handleToggleSelectAll}
+                  title="Select All Students"
+                  style={{ cursor: 'pointer', width: 16, height: 16 }}
+                />
+              </th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>STUDENT</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>ROLL</th>
               <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, color: 'var(--text-secondary, #475569)', fontWeight: 600 }}>CLASS</th>
@@ -1075,7 +1414,21 @@ export default function AttendanceReports() {
           </thead>
           <tbody>
             {displayedRows.map((r, idx) => (
-              <tr key={r.student_id || idx} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+              <tr
+                key={r.student_id || idx}
+                style={{
+                  borderBottom: '1px solid var(--border, #f1f5f9)',
+                  backgroundColor: selectedStudentIds.has(r.student_id) ? 'rgba(37, 99, 235, 0.04)' : undefined
+                }}
+              >
+                <td style={{ width: 44, padding: '12px 12px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedStudentIds.has(r.student_id)}
+                    onChange={() => handleToggleStudent(r.student_id)}
+                    style={{ cursor: 'pointer', width: 16, height: 16 }}
+                  />
+                </td>
                 <td style={{ padding: '12px 14px', fontSize: 13.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}><PersonProfileLink kind="student" id={r.student_id} name={r.student_name} person={{ ...r, roll_number: r.roll, roll: r.roll } as any} activeSession={sessions.find(s => s.id === selectedSession)?.name || sessions[0]?.name} /></td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted, #64748b)' }}>{r.roll}</td>
                 <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #475569)' }}>{r.class_name || '-'}</td>
@@ -1089,7 +1442,7 @@ export default function AttendanceReports() {
             ))}
             {!filteredRows.length && !loading && (
               <tr>
-                <td colSpan={9} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
+                <td colSpan={10} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
                   No attendance records found matching this criteria.
                 </td>
               </tr>

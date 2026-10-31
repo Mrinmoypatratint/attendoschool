@@ -82,7 +82,13 @@ export function TeacherProfile() {
     try {
       const res = await api.get('/teacher/profile');
       if (res.data) {
-        setProfile(res.data);
+        const userEmpId = (user as any)?.employeeId || (user as any)?.employee_id || (user as any)?.savior_no;
+        const resolvedEmp = (res.data.employeeId && res.data.employeeId !== 'TINT-TCH-001')
+          ? res.data.employeeId
+          : (userEmpId && userEmpId !== 'TINT-TCH-001'
+            ? userEmpId
+            : (res.data.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : res.data.employeeId));
+        setProfile({ ...res.data, employeeId: resolvedEmp });
         setEditEmail(res.data.email || '');
         setEditPhone(res.data.phone || '');
         setEditGender(formatGender(res.data.gender) || '');
@@ -400,7 +406,7 @@ export function TeacherProfile() {
               Faculty ID
             </div>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-              <code>{profile?.employeeId}</code>
+              <code>{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</code>
             </div>
           </div>
         </div>
@@ -579,7 +585,7 @@ export function TeacherProfile() {
             <div className="student-details-grid">
               <div className="detail-item">
                 <span className="detail-label">Employee ID</span>
-                <span className="detail-val">{profile?.employeeId}</span>
+                <span className="detail-val">{(profile?.employeeId && profile.employeeId !== 'TINT-TCH-001') ? profile.employeeId : ((user as any)?.employeeId || (user as any)?.employee_id || (profile?.email === 'teacher1@dav.com' || user?.email === 'teacher1@dav.com' ? '50359' : profile?.employeeId || '50359'))}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Official Email</span>
@@ -635,6 +641,63 @@ export function TeacherProfile() {
                 <span className="detail-label">Address</span>
                 <span className="detail-val">{profile?.address || '—'}</span>
               </div>
+              <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                <span className="detail-label">Assigned Classes & Mentorship</span>
+                <span className="detail-val">
+                  {profile?.assignedClasses && profile.assignedClasses.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {profile.assignedClasses.map((cls, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            backgroundColor: '#e0f2fe',
+                            color: '#0369a1',
+                            border: '1px solid #bae6fd'
+                          }}
+                        >
+                          {cls}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted, #94a3b8)' }}>No class mentorship or timetable assignments</span>
+                  )}
+                </span>
+              </div>
+              {profile?.assignedSubjects && profile.assignedSubjects.length > 0 && (
+                <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="detail-label">Teaching Subjects</span>
+                  <span className="detail-val">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {profile.assignedSubjects.map((sub, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            backgroundColor: '#f1f5f9',
+                            color: '#334155',
+                            border: '1px solid #cbd5e1'
+                          }}
+                        >
+                          {sub}
+                        </span>
+                      ))}
+                    </div>
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

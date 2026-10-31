@@ -331,6 +331,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
             total: 0,
             present: 0,
             absent: 0,
+            leftEarly: 0,
             percentage: 0,
             classBreakdown: []
           })),
@@ -351,6 +352,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           todayAtt.total = 0;
           todayAtt.present = 0;
           todayAtt.absent = 0;
+          (todayAtt as any).leftEarly = 0;
           todayAtt.percentage = 0;
           todayAtt.classBreakdown = [];
         }
@@ -402,6 +404,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           turnout_rate: pct,
           present_today: pres,
           absent_today: abs,
+          left_early_today: todayAtt.leftEarly || 0,
           total_today: tot,
           todayAttendance: todayAtt,
           weeklyTrend,

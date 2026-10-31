@@ -440,6 +440,7 @@ export class DualDatabaseService {
       total: 0,
       present: 0,
       absent: 0,
+      leftEarly: 0,
       percentage: 0,
       classBreakdown: [] as any[]
     };
@@ -454,6 +455,7 @@ export class DualDatabaseService {
             COALESCE(s.section_name, sec.name) as section_name,
             COUNT(CASE WHEN ar.status = 'PRESENT' OR (ar.status NOT IN ('ABSENT', 'LEFT_EARLY') AND ar.is_present = true) THEN 1 END)::int AS present,
             COUNT(CASE WHEN ar.status = 'ABSENT' OR (ar.is_present = false AND ar.status != 'LEFT_EARLY') THEN 1 END)::int AS absent,
+            COUNT(CASE WHEN ar.status = 'LEFT_EARLY' THEN 1 END)::int AS left_early,
             COUNT(*)::int AS total
           FROM attendance_records ar
           JOIN attendance_sessions s ON s.id = ar.attendance_session_id
@@ -473,12 +475,14 @@ export class DualDatabaseService {
           section_name: r.section_name,
           present: r.present || 0,
           absent: r.absent || 0,
+          left_early: r.left_early || 0,
           total: r.total || 0,
           percentage: r.total > 0 ? Number(((r.present / r.total) * 100).toFixed(1)) : 0
         }));
 
         result.present = result.classBreakdown.reduce((sum, b) => sum + b.present, 0);
         result.absent = result.classBreakdown.reduce((sum, b) => sum + b.absent, 0);
+        result.leftEarly = result.classBreakdown.reduce((sum, b) => sum + (b.left_early || 0), 0);
         result.total = result.classBreakdown.reduce((sum, b) => sum + b.total, 0);
         result.percentage = result.total > 0 ? Number(((result.present / result.total) * 100).toFixed(1)) : 0;
 
@@ -490,6 +494,7 @@ export class DualDatabaseService {
           class_number, section_name,
           SUM(present_count)::int as present,
           SUM(absent_count)::int as absent,
+          SUM(COALESCE(left_early_count, 0))::int as left_early,
           SUM(total_count)::int as total
         FROM attendance_sessions
         WHERE school_id = $1 AND attendance_date = $2
@@ -502,12 +507,14 @@ export class DualDatabaseService {
         section_name: r.section_name,
         present: r.present || 0,
         absent: r.absent || 0,
+        left_early: r.left_early || 0,
         total: r.total || 0,
         percentage: r.total > 0 ? Number(((r.present / r.total) * 100).toFixed(1)) : 0
       }));
 
       result.present = result.classBreakdown.reduce((sum, b) => sum + b.present, 0);
       result.absent = result.classBreakdown.reduce((sum, b) => sum + b.absent, 0);
+      result.leftEarly = result.classBreakdown.reduce((sum, b) => sum + (b.left_early || 0), 0);
       result.total = result.classBreakdown.reduce((sum, b) => sum + b.total, 0);
       result.percentage = result.total > 0 ? Number(((result.present / result.total) * 100).toFixed(1)) : 0;
 

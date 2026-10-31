@@ -1,3 +1,4 @@
+import { pool, isPostgresConfigured } from '../db';
 import { Router, Response } from 'express';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import * as mentorSvc from '../services/mentorService';
@@ -78,6 +79,35 @@ router.get('/teacher/mentor/my-classes', requireRoles('TEACHER', 'SCHOOL_ADMIN',
   }
 });
 
+// GET /api/teacher/mentor/teacher-assignments - Get subject teachers & assignment count for mentored section
+router.get('/teacher/mentor/teacher-assignments', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+  try {
+    const classId = String(req.query.class_id || req.query.classId || '').trim();
+    const sectionId = String(req.query.section_id || req.query.sectionId || '').trim();
+    const fromDate = String(req.query.from || '').trim() || undefined;
+    const toDate = String(req.query.to || '').trim() || undefined;
+
+    if (!classId || !sectionId) {
+      return res.status(400).json({ message: 'class_id and section_id query parameters are required' });
+    }
+
+    const isAdmin = req.user!.role === 'SCHOOL_ADMIN' || req.user!.role === 'SUPER_ADMIN';
+    const list = await mentorSvc.getMentorTeacherAssignmentsOverview(
+      req.user!.schoolId!,
+      req.user!.id,
+      classId,
+      sectionId,
+      fromDate,
+      toDate,
+      isAdmin
+    );
+    res.json(list);
+  } catch (err: any) {
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message || 'Unable to fetch teacher assignments overview', code: err.code });
+  }
+});
+
 // GET /api/teacher/mentor/permissions - Get subject teacher permissions for a mentored section
 router.get('/teacher/mentor/permissions', requireRoles('TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
@@ -145,12 +175,66 @@ router.get('/teacher/mentor/attendance-analysis', requireRoles('TEACHER', 'SCHOO
       return res.status(403).json({ message: 'Access denied: User is not the Class Teacher for this section' });
     }
 
-    const report = await attendanceSvc.studentAttendanceReport(req.user!.schoolId!, from, to);
-    // Filter report by class_id and section_id
-    const filtered = report.filter((r: any) =>
-      (r.class_id === classId || String(r.class_number) === String(classId)) &&
-      (r.section_id === sectionId || String(r.section_name).toLowerCase() === String(sectionId).toLowerCase())
-    );
+    const rawSession = String(
+      req.query.session ||
+      req.query.academicSession ||
+      req.query.sessionId ||
+      req.query.academic_year_id ||
+      req.query.academicYearId ||
+      req.headers['x-academic-year-id'] ||
+      (req.headers['x-academic-session'] ? decodeURIComponent(String(req.headers['x-academic-session'])) : '') ||
+      ''
+    ).trim();
+
+    let targetYearId: string | null = null;
+    if (isPostgresConfigured && req.user?.schoolId) {
+      try {
+        if (rawSession && rawSession.toLowerCase() !== 'all' && rawSession.toLowerCase() !== 'all sessions') {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSession);
+          if (isUuid) {
+            targetYearId = rawSession;
+          } else {
+            const cleanSessionName = rawSession.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+            const ayMatch = await pool.query(
+              `SELECT id, name FROM academic_years 
+               WHERE school_id = $1::uuid AND (
+                 LOWER(name) = LOWER($2) 
+                 OR name ILIKE '%' || $3 || '%'
+                 OR LOWER(code) = LOWER($2)
+                 OR code ILIKE '%' || $3 || '%'
+               )
+               LIMIT 1`,
+              [req.user.schoolId, rawSession, cleanSessionName]
+            );
+            if (ayMatch.rowCount && ayMatch.rowCount > 0) {
+              targetYearId = ayMatch.rows[0].id;
+            } else {
+              targetYearId = '00000000-0000-0000-0000-000000000000';
+            }
+          }
+        }
+        if (!targetYearId && !rawSession) {
+          const activeAy = await pool.query(
+            `SELECT id, name FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
+            [req.user.schoolId]
+          );
+          if (activeAy.rowCount && activeAy.rowCount > 0) {
+            targetYearId = activeAy.rows[0].id;
+          }
+        }
+      } catch (err: any) {
+        console.warn('[mentor attendance-analysis] Error resolving academic year:', err.message);
+      }
+    }
+
+    const report = await attendanceSvc.studentAttendanceReport(req.user!.schoolId!, from, to, undefined, targetYearId || undefined);
+    // Filter report by class_id, section_id, and academic session
+    const filtered = report.filter((r: any) => {
+      const matchClass = (r.class_id === classId || String(r.class_number) === String(classId));
+      const matchSec = (r.section_id === sectionId || String(r.section_name).toLowerCase() === String(sectionId).toLowerCase());
+      const matchYear = !targetYearId || !r.academic_year_id || String(r.academic_year_id) === String(targetYearId);
+      return matchClass && matchSec && matchYear;
+    });
 
     const totalStudents = filtered.length;
     const totalPresent = filtered.reduce((acc: number, r: any) => acc + (Number(r.present_days) || 0), 0);

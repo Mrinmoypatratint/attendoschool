@@ -639,8 +639,8 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
     // 1. Attendance Summary
     pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR ar.is_present = true)::int AS present_count,
-         COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent_count,
+         COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY'))::int AS present_count,
+         COUNT(*) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY')::int AS absent_count,
          COUNT(*)::int AS total_count
        FROM attendance_records ar
        JOIN attendance_sessions s ON s.id = ar.attendance_session_id

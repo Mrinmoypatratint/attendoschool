@@ -25,8 +25,20 @@ function schoolId(req: Request) {
   return user?.schoolId || null;
 }
 
+function sanitizeDate(v: any): string {
+  if (typeof v !== 'string') return '';
+  const parts = v.trim().split('-');
+  if (parts.length === 3) {
+    let [y, m, d] = parts;
+    if (y.length > 4) y = y.slice(0, 4);
+    return y + '-' + m.padStart(2, '0') + '-' + d.padStart(2, '0');
+  }
+  return v.trim();
+}
+
 function validDate(v: any) {
-  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const s = sanitizeDate(v);
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
 router.get('/', async (req: Request, res: Response) => {
@@ -34,8 +46,8 @@ router.get('/', async (req: Request, res: Response) => {
     const sid = schoolId(req);
     const today = new Date().toISOString().slice(0, 10);
     const startOfMonth = today.slice(0, 8) + '01';
-    const from = String(req.query.from || startOfMonth);
-    const to = String(req.query.to || today);
+    const from = sanitizeDate(String(req.query.from || startOfMonth));
+    const to = sanitizeDate(String(req.query.to || today));
     if (!sid) {
       return res.json({ present: 0, absent: 0, left_early: 0, leftEarly: 0, marked: 0, percentage: 0 });
     }
@@ -56,8 +68,8 @@ router.get('/summary', async (req: Request, res: Response) => {
     const sid = schoolId(req);
     const today = new Date().toISOString().slice(0, 10);
     const startOfMonth = today.slice(0, 8) + '01';
-    const from = String(req.query.from || startOfMonth);
-    const to = String(req.query.to || today);
+    const from = sanitizeDate(String(req.query.from || startOfMonth));
+    const to = sanitizeDate(String(req.query.to || today));
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
     }
@@ -76,8 +88,8 @@ router.get('/summary', async (req: Request, res: Response) => {
 router.get('/students', async (req: Request, res: Response) => {
   try {
     const sid = schoolId(req);
-    const from = String(req.query.from || '');
-    const to = String(req.query.to || '');
+    const from = sanitizeDate(String(req.query.from || ''));
+    const to = sanitizeDate(String(req.query.to || ''));
     const studentId = req.query.studentId ? String(req.query.studentId) : undefined;
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
@@ -97,8 +109,8 @@ router.get('/students', async (req: Request, res: Response) => {
 router.get('/daily', async (req: Request, res: Response) => {
   try {
     const sid = schoolId(req);
-    const from = String(req.query.from || '');
-    const to = String(req.query.to || '');
+    const from = sanitizeDate(String(req.query.from || ''));
+    const to = sanitizeDate(String(req.query.to || ''));
     if (!sid || !validDate(from) || !validDate(to)) {
       return res.status(400).json({ message: 'from and to are required as YYYY-MM-DD' });
     }
@@ -144,8 +156,8 @@ router.get('/defaulters', async (req: Request, res: Response) => {
     const threshold = Number(req.query.threshold || 75);
     const today = new Date().toISOString().slice(0, 10);
     const startOfMonth = today.slice(0, 8) + '01';
-    const from = String(req.query.from || startOfMonth);
-    const to = String(req.query.to || today);
+    const from = sanitizeDate(String(req.query.from || startOfMonth));
+    const to = sanitizeDate(String(req.query.to || today));
     const all = await studentAttendanceReport(sid, from, to);
     const defaulters = all.filter((s: any) => (s.attendance_percentage ?? 100) < threshold);
     res.json({ threshold, count: defaulters.length, defaulters });
@@ -159,8 +171,8 @@ router.get('/export/csv', async (req: Request, res: Response) => {
     const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';
     const today = new Date().toISOString().slice(0, 10);
     const startOfMonth = today.slice(0, 8) + '01';
-    const from = String(req.query.from || startOfMonth);
-    const to = String(req.query.to || today);
+    const from = sanitizeDate(String(req.query.from || startOfMonth));
+    const to = sanitizeDate(String(req.query.to || today));
 
     let records: any[] = [];
     try {
@@ -199,8 +211,8 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     const sid = schoolId(req) || '00000000-0000-0000-0000-000000000001';
     const today = new Date().toISOString().slice(0, 10);
     const startOfMonth = today.slice(0, 8) + '01';
-    const from = String(req.query.from || startOfMonth);
-    const to = String(req.query.to || today);
+    const from = sanitizeDate(String(req.query.from || startOfMonth));
+    const to = sanitizeDate(String(req.query.to || today));
 
     let records: any[] = [];
     try {

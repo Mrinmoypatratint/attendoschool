@@ -25,7 +25,7 @@ export async function attendanceSummary(
       const query = isGlobal
         ? `SELECT
              COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
-             COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+             COUNT(*) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL)::int AS absent,
              COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
              COUNT(*)::int AS marked
            FROM attendance_sessions s
@@ -33,7 +33,7 @@ export async function attendanceSummary(
            WHERE s.attendance_date BETWEEN $1 AND $2`
         : `SELECT
              COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
-             COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+             COUNT(*) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL)::int AS absent,
              COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
              COUNT(*)::int AS marked
            FROM attendance_sessions s
@@ -111,10 +111,14 @@ export async function attendanceSummary(
         if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
           countedRecordKeys.add(key);
           const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
-          const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
-          if (isLeftEarly) leftEarly++;
-          if (isPres) present++;
-          else absent++;
+          const isPres = (r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true) && !isLeftEarly;
+          if (isLeftEarly) {
+            leftEarly++;
+          } else if (isPres) {
+            present++;
+          } else {
+            absent++;
+          }
           marked++;
         }
       });
@@ -130,10 +134,14 @@ export async function attendanceSummary(
     if (validSessionIds.has(sessId) && !countedRecordKeys.has(key)) {
       countedRecordKeys.add(key);
       const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
-      const isPres = r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || isLeftEarly || r.is_present === true || (r as any).isPresent === true;
-      if (isLeftEarly) leftEarly++;
-      if (isPres) present++;
-      else absent++;
+      const isPres = (r.status === 'PRESENT' || r.status === 'LATE' || String(r.status) === 'HALF_DAY' || r.is_present === true || (r as any).isPresent === true) && !isLeftEarly;
+      if (isLeftEarly) {
+        leftEarly++;
+      } else if (isPres) {
+        present++;
+      } else {
+        absent++;
+      }
       marked++;
     }
   });
@@ -146,7 +154,8 @@ export async function studentAttendanceReport(
   schoolId: string | null | undefined,
   from: string,
   to: string,
-  studentId?: string
+  studentId?: string,
+  academicYearId?: string
 ) {
   const isGlobal = !schoolId || schoolId === 'all';
   const usePostgres = isPostgresConfigured;
@@ -155,27 +164,34 @@ export async function studentAttendanceReport(
     try {
       const isTint = isTintSchool(schoolId);
       const isGw = isTestSchool(schoolId);
-      let schoolCond = `s.school_id::text = $1`;
+      let schoolCond = `st.school_id::text = $1`;
       if (isTint) {
-        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000002' OR s.school_id::text = 'sch-1790665531365')`;
+        schoolCond = `(st.school_id::text = $1 OR st.school_id = '00000000-0000-0000-0000-000000000002' OR st.school_id::text = 'sch-1790665531365')`;
       } else if (isGw) {
-        schoolCond = `(s.school_id::text = $1 OR s.school_id = '00000000-0000-0000-0000-000000000001')`;
+        schoolCond = `(st.school_id::text = $1 OR st.school_id = '00000000-0000-0000-0000-000000000001')`;
       }
 
       const params: any[] = isGlobal ? [from, to] : [schoolId, from, to];
+      const fromParam = isGlobal ? '$1' : '$2';
+      const toParam = isGlobal ? '$2' : '$3';
+
       let studentFilter = '';
       if (studentId) {
         params.push(studentId);
-        studentFilter = ` AND ar.student_id::text = $${params.length}`;
+        studentFilter = ` AND st.id::text = ${params.length}`;
+      }
+      if (academicYearId) {
+        params.push(academicYearId);
+        studentFilter += ` AND (st.academic_year_id::text = ${params.length} OR st.academic_year_id = ${params.length}::uuid)`;
       }
 
       const whereClause = isGlobal
-        ? `WHERE s.attendance_date BETWEEN $1 AND $2 ${studentFilter}`
-        : `WHERE ${schoolCond} AND s.attendance_date BETWEEN $2 AND $3 ${studentFilter}`;
+        ? `WHERE (st.is_active = true OR st.is_active IS NULL) ${studentFilter}`
+        : `WHERE ${schoolCond} AND (st.is_active = true OR st.is_active IS NULL) ${studentFilter}`;
 
       const { rows } = await pool.query(
         `SELECT
-           ar.student_id,
+           st.id AS student_id,
            st.name AS student_name,
            COALESCE(st.roll_number, '') AS roll,
            st.class_id,
@@ -192,26 +208,28 @@ export async function studentAttendanceReport(
              'Class 10'
            ) AS class_name,
            COALESCE(sec.name, 'A') AS section_name,
-           COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present_days,
-           COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent_days,
-           COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early_days,
-           COUNT(*)::int AS marked_days,
+           COUNT(ar.id) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present_days,
+           COUNT(ar.id) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL)::int AS absent_days,
+           COUNT(ar.id) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early_days,
+           COUNT(ar.id)::int AS marked_days,
            ROUND(
-             CASE WHEN COUNT(*) = 0 THEN 0
-             ELSE COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::numeric / COUNT(*)::numeric * 100
+             CASE WHEN COUNT(ar.id) = 0 THEN 0
+             ELSE COUNT(ar.id) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::numeric / COUNT(ar.id)::numeric * 100
              END, 2
            ) AS attendance_percentage
-         FROM attendance_sessions s
-         JOIN attendance_records ar ON ar.attendance_session_id = s.id
-         JOIN students st ON st.id = ar.student_id
+         FROM students st
          LEFT JOIN classes c ON c.id = st.class_id
          LEFT JOIN sections sec ON sec.id = st.section_id
+         LEFT JOIN (
+           attendance_records ar
+           JOIN attendance_sessions s ON s.id = ar.attendance_session_id AND s.attendance_date BETWEEN ${fromParam} AND ${toParam}
+         ) ON ar.student_id = st.id
          ${whereClause}
-         GROUP BY ar.student_id, st.name, st.roll_number, st.class_id, st.section_id, st.academic_year_id, c.class_number, sec.name
-         ORDER BY c.class_number, sec.name, st.roll_number, st.name`,
+         GROUP BY st.id, st.name, st.roll_number, st.class_id, st.section_id, st.academic_year_id, c.class_number, sec.name
+         ORDER BY c.class_number, sec.name, NULLIF(regexp_replace(st.roll_number, '\\D', '', 'g'), '')::bigint NULLS LAST, st.roll_number, st.name`,
         params
       );
-      if (rows) return rows;
+      if (rows && rows.length > 0) return rows;
     } catch {}
   }
 
@@ -263,9 +281,7 @@ export async function studentAttendanceReport(
     }
   });
 
-  if (validSessions.size === 0) {
-    return [];
-  }
+  // Even if no attendance taken yet, continue to return enrolled students with 0s
 
   // ── Step 3: Populate Student Map with School's Enrolled Students ──
   const studentMap = new Map<string, {
@@ -348,16 +364,21 @@ export async function studentAttendanceReport(
       });
     }
 
+    if (academicYearId) {
+      const recAy = r.academic_year_id || r.academicYearId;
+      if (recAy && String(recAy) !== String(academicYearId)) return;
+    }
     const rec = studentMap.get(stId)!;
     const isLeftEarly = r.status === 'LEFT_EARLY' || Boolean(r.departurePeriod || r.departure_period || (r as any).isLeftEarly || (r as any).left_early || (r as any).leftEarly);
-    const isPres = r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || isLeftEarly || r.is_present === true || r.isPresent === true;
+    const isPres = (r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.is_present === true || r.isPresent === true) && !isLeftEarly;
     rec.marked_days++;
     if (isLeftEarly) {
       rec.left_early_days = (rec.left_early_days || 0) + 1;
+    } else if (isPres) {
+      rec.present_days = (rec.present_days || 0) + 1;
+    } else {
+      rec.absent_days = (rec.absent_days || 0) + 1;
     }
-    if (isPres && !isLeftEarly) rec.present_days++;
-    else if (!isPres) rec.absent_days++;
-    else rec.present_days++;
     rec.attendance_percentage = rec.marked_days > 0 ? Number(((rec.present_days / rec.marked_days) * 100).toFixed(2)) : 0;
   };
 
@@ -418,7 +439,7 @@ export async function dailyAttendanceReport(
         `SELECT
            s.attendance_date,
            COUNT(*) FILTER (WHERE ar.status = 'PRESENT' OR (ar.is_present = true AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL))::int AS present,
-           COUNT(*) FILTER (WHERE ar.status = 'ABSENT' OR ar.is_present = false)::int AS absent,
+           COUNT(*) FILTER (WHERE (ar.status = 'ABSENT' OR ar.is_present = false) AND ar.status != 'LEFT_EARLY' AND ar.departure_period IS NULL)::int AS absent,
            COUNT(*) FILTER (WHERE ar.status = 'LEFT_EARLY' OR ar.departure_period IS NOT NULL)::int AS left_early,
            COUNT(*)::int AS marked
          FROM attendance_sessions s
@@ -476,10 +497,13 @@ export async function dailyAttendanceReport(
     }
     const d = dayMap.get(dateStr)!;
     d.marked++;
-    if (isLeftEarly) d.left_early++;
-    if (isPres && !isLeftEarly) d.present++;
-    else if (!isPres) d.absent++;
-    else d.present++;
+    if (isLeftEarly) {
+      d.left_early++;
+    } else if (isPres) {
+      d.present++;
+    } else {
+      d.absent++;
+    }
     d.percentage = Number(((d.present / d.marked) * 100).toFixed(1));
   };
 

@@ -35,12 +35,21 @@ import {
   Check,
   Hash,
   Cake,
-  ExternalLink
+  ExternalLink,
+  ChevronRight,
+  ChevronUp,
+  Activity,
+  FileCheck2
 } from 'lucide-react';
 
 export interface StudentHoverData {
   id?: string;
   name: string;
+  attendance_percentage?: number | string;
+  attendancePercentage?: number | string;
+  assignment_submissions_count?: number;
+  assignmentSubmissionsCount?: number;
+  submission_count?: number;
   first_name?: string;
   last_name?: string;
   roll_number?: string | number;
@@ -93,6 +102,11 @@ export function StudentProfileHoverCard({
   const [isOpen, setIsOpen] = useState(false);
   const [studentData, setStudentData] = useState<StudentHoverData>(student);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOpen) setShowDetails(false);
+  }, [isOpen]);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +220,26 @@ export function StudentProfileHoverCard({
   const parentPhone = studentData.parent_sms_number || studentData.parent_phone || studentData.parentPhone || (studentData as any).parent_whatsapp || (studentData as any).parent_whatsapp_no || (studentData as any).phone || (studentData as any).father_phone || (studentData as any).mother_phone;
   const parentEmail = studentData.parent_email || studentData.parentEmail;
   const address = studentData.address;
+
+  // Real Attendance Percentage and Assignment Submission Counts
+  const attRate =
+    studentData.attendance_percentage ??
+    studentData.attendancePercentage ??
+    (studentData as any).attendance_rate ??
+    (student as any).attendance_percentage;
+  const attRateNum = attRate !== undefined && attRate !== null && !isNaN(Number(attRate))
+    ? Number(attRate)
+    : 0;
+  const displayAttRate = attRateNum.toFixed(2).replace(/\.00$/, '');
+
+  const subCount =
+    studentData.assignment_submissions_count ??
+    studentData.assignmentSubmissionsCount ??
+    studentData.submission_count ??
+    (studentData as any).submissions_count;
+  const displaySubmissionCount = subCount !== undefined && subCount !== null && !isNaN(Number(subCount))
+    ? Number(subCount)
+    : 0;
 
   return (
     <>
@@ -510,19 +544,21 @@ export function StudentProfileHoverCard({
                       <div
                         style={{
                           fontSize: 11.5,
-                          fontWeight: 650,
-                          color: 'var(--text, #334155)',
-                          backgroundColor: 'var(--card-subtle, #f8fafc)',
-                          border: '1px solid var(--border, #e2e8f0)',
+                          fontWeight: 750,
+                          color: '#3b82f6',
+                          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
                           padding: '3px 9px',
                           borderRadius: 8,
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                          letterSpacing: '-0.01em',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          boxShadow: '0 1px 2px rgba(37, 99, 235, 0.05)'
                         }}
                         title="Official Student Admission ID"
                       >
-                        {adm}
+                        <Hash size={12} color="#3b82f6" />
+                        <span>Adm: {adm}</span>
                       </div>
                     )}
                   </div>
@@ -574,332 +610,475 @@ export function StudentProfileHoverCard({
                   </div>
                 </div>
 
-                {/* Quick Attributes 2-Column Cards */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 8,
-                    marginBottom: 12
-                  }}
-                >
-                  {/* Gender Card */}
-                  <div
-                    style={{
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border, #e2e8f0)'
-                    }}
-                  >
+                {/* Expanded Details Revealed When "View Details" Clicked */}
+                {showDetails && (
+                  <div style={{ animation: 'fadeIn 0.2s ease-in-out' }}>
+                    {/* Attendance Rate & Assignment Submissions Cards */}
                     <div
                       style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: 'var(--text-muted, #64748b)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 8,
+                        marginBottom: 10
                       }}
                     >
-                      Gender
-                    </div>
-                    <div style={{ marginTop: 2 }}>
-                      <span
+                      {/* Attendance Percentage Card */}
+                      <div
                         style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color:
-                            genderStr.toLowerCase() === 'female'
-                              ? '#ec4899'
-                              : genderStr.toLowerCase() === 'male'
-                              ? '#3b82f6'
-                              : 'var(--text, #334155)',
-                          backgroundColor:
-                            genderStr.toLowerCase() === 'female'
-                              ? 'rgba(236, 72, 153, 0.12)'
-                              : genderStr.toLowerCase() === 'male'
-                              ? 'rgba(59, 130, 246, 0.12)'
-                              : 'var(--bg-card, #f1f5f9)',
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          display: 'inline-block'
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          padding: '8px 12px',
+                          borderRadius: 10,
+                          border: '1px solid var(--border, #e2e8f0)'
                         }}
                       >
-                        {genderStr}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Date of Birth Card */}
-                  <div
-                    style={{
-                      backgroundColor: 'var(--card-subtle, #f8fafc)',
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border, #e2e8f0)'
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: 'var(--text-muted, #64748b)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                    >
-                      <Cake size={10} color="#94a3b8" />
-                      <span>Date of Birth</span>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: dobStr ? 650 : 500,
-                        color: dobStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
-                        fontStyle: dobStr ? 'normal' : 'italic',
-                        marginTop: 2
-                      }}
-                    >
-                      {dobStr || 'Not Recorded'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact & Family Information Cards */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-card, #ffffff)',
-                    border: '1px solid var(--border, #e2e8f0)',
-                    borderRadius: 12,
-                    padding: '8px 10px',
-                    display: 'grid',
-                    gap: 6
-                  }}
-                >
-                  {/* Student Email */}
-                  {studentEmail && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--card-subtle, #f8fafc)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--text-muted, #64748b)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
+                            gap: 4
                           }}
                         >
-                          <Mail size={12} color="#3b82f6" />
+                          <Activity size={11} color="#3b82f6" />
+                          <span>Attendance Rate</span>
                         </div>
-                        <a
-                          href={`mailto:${studentEmail}`}
+                        <div
                           style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: '#3b82f6',
-                            textDecoration: 'none',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            whiteSpace: 'nowrap'
+                            fontSize: 15,
+                            fontWeight: 800,
+                            color: attRateNum >= 75 ? '#16a34a' : attRateNum > 0 ? '#ea580c' : 'var(--text, #0f172a)',
+                            marginTop: 2
                           }}
-                          title={`Email student: ${studentEmail}`}
-                          onClick={(e) => e.stopPropagation()}
                         >
-                          {studentEmail}
-                        </a>
+                          {displayAttRate}%
+                        </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopy(studentEmail, 'student_email', e)}
-                        title="Copy student email"
+                      {/* Assignment Submission Count Card */}
+                      <div
                         style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 3,
-                          color: copiedKey === 'student_email' ? '#10b981' : '#94a3b8',
-                          display: 'flex',
-                          alignItems: 'center'
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          padding: '8px 12px',
+                          borderRadius: 10,
+                          border: '1px solid var(--border, #e2e8f0)'
                         }}
                       >
-                        {copiedKey === 'student_email' ? <Check size={12} /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Parent / Guardian Name */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '4px 6px',
-                      borderRadius: 6,
-                      backgroundColor: 'var(--card-subtle, #f8fafc)'
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        backgroundColor: 'rgba(139, 92, 246, 0.12)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}
-                    >
-                      <User size={12} color="#8b5cf6" />
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #334155)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{ color: 'var(--text-muted, #64748b)' }}>Parent: </span>
-                      <b style={{ color: 'var(--text, #0f172a)' }}>{parentName}</b>
-                    </div>
-                  </div>
-
-                  {/* Parent Phone & Email */}
-                  {((parentPhone && parentPhone !== '—') || parentEmail) && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--card-subtle, #f8fafc)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--text-muted, #64748b)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
+                            gap: 4
                           }}
                         >
-                          <Phone size={12} color="#10b981" />
+                          <FileCheck2 size={11} color="#8b5cf6" />
+                          <span>Assignments</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                          {parentPhone && parentPhone !== '—' && (
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 800,
+                            color: '#4f46e5',
+                            marginTop: 2
+                          }}
+                        >
+                          {displaySubmissionCount} Submitted
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Attributes 2-Column Cards (Gender & Date of Birth) */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 8,
+                        marginBottom: 10
+                      }}
+                    >
+                      {/* Gender Card */}
+                      <div
+                        style={{
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          padding: '8px 12px',
+                          borderRadius: 10,
+                          border: '1px solid var(--border, #e2e8f0)'
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--text-muted, #64748b)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em'
+                          }}
+                        >
+                          Gender
+                        </div>
+                        <div style={{ marginTop: 2 }}>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color:
+                                genderStr.toLowerCase() === 'female'
+                                  ? '#ec4899'
+                                  : genderStr.toLowerCase() === 'male'
+                                  ? '#3b82f6'
+                                  : 'var(--text, #334155)',
+                              backgroundColor:
+                                genderStr.toLowerCase() === 'female'
+                                  ? 'rgba(236, 72, 153, 0.12)'
+                                  : genderStr.toLowerCase() === 'male'
+                                  ? 'rgba(59, 130, 246, 0.12)'
+                                  : 'var(--bg-card, #f1f5f9)',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              display: 'inline-block'
+                            }}
+                          >
+                            {genderStr}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Date of Birth Card */}
+                      <div
+                        style={{
+                          backgroundColor: 'var(--card-subtle, #f8fafc)',
+                          padding: '8px 12px',
+                          borderRadius: 10,
+                          border: '1px solid var(--border, #e2e8f0)'
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--text-muted, #64748b)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          <Cake size={10} color="#94a3b8" />
+                          <span>Date of Birth</span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: dobStr ? 650 : 500,
+                            color: dobStr ? 'var(--text, #0f172a)' : 'var(--text-muted, #94a3b8)',
+                            fontStyle: dobStr ? 'normal' : 'italic',
+                            marginTop: 2
+                          }}
+                        >
+                          {dobStr || 'Not Recorded'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contact & Family Information Cards */}
+                    <div
+                      style={{
+                        backgroundColor: 'var(--bg-card, #ffffff)',
+                        border: '1px solid var(--border, #e2e8f0)',
+                        borderRadius: 12,
+                        padding: '8px 10px',
+                        display: 'grid',
+                        gap: 6
+                      }}
+                    >
+                      {/* Student Email */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '4px 6px',
+                          borderRadius: 6,
+                          backgroundColor: 'var(--card-subtle, #f8fafc)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: '50%',
+                              backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Mail size={12} color="#3b82f6" />
+                          </div>
+                          {studentEmail ? (
                             <a
-                              href={`tel:${parentPhone}`}
+                              href={`mailto:${studentEmail}`}
                               style={{
                                 fontSize: 12,
-                                fontWeight: 700,
-                                color: '#10b981',
+                                fontWeight: 600,
+                                color: '#3b82f6',
                                 textDecoration: 'none',
-                                fontFamily: 'ui-monospace, SFMono-Regular, monospace'
-                              }}
-                              title={`Call parent: ${parentPhone}`}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {parentPhone}
-                            </a>
-                          )}
-                          {parentEmail && (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: 'var(--text-muted, #64748b)',
-                                overflow: 'hidden',
                                 textOverflow: 'ellipsis',
+                                overflow: 'hidden',
                                 whiteSpace: 'nowrap'
                               }}
-                              title={parentEmail}
+                              title={`Email student: ${studentEmail}`}
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              • {parentEmail}
+                              {studentEmail}
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic' }}>
+                              No email recorded
                             </span>
                           )}
                         </div>
+
+                        {studentEmail && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopy(studentEmail, 'student_email', e)}
+                            title="Copy student email"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: 3,
+                              color: copiedKey === 'student_email' ? '#10b981' : '#94a3b8',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            {copiedKey === 'student_email' ? <Check size={12} /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
 
-                      {parentPhone && parentPhone !== '—' && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(parentPhone, 'parent_phone', e)}
-                          title="Copy parent phone number"
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 3,
-                            color: copiedKey === 'parent_phone' ? '#10b981' : '#94a3b8',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                        >
-                          {copiedKey === 'parent_phone' ? <Check size={12} /> : <Copy size={12} />}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Address (if present) */}
-                  {address && address.trim() && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '4px 6px',
-                        borderRadius: 6,
-                        backgroundColor: 'var(--card-subtle, #f8fafc)'
-                      }}
-                    >
+                      {/* Parent / Guardian Name */}
                       <div
                         style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          backgroundColor: 'rgba(245, 158, 11, 0.12)',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
+                          gap: 8,
+                          padding: '4px 6px',
+                          borderRadius: 6,
+                          backgroundColor: 'var(--card-subtle, #f8fafc)'
                         }}
                       >
-                        <MapPin size={12} color="#f59e0b" />
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(139, 92, 246, 0.12)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <User size={12} color="#8b5cf6" />
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #334155)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ color: 'var(--text-muted, #64748b)' }}>Parent: </span>
+                          <b style={{ color: 'var(--text, #0f172a)' }}>{parentName}</b>
+                        </div>
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11.5,
-                          color: 'var(--text-secondary, #475569)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={address}
-                      >
-                        {address}
-                      </span>
+
+                      {/* Parent Phone & Email */}
+                      {((parentPhone && parentPhone !== '—') || parentEmail) && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '4px 6px',
+                            borderRadius: 6,
+                            backgroundColor: 'var(--card-subtle, #f8fafc)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Phone size={12} color="#10b981" />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                              {parentPhone && parentPhone !== '—' && (
+                                <a
+                                  href={`tel:${parentPhone}`}
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: '#10b981',
+                                    textDecoration: 'none',
+                                    fontFamily: 'ui-monospace, SFMono-Regular, monospace'
+                                  }}
+                                  title={`Call parent: ${parentPhone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {parentPhone}
+                                </a>
+                              )}
+                              {parentEmail && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--text-muted, #64748b)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  title={parentEmail}
+                                >
+                                  • {parentEmail}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {parentPhone && parentPhone !== '—' && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(parentPhone, 'parent_phone', e)}
+                              title="Copy parent phone number"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 3,
+                                color: copiedKey === 'parent_phone' ? '#10b981' : '#94a3b8',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                            >
+                              {copiedKey === 'parent_phone' ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Address (if present) */}
+                      {address && address.trim() && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '4px 6px',
+                            borderRadius: 6,
+                            backgroundColor: 'var(--card-subtle, #f8fafc)'
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: '50%',
+                              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <MapPin size={12} color="#f59e0b" />
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11.5,
+                              color: 'var(--text-secondary, #475569)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title={address}
+                          >
+                            {address}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
-              {/* Bottom Premium Status Stripe */}
+              {/* Bottom Premium Status Stripe with View Details Button on Right */}
+              <div
+                style={{
+                  backgroundColor: 'var(--card-subtle, #f8fafc)',
+                  borderTop: '1px solid var(--border, #e2e8f0)',
+                  padding: '9px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: 11,
+                  color: 'var(--text-muted, #64748b)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontWeight: 700 }}>
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      backgroundColor: '#10b981',
+                      boxShadow: '0 0 0 2.5px rgba(16, 185, 129, 0.2)',
+                      display: 'inline-block'
+                    }}
+                  />
+                  <span>Enrolled Student</span>
+                </div>
+
+                {/* View Details Button in Right Side Bottom */}
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(prev => !prev)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 12px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    border: '1px solid #2563eb',
+                    backgroundColor: showDetails ? 'rgba(37, 99, 235, 0.1)' : '#2563eb',
+                    color: showDetails ? '#1d4ed8' : '#ffffff',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{showDetails ? 'Hide Details' : 'View Details'}</span>
+                  {showDetails ? <ChevronUp size={13} /> : <ChevronRight size={13} />}
+                </button>
+              </div>
               <div
                 style={{
                   backgroundColor: 'var(--card-subtle, #f8fafc)',
