@@ -18,7 +18,7 @@ r.get('/monitor',async(_req,res)=>{
     (SELECT COUNT(*)::int FROM users WHERE role='TEACHER' AND is_active=true) total_teachers,
     (SELECT COUNT(*)::int FROM attendance_sessions WHERE attendance_date=CURRENT_DATE) today_sessions,
     (SELECT COUNT(*)::int FROM attendance_records ar JOIN attendance_sessions a ON a.id=ar.attendance_session_id WHERE a.attendance_date=CURRENT_DATE AND ar.is_present=true) today_present,
-    (SELECT COUNT(*)::int FROM attendance_records ar JOIN attendance_sessions a ON a.id=ar.attendance_session_id WHERE a.attendance_date=CURRENT_DATE AND ar.is_present=false) today_absent,
+    (SELECT COUNT(*)::int FROM attendance_records ar JOIN attendance_sessions a ON a.id=ar.attendance_session_id WHERE a.attendance_date=CURRENT_DATE AND ar.is_present=false AND ar.status != 'LEFT_EARLY') today_absent,
     (SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='PAID') total_revenue,
     (SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='PENDING') pending_value`);
   const soon=await pool.query(`SELECT s.id,s.name,s.code,ss.end_date,sp.name plan_name

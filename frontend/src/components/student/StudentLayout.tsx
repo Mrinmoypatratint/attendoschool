@@ -21,6 +21,8 @@ import {
   Moon,
   Building2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Globe,
   ExternalLink,
   CheckCircle2,
@@ -88,11 +90,11 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     );
   });
   const [academicSession, setAcademicSession] = useState<string>(() => {
-    const raw = (typeof window !== 'undefined' ? (localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session')) : '') ||
+    const raw = (user as any)?.academicSession ||
       (user as any)?.session ||
-      (user as any)?.academicSession ||
-      '2026–2027';
-    return String(raw).replace(/\b(academic\s+)?sessions?\b/gi, '').trim() || '2026–2027';
+      (typeof window !== 'undefined' ? localStorage.getItem('attendo_student_session') : '') ||
+      '';
+    return String(raw).replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
   });
 
   useEffect(() => {
@@ -120,6 +122,17 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         if (p?.rollNumber) {
           identityUpdates.rollNumber = p.rollNumber;
         }
+        if (p?.academicSession) {
+          const cleanSession = String(p.academicSession).replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
+          if (cleanSession) {
+            setAcademicSession(cleanSession);
+            identityUpdates.academicSession = cleanSession;
+            identityUpdates.session = cleanSession;
+            try {
+              localStorage.setItem('attendo_student_session', cleanSession);
+            } catch {}
+          }
+        }
         if (p?.id) {
           identityUpdates.studentId = p.id;
         }
@@ -142,15 +155,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
       })
       .catch(() => {});
 
-    api.get('/academic-years').then(res => {
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        const active = res.data.find((x: any) => x.is_active) || res.data[0];
-        if (active?.name) {
-          const clean = active.name.replace(/Academic Session/gi, '').replace(/Session/gi, '').trim();
-          setAcademicSession(clean);
-        }
-      }
-    }).catch(() => {});
+
 
     const handleProfileUpdated = (e: any) => {
       if (e.detail?.website !== undefined) {
@@ -385,7 +390,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     nav('/login');
   };
 
-  const studentName = user?.name || 'Student';
+  const studentName = String(user?.name || 'STUDENT').toUpperCase();
   const studentClass = user?.className 
     ? (user?.sectionName ? `${user.className} · Section ${user.sectionName}` : user.className) 
     : '';
@@ -423,7 +428,7 @@ export function StudentLayout({ children }: StudentLayoutProps) {
     }
   };
 
-  const resolvedStudentName = user?.name?.trim() || 'Student';
+  const resolvedStudentName = String(user?.name?.trim() || 'STUDENT').toUpperCase();
   const resolvedSchoolName = isDav ? 'DAV MODEL SCHOOL' : (user?.schoolName?.trim() || 'School');
   const resolvedLogoUrl = displaySchoolPhoto;
 
@@ -483,14 +488,25 @@ export function StudentLayout({ children }: StudentLayoutProps) {
               <span className="school-name student-sidebar-brand-name" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', letterSpacing: '-0.01em', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displaySchoolName}</span>
               <span className="school-meta" style={{ fontSize: 12, color: 'var(--text-secondary, #4b6b94)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, whiteSpace: 'nowrap' }}>
                 Code: {displaySchoolCode} · Affiliated
-                {schoolWebsite && (
-                  <span className="student-sidebar-website" style={{ marginLeft: 6 }}>
-                    <Globe size={10} /> Website
-                  </span>
-                )}
               </span>
             </div>
           </div>
+                    <button
+            type="button"
+            className="sidebar-collapse-toggle-btn student-sidebar-collapse-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSidebarCollapsed(previous => {
+                const next = !previous;
+                localStorage.setItem('attendo_student_nav_collapsed', String(next));
+                return next;
+              });
+            }}
+            aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+            title={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+          >
+            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
           <button 
             type="button" 
             className="student-mobile-close-btn"
@@ -545,36 +561,30 @@ export function StudentLayout({ children }: StudentLayoutProps) {
         {/* Topbar */}
         <header className="student-topbar">
           <div className="student-topbar-left">
-            <SidebarToggle
-              collapsed={sidebarCollapsed}
-              className="student-hamburger-btn"
-              iconSize={20}
-              onToggle={() => {
-                if (window.matchMedia('(max-width: 1180px)').matches) {
-                  setMobileNavOpen(previous => !previous);
-                } else {
-                  setSidebarCollapsed(previous => {
-                    const next = !previous;
-                    localStorage.setItem('attendo_student_nav_collapsed', String(next));
-                    return next;
-                  });
-                }
-              }}
-            />
+            <button
+              type="button"
+              className="student-hamburger-btn mobile-only-menu-btn"
+              onClick={() => setMobileNavOpen(previous => !previous)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+            >
+              <Menu size={20} />
+            </button>
             <StudentSearchBar />
           </div>
 
           <div className="student-topbar-right">
-            {/* Academic Session Pill */}
-            <div
-              className="session-pill"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
-              title="Active Academic Session"
-            >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
-              <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
-              <ChevronDown size={14} style={{ opacity: 0.7 }} />
-            </div>
+            {/* Academic Session Pill (Read-only enrolled session, no dropdown) */}
+            {academicSession && (
+              <div
+                className="session-pill"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, cursor: 'default' }}
+                title={`Enrolled Academic Session: ${academicSession}`}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                <span>{`${academicSession} ACADEMIC SESSION`.toUpperCase()}</span>
+              </div>
+            )}
 
             {/* Institute Pill */}
             <div 

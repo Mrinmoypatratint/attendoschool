@@ -118,8 +118,60 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
             (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'TEACHER' AND is_active = true) AS total_teachers,
             (SELECT COUNT(CASE WHEN tp.gender ILIKE 'm%' THEN 1 END)::int FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id = u.id WHERE u.school_id = $1 AND u.role = 'TEACHER' AND u.is_active = true) AS teacher_male_count,
             (SELECT COUNT(CASE WHEN tp.gender ILIKE 'f%' THEN 1 END)::int FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id = u.id WHERE u.school_id = $1 AND u.role = 'TEACHER' AND u.is_active = true) AS teacher_female_count,
-            (SELECT COUNT(*)::int FROM classes WHERE school_id = $1) AS total_classes,
-            (SELECT COUNT(*)::int FROM sections WHERE school_id = $1) AS total_sections,
+            (
+              SELECT COUNT(DISTINCT c.id)::int
+              FROM classes c
+              WHERE c.school_id = $1
+                AND (
+                  (c.academic_year_id = $2)
+                  OR EXISTS (
+                    SELECT 1 FROM students st
+                    WHERE st.school_id = $1
+                      AND st.academic_year_id = $2
+                      AND st.class_id = c.id
+                  )
+                  OR EXISTS (
+                    SELECT 1 FROM student_promotions sp
+                    WHERE sp.school_id = $1
+                      AND sp.to_academic_year_id = $2
+                      AND sp.to_class_id = c.id
+                      AND sp.status = 'CONFIRMED'
+                  )
+                  OR EXISTS (
+                    SELECT 1 FROM student_enrollment_history_v28 seh
+                    WHERE seh.academic_year_id = $2
+                      AND seh.class_id = c.id
+                  )
+                )
+            ) AS total_classes,
+            (
+              SELECT COUNT(DISTINCT s.id)::int
+              FROM sections s
+              JOIN classes c ON c.id = s.class_id
+              WHERE s.school_id = $1
+                AND (
+                  (s.academic_year_id = $2)
+                  OR (c.academic_year_id = $2)
+                  OR EXISTS (
+                    SELECT 1 FROM students st
+                    WHERE st.school_id = $1
+                      AND st.academic_year_id = $2
+                      AND st.section_id = s.id
+                  )
+                  OR EXISTS (
+                    SELECT 1 FROM student_promotions sp
+                    WHERE sp.school_id = $1
+                      AND sp.to_academic_year_id = $2
+                      AND sp.to_section_id = s.id
+                      AND sp.status = 'CONFIRMED'
+                  )
+                  OR EXISTS (
+                    SELECT 1 FROM student_enrollment_history_v28 seh
+                    WHERE seh.academic_year_id = $2
+                      AND seh.section_id = s.id
+                  )
+                )
+            ) AS total_sections,
             (SELECT COUNT(*)::int FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_corrections,
             (SELECT COUNT(*)::int FROM photo_approval_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_photos,
             (SELECT COUNT(*)::int FROM student_leave_requests WHERE school_id = $1 AND status = 'PENDING') AS pending_leaves,
@@ -194,8 +246,62 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
                 COUNT(CASE WHEN tp.gender ILIKE 'm%' THEN 1 END)::int AS male_count,
                 COUNT(CASE WHEN tp.gender ILIKE 'f%' THEN 1 END)::int AS female_count
               FROM users u LEFT JOIN teacher_profiles tp ON tp.user_id = u.id WHERE u.school_id = $1 AND u.role = 'TEACHER' AND u.is_active = true`, [sid]).catch(() => ({ rows: [{ count: 0, male_count: 0, female_count: 0 }] })),
-              pool.query('SELECT COUNT(*)::int AS count FROM classes WHERE school_id = $1', [sid]).catch(() => ({ rows: [{ count: 0 }] })),
-              pool.query('SELECT COUNT(*)::int AS count FROM sections WHERE school_id = $1', [sid]).catch(() => ({ rows: [{ count: 0 }] })),
+              (targetYear?.id
+                ? pool.query(`SELECT COUNT(DISTINCT c.id)::int AS count
+                    FROM classes c
+                    WHERE c.school_id = $1
+                      AND (
+                        (c.academic_year_id = $2)
+                        OR EXISTS (
+                          SELECT 1 FROM students st
+                          WHERE st.school_id = $1
+                            AND st.academic_year_id = $2
+                            AND st.class_id = c.id
+                        )
+                        OR EXISTS (
+                          SELECT 1 FROM student_promotions sp
+                          WHERE sp.school_id = $1
+                            AND sp.to_academic_year_id = $2
+                            AND sp.to_class_id = c.id
+                            AND sp.status = 'CONFIRMED'
+                        )
+                        OR EXISTS (
+                          SELECT 1 FROM student_enrollment_history_v28 seh
+                          WHERE seh.academic_year_id = $2
+                            AND seh.class_id = c.id
+                        )
+                      )`, [sid, targetYear.id])
+                : pool.query('SELECT COUNT(*)::int AS count FROM classes WHERE school_id = $1', [sid])
+              ).catch(() => ({ rows: [{ count: 0 }] })),
+              (targetYear?.id
+                ? pool.query(`SELECT COUNT(DISTINCT s.id)::int AS count
+                    FROM sections s
+                    JOIN classes c ON c.id = s.class_id
+                    WHERE s.school_id = $1
+                      AND (
+                        (s.academic_year_id = $2)
+                        OR (c.academic_year_id = $2)
+                        OR EXISTS (
+                          SELECT 1 FROM students st
+                          WHERE st.school_id = $1
+                            AND st.academic_year_id = $2
+                            AND st.section_id = s.id
+                        )
+                        OR EXISTS (
+                          SELECT 1 FROM student_promotions sp
+                          WHERE sp.school_id = $1
+                            AND sp.to_academic_year_id = $2
+                            AND sp.to_section_id = s.id
+                            AND sp.status = 'CONFIRMED'
+                        )
+                        OR EXISTS (
+                          SELECT 1 FROM student_enrollment_history_v28 seh
+                          WHERE seh.academic_year_id = $2
+                            AND seh.section_id = s.id
+                        )
+                      )`, [sid, targetYear.id])
+                : pool.query('SELECT COUNT(*)::int AS count FROM sections WHERE school_id = $1', [sid])
+              ).catch(() => ({ rows: [{ count: 0 }] })),
               pool.query(`SELECT COUNT(*)::int AS count FROM attendance_correction_requests WHERE school_id = $1 AND status = 'PENDING'`, [sid]).catch(() => ({ rows: [{ count: 0 }] })),
               targetYear
                 ? Promise.resolve({ rows: [targetYear] })
@@ -225,6 +331,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
             total: 0,
             present: 0,
             absent: 0,
+            leftEarly: 0,
             percentage: 0,
             classBreakdown: []
           })),
@@ -245,6 +352,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           todayAtt.total = 0;
           todayAtt.present = 0;
           todayAtt.absent = 0;
+          (todayAtt as any).leftEarly = 0;
           todayAtt.percentage = 0;
           todayAtt.classBreakdown = [];
         }
@@ -296,6 +404,7 @@ const schoolDashboardHandler = async (req: AuthRequest, res: any) => {
           turnout_rate: pct,
           present_today: pres,
           absent_today: abs,
+          left_early_today: todayAtt.leftEarly || 0,
           total_today: tot,
           todayAttendance: todayAtt,
           weeklyTrend,

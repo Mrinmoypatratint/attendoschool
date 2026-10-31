@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requireRoles } from '../middleware/auth';
 import {
-  listStudents, updateStudent, setStudentActive,
+  listStudents, getStudentById, updateStudent, setStudentActive,
   listTeachers, updateTeacher, setTeacherActive
 } from '../services/peopleManagementService';
 
@@ -54,10 +54,23 @@ function paginateResults(req: Request, res: Response, allRows: any[], maxLimit =
 router.get('/students', async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
-    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true');
-    return paginateResults(req, res, students || [], 1000);
+    const session = String(req.query.session || req.query.academicSession || '').trim();
+    const academicYearId = String(req.query.academicYearId || req.query.academic_year_id || '').trim();
+    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true', session, academicYearId);
+    return paginateResults(req, res, students || [], 5000);
   } catch(_e:any){
     return paginateResults(req, res, []);
+  }
+});
+
+router.get('/students/:id', async (req: Request, res: Response) => {
+  try {
+    if (!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
+    const student = await getStudentById(effectiveSid(req), String(req.params.id));
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    return res.json(student);
+  } catch (e: any) {
+    return res.status(500).json({ message: e.message });
   }
 });
 

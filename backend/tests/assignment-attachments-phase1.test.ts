@@ -17,6 +17,7 @@ import {
   ensureBucketExists,
   StorageConfigurationError
 } from '../src/utils/supabaseStorage';
+import { downloadFromStorage as downloadFromFirebaseStorage } from '../src/utils/firebaseStorage';
 import * as studentService from '../src/services/studentService';
 import { assignClassMentor, updateSubjectTeacherPermission, verifyTeacherPublishingEligibility } from '../src/services/mentorService';
 import { inMemoryAssignments, inMemorySubmissions } from '../src/routes/teacherAssignments';
@@ -190,7 +191,7 @@ async function runPhase1AttachmentTests() {
     assert(attRows.rowCount === 2, `Database stored exactly 2 attachments in student_assignment_attachments`);
     assert(attRows.rows[0].file_name === 'lab_report.pdf', 'First attachment name matches lab_report.pdf');
     assert(attRows.rows[0].mime_type === 'application/pdf', 'First attachment mime_type is application/pdf');
-    assert(attRows.rows[0].storage_provider?.toUpperCase() === 'SUPABASE', 'Storage provider is marked as "SUPABASE"');
+    assert(attRows.rows[0].storage_provider?.toUpperCase() === 'FIREBASE' || attRows.rows[0].storage_provider?.toUpperCase() === 'SUPABASE', 'Storage provider is marked as "FIREBASE" or "SUPABASE"');
     assert(attRows.rows[0].storage_key.includes(`schools/${schoolId}/assignments/${assignmentId}`), 'Storage key correctly partitions by school and assignment');
     assert(attRows.rows[1].file_name === 'chart.png', 'Second attachment name matches chart.png');
 
@@ -235,7 +236,7 @@ async function runPhase1AttachmentTests() {
     assert(isUnauthorizedBlocked, 'Unauthorized teacher is not the assignment teacher_id');
 
     // Verify storage download for primary teacher
-    const downloadedAtt = await downloadFromStorage(attRows.rows[0].storage_key);
+    const downloadedAtt = await downloadFromFirebaseStorage(attRows.rows[0].storage_key);
     assert(downloadedAtt.buffer.length > 0, 'Attachment buffer can be securely downloaded from storage for teacher preview');
     assert(downloadedAtt.buffer.slice(0, 4).toString('ascii') === '%PDF', 'Downloaded attachment buffer retains authentic PDF bytes');
 

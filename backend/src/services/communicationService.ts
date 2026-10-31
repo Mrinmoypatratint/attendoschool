@@ -49,24 +49,7 @@ export const memAnnouncements: any[] = [
   }
 ];
 
-export const memReplies: any[] = [
-  {
-    id: 'reply-seed-1',
-    school_id: '00000000-0000-0000-0000-000000000001',
-    announcement_id: 'ann-1',
-    user_id: 'usr-parent-1',
-    author_name: 'Sunita Sharma',
-    author_role: 'PARENT',
-    author_email: 'sunita.sharma@example.com',
-    student_id: 'st-1',
-    student_name: 'Rohan Sharma',
-    student_roll: '25',
-    class_name: 'Class 10',
-    section_name: 'A',
-    reply_text: 'Thank you for the update. Rohan will attend all preparatory sessions on Monday.',
-    created_at: '2025-09-10T11:45:00Z'
-  }
-];
+export const memReplies: any[] = [];
 
 let tablesInitialized = false;
 
@@ -892,15 +875,15 @@ export async function createReply(
     school_id: schoolId,
     announcement_id: announcementId,
     user_id: userId,
-    student_id: userRole === 'TEACHER' ? null : (studentId || 'st-01'),
-    class_id: userRole === 'TEACHER' ? null : (classId || 'cls-10'),
-    section_id: userRole === 'TEACHER' ? null : (sectionId || 'sec-a'),
+    student_id: studentId || null,
+    class_id: classId || null,
+    section_id: sectionId || null,
     author_name: authorName,
     author_role: userRole,
-    student_name: userRole === 'TEACHER' ? null : 'Rohan Sharma',
-    class_name: userRole === 'TEACHER' ? null : 'Class 10',
-    section_name: userRole === 'TEACHER' ? null : 'A',
-    student_roll: userRole === 'TEACHER' ? null : '25',
+    student_name: null,
+    class_name: null,
+    section_name: null,
+    student_roll: null,
     reply_text: sanitized,
     created_at: new Date().toISOString()
   };
@@ -924,7 +907,8 @@ export async function getAnnouncementReplies(schoolId: string, announcementId: s
       `SELECT r.*, 
               u.name AS author_name, u.role AS author_role, u.email AS author_email,
               s.name AS student_name, s.roll_number AS student_roll,
-              c.name AS class_name, sec.name AS section_name
+              CASE WHEN c.class_number = -1 THEN 'Class L KG' WHEN c.class_number = 0 THEN 'Class U KG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
+              sec.name AS section_name
        FROM notification_replies r
        LEFT JOIN users u ON u.id = r.user_id
        LEFT JOIN students s ON s.id = r.student_id
@@ -934,15 +918,13 @@ export async function getAnnouncementReplies(schoolId: string, announcementId: s
        ORDER BY r.created_at ASC`,
       [announcementId, schoolId]
     );
-    if (rows && rows.length > 0) return rows;
-  } catch (_e) {}
-
-  const memMatched = memReplies.filter(r => r.announcement_id === announcementId);
-  if (memMatched.length > 0) {
-    return memMatched;
+    if (rows) return rows;
+  } catch (err: any) {
+    console.warn('[CommunicationService] getAnnouncementReplies query notice:', err.message);
   }
 
-  return [];
+  const memMatched = memReplies.filter(r => r.announcement_id === announcementId && r.school_id === schoolId);
+  return memMatched;
 }
 
 /**
@@ -955,7 +937,8 @@ export async function listAllRepliesGrouped(schoolId: string) {
       `SELECT r.*, a.title AS announcement_title, a.priority AS announcement_priority,
               u.name AS author_name, u.role AS author_role, u.email AS author_email,
               s.name AS student_name, s.roll_number AS student_roll,
-              c.name AS class_name, sec.name AS section_name
+              CASE WHEN c.class_number = -1 THEN 'Class L KG' WHEN c.class_number = 0 THEN 'Class U KG' WHEN c.class_number IS NOT NULL THEN 'Class ' || c.class_number ELSE NULL END AS class_name,
+              sec.name AS section_name
        FROM notification_replies r
        JOIN announcements a ON a.id = r.announcement_id
        LEFT JOIN users u ON u.id = r.user_id
@@ -966,10 +949,12 @@ export async function listAllRepliesGrouped(schoolId: string) {
        ORDER BY r.created_at DESC`,
       [schoolId]
     );
-    if (rows && rows.length > 0) return rows;
-  } catch (_e) {}
+    if (rows) return rows;
+  } catch (err: any) {
+    console.warn('[CommunicationService] listAllRepliesGrouped query notice:', err.message);
+  }
 
-  return memReplies.map(r => {
+  return memReplies.filter(r => r.school_id === schoolId).map(r => {
     const a = memAnnouncements.find(x => x.id === r.announcement_id);
     return {
       ...r,

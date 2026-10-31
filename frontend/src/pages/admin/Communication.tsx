@@ -2076,7 +2076,7 @@ export default function Communication() {
               {/* Linked Student academic placement context */}
               {r.student_name && (
                 <div style={{ fontSize: 12.5, color: 'var(--text-secondary, #475569)', backgroundColor: 'var(--card-subtle, #f8fafc)', padding: '6px 10px', borderRadius: 4, marginBottom: 10 }}>
-                  Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink> · {r.class_name || 'Class 10'} - {r.section_name || 'A'} (Roll #{r.student_roll || '-'})
+                  Linked Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any}><b>{r.student_name}</b></PersonProfileLink>{(r.class_name || r.section_name) ? ` · ${[r.class_name, r.section_name].filter(Boolean).join(' - ')}` : ''}{r.student_roll ? ` (Roll #${r.student_roll})` : ''}
                 </div>
               )}
 
@@ -2193,7 +2193,7 @@ export default function Communication() {
 
                     {r.student_name && (
                       <div style={{ fontSize: 11.5, color: 'var(--text-muted, #64748b)', marginBottom: 8 }}>
-                        Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} /> ({r.class_name || 'Class 10'} - {r.section_name || 'A'})
+                        Student: <PersonProfileLink kind="student" name={r.student_name} person={r as any} />{(r.class_name || r.section_name) ? ` (${[r.class_name, r.section_name].filter(Boolean).join(' - ')})` : ''}
                       </div>
                     )}
 

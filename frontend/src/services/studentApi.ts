@@ -123,6 +123,8 @@ export interface TimetableEntry {
   end_time: string;
   subject_name: string;
   teacher_name: string;
+  assigned_date?: string;
+  created_at?: string;
   room?: string;
 }
 
@@ -140,12 +142,15 @@ export interface Assignment {
   description: string;
   subject_name: string;
   teacher_name: string;
+  assigned_date?: string;
+  created_at?: string;
   due_date: string;
   max_marks: number;
-  submission_status: 'PENDING' | 'SUBMITTED' | 'GRADED' | 'OVERDUE';
+  submission_status: 'PENDING' | 'SUBMITTED' | 'RESUBMITTED' | 'GRADED' | 'OVERDUE';
   submission_id?: string;
   submission_text?: string;
   submitted_at?: string;
+  updated_at?: string;
   marks_obtained?: number;
   feedback?: string;
   attachments?: AssignmentAttachment[];
@@ -224,8 +229,15 @@ export const studentApi = {
   markAnnouncementRead: (id: string) => api.post<{ success: boolean; read_at: string }>('/student/announcements/' + id + '/read').then((r) => r.data),
   replyToAnnouncement: (id: string, replyText: string) => api.post('/communication/announcements/' + id + '/reply', { replyText }).then((r) => r.data),
   getAssignments: () => api.get<Assignment[]>('/student/assignments').then((r) => r.data),
-  submitAssignment: (id: string, submissionText: string, attachments?: Array<{ fileName: string; fileData: string }>) =>
-    api.post(`/student/assignments/${id}/submit`, { submissionText, attachments }).then((r) => r.data),
+  submitAssignment: (
+    id: string,
+    submissionText: string,
+    attachments?: Array<{ fileName: string; fileData: string }>,
+    removedAttachmentIds?: string[]
+  ) =>
+    api.post(`/student/assignments/${id}/submit`, { submissionText, attachments, removedAttachmentIds }).then((r) => r.data),
+  deleteAttachment: (assignmentId: string, attachmentId: string) =>
+    api.delete(`/student/assignments/${assignmentId}/attachments/${attachmentId}`).then((r) => r.data),
   previewAttachment: async (assignmentId: string, attachmentId: string) => {
     const res = await api.get(`/student/assignments/${assignmentId}/attachments/${attachmentId}/preview`, {
       responseType: 'blob'

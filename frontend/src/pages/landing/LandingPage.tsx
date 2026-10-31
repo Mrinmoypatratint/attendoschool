@@ -3,6 +3,7 @@ import React, { useEffect, useCallback } from 'react';
 import { LandingNav } from './LandingNav';
 import { LandingHero } from './LandingHero';
 import { LandingCapabilities } from './LandingCapabilities';
+import { LandingHRMS } from './LandingHRMS';
 import { LandingRoles } from './LandingRoles';
 import { LandingFlow } from './LandingFlow';
 import { LandingTrust } from './LandingTrust';
@@ -39,19 +40,22 @@ export default function LandingPage() {
       {/* 3. Capabilities / Bento Grid (Campus360 6 Domains & Real Photos) */}
       <LandingCapabilities />
 
-      {/* 4. Roles Showcase (Campus360 Stakeholder Tabs & Scoped View) */}
+      {/* 4. HRMS & Staff Suite Showcase (Dedicated Enterprise Portal & https://hrms.attendoschool.online/) */}
+      <LandingHRMS onScrollToDemo={() => handleScrollTo('demo')} />
+
+      {/* 5. Roles Showcase (Campus360 Stakeholder Tabs & Scoped View) */}
       <LandingRoles />
 
-      {/* 5. How It Works (Campus360 01-05 Operational Timeline) */}
+      {/* 6. How It Works (Campus360 01-05 Operational Timeline) */}
       <LandingFlow />
 
-      {/* 6. Trust & Engineering (Campus360 Architectural Facts Grid) */}
+      {/* 7. Trust & Engineering (Campus360 Architectural Facts Grid) */}
       <LandingTrust />
 
-      {/* 7. Final Conversion & Walkthrough (Campus360 Dark CTA & Form) */}
+      {/* 8. Final Conversion & Walkthrough (Campus360 Dark CTA & Form) */}
       <LandingDemo />
 
-      {/* 8. Footer (Campus360 4-Column Layout, AttendoSchool Only) */}
+      {/* 9. Footer (Campus360 4-Column Layout, AttendoSchool Only) */}
       <LandingFooter onScrollTo={handleScrollTo} />
     </div>
   );

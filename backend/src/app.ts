@@ -46,6 +46,7 @@ import student from './routes/student';
 import reviews from './routes/reviews';
 import calendar from './routes/calendar';
 import mentor from './routes/mentor';
+import temporaryAssignments from './routes/temporaryAssignments';
 import teacherAssignments from './routes/teacherAssignments';
 import designations from './routes/designations';
 import leavePolicies from './routes/leavePolicies';
@@ -88,7 +89,19 @@ const corsOptions: cors.CorsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
+    'X-Academic-Session',
+    'X-Academic-Year-Id',
+    'x-academic-session',
+    'x-academic-year-id'
+  ],
   exposedHeaders: ['Content-Disposition']
 };
 
@@ -225,6 +238,7 @@ app.use('/api/notifications', notifications);
 app.use('/api/student', student);
 app.use('/api/reviews', requireAuth, reviews);
 app.use('/api', mentor);
+app.use('/api/admin/temporary-assignments', temporaryAssignments);
 app.use('/api/teacher/assignments', teacherAssignments);
 
 

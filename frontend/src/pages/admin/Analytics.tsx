@@ -483,7 +483,7 @@ export default function Analytics() {
       {data && (
         <>
           {/* Key KPI Metric Cards */}
-          <div className="stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+          <div className="stats" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
             <div className="stat" style={{ borderLeft: '4px solid #3b82f6' }}>
               <span>Average Attendance</span>
               <strong style={{ color: '#3b82f6', fontSize: 26 }}>{data.attendancePercentage ?? 0}%</strong>
@@ -496,19 +496,26 @@ export default function Analytics() {
               <span>Total Present Today</span>
               <strong style={{ color: '#10b981', fontSize: 26 }}>{data.todayPresent ?? 0}</strong>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) > 0 ? 'Recorded present today' : 'No attendance marked today'}
-              </div>
-            </div>
-            <div className="stat" style={{ borderLeft: '4px solid #f59e0b' }}>
-              <span>Total Absent Today</span>
-              <strong style={{ color: '#d97706', fontSize: 26 }}>{data.todayAbsent ?? 0}</strong>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) > 0 ? 'Marked absent today' : 'No attendance marked today'}
+                {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) + (data.todayLeftEarly ?? 0) > 0 ? 'Recorded present today' : 'No attendance marked today'}
               </div>
             </div>
             <div className="stat" style={{ borderLeft: '4px solid #ef4444' }}>
+              <span>Total Absent Today</span>
+              <strong style={{ color: '#dc2626', fontSize: 26 }}>{data.todayAbsent ?? 0}</strong>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {(data.todayPresent ?? 0) + (data.todayAbsent ?? 0) + (data.todayLeftEarly ?? 0) > 0 ? 'Marked absent today' : 'No attendance marked today'}
+              </div>
+            </div>
+            <div className="stat" style={{ borderLeft: '4px solid #f59e0b' }}>
+              <span>Left Early Today</span>
+              <strong style={{ color: '#d97706', fontSize: 26 }}>{data.todayLeftEarly ?? 0}</strong>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {(data.todayLeftEarly ?? 0) > 0 ? 'Departed campus early today' : 'No early departures today'}
+              </div>
+            </div>
+            <div className="stat" style={{ borderLeft: '4px solid #8b5cf6' }}>
               <span>Low Attendance Risk</span>
-              <strong style={{ color: '#dc2626', fontSize: 26 }}>{data.lowAttendanceCount ?? 0}</strong>
+              <strong style={{ color: (data.lowAttendanceCount ?? 0) > 0 ? '#dc2626' : '#8b5cf6', fontSize: 26 }}>{data.lowAttendanceCount ?? 0}</strong>
               <div style={{ fontSize: 12, color: (data.lowAttendanceCount ?? 0) > 0 ? '#dc2626' : '#10b981', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                 {(data.lowAttendanceCount ?? 0) > 0 ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
                 {(data.lowAttendanceCount ?? 0) > 0 ? '< 75% threshold' : 'All students ≥ 75%'}
@@ -641,9 +648,10 @@ export default function Analytics() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 20, fontSize: 13, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 20, fontSize: 13, alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>Present: <strong style={{ color: selectedDay.present_records > 0 ? '#10b981' : 'var(--text-muted)' }}>{selectedDay.present_records}</strong></div>
                     <div>Absent: <strong style={{ color: selectedDay.absent_records > 0 ? '#ef4444' : 'var(--text-muted)' }}>{selectedDay.absent_records}</strong></div>
+                    <div>Left Early: <strong style={{ color: (selectedDay.left_early_records || 0) > 0 ? '#d97706' : 'var(--text-muted)' }}>{selectedDay.left_early_records || 0}</strong></div>
                     <div>Attendance Rate: <strong style={{ color: selectedDay.has_attendance ? 'var(--text)' : 'var(--text-muted)' }}>{selectedDay.attendance_percentage}%</strong></div>
                     {!selectedDay.has_attendance && (
                       <span style={{ fontSize: 11.5, background: 'var(--gray-200)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 12, fontWeight: 500 }}>
@@ -705,9 +713,12 @@ export default function Analytics() {
                         <div className="class-progress-bar">
                           <div className={`class-progress-fill ${colorClass}`} style={{ width: `${Math.min(100, rate)}%` }}></div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
                           <span>Present: {c.present}</span>
                           <span>Absent: {c.absent}</span>
+                          <span style={{ color: (c.leftEarly || c.left_early || 0) > 0 ? '#d97706' : undefined, fontWeight: (c.leftEarly || c.left_early || 0) > 0 ? 600 : undefined }}>
+                            Left Early: {c.leftEarly ?? c.left_early ?? 0}
+                          </span>
                         </div>
                       </div>
                     );

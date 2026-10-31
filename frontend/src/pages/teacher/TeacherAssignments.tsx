@@ -2,41 +2,50 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BookOpen, Plus, FileText, CheckCircle2, Clock, AlertTriangle, AlertCircle,
   Loader2, RefreshCw, Send, Eye, X, Award, Search, Paperclip, Download, Upload,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, Edit, Trash2, Calendar, Check, FileCheck
 } from 'lucide-react';
 import { api } from '../../api';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
 import { AutoExpandingTextarea } from '../../components/AutoExpandingTextarea';
+
+interface AssignmentAttachmentItem {
+  id?: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  file_data?: string;
+  storage_key?: string;
+  file_url?: string;
+  uploaded_at?: string;
+}
 
 interface AssignmentRecord {
   id: string;
   school_id: string;
   class_id: string;
   section_id: string | null;
-  subject_id: string;
+  subject_id?: string | null;
   subject_name?: string;
   class_number?: number;
   section_name?: string;
   teacher_id: string;
+  teacher_name?: string;
   title: string;
   description: string;
+  assigned_date: string;
   due_date: string;
   max_marks: number;
   submission_count?: number;
+  attachment_count?: number;
   created_at?: string;
+  updated_at?: string;
   document_url?: string;
   document_name?: string;
   document_size?: number;
   document_mime?: string;
   document_data?: string;
-  attachments?: Array<{
-    id?: string;
-    file_name: string;
-    file_size: number;
-    mime_type: string;
-    file_data?: string;
-    storage_key?: string;
-  }>;
+  storage_key?: string | null;
+  attachments?: AssignmentAttachmentItem[];
 }
 
 interface UploadDocItem {
@@ -44,6 +53,8 @@ interface UploadDocItem {
   base64: string;
   name: string;
   size: number;
+  mimeType: string;
+  blobUrl?: string;
 }
 
 interface StudentSubmission {
@@ -68,14 +79,30 @@ interface StudentSubmission {
   }>;
 }
 
-interface EligibleOption {
-  class_id: string;
+interface ClassOption {
+  id: string;
   class_number: number;
-  section_id: string;
-  section_name: string;
-  subject_id: string;
-  subject_name: string;
+  label: string;
 }
+
+interface SectionOption {
+  id: string;
+  class_id: string;
+  name: string;
+}
+
+const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.pdf', '.xlsx', '.doc', '.docx'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_FILE_COUNT = 5;
+
+const formatBytes = (bytes?: number | null) => {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
 
 export function TeacherAssignments() {
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
@@ -84,165 +111,306 @@ export function TeacherAssignments() {
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterClass, setFilterClass] = useState('');
 
-  // Eligible Options State for Assignment Creation
-  const [eligibleOptions, setEligibleOptions] = useState<EligibleOption[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
+  // School Classes & Sections Options
+  const [classesList, setClassesList] = useState<ClassOption[]>([]);
+  const [sectionsList, setSectionsList] = useState<SectionOption[]>([]);
 
   // Create Assignment Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreateMaximized, setIsCreateMaximized] = useState(false);
   const [createForm, setCreateForm] = useState({
     class_id: '',
     section_id: '',
-    subject_id: '',
     title: '',
     description: '',
+    assigned_date: new Date().toISOString().slice(0, 10),
     due_date: '',
     max_marks: 100
   });
+  const [createFiles, setCreateFiles] = useState<UploadDocItem[]>([]);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [createFeedback, setCreateFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<UploadDocItem[]>([]);
-  const [uploadDocError, setUploadDocError] = useState<string | null>(null);
-  const [isCreateModalMaximized, setIsCreateModalMaximized] = useState(false);
-  const [isSubmissionsMaximized, setIsSubmissionsMaximized] = useState(false);
 
-  const handleTeacherFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadDocError(null);
+  // View Assignment Modal State
+  const [viewAssignment, setViewAssignment] = useState<AssignmentRecord | null>(null);
+
+  // Edit Assignment Modal State
+  const [editAssignment, setEditAssignment] = useState<AssignmentRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    class_id: '',
+    section_id: '',
+    assigned_date: '',
+    due_date: '',
+    max_marks: 100
+  });
+  const [editExistingAtts, setEditExistingAtts] = useState<AssignmentAttachmentItem[]>([]);
+  const [editRemovedIds, setEditRemovedIds] = useState<string[]>([]);
+  const [editNewFiles, setEditNewFiles] = useState<UploadDocItem[]>([]);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Delete Assignment Modal State
+  const [deleteTarget, setDeleteTarget] = useState<AssignmentRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Attachment In-Browser Preview Modal State
+  const [previewState, setPreviewState] = useState<{
+    open: boolean;
+    fileName: string;
+    mimeType: string;
+    blobUrl: string | null;
+    loading: boolean;
+    error: string | null;
+    assignmentId?: string;
+    attachmentId?: string;
+  } | null>(null);
+
+  // Submissions Modal State
+  const [submissionsAsg, setSubmissionsAsg] = useState<AssignmentRecord | null>(null);
+  const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
+  const [loadingSubs, setLoadingSubs] = useState(false);
+  const [gradingSub, setGradingSub] = useState<StudentSubmission | null>(null);
+  const [gradeScore, setGradeScore] = useState<number>(0);
+  const [gradeFeedback, setGradeFeedback] = useState<string>('');
+  const [savingGrade, setSavingGrade] = useState(false);
+
+  // 1. Load Published Assignments
+  const loadAssignments = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get('/teacher/assignments?scope=all');
+      setAssignments(Array.isArray(res.data) ? res.data : []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to load assignments.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 2. Load School Classes & Sections Options
+  const loadSchoolOptions = useCallback(async () => {
+    try {
+      const res = await api.get('/teacher/assignments/eligible-options');
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        const cMap = new Map<string, ClassOption>();
+        const sMap = new Map<string, SectionOption>();
+
+        res.data.forEach((row: any) => {
+          if (row.class_id && !cMap.has(row.class_id)) {
+            const num = Number(row.class_number ?? 1);
+            const lbl = row.class_label || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+            cMap.set(row.class_id, {
+              id: row.class_id,
+              class_number: num,
+              label: lbl
+            });
+          }
+          if (row.section_id && !sMap.has(row.section_id)) {
+            sMap.set(row.section_id, {
+              id: row.section_id,
+              class_id: row.class_id,
+              name: row.section_name || 'A'
+            });
+          }
+        });
+
+        const sortedClasses = Array.from(cMap.values()).sort((a, b) => a.class_number - b.class_number);
+        setClassesList(sortedClasses);
+        setSectionsList(Array.from(sMap.values()));
+        return;
+      }
+    } catch (_err) {}
+
+    // Fallback: query /classes and /sections
+    try {
+      const [clsRes, secRes] = await Promise.all([
+        api.get('/classes').catch(() => ({ data: [] })),
+        api.get('/sections').catch(() => ({ data: [] }))
+      ]);
+
+      const clsArr = Array.isArray(clsRes.data) ? clsRes.data : [];
+      const secArr = Array.isArray(secRes.data) ? secRes.data : [];
+
+      const mappedClasses: ClassOption[] = clsArr.map((c: any) => {
+        const num = Number(c.class_number ?? c.classNumber ?? 1);
+        const lbl = c.label || c.name || (num === -1 ? 'L-KG' : num === 0 ? 'U-KG' : `Class ${num}`);
+        return {
+          id: c.id,
+          class_number: num,
+          label: lbl
+        };
+      }).sort((a: ClassOption, b: ClassOption) => a.class_number - b.class_number);
+
+      const mappedSections: SectionOption[] = secArr.map((s: any) => ({
+        id: s.id,
+        class_id: s.class_id || s.classId,
+        name: s.section_name || s.name || 'A'
+      }));
+
+      setClassesList(mappedClasses);
+      setSectionsList(mappedSections);
+    } catch (_e) {}
+  }, []);
+
+  useEffect(() => {
+    loadAssignments();
+    loadSchoolOptions();
+  }, [loadAssignments, loadSchoolOptions]);
+
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      createFiles.forEach((f) => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+      editNewFiles.forEach((f) => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+      if (previewState?.blobUrl) {
+        URL.revokeObjectURL(previewState.blobUrl);
+      }
+    };
+  }, [createFiles, editNewFiles, previewState]);
+
+  // Available sections for chosen class
+  const availableSectionsForCreate = useMemo(() => {
+    if (!createForm.class_id) return [];
+    return sectionsList.filter((s) => s.class_id === createForm.class_id);
+  }, [sectionsList, createForm.class_id]);
+
+  const availableSectionsForEdit = useMemo(() => {
+    if (!editForm.class_id) return [];
+    return sectionsList.filter((s) => s.class_id === editForm.class_id);
+  }, [sectionsList, editForm.class_id]);
+
+  // File Upload Handlers
+  const handleFileSelection = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    currentCount: number,
+    existingSize: number,
+    onSuccess: (newItems: UploadDocItem[]) => void,
+    onError: (msg: string) => void
+  ) => {
+    onError('');
     if (!e.target.files || e.target.files.length === 0) return;
 
-    const newFiles = Array.from(e.target.files);
-    if (uploadedDocuments.length + newFiles.length > 5) {
-      setUploadDocError('You can attach a maximum of 5 document files.');
+    const files = Array.from(e.target.files);
+    if (currentCount + files.length > MAX_FILE_COUNT) {
+      onError(`You can attach a maximum of ${MAX_FILE_COUNT} files.`);
       return;
     }
 
-    const ALLOWED_EXT = ['.png', '.jpg', '.jpeg', '.pdf', '.xlsx', '.doc', '.docx'];
-    const MAX_SZ = 10 * 1024 * 1024; // 10MB
+    let runningSize = existingSize;
 
-    for (const f of newFiles) {
-      const ext = '.' + f.name.split('.').pop()?.toLowerCase();
-      if (!ALLOWED_EXT.includes(ext)) {
-        setUploadDocError(`File "${f.name}" has an unsupported format. Allowed: PDF, DOC, DOCX, XLSX, PNG, JPG.`);
+    for (const file of files) {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        onError(`File "${file.name}" has an unsupported format. Allowed: PNG, JPG, JPEG, PDF, DOC, DOCX, XLSX.`);
         return;
       }
-      if (f.size > MAX_SZ) {
-        setUploadDocError(`File "${f.name}" exceeds the 10MB limit.`);
+      if (file.size > MAX_FILE_SIZE) {
+        onError(`File "${file.name}" exceeds the 10MB per-file limit.`);
+        return;
+      }
+      runningSize += file.size;
+      if (runningSize > MAX_TOTAL_SIZE) {
+        onError('Total attachment size exceeds the 25MB limit.');
         return;
       }
     }
 
     Promise.all(
-      newFiles.map(file => new Promise<UploadDocItem>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve({
-          file,
-          base64: reader.result as string,
-          name: file.name,
-          size: file.size
-        });
-        reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
-        reader.readAsDataURL(file);
-      }))
-    ).then(readFiles => {
-      setUploadedDocuments(prev => [...prev, ...readFiles]);
-    }).catch(err => {
-      setUploadDocError(err.message || 'Error processing document attachment.');
-    });
+      files.map(
+        (file) =>
+          new Promise<UploadDocItem>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const base64 = reader.result as string;
+              const blobUrl = URL.createObjectURL(file);
+              resolve({
+                file,
+                base64,
+                name: file.name,
+                size: file.size,
+                mimeType: file.type || 'application/octet-stream',
+                blobUrl
+              });
+            };
+            reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
+            reader.readAsDataURL(file);
+          })
+      )
+    )
+      .then((items) => {
+        onSuccess(items);
+      })
+      .catch((err) => {
+        onError(err.message || 'Error processing attachments.');
+      });
 
     e.target.value = '';
   };
 
-  const handleRemoveDoc = (index: number) => {
-    setUploadedDocuments(prev => prev.filter((_, i) => i !== index));
-    setUploadDocError(null);
-  };
+  // Preview an attachment (supports local blob or remote secure preview)
+  const openPreview = async (fileName: string, mimeType: string, blobUrl?: string | null, assignmentId?: string, attachmentId?: string) => {
+    if (blobUrl) {
+      setPreviewState({
+        open: true,
+        fileName,
+        mimeType,
+        blobUrl,
+        loading: false,
+        error: null,
+        assignmentId,
+        attachmentId
+      });
+      return;
+    }
 
-  // Submissions & Grading Drawer State
-  const [activeAssignment, setActiveAssignment] = useState<AssignmentRecord | null>(null);
-  const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
-  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
-
-  // Active Grade Modal/Selection
-  const [selectedSubmission, setSelectedSubmission] = useState<StudentSubmission | null>(null);
-  const [gradeForm, setGradeForm] = useState({ marks_obtained: 0, feedback: '' });
-  const [grading, setGrading] = useState(false);
-  const [gradeFeedback, setGradeFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  // Teacher Attachment Preview State
-  const [teacherPreview, setTeacherPreview] = useState<{
-    isOpen: boolean;
-    fileName: string;
-    blobUrl: string | null;
-    mimeType: string;
-    assignmentId: string;
-    submissionId: string;
-    attachmentId: string;
-    loading: boolean;
-    error: string | null;
-  } | null>(null);
-
-  const formatBytes = (bytes?: number) => {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
-
-  const handleTeacherPreview = async (assignmentId: string, submissionId: string, att: any) => {
-    setTeacherPreview({
-      isOpen: true,
-      fileName: att.file_name,
+    setPreviewState({
+      open: true,
+      fileName,
+      mimeType,
       blobUrl: null,
-      mimeType: att.mime_type,
-      assignmentId,
-      submissionId,
-      attachmentId: att.id,
       loading: true,
-      error: null
+      error: null,
+      assignmentId,
+      attachmentId
     });
 
-    try {
-      const res = await api.get(`/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${att.id}/preview`, {
-        responseType: 'blob'
-      });
-      const blob = res.data as Blob;
-      const url = URL.createObjectURL(blob);
-      setTeacherPreview((prev) =>
-        prev
-          ? {
-              ...prev,
-              blobUrl: url,
-              loading: false,
-              mimeType: blob.type || att.mime_type
-            }
-          : null
-      );
-    } catch (err: any) {
-      setTeacherPreview((prev) =>
-        prev
-          ? {
-              ...prev,
-              loading: false,
-              error: err?.response?.data?.message || 'Unable to load preview.'
-            }
-          : null
-      );
+    if (assignmentId) {
+      try {
+        const res = await api.get(`/teacher/assignments/${assignmentId}/document/preview`, {
+          params: attachmentId ? { attachmentId } : undefined,
+          responseType: 'blob'
+        });
+        const url = URL.createObjectURL(res.data);
+        setPreviewState((prev) => (prev ? { ...prev, blobUrl: url, loading: false } : null));
+      } catch (err: any) {
+        setPreviewState((prev) => (prev ? { ...prev, loading: false, error: err?.response?.data?.message || 'Failed to load preview.' } : null));
+      }
     }
   };
 
-  const handleTeacherDownload = async (assignmentId: string, submissionId: string, att: any) => {
+  const closePreview = () => {
+    if (previewState?.blobUrl && !createFiles.some(f => f.blobUrl === previewState.blobUrl) && !editNewFiles.some(f => f.blobUrl === previewState.blobUrl)) {
+      URL.revokeObjectURL(previewState.blobUrl);
+    }
+    setPreviewState(null);
+  };
+
+  const downloadAttachment = async (assignmentId: string, fileName: string, attachmentId?: string) => {
     try {
-      const res = await api.get(`/teacher/assignments/${assignmentId}/submissions/${submissionId}/attachments/${att.id}/download`, {
+      const res = await api.get(`/teacher/assignments/${assignmentId}/document/download`, {
+        params: attachmentId ? { attachmentId } : undefined,
         responseType: 'blob'
       });
       const blob = new Blob([res.data], { type: (res.headers['content-type'] as string) || 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = att.file_name;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -252,881 +420,901 @@ export function TeacherAssignments() {
     }
   };
 
-  const closeTeacherPreview = () => {
-    if (teacherPreview?.blobUrl) {
-      URL.revokeObjectURL(teacherPreview.blobUrl);
-    }
-    setTeacherPreview(null);
-  };
+  // 3. Create & Publish Assignment Submission
+  const handlePublishAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
 
-  // 1. Fetch Teacher Assignments
-  const loadAssignments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get('/teacher/assignments');
-      setAssignments(Array.isArray(res.data) ? res.data : []);
-    } catch (err: any) {
-      console.error('Failed to fetch assignments:', err);
-      setError(err?.response?.data?.message || 'Unable to load teacher assignments.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 2. Fetch Mentor-Authorized Eligible Options for Publishing
-  const loadEligibleOptions = useCallback(async () => {
-    setLoadingOptions(true);
-    try {
-      const res = await api.get('/teacher/assignments/eligible-options');
-      const options: EligibleOption[] = Array.isArray(res.data) ? res.data : [];
-      setEligibleOptions(options);
-
-      if (options.length > 0) {
-        setCreateForm(prev => ({
-          ...prev,
-          class_id: options[0].class_id,
-          section_id: options[0].section_id,
-          subject_id: options[0].subject_id
-        }));
-      } else {
-        setCreateForm(prev => ({
-          ...prev,
-          class_id: '',
-          section_id: '',
-          subject_id: ''
-        }));
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch eligible assignment publishing options:', err);
-    } finally {
-      setLoadingOptions(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAssignments();
-  }, [loadAssignments]);
-
-  const handleOpenCreateModal = () => {
-    setShowCreateModal(true);
-    setCreateFeedback(null);
-    loadEligibleOptions();
-  };
-
-  // 3. Derived Unique Class & Section Options
-  const uniqueClassSections = useMemo(() => {
-    const map = new Map<string, { class_id: string; class_number: number; section_id: string; section_name: string }>();
-    eligibleOptions.forEach(opt => {
-      const key = `${opt.class_id}:${opt.section_id}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          class_id: opt.class_id,
-          class_number: opt.class_number,
-          section_id: opt.section_id,
-          section_name: opt.section_name
-        });
-      }
-    });
-    return Array.from(map.values());
-  }, [eligibleOptions]);
-
-  // 4. Available Subjects for currently selected Class & Section
-  const availableSubjects = useMemo(() => {
-    if (!createForm.class_id || !createForm.section_id) return [];
-    return eligibleOptions.filter(
-      opt => opt.class_id === createForm.class_id && opt.section_id === createForm.section_id
-    );
-  }, [eligibleOptions, createForm.class_id, createForm.section_id]);
-
-  // 5. Handle Class & Section Selection Change
-  const handleClassSectionChange = (val: string) => {
-    if (!val) {
-      setCreateForm(prev => ({ ...prev, class_id: '', section_id: '', subject_id: '' }));
+    if (!createForm.title.trim()) {
+      setCreateError('Please enter an assignment title.');
       return;
     }
-    const [cId, sId] = val.split(':');
-    const subs = eligibleOptions.filter(opt => opt.class_id === cId && opt.section_id === sId);
-    const nextSubId = subs.length > 0 ? subs[0].subject_id : '';
-
-    setCreateForm(prev => ({
-      ...prev,
-      class_id: cId,
-      section_id: sId,
-      subject_id: nextSubId
-    }));
-  };
-
-  // 6. Fetch Submissions for Selected Assignment
-  const loadSubmissions = useCallback(async (assignmentId: string) => {
-    setLoadingSubmissions(true);
-    setSubmissionsError(null);
-    try {
-      const res = await api.get(`/teacher/assignments/${assignmentId}/submissions`);
-      setSubmissions(Array.isArray(res.data) ? res.data : []);
-    } catch (err: any) {
-      console.error('Failed to load submissions:', err);
-      setSubmissionsError(err?.response?.data?.message || 'Unable to load student submissions.');
-    } finally {
-      setLoadingSubmissions(false);
+    if (!createForm.class_id) {
+      setCreateError('Please select a target class.');
+      return;
     }
-  }, []);
+    if (!createForm.due_date) {
+      setCreateError('Please choose a submission deadline.');
+      return;
+    }
 
-  const handleOpenSubmissions = (asg: AssignmentRecord) => {
-    setActiveAssignment(asg);
-    setSelectedSubmission(null);
-    setGradeFeedback(null);
-    loadSubmissions(asg.id);
-  };
-
-  // 7. Handle Create Assignment Submit
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createForm.class_id || !createForm.section_id || !createForm.subject_id || !createForm.title.trim() || !createForm.due_date) return;
     setCreating(true);
-    setCreateFeedback(null);
-
     try {
-      const payload = {
-        ...createForm,
-        attachments: uploadedDocuments.map(d => ({
-          fileName: d.name,
-          fileData: d.base64,
-          size: d.size
-        })),
-        document_name: uploadedDocuments[0]?.name || null,
-        document_data: uploadedDocuments[0]?.base64 || null,
-        document_size: uploadedDocuments[0]?.size || null
-      };
+      const attachmentsPayload = createFiles.map((f) => ({
+        fileName: f.name,
+        fileData: f.base64,
+        size: f.size,
+        mimeType: f.mimeType
+      }));
 
-      const res = await api.post('/teacher/assignments', payload);
-      setCreateFeedback({
-        type: 'success',
-        message: res.data?.message || 'Assignment published successfully!'
+      await api.post('/teacher/assignments', {
+        class_id: createForm.class_id,
+        section_id: createForm.section_id || null,
+        title: createForm.title.trim(),
+        description: createForm.description.trim(),
+        assigned_date: createForm.assigned_date,
+        due_date: createForm.due_date,
+        max_marks: Number(createForm.max_marks || 100),
+        attachments: attachmentsPayload
       });
-      setCreateForm(prev => ({
-        ...prev,
+
+      setShowCreateModal(false);
+      setCreateForm({
+        class_id: '',
+        section_id: '',
         title: '',
         description: '',
+        assigned_date: new Date().toISOString().slice(0, 10),
         due_date: '',
         max_marks: 100
-      }));
-      setUploadedDocuments([]);
-      setUploadDocError(null);
-      loadAssignments();
-      setTimeout(() => setShowCreateModal(false), 1200);
-    } catch (err: any) {
-      setCreateFeedback({
-        type: 'error',
-        message: err?.response?.data?.message || 'Failed to publish assignment.'
       });
+      setCreateFiles([]);
+      loadAssignments();
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.message || 'Failed to publish assignment.');
     } finally {
       setCreating(false);
     }
   };
 
-  // 8. Handle Grade Submission
-  const handleGradeSubmit = async (e: React.FormEvent) => {
+  // 4. Open Edit Modal
+  const handleOpenEdit = (asg: AssignmentRecord) => {
+    setEditAssignment(asg);
+    setEditForm({
+      title: asg.title,
+      description: asg.description,
+      class_id: asg.class_id,
+      section_id: asg.section_id || '',
+      assigned_date: asg.assigned_date || (asg.created_at ? asg.created_at.slice(0, 10) : ''),
+      due_date: asg.due_date,
+      max_marks: asg.max_marks || 100
+    });
+
+    let existing: AssignmentAttachmentItem[] = [];
+    if (Array.isArray(asg.attachments) && asg.attachments.length > 0) {
+      existing = asg.attachments;
+    } else if (asg.document_name) {
+      existing = [{
+        id: 'doc-0',
+        file_name: asg.document_name,
+        file_size: asg.document_size || 0,
+        mime_type: asg.document_mime || 'application/pdf',
+        storage_key: asg.storage_key || undefined
+      }];
+    }
+    setEditExistingAtts(existing);
+    setEditRemovedIds([]);
+    setEditNewFiles([]);
+    setEditError(null);
+  };
+
+  // 5. Save Assignment Edits
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAssignment || !selectedSubmission) return;
-    setGrading(true);
-    setGradeFeedback(null);
+    if (!editAssignment) return;
+    setEditError(null);
 
+    if (!editForm.title.trim()) {
+      setEditError('Please enter an assignment title.');
+      return;
+    }
+    if (!editForm.class_id) {
+      setEditError('Please select a target class.');
+      return;
+    }
+    if (!editForm.due_date) {
+      setEditError('Please choose a submission deadline.');
+      return;
+    }
+
+    setSavingEdit(true);
     try {
-      await api.put(`/teacher/assignments/${activeAssignment.id}/submissions/${selectedSubmission.id}/grade`, {
-        marks_obtained: gradeForm.marks_obtained,
-        feedback: gradeForm.feedback
+      const newAttsPayload = editNewFiles.map((f) => ({
+        fileName: f.name,
+        fileData: f.base64,
+        size: f.size,
+        mimeType: f.mimeType
+      }));
+
+      await api.put(`/teacher/assignments/${editAssignment.id}`, {
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
+        class_id: editForm.class_id,
+        section_id: editForm.section_id || null,
+        assigned_date: editForm.assigned_date,
+        due_date: editForm.due_date,
+        max_marks: Number(editForm.max_marks || 100),
+        removedAttachmentIds: editRemovedIds,
+        newAttachments: newAttsPayload
       });
 
-      setGradeFeedback({
-        type: 'success',
-        message: `Grade saved for ${selectedSubmission.student_name || 'Student'}!`
-      });
-      setSelectedSubmission(null);
-      loadSubmissions(activeAssignment.id);
+      setEditAssignment(null);
+      loadAssignments();
     } catch (err: any) {
-      setGradeFeedback({
-        type: 'error',
-        message: err?.response?.data?.message || 'Failed to submit grade.'
-      });
+      setEditError(err?.response?.data?.message || 'Failed to update assignment.');
     } finally {
-      setGrading(false);
+      setSavingEdit(false);
     }
   };
 
-  // Filtered List
-  const filteredAssignments = assignments.filter(a => {
-    if (!searchQuery.trim()) return true;
-    const term = searchQuery.toLowerCase();
-    return (
-      a.title.toLowerCase().includes(term) ||
-      (a.subject_name && a.subject_name.toLowerCase().includes(term)) ||
-      (a.description && a.description.toLowerCase().includes(term))
-    );
-  });
+  // 6. Delete Assignment
+  const handleDeleteAssignment = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/teacher/assignments/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      loadAssignments();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to delete assignment.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 7. Submissions Review
+  const handleOpenSubmissions = async (asg: AssignmentRecord) => {
+    setSubmissionsAsg(asg);
+    setLoadingSubs(true);
+    try {
+      const res = await api.get(`/teacher/assignments/${asg.id}/submissions`);
+      setSubmissions(Array.isArray(res.data) ? res.data : []);
+    } catch (_e) {
+      setSubmissions([]);
+    } finally {
+      setLoadingSubs(false);
+    }
+  };
+
+  const handleGradeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submissionsAsg || !gradingSub) return;
+    setSavingGrade(true);
+    try {
+      await api.put(`/teacher/assignments/${submissionsAsg.id}/submissions/${gradingSub.id}/grade`, {
+        marks_obtained: gradeScore,
+        feedback: gradeFeedback
+      });
+      setGradingSub(null);
+      handleOpenSubmissions(submissionsAsg);
+      loadAssignments();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to save grade.');
+    } finally {
+      setSavingGrade(false);
+    }
+  };
+
+  // Filtered assignments
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (a.description && a.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.section_name && a.section_name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesClass = filterClass === '' || a.class_id === filterClass;
+      return matchesSearch && matchesClass;
+    });
+  }, [assignments, searchQuery, filterClass]);
 
   return (
-    <div style={{ width: '100%', paddingBottom: 60 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px', fontFamily: 'inherit' }}>
+      {/* Header Bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-main, #0f172a)' }}>
-            <BookOpen size={28} style={{ color: '#2563eb' }} /> Teacher Assignments
+          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            Assignment Management
           </h1>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
-            Publish homework assignments, review student submissions, and grade work.
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-muted, #64748b)' }}>
+            Create and publish assignments across any class or section, manage existing tasks, and review submissions.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenCreateModal}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 18px',
-            background: '#2563eb',
-            color: '#fff',
-            borderRadius: 8,
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(37,99,235,0.25)'
-          }}
-        >
-          <Plus size={18} /> Create Assignment
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={loadAssignments}
+            title="Refresh assignments"
+            style={{
+              padding: '9px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card, #ffffff)',
+              color: 'var(--text, #1e293b)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              padding: '9px 16px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#4f46e5',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)'
+            }}
+          >
+            <Plus size={16} /> Create Assignment
+          </button>
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>TOTAL PUBLISHED</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text, #0f172a)', marginTop: 4 }}>{assignments.length}</div>
-        </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>SUBMISSIONS RECEIVED</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
-            {assignments.reduce((acc, a) => acc + (a.submission_count || 0), 0)}
-          </div>
-        </div>
-        <div className="panel" style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: 13, fontWeight: 600 }}>PUBLISHING ELIGIBILITY</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#16a34a', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircle2 size={16} /> Server Scoped & Authorized
-          </div>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div style={{ marginBottom: 20, display: 'flex', gap: 12 }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
+      {/* Filter and Search Bar */}
+      <div
+        className="panel"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: 16,
+          borderRadius: 10,
+          background: 'var(--panel, #ffffff)',
+          border: '1px solid var(--border, #e2e8f0)',
+          marginBottom: 20
+        }}
+      >
+        <div style={{ flex: '1 1 240px', position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted, #94a3b8)' }} />
           <input
             type="text"
-            placeholder="Search assignments by title or subject..."
+            placeholder="Search assignments by title or description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              padding: '8px 12px 8px 36px',
+              padding: '9px 12px 9px 36px',
               borderRadius: 8,
               border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-card, #ffffff)',
+              background: 'var(--card, #ffffff)',
               color: 'var(--text, #0f172a)',
-              fontSize: 14,
-              outline: 'none'
+              fontSize: 13
             }}
           />
         </div>
-        <button
-          type="button"
-          onClick={loadAssignments}
-          disabled={loading}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: '1px solid var(--border, #cbd5e1)',
-            background: 'var(--bg-card, #fff)',
-            color: 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 13,
-            fontWeight: 600,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} style={{ color: '#2563eb' }} /> Refresh
-        </button>
+
+        <div style={{ flex: '0 1 200px' }}>
+          <select
+            value={filterClass}
+            onChange={(e) => setFilterClass(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '9px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--card, #ffffff)',
+              color: 'var(--text, #0f172a)',
+              fontSize: 13
+            }}
+          >
+            <option value="">All Classes</option>
+            {classesList.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Assignment List */}
-      {loading ? (
-        <div className="panel" style={{ textAlign: 'center', padding: 50, color: '#94a3b8' }}>
-          <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-          <p>Loading assignments...</p>
+      {/* Main Content: Published Assignments Table */}
+      <div
+        className="panel"
+        style={{
+          borderRadius: 12,
+          background: 'var(--panel, #ffffff)',
+          border: '1px solid var(--border, #e2e8f0)',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+            Published Assignments ({filteredAssignments.length})
+          </h2>
         </div>
-      ) : error ? (
-        <div className="panel" style={{ padding: 24, color: '#ef4444', textAlign: 'center' }}>
-          <AlertCircle size={28} style={{ margin: '0 auto 12px' }} />
-          <p>{error}</p>
-        </div>
-      ) : filteredAssignments.length === 0 ? (
-        <div className="panel" style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
-          <FileText size={36} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
-          <h3>No Assignments Found</h3>
-          <p style={{ fontSize: 14 }}>You haven't created any assignments yet or none match your search.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
-          {filteredAssignments.map((asg) => (
-            <div
-              key={asg.id}
-              className="panel"
+
+        {loading ? (
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+            <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px', color: '#4f46e5' }} />
+            <p style={{ margin: 0, fontSize: 14 }}>Loading published assignments...</p>
+          </div>
+        ) : error ? (
+          <div style={{ padding: 36, textAlign: 'center', color: '#dc2626' }}>
+            <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
+            <p style={{ margin: '0 0 12px', fontSize: 14 }}>{error}</p>
+            <button
+              type="button"
+              onClick={loadAssignments}
               style={{
-                padding: 20,
-                borderRadius: 12,
-                border: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--bg-card, #ffffff)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                padding: '8px 16px',
+                borderRadius: 6,
+                border: '1px solid #dc2626',
+                background: '#fee2e2',
+                color: '#b91c1c',
+                cursor: 'pointer'
               }}
             >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-                    {asg.subject_name || 'Subject'}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>
-                    Class {asg.class_number || '10'} {asg.section_name ? `- ${asg.section_name}` : ''}
-                  </span>
-                </div>
-                <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>{asg.title}</h3>
-                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary, #64748b)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {asg.description}
-                </p>
+              Retry
+            </button>
+          </div>
+        ) : filteredAssignments.length === 0 ? (
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+            <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text, #1e293b)' }}>No Assignments Found</h3>
+            <p style={{ margin: '0 0 16px', fontSize: 14 }}>Create and publish your first assignment to get started.</p>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                background: '#4f46e5',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer'
+              }}
+            >
+              <Plus size={14} style={{ display: 'inline', marginRight: 6 }} /> Create Assignment
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Assignment Title</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Class & Section</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Assigned Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Due Date</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'center' }}>Attachments</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Published On</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAssignments.map((asg) => {
+                  const attCount = asg.attachment_count ?? (Array.isArray(asg.attachments) ? asg.attachments.length : (asg.document_name ? 1 : 0));
+                  const classDisplay = asg.class_number !== undefined
+                    ? (asg.class_number === -1 ? 'L-KG' : asg.class_number === 0 ? 'U-KG' : `Class ${asg.class_number}`)
+                    : 'Class';
+                  const sectionDisplay = asg.section_name ? `Sec ${asg.section_name}` : 'All Sections';
+                  const pubDate = asg.created_at ? new Date(asg.created_at).toLocaleDateString() : 'N/A';
 
-                <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={14} style={{ color: '#0284c7' }} />
-                    <span>Due: <b>{asg.due_date}</b></span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Award size={14} style={{ color: '#d97706' }} />
-                    <span>Max Marks: <b>{asg.max_marks}</b></span>
-                  </div>
-                </div>
+                  return (
+                    <tr
+                      key={asg.id}
+                      style={{ borderBottom: '1px solid var(--border, #f1f5f9)', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text, #0f172a)', marginBottom: 2 }}>{asg.title}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #64748b)', maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {asg.description}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#4338ca', fontSize: 12, fontWeight: 600 }}>
+                          {classDisplay} • {sectionDisplay}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
+                        <Calendar size={13} style={{ display: 'inline', marginRight: 4, color: '#64748b' }} />
+                        {asg.assigned_date || (asg.created_at ? asg.created_at.slice(0, 10) : 'N/A')}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text, #334155)', whiteSpace: 'nowrap' }}>
+                        <Clock size={13} style={{ display: 'inline', marginRight: 4, color: '#d97706' }} />
+                        <span style={{ fontWeight: 600 }}>{asg.due_date}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {attCount > 0 ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7', fontSize: 12, fontWeight: 600 }}>
+                            <Paperclip size={12} /> {attCount}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary, #64748b)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                        {pubDate}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            title="View Assignment"
+                            onClick={() => setViewAssignment(asg)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border, #cbd5e1)',
+                              background: 'var(--card, #ffffff)',
+                              color: 'var(--text, #1e293b)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 12,
+                              fontWeight: 500
+                            }}
+                          >
+                            <Eye size={13} /> View
+                          </button>
 
-                {/* Attached Document indicator */}
-                {(asg.document_name || (asg.attachments && asg.attachments.length > 0)) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '5px 10px', borderRadius: 6, background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', width: 'fit-content', fontSize: 12 }}>
-                    <Paperclip size={13} style={{ color: '#0284c7' }} />
-                    <span style={{ fontWeight: 600, color: '#0369a1' }}>
-                      {asg.document_name || asg.attachments?.[0]?.file_name || 'Attached Document'}
-                    </span>
-                    {(asg.document_size || asg.attachments?.[0]?.file_size) && (
-                      <span style={{ color: '#64748b' }}>
-                        ({formatBytes(asg.document_size || asg.attachments?.[0]?.file_size)})
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                          <button
+                            type="button"
+                            title="Edit Assignment"
+                            onClick={() => handleOpenEdit(asg)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border, #cbd5e1)',
+                              background: 'var(--card, #ffffff)',
+                              color: '#0284c7',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 12,
+                              fontWeight: 500
+                            }}
+                          >
+                            <Edit size={13} /> Edit
+                          </button>
 
-              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
-                  Submissions: <b>{asg.submission_count || 0}</b>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleOpenSubmissions(asg)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card-subtle, #f8fafc)',
-                    color: 'var(--text, #1e293b)',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                >
-                  <Eye size={14} /> Review & Grade
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                          <button
+                            type="button"
+                            title="Delete Assignment"
+                            onClick={() => setDeleteTarget(asg)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid #fecaca',
+                              background: '#fff1f2',
+                              color: '#e11d48',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 12,
+                              fontWeight: 500
+                            }}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
 
-      {/* Create Assignment Modal */}
+                          <button
+                            type="button"
+                            title="Review Submissions"
+                            onClick={() => handleOpenSubmissions(asg)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid #c7d2fe',
+                              background: '#eef2ff',
+                              color: '#4338ca',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            <FileCheck size={13} /> Submissions ({asg.submission_count || 0})
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ------------------- CREATE ASSIGNMENT MODAL ------------------- */}
       {showCreateModal && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15,23,42,0.65)',
+            background: 'rgba(15, 23, 42, 0.65)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: isCreateModalMaximized ? 8 : 16,
-            transition: 'all 0.2s ease'
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !creating) {
-              setShowCreateModal(false);
-              setUploadedDocuments([]);
-              setUploadDocError(null);
-            }
+            padding: 16
           }}
         >
           <div
             style={{
-              background: 'var(--bg-card, #ffffff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: isCreateModalMaximized ? 8 : 12,
-              width: isCreateModalMaximized ? '97vw' : '100%',
-              maxWidth: isCreateModalMaximized ? 1160 : 560,
-              height: isCreateModalMaximized ? '94vh' : 'auto',
-              maxHeight: isCreateModalMaximized ? '94vh' : 'min(92vh, 750px)',
+              width: '100%',
+              maxWidth: isCreateMaximized ? '95vw' : '680px',
+              maxHeight: isCreateMaximized ? '95vh' : '90vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.25)',
-              color: 'var(--text, #0f172a)',
               overflow: 'hidden',
-              transition: 'all 0.22s ease'
+              border: '1px solid var(--border, #cbd5e1)'
             }}
           >
             {/* Modal Header */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '13px 20px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--modal-header, #f8fafc)',
-                flexShrink: 0
-              }}
-            >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    background: 'rgba(37, 99, 235, 0.1)',
-                    color: '#2563eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <BookOpen size={17} />
-                </div>
-                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-                  Publish New Assignment
-                </h2>
+                <BookOpen size={20} style={{ color: '#4f46e5' }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Create Assignment</h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalMaximized(!isCreateModalMaximized)}
-                  style={{
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--surface, #ffffff)',
-                    borderRadius: 6,
-                    padding: '5px 9px',
-                    cursor: 'pointer',
-                    color: 'var(--text, #334155)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease'
-                  }}
-                  title={isCreateModalMaximized ? 'Restore normal window size' : 'Maximize to full screen'}
+                  onClick={() => setIsCreateMaximized(!isCreateMaximized)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
                 >
-                  {isCreateModalMaximized ? (
-                    <>
-                      <Minimize2 size={14} />
-                      <span>Restore</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 size={14} />
-                      <span>Maximize</span>
-                    </>
-                  )}
+                  {isCreateMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setUploadedDocuments([]);
-                    setUploadDocError(null);
-                  }}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-muted, #64748b)',
-                    padding: 5,
-                    borderRadius: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Close"
+                  onClick={() => setShowCreateModal(false)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
                 >
-                  <X size={19} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
-            <form
-              onSubmit={handleCreateSubmit}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                flex: 1,
-                minHeight: 0,
-                overflow: 'hidden'
-              }}
-            >
-              {/* Scrollable Form Body - Guarantees everything fits smoothly on screen */}
-              <div
-                style={{
-                  padding: '16px 20px',
-                  overflowY: 'auto',
-                  flex: 1,
-                  minHeight: 0
-                }}
-              >
-                {createFeedback && (
-                  <div
+            {/* Modal Form */}
+            <form onSubmit={handlePublishAssignment} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: 20, gap: 16 }}>
+              {createError && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fee2e2', border: '1px solid #f87171', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertCircle size={16} />
+                  <span>{createError}</span>
+                </div>
+              )}
+
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Assignment Title <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Chapter 4 Practice Questions"
+                  value={createForm.title}
+                  onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 14
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Target Class and Section */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Select Class <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={createForm.class_id}
+                    onChange={(e) => setCreateForm({ ...createForm, class_id: e.target.value, section_id: '' })}
                     style={{
-                      padding: '10px 14px',
+                      width: '100%',
+                      padding: '10px 12px',
                       borderRadius: 8,
-                      marginBottom: 14,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      background: createFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      color: createFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)',
-                      border: `1px solid ${createFeedback.type === 'success' ? 'var(--emerald-border, rgba(16, 185, 129, 0.3))' : 'var(--rose-border, rgba(239, 68, 68, 0.3))'}`
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  >
+                    <option value="">-- Choose Class --</option>
+                    {classesList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Select Section
+                  </label>
+                  <select
+                    value={createForm.section_id}
+                    onChange={(e) => setCreateForm({ ...createForm, section_id: e.target.value })}
+                    disabled={!createForm.class_id}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: createForm.class_id ? 'var(--card, #ffffff)' : 'var(--card-subtle, #f1f5f9)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
                     }}
                   >
-                    {createFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                    <span>{createFeedback.message}</span>
-                  </div>
-                )}
-
-                {loadingOptions ? (
-                  <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted, #94a3b8)' }}>
-                    <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                    <p style={{ margin: 0, fontSize: 13 }}>Checking mentor-authorized publishing options...</p>
-                  </div>
-                ) : eligibleOptions.length === 0 ? (
-                  <div style={{ padding: '12px 14px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: 13, marginBottom: 14, lineHeight: 1.45 }}>
-                    <AlertTriangle size={17} style={{ display: 'inline', marginRight: 8, verticalAlign: '-3px' }} />
-                    <strong>No Mentor-Authorized Allocations:</strong> You do not currently have any class and subject allocations authorized for assignment publishing by the Class Mentor. Please contact your Class Mentor to authorize your subject.
-                  </div>
-                ) : null}
-
-                {/* Form fields: 2 columns in maximized mode, clean stacked flow in normal mode */}
-                <div
-                  style={{
-                    display: isCreateModalMaximized ? 'grid' : 'flex',
-                    gridTemplateColumns: isCreateModalMaximized ? '1.05fr 0.95fr' : undefined,
-                    flexDirection: isCreateModalMaximized ? undefined : 'column',
-                    gap: isCreateModalMaximized ? 22 : 13
-                  }}
-                >
-                  {/* Left Column / Primary Info */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {/* Dynamic Target Class & Section Dropdown + Subject Dropdown */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                          Target Class & Section *
-                        </label>
-                        <select
-                          required
-                          disabled={loadingOptions || uniqueClassSections.length === 0}
-                          value={createForm.class_id && createForm.section_id ? `${createForm.class_id}:${createForm.section_id}` : ''}
-                          onChange={(e) => handleClassSectionChange(e.target.value)}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
-                        >
-                          {uniqueClassSections.length === 0 ? (
-                            <option value="">No authorized classes</option>
-                          ) : (
-                            uniqueClassSections.map(cs => (
-                              <option key={`${cs.class_id}:${cs.section_id}`} value={`${cs.class_id}:${cs.section_id}`}>
-                                Class {cs.class_number} — Section {cs.section_name}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                          Subject *
-                        </label>
-                        <select
-                          required
-                          disabled={loadingOptions || availableSubjects.length === 0}
-                          value={createForm.subject_id}
-                          onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', fontSize: 13.5, background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)' }}
-                        >
-                          {availableSubjects.length === 0 ? (
-                            <option value="">No authorized subjects</option>
-                          ) : (
-                            availableSubjects.map(sub => (
-                              <option key={sub.subject_id} value={sub.subject_id}>
-                                {sub.subject_name}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                        Title *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Chapter 4 Calculus Homework"
-                        value={createForm.title}
-                        onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                        Description / Instructions
-                      </label>
-                      <AutoExpandingTextarea
-                        placeholder="Enter assignment details and instructions..."
-                        value={createForm.description}
-                        onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                        minHeight={isCreateModalMaximized ? 120 : 60}
-                        maxHeight={260}
-                        style={{ width: '100%', padding: '7px 11px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right Column / Schedule & Attachments */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                          Due Date *
-                        </label>
-                        <input
-                          type="date"
-                          required
-                          value={createForm.due_date}
-                          onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 4, color: 'var(--text, #334155)' }}>
-                          Max Marks
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={createForm.max_marks}
-                          onFocus={e => e.target.select()}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (/^0\d/.test(val)) {
-                              val = val.replace(/^0+/, '');
-                              e.target.value = val;
-                            }
-                            setCreateForm({ ...createForm, max_marks: val === '' ? ('' as any) : Number(val) });
-                          }}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--card-subtle, #fff)', color: 'var(--text, #0f172a)', fontSize: 13.5 }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Document Upload Section */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Paperclip size={14} style={{ color: '#0284c7' }} />
-                          Upload Document / Study Material <span style={{ fontSize: 11.5, fontWeight: 400, color: 'var(--text-muted, #64748b)' }}>(Optional)</span>
-                        </label>
-                        {uploadedDocuments.length > 0 && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
-                            {uploadedDocuments.length} / 5 files attached
-                          </span>
-                        )}
-                      </div>
-
-                      {uploadDocError && (
-                        <div style={{ padding: '6px 10px', borderRadius: 6, background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <AlertCircle size={14} />
-                          <span>{uploadDocError}</span>
-                        </div>
-                      )}
-
-                      <div
-                        onClick={() => document.getElementById('teacher-assignment-doc-input')?.click()}
-                        style={{
-                          border: '1.5px dashed var(--border, #cbd5e1)',
-                          borderRadius: 8,
-                          padding: isCreateModalMaximized ? '22px 14px' : '10px 12px',
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          background: 'var(--card-subtle, #f8fafc)',
-                          transition: 'all 0.2s ease',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 3
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#0284c7')}
-                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border, #cbd5e1)')}
-                      >
-                        <input
-                          id="teacher-assignment-doc-input"
-                          type="file"
-                          multiple
-                          accept=".png,.jpg,.jpeg,.pdf,.xlsx,.doc,.docx"
-                          style={{ display: 'none' }}
-                          onChange={handleTeacherFileChange}
-                          disabled={uploadedDocuments.length >= 5}
-                        />
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(2, 132, 199, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-                          <Upload size={15} />
-                        </div>
-                        <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
-                          Click or drop document files here
-                        </p>
-                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted, #64748b)' }}>
-                          PDF, DOC, DOCX, XLSX, PNG, JPG (Max 10MB per file)
-                        </p>
-                      </div>
-
-                      {/* Attached Documents List */}
-                      {uploadedDocuments.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
-                          {uploadedDocuments.map((doc, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '6px 10px',
-                                borderRadius: 6,
-                                background: 'var(--card-subtle, #f1f5f9)',
-                                border: '1px solid var(--border, #e2e8f0)',
-                                fontSize: 12
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-                                <FileText size={14} style={{ color: '#0284c7', flexShrink: 0 }} />
-                                <span style={{ fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isCreateModalMaximized ? 420 : 260 }}>
-                                  {doc.name}
-                                </span>
-                                <span style={{ color: 'var(--text-muted, #64748b)', fontSize: 11 }}>
-                                  ({formatBytes(doc.size)})
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveDoc(idx)}
-                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex' }}
-                                title="Remove file"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    <option value="">All Sections (Whole Class)</option>
+                    {availableSectionsForCreate.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        Section {s.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Fixed Modal Footer - Always visible on screen, never cut off */}
-              <div
-                style={{
-                  padding: '11px 20px',
-                  borderTop: '1px solid var(--border, #e2e8f0)',
-                  background: 'var(--modal-footer, #f8fafc)',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexShrink: 0
-                }}
-              >
+              {/* Assignment Date and Due Date */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Assigned Date <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={createForm.assigned_date}
+                    onChange={(e) => setCreateForm({ ...createForm, assigned_date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Submission Deadline (Due Date) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={createForm.due_date}
+                    onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Detailed Instructions / Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Detailed Instructions / Description
+                </label>
+                <AutoExpandingTextarea
+                  placeholder="Provide instructions, reading references, submission requirements..."
+                  value={createForm.description}
+                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  minHeight={80}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 14,
+                    lineHeight: 1.5
+                  }}
+                />
+              </div>
+
+              {/* Upload Multiple Attachments */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 4 }}>
+                  Attachments (PDF, JPG, PNG, DOCX, XLSX)
+                </label>
+                <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Upload up to 5 files. Max 10MB per file, 25MB total.
+                </p>
+
+                <div
+                  style={{
+                    border: '2px dashed var(--border, #cbd5e1)',
+                    borderRadius: 8,
+                    padding: '16px 20px',
+                    textAlign: 'center',
+                    background: 'var(--card-subtle, #f8fafc)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => document.getElementById('create-file-input')?.click()}
+                >
+                  <Upload size={24} style={{ color: '#6366f1', margin: '0 auto 8px' }} />
+                  <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                    Click to select files or browse
+                  </p>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>Supports PDF, JPG, PNG, DOC, DOCX</span>
+                  <input
+                    id="create-file-input"
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) =>
+                      handleFileSelection(
+                        e,
+                        createFiles.length,
+                        createFiles.reduce((acc, f) => acc + f.size, 0),
+                        (newItems) => setCreateFiles((prev) => [...prev, ...newItems]),
+                        (msg) => setCreateError(msg)
+                      )
+                    }
+                  />
+                </div>
+
+                {/* Pre-Publish Attachment List */}
+                {createFiles.length > 0 && (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {createFiles.map((fileItem, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: 'var(--card, #ffffff)',
+                          border: '1px solid var(--border, #e2e8f0)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                          <Paperclip size={14} style={{ color: '#4f46e5', flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {fileItem.name}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
+                            ({formatBytes(fileItem.size)})
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {(fileItem.mimeType.startsWith('image/') || fileItem.mimeType === 'application/pdf') && (
+                            <button
+                              type="button"
+                              onClick={() => openPreview(fileItem.name, fileItem.mimeType, fileItem.blobUrl)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: 4,
+                                border: '1px solid var(--border, #cbd5e1)',
+                                background: 'transparent',
+                                color: '#0284c7',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <Eye size={12} /> Preview
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            title="Remove attachment"
+                            onClick={() => {
+                              if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
+                              setCreateFiles((prev) => prev.filter((_, i) => i !== idx));
+                            }}
+                            style={{
+                              padding: '4px 6px',
+                              borderRadius: 4,
+                              border: 'none',
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              fontSize: 12,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setUploadedDocuments([]);
-                    setUploadDocError(null);
-                  }}
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={creating}
                   style={{
-                    padding: '7px 15px',
-                    borderRadius: 6,
+                    padding: '9px 16px',
+                    borderRadius: 8,
                     border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--card-subtle, #fff)',
-                    color: 'var(--text, #475569)',
+                    background: 'transparent',
+                    color: 'var(--text, #334155)',
                     fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: 13
+                    cursor: 'pointer'
                   }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || loadingOptions || eligibleOptions.length === 0 || !createForm.class_id || !createForm.subject_id}
+                  disabled={creating}
                   style={{
-                    padding: '7px 18px',
-                    borderRadius: 6,
+                    padding: '9px 20px',
+                    borderRadius: 8,
                     border: 'none',
-                    background: (creating || eligibleOptions.length === 0) ? '#94a3b8' : '#2563eb',
-                    color: '#fff',
+                    background: '#4f46e5',
+                    color: '#ffffff',
                     fontWeight: 600,
-                    cursor: (creating || eligibleOptions.length === 0) ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    fontSize: 13
+                    gap: 8,
+                    boxShadow: '0 2px 4px rgba(79,70,229,0.3)'
                   }}
                 >
-                  {creating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Assignment
+                  {creating ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+                  Publish Assignment
                 </button>
               </div>
             </form>
@@ -1134,479 +1322,1003 @@ export function TeacherAssignments() {
         </div>
       )}
 
-      {/* Submissions & Grading Modal */}
-      {activeAssignment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isSubmissionsMaximized ? 8 : 16, transition: 'all 0.2s ease' }}>
-          <div style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: isSubmissionsMaximized ? 8 : 12, width: isSubmissionsMaximized ? '97vw' : '100%', maxWidth: isSubmissionsMaximized ? 1200 : 780, height: isSubmissionsMaximized ? '94vh' : 'auto', maxHeight: isSubmissionsMaximized ? '94vh' : 'min(92vh, 800px)', overflowY: 'auto', padding: isSubmissionsMaximized ? '18px 24px' : '20px 24px', color: 'var(--text, #0f172a)', transition: 'all 0.22s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border, #f1f5f9)', paddingBottom: 12 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-                  Submissions: {activeAssignment.title}
-                </h2>
-                <span style={{ fontSize: 13, color: 'var(--text-muted, #64748b)' }}>
-                  Max Marks: <b>{activeAssignment.max_marks}</b> | Due: <b>{activeAssignment.due_date}</b>
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSubmissionsMaximized(!isSubmissionsMaximized)}
-                  style={{
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--surface, #ffffff)',
-                    borderRadius: 6,
-                    padding: '5px 9px',
-                    cursor: 'pointer',
-                    color: 'var(--text, #334155)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease'
-                  }}
-                  title={isSubmissionsMaximized ? 'Restore standard window size' : 'Maximize to full screen'}
-                >
-                  {isSubmissionsMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                  <span>{isSubmissionsMaximized ? 'Restore' : 'Maximize'}</span>
-                </button>
-                <button type="button" onClick={() => setActiveAssignment(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: 5, borderRadius: 6 }}>
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            {gradeFeedback && (
-              <div
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: gradeFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: gradeFeedback.type === 'success' ? 'var(--emerald-600, #059669)' : 'var(--rose-600, #dc2626)'
-                }}
-              >
-                {gradeFeedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                <span>{gradeFeedback.message}</span>
-              </div>
-            )}
-
-            {/* Grading Form Modal section if submission selected */}
-            {selectedSubmission ? (
-              <div style={{ background: 'var(--card-subtle, #f8fafc)', padding: 16, borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
-                    Grade Submission for <PersonProfileLink kind="student" id={selectedSubmission.student_id} name={selectedSubmission.student_name || 'Student'} person={selectedSubmission as any} /> (Roll #{selectedSubmission.roll_number || '—'})
-                  </h3>
-                  <button type="button" onClick={() => setSelectedSubmission(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
-                    Cancel Grading
-                  </button>
-                </div>
-
-                <div style={{ background: 'var(--bg-card, #fff)', padding: 12, borderRadius: 6, border: '1px solid var(--border, #e2e8f0)', fontSize: 13, marginBottom: 12 }}>
-                  <b style={{ color: 'var(--text)' }}>Submission Content:</b>
-                  <p style={{ margin: '4px 0 0', color: 'var(--text-secondary, #334155)', whiteSpace: 'pre-wrap' }}>{selectedSubmission.submission_text || 'No text provided.'}</p>
-
-                  {selectedSubmission.attachments && selectedSubmission.attachments.length > 0 && (
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border, #f1f5f9)' }}>
-                      <b style={{ display: 'block', marginBottom: 6, color: 'var(--text, #334155)' }}>
-                        Student Attachments ({selectedSubmission.attachments.length}):
-                      </b>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {selectedSubmission.attachments.map((att) => {
-                          const isPreviewable =
-                            att.mime_type?.startsWith('image/') ||
-                            att.mime_type === 'application/pdf' ||
-                            att.file_name.endsWith('.pdf') ||
-                            att.file_name.endsWith('.png') ||
-                            att.file_name.endsWith('.jpg') ||
-                            att.file_name.endsWith('.jpeg');
-
-                          return (
-                            <div
-                              key={att.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: 'var(--card-subtle, #f8fafc)',
-                                border: '1px solid var(--border, #cbd5e1)',
-                                borderRadius: 6,
-                                padding: '6px 10px',
-                                fontSize: 12
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', maxWidth: '65%' }}>
-                                <Paperclip size={13} color="var(--text-muted, #64748b)" />
-                                <span title={att.file_name} style={{ fontWeight: 500, color: 'var(--text, #1e293b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {att.file_name}
-                                </span>
-                                <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 11 }}>
-                                  ({formatBytes(att.file_size)})
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                {isPreviewable && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleTeacherPreview(activeAssignment.id, selectedSubmission.id, att)}
-                                    style={{
-                                      border: '1px solid var(--border, #cbd5e1)',
-                                      background: 'var(--bg-card, #fff)',
-                                      borderRadius: 4,
-                                      padding: '3px 8px',
-                                      cursor: 'pointer',
-                                      fontSize: 11,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: 4,
-                                      color: 'var(--text, #334155)'
-                                    }}
-                                  >
-                                    <Eye size={12} /> Preview
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleTeacherDownload(activeAssignment.id, selectedSubmission.id, att)}
-                                  style={{
-                                    border: '1px solid #2563eb',
-                                    background: 'rgba(37, 99, 235, 0.12)',
-                                    borderRadius: 4,
-                                    padding: '3px 8px',
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    color: 'var(--sidebar-accent, #3b82f6)'
-                                  }}
-                                >
-                                  <Download size={12} /> Download
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Marks Obtained *</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={activeAssignment.max_marks}
-                        required
-                        value={gradeForm.marks_obtained}
-                        onFocus={e => e.target.select()}
-                        onChange={(e) => {
-                          let val = e.target.value;
-                          if (/^0\d/.test(val)) {
-                            val = val.replace(/^0+/, '');
-                            e.target.value = val;
-                          }
-                          setGradeForm({ ...gradeForm, marks_obtained: val === '' ? ('' as any) : Number(val) });
-                        }}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Feedback / Evaluation Comments</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Excellent solution structure!"
-                        value={gradeForm.feedback}
-                        onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', background: 'var(--bg-card)', color: 'var(--text)' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button type="submit" disabled={grading} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                      {grading ? 'Saving...' : 'Save Grade'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ) : null}
-
-            {loadingSubmissions ? (
-              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #94a3b8)' }}>
-                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                <p>Loading student submissions...</p>
-              </div>
-            ) : submissionsError ? (
-              <div style={{ padding: 16, color: '#ef4444', textAlign: 'center' }}>
-                <p>{submissionsError}</p>
-              </div>
-            ) : submissions.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted, #64748b)' }}>
-                <p>No student submissions received for this assignment yet.</p>
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '2px solid var(--border, #e2e8f0)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Student</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Submitted Date</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Status</th>
-                    <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((sub) => (
-                    <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
-                        <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'} person={sub as any} />
-                        {sub.roll_number && <span style={{ color: 'var(--text-muted, #64748b)', fontWeight: 400 }}> (Roll #{sub.roll_number})</span>}
-                        {sub.attachments && sub.attachments.length > 0 && (
-                          <span
-                            title={`${sub.attachments.length} attachment(s)`}
-                            style={{
-                              marginLeft: 6,
-                              fontSize: 11,
-                              background: 'var(--card-subtle, #f1f5f9)',
-                              border: '1px solid var(--border, #cbd5e1)',
-                              padding: '1px 6px',
-                              borderRadius: 4,
-                              color: 'var(--text-secondary, #475569)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              fontWeight: 500
-                            }}
-                          >
-                            <Paperclip size={11} /> {sub.attachments.length}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 12px', color: 'var(--text-muted, #64748b)' }}>
-                        {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            background: sub.status === 'GRADED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: sub.status === 'GRADED' ? '#34d399' : '#fbbf24'
-                          }}
-                        >
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text)' }}>
-                        {sub.status === 'GRADED' ? `${sub.marks_obtained} / ${activeAssignment.max_marks}` : '—'}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedSubmission(sub);
-                            setGradeForm({
-                              marks_obtained: Number(sub.marks_obtained ?? 0),
-                              feedback: sub.feedback || ''
-                            });
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            border: '1px solid #2563eb',
-                            background: 'rgba(37, 99, 235, 0.12)',
-                            color: 'var(--sidebar-accent, #3b82f6)',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Teacher Attachment Preview Modal */}
-      {teacherPreview && (
+      {/* ------------------- VIEW ASSIGNMENT MODAL ------------------- */}
+      {viewAssignment && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15,23,42,0.75)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1100,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 1000,
             padding: 16
           }}
         >
           <div
             style={{
-              background: 'var(--bg-card, #fff)',
-              border: '1px solid var(--border, #e2e8f0)',
-              borderRadius: 12,
-              width: 'min(900px, 95vw)',
-              height: 'min(85vh, 800px)',
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '90vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 18px',
-                borderBottom: '1px solid var(--border, #e2e8f0)',
-                background: 'var(--card-subtle, #f8fafc)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                <Paperclip size={16} color="var(--text-muted, #64748b)" />
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: 'var(--text, #0f172a)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {teacherPreview.fileName}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Eye size={20} style={{ color: '#0284c7' }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Assignment Details</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewAssignment(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#e0e7ff', color: '#4338ca', display: 'inline-block', marginBottom: 8 }}>
+                  Class {viewAssignment.class_number ?? ''} {viewAssignment.section_name ? `• Section ${viewAssignment.section_name}` : '• All Sections'}
+                </span>
+                <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  {viewAssignment.title}
                 </h3>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, padding: 12, borderRadius: 8, background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #e2e8f0)', fontSize: 13 }}>
+                <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>ASSIGNED DATE</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                    {viewAssignment.assigned_date || (viewAssignment.created_at ? viewAssignment.created_at.slice(0, 10) : 'N/A')}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>DUE DATE</span>
+                  <span style={{ fontWeight: 600, color: '#d97706' }}>
+                    {viewAssignment.due_date}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>PUBLISHED ON</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                    {viewAssignment.created_at ? new Date(viewAssignment.created_at).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: 11, fontWeight: 600 }}>MAX MARKS</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                    {viewAssignment.max_marks || 100}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #64748b)', marginBottom: 6 }}>
+                  INSTRUCTIONS
+                </label>
+                <div style={{ padding: 14, borderRadius: 8, background: 'var(--card, #ffffff)', border: '1px solid var(--border, #e2e8f0)', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: 14, color: 'var(--text, #1e293b)' }}>
+                  {viewAssignment.description || 'No instructions provided.'}
+                </div>
+              </div>
+
+              {/* Attachments List */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #64748b)', marginBottom: 6 }}>
+                  ATTACHMENTS ({Array.isArray(viewAssignment.attachments) ? viewAssignment.attachments.length : (viewAssignment.document_name ? 1 : 0)})
+                </label>
+
+                {((Array.isArray(viewAssignment.attachments) && viewAssignment.attachments.length > 0) || viewAssignment.document_name) ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(Array.isArray(viewAssignment.attachments) && viewAssignment.attachments.length > 0
+                      ? viewAssignment.attachments
+                      : [{
+                          id: 'doc-0',
+                          file_name: viewAssignment.document_name || 'attachment.pdf',
+                          file_size: viewAssignment.document_size || 0,
+                          mime_type: viewAssignment.document_mime || 'application/pdf'
+                        }]
+                    ).map((att, idx) => (
+                      <div
+                        key={att.id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: 8,
+                          background: 'var(--card, #ffffff)',
+                          border: '1px solid var(--border, #e2e8f0)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                          <Paperclip size={16} style={{ color: '#0284c7', flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text, #0f172a)' }}>
+                            {att.file_name}
+                          </span>
+                          {att.file_size ? (
+                            <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(att.file_size)})</span>
+                          ) : null}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => openPreview(att.file_name, att.mime_type, null, viewAssignment.id, att.id)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border, #cbd5e1)',
+                              background: 'transparent',
+                              color: '#0284c7',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <Eye size={13} /> Preview Attachment
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadAttachment(viewAssignment.id, att.file_name, att.id)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border, #cbd5e1)',
+                              background: 'transparent',
+                              color: 'var(--text, #334155)',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <Download size={13} /> Download Attachment
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', fontStyle: 'italic', margin: 0 }}>
+                    No attachments uploaded.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setViewAssignment(null)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'var(--card-subtle, #f8fafc)',
+                  color: 'var(--text, #1e293b)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- EDIT ASSIGNMENT MODAL ------------------- */}
+      {editAssignment && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '90vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Edit size={20} style={{ color: '#0284c7' }} />
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>Edit Assignment</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditAssignment(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', padding: 20, gap: 16 }}>
+              {editError && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fee2e2', border: '1px solid #f87171', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertCircle size={16} />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Assignment Title <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 14
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Target Class and Section */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Select Class <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={editForm.class_id}
+                    onChange={(e) => setEditForm({ ...editForm, class_id: e.target.value, section_id: '' })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  >
+                    <option value="">-- Choose Class --</option>
+                    {classesList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Select Section
+                  </label>
+                  <select
+                    value={editForm.section_id}
+                    onChange={(e) => setEditForm({ ...editForm, section_id: e.target.value })}
+                    disabled={!editForm.class_id}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: editForm.class_id ? 'var(--card, #ffffff)' : 'var(--card-subtle, #f1f5f9)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                  >
+                    <option value="">All Sections (Whole Class)</option>
+                    {availableSectionsForEdit.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        Section {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Assigned Date and Due Date */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Assigned Date <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.assigned_date}
+                    onChange={(e) => setEditForm({ ...editForm, assigned_date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Submission Deadline (Due Date) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.due_date}
+                    onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 14
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                  Description / Instructions
+                </label>
+                <AutoExpandingTextarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  minHeight={80}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--card, #ffffff)',
+                    color: 'var(--text, #0f172a)',
+                    fontSize: 14,
+                    lineHeight: 1.5
+                  }}
+                />
+              </div>
+
+              {/* Existing Attachments */}
+              {editExistingAtts.length > 0 && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 6 }}>
+                    Current Attachments
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {editExistingAtts.map((att) => {
+                      const isMarked = editRemovedIds.includes(att.id || '');
+                      return (
+                        <div
+                          key={att.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            background: isMarked ? '#fee2e2' : 'var(--card-subtle, #f8fafc)',
+                            border: `1px solid ${isMarked ? '#fca5a5' : 'var(--border, #e2e8f0)'}`,
+                            opacity: isMarked ? 0.6 : 1
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                            <Paperclip size={14} style={{ color: '#0284c7' }} />
+                            <span style={{ fontSize: 13, textDecoration: isMarked ? 'line-through' : 'none', color: isMarked ? '#991b1b' : 'var(--text, #0f172a)' }}>
+                              {att.file_name}
+                            </span>
+                            {att.file_size ? <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(att.file_size)})</span> : null}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {isMarked ? (
+                              <button
+                                type="button"
+                                onClick={() => setEditRemovedIds((prev) => prev.filter((id) => id !== att.id))}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#e0e7ff', color: '#4338ca', fontSize: 12, cursor: 'pointer' }}
+                              >
+                                Undo
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditRemovedIds((prev) => [...prev, att.id || ''])}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#fee2e2', color: '#b91c1c', fontSize: 12, cursor: 'pointer' }}
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Add New Attachments */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: 4 }}>
+                  Add New Attachments
+                </label>
+                <div
+                  style={{
+                    border: '2px dashed var(--border, #cbd5e1)',
+                    borderRadius: 8,
+                    padding: '14px 20px',
+                    textAlign: 'center',
+                    background: 'var(--card-subtle, #f8fafc)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => document.getElementById('edit-file-input')?.click()}
+                >
+                  <Upload size={20} style={{ color: '#6366f1', margin: '0 auto 6px' }} />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text, #1e293b)' }}>
+                    Select new files to attach
+                  </p>
+                  <input
+                    id="edit-file-input"
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) =>
+                      handleFileSelection(
+                        e,
+                        editExistingAtts.filter((a) => !editRemovedIds.includes(a.id || '')).length + editNewFiles.length,
+                        editNewFiles.reduce((acc, f) => acc + f.size, 0),
+                        (newItems) => setEditNewFiles((prev) => [...prev, ...newItems]),
+                        (msg) => setEditError(msg)
+                      )
+                    }
+                  />
+                </div>
+
+                {editNewFiles.length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {editNewFiles.map((fileItem, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: 'var(--card, #ffffff)',
+                          border: '1px solid var(--border, #e2e8f0)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Paperclip size={13} style={{ color: '#16a34a' }} />
+                          <span style={{ fontSize: 13, color: 'var(--text, #0f172a)' }}>{fileItem.name}</span>
+                          <span style={{ fontSize: 11, color: '#64748b' }}>({formatBytes(fileItem.size)})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (fileItem.blobUrl) URL.revokeObjectURL(fileItem.blobUrl);
+                            setEditNewFiles((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#b91c1c' }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border, #e2e8f0)' }}>
                 <button
                   type="button"
-                  onClick={() =>
-                    handleTeacherDownload(
-                      teacherPreview.assignmentId,
-                      teacherPreview.submissionId,
-                      { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
-                    )
-                  }
+                  onClick={() => setEditAssignment(null)}
+                  disabled={savingEdit}
                   style={{
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    borderRadius: 6,
-                    padding: '5px 10px',
-                    fontSize: 12,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'transparent',
+                    color: 'var(--text, #334155)',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
                     fontWeight: 600,
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 5,
-                    color: 'var(--text, #1e293b)'
+                    gap: 8
                   }}
                 >
-                  <Download size={13} /> Download
+                  {savingEdit ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
+                  Save Changes
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- DELETE ASSIGNMENT CONFIRMATION DIALOG ------------------- */}
+      {deleteTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              padding: 24,
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ padding: 10, borderRadius: '50%', background: '#fee2e2', color: '#b91c1c' }}>
+                <AlertTriangle size={24} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                Delete Assignment
+              </h3>
+            </div>
+
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text, #334155)', lineHeight: 1.5 }}>
+              Are you sure you want to delete <b>{deleteTarget.title}</b>?
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#b91c1c', lineHeight: 1.4 }}>
+              This will permanently remove the assignment, all associated attachments from storage, and all student submissions. This action cannot be undone.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border, #cbd5e1)',
+                  background: 'transparent',
+                  color: 'var(--text, #334155)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAssignment}
+                disabled={deleting}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#e11d48',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- IN-BROWSER ATTACHMENT PREVIEW MODAL ------------------- */}
+      {previewState && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              height: '85vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <Eye size={18} style={{ color: '#0284c7' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {previewState.fileName}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {previewState.assignmentId && (
+                  <button
+                    type="button"
+                    onClick={() => downloadAttachment(previewState.assignmentId!, previewState.fileName, previewState.attachmentId)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: 'var(--card-subtle, #f8fafc)',
+                      color: 'var(--text, #1e293b)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Download size={13} /> Download Attachment
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={closeTeacherPreview}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: '#64748b',
-                    padding: 4
-                  }}
+                  onClick={closePreview}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 16,
-                background: '#0f172a08',
-                overflow: 'auto'
-              }}
-            >
-              {teacherPreview.loading ? (
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
-                  <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+            <div style={{ flex: 1, overflow: 'hidden', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {previewState.loading ? (
+                <div style={{ textAlign: 'center', color: '#cbd5e1' }}>
+                  <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px' }} />
                   <p style={{ margin: 0, fontSize: 14 }}>Loading preview securely...</p>
                 </div>
-              ) : teacherPreview.error ? (
-                <div style={{ textAlign: 'center', color: '#ef4444', padding: 20 }}>
-                  <AlertCircle size={32} style={{ margin: '0 auto 8px' }} />
-                  <p style={{ margin: 0, fontSize: 14 }}>{teacherPreview.error}</p>
+              ) : previewState.error ? (
+                <div style={{ textAlign: 'center', color: '#f87171', padding: 24 }}>
+                  <AlertCircle size={32} style={{ margin: '0 auto 12px' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>{previewState.error}</p>
                 </div>
-              ) : teacherPreview.blobUrl && teacherPreview.mimeType?.startsWith('image/') ? (
+              ) : previewState.blobUrl && previewState.mimeType.startsWith('image/') ? (
                 <img
-                  src={teacherPreview.blobUrl}
-                  alt={teacherPreview.fileName}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 4 }}
+                  src={previewState.blobUrl}
+                  alt={previewState.fileName}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                 />
-              ) : teacherPreview.blobUrl && teacherPreview.mimeType === 'application/pdf' ? (
+              ) : previewState.blobUrl && previewState.mimeType === 'application/pdf' ? (
                 <iframe
-                  src={teacherPreview.blobUrl}
-                  title={teacherPreview.fileName}
-                  style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4 }}
+                  src={previewState.blobUrl}
+                  title={previewState.fileName}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
                 />
               ) : (
-                <div style={{ textAlign: 'center', padding: 30, color: '#475569' }}>
-                  <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
-                  <h4 style={{ margin: '0 0 6px', fontSize: 16 }}>Inline preview not supported for this file type</h4>
-                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
-                    Word and Excel documents can be downloaded to view with your preferred software.
+                <div style={{ textAlign: 'center', color: '#e2e8f0', padding: 32 }}>
+                  <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                  <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Inline preview not supported for this format</h4>
+                  <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                    Document files (.doc, .docx, .xlsx) can be downloaded directly to view on your device.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleTeacherDownload(
-                        teacherPreview.assignmentId,
-                        teacherPreview.submissionId,
-                        { file_name: teacherPreview.fileName, id: teacherPreview.attachmentId }
-                      )
-                    }
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: 6,
-                      background: '#2563eb',
-                      color: '#fff',
-                      border: 'none',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
-                  >
-                    <Download size={14} /> Download Document
-                  </button>
+                  {previewState.assignmentId && (
+                    <button
+                      type="button"
+                      onClick={() => downloadAttachment(previewState.assignmentId!, previewState.fileName, previewState.attachmentId)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: 6,
+                        border: 'none',
+                        background: '#0284c7',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Download size={14} /> Download Document
+                    </button>
+                  )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------- REVIEW & GRADE SUBMISSIONS MODAL ------------------- */}
+      {submissionsAsg && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 840,
+              maxHeight: '90vh',
+              background: 'var(--panel, #ffffff)',
+              borderRadius: 14,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+          >
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: '0 0 2px', fontSize: 17, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                  Student Submissions: {submissionsAsg.title}
+                </h3>
+                <span style={{ fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Due: {submissionsAsg.due_date} | Total Submissions: {submissions.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubmissionsAsg(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
+              {loadingSubs ? (
+                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+                  <Loader2 size={28} className="spin" style={{ margin: '0 auto 8px', color: '#4f46e5' }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>Loading student submissions...</p>
+                </div>
+              ) : submissions.length === 0 ? (
+                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+                  <FileText size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontSize: 14 }}>No students have submitted work for this assignment yet.</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Student</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Submitted At</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Status</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>Score</th>
+                      <th style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-muted, #64748b)', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {submissions.map((sub) => (
+                      <tr key={sub.id} style={{ borderBottom: '1px solid var(--border, #f1f5f9)' }}>
+                        <td style={{ padding: '12px' }}>
+                          <PersonProfileLink kind="student" id={sub.student_id} name={sub.student_name || 'Student'}>
+                            <span style={{ fontWeight: 600, color: 'var(--text, #0f172a)' }}>{sub.student_name || 'Student'}</span>
+                          </PersonProfileLink>
+                          {sub.roll_number && (
+                            <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>
+                              (Roll: {sub.roll_number})
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--text-secondary, #64748b)' }}>
+                          {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              background: sub.status === 'GRADED' ? '#dcfce7' : '#fef3c7',
+                              color: sub.status === 'GRADED' ? '#15803d' : '#b45309'
+                            }}
+                          >
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: 600 }}>
+                          {sub.marks_obtained !== undefined && sub.marks_obtained !== null ? `${sub.marks_obtained} / ${submissionsAsg.max_marks || 100}` : '—'}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGradingSub(sub);
+                              setGradeScore(sub.marks_obtained ?? 0);
+                              setGradeFeedback(sub.feedback || '');
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              border: '1px solid var(--border, #cbd5e1)',
+                              background: 'var(--card, #ffffff)',
+                              color: '#4f46e5',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {sub.status === 'GRADED' ? 'Edit Grade' : 'Grade'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Sub-form to Grade selected submission */}
+              {gradingSub && (
+                <div style={{ marginTop: 20, padding: 16, borderRadius: 10, background: 'var(--card-subtle, #f8fafc)', border: '1px solid var(--border, #cbd5e1)' }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                    Grade Submission: {gradingSub.student_name}
+                  </h4>
+                  {gradingSub.submission_text && (
+                    <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, background: '#ffffff', border: '1px solid #e2e8f0', fontSize: 13, color: '#334155' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>SUBMISSION TEXT:</span>
+                      {gradingSub.submission_text}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleGradeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ flex: '0 0 140px' }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                          Score (Max {submissionsAsg.max_marks || 100})
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={submissionsAsg.max_marks || 100}
+                          value={gradeScore}
+                          onChange={(e) => setGradeScore(Number(e.target.value))}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #cbd5e1',
+                            fontSize: 13
+                          }}
+                          required
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                          Teacher Feedback
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Optional feedback for student..."
+                          value={gradeFeedback}
+                          onChange={(e) => setGradeFeedback(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            border: '1px solid #cbd5e1',
+                            fontSize: 13
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setGradingSub(null)}
+                        style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer', fontSize: 12 }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingGrade}
+                        style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#ffffff', fontWeight: 600, cursor: 'pointer', fontSize: 12 }}
+                      >
+                        {savingGrade ? 'Saving...' : 'Save Grade'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSubmissionsAsg(null)}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

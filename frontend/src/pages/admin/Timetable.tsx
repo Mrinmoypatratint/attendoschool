@@ -130,6 +130,8 @@ export default function Timetable() {
   const [loading, setLoading] = useState(true);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [viewMode, setViewMode] = useState<'class' | 'mySchedule'>('class');
+  const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   // Filters
   const [selDay, setSelDay] = useState(() => { const d = new Date().getDay(); return d === 0 || d > 6 ? 1 : d; });
@@ -152,23 +154,60 @@ export default function Timetable() {
   async function loadAll(initial = false) {
     if (initial) setLoading(true);
     try {
-      const [pRes, eRes, cRes, sRes, subRes, tRes] = await Promise.all([
+      const [pRes, eRes, cRes, sRes, subRes, tRes, authRes] = await Promise.all([
         api.get('/timetable/periods').catch(() => ({ data: [] })),
         api.get('/timetable/entries').catch(() => ({ data: [] })),
         api.get('/classes').catch(() => ({ data: [] })),
         api.get('/sections').catch(() => ({ data: [] })),
         api.get('/subjects').catch(() => ({ data: [] })),
-        api.get('/teachers').catch(() => ({ data: [] }))
+        api.get('/teachers?full=true').catch(() => ({ data: [] })),
+        isTeacher ? api.get('/teacher/authorized-sections').catch(() => ({ data: { sections: [] } })) : Promise.resolve({ data: { sections: [] } })
       ]);
       if (Array.isArray(pRes.data) && pRes.data.length > 0) setPeriods(pRes.data);
       if (Array.isArray(eRes.data)) setEntries(eRes.data);
-      if (Array.isArray(cRes.data) && cRes.data.length > 0) {
-        setClasses(cRes.data);
-        setSelClassId(prev => (prev && cRes.data.some((c: any) => c.id === prev) ? prev : cRes.data[0].id));
+
+      const myAuth: any[] = Array.isArray(authRes.data?.sections)
+        ? authRes.data.sections
+        : (Array.isArray(authRes.data) ? authRes.data : []);
+      if (isTeacher) {
+        setAuthorizedSections(myAuth);
+        setAuthLoaded(true);
       }
-      if (Array.isArray(sRes.data) && sRes.data.length > 0) setSections(sRes.data);
+
+      const cList = Array.isArray(cRes.data) ? cRes.data : [];
+      const sList = Array.isArray(sRes.data) ? sRes.data : [];
+      if (cList.length > 0) setClasses(cList);
+      if (sList.length > 0) setSections(sList);
       if (Array.isArray(subRes.data)) setSubjects(subRes.data);
       if (Array.isArray(tRes.data)) setTeachers(tRes.data);
+
+      if (isTeacher) {
+        if (myAuth.length > 0) {
+          const mentorSec = myAuth[0];
+          const mentorClassId = mentorSec.classId || mentorSec.class_id;
+          const mentorSecId = mentorSec.sectionId || mentorSec.section_id;
+
+          const matchedClass = cList.find((c: any) =>
+            String(c.id) === String(mentorClassId) ||
+            (mentorSec.classNumber !== undefined && Number(c.class_number ?? c.classNumber) === Number(mentorSec.classNumber))
+          );
+          const resolvedClassId = matchedClass ? matchedClass.id : mentorClassId;
+
+          const matchedSec = sList.find((s: any) =>
+            String(s.id) === String(mentorSecId) ||
+            (matchedClass && (s.class_id === matchedClass.id || s.classId === matchedClass.id) &&
+             (s.name === mentorSec.sectionName || s.section_name === mentorSec.sectionName))
+          );
+          const resolvedSecId = matchedSec ? matchedSec.id : mentorSecId;
+
+          setSelClassId(resolvedClassId);
+          setSelSectionId(resolvedSecId);
+        }
+      } else {
+        if (cList.length > 0) {
+          setSelClassId(prev => (prev && cList.some((c: any) => c.id === prev) ? prev : cList[0].id));
+        }
+      }
     } catch (err) {
       console.error('Timetable load error:', err);
     } finally {
@@ -183,34 +222,17 @@ export default function Timetable() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  // Ensure default class if not set
+  // Ensure default class if not set (for admin)
   useEffect(() => {
-    if (classes.length > 0 && (!selClassId || !classes.some(c => c.id === selClassId))) {
+    if (!isTeacher && classes.length > 0 && (!selClassId || !classes.some(c => c.id === selClassId))) {
       setSelClassId(classes[0].id);
     }
-  }, [classes, selClassId]);
+  }, [classes, selClassId, isTeacher]);
 
   // Teacher identity helpers (authoritative ID matching with fallback)
   const isPrimaryTeacher = (entry: any) => isPrimaryTeacherForEntry(user, entry);
   const isAlternateTeacher = (entry: any) => isAlternateTeacherForEntry(user, entry);
   const isMyEntry = (entry: any) => isTeacherEntry(user, entry);
-
-  // Auto-select the teacher's assigned class on initial load
-  useEffect(() => {
-    if (isTeacher && !hasAutoSelected && entries.length > 0 && classes.length > 0) {
-      const myEntry = entries.find(e => isMyEntry(e));
-      if (myEntry) {
-        const cId = myEntry.class_id || myEntry.classId;
-        const sId = myEntry.section_id || myEntry.sectionId;
-        if (cId && classes.some(c => c.id === cId)) {
-          setSelClassId(cId);
-          if (sId) setSelSectionId(sId);
-          if (myEntry.day_of_week) setSelDay(Number(myEntry.day_of_week));
-        }
-      }
-      setHasAutoSelected(true);
-    }
-  }, [entries, isTeacher, classes, hasAutoSelected]);
 
   // All weekly entries assigned to the teacher
   const myWeeklyEntries = useMemo(() => {
@@ -222,14 +244,25 @@ export default function Timetable() {
                       (a.start_time || '').localeCompare(b.start_time || ''));
   }, [entries, isTeacher]);
 
+  // Daily entries assigned to the teacher for the selected day
+  const teacherDayEntries = useMemo(() => {
+    if (!isTeacher) return [];
+    return myWeeklyEntries.filter(e => Number(e.day_of_week ?? e.dayOfWeek) === selDay);
+  }, [myWeeklyEntries, isTeacher, selDay]);
+
   // ── Derived ──
+  const mentorAuthForSel = authorizedSections.find(a =>
+    String(a.classId || a.class_id) === String(selClassId) ||
+    (selClassId && String(a.sectionId || a.section_id) === String(selSectionId))
+  ) || (authorizedSections.length > 0 ? authorizedSections[0] : null);
+
   const selClassObj = classes.find(c => c.id === selClassId);
-  const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber;
+  const selClassNum = selClassObj?.class_number ?? selClassObj?.classNumber ?? mentorAuthForSel?.classNumber ?? mentorAuthForSel?.class_number;
   const selClassName = (selClassNum === -1 || /l.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
     ? 'Class L KG'
     : (selClassNum === 0 || /u.?kg/i.test(String(selClassObj?.label || selClassObj?.id || '')))
     ? 'Class U KG'
-    : (selClassObj?.label || (selClassNum !== undefined && selClassNum !== null ? `Class ${selClassNum}` : (selClassObj?.name || 'Class')));
+    : (selClassObj?.label || (selClassNum !== undefined && selClassNum !== null ? `Class ${selClassNum}` : (selClassObj?.name || (mentorAuthForSel ? `Class ${mentorAuthForSel.classNumber}` : 'Class'))));
   const displayClassLabel = selClassName.toLowerCase().startsWith('class') ? selClassName : `Class ${selClassName}`;
 
   const filteredSections = useMemo(() => {
@@ -265,7 +298,7 @@ export default function Timetable() {
 
   const currentSection = filteredSections.find(s => s.id === selSectionId) || filteredSections[0];
   const selSection = currentSection;
-  const selSectionName = currentSection?.name || currentSection?.section_name || 'A';
+  const selSectionName = currentSection?.name || currentSection?.section_name || mentorAuthForSel?.sectionName || mentorAuthForSel?.section_name || 'A';
   const teachingPeriods = useMemo(() => periods.filter(p => !(p.is_break ?? p.isBreak)), [periods]);
 
   const isEntryForCurrentClassAndSection = (e: any) => {
@@ -371,6 +404,43 @@ export default function Timetable() {
     }
 
     return undefined;
+  };
+
+  const formatEntryClassSection = (e: any) => {
+    if (!e) return '—';
+    const cNum = e.class_number ?? e.classNumber;
+    let sName = e.section_name ?? e.sectionName;
+    if (!sName && (e.section_id || e.sectionId)) {
+      const sid = e.section_id || e.sectionId;
+      const matchedSec = sections.find(s => s.id === sid);
+      if (matchedSec) sName = matchedSec.name || matchedSec.section_name;
+    }
+    sName = sName || 'A';
+
+    let cLabel = '';
+    if (cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(cNum))) {
+      cLabel = 'Class L KG';
+    } else if (cNum === 0 || cNum === '0' || /u.?kg/i.test(String(cNum))) {
+      cLabel = 'Class U KG';
+    } else if (cNum !== undefined && cNum !== null && cNum !== '') {
+      cLabel = String(cNum).toLowerCase().startsWith('class') ? String(cNum) : `Class ${cNum}`;
+    } else if (e.class_name) {
+      cLabel = e.class_name;
+    } else if (e.class_id || e.classId) {
+      const cid = e.class_id || e.classId;
+      const matchedCls = classes.find(c => c.id === cid);
+      if (matchedCls) {
+        const mcNum = matchedCls.class_number ?? matchedCls.classNumber;
+        cLabel = matchedCls.label || (mcNum !== undefined ? `Class ${mcNum}` : matchedCls.name || 'Class');
+      }
+    }
+    if (!cLabel) cLabel = 'Class';
+
+    return `${cLabel}-${sName}`;
+  };
+
+  const getTeacherPeriodEntry = (p: any) => {
+    return findEntryForPeriod(p, teacherDayEntries);
   };
 
   const getEntryForPeriod = (p: any) => {
@@ -597,12 +667,12 @@ export default function Timetable() {
     {/* ── Header ── */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
       <div>
-        <p className="eyebrow">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'CLASS TIMETABLE'}</p>
-        <h1 style={{ margin: 0, fontSize: 24 }}>Weekly Class Timetable</h1>
+        <p className="eyebrow">{isSchoolAdmin ? 'TIMETABLE MANAGEMENT' : 'FACULTY TIMETABLE'}</p>
+        <h1 style={{ margin: 0, fontSize: 24 }}>{isSchoolAdmin ? 'Weekly Class Timetable' : 'My Teaching Timetable'}</h1>
         <p className="muted" style={{ margin: '4px 0 0' }}>
           {isSchoolAdmin
             ? 'Create and manage class-wise, period-wise timetable with faculty assignment and conflict detection.'
-            : 'View class-wise, period-wise schedule with assigned subjects and faculty.'}
+            : 'View your scheduled teaching periods across all classes as primary faculty or alternative faculty.'}
         </p>
       </div>
       {isSchoolAdmin && (
@@ -635,110 +705,219 @@ export default function Timetable() {
       </div>
     )}
 
-    {/* ── Teacher View Switcher (Class View vs My Schedule) ── */}
-    {isTeacher && (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
-        <div style={{ display: 'inline-flex', background: 'var(--bg-card, #ffffff)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
-          <button
-            onClick={() => setViewMode('class')}
-            style={{
-              padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              background: viewMode === 'class' ? '#2563eb' : 'transparent',
-              color: viewMode === 'class' ? '#fff' : 'var(--text)'
-            }}
+    {/* ── Admin Class & Section Filter Pill (School Admin Only) ── */}
+    {isSchoolAdmin && (
+      <div className="timetable-filter-pill" style={{ marginBottom: 16 }}>
+        {/* Class Field */}
+        <div className="timetable-filter-field">
+          <span className="timetable-filter-label">
+            <Layers size={16} color="#2563eb" /> Class:
+          </span>
+          <select
+            id="timetable-class-select"
+            value={selClassId}
+            onChange={e => setSelClassId(e.target.value)}
+            className="timetable-filter-select"
+            style={{ minWidth: 160 }}
           >
-            Class Timetable View
-          </button>
-          <button
-            onClick={() => setViewMode('mySchedule')}
-            style={{
-              padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              background: viewMode === 'mySchedule' ? '#2563eb' : 'transparent',
-              color: viewMode === 'mySchedule' ? '#fff' : 'var(--text)',
-              display: 'flex', alignItems: 'center', gap: 6
-            }}
+            {classes.map(c => {
+              const cNum = c.class_number ?? c.classNumber;
+              const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
+                ? 'Class L KG'
+                : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
+                ? 'Class U KG'
+                : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
+              return (
+                <option key={c.id} value={c.id}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {/* Vertical Divider */}
+        <div className="timetable-filter-divider" />
+
+        {/* Section Field */}
+        <div className="timetable-filter-field">
+          <span className="timetable-filter-label">
+            Section:
+          </span>
+          <select
+            id="timetable-section-select"
+            value={selSectionId}
+            onChange={e => setSelSectionId(e.target.value)}
+            className="timetable-filter-select"
+            style={{ minWidth: 140 }}
           >
-            <Sparkles size={14} /> My Teaching Schedule ({myWeeklyEntries.length})
-          </button>
+            {filteredSections.map(s => (
+              <option key={s.id} value={s.id}>
+                Section {s.name || s.section_name || 'A'}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     )}
 
-    {/* ── Dedicated View: My Teaching Schedule ── */}
-    {isTeacher && viewMode === 'mySchedule' ? (
-      <div className="panel" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16 }}>My Assigned Teaching Routine ({myWeeklyEntries.length} Periods)</h3>
-            <p className="muted" style={{ margin: '3px 0 0', fontSize: 13 }}>
-              All periods assigned to you by school administration across Monday to Saturday. Click "Take Attendance" to mark roll-call.
-            </p>
-          </div>
-          <a
-            href="#/take-attendance"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 6,
-              background: '#2563eb', color: '#fff', textDecoration: 'none', fontSize: 12, fontWeight: 600
-            }}
-          >
-            <ClipboardCheck size={14} /> Open Attendance Station
-          </a>
-        </div>
+    {/* ── Day Tabs (Monday to Saturday) ── */}
+    <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
+      {DAYS.map(d => (
+        <button key={d.num}
+          onClick={() => setSelDay(d.num)}
+          style={{
+            padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
+            background: selDay === d.num ? '#2563eb' : 'var(--bg-card, #ffffff)',
+            color: selDay === d.num ? '#fff' : 'var(--text)',
+            boxShadow: selDay === d.num ? '0 2px 8px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
+            transition: 'all 0.15s ease'
+          }}
+        >{d.name}</button>
+      ))}
+    </div>
 
-        {myWeeklyEntries.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 10, border: '1px dashed var(--border)' }}>
-            <Calendar size={36} style={{ color: '#2563eb', marginBottom: 10, opacity: 0.8 }} />
-            <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No routine periods assigned yet</p>
-            <p className="muted" style={{ margin: '0 auto', maxWidth: 450, fontSize: 13 }}>
-              Your school administrator has not scheduled any routine periods for your faculty account yet. You can still view the school timetable under "Class Timetable View".
-            </p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Period</th>
-                  <th>Time</th>
-                  <th>Class & Section</th>
-                  <th>Subject</th>
-                  <th>Room</th>
-                  <th>Role</th>
-                  <th style={{ textAlign: 'right', width: 140 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myWeeklyEntries.map(e => {
-                  const dayName = DAYS.find(d => d.num === Number(e.day_of_week ?? e.dayOfWeek))?.name || `Day ${e.day_of_week}`;
-                  const isAlternate = isAlternateTeacher(e) && !isPrimaryTeacher(e);
+    {/* ── Period Grid for Selected Day ── */}
+    <div className="panel" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 16 }}>
+          <Calendar size={16} style={{ marginRight: 6 }} />
+          {isTeacher
+            ? `${DAYS.find(d => d.num === selDay)?.name} — Teacher's Timetable`
+            : `${DAYS.find(d => d.num === selDay)?.name} — ${displayClassLabel} ${selSectionName ? `(Section ${selSectionName})` : ''}`
+          }
+        </h3>
+        <span className="muted" style={{ fontSize: 12 }}>
+          {isTeacher
+            ? `${teachingPeriods.filter(p => Boolean(getTeacherPeriodEntry(p))).length} of ${teachingPeriods.length} periods assigned for you`
+            : `${teachingPeriods.filter(p => Boolean(getEntryForPeriod(p))).length} of ${teachingPeriods.length} periods assigned`
+          }
+        </span>
+      </div>
+
+      {periods.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
+          <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
+          <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
+          <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
+            {isSchoolAdmin
+              ? 'This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.'
+              : 'No timetable period slots have been configured by the school administration yet.'}
+          </p>
+          {isSchoolAdmin && (
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
+                style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                <Plus size={16} /> Add First Period Slot
+              </button>
+              <button onClick={loadTemplatePeriods}
+                style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
+                ⚡ Load Standard 6-Period Template (Optional)
+              </button>
+            </div>
+          )}
+        </div>
+      ) : isTeacher ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 60, textAlign: 'center' }}>#</th>
+                <th>Period</th>
+                <th>Time</th>
+                <th>Class & Section</th>
+                <th>Subject</th>
+                <th>Faculty</th>
+                <th>Alt. Faculty</th>
+                <th>Room</th>
+                <th>Role</th>
+                <th style={{ width: 140, textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map(p => {
+                const entry = getTeacherPeriodEntry(p);
+                const pNum = p.period_number ?? p.periodNumber ?? '';
+                const pName = p.name || `Period ${pNum}`;
+                const pStart = p.start_time ?? p.startTime ?? '';
+                const pEnd = p.end_time ?? p.endTime ?? '';
+                const pBreak = Boolean(p.is_break ?? p.isBreak);
+
+                if (pBreak) {
+                  return (
+                    <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.75 }}>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                      <td colSpan={9} style={{ textAlign: 'center', fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                        ☕ {pName} ({pStart} – {pEnd})
+                      </td>
+                    </tr>
+                  );
+                }
+
+                if (entry) {
+                  const isPrimary = isPrimaryTeacher(entry);
+                  const isAlternate = isAlternateTeacher(entry) && !isPrimary;
+                  const altName = entry.substitute_teacher_name || entry.altTeacherName || '';
+
                   return (
                     <tr
-                      key={e.id}
+                      key={p.id}
                       style={{
                         background: isAlternate ? 'rgba(249, 115, 22, 0.05)' : 'rgba(16, 185, 129, 0.05)',
                         borderLeft: isAlternate ? '3px solid #ea580c' : '3px solid #10b981'
                       }}
                     >
-                      <td><b>{dayName}</b></td>
-                      <td>{e.period_name || `Period ${e.period_number || 1}`}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.start_time} – {e.end_time}</td>
-                      <td><span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 700 }}>{String(e.class_number || '').toLowerCase().startsWith('class') ? e.class_number : `Class ${e.class_number}`}-{e.section_name}</span></td>
-                      <td><b>{e.subject_name || '—'}</b></td>
-                      <td>{e.room_name || '—'}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                      <td><b>{pName}</b></td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                      <td>
+                        <span className="badge" style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', fontWeight: 700 }}>
+                          {formatEntryClassSection(entry)}
+                        </span>
+                      </td>
+                      <td><b>{entry.subject_name || '—'}</b></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <PersonProfileLink kind="teacher" id={entry.teacher_id || entry.teacherId} name={entry.teacher_name || entry.teacherName || '—'} person={entry as any}>
+                            <span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span>
+                          </PersonProfileLink>
+                          {isPrimary && (
+                            <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
+                              You
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {altName ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <PersonProfileLink kind="teacher" id={entry.substitute_teacher_id || entry.altTeacherId} name={altName} person={entry as any}>
+                              <span style={{ fontWeight: isAlternate ? 700 : 500 }}>{altName}</span>
+                            </PersonProfileLink>
+                            {isAlternate && (
+                              <span className="badge" style={{ background: '#ffedd5', color: '#c2410c', fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>
+                                You
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                      <td>{entry.room_name || '—'}</td>
                       <td>
                         {isAlternate ? (
                           <span
                             className="badge"
                             style={{
-                              background: 'rgba(249, 115, 22, 0.18)',
-                              color: '#ea580c',
+                              background: '#ffedd5',
+                              color: '#c2410c',
                               border: '1px solid #ea580c',
                               fontSize: 11,
                               fontWeight: 700
                             }}
                           >
-                            Alternate Teacher
+                            Alternate Faculty
                           </span>
                         ) : (
                           <span
@@ -757,14 +936,189 @@ export default function Timetable() {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <a
+                          href={`#/take-attendance?routine=${entry.id}&classId=${entry.class_id || entry.classId}&sectionId=${entry.section_id || entry.sectionId}&subjectId=${entry.subject_id || entry.subjectId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            background: isAlternate ? '#ea580c' : '#10b981',
+                            color: '#fff',
+                            textDecoration: 'none',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                          title="Take Attendance for this class"
+                        >
+                          <ClipboardCheck size={13} /> Take Attendance
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={p.id} style={{ opacity: 0.7 }}>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                    <td><b>{pName}</b></td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                    <td><span className="muted">—</span></td>
+                    <td><span className="muted">—</span></td>
+                    <td><span className="muted" style={{ fontStyle: 'italic' }}>Unassigned</span></td>
+                    <td><span className="muted">—</span></td>
+                    <td><span className="muted">—</span></td>
+                    <td><span className="muted">—</span></td>
+                    <td style={{ textAlign: 'right' }}><span className="muted">—</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 60 }}>#</th>
+                <th>Period</th>
+                <th>Time</th>
+                <th>Subject</th>
+                <th>Faculty</th>
+                <th>Alt. Faculty</th>
+                <th>Room</th>
+                {isSchoolAdmin && <th style={{ width: 140, textAlign: 'right' }}>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map(p => {
+                const entry = getEntryForPeriod(p);
+                const pNum = p.period_number ?? p.periodNumber ?? '';
+                const pName = p.name || `Period ${pNum}`;
+                const pStart = p.start_time ?? p.startTime ?? '';
+                const pEnd = p.end_time ?? p.endTime ?? '';
+                const pBreak = Boolean(p.is_break ?? p.isBreak);
+
+                if (pBreak) {
+                  return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                    <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {pName} ({pStart} – {pEnd})</td>
+                    {isSchoolAdmin && <td></td>}
+                  </tr>;
+                }
+                if (entry) {
+                  const isPrimary = isPrimaryTeacher(entry);
+                  const isAlternate = isAlternateTeacher(entry) && !isPrimary;
+                  const altName = entry.substitute_teacher_name || entry.altTeacherName || '';
+                  return <tr key={p.id} style={{
+                    background: isPrimary ? 'rgba(16, 185, 129, 0.05)' : isAlternate ? 'rgba(249, 115, 22, 0.05)' : undefined,
+                    borderLeft: isPrimary ? '3px solid #10b981' : isAlternate ? '3px solid #ea580c' : undefined
+                  }}>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                    <td><b>{pName}</b></td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                    <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
+                    <td>
+                      <PersonProfileLink kind="teacher" id={entry.teacher_id || entry.teacherId} name={entry.teacher_name || entry.teacherName || '—'} person={entry as any}><span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span></PersonProfileLink>
+                      {isPrimary && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
+                    </td>
+                    <td>
+                      {isAlternate ? (
+                        <span
+                          className="badge"
+                          style={{
+                            background: 'rgba(249, 115, 22, 0.18)',
+                            color: '#ea580c',
+                            border: '1px solid #ea580c',
+                            fontSize: 11,
+                            fontWeight: 700
+                          }}
+                        >
+                          Alt (You){altName ? `: ${altName}` : ''}
+                        </span>
+                      ) : altName ? (
+                        <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>
+                          Alt: {altName}
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>{entry.room_name || '—'}</td>
+                    {isSchoolAdmin && (
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button className="table-action-btn" onClick={() => openEditEntry(entry)} title="Edit entry"><Pencil size={14} /></button>
+                          <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>;
+                }
+                return <tr key={p.id} style={{ opacity: 0.7 }}>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
+                  <td><b>{pName}</b></td>
+                  <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
+                  <td colSpan={4} style={{ textAlign: 'center' }}>
+                    {isSchoolAdmin ? (
+                      <button onClick={() => openAddEntry(p.id)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                      >
+                        <Plus size={13} /> Assign Faculty & Subject
+                      </button>
+                    ) : (
+                      <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
+                    )}
+                  </td>
+                  {isSchoolAdmin && <td></td>}
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    {/* ── All Entries Overview ── */}
+    <div className="panel">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries ({displayClassLabel}-{selSectionName})</h3>
+        {isSchoolAdmin && entries.length > 0 && (
+          <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Trash2 size={12} /> Clear All Entries
+          </button>
+        )}
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th>{(isSchoolAdmin || isTeacher) && <th style={{ textAlign: 'right', width: 140 }}>Actions</th>}</tr></thead>
+          <tbody>
+            {entries
+              .filter(e => isEntryForCurrentClassAndSection(e))
+              .sort((a, b) => Number(a.day_of_week ?? a.dayOfWeek ?? 0) - Number(b.day_of_week ?? b.dayOfWeek ?? 0) || (a.period_number || 0) - (b.period_number || 0))
+              .map(e => (
+                <tr key={e.id}>
+                  <td>{DAYS.find(d => d.num === e.day_of_week)?.short || e.day_of_week}</td>
+                  <td>{e.period_name || '—'}</td>
+                  <td style={{ fontSize: 12 }}>{e.start_time} – {e.end_time}</td>
+                  <td><b>{e.subject_name || '—'}</b></td>
+                  <td><PersonProfileLink kind="teacher" id={e.teacher_id || e.teacherId} name={e.teacher_name || e.teacherName || '—'} person={e as any} /></td>
+                  <td>{e.substitute_teacher_name ? <PersonProfileLink kind="teacher" id={e.substitute_teacher_id || e.altTeacherId} name={e.substitute_teacher_name} person={e as any} /> : '—'}</td>
+                  <td>{e.room_name || '—'}</td>
+                  <td><span className={`badge ${(e.status === 'PUBLISHED' || e.status === 'ASSIGNED' || !e.status) ? 'sent' : 'queued'}`}>{(e.status === 'PUBLISHED' || !e.status) ? 'ASSIGNED' : e.status}</span></td>
+                  {(isSchoolAdmin || isTeacher) && (
+                    <td style={{ textAlign: 'right' }}>
+                      {isTeacher && isMyEntry(e) && (
+                        <a
                           href={`#/take-attendance?routine=${e.id}&classId=${e.class_id || e.classId}&sectionId=${e.section_id || e.sectionId}&subjectId=${e.subject_id || e.subjectId}`}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 5,
-                            padding: '6px 12px',
+                            gap: 4,
+                            padding: '4px 10px',
                             borderRadius: 6,
-                            background: isAlternate ? '#ea580c' : '#10b981',
+                            background: isAlternateTeacher(e) && !isPrimaryTeacher(e) ? '#ea580c' : '#10b981',
                             color: '#fff',
                             textDecoration: 'none',
                             fontSize: 12,
@@ -773,323 +1127,30 @@ export default function Timetable() {
                         >
                           <ClipboardCheck size={13} /> Take Attendance
                         </a>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    ) : (
-      <>
-        {/* ── Filters: Class & Section Aligned on Same Level ── */}
-        <div className="timetable-filter-pill">
-          {/* Class Field */}
-          <div className="timetable-filter-field">
-            <span className="timetable-filter-label">
-              <Layers size={16} color="#2563eb" /> Class:
-            </span>
-            <select
-              id="timetable-class-select"
-              value={selClassId}
-              onChange={e => setSelClassId(e.target.value)}
-              className="timetable-filter-select"
-              style={{ minWidth: 160 }}
-            >
-              {classes.map(c => {
-                const cNum = c.class_number ?? c.classNumber;
-                const label = cNum === -1 || cNum === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name))
-                  ? 'Class L KG'
-                  : cNum === 0 || cNum === '0' || /u.?kg/i.test(String(c.label || c.id || c.name))
-                  ? 'Class U KG'
-                  : (c.label || (cNum !== undefined ? `Class ${cNum}` : c.name || 'Class'));
-                return (
-                  <option key={c.id} value={c.id}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Vertical Divider */}
-          <div className="timetable-filter-divider" />
-
-          {/* Section Field */}
-          <div className="timetable-filter-field">
-            <span className="timetable-filter-label">
-              Section:
-            </span>
-            <select
-              id="timetable-section-select"
-              value={selSectionId}
-              onChange={e => setSelSectionId(e.target.value)}
-              className="timetable-filter-select"
-              style={{ minWidth: 140 }}
-            >
-              {filteredSections.map(s => (
-                <option key={s.id} value={s.id}>
-                  Section {s.name || s.section_name || 'A'}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* ── Day Tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-          {DAYS.map(d => (
-            <button key={d.num}
-              onClick={() => setSelDay(d.num)}
-              style={{
-                padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                background: selDay === d.num ? '#2563eb' : 'var(--bg-card, #ffffff)',
-                color: selDay === d.num ? '#fff' : 'var(--text)',
-                boxShadow: selDay === d.num ? '0 2px 8px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
-                transition: 'all 0.15s ease'
-              }}
-            >{d.name}</button>
-          ))}
-        </div>
-
-        {/* ── Period Grid for Selected Day ── */}
-        <div className="panel" style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ margin: 0, fontSize: 16 }}>
-              <Calendar size={16} style={{ marginRight: 6 }} />
-              {DAYS.find(d => d.num === selDay)?.name} — {displayClassLabel} {selSectionName ? `(Section ${selSectionName})` : ''}
-            </h3>
-            <span className="muted" style={{ fontSize: 12 }}>
-              {teachingPeriods.filter(p => Boolean(getEntryForPeriod(p))).length} of {teachingPeriods.length} periods assigned
-            </span>
-          </div>
-
-          {periods.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px dashed var(--border)', margin: '10px 0' }}>
-              <Clock size={40} style={{ color: '#2563eb', marginBottom: 12, opacity: 0.9 }} />
-              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>No Period Slots Configured</h3>
-              <p className="muted" style={{ margin: '0 auto 20px', maxWidth: 500, fontSize: 13, lineHeight: 1.6 }}>
-                {isSchoolAdmin
-                  ? 'This timetable is completely clean with no seed data. All periods and subject routines are entered manually by the administrator.'
-                  : 'No timetable period slots have been configured by the school administration yet.'}
-              </p>
-              {isSchoolAdmin && (
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => { setPeriodForm({ name: 'Period 1', periodNumber: 1, startTime: '09:00', endTime: '09:45', isBreak: false }); setPeriodOpen(true); }}
-                    style={{ background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-                    <Plus size={16} /> Add First Period Slot
-                  </button>
-                  <button onClick={loadTemplatePeriods}
-                    style={{ background: 'var(--bg-card, #ffffff)', color: 'var(--text)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13 }}>
-                    ⚡ Load Standard 6-Period Template (Optional)
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: 60 }}>#</th>
-                    <th>Period</th>
-                    <th>Time</th>
-                    <th>Subject</th>
-                    <th>Faculty</th>
-                    <th>Alt. Faculty</th>
-                    <th>Room</th>
-                    {(isSchoolAdmin || isTeacher) && <th style={{ width: 140, textAlign: 'right' }}>Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {periods.map(p => {
-                    const entry = getEntryForPeriod(p);
-                    const pNum = p.period_number ?? p.periodNumber ?? '';
-                    const pName = p.name || `Period ${pNum}`;
-                    const pStart = p.start_time ?? p.startTime ?? '';
-                    const pEnd = p.end_time ?? p.endTime ?? '';
-                    const pBreak = Boolean(p.is_break ?? p.isBreak);
-
-                    if (pBreak) {
-                      return <tr key={p.id} style={{ background: 'var(--bg)', opacity: 0.7 }}>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                        <td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic' }}>☕ {pName} ({pStart} – {pEnd})</td>
-                        {(isSchoolAdmin || isTeacher) && <td></td>}
-                      </tr>;
-                    }
-                    if (entry) {
-                      const isPrimary = isPrimaryTeacher(entry);
-                      const isAlternate = isAlternateTeacher(entry) && !isPrimary;
-                      const isMy = isPrimary || isAlternate;
-                      const altName = entry.substitute_teacher_name || entry.altTeacherName || '';
-                      return <tr key={p.id} style={{
-                        background: isPrimary ? 'rgba(16, 185, 129, 0.05)' : isAlternate ? 'rgba(249, 115, 22, 0.05)' : undefined,
-                        borderLeft: isPrimary ? '3px solid #10b981' : isAlternate ? '3px solid #ea580c' : undefined
-                      }}>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                        <td><b>{pName}</b></td>
-                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
-                        <td><span className="badge" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', fontWeight: 600 }}>{entry.subject_name || '—'}</span></td>
-                        <td>
-                          <PersonProfileLink kind="teacher" id={entry.teacher_id || entry.teacherId} name={entry.teacher_name || entry.teacherName || '—'} person={entry as any}><span style={{ fontWeight: isPrimary ? 700 : 500 }}>{entry.teacher_name || entry.teacherName || '—'}</span></PersonProfileLink>
-                          {isPrimary && <span className="badge" style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, fontWeight: 700, marginLeft: 6 }}>Your Period</span>}
-                        </td>
-                        <td>
-                          {isAlternate ? (
-                            <span
-                              className="badge"
-                              style={{
-                                background: 'rgba(249, 115, 22, 0.18)',
-                                color: '#ea580c',
-                                border: '1px solid #ea580c',
-                                fontSize: 11,
-                                fontWeight: 700
-                              }}
-                            >
-                              Alt (You){altName ? `: ${altName}` : ''}
-                            </span>
-                          ) : altName ? (
-                            <span className="badge" style={{ background: 'rgba(249,115,22,0.12)', color: '#ea580c', fontSize: 11 }}>
-                              Alt: {altName}
-                            </span>
-                          ) : (
-                            <span className="muted">—</span>
-                          )}
-                        </td>
-                        <td>{entry.room_name || '—'}</td>
-                        {(isSchoolAdmin || isTeacher) && (
-                          <td style={{ textAlign: 'right' }}>
-                            {isSchoolAdmin && (
-                              <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
-                                <button className="table-action-btn" onClick={() => openEditEntry(entry)} title="Edit entry"><Pencil size={14} /></button>
-                                <button className="table-action-btn danger" onClick={() => deleteEntry(entry.id)} title="Remove entry"><Trash2 size={14} /></button>
-                              </div>
-                            )}
-                            {isTeacher && isMy && (
-                              <a
-                                href={`#/take-attendance?routine=${entry.id}&classId=${entry.class_id || entry.classId}&sectionId=${entry.section_id || entry.sectionId}&subjectId=${entry.subject_id || entry.subjectId}`}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 5,
-                                  padding: '6px 12px',
-                                  borderRadius: 6,
-                                  background: isAlternate ? '#ea580c' : '#10b981',
-                                  color: '#fff',
-                                  textDecoration: 'none',
-                                  fontSize: 12,
-                                  fontWeight: 600
-                                }}
-                              >
-                                <ClipboardCheck size={13} /> Take Attendance
-                              </a>
-                            )}
-                            {isTeacher && !isMy && (
-                              <span className="muted" style={{ fontSize: 12 }}>—</span>
-                            )}
-                          </td>
-                        )}
-                      </tr>;
-                    }
-                    return <tr key={p.id} style={{ opacity: 0.7 }}>
-                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{pNum}</td>
-                      <td><b>{pName}</b></td>
-                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pStart} – {pEnd}</td>
-                      <td colSpan={4} style={{ textAlign: 'center' }}>
-                        {isSchoolAdmin ? (
-                          <button onClick={() => openAddEntry(p.id)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 14px', borderRadius: 6, border: '1px dashed #2563eb', background: 'rgba(37,99,235,0.06)', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
-                          >
-                            <Plus size={13} /> Assign Faculty & Subject
-                          </button>
-                        ) : (
-                          <span className="muted" style={{ fontSize: 12 }}>Unassigned</span>
-                        )}
-                      </td>
-                      {(isSchoolAdmin || isTeacher) && <td></td>}
-                    </tr>;
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* ── All Entries Overview ── */}
-        <div className="panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ margin: 0, fontSize: 16 }}>All Timetable Entries ({displayClassLabel}-{selSectionName})</h3>
-            {isSchoolAdmin && entries.length > 0 && (
-              <button onClick={clearAllEntries} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Trash2 size={12} /> Clear All Entries
-              </button>
-            )}
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Faculty</th><th>Alt. Faculty</th><th>Room</th><th>Status</th>{(isSchoolAdmin || isTeacher) && <th style={{ textAlign: 'right', width: 140 }}>Actions</th>}</tr></thead>
-              <tbody>
-                {entries
-                  .filter(e => isEntryForCurrentClassAndSection(e))
-                  .sort((a, b) => Number(a.day_of_week ?? a.dayOfWeek ?? 0) - Number(b.day_of_week ?? b.dayOfWeek ?? 0) || (a.period_number || 0) - (b.period_number || 0))
-                  .map(e => (
-                    <tr key={e.id}>
-                      <td>{DAYS.find(d => d.num === e.day_of_week)?.short || e.day_of_week}</td>
-                      <td>{e.period_name || '—'}</td>
-                      <td style={{ fontSize: 12 }}>{e.start_time} – {e.end_time}</td>
-                      <td><b>{e.subject_name || '—'}</b></td>
-                      <td><PersonProfileLink kind="teacher" id={e.teacher_id || e.teacherId} name={e.teacher_name || e.teacherName || '—'} person={e as any} /></td>
-                      <td>{e.substitute_teacher_name ? <PersonProfileLink kind="teacher" id={e.substitute_teacher_id || e.altTeacherId} name={e.substitute_teacher_name} person={e as any} /> : '—'}</td>
-                      <td>{e.room_name || '—'}</td>
-                      <td><span className={`badge ${e.status === 'PUBLISHED' ? 'sent' : 'queued'}`}>{e.status}</span></td>
-                      {(isSchoolAdmin || isTeacher) && (
-                        <td style={{ textAlign: 'right' }}>
-                          {isTeacher && isMyEntry(e) && (
-                            <a
-                              href={`#/take-attendance?routine=${e.id}&classId=${e.class_id || e.classId}&sectionId=${e.section_id || e.sectionId}&subjectId=${e.subject_id || e.subjectId}`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                background: isAlternateTeacher(e) && !isPrimaryTeacher(e) ? '#ea580c' : '#10b981',
-                                color: '#fff',
-                                textDecoration: 'none',
-                                fontSize: 11,
-                                fontWeight: 600
-                              }}
-                            >
-                              <ClipboardCheck size={12} /> Take Attendance
-                            </a>
-                          )}
-                          {isSchoolAdmin && (
-                            <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
-                              <button className="table-action-btn" onClick={() => openEditEntry(e)} title="Edit entry"><Pencil size={12} /></button>
-                              <button className="table-action-btn danger" onClick={() => deleteEntry(e.id)} title="Remove entry"><Trash2 size={12} /></button>
-                            </div>
-                          )}
-                        </td>
                       )}
-                    </tr>
-                  ))}
-                {entries.filter(e => isEntryForCurrentClassAndSection(e)).length === 0 && (
-                  <tr>
-                    <td colSpan={isSchoolAdmin || isTeacher ? 9 : 8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
-                      {isSchoolAdmin
-                        ? `No routine entries for ${displayClassLabel}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
-                        : `No routine entries for ${displayClassLabel}-${selSectionName} scheduled yet.`}
+                      {isSchoolAdmin && (
+                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button className="table-action-btn" onClick={() => openEditEntry(e)} title="Edit entry"><Pencil size={12} /></button>
+                          <button className="table-action-btn danger" onClick={() => deleteEntry(e.id)} title="Remove entry"><Trash2 size={12} /></button>
+                        </div>
+                      )}
                     </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </>
-    )}
+                  )}
+                </tr>
+              ))}
+            {entries.filter(e => isEntryForCurrentClassAndSection(e)).length === 0 && (
+              <tr>
+                <td colSpan={isSchoolAdmin || isTeacher ? 9 : 8} className="muted" style={{ padding: 20, textAlign: 'center' }}>
+                  {isSchoolAdmin
+                    ? `No routine entries for ${displayClassLabel}-${selSectionName} yet. Click "+ Assign Faculty & Subject" above to add.`
+                    : `No routine entries for ${displayClassLabel}-${selSectionName} scheduled yet.`}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
     {/* ══════════ ADD ENTRY MODAL ══════════ */}
     {isSchoolAdmin && addOpen && <div className="modal-backdrop" onClick={() => { setAddOpen(false); setEditingEntry(null); }}>

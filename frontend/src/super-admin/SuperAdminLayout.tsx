@@ -6,7 +6,7 @@ import { SidebarToggle } from '../components/SidebarToggle';
 import {
   LayoutDashboard, School, CreditCard, FileText, Eye, BarChart3,
   Users, Shield, ShieldCheck, Database, Settings, Moon, Sun,
-  Menu, Bell, Search, Check, ChevronDown, LogOut, ArrowRight,
+  Menu, Bell, Search, Check, ChevronDown, ChevronLeft, ChevronRight, LogOut, ArrowRight,
   Clock, Server, RefreshCw, X, AlertTriangle, Layers, UserPlus
 } from 'lucide-react';
 

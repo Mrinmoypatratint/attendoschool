@@ -5,7 +5,7 @@ import { memEntries } from './timetable';
 import { isSameSchool, isTestSchool } from './auth';
 import { fastCache } from '../utils/cache';
 import { pool } from '../db';
-import { downloadFromStorage, StorageConfigurationError } from '../utils/supabaseStorage';
+import { downloadFromStorage, StorageConfigurationError, isInlinePreviewMime } from '../utils/firebaseStorage';
 
 const router = Router();
 
@@ -200,14 +200,15 @@ router.get('/assignments', async (req: AuthRequest, res: Response) => {
 // POST /api/student/assignments/:id/submit - Submit assignment text and optional attachments
 router.post('/assignments/:id/submit', async (req: AuthRequest, res: Response) => {
   try {
-    const { submissionText, text, attachments } = req.body || {};
+    const { submissionText, text, attachments, removedAttachmentIds } = req.body || {};
     const contentText = String(submissionText !== undefined ? submissionText : (text || '')).trim();
     const data = await svc.submitStudentAssignment(
       req.user!.schoolId!,
       req.user!.id,
       String(req.params.id),
       contentText,
-      attachments
+      attachments,
+      removedAttachmentIds
     );
     res.json({ success: true, message: 'Assignment submitted successfully', data });
   } catch (e: any) {
@@ -218,6 +219,22 @@ router.post('/assignments/:id/submit', async (req: AuthRequest, res: Response) =
       });
     }
     res.status(400).json({ message: e.message || 'Unable to submit assignment' });
+  }
+});
+
+// DELETE /api/student/assignments/:id/attachments/:attachmentId - Remove individual submitted attachment
+router.delete('/assignments/:id/attachments/:attachmentId', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: assignmentId, attachmentId } = req.params;
+    const data = await svc.deleteStudentSubmissionAttachment(
+      req.user!.schoolId!,
+      req.user!.id,
+      String(assignmentId),
+      String(attachmentId)
+    );
+    res.json(data);
+  } catch (err: any) {
+    res.status(err.status || 400).json({ message: err.message || 'Failed to remove attachment' });
   }
 });
 
@@ -239,8 +256,10 @@ router.get('/assignments/:id/attachments/:attachmentId/preview', async (req: Aut
     const att = q.rows[0];
     const { buffer, mimeType } = await downloadFromStorage(att.storage_key);
 
-    res.setHeader('Content-Type', att.mime_type || mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(att.file_name)}"`);
+    const effectiveMime = att.mime_type || mimeType || 'application/octet-stream';
+    const isInline = isInlinePreviewMime(effectiveMime);
+    res.setHeader('Content-Type', effectiveMime);
+    res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(att.file_name)}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(buffer);
@@ -309,6 +328,17 @@ router.get('/assignments/:id/document/preview', async (req: AuthRequest, res: Re
     if (attId && Array.isArray(asg.attachments)) {
       targetDoc = asg.attachments.find((a: any) => a.id === attId);
     }
+    if (!targetDoc && attId) {
+      try {
+        const attQ = await pool.query(
+          'SELECT file_name, mime_type, storage_key FROM assignment_attachments WHERE id = $1 AND assignment_id = $2',
+          [attId, assignmentId]
+        );
+        if (attQ.rowCount && attQ.rowCount > 0) {
+          targetDoc = attQ.rows[0];
+        }
+      } catch (_e) {}
+    }
     if (!targetDoc) {
       targetDoc = {
         file_name: asg.document_name,
@@ -343,8 +373,9 @@ router.get('/assignments/:id/document/preview', async (req: AuthRequest, res: Re
       return res.status(404).json({ message: 'Document content is unavailable' });
     }
 
+    const isInline = isInlinePreviewMime(mimeType);
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Disposition', `${isInline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(fileName)}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(buffer);
@@ -373,6 +404,17 @@ router.get('/assignments/:id/document/download', async (req: AuthRequest, res: R
     let targetDoc: any = null;
     if (attId && Array.isArray(asg.attachments)) {
       targetDoc = asg.attachments.find((a: any) => a.id === attId);
+    }
+    if (!targetDoc && attId) {
+      try {
+        const attQ = await pool.query(
+          'SELECT file_name, mime_type, storage_key FROM assignment_attachments WHERE id = $1 AND assignment_id = $2',
+          [attId, assignmentId]
+        );
+        if (attQ.rowCount && attQ.rowCount > 0) {
+          targetDoc = attQ.rows[0];
+        }
+      } catch (_e) {}
     }
     if (!targetDoc) {
       targetDoc = {

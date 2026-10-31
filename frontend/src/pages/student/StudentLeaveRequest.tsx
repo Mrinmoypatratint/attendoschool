@@ -14,6 +14,21 @@ export function StudentLeaveRequest() {
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
+  // Date Year Formatter helper (restrict year to max 4 digits)
+  function handleDateInput(val: string, setter: (v: string) => void) {
+    if (!val) {
+      setter('');
+      return;
+    }
+    const parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setter(parts.join('-'));
+      return;
+    }
+    setter(val);
+  }
+
   const load = () => {
     setLoading(true);
     studentApi
@@ -144,8 +159,10 @@ export function StudentLeaveRequest() {
                 <input
                   type="date"
                   required
+                  min="1900-01-01"
+                  max="9999-12-31"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => handleDateInput(e.target.value, setStartDate)}
                 />
               </label>
               <label>
@@ -153,8 +170,10 @@ export function StudentLeaveRequest() {
                 <input
                   type="date"
                   required
+                  min="1900-01-01"
+                  max="9999-12-31"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => handleDateInput(e.target.value, setEndDate)}
                 />
               </label>
               <label>

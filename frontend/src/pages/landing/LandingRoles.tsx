@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Landmark,
   School,
   GraduationCap,
   UserRound,
@@ -33,30 +32,6 @@ interface RoleData {
 
 const ROLES: RoleData[] = [
   {
-    id: 'super-admin',
-    tabLabel: 'Principal & Super Admin',
-    icon: <Landmark size={16} />,
-    title: 'Principal & Super Admin',
-    subtitle: 'High-level institutional governance, multi-campus oversight, and central compliance.',
-    accentColor: 'var(--color-primary)',
-    bgSoft: 'var(--color-primary-soft)',
-    capabilities: [
-      'Multi-branch school hierarchy and central administrative console',
-      'Daily campus attendance rate overview across all classes and sections',
-      'Automated tenant database isolation with strict audit trails',
-      'Centralized notification dispatch and SMS carrier health monitoring'
-    ],
-    photo: '/students_computer_lab.jpg',
-    sampleUi: {
-      badge: 'CENTRAL CAMPUS OVERSIGHT',
-      kpi1Label: 'CAMPUS ATTENDANCE',
-      kpi1Value: '96.4%',
-      kpi2Label: 'FACULTY ON DUTY',
-      kpi2Value: '78 / 82 Active',
-      note: 'D.A.V. Sector 14 Campus · Tenant ID #DAV-**01 Verified'
-    }
-  },
-  {
     id: 'school-admin',
     tabLabel: 'School Office Admin',
     icon: <School size={16} />,
@@ -70,7 +45,7 @@ const ROLES: RoleData[] = [
       'Leave approval workflows with teacher proxy substitution',
       'CBSE Form 14 registers, monthly percentages, and board reports'
     ],
-    photo: '/teacher_dav.jpg',
+    photo: '/school_office_admin.jpg',
     sampleUi: {
       badge: 'SCHOOL OPERATIONS DESK',
       kpi1Label: 'ACTIVE STUDENTS',
@@ -132,7 +107,7 @@ const ROLES: RoleData[] = [
 
 export const LandingRoles: React.FC = () => {
   const [activeRoleId, setActiveRoleId] = useState<string>('school-admin');
-  const currentRole = ROLES.find(r => r.id === activeRoleId) || ROLES[1];
+  const currentRole = ROLES.find(r => r.id === activeRoleId) || ROLES[0];
 
   return (
     <section className="c360-section c360-roles-section" id="roles">
@@ -142,7 +117,7 @@ export const LandingRoles: React.FC = () => {
           <span className="c360-section-tag" style={{ color: 'var(--color-secondary)' }}>
             Built for Every Stakeholder
           </span>
-          <h2 className="c360-section-title">Four campus roles. One access hierarchy.</h2>
+          <h2 className="c360-section-title">Campus roles. One access hierarchy.</h2>
           <p className="c360-section-desc" style={{ marginBottom: 32 }}>
             Every role operates within dedicated permissions, isolated session boundaries, and tailored tools. Select a role below to explore their dashboard view.
           </p>
@@ -187,7 +162,6 @@ export const LandingRoles: React.FC = () => {
                     flexShrink: 0
                   }}
                 >
-                  {currentRole.id === 'super-admin' && <Landmark size={26} />}
                   {currentRole.id === 'school-admin' && <School size={26} />}
                   {currentRole.id === 'teacher' && <GraduationCap size={26} />}
                   {currentRole.id === 'student-parent' && <UserRound size={26} />}

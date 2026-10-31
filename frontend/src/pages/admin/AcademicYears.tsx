@@ -21,11 +21,18 @@ import {
   Info,
   ShieldAlert,
   ChevronRight,
-  Filter
+  Filter,
+  Edit2,
+  X,
+  ChevronLeft,
+  Search,
+  Printer,
+  Tag,
+  Sparkles
 } from 'lucide-react';
 
 type ActionType = 'activate' | 'deactivate' | 'archive' | 'unarchive';
-type TabKey = 'sessions' | 'working-days' | 'holidays' | 'calculator';
+type TabKey = 'sessions' | 'working-days' | 'holidays' | 'calculator' | 'academic-calendar';
 
 const DAY_LABELS = [
   { day: 0, name: 'Sunday', short: 'Sun' },
@@ -37,6 +44,29 @@ const DAY_LABELS = [
   { day: 6, name: 'Saturday', short: 'Sat' },
 ];
 
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+function getHolidayCategoryStyle(type: string) {
+  switch (type) {
+    case 'NATIONAL':
+      return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5', badgeBg: '#ef4444', label: 'National Holiday' };
+    case 'FESTIVAL':
+      return { bg: '#f3e8ff', color: '#7e22ce', border: '#d8b4fe', badgeBg: '#a855f7', label: 'Festival & Celebration' };
+    case 'GAZETTED':
+      return { bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc', badgeBg: '#6366f1', label: 'Gazetted Holiday' };
+    case 'REGIONAL':
+      return { bg: '#ccfbf1', color: '#0f766e', border: '#99f6e4', badgeBg: '#14b8a6', label: 'Regional Holiday' };
+    case 'INSTITUTIONAL':
+      return { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1', badgeBg: '#64748b', label: 'Institutional Break' };
+    default:
+      return { bg: '#e2e8f0', color: '#475569', border: '#cbd5e1', badgeBg: '#94a3b8', label: type || 'Holiday' };
+  }
+}
+
 export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [activeTab, setActiveTab] = useState<TabKey>(defaultTab || 'sessions');
 
@@ -44,11 +74,130 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
      1. Academic Sessions State
   ───────────────────────────────────────────────────────────── */
   const [items, setItems] = useState<any[]>([]);
+
+  const sortAcademicYearsAsc = (list: any[]) => {
+    return [...list].sort((a, b) => {
+      const yearA = parseInt((String(a.name || '').match(/\d{4}/) || ['0'])[0], 10);
+      const yearB = parseInt((String(b.name || '').match(/\d{4}/) || ['0'])[0], 10);
+      if (yearA !== yearB && yearA > 0 && yearB > 0) return yearA - yearB;
+      const dateA = new Date(a.start_date || a.startDate || 0).getTime();
+      const dateB = new Date(b.start_date || b.startDate || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+  };
+
+  const sortedItems = useMemo(() => sortAcademicYearsAsc(items), [items]);
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Date Year Formatter helper (restrict year to max 4 digits)
+  function handleDateInput(val: string, setter: (v: string) => void) {
+    if (!val) {
+      setter('');
+      return;
+    }
+    const parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+      parts[0] = parts[0].slice(0, 4);
+      setter(parts.join('-'));
+      return;
+    }
+    setter(val);
+  }
+
+  const SESSION_FORMAT_REGEX = /^\d{4}-\d{4}$/;
+
+  // Edit Modal State
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    id: '',
+    name: '',
+    startDate: '',
+    endDate: '',
+    loading: false,
+    error: null
+  });
+
+  function openEditModal(session: any) {
+    setEditModal({
+      isOpen: true,
+      id: session.id,
+      name: session.name || '',
+      startDate: String(session.start_date || '').slice(0, 10),
+      endDate: String(session.end_date || '').slice(0, 10),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function handleSaveEdit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const cleanName = editModal.name.trim();
+
+    if (!SESSION_FORMAT_REGEX.test(cleanName)) {
+      setEditModal(prev => ({
+        ...prev,
+        error: 'Session name must be in YYYY-YYYY format (e.g. 2028-2029).'
+      }));
+      return;
+    }
+
+    const startYear = editModal.startDate.split('-')[0];
+    const endYear = editModal.endDate.split('-')[0];
+    if (!/^\d{4}$/.test(startYear)) {
+      setEditModal(prev => ({ ...prev, error: 'Start Date year must be exactly 4 digits.' }));
+      return;
+    }
+    if (!/^\d{4}$/.test(endYear)) {
+      setEditModal(prev => ({ ...prev, error: 'End Date year must be exactly 4 digits.' }));
+      return;
+    }
+
+    if (new Date(editModal.startDate) >= new Date(editModal.endDate)) {
+      setEditModal(prev => ({ ...prev, error: 'Start date must precede end date.' }));
+      return;
+    }
+
+    setEditModal(prev => ({ ...prev, loading: true, error: null }));
+
+    try {
+      await api.put(`/academic-years/${editModal.id}`, {
+        name: cleanName,
+        startDate: editModal.startDate,
+        endDate: editModal.endDate
+      });
+
+      const currentActiveId = localStorage.getItem('attendo_active_academic_year_id');
+      const isTargetActive = items.find(it => it.id === editModal.id)?.is_active || currentActiveId === editModal.id;
+      if (isTargetActive) {
+        localStorage.setItem('attendo_active_academic_year', cleanName);
+        localStorage.setItem('attendo_academic_session', cleanName);
+        window.dispatchEvent(new CustomEvent('sessionChanged', { detail: cleanName }));
+        window.dispatchEvent(new Event('storage'));
+      }
+
+      setEditModal(prev => ({ ...prev, isOpen: false, loading: false }));
+      await loadSessions(true);
+    } catch (err: any) {
+      setEditModal(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Failed to update academic session'
+      }));
+    }
+  }
 
   // Preview State for Session Creation
   const [createPreview, setCreatePreview] = useState<{
@@ -148,14 +297,114 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [calcError, setCalcError] = useState<string | null>(null);
 
+
+  /* ─────────────────────────────────────────────────────────────
+     5. Academic Holiday Calendar State (Dynamic Institutional Schedule)
+  ───────────────────────────────────────────────────────────── */
+  const [calSessionFilter, setCalSessionFilter] = useState<string>('ALL');
+  const [calYearFilter, setCalYearFilter] = useState<string>('ALL');
+  const [calCategoryFilter, setCalCategoryFilter] = useState<string>('ALL');
+  const [calSearchQuery, setCalSearchQuery] = useState<string>('');
+  const [calViewMode, setCalViewMode] = useState<'calendar' | 'agenda'>('calendar');
+  const [calMonthViewMode, setCalMonthViewMode] = useState<'all-months' | 'single-month'>('all-months');
+  const [calActiveMonth, setCalActiveMonth] = useState<number>(new Date().getMonth());
+  const [calInspectHoliday, setCalInspectHoliday] = useState<any | null>(null);
+
+  const calDistinctYears = useMemo(() => {
+    const years = new Set<string>();
+    holidays.forEach(h => {
+      if (h.holiday_date) years.add(h.holiday_date.slice(0, 4));
+    });
+    items.forEach(s => {
+      if (s.start_date) years.add(String(s.start_date).slice(0, 4));
+      if (s.end_date) years.add(String(s.end_date).slice(0, 4));
+    });
+    const currentY = String(new Date().getFullYear());
+    years.add(currentY);
+    return Array.from(years).filter(Boolean).sort();
+  }, [holidays, items]);
+
+  // Dynamically filtered holidays from Holiday Manager
+  const calFilteredHolidays = useMemo(() => {
+    return holidays.filter(h => {
+      if (!h.holiday_date) return false;
+
+      // 1. Session filter
+      if (calSessionFilter !== 'ALL') {
+        const sess = items.find(s => s.id === calSessionFilter);
+        if (sess) {
+          const sStart = String(sess.start_date).slice(0, 10);
+          const sEnd = String(sess.end_date).slice(0, 10);
+          if (h.holiday_date < sStart || h.holiday_date > sEnd) return false;
+        }
+      }
+
+      // 2. Year filter
+      if (calYearFilter !== 'ALL') {
+        if (h.holiday_date.slice(0, 4) !== calYearFilter) return false;
+      }
+
+      // 3. Category filter
+      if (calCategoryFilter !== 'ALL') {
+        if (h.holiday_type !== calCategoryFilter) return false;
+      }
+
+      // 4. Search query
+      if (calSearchQuery.trim()) {
+        const q = calSearchQuery.trim().toLowerCase();
+        const mName = (h.name || '').toLowerCase().includes(q);
+        const mDesc = (h.description || '').toLowerCase().includes(q);
+        const mType = (h.holiday_type || '').toLowerCase().includes(q);
+        const mDate = (h.holiday_date || '').includes(q);
+        if (!mName && !mDesc && !mType && !mDate) return false;
+      }
+
+      return true;
+    }).sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
+  }, [holidays, items, calSessionFilter, calYearFilter, calCategoryFilter, calSearchQuery]);
+
+  // Aggregated KPI Stats
+  const calKpiStats = useMemo(() => {
+    const totalDays = calFilteredHolidays.length;
+    const nationalHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'NATIONAL').length;
+    const festivalHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'FESTIVAL').length;
+    const gazettedHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'GAZETTED').length;
+    const otherHolidays = calFilteredHolidays.filter(h => h.holiday_type === 'REGIONAL' || h.holiday_type === 'INSTITUTIONAL').length;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const upcoming = holidays
+      .filter(h => h.holiday_date >= todayStr && h.is_active)
+      .sort((a, b) => a.holiday_date.localeCompare(b.holiday_date))[0] || null;
+
+    let daysUntilUpcoming: number | null = null;
+    if (upcoming) {
+      const t1 = new Date(todayStr).getTime();
+      const t2 = new Date(upcoming.holiday_date).getTime();
+      daysUntilUpcoming = Math.max(0, Math.round((t2 - t1) / (1000 * 60 * 60 * 24)));
+    }
+
+    return { totalDays, nationalHolidays, festivalHolidays, gazettedHolidays, otherHolidays, upcoming, daysUntilUpcoming };
+  }, [calFilteredHolidays, holidays]);
+
+  // Group holidays by month for agenda view
+  const calHolidaysByMonth = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    calFilteredHolidays.forEach(h => {
+      const monthKey = h.holiday_date.slice(0, 7); // 'YYYY-MM'
+      if (!map[monthKey]) map[monthKey] = [];
+      map[monthKey].push(h);
+    });
+    return map;
+  }, [calFilteredHolidays]);
+
   /* ─────────────────────────────────────────────────────────────
      Data Fetching
   ───────────────────────────────────────────────────────────── */
-  async function loadSessions() {
+  async function loadSessions(force = false) {
     setLoading(true);
     try {
-      const r = await api.get('/academic-years');
-      setItems(Array.isArray(r.data) ? r.data : []);
+      const r = await api.get('/academic-years', { params: force ? { fresh: '1' } : {} });
+      setItems(sortAcademicYearsAsc(Array.isArray(r.data) ? r.data : []));
     } catch (e: any) {
       setMessage(e?.response?.data?.message || e?.message || 'Unable to load academic sessions');
     } finally {
@@ -224,11 +473,25 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     setMessage('');
 
     if (!name.trim()) {
-      alert('Validation Error: Please enter session name (e.g. 2026–27).');
+      alert('Validation Error: Please enter session name (e.g. 2028-2029).');
+      return;
+    }
+    if (!SESSION_FORMAT_REGEX.test(name.trim())) {
+      alert('Validation Error: Session Name must be in YYYY-YYYY format (e.g. 2028-2029).');
       return;
     }
     if (!startDate || !endDate) {
       alert('Validation Error: Both start date and end date are mandatory.');
+      return;
+    }
+    const startYear = startDate.split('-')[0];
+    const endYear = endDate.split('-')[0];
+    if (!/^\d{4}$/.test(startYear)) {
+      alert('Validation Error: Start Date year must be exactly 4 digits.');
+      return;
+    }
+    if (!/^\d{4}$/.test(endYear)) {
+      alert('Validation Error: End Date year must be exactly 4 digits.');
       return;
     }
     if (new Date(startDate) >= new Date(endDate)) {
@@ -400,6 +663,77 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
     }
   }
 
+  // Edit Holiday Modal State
+  const [editHolidayModal, setEditHolidayModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    date: string;
+    type: 'GAZETTED' | 'NATIONAL' | 'FESTIVAL' | 'REGIONAL' | 'INSTITUTIONAL';
+    description: string;
+    isActive: boolean;
+    loading: boolean;
+    error: string | null;
+  }>({
+    isOpen: false,
+    id: '',
+    name: '',
+    date: '',
+    type: 'GAZETTED',
+    description: '',
+    isActive: true,
+    loading: false,
+    error: null
+  });
+
+  function openEditHolidayModal(h: any) {
+    setEditHolidayModal({
+      isOpen: true,
+      id: h.id,
+      name: h.name || '',
+      date: h.holiday_date || '',
+      type: h.holiday_type || 'GAZETTED',
+      description: h.description || '',
+      isActive: Boolean(h.is_active),
+      loading: false,
+      error: null
+    });
+  }
+
+  async function handleSaveEditHoliday(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!editHolidayModal.name.trim()) {
+      setEditHolidayModal(prev => ({ ...prev, error: 'Holiday name is mandatory.' }));
+      return;
+    }
+    const dYear = editHolidayModal.date.split('-')[0];
+    if (!/^\d{4}$/.test(dYear)) {
+      setEditHolidayModal(prev => ({ ...prev, error: 'Holiday date year must be exactly 4 digits.' }));
+      return;
+    }
+
+    setEditHolidayModal(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      await api.put(`/calendar/holidays/${editHolidayModal.id}`, {
+        name: editHolidayModal.name.trim(),
+        holiday_date: editHolidayModal.date,
+        holiday_type: editHolidayModal.type,
+        description: editHolidayModal.description.trim(),
+        is_active: editHolidayModal.isActive
+      });
+
+      setEditHolidayModal(prev => ({ ...prev, isOpen: false, loading: false }));
+      await loadHolidaysList();
+      executeCalculation();
+    } catch (err: any) {
+      setEditHolidayModal(prev => ({
+        ...prev,
+        loading: false,
+        error: err?.response?.data?.message || err?.message || 'Failed to update holiday'
+      }));
+    }
+  }
+
   /* ─────────────────────────────────────────────────────────────
      Holiday Handlers (TC-SET-003)
   ───────────────────────────────────────────────────────────── */
@@ -410,6 +744,16 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
 
     if (!holidayName.trim() || !from) {
       alert('Please provide holiday name and valid From date.');
+      return;
+    }
+    const fromYear = from.split('-')[0];
+    const toYear = to.split('-')[0];
+    if (!/^\d{4}$/.test(fromYear)) {
+      alert('Validation Error: From Date year must be exactly 4 digits.');
+      return;
+    }
+    if (!/^\d{4}$/.test(toYear)) {
+      alert('Validation Error: To Date year must be exactly 4 digits.');
       return;
     }
     if (from > to) {
@@ -565,6 +909,27 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         >
           <CalendarDays size={16} /> Working Day &amp; Weekend/Holiday Calculator
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('academic-calendar')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '12px 18px',
+            fontSize: 14,
+            fontWeight: activeTab === 'academic-calendar' ? 700 : 500,
+            color: activeTab === 'academic-calendar' ? '#2563eb' : 'var(--text-muted, #64748b)',
+            borderBottom: activeTab === 'academic-calendar' ? '2px solid #2563eb' : '2px solid transparent',
+            marginBottom: -2,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <Calendar size={16} /> Academic Holiday Calendar
+        </button>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -576,11 +941,12 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
             <h3>Create Academic Session</h3>
             <form onSubmit={initiateCreate} className="form-inline" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Session Name</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Session Name (YYYY-YYYY)</span>
                 <input
-                  placeholder="e.g. 2026–27"
+                  placeholder="e.g. 2028-2029"
                   value={name}
                   onChange={e => setName(e.target.value)}
+                  maxLength={9}
                   required
                   style={{ minWidth: 160 }}
                 />
@@ -590,7 +956,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <input
                   type="date"
                   value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
+                  min="1900-01-01"
+                  max="2099-12-31"
+                  onChange={e => handleDateInput(e.target.value, setStartDate)}
                   required
                 />
               </label>
@@ -599,7 +967,9 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
+                  min="1900-01-01"
+                  max="2099-12-31"
+                  onChange={e => handleDateInput(e.target.value, setEndDate)}
                   required
                 />
               </label>
@@ -616,19 +986,20 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
               <table>
                 <thead>
                   <tr>
-                    {['YEAR', 'START', 'END', 'STUDENTS', 'CLASSES', 'STATUS', 'ACTIONS'].map(h => (
+                    {['YEAR', 'START', 'END', 'STUDENTS', 'CLASSES', 'SECTIONS', 'STATUS', 'ACTIONS'].map(h => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map(x => (
+                  {sortedItems.map(x => (
                     <tr key={x.id}>
                       <td><b>{x.name}</b></td>
                       <td>{String(x.start_date).slice(0, 10)}</td>
                       <td>{String(x.end_date).slice(0, 10)}</td>
                       <td>{x.student_count ?? 0}</td>
                       <td>{x.class_count ?? 0}</td>
+                      <td>{x.section_count ?? 0}</td>
                       <td>
                         <span
                           className={`badge ${x.is_archived ? 'expired' : x.is_active ? 'active' : ''}`}
@@ -649,6 +1020,29 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                       </td>
                       <td>
                         <div className="action-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="small-btn edit-btn"
+                            style={{
+                              background: '#0284c7',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '6px 14px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              fontSize: '0.82rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5
+                            }}
+                            onClick={() => openEditModal(x)}
+                            title="Edit session details"
+                          >
+                            <Edit2 size={12} />
+                            <span>Edit</span>
+                          </button>
+
                           {x.is_active ? (
                             <button
                               type="button"
@@ -730,7 +1124,7 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                   ))}
                   {!items.length && (
                     <tr>
-                      <td colSpan={7} className="muted" style={{ padding: 20 }}>
+                      <td colSpan={8} className="muted" style={{ padding: 20 }}>
                         No academic years created in database. Use the form above to create one.
                       </td>
                     </tr>
@@ -968,13 +1362,16 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>From Date *</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={holidayFromDate}
                   onChange={e => {
-                    const val = e.target.value;
-                    setHolidayFromDate(val);
-                    if (!holidayToDate || holidayToDate < val) {
-                      setHolidayToDate(val);
-                    }
+                    handleDateInput(e.target.value, val => {
+                      setHolidayFromDate(val);
+                      if (!holidayToDate || holidayToDate < val) {
+                        setHolidayToDate(val);
+                      }
+                    });
                   }}
                   required
                 />
@@ -984,9 +1381,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>To Date *</span>
                 <input
                   type="date"
-                  min={holidayFromDate}
+                  min={holidayFromDate || '1900-01-01'}
+                  max="2099-12-31"
                   value={holidayToDate}
-                  onChange={e => setHolidayToDate(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setHolidayToDate)}
                   required
                 />
               </label>
@@ -1157,71 +1555,96 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                             </span>
                           </td>
                           <td>
-                            {isMulti ? (
-                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  className="small-btn danger-btn"
-                                  title="Delete only this specific date"
-                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
-                                  style={{
-                                    background: '#ef4444',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3
-                                  }}
-                                >
-                                  <Trash2 size={12} /> Day
-                                </button>
-                                <button
-                                  type="button"
-                                  className="small-btn danger-btn"
-                                  title="Delete all dates in this holiday series"
-                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
-                                  style={{
-                                    background: '#b91c1c',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3
-                                  }}
-                                >
-                                  <Trash2 size={12} /> All ({nameCounts[h.name]}d)
-                                </button>
-                              </div>
-                            ) : (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                               <button
                                 type="button"
-                                className="small-btn danger-btn"
-                                onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                className="small-btn edit-btn"
+                                title="Edit holiday details"
+                                onClick={() => openEditHolidayModal(h)}
                                 style={{
-                                  background: '#dc2626',
+                                  background: '#0284c7',
                                   color: '#fff',
                                   border: 'none',
-                                  padding: '4px 10px',
+                                  padding: '4px 9px',
                                   borderRadius: 6,
                                   cursor: 'pointer',
-                                  fontSize: 12,
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: 4
                                 }}
                               >
-                                <Trash2 size={13} /> Delete
+                                <Edit2 size={12} />
+                                <span>Edit</span>
                               </button>
-                            )}
+
+                              {isMulti ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="small-btn danger-btn"
+                                    title="Delete only this specific date"
+                                    onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                    style={{
+                                      background: '#ef4444',
+                                      color: '#fff',
+                                      border: 'none',
+                                      padding: '4px 8px',
+                                      borderRadius: 6,
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Trash2 size={12} /> Day
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="small-btn danger-btn"
+                                    title="Delete all dates in this holiday series"
+                                    onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, true)}
+                                    style={{
+                                      background: '#b91c1c',
+                                      color: '#fff',
+                                      border: 'none',
+                                      padding: '4px 8px',
+                                      borderRadius: 6,
+                                      cursor: 'pointer',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Trash2 size={12} /> All ({nameCounts[h.name]}d)
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="small-btn danger-btn"
+                                  onClick={() => handleDeleteHoliday(h.id, h.name, h.holiday_date, false)}
+                                  style={{
+                                    background: '#dc2626',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 12,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <Trash2 size={13} /> Delete
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1254,8 +1677,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>Start Date</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={calcStart}
-                  onChange={e => setCalcStart(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setCalcStart)}
                 />
               </label>
 
@@ -1263,8 +1688,10 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
                 <span style={{ fontSize: 12, fontWeight: 600 }}>End Date</span>
                 <input
                   type="date"
+                  min="1900-01-01"
+                  max="2099-12-31"
                   value={calcEnd}
-                  onChange={e => setCalcEnd(e.target.value)}
+                  onChange={e => handleDateInput(e.target.value, setCalcEnd)}
                 />
               </label>
 
@@ -1445,6 +1872,969 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         </div>
       )}
 
+            {/* ─────────────────────────────────────────────────────────────
+          TAB 5: ACADEMIC HOLIDAY CALENDAR (FULL YEAR NATIONAL & FESTIVAL SCHEDULE)
+      ───────────────────────────────────────────────────────────── */}
+      {activeTab === 'academic-calendar' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Header & Controls Bar */}
+          <div className="panel" style={{ padding: '20px 24px', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', background: 'var(--bg-card, #ffffff)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Calendar size={20} style={{ color: '#2563eb' }} />
+                  <span>Academic Holiday Calendar</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#dbeafe', color: '#1e40af' }}>
+                    {calFilteredHolidays.length} Holidays
+                  </span>
+                </h3>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                  Official institutional annual calendar: View full-year national holidays, cultural festivals, gazetted observances, and school vacations dynamically synchronized with Holiday Manager.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Switch to Holiday Manager shortcut */}
+                <button
+                  type="button"
+                  className="small-btn primary-btn"
+                  onClick={() => setActiveTab('holidays')}
+                  style={{
+                    background: '#2563eb',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Manage in Holiday Manager</span>
+                </button>
+
+                {/* Print Calendar */}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => window.print()}
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                  title="Print official academic holiday schedule"
+                >
+                  <Printer size={14} />
+                  <span>Print Calendar</span>
+                </button>
+
+                {/* Refresh list */}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={loadHolidaysList}
+                  disabled={loadingHolidays}
+                  style={{
+                    padding: '8px 12px',
+                    fontSize: 12.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Refresh holidays from database"
+                >
+                  <RefreshCw size={14} className={loadingHolidays ? 'animate-spin' : ''} />
+                </button>
+
+                {/* View switcher: Grid vs Agenda */}
+                <div style={{ display: 'inline-flex', borderRadius: 8, border: '1px solid var(--border, #cbd5e1)', overflow: 'hidden', marginLeft: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalViewMode('calendar')}
+                    style={{
+                      background: calViewMode === 'calendar' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calViewMode === 'calendar' ? '#fff' : 'var(--text, #334155)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Calendar size={13} />
+                    <span>Monthly Grid</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalViewMode('agenda')}
+                    style={{
+                      background: calViewMode === 'agenda' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calViewMode === 'agenda' ? '#fff' : 'var(--text, #334155)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Sliders size={13} />
+                    <span>Agenda Schedule</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border, #f1f5f9)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Session Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Academic Session
+                </span>
+                <select
+                  value={calSessionFilter}
+                  onChange={e => {
+                    setCalSessionFilter(e.target.value);
+                    if (e.target.value !== 'ALL') setCalYearFilter('ALL');
+                  }}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 160
+                  }}
+                >
+                  <option value="ALL">All Academic Sessions</option>
+                  {sortedItems.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {s.is_active ? '(Active)' : s.is_archived ? '(Archived)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Year Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Calendar Year
+                </span>
+                <select
+                  value={calYearFilter}
+                  onChange={e => {
+                    setCalYearFilter(e.target.value);
+                    if (e.target.value !== 'ALL') setCalSessionFilter('ALL');
+                  }}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 110
+                  }}
+                >
+                  <option value="ALL">All Years</option>
+                  {calDistinctYears.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Category Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Category / Observance
+                </span>
+                <select
+                  value={calCategoryFilter}
+                  onChange={e => setCalCategoryFilter(e.target.value)}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    background: 'var(--bg-card, #fff)',
+                    minWidth: 170
+                  }}
+                >
+                  <option value="ALL">All Categories &amp; Observances</option>
+                  <option value="NATIONAL">🇮🇳 National Holidays</option>
+                  <option value="FESTIVAL">🪔 Festivals &amp; Cultural Celebrations</option>
+                  <option value="GAZETTED">🏛️ Gazetted Holidays</option>
+                  <option value="REGIONAL">🌴 Regional Observances</option>
+                  <option value="INSTITUTIONAL">🏫 Institutional / School Breaks</option>
+                </select>
+              </div>
+
+              {/* Search query */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Search Holidays
+                </span>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)' }} />
+                  <input
+                    type="text"
+                    value={calSearchQuery}
+                    onChange={e => setCalSearchQuery(e.target.value)}
+                    placeholder="Search holiday name, festival or description..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 12px 7px 32px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {calSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCalSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        padding: 2,
+                        color: 'var(--text-muted)'
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+            {/* Total Holidays Card */}
+            <div style={{ background: '#f8fafc', padding: '16px 18px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Annual Holidays
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span>{calKpiStats.totalDays}</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>days listed</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
+                Configured in Holiday Manager
+              </div>
+            </div>
+
+            {/* National Holidays Card */}
+            <div style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#b91c1c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🇮🇳 National Holidays
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#dc2626', marginTop: 4 }}>
+                {calKpiStats.nationalHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 3 }}>
+                Republic, Independence, Gandhi Jayanti
+              </div>
+            </div>
+
+            {/* Cultural Festivals Card */}
+            <div style={{ background: 'rgba(168, 85, 247, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#7e22ce', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🪔 Festivals &amp; Cultural
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#9333ea', marginTop: 4 }}>
+                {calKpiStats.festivalHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#7e22ce', marginTop: 3 }}>
+                Durga Puja, Diwali, Holi, Kali Pujo
+              </div>
+            </div>
+
+            {/* Gazetted / Institutional Card */}
+            <div style={{ background: 'rgba(59, 130, 246, 0.06)', padding: '16px 18px', borderRadius: 10, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+              <div style={{ fontSize: 11, color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                🏛️ Gazetted &amp; Institutional
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb', marginTop: 4 }}>
+                {calKpiStats.gazettedHolidays + calKpiStats.otherHolidays}
+              </div>
+              <div style={{ fontSize: 11, color: '#1d4ed8', marginTop: 3 }}>
+                Good Friday, Christmas, Guru Nanak
+              </div>
+            </div>
+
+            {/* Upcoming Holiday Countdown Card */}
+            <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)', padding: '16px 18px', borderRadius: 10, border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Sparkles size={13} style={{ color: '#2563eb' }} />
+                <span>Next Upcoming Holiday</span>
+              </div>
+              {calKpiStats.upcoming ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {calKpiStats.upcoming.name}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#15803d', fontWeight: 700, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{calKpiStats.upcoming.holiday_date}</span>
+                    <span style={{ background: '#dcfce7', padding: '1px 6px', borderRadius: 10 }}>
+                      {calKpiStats.daysUntilUpcoming === 0 ? 'Today!' : `in ${calKpiStats.daysUntilUpcoming} day${calKpiStats.daysUntilUpcoming === 1 ? '' : 's'}`}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
+                  No upcoming holidays scheduled
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Legend Bar */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', padding: '10px 16px', background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, fontSize: 12 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text, #334155)' }}>Legend:</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+              <span>National Holiday</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#a855f7' }} />
+              <span>Cultural Festival</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#6366f1' }} />
+              <span>Gazetted Holiday</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#14b8a6' }} />
+              <span>Regional / Institutional</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#e2e8f0' }} />
+              <span>Weekend (Sun/Off Sat)</span>
+            </span>
+          </div>
+
+          {/* VIEW MODE 1: MONTHLY CALENDAR GRID */}
+          {calViewMode === 'calendar' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Month quick jumper */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalMonthViewMode('all-months')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: calMonthViewMode === 'all-months' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calMonthViewMode === 'all-months' ? '#fff' : 'var(--text, #334155)'
+                    }}
+                  >
+                    Full Year (12 Months)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCalMonthViewMode('single-month')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: '1px solid var(--border, #cbd5e1)',
+                      background: calMonthViewMode === 'single-month' ? '#2563eb' : 'var(--bg-card, #fff)',
+                      color: calMonthViewMode === 'single-month' ? '#fff' : 'var(--text, #334155)'
+                    }}
+                  >
+                    Single Month View
+                  </button>
+                </div>
+
+                {calMonthViewMode === 'single-month' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalActiveMonth(prev => (prev === 0 ? 11 : prev - 1))}
+                      style={{ padding: '4px 8px' }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontSize: 14, fontWeight: 700, minWidth: 120, textAlign: 'center' }}>
+                      {MONTH_NAMES[calActiveMonth]} {calYearFilter !== 'ALL' ? calYearFilter : new Date().getFullYear()}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalActiveMonth(prev => (prev === 11 ? 0 : prev + 1))}
+                      style={{ padding: '4px 8px' }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Grid Render */}
+              {calMonthViewMode === 'all-months' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 16 }}>
+                  {MONTH_NAMES.map((mName, mIdx) => {
+                    const displayY = calYearFilter !== 'ALL' ? Number(calYearFilter) : new Date().getFullYear();
+                    const firstDayOfWeek = new Date(Date.UTC(displayY, mIdx, 1)).getUTCDay();
+                    const totalDaysInMonth = new Date(Date.UTC(displayY, mIdx + 1, 0)).getUTCDate();
+                    const monthPaddedStr = String(mIdx + 1).padStart(2, '0');
+
+                    // Filter holidays for this month
+                    const monthHolidays = calFilteredHolidays.filter(h => {
+                      const [hy, hm] = h.holiday_date.split('-');
+                      return Number(hy) === displayY && hm === monthPaddedStr;
+                    });
+
+                    const holidaysMap: Record<number, any[]> = {};
+                    monthHolidays.forEach(h => {
+                      const dayNum = Number(h.holiday_date.split('-')[2]);
+                      if (!holidaysMap[dayNum]) holidaysMap[dayNum] = [];
+                      holidaysMap[dayNum].push(h);
+                    });
+
+                    return (
+                      <div
+                        key={mName}
+                        style={{
+                          background: 'var(--bg-card, #ffffff)',
+                          border: monthHolidays.length > 0 ? '1px solid #bfdbfe' : '1px solid var(--border, #e2e8f0)',
+                          borderRadius: 10,
+                          padding: 14,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        {/* Month Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                            {mName}
+                          </span>
+                          {monthHolidays.length > 0 ? (
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1e40af' }}>
+                              {monthHolidays.length} holiday{monthHolidays.length === 1 ? '' : 's'}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>0 holidays</span>
+                          )}
+                        </div>
+
+                        {/* Calendar Day Labels */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted, #64748b)', marginBottom: 4 }}>
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                            <div key={d} style={{ padding: '2px 0', color: i === 0 ? '#ef4444' : 'inherit' }}>{d}</div>
+                          ))}
+                        </div>
+
+                        {/* Calendar Day Matrix */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                          {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                            <div key={'empty-' + i} style={{ height: 32 }} />
+                          ))}
+
+                          {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                            const dayNum = i + 1;
+                            const dayOfWeek = (firstDayOfWeek + i) % 7;
+                            const isWeekend = weekendDays.includes(dayOfWeek) || (dayOfWeek === 6 && saturdayRule === 'OFF');
+                            const dayHolidays = holidaysMap[dayNum];
+                            const primaryHol = dayHolidays?.[0];
+                            const styleInfo = primaryHol ? getHolidayCategoryStyle(primaryHol.holiday_type) : null;
+
+                            return (
+                              <div
+                                key={dayNum}
+                                onClick={() => { if (dayHolidays && dayHolidays.length > 0) setCalInspectHoliday(dayHolidays[0]); }}
+                                title={dayHolidays ? dayHolidays.map(h => `${h.name} (${h.holiday_type})`).join('; ') : undefined}
+                                style={{
+                                  height: 32,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 5,
+                                  fontSize: 11,
+                                  fontWeight: dayHolidays ? 800 : isWeekend ? 600 : 500,
+                                  cursor: dayHolidays ? 'pointer' : 'default',
+                                  position: 'relative',
+                                  background: styleInfo
+                                    ? styleInfo.bg
+                                    : isWeekend
+                                      ? 'var(--card-subtle, #f1f5f9)'
+                                      : 'transparent',
+                                  color: styleInfo
+                                    ? styleInfo.color
+                                    : isWeekend
+                                      ? '#64748b'
+                                      : 'var(--text, #1e293b)',
+                                  border: styleInfo ? `1px solid ${styleInfo.border}` : '1px solid transparent',
+                                  transition: 'transform 0.1s'
+                                }}
+                              >
+                                <span>{dayNum}</span>
+                                {dayHolidays && (
+                                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: styleInfo?.badgeBg, marginTop: 1 }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* SINGLE MONTH DETAILED VIEW */
+                <div style={{ background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: 12, padding: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', fontSize: 13, fontWeight: 700, marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
+                      <div key={d} style={{ color: i === 0 ? '#ef4444' : 'var(--text, #334155)' }}>{d}</div>
+                    ))}
+                  </div>
+
+                  {(() => {
+                    const displayY = calYearFilter !== 'ALL' ? Number(calYearFilter) : new Date().getFullYear();
+                    const firstDayOfWeek = new Date(Date.UTC(displayY, calActiveMonth, 1)).getUTCDay();
+                    const totalDaysInMonth = new Date(Date.UTC(displayY, calActiveMonth + 1, 0)).getUTCDate();
+                    const monthPaddedStr = String(calActiveMonth + 1).padStart(2, '0');
+
+                    const monthHolidays = calFilteredHolidays.filter(h => {
+                      const [hy, hm] = h.holiday_date.split('-');
+                      return Number(hy) === displayY && hm === monthPaddedStr;
+                    });
+
+                    const holidaysMap: Record<number, any[]> = {};
+                    monthHolidays.forEach(h => {
+                      const dayNum = Number(h.holiday_date.split('-')[2]);
+                      if (!holidaysMap[dayNum]) holidaysMap[dayNum] = [];
+                      holidaysMap[dayNum].push(h);
+                    });
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+                        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                          <div key={'empty-' + i} style={{ minHeight: 90, background: 'var(--card-subtle, #f8fafc)', borderRadius: 8, border: '1px dashed #e2e8f0' }} />
+                        ))}
+
+                        {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                          const dayNum = i + 1;
+                          const dayOfWeek = (firstDayOfWeek + i) % 7;
+                          const isWeekend = weekendDays.includes(dayOfWeek) || (dayOfWeek === 6 && saturdayRule === 'OFF');
+                          const dayHolidays = holidaysMap[dayNum];
+
+                          return (
+                            <div
+                              key={dayNum}
+                              style={{
+                                minHeight: 90,
+                                background: dayHolidays ? '#fefce8' : isWeekend ? 'var(--card-subtle, #f8fafc)' : 'var(--bg-card, #ffffff)',
+                                border: dayHolidays ? '1px solid #fde047' : '1px solid var(--border, #e2e8f0)',
+                                borderRadius: 8,
+                                padding: 8,
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: dayHolidays ? 800 : 600, color: dayHolidays ? '#b45309' : isWeekend ? '#64748b' : 'var(--text)' }}>
+                                  {dayNum}
+                                </span>
+                                {isWeekend && !dayHolidays && (
+                                  <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>Weekend</span>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                                {dayHolidays && dayHolidays.map(h => {
+                                  const cStyle = getHolidayCategoryStyle(h.holiday_type);
+                                  return (
+                                    <div
+                                      key={h.id}
+                                      onClick={() => setCalInspectHoliday(h)}
+                                      style={{
+                                        background: cStyle.bg,
+                                        border: `1px solid ${cStyle.border}`,
+                                        color: cStyle.color,
+                                        borderRadius: 5,
+                                        padding: '4px 6px',
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        lineHeight: 1.2
+                                      }}
+                                    >
+                                      <div>{h.name}</div>
+                                      <div style={{ fontSize: 9.5, opacity: 0.85, marginTop: 2 }}>{h.holiday_type}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW MODE 2: CHRONOLOGICAL AGENDA / LIST VIEW */}
+          {calViewMode === 'agenda' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {Object.keys(calHolidaysByMonth).length === 0 ? (
+                <div className="panel" style={{ padding: 40, textAlign: 'center', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)' }}>
+                  <Calendar size={36} style={{ color: '#94a3b8', marginBottom: 12 }} />
+                  <h4 style={{ margin: 0, fontSize: 16 }}>No Holidays Found in Selected Filters</h4>
+                  <p className="muted" style={{ margin: '6px 0 16px', fontSize: 13 }}>
+                    No holidays match the selected academic session, calendar year, or search query.
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => { setCalSessionFilter('ALL'); setCalYearFilter('ALL'); setCalCategoryFilter('ALL'); setCalSearchQuery(''); }}
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              ) : (
+                Object.entries(calHolidaysByMonth).map(([monthKey, monthItems]) => {
+                  const [yStr, mStr] = monthKey.split('-');
+                  const monthName = MONTH_NAMES[Number(mStr) - 1];
+
+                  return (
+                    <div key={monthKey} style={{ background: 'var(--bg-card, #ffffff)', borderRadius: 12, border: '1px solid var(--border, #e2e8f0)', overflow: 'hidden' }}>
+                      {/* Month Header Banner */}
+                      <div style={{ padding: '12px 20px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Calendar size={16} style={{ color: '#2563eb' }} />
+                          <span>{monthName} {yStr}</span>
+                        </h4>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: '#e0e7ff', color: '#3730a3' }}>
+                          {monthItems.length} holiday{monthItems.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+
+                      {/* Holiday Items */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {monthItems.map((h, hIdx) => {
+                          const [hy, hm, hd] = h.holiday_date.split('-').map(Number);
+                          const dt = new Date(Date.UTC(hy, hm - 1, hd));
+                          const dayName = DAY_NAMES[dt.getUTCDay()];
+                          const isWeekend = weekendDays.includes(dt.getUTCDay()) || (dt.getUTCDay() === 6 && saturdayRule === 'OFF');
+                          const cStyle = getHolidayCategoryStyle(h.holiday_type);
+                          const isMulti = (nameCounts[h.name] || 0) > 1;
+
+                          // Match academic session
+                          const matchedSession = items.find(s => {
+                            const startStr = String(s.start_date).slice(0, 10);
+                            const endStr = String(s.end_date).slice(0, 10);
+                            return h.holiday_date >= startStr && h.holiday_date <= endStr;
+                          });
+
+                          return (
+                            <div
+                              key={h.id}
+                              style={{
+                                padding: '14px 20px',
+                                borderBottom: hIdx < monthItems.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 16,
+                                flexWrap: 'wrap',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              {/* Left: Date block + Holiday Info */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                {/* Big Date Box */}
+                                <div
+                                  style={{
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: 8,
+                                    background: cStyle.bg,
+                                    border: `1px solid ${cStyle.border}`,
+                                    color: cStyle.color,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{hd}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginTop: 2 }}>{dayName.slice(0, 3)}</span>
+                                </div>
+
+                                {/* Holiday Name & Metadata */}
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #0f172a)' }}>
+                                      {h.name}
+                                    </span>
+
+                                    {/* Multi-day series badge */}
+                                    {isMulti && (
+                                      <span
+                                        style={{
+                                          fontSize: 10.5,
+                                          background: '#fef3c7',
+                                          color: '#92400e',
+                                          padding: '2px 7px',
+                                          borderRadius: 6,
+                                          fontWeight: 700
+                                        }}
+                                      >
+                                        Series ({nameCounts[h.name]}d)
+                                      </span>
+                                    )}
+
+                                    {/* Category pill */}
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        padding: '2px 8px',
+                                        borderRadius: 10,
+                                        background: cStyle.bg,
+                                        color: cStyle.color,
+                                        fontWeight: 700,
+                                        border: `1px solid ${cStyle.border}`
+                                      }}
+                                    >
+                                      {cStyle.label}
+                                    </span>
+
+                                    {/* Matching academic session */}
+                                    {matchedSession && (
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          padding: '2px 8px',
+                                          borderRadius: 10,
+                                          background: '#f1f5f9',
+                                          color: '#475569',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        Session {matchedSession.name}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Description & weekend overlap */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                                    <span>{h.holiday_date} ({dayName})</span>
+                                    <span>•</span>
+                                    {isWeekend ? (
+                                      <span style={{ color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <Info size={13} /> Falls on {dayName} (Deduplicated)
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: '#15803d', fontWeight: 600 }}>Instructional Day Off (Weekday)</span>
+                                    )}
+                                    {h.description && (
+                                      <>
+                                        <span>•</span>
+                                        <span style={{ fontStyle: 'italic' }}>{h.description}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Right: Actions */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  className="small-btn edit-btn"
+                                  onClick={() => openEditHolidayModal(h)}
+                                  style={{
+                                    background: '#0284c7',
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '5px 10px',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                  title="Edit holiday details in modal"
+                                >
+                                  <Edit2 size={12} />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Inspect Holiday Detail Modal */}
+          {calInspectHoliday && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(3px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: 16
+              }}
+              onClick={() => setCalInspectHoliday(null)}
+            >
+              <div
+                style={{
+                  background: 'var(--bg-card, #ffffff)',
+                  borderRadius: 12,
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+                  width: '100%',
+                  maxWidth: 440,
+                  overflow: 'hidden',
+                  border: '1px solid var(--border, #cbd5e1)'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: 'var(--card-subtle, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Calendar size={16} style={{ color: '#2563eb' }} />
+                    <span>Holiday Inspection</span>
+                  </h3>
+                  <button type="button" onClick={() => setCalInspectHoliday(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text, #0f172a)' }}>
+                    {calInspectHoliday.name}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    {(() => {
+                      const c = getHolidayCategoryStyle(calInspectHoliday.holiday_type);
+                      return (
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: c.bg, color: c.color, fontWeight: 700, border: `1px solid ${c.border}` }}>
+                          {c.label}
+                        </span>
+                      );
+                    })()}
+
+                    <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 10, background: calInspectHoliday.is_active ? '#dcfce7' : '#fee2e2', color: calInspectHoliday.is_active ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                      {calInspectHoliday.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Date</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{calInspectHoliday.holiday_date}</div>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Day of Week</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>
+                        {(() => {
+                          const [y, m, d] = calInspectHoliday.holiday_date.split('-').map(Number);
+                          return DAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {calInspectHoliday.description && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Description / Note</div>
+                      <div style={{ fontSize: 13, color: '#334155', background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        {calInspectHoliday.description}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setCalInspectHoliday(null)}
+                      style={{ padding: '7px 14px', fontSize: 12.5 }}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      onClick={() => {
+                        const h = calInspectHoliday;
+                        setCalInspectHoliday(null);
+                        openEditHolidayModal(h);
+                      }}
+                      style={{
+                        padding: '7px 16px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        background: '#0284c7',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Edit2 size={13} />
+                      <span>Edit Holiday</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+
       {/* Universal Session Creation Preview Modal */}
       <UniversalPreviewModal
         isOpen={createPreview.isOpen}
@@ -1461,6 +2851,497 @@ export default function AcademicYears({ defaultTab }: { defaultTab?: TabKey }) {
         loading={createPreview.loading}
         error={createPreview.error}
       />
+
+
+      {/* Edit Academic Session Modal */}
+      {editModal.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => { if (!editModal.loading) setEditModal(prev => ({ ...prev, isOpen: false })); }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              borderRadius: 12,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              maxWidth: 480,
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--card-subtle, #f8fafc)'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                  <span>Edit Academic Session</span>
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Update session name and date ranges
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                disabled={editModal.loading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 6,
+                  color: 'var(--text-muted, #64748b)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveEdit} style={{ padding: 20 }}>
+              {editModal.error && (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{editModal.error}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    Session Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editModal.name}
+                    onChange={e => setEditModal(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. 2028-2029"
+                    maxLength={9}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13.5,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)', marginTop: 4 }}>
+                    Must follow <b>YYYY-YYYY</b> format (e.g. 2028-2029)
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Start Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editModal.startDate}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditModal(prev => ({ ...prev, startDate: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      End Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editModal.endDate}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditModal(prev => ({ ...prev, endDate: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  marginTop: 24,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={editModal.loading}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #334155)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editModal.loading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editModal.loading}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editModal.loading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {editModal.loading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Edit School Holiday Modal */}
+      {editHolidayModal.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => { if (!editHolidayModal.loading) setEditHolidayModal(prev => ({ ...prev, isOpen: false })); }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-card, #ffffff)',
+              borderRadius: 12,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              maxWidth: 480,
+              overflow: 'hidden',
+              border: '1px solid var(--border, #cbd5e1)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--card-subtle, #f8fafc)'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Edit2 size={16} style={{ color: '#0284c7' }} />
+                  <span>Edit School Holiday</span>
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-muted, #64748b)' }}>
+                  Update holiday name, date, category, and status
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditHolidayModal(prev => ({ ...prev, isOpen: false }))}
+                disabled={editHolidayModal.loading}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 6,
+                  color: 'var(--text-muted, #64748b)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveEditHoliday} style={{ padding: 20 }}>
+              {editHolidayModal.error && (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{editHolidayModal.error}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                    Holiday Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editHolidayModal.name}
+                    onChange={e => setEditHolidayModal(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. Durga Puja / Summer Break"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      fontSize: 13.5,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Holiday Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editHolidayModal.date}
+                      min="1900-01-01"
+                      max="2099-12-31"
+                      onChange={e => handleDateInput(e.target.value, val => setEditHolidayModal(prev => ({ ...prev, date: val })))}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Category / Type
+                    </label>
+                    <select
+                      value={editHolidayModal.type}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, type: e.target.value as any }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="GAZETTED">Gazetted Holiday</option>
+                      <option value="NATIONAL">National Holiday</option>
+                      <option value="FESTIVAL">Festival Holiday</option>
+                      <option value="REGIONAL">Regional Holiday</option>
+                      <option value="INSTITUTIONAL">Institutional / School</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Status
+                    </label>
+                    <select
+                      value={editHolidayModal.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, isActive: e.target.value === 'ACTIVE' }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5, color: 'var(--text, #334155)' }}>
+                      Description (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={editHolidayModal.description}
+                      onChange={e => setEditHolidayModal(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Optional context"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border, #cbd5e1)',
+                        fontSize: 13,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  marginTop: 24,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEditHolidayModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={editHolidayModal.loading}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--bg-card, #ffffff)',
+                    color: 'var(--text, #334155)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editHolidayModal.loading}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: editHolidayModal.loading ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  {editHolidayModal.loading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Destructive Confirm Modal for Session Activate / Deactivate / Archive / Unarchive */}
       <DestructiveConfirmModal

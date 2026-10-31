@@ -183,17 +183,29 @@ export function validateAttachment(
 }
 
 /**
- * Ensures private Supabase Storage bucket exists via official Storage REST API
+ * Safely inspects storage configuration and bucket availability without throwing
  */
-export async function ensureBucketExists(): Promise<void> {
+export async function getStorageHealth(): Promise<{
+  configured: boolean;
+  hasServiceRoleKey: boolean;
+  hasSupabaseUrl: boolean;
+  bucketExists?: boolean;
+  status: 'READY' | 'MISSING_CONFIGURATION' | 'ERROR';
+  message: string;
+}> {
   const serviceKey = getServiceRoleKey();
   const supabaseUrl = getSupabaseUrl();
+  const hasServiceRoleKey = Boolean(serviceKey);
+  const hasSupabaseUrl = Boolean(env.supabaseUrl || (env.supabaseDatabaseUrl && env.supabaseDatabaseUrl.includes('supabase')));
 
-  if (!serviceKey) {
-    if (process.env.NODE_ENV === 'test') {
-      return; // In test mode without secrets, mock handles operations
-    }
-    throw new StorageConfigurationError();
+  if (!hasServiceRoleKey) {
+    return {
+      configured: false,
+      hasServiceRoleKey: false,
+      hasSupabaseUrl,
+      status: 'MISSING_CONFIGURATION',
+      message: 'File attachment storage is currently unconfigured or unavailable. Please configure SUPABASE_SERVICE_ROLE_KEY.'
+    };
   }
 
   try {
@@ -205,10 +217,81 @@ export async function ensureBucketExists(): Promise<void> {
     });
 
     if (res.status === 200) {
+      return {
+        configured: true,
+        hasServiceRoleKey: true,
+        hasSupabaseUrl: true,
+        bucketExists: true,
+        status: 'READY',
+        message: `Storage is ready. Bucket '${BUCKET_NAME}' exists and is accessible.`
+      };
+    }
+
+    if (res.status === 404) {
+      return {
+        configured: true,
+        hasServiceRoleKey: true,
+        hasSupabaseUrl: true,
+        bucketExists: false,
+        status: 'READY',
+        message: `Storage credentials valid. Bucket '${BUCKET_NAME}' will be provisioned on first upload.`
+      };
+    }
+
+    return {
+      configured: true,
+      hasServiceRoleKey: true,
+      hasSupabaseUrl: true,
+      bucketExists: false,
+      status: 'ERROR',
+      message: `Supabase Storage returned HTTP status ${res.status}.`
+    };
+  } catch (err: any) {
+    return {
+      configured: true,
+      hasServiceRoleKey: true,
+      hasSupabaseUrl: true,
+      status: 'ERROR',
+      message: `Failed to connect to storage: ${err.message || 'Network error'}`
+    };
+  }
+}
+
+/**
+ * Ensures private Supabase Storage bucket exists via official Storage REST API
+ */
+export async function ensureBucketExists(): Promise<void> {
+  const serviceKey = getServiceRoleKey();
+  const supabaseUrl = getSupabaseUrl();
+
+  const hasServiceKey = Boolean(serviceKey);
+  const hasUrl = Boolean(env.supabaseUrl || supabaseUrl);
+
+  if (!hasServiceKey) {
+    if (process.env.NODE_ENV === 'test') {
+      return; // In test mode without secrets, mock handles operations
+    }
+    console.warn('[SupabaseStorage] Initialization aborted: SUPABASE_SERVICE_ROLE_KEY is not configured (present: false).');
+    throw new StorageConfigurationError();
+  }
+
+  console.log(`[SupabaseStorage] Diagnostic: Checking storage bucket. Key present: ${hasServiceKey}, URL present: ${hasUrl}`);
+
+  try {
+    const res = await fetch(`${supabaseUrl}/storage/v1/bucket/${BUCKET_NAME}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${serviceKey}`
+      }
+    });
+
+    if (res.status === 200) {
+      console.log(`[SupabaseStorage] Diagnostic: Bucket '${BUCKET_NAME}' verified (HTTP 200).`);
       return; // Bucket exists
     }
 
     if (res.status === 404) {
+      console.log(`[SupabaseStorage] Diagnostic: Bucket '${BUCKET_NAME}' not found (HTTP 404). Attempting auto-provisioning...`);
       // Create private bucket with 10MB file limit
       const createRes = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
         method: 'POST',
@@ -233,11 +316,16 @@ export async function ensureBucketExists(): Promise<void> {
       });
 
       if (!createRes.ok && createRes.status !== 409) {
+        console.error(`[SupabaseStorage] Diagnostic: Bucket creation failed with HTTP status ${createRes.status}`);
         throw new Error(`Failed to initialize private storage bucket (status ${createRes.status})`);
       }
+      console.log(`[SupabaseStorage] Diagnostic: Bucket '${BUCKET_NAME}' provisioned successfully (HTTP ${createRes.status}).`);
+    } else {
+      console.error(`[SupabaseStorage] Diagnostic: Bucket query returned HTTP status ${res.status}`);
     }
   } catch (err: any) {
     if (process.env.NODE_ENV === 'test') return;
+    console.error(`[SupabaseStorage] Diagnostic error: ${err.message || 'Storage error'}`);
     throw err;
   }
 }

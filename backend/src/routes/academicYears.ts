@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import {
-  listAcademicYears, createAcademicYear,
+  listAcademicYears, createAcademicYear, updateAcademicYear,
   setActiveAcademicYear, deactivateAcademicYear,
   archiveAcademicYear, unarchiveAcademicYear,
   getActiveAcademicYear
@@ -18,6 +18,7 @@ export interface AcademicYearItem {
   is_archived: boolean;
   student_count: number;
   class_count: number;
+  section_count?: number;
 }
 
 // In-memory store per school tenant (fallback only when database is unavailable)
@@ -25,9 +26,9 @@ const inMemoryAcademicYears: Record<string, AcademicYearItem[]> = {};
 
 function createDefaultSessions(schoolId: string): AcademicYearItem[] {
   return [
-    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 0, class_count: 0 },
-    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 0, class_count: 0 },
-    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 0, class_count: 0 }
+    { id: 'ay-2024-25', school_id: schoolId, name: '2024–25 Academic Session', code: '2024-25', start_date: '2024-04-01', end_date: '2025-03-31', is_active: false, is_archived: true, student_count: 0, class_count: 0, section_count: 0 },
+    { id: 'ay-2025-26', school_id: schoolId, name: '2025–26 Academic Session', code: '2025-26', start_date: '2025-04-01', end_date: '2026-03-31', is_active: true, is_archived: false, student_count: 0, class_count: 0, section_count: 0 },
+    { id: 'ay-2026-27', school_id: schoolId, name: '2026–27 Academic Session', code: '2026-27', start_date: '2026-04-01', end_date: '2027-03-31', is_active: false, is_archived: false, student_count: 0, class_count: 0, section_count: 0 }
   ];
 }
 
@@ -107,6 +108,29 @@ export function unarchiveInMemoryAcademicYear(schoolId: string | null | undefine
   return unarchived;
 }
 
+
+export function updateInMemoryAcademicYear(
+  schoolId: string | null | undefined,
+  yearId: string,
+  data: { name?: string; startDate?: string; endDate?: string }
+): AcademicYearItem | null {
+  const sid = schoolId || 'default';
+  const list = getInMemoryAcademicYears(sid);
+  let updated: AcademicYearItem | null = null;
+  for (const item of list) {
+    if (item.id === yearId) {
+      if (data.name !== undefined) {
+        item.name = data.name.trim();
+        item.code = String(data.name.trim()).slice(0, 10);
+      }
+      if (data.startDate !== undefined) item.start_date = data.startDate;
+      if (data.endDate !== undefined) item.end_date = data.endDate;
+      updated = item;
+    }
+  }
+  return updated;
+}
+
 export function addInMemoryAcademicYear(schoolId: string | null | undefined, data: Partial<AcademicYearItem>): AcademicYearItem {
   const sid = schoolId || 'default';
   const list = getInMemoryAcademicYears(sid);
@@ -126,16 +150,17 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
     is_active: isAct,
     is_archived: false,
     student_count: 0,
-    class_count: 0
+    class_count: 0, section_count: 0
   };
   list.unshift(newItem);
   return newItem;
 }
 
-import { requireRoles } from '../middleware/auth';
+import { requireAuth, requireRoles } from '../middleware/auth';
 import { fastCache } from '../utils/cache';
 
 const router = Router();
+router.use(requireAuth);
 const schoolId = (req: Request) => (req as any).user?.schoolId;
 const staffOrAdmin = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
 const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');
@@ -161,7 +186,8 @@ router.get('/', staffOrAdmin, async (req, res) => {
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
   const cacheKey = `academic_years:${sid}:list`;
-  const cached = fastCache.get<any>(cacheKey);
+  const forceFresh = req.query.fresh === '1' || req.query.fresh === 'true';
+  const cached = forceFresh ? null : fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   try {
@@ -185,7 +211,8 @@ router.get('/active', async (req, res) => {
   const sid = schoolId(req) || (user?.role === 'SUPER_ADMIN' ? 'default' : null);
   if (!sid && user?.role !== 'SUPER_ADMIN') return res.status(403).json({ message: 'School access required' });
   const cacheKey = `academic_years:${sid}:active`;
-  const cached = fastCache.get<any>(cacheKey);
+  const forceFresh = req.query.fresh === '1' || req.query.fresh === 'true';
+  const cached = forceFresh ? null : fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
   try {
@@ -207,12 +234,59 @@ router.post('/', adminOnly, async (req: Request, res: Response) => {
   const sid = schoolId(req) || 'default';
   const { name, startDate, endDate, makeActive } = req.body || {};
   if (!name || !startDate || !endDate) return res.status(400).json({ message: 'name, startDate and endDate are required' });
+
+  if (!/^\d{4}-\d{4}$/.test(String(name).trim())) {
+    return res.status(400).json({ message: 'Session name must be in YYYY-YYYY format (e.g. 2028-2029)' });
+  }
+
+  const sYear = String(startDate).split('-')[0];
+  const eYear = String(endDate).split('-')[0];
+  if (!/^\d{4}$/.test(sYear) || !/^\d{4}$/.test(eYear)) {
+    return res.status(400).json({ message: 'Start and end dates must have a 4-digit year' });
+  }
+
   try {
     const created = await createAcademicYear(sid, name, startDate, endDate, Boolean(makeActive));
     addInMemoryAcademicYear(sid, created);
     return res.status(201).json(created);
   } catch (err: any) {
     return res.status(400).json({ message: err.message || 'Failed to create academic year' });
+  }
+});
+
+// PUT /api/academic-years/:id - Update academic session
+router.put('/:id', adminOnly, async (req: Request, res: Response) => {
+  const sid = schoolId(req) || 'default';
+  const yearId = String(req.params.id);
+  const { name, startDate, endDate } = req.body || {};
+
+  if (!name && !startDate && !endDate) {
+    return res.status(400).json({ message: 'At least one field (name, startDate, endDate) is required' });
+  }
+
+  if (name && !/^\d{4}-\d{4}$/.test(String(name).trim())) {
+    return res.status(400).json({ message: 'Session name must be in YYYY-YYYY format (e.g. 2028-2029)' });
+  }
+
+  if (startDate) {
+    const sYear = String(startDate).split('-')[0];
+    if (!/^\d{4}$/.test(sYear)) {
+      return res.status(400).json({ message: 'Start date year must be exactly 4 digits' });
+    }
+  }
+  if (endDate) {
+    const eYear = String(endDate).split('-')[0];
+    if (!/^\d{4}$/.test(eYear)) {
+      return res.status(400).json({ message: 'End date year must be exactly 4 digits' });
+    }
+  }
+
+  try {
+    updateInMemoryAcademicYear(sid, yearId, { name, startDate, endDate });
+    const updated = await updateAcademicYear(sid, yearId, { name, startDate, endDate });
+    return res.json(updated || { id: yearId, name, start_date: startDate, end_date: endDate });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message || 'Failed to update academic session' });
   }
 });
 

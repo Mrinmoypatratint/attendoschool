@@ -94,6 +94,7 @@ try {
 }
 
 export const firestore: Firestore = getFirestore(firebaseApp);
+export { firebaseApp };
 
 try {
   firestore.settings({ ignoreUndefinedProperties: true });

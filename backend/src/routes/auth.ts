@@ -482,7 +482,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
       if (isStudentLogin) {
         // Dedicated student login scoped strictly to the selected school/tenant
         const studentQuery = `
-          SELECT u.id, u.school_id, COALESCE(st.name, u.name) AS name, u.email, u.password_hash, u.role, u.is_active AS user_is_active,
+          SELECT u.id, u.school_id, COALESCE(st.name, u.name) AS name, u.email, u.password_hash, u.password_changed_at, u.role, u.is_active AS user_is_active,
                  COALESCE(st.photo_url, u.photo_url) AS photo_url,
                  st.id AS student_id, st.roll_number, st.admission_number, st.is_active AS student_is_active,
                  c.id AS class_id, c.class_number, sec.id AS section_id, sec.name AS section_name,
@@ -574,7 +574,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
         // School Admin, Teacher, Super Admin, or unspecified role login
         // Supports logging in via Email, Employee ID, or Savior_No
         const facultyQuery = `
-          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.role, u.is_active, u.photo_url,
+          SELECT u.id, u.school_id, u.name, u.email, u.password_hash, u.password_changed_at, u.role, u.is_active, u.photo_url,
                  tp.employee_id,
                  sch.name AS school_name, sch.code AS school_code, sch.photo_url AS school_photo_url, sch.website AS school_website
           FROM users u
@@ -591,7 +591,11 @@ router.post('/login', loginRateLimit, async (req, res) => {
         const facultyRes = await pool.query(facultyQuery, [rawIdentifier, resolvedInstituteId || '00000000-0000-0000-0000-000000000000']);
         const u = facultyRes.rows[0];
 
-        if (u && (await bcrypt.compare(password, u.password_hash || ''))) {
+        if (u) {
+          const passwordMatches = await bcrypt.compare(password, u.password_hash || '');
+          if (!passwordMatches) {
+            return res.status(401).json({ message: 'Invalid credentials or account not found' });
+          }
           if (!u.is_active) {
             return res.status(401).json({ message: 'Account has been deactivated. Please contact your school administrator.' });
           }
@@ -723,49 +727,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
     } catch {}
   }
 
-  // If still not found and role is STUDENT, dynamically resolve or synthesize for the school in local fallback mode!
-  if (!demo && (expectedRole === 'STUDENT' || isStudentLogin)) {
-    const targetSid = resolvedInstituteId || instituteId || '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
-    const norm = rawIdentifier.toLowerCase().trim();
-    const existingSchoolStudent = getAllDemoUsers().find(u => u.role === 'STUDENT' && u.schoolId && isSameSchool(u.schoolId, targetSid));
-    demo = {
-      id: `usr-st-${Date.now()}`,
-      schoolId: targetSid,
-      name: existingSchoolStudent?.name || (isDavSchool(targetSid) ? 'Aarav Sharma' : 'Student'),
-      email: norm.includes('@') ? norm : `${norm}@student.local`,
-      role: 'STUDENT',
-      password: 'ChangeMe123!',
-      admissionNumber: norm.includes('@') ? (existingSchoolStudent?.admissionNumber || 'ADM-2026-DAV1') : rawIdentifier,
-      isActive: true,
-      photo_url: existingSchoolStudent?.photo_url || (isDavSchool(targetSid) ? '/dav-logo.png' : '/student-avatar.png')
-    };
-    registerDemoUser(demo);
-  }
-
-  // If still not found and role is TEACHER, dynamically resolve or synthesize for the school in local fallback mode!
-  if (!demo && (expectedRole === 'TEACHER')) {
-    const targetSid = resolvedInstituteId || instituteId || '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
-    const norm = rawIdentifier.toLowerCase().trim();
-    const existingSchoolTeacher = getAllDemoUsers().find(u => u.role === 'TEACHER' && u.schoolId && isSameSchool(u.schoolId, targetSid));
-    demo = {
-      id: `usr-tch-${Date.now()}`,
-      schoolId: targetSid,
-      name: existingSchoolTeacher?.name || (isDavSchool(targetSid) ? 'Debashis Das' : 'Teacher'),
-      email: norm.includes('@') ? norm : `${norm}@teacher.local`,
-      employeeId: norm.includes('@') ? (existingSchoolTeacher?.employeeId || '50359') : rawIdentifier,
-      role: 'TEACHER',
-      password: 'ChangeMe123!',
-      isActive: true,
-      photo_url: existingSchoolTeacher?.photo_url || (isDavSchool(targetSid) ? '/dav-logo.png' : '/teacher-avatar.png')
-    };
-    registerDemoUser(demo);
-  }
-
   const isAcceptedPassword = demo ? (
     password === demo.password ||
-    (await bcrypt.compare(password, demo.password).catch(() => false)) ||
-    ['ChangeMe123!', 'Teacher@123', 'Teacher@1234', 'Student@123', 'Student@1234', 'Dav@123', 'Dav@1234', 'dav123', 'Admin@123', 'Admin@1234', 'admin123', 'password', 'password123', '123456', '12345678'].includes(password) ||
-    (password && typeof password === 'string' && password.trim().length >= 4)
+    (await bcrypt.compare(password, demo.password).catch(() => false))
   ) : false;
 
   if (demo && isAcceptedPassword) {
@@ -1309,6 +1273,21 @@ router.post('/request-password-reset', loginRateLimit, async (req, res) => {
          LEFT JOIN schools sch ON sch.id = st.school_id
          WHERE LOWER(TRIM(st.admission_number)) = LOWER(TRIM($1))
            AND ($2::text IS NULL OR st.school_id::text = $2::text OR sch.code = $2)
+         LIMIT 1`,
+        [cleanEmail, instituteId || null]
+      );
+    }
+
+    if ((!q.rowCount || q.rowCount === 0) && isPostgresConfigured) {
+      // Try resolving faculty by employee_id
+      q = await pool.query(
+        `SELECT u.id, u.name, u.role, u.school_id, u.email, sch.name AS school_name,
+                tp.employee_id
+         FROM users u
+         LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+         LEFT JOIN schools sch ON sch.id = u.school_id
+         WHERE LOWER(TRIM(COALESCE(tp.employee_id, ''))) = LOWER(TRIM($1))
+           AND ($2::text IS NULL OR u.school_id::text = $2::text OR sch.code = $2)
          LIMIT 1`,
         [cleanEmail, instituteId || null]
       );

@@ -47,9 +47,20 @@ export function requireAuth(req:AuthRequest,res:Response,next:NextFunction) {
     });
   }
 }
-export function requireRoles(...roles:Role[]) {
-  return (req:AuthRequest,res:Response,next:NextFunction)=>{
-    if(!req.user || !roles.includes(req.user.role)) return res.status(403).json({message:'Access denied'});
+
+export function requireRoles(...roles: Role[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return requireAuth(req, res, () => {
+        if (!req.user || !roles.includes(req.user.role)) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+        next();
+      });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
     next();
   };
 }
