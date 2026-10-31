@@ -2192,12 +2192,12 @@ function Layout({ children }: { children: React.ReactNode }) {
       if (Array.isArray(res.data) && res.data.length > 0) {
         const stored = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
         const storedId = localStorage.getItem('attendo_active_academic_year_id');
-        // Authoritative active year: strictly one active session from database
+        // Prioritize user's selected session from localStorage if it exists in res.data
+        const storedMatch =
+          (storedId ? res.data.find((ay: any) => String(ay.id) === String(storedId)) : null) ||
+          (stored ? res.data.find((ay: any) => ay.name === stored || ay.code === stored || String(ay.id) === String(stored)) : null);
         const activeFromDb = res.data.find((ay: any) => ay.is_active);
-        const current = activeFromDb
-          || (storedId ? res.data.find((ay: any) => ay.id === storedId) : null)
-          || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null)
-          || res.data[0];
+        const current = storedMatch || activeFromDb || res.data[0];
 
         // Enforce strictly 1 active session in the state list (sorted ascending)
         const sortedRes = sortAcademicYearsAscending(res.data);
@@ -2522,14 +2522,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           icon: ClipboardCheck,
           keywords: ['attendance', 'take attendance', 'mark attendance', 'roll call', 'present', 'absent']
         },
-        {
-          path: '/teacher-history',
-          label: 'Attendance History',
-          category: 'Main Navigation',
-          description: 'View past submitted attendance records and class logs',
-          icon: CalendarDays,
-          keywords: ['history', 'past attendance', 'attendance records', 'logs']
-        },
+        // {
+        //   path: '/teacher-history',
+        //   label: 'Attendance History',
+        //   category: 'Main Navigation',
+        //   description: 'View past submitted attendance records and class logs',
+        //   icon: CalendarDays,
+        //   keywords: ['history', 'past attendance', 'attendance records', 'logs']
+        // },
         {
           path: '/attendance-reports',
           label: 'Attendance Reports',
@@ -2830,7 +2830,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     ['—', 'MAIN'],
     ['/dashboard', 'Dashboard', LayoutDashboard],
     ['/take-attendance', 'Take Attendance', ClipboardCheck],
-    ['/teacher-history', 'History', CalendarDays],
+    // ['/teacher-history', 'History', CalendarDays], // Temporarily commented out as requested
     ['—', 'REVIEW'],
     ['/teacher/assignments', 'Assignments', BookOpen],
     ['/leave-applications', 'Leave Review', CalendarCheck],
@@ -2839,7 +2839,6 @@ function Layout({ children }: { children: React.ReactNode }) {
     ['—', 'COMMUNICATION'],
     ['/announcements', 'Announcements', Megaphone],
     ['—', 'ATTENDANCE'],
-    ['/attendance-reports', 'Reports', FileText],
     ['/teacher/mentor-workspace', 'Class Mentor Workspace', Users],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
     ['/timetable', 'Timetable', CalendarDays],
@@ -2922,11 +2921,11 @@ function Layout({ children }: { children: React.ReactNode }) {
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const storedSessionId = localStorage.getItem('attendo_active_academic_year_id');
   const authoritativeActiveYear =
+    (storedSessionId ? academicYears.find((ay: any) => String(ay.id) === String(storedSessionId)) : null) ||
+    (storedSession ? academicYears.find((ay: any) => ay.name === storedSession || ay.code === storedSession || String(ay.id) === String(storedSession)) : null) ||
     academicYears.find((ay: any) => ay.is_active) ||
-    (storedSessionId ? academicYears.find((ay: any) => ay.id === storedSessionId) : null) ||
-    (schoolInfo?.activeAcademicYear?.id ? academicYears.find((ay: any) => ay.id === schoolInfo.activeAcademicYear.id) : null) ||
+    (schoolInfo?.activeAcademicYear?.id ? academicYears.find((ay: any) => String(ay.id) === String(schoolInfo.activeAcademicYear.id)) : null) ||
     (schoolInfo?.activeAcademicYear?.name ? academicYears.find((ay: any) => ay.name === schoolInfo.activeAcademicYear.name) : null) ||
-    (storedSession ? academicYears.find((ay: any) => ay.name === storedSession) : null) ||
     (academicYears.length > 0 ? academicYears[0] : null);
 
   const authoritativeActiveYearId = authoritativeActiveYear?.id || null;
@@ -3061,8 +3060,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               );
             }
-            return <button key={`${p}-${l}`} className={loc.pathname === p ? 'nav-active' : ''} onClick={() => { setMobileSidebarOpen(false); nav(p); }}>
-              <I size={16} /> <span>{l}</span>
+            return <button key={`${p}-${l}`} className={loc.pathname === p ? 'nav-active' : ''} onClick={() => { setMobileSidebarOpen(false); nav(p); }} style={{ textAlign: 'left' }}>
+              <I size={16} style={{ flexShrink: 0 }} /> <span style={{ textAlign: 'left' }}>{l}</span>
             </button>;
           })}
         </nav>
@@ -4287,7 +4286,7 @@ function AdminHome() {
   }, []);
 
   const school = data?.school;
-  const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, percentage: 0, classBreakdown: [] };
+  const todayAtt = data?.todayAttendance || { total: 0, present: 0, absent: 0, leftEarly: 0, percentage: 0, classBreakdown: [] };
   const sub = data?.subscription;
   const pendingCorrections = data?.pendingCorrectionsCount || 0;
   const weeklyTrend = Array.isArray(data?.weeklyTrend) ? data.weeklyTrend : [];
@@ -4457,7 +4456,7 @@ function AdminHome() {
             <div className="kpi-body">
               <span className="kpi-label">Today's Attendance</span>
               <strong className="kpi-value">{loading ? '...' : `${todayAtt.percentage}%`}</strong>
-              <span className="kpi-sub neutral">{todayAtt.present} Present · {todayAtt.absent} Absent</span>
+              <span className="kpi-sub neutral">{todayAtt.present} Present · {todayAtt.absent} Absent{(todayAtt.leftEarly || todayAtt.left_early) ? ` · ${todayAtt.leftEarly || todayAtt.left_early} Left Early` : ''}</span>
             </div>
           </div>
 
@@ -4528,6 +4527,10 @@ function AdminHome() {
                     <span className="metric-num red">{todayAtt.absent}</span>
                   </div>
                   <div className="metric-stat">
+                    <span className="metric-label">Left Early</span>
+                    <span className="metric-num amber" style={{ color: '#d97706' }}>{todayAtt.leftEarly ?? todayAtt.left_early ?? 0}</span>
+                  </div>
+                  <div className="metric-stat">
                     <span className="metric-label">Total Marked</span>
                     <span className="metric-num">{todayAtt.total}</span>
                   </div>
@@ -4551,7 +4554,7 @@ function AdminHome() {
                         <div key={i} className="breakdown-item">
                           <div className="breakdown-info">
                             <strong>Class {cb.class_number} - Section {cb.section_name}</strong>
-                            <span>{cb.present}/{cb.total} Present</span>
+                            <span>{cb.present}/{cb.total} Present{(cb.left_early || cb.leftEarly) ? `, ${cb.left_early || cb.leftEarly} Left Early` : ''}</span>
                           </div>
                           <span className={`breakdown-pct ${cb.percentage >= 90 ? 'high' : cb.percentage >= 75 ? 'med' : 'low'}`}>
                             {cb.percentage}%
@@ -5116,11 +5119,11 @@ function TeacherHome() {
             {/* Card 3: Classes Completed */}
             <div
               className="td-summary-card"
-              onClick={() => nav('/history')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/history'); } }}
+              onClick={() => nav('/teacher/mentor-workspace?tab=REPORTS')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/teacher/mentor-workspace?tab=REPORTS'); } }}
               tabIndex={0}
               role="button"
-              aria-label="View completed classes attendance history"
+              aria-label="View completed classes attendance reports"
               style={{ cursor: 'pointer' }}
             >
               <div className="td-card-left">
@@ -5139,8 +5142,8 @@ function TeacherHome() {
             {/* Card 4: Students in My Classes */}
             <div
               className="td-summary-card"
-              onClick={() => nav('/attendance-reports')}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/attendance-reports'); } }}
+              onClick={() => nav('/teacher/mentor-workspace?tab=REPORTS')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/teacher/mentor-workspace?tab=REPORTS'); } }}
               tabIndex={0}
               role="button"
               aria-label="View student rosters across assigned classes"
@@ -5212,10 +5215,14 @@ function TeacherHome() {
 
                       const storedRaw = (typeof window !== 'undefined')
                         ? (
+                            sessionStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
+                            localStorage.getItem(`finalized_att_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
                             sessionStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
                             localStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
                             sessionStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
                             localStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
+                            sessionStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
+                            localStorage.getItem(`finalized_attendance_${schoolDate}_${sec.classId}_${sec.sectionId}`) ||
                             sessionStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
                             localStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
                             sessionStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`) ||
@@ -5226,22 +5233,73 @@ function TeacherHome() {
                       let storedFinalized: any = null;
                       if (storedRaw) {
                         try {
-                          storedFinalized = JSON.parse(storedRaw);
+                          const parsed = JSON.parse(storedRaw);
+                          if (!parsed.date || parsed.date === schoolDate) {
+                            storedFinalized = parsed;
+                          }
                         } catch {
                           storedFinalized = { finalized: true };
                         }
                       }
 
+                      // Finalized only applies if attendance has already been submitted for today
                       const isFinalized = Boolean(
-                        sec.isReattendance ||
-                        (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
-                        storedFinalized?.finalized ||
-                        storedRaw === '1'
+                        sec.hasSubmitted && (
+                          sec.isReattendance ||
+                          (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
+                          storedFinalized?.finalized ||
+                          storedRaw === '1'
+                        )
                       );
 
                       const displayPres = storedFinalized?.presentCount !== undefined ? Number(storedFinalized.presentCount) : Number(sec.presentCount || 0);
-                      const displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
-                      const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs);
+                      let displayLeftEarly = storedFinalized?.leftEarlyCount !== undefined ? Number(storedFinalized.leftEarlyCount) : Number(sec.leftEarlyCount || 0);
+                      let displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
+
+                      // If storedFinalized was saved with older code where leftEarly was lumped into absentCount,
+                      // or if sec has leftEarlyCount:
+                      if (displayLeftEarly > 0 && storedFinalized?.leftEarlyCount === undefined && displayAbs >= displayLeftEarly) {
+                        displayAbs = displayAbs - displayLeftEarly;
+                      } else if (sec.leftEarlyCount && Number(sec.leftEarlyCount) > 0 && displayLeftEarly === 0) {
+                        displayLeftEarly = Number(sec.leftEarlyCount);
+                        if (displayAbs >= displayLeftEarly) {
+                          displayAbs = displayAbs - displayLeftEarly;
+                        }
+                      }
+
+                      // Check fallback flag stored during early departure marking
+                      if (displayLeftEarly === 0) {
+                        const storedHasLeftEarly = (typeof window !== 'undefined')
+                          ? (
+                              sessionStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
+                              localStorage.getItem(`has_left_early_${sec.classId}_${sec.sectionId}`) ||
+                              sessionStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`) ||
+                              localStorage.getItem(`has_left_early_${sec.classNumber}_${sec.sectionName}`)
+                            )
+                          : null;
+                        if (storedHasLeftEarly && Number(storedHasLeftEarly) > 0) {
+                          const leNum = Number(storedHasLeftEarly);
+                          displayLeftEarly = leNum;
+                          if (displayAbs >= leNum) {
+                            displayAbs = displayAbs - leNum;
+                          }
+                        }
+                      }
+
+                      const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs + displayLeftEarly);
+
+                      // Construct summary breakdown parts: e.g. "0P / 1LA" or "2P / 1A / 1LA"
+                      const summaryParts: string[] = [`${displayPres}P`];
+                      if (displayAbs > 0) {
+                        summaryParts.push(`${displayAbs}A`);
+                      }
+                      if (displayLeftEarly > 0) {
+                        summaryParts.push(`${displayLeftEarly}LA`);
+                      }
+                      if (summaryParts.length === 1 && displayAbs === 0 && displayLeftEarly === 0) {
+                        summaryParts.push('0A');
+                      }
+                      const summaryBreakdown = summaryParts.join(' / ');
 
                       return (
                         <tr key={`${sec.classId}-${sec.sectionId}`}>
@@ -5273,7 +5331,7 @@ function TeacherHome() {
                           <td style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
                             {sec.hasSubmitted ? (
                               <span>
-                                Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{displayPres}P / {displayAbs}A</strong> ({displayTot} total)
+                                Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{summaryBreakdown}</strong> ({displayTot} total)
                                 {isFinalized && (
                                   <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#059669', background: '#dcfce7', padding: '2px 6px', borderRadius: 4 }}>
                                     Finalized
@@ -5285,7 +5343,16 @@ function TeacherHome() {
                             )}
                           </td>
                           <td>
-                            {isFinalized ? (
+                            {!sec.hasSubmitted ? (
+                              <button
+                                onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}&date=${schoolDate}`)}
+                                className="td-btn-primary"
+                                style={{ minWidth: 140, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                              >
+                                <ClipboardCheck size={13} />
+                                Take Attendance
+                              </button>
+                            ) : isFinalized ? (
                               <span
                                 style={{
                                   minWidth: 140,
@@ -5309,21 +5376,12 @@ function TeacherHome() {
                               </span>
                             ) : (
                               <button
-                                onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}&date=${schoolDate}${sec.hasSubmitted ? '&edit=1' : ''}`)}
-                                className={sec.hasSubmitted ? 'td-btn-secondary' : 'td-btn-primary'}
+                                onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}&date=${schoolDate}&edit=1`)}
+                                className="td-btn-secondary"
                                 style={{ minWidth: 140, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                               >
-                                {sec.hasSubmitted ? (
-                                  <>
-                                    <PenLine size={13} />
-                                    Edit Attendance
-                                  </>
-                                ) : (
-                                  <>
-                                    <ClipboardCheck size={13} />
-                                    Take Attendance
-                                  </>
-                                )}
+                                <PenLine size={13} />
+                                Edit Attendance
                               </button>
                             )}
                           </td>
@@ -10024,6 +10082,11 @@ function Teachers() {
     const tid = typeof teacherOrId === 'object' ? teacherOrId?.id : teacherOrId;
     const teacherObj = typeof teacherOrId === 'object' ? teacherOrId : rows.find(r => r.id === tid);
 
+    // 0. Check mentor_allocations / allocationsSummary / assigned_classes
+    if (teacherObj?.mentor_allocations || teacherObj?.allocationsSummary) {
+      return convertRomanClassToDigital(teacherObj.mentor_allocations || teacherObj.allocationsSummary);
+    }
+
     // 1. Check direct allocations in allAssignments
     const allocs = allAssignments.filter(a => a.teacher_id === tid);
     if (allocs.length > 0) {
@@ -10050,6 +10113,15 @@ function Teachers() {
 
     if (teacherObj?.assigned_classes || teacherObj?.assigned_class) {
       return convertRomanClassToDigital(teacherObj.assigned_classes || teacherObj.assigned_class);
+    }
+
+    if (teacherObj?.assignedClass !== undefined && teacherObj?.assignedClass !== null) {
+      let rawCls = String(teacherObj.assignedClass).trim();
+      if (rawCls === '-1') rawCls = 'Class L KG';
+      else if (rawCls === '0') rawCls = 'Class U KG';
+      else if (rawCls && !rawCls.toLowerCase().startsWith('class')) rawCls = `Class ${rawCls}`;
+      const sec = teacherObj.assignedSection ? `-${String(teacherObj.assignedSection).trim().toUpperCase()}` : '';
+      return convertRomanClassToDigital(`${rawCls}${sec}`);
     }
 
     return '—';
@@ -14276,18 +14348,40 @@ function Attendance() {
     existingSession && (
       existingSession.is_reattendance ||
       existingSession.isReattendance ||
-      (existingSession.reattendance_count || 0) > 0 ||
-      (existingSession.reattendanceCount || 0) > 0 ||
-      (typeof window !== 'undefined' && selectedClassId && selectedSectionId && sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`))
+      (Number(existingSession.reattendance_count || 0) > 0) ||
+      (Number(existingSession.reattendanceCount || 0) > 0) ||
+      (typeof window !== 'undefined' && (
+        (selectedClassId && selectedSectionId && (
+          sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
+          localStorage.getItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`) ||
+          sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`) ||
+          localStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`)
+        )) ||
+        (classes.length > 0 && sections.length > 0 && (() => {
+          const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
+          const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
+          if (!cObj || !sObj) return false;
+          const cNum = cObj.class_number ?? cObj.classNumber;
+          const sName = sObj.name ?? sObj.sectionName;
+          return Boolean(
+            sessionStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
+            localStorage.getItem(`finalized_attendance_${attendanceDate}_${cNum}_${sName}`) ||
+            sessionStorage.getItem(`finalized_attendance_${cNum}_${sName}`) ||
+            localStorage.getItem(`finalized_attendance_${cNum}_${sName}`)
+          );
+        })())
+      ))
     )
   );
   const canEditAttendance = Boolean(existingSession && !isAlreadyEdited);
 
   useEffect(() => {
-    if (getQueryParam('edit') === '1' && canEditAttendance) {
+    if (isAlreadyEdited) {
+      setIsEditingAttendance(false);
+    } else if (getQueryParam('edit') === '1' && canEditAttendance) {
       setIsEditingAttendance(true);
     }
-  }, [existingSession]);
+  }, [existingSession, canEditAttendance, isAlreadyEdited]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditSearch, setAuditSearch] = useState<string>('');
   const [auditStatusFilter, setAuditStatusFilter] = useState<string>('ALL');
@@ -14373,16 +14467,42 @@ function Attendance() {
   const [activeModal, setActiveModal] = useState<'EARLY_DEPARTURE' | 'LATE_ARRIVAL' | 'AUDIT_LOGS' | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
+  // Helper to ensure strict HH:mm time format
+  const getNowHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const formatToStrictHHMM = (val?: string | null): string => {
+    if (!val) return getNowHHMM();
+    const clean = String(val).trim();
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(clean)) return clean;
+    const mSec = clean.match(/^([01]?\d|2[0-3]):([0-5]\d):[0-5]\d$/);
+    if (mSec) return `${String(mSec[1]).padStart(2, '0')}:${mSec[2]}`;
+    const m12 = clean.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+    if (m12) {
+      let h = parseInt(m12[1], 10);
+      const m = m12[2];
+      const mer = m12[3].toLowerCase();
+      if (mer === 'pm' && h < 12) h += 12;
+      if (mer === 'am' && h === 12) h = 0;
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    const mSingle = clean.match(/^([0-9]):([0-5]\d)$/);
+    if (mSingle) return `0${mSingle[1]}:${mSingle[2]}`;
+    return getNowHHMM();
+  };
+
   // Early departure form state
   const [depPeriod, setDepPeriod] = useState<string>('After 1st Period');
-  const [depTime, setDepTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const [depTime, setDepTime] = useState<string>(getNowHHMM);
   const [depReason, setDepReason] = useState<string>('Parent Picked Up Early');
   const [depRemarks, setDepRemarks] = useState<string>('');
   const [depNotify, setDepNotify] = useState<boolean>(true);
 
   // Late arrival form state
   const [arrPeriod, setArrPeriod] = useState<string>('Period 2');
-  const [arrTime, setArrTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const [arrTime, setArrTime] = useState<string>(getNowHHMM);
   const [arrReason, setArrReason] = useState<string>('Traffic / Commute Delay');
   const [arrRemarks, setArrRemarks] = useState<string>('');
   const [arrNotify, setArrNotify] = useState<boolean>(true);
@@ -14521,16 +14641,10 @@ function Attendance() {
         const rList = rRes.data || [];
         setRoutines(rList);
 
-        // Include classes and sections from authorized sections, routines, and mentor assignments
-        if (isTeacherRole && (myAuthorized.length > 0 || rList.length > 0)) {
-          const authClassIds = new Set([
-            ...myAuthorized.map((a: any) => String(a.classId || a.class_id)),
-            ...rList.map((r: any) => String(r.class_id))
-          ]);
-          const authSecIds = new Set([
-            ...myAuthorized.map((a: any) => String(a.sectionId || a.section_id)),
-            ...rList.map((r: any) => String(r.section_id))
-          ]);
+        // For teachers, strictly restrict classes and sections to assigned class mentor sections
+        if (isTeacherRole && myAuthorized.length > 0) {
+          const authClassIds = new Set(myAuthorized.map((a: any) => String(a.classId || a.class_id)));
+          const authSecIds = new Set(myAuthorized.map((a: any) => String(a.sectionId || a.section_id)));
           cList = cList.filter((c: any) => authClassIds.has(String(c.id)));
           sList = sList.filter((s: any) => authSecIds.has(String(s.id)));
         }
@@ -14550,7 +14664,15 @@ function Attendance() {
         let targetSecId = '';
         let targetSubId = '';
 
-        if (routineId) {
+        if (isTeacherRole && myAuthorized.length > 0) {
+          // Strictly lock to the teacher's authorized mentor class & section
+          const authSec = myAuthorized.find((a: any) =>
+            (classIdParam && (String(a.classId || a.class_id) === String(classIdParam))) &&
+            (sectionIdParam && (String(a.sectionId || a.section_id) === String(sectionIdParam)))
+          ) || myAuthorized[0];
+          targetClassId = authSec.classId || authSec.class_id;
+          targetSecId = authSec.sectionId || authSec.section_id;
+        } else if (routineId) {
           const matched = rList.find((r: any) => r.id === routineId);
           if (matched) {
             setActiveRoutine(matched);
@@ -14569,11 +14691,6 @@ function Attendance() {
           if (defaultSec) {
             targetClassId = defaultSec.classId || defaultSec.class_id;
             targetSecId = defaultSec.sectionId || defaultSec.section_id;
-          } else if (rList.length > 0) {
-            targetClassId = rList[0].class_id;
-            targetSecId = rList[0].section_id;
-            targetSubId = rList[0].subject_id;
-            setActiveRoutine(rList[0]);
           } else if (cList.length > 0) {
             targetClassId = cList[0].id;
           }
@@ -14657,9 +14774,17 @@ function Attendance() {
         setAuditLogs([]);
         setDone(false);
         setSummary(null);
+        setStudentStatusMap({});
+        setChecked({});
       }
     } catch (err: any) {
       console.warn('Failed to query today attendance status:', err?.response?.data?.message || err?.message || err);
+      setExistingSession(null);
+      setAuditLogs([]);
+      setDone(false);
+      setSummary(null);
+      setStudentStatusMap({});
+      setChecked({});
     } finally {
       setLoadingStatus(false);
     }
@@ -14688,6 +14813,12 @@ function Attendance() {
   const loadStudents = useCallback(async () => {
     if (!selectedClassId || !selectedSectionId) return;
     setLoadingStatus(true);
+    setStudentStatusMap({});
+    setChecked({});
+    setExistingSession(null);
+    setDone(false);
+    setSummary(null);
+    setAuditLogs([]);
     try {
       let list: any[] = [];
       const currentSessionName = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
@@ -14699,17 +14830,6 @@ function Attendance() {
         list = deduplicateStudents(res.data || []);
       } catch {
         list = [];
-      }
-      if (list.length === 0) {
-        try {
-          const fallbackRes = await api.get(`/students${sessionQuery}`);
-          list = deduplicateStudents((fallbackRes.data || []).filter((s: any) =>
-            (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
-            (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
-          ));
-        } catch {
-          list = [];
-        }
       }
       setStudents(list);
       setLastFetchedAt(new Date());
@@ -14751,6 +14871,7 @@ function Attendance() {
   }
 
   const selectAll = (val: boolean) => {
+    if (isAlreadyEdited || (existingSession && !isEditingAttendance)) return;
     const updatedChk: Record<string, boolean> = {};
     const updatedMap: Record<string, any> = {};
     if (val) {
@@ -14838,11 +14959,12 @@ function Attendance() {
 
   // Early Departure Handler
   function openEarlyDeparture(student: any) {
+    if (isAlreadyEdited) return;
     setSelectedStudent(student);
     const sid = String(student.id);
     const existing = studentStatusMap[sid] || studentStatusMap[student.id];
     setDepPeriod(existing?.departurePeriod || 'After 1st Period');
-    setDepTime(existing?.departureTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    setDepTime(formatToStrictHHMM(existing?.departureTime));
     setDepReason('Parent Picked Up Early');
     setDepRemarks(existing?.remarks || '');
     setDepNotify(true);
@@ -14851,11 +14973,12 @@ function Attendance() {
 
   // Late Arrival Handler
   function openLateArrival(student: any) {
+    if (isAlreadyEdited) return;
     setSelectedStudent(student);
     const sid = String(student.id);
     const existing = studentStatusMap[sid] || studentStatusMap[student.id];
     setArrPeriod(existing?.arrivalPeriod || 'Period 2');
-    setArrTime(existing?.arrivalTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    setArrTime(formatToStrictHHMM(existing?.arrivalTime));
     setArrReason('Traffic / Commute Delay');
     setArrRemarks(existing?.remarks || '');
     setArrNotify(true);
@@ -14864,6 +14987,8 @@ function Attendance() {
 
   async function submitEarlyDeparture() {
     if (!selectedStudent) return;
+    const finalDepTime = formatToStrictHHMM(depTime);
+    setDepTime(finalDepTime);
     setSavingAction(true);
     const sid = String(selectedStudent.id);
     const fullReason = depReason + (depRemarks ? ` (${depRemarks})` : '');
@@ -14873,23 +14998,36 @@ function Attendance() {
         [sid]: {
           status: 'LEFT_EARLY',
           departurePeriod: depPeriod,
-          departureTime: depTime,
+          departureTime: finalDepTime,
           remarks: fullReason
         },
         [selectedStudent.id]: {
           status: 'LEFT_EARLY',
           departurePeriod: depPeriod,
-          departureTime: depTime,
+          departureTime: finalDepTime,
           remarks: fullReason
         }
       }));
       setChecked(prev => ({ ...prev, [sid]: false, [selectedStudent.id]: false }));
 
+      if (selectedClassId && selectedSectionId) {
+        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
+        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, '1');
+      }
+      const cObjEarly = classes.find((c: any) => String(c.id) === String(selectedClassId));
+      const sObjEarly = sections.find((s: any) => String(s.id) === String(selectedSectionId));
+      if (cObjEarly && sObjEarly) {
+        const cNumEarly = cObjEarly.class_number ?? cObjEarly.classNumber;
+        const sNameEarly = sObjEarly.name ?? sObjEarly.sectionName;
+        sessionStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
+        localStorage.setItem(`has_left_early_${cNumEarly}_${sNameEarly}`, '1');
+      }
+
       if (existingSession?.id) {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
           status: 'LEFT_EARLY',
           departurePeriod: depPeriod,
-          departureTime: depTime,
+          departureTime: finalDepTime,
           reason: fullReason,
           notifyParent: depNotify
         });
@@ -14910,6 +15048,8 @@ function Attendance() {
 
   async function submitLateArrival() {
     if (!selectedStudent) return;
+    const finalArrTime = formatToStrictHHMM(arrTime);
+    setArrTime(finalArrTime);
     setSavingAction(true);
     const sid = String(selectedStudent.id);
     const fullReason = arrReason + (arrRemarks ? ` (${arrRemarks})` : '');
@@ -14919,13 +15059,13 @@ function Attendance() {
         [sid]: {
           status: 'LATE',
           arrivalPeriod: arrPeriod,
-          arrivalTime: arrTime,
+          arrivalTime: finalArrTime,
           remarks: fullReason
         },
         [selectedStudent.id]: {
           status: 'LATE',
           arrivalPeriod: arrPeriod,
-          arrivalTime: arrTime,
+          arrivalTime: finalArrTime,
           remarks: fullReason
         }
       }));
@@ -14935,7 +15075,7 @@ function Attendance() {
         const res = await api.put(`/teacher/attendance/${existingSession.id}/student/${selectedStudent.id}`, {
           status: 'LATE',
           arrivalPeriod: arrPeriod,
-          arrivalTime: arrTime,
+          arrivalTime: finalArrTime,
           reason: fullReason,
           notifyParent: arrNotify
         });
@@ -14955,6 +15095,7 @@ function Attendance() {
   }
 
   async function quickToggleStudent(s: any, newStatus: 'PRESENT' | 'ABSENT') {
+    if (isAlreadyEdited || (existingSession && !isEditingAttendance)) return;
     const sid = String(s.id);
     setChecked(prev => ({ ...prev, [sid]: newStatus === 'PRESENT', [s.id]: newStatus === 'PRESENT' }));
     setStudentStatusMap(prev => ({
@@ -14990,17 +15131,24 @@ function Attendance() {
       });
 
       const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
-      const absCount = recordsPayload.filter(r => r.status === 'ABSENT' || r.status === 'LEFT_EARLY').length;
+      const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
+      const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
 
       const finalizedPayload = {
         finalized: true,
+        date: attendanceDate,
         presentCount: presCount,
         absentCount: absCount,
+        leftEarlyCount: leftEarlyCount,
         totalCount: students.length,
         submittedAt: new Date().toISOString()
       };
 
       if (selectedClassId && selectedSectionId) {
+        sessionStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`finalized_att_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        sessionStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
+        localStorage.setItem(`finalized_attendance_${attendanceDate}_${selectedClassId}_${selectedSectionId}`, '1');
         sessionStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
         localStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
         sessionStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
@@ -15035,6 +15183,8 @@ function Attendance() {
         presentCount: presCount,
         absent_count: absCount,
         absentCount: absCount,
+        left_early_count: leftEarlyCount,
+        leftEarlyCount: leftEarlyCount,
         is_reattendance: true,
         isReattendance: true,
         reattendance_count: 1,
@@ -15098,6 +15248,19 @@ function Attendance() {
         studentIds: students.map(s => s.id),
         presentStudentIds: students.filter(s => checked[s.id]).map(s => s.id)
       });
+      const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const leftEarlyCount = recordsPayload.filter(r => r.status === 'LEFT_EARLY').length;
+      const absCount = recordsPayload.filter(r => r.status === 'ABSENT').length;
+      if (leftEarlyCount > 0 && selectedClassId && selectedSectionId) {
+        sessionStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
+        localStorage.setItem(`has_left_early_${selectedClassId}_${selectedSectionId}`, String(leftEarlyCount));
+      }
+      if (leftEarlyCount > 0 && cObj && sObj) {
+        const cNum = cObj.class_number ?? cObj.classNumber;
+        const sName = sObj.name ?? sObj.sectionName;
+        sessionStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
+        localStorage.setItem(`has_left_early_${cNum}_${sName}`, String(leftEarlyCount));
+      }
       setSummary(res.data);
       setDone(true);
       checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
@@ -15183,48 +15346,13 @@ function Attendance() {
           <button className="secondary" onClick={() => nav('/dashboard')}>
             ← Back to Dashboard
           </button>
-          <button className="secondary" onClick={() => nav('/teacher-history')}>
+          {/* <button className="secondary" onClick={() => nav('/teacher-history')}>
             Session History →
-          </button>
+          </button> */}
         </div>
       </div>
 
-      {/* Routine Quick Switchers */}
-      {routines.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }}>
-            Today's Scheduled Periods ({routines.length})
-          </div>
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-            {routines.slice(0, 6).map((r: any) => {
-              const isActive = activeRoutine?.id === r.id;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => switchRoutine(r)}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 8,
-                    border: isActive ? '2px solid #2563eb' : '1px solid var(--border)',
-                    background: isActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
-                    color: isActive ? '#2563eb' : 'var(--text)',
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize: 12.5,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <span>Class {r.class_number}-{r.section_name}</span>
-                  <span style={{ opacity: 0.7 }}>· {r.subject_name} ({fmt(r.start_time)})</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
 
       {/* Cross-Teacher Live Session Banner (When attendance has already been taken) */}
       {existingSession && (
@@ -15348,83 +15476,158 @@ function Attendance() {
       {/* Selectors Bar */}
       <div className="attendance-station-header">
         <div className="attendance-selectors">
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-            Class:
-            <select
-              value={selectedClassId}
-              onChange={(e) => {
-                const cid = e.target.value;
-                setSelectedClassId(cid);
-                setActiveRoutine(null);
-                const matchingSec = sections.find(s => s.class_id === cid || s.classId === cid || String(s.class_number) === String(cid));
-                if (matchingSec) setSelectedSectionId(matchingSec.id);
-                else {
-                  const anySec = sections.filter(s => s.class_id === cid || s.classId === cid)[0];
-                  if (anySec) setSelectedSectionId(anySec.id);
-                }
-              }}
-              style={{ marginLeft: 6 }}
-            >
-              {classes
-                .slice()
-                .sort((a, b) => {
-                  const aN = Number(a.class_number ?? a.classNumber ?? 0);
-                  const bN = Number(b.class_number ?? b.classNumber ?? 0);
-                  return aN - bN;
-                })
-                .map(c => {
-                  const num = c.class_number ?? c.classNumber;
-                  const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
-                    num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
-                      num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
-                        c.name || `Class ${c.id}`;
-                  return (
-                    <option key={c.id} value={c.id}>{label}</option>
-                  );
-                })}
-            </select>
-          </label>
+          {user?.role === 'TEACHER' ? (
+            <>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Class:</span>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  height: 32,
+                  boxSizing: 'border-box',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: 'var(--text, #0f172a)'
+                }}>
+                  {currentClass
+                    ? (currentClass.class_number === -1 || currentClass.class_number === '-1' ? 'Class L KG' :
+                       currentClass.class_number === 0 || currentClass.class_number === '0' ? 'Class U KG' :
+                       `Class ${currentClass.class_number ?? currentClass.classNumber ?? ''}`)
+                    : (authorizedSections[0] ? `Class ${authorizedSections[0].classNumber}` : 'Class 2')}
+                </span>
+              </div>
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-            Section:
-            <select
-              value={selectedSectionId}
-              onChange={(e) => {
-                setSelectedSectionId(e.target.value);
-                setActiveRoutine(null);
-              }}
-              style={{ marginLeft: 6 }}
-            >
-              {sections
-                .filter(s => !selectedClassId || s.class_id === selectedClassId || s.classId === selectedClassId || String(s.class_number) === String(selectedClassId))
-                .map(s => (
-                  <option key={s.id} value={s.id}>Section {s.name || s.sectionName || s.section}</option>
-                ))}
-            </select>
-          </label>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Section:</span>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  height: 32,
+                  boxSizing: 'border-box',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  background: 'var(--bg-subtle, #f1f5f9)',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: 'var(--text, #0f172a)'
+                }}>
+                  Section {currentSection?.name || currentSection?.sectionName || (authorizedSections[0] ? authorizedSections[0].sectionName : 'A')}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Class:</span>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    const cid = e.target.value;
+                    setSelectedClassId(cid);
+                    setActiveRoutine(null);
+                    const matchingSec = sections.find(s => s.class_id === cid || s.classId === cid || String(s.class_number) === String(cid));
+                    if (matchingSec) setSelectedSectionId(matchingSec.id);
+                    else {
+                      const anySec = sections.filter(s => s.class_id === cid || s.classId === cid)[0];
+                      if (anySec) setSelectedSectionId(anySec.id);
+                    }
+                  }}
+                  style={{
+                    height: 32,
+                    boxSizing: 'border-box',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--text, #0f172a)',
+                    background: 'var(--bg-card, #ffffff)'
+                  }}
+                >
+                  {classes
+                    .slice()
+                    .sort((a, b) => {
+                      const aN = Number(a.class_number ?? a.classNumber ?? 0);
+                      const bN = Number(b.class_number ?? b.classNumber ?? 0);
+                      return aN - bN;
+                    })
+                    .map(c => {
+                      const num = c.class_number ?? c.classNumber;
+                      const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
+                        num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
+                          num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
+                            c.name || `Class ${c.id}`;
+                      return (
+                        <option key={c.id} value={c.id}>{label}</option>
+                      );
+                    })}
+                </select>
+              </div>
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-            Subject:
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
-              style={{ marginLeft: 6 }}
-            >
-              {subjects.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.name}</option>
-              ))}
-            </select>
-          </label>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Section:</span>
+                <select
+                  value={selectedSectionId}
+                  onChange={(e) => {
+                    setSelectedSectionId(e.target.value);
+                    setActiveRoutine(null);
+                  }}
+                  style={{
+                    height: 32,
+                    boxSizing: 'border-box',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border, #cbd5e1)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--text, #0f172a)',
+                    background: 'var(--bg-card, #ffffff)'
+                  }}
+                >
+                  {sections
+                    .filter(s => !selectedClassId || s.class_id === selectedClassId || s.classId === selectedClassId || String(s.class_number) === String(selectedClassId))
+                    .map(s => (
+                      <option key={s.id} value={s.id}>Section {s.name || s.sectionName || s.section}</option>
+                    ))}
+                </select>
+              </div>
+            </>
+          )}
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-            Date:
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Date:</span>
             <input
               type="date"
               value={attendanceDate}
-              onChange={(e) => setAttendanceDate(e.target.value)}
-              style={{ marginLeft: 6 }}
+              onChange={(e) => {
+                const newD = e.target.value;
+                setAttendanceDate(newD);
+                setStudentStatusMap({});
+                setChecked({});
+                setExistingSession(null);
+                setDone(false);
+                setSummary(null);
+                setAuditLogs([]);
+              }}
+              style={{
+                height: 32,
+                boxSizing: 'border-box',
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--border, #cbd5e1)',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text, #0f172a)',
+                background: 'var(--bg-card, #ffffff)',
+                outline: 'none'
+              }}
             />
-          </label>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -15629,10 +15832,29 @@ function Attendance() {
       {/* Roster Controls */}
       <div className="attendance-roster-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => selectAll(true)} style={{ fontSize: 12.5, padding: '6px 14px' }}>
+          <button
+            disabled={isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)}
+            onClick={() => selectAll(true)}
+            style={{
+              fontSize: 12.5,
+              padding: '6px 14px',
+              opacity: (isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)) ? 0.5 : 1,
+              cursor: (isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)) ? 'not-allowed' : 'pointer'
+            }}
+          >
             ✓ Select All Present
           </button>
-          <button className="secondary" onClick={() => selectAll(false)} style={{ fontSize: 12.5, padding: '6px 14px' }}>
+          <button
+            className="secondary"
+            disabled={isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)}
+            onClick={() => selectAll(false)}
+            style={{
+              fontSize: 12.5,
+              padding: '6px 14px',
+              opacity: (isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)) ? 0.5 : 1,
+              cursor: (isAlreadyEdited || Boolean(existingSession && !isEditingAttendance)) ? 'not-allowed' : 'pointer'
+            }}
+          >
             ✕ Clear All
           </button>
         </div>
@@ -15699,7 +15921,11 @@ function Attendance() {
         <CheckCircle2 size={16} />
         <span>
           {existingSession
-            ? 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.'
+            ? (isAlreadyEdited
+                ? 'Attendance Finalized: Attendance has been edited and locked. No further edits are permitted.'
+                : isEditingAttendance
+                ? 'Attendance Edit Mode Active: You can update attendance once. When finished, click "Submit Updated Attendance" to finalize.'
+                : 'Re-attendance Station Active: All assigned teachers can adjust early departures (e.g. student left after 1st period), record late arrivals, or save a re-roll call.')
             : 'Check only students who are physically present. Unchecked students are marked absent and their parents will be notified.'}
         </span>
       </div>
@@ -15866,7 +16092,34 @@ function Attendance() {
                       </span>
 
                       {/* Attendance Action Buttons */}
-                      {Boolean(existingSession && !isEditingAttendance) ? (
+                      {isAlreadyEdited ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ fontSize: 11.5, color: '#059669', fontWeight: 600, padding: '4px 6px' }}>
+                            (Finalized)
+                          </span>
+                          <button
+                            type="button"
+                            disabled={true}
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 8px',
+                              borderRadius: 5,
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-subtle, #f1f5f9)',
+                              color: 'var(--text-muted, #94a3b8)',
+                              cursor: 'not-allowed',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              fontWeight: 600,
+                              opacity: 0.6
+                            }}
+                            title="Attendance has already been edited and finalized. No further edits permitted."
+                          >
+                            <Lock size={11} /> Edit Disabled
+                          </button>
+                        </div>
+                      ) : Boolean(existingSession && !isEditingAttendance) ? (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 6px' }}>
                             (Submitted)
@@ -15887,7 +16140,7 @@ function Attendance() {
                               gap: 3,
                               fontWeight: 600
                             }}
-                            title="Click to edit attendance"
+                            title="Click to edit attendance (allowed once)"
                           >
                             <PenLine size={11} /> Edit
                           </button>
@@ -16127,14 +16380,14 @@ function Attendance() {
               {/* Departure Time */}
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
-                  Exact Departure Time:
+                  Exact Departure Time: <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>(hh:mm format)</span>
                 </label>
                 <input
-                  type="text"
+                  type="time"
                   value={depTime}
                   onChange={(e) => setDepTime(e.target.value)}
-                  placeholder="e.g. 10:15 AM"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
+                  required
                 />
               </div>
 
@@ -16261,14 +16514,14 @@ function Attendance() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 5 }}>
-                  Arrival Time:
+                  Arrival Time: <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>(hh:mm format)</span>
                 </label>
                 <input
-                  type="text"
+                  type="time"
                   value={arrTime}
                   onChange={(e) => setArrTime(e.target.value)}
-                  placeholder="e.g. 10:05 AM"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600 }}
+                  required
                 />
               </div>
 
@@ -18904,6 +19157,15 @@ function SchoolProfile() {
   );
 }
 
+/* ────── Attendance Reports Route ────── */
+function AttendanceReportsRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'TEACHER') {
+    return <Navigate to="/teacher/mentor-workspace?tab=REPORTS" replace />;
+  }
+  return <Layout><AttendanceReports /></Layout>;
+}
+
 /* ────── Super Admin Home ────── */
 function SuperAdminHome() {
   return <SuperAdminModule />;
@@ -18965,10 +19227,13 @@ function App() {
         <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter /></RoleGuard>} />
         <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><SmtpLogs /></Layout></RoleGuard>} />
         <Route path="/take-attendance" element={<Guard><Attendance /></Guard>} />
-        <Route path="/teacher-history" element={<Guard><History /></Guard>} />
-        <Route path="/attendance-history" element={<Guard><History /></Guard>} />
-        <Route path="/history" element={<Guard><History /></Guard>} />
-        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']}><Layout><AttendanceReports /></Layout></RoleGuard>} />
+        {/* <Route path="/teacher-history" element={<Guard><History /></Guard>} /> */}
+        {/* <Route path="/attendance-history" element={<Guard><History /></Guard>} /> */}
+        {/* <Route path="/history" element={<Guard><History /></Guard>} /> */}
+        <Route path="/teacher-history" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/attendance-history" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/history" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']}><AttendanceReportsRoute /></RoleGuard>} />
         <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN', 'TEACHER']}><Layout><AttendanceCorrections /></Layout></RoleGuard>} />
         <Route path="/people" element={<Navigate to="/students" replace />} />
         <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears /></Layout></RoleGuard>} />

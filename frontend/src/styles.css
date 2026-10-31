@@ -1014,7 +1014,10 @@ aside {
 nav { display: grid; gap: 3px; }
 
 nav button {
+  display: flex;
+  align-items: center;
   justify-content: flex-start;
+  text-align: left;
   background: transparent;
   color: var(--text-sidebar);
   width: 100%;
@@ -1026,6 +1029,16 @@ nav button {
   box-shadow: none;
   position: relative;
   border: 1px solid transparent;
+  gap: 10px;
+}
+
+nav button svg {
+  flex-shrink: 0;
+}
+
+nav button span {
+  text-align: left;
+  line-height: 1.35;
 }
 
 nav button:hover {

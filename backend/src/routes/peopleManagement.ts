@@ -54,7 +54,9 @@ function paginateResults(req: Request, res: Response, allRows: any[], maxLimit =
 router.get('/students', async (req: Request,res: Response)=>{
   try {
     if(!sid(req) && role(req) !== 'SUPER_ADMIN') return res.status(403).json({message:'School access required'});
-    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true');
+    const session = String(req.query.session || req.query.academicSession || '').trim();
+    const academicYearId = String(req.query.academicYearId || req.query.academic_year_id || '').trim();
+    const students = await listStudents(effectiveSid(req), String(req.query.search||''), req.query.includeInactive !== 'true', session, academicYearId);
     return paginateResults(req, res, students || [], 5000);
   } catch(_e:any){
     return paginateResults(req, res, []);

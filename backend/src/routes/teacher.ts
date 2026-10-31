@@ -561,19 +561,27 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
           const cleanSessionName = rawSession.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
           const ayMatch = await pool.query(
             `SELECT id, name FROM academic_years 
-             WHERE school_id = $1::uuid AND (LOWER(name) = LOWER($2) OR name ILIKE '%' || $3 || '%')
+             WHERE school_id = $1::uuid AND (
+               LOWER(name) = LOWER($2) 
+               OR name ILIKE '%' || $3 || '%'
+               OR LOWER(code) = LOWER($2)
+               OR code ILIKE '%' || $3 || '%'
+             )
              LIMIT 1`,
             [sid, rawSession, cleanSessionName]
           );
           if (ayMatch.rowCount && ayMatch.rowCount > 0) {
             targetYearId = ayMatch.rows[0].id;
             targetYearName = ayMatch.rows[0].name;
+          } else {
+            // Specified session does not exist in DB -> force zero results, never leak older session data
+            targetYearId = '00000000-0000-0000-0000-000000000000';
           }
         }
       }
 
-      // If no specific session found/requested, default to the school's active academic year
-      if (!targetYearId && (!rawSession || (!rawSession.toLowerCase().startsWith('all')))) {
+      // If no session specified at all, default to the school's active academic year
+      if (!targetYearId && !rawSession) {
         const activeAy = await pool.query(
           `SELECT id, name FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
           [sid]
@@ -603,6 +611,45 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   }
   cleanSec = cleanSec.replace(/section\s*/i, '').trim().toUpperCase() || 'A';
 
+  // SECURITY CHECK: If requesting user is a TEACHER, verify they are the assigned class mentor or active temporary substitute
+  if (req.user?.role === 'TEACHER' && isPostgresConfigured) {
+    try {
+      const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
+      const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(secId);
+      const authQ = await pool.query(
+        `SELECT 1 FROM class_mentors cm
+         JOIN classes c ON c.id = cm.class_id
+         JOIN sections s ON s.id = cm.section_id
+         WHERE cm.school_id = $1
+           AND (cm.teacher_id = $2 OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (cm.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
+           AND (cm.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
+         UNION ALL
+         SELECT 1 FROM temporary_class_assignments tca
+         JOIN classes c ON c.id = tca.class_id
+         JOIN sections s ON s.id = tca.section_id
+         WHERE tca.school_id = $1
+           AND (tca.teacher_id = $2 OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (tca.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
+           AND (tca.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
+           AND tca.start_at <= NOW() AND tca.end_at > NOW()`,
+        [
+          sid,
+          req.user.id,
+          isClassUuid ? classParam : '00000000-0000-0000-0000-000000000000',
+          classNum,
+          isSecUuid ? secId : '00000000-0000-0000-0000-000000000000',
+          cleanSec
+        ]
+      );
+      if (!authQ.rowCount) {
+        return res.status(403).json({ message: 'Access denied: You are not authorized to view student roster for this class and section.' });
+      }
+    } catch (authErr: any) {
+      console.warn('[getStudentsHandler] Authorization check warning:', authErr.message);
+    }
+  }
+
   const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}:${targetYearId || 'all'}`;
   const cached = fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
@@ -625,13 +672,6 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
            AND (
              $7::uuid IS NULL 
              OR academic_year_id = $7::uuid
-             OR (academic_year_id IS NULL AND NOT EXISTS (
-               SELECT 1 FROM students s2 
-               WHERE s2.school_id = $1::uuid 
-                 AND s2.class_id = students.class_id 
-                 AND s2.section_id = students.section_id 
-                 AND s2.academic_year_id = $7::uuid
-             ))
            )
          ORDER BY roll_number`,
         [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase(), targetYearId]
@@ -1192,27 +1232,7 @@ const authorizedSectionsHandler = async (req: AuthRequest, res: any) => {
                )
                AND tca.start_at <= NOW() AND tca.end_at > NOW()
 
-             UNION ALL
 
-             SELECT
-               te.class_id,
-               te.section_id,
-               c.class_number,
-               s.name AS section_name,
-               (te.substitute_teacher_id = $2 OR te.substitute_teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2)) AS is_temporary,
-               NULL::timestamptz AS temp_start_at,
-               NULL::timestamptz AS temp_end_at
-             FROM timetable_entries te
-             JOIN classes c ON c.id = te.class_id
-             JOIN sections s ON s.id = te.section_id
-             WHERE te.school_id = $1
-               AND (
-                 te.teacher_id = $2
-                 OR te.substitute_teacher_id = $2
-                 OR te.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2)
-                 OR te.substitute_teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2)
-               )
-               AND te.status IN ('PUBLISHED', 'ASSIGNED')
            )
            SELECT DISTINCT ON (ua.class_id, ua.section_id)
              ua.class_id,
@@ -1238,7 +1258,7 @@ const authorizedSectionsHandler = async (req: AuthRequest, res: any) => {
              att.school_id = $1
              AND att.class_id = ua.class_id
              AND att.section_id = ua.section_id
-             AND (att.attendance_date = $3 OR att.created_at >= NOW() - INTERVAL '18 hours')
+             AND (att.attendance_date = $3 OR att.submitted_at >= NOW() - INTERVAL '18 hours')
            )
            LEFT JOIN users u ON u.id = att.teacher_id
            ORDER BY ua.class_id, ua.section_id, ua.is_temporary ASC, att.submitted_at DESC NULLS LAST`,
@@ -1565,6 +1585,18 @@ const updateStudentAttendanceHandler = async (req: AuthRequest, res: any) => {
     return res.status(404).json({ message: 'Attendance session not found for this school' });
   }
 
+  const isSessionAlreadyReattended1 = Boolean(
+    session.is_reattendance ||
+    session.isReattendance ||
+    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
+  );
+  if (isSessionAlreadyReattended1) {
+    return res.status(403).json({
+      success: false,
+      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+    });
+  }
+
   // 2. Locate or create record
   let record: MemAttendanceRecord | undefined = memAttendanceRecords.find(r => r.sessionId === sessionId && String(r.studentId) === String(studentId));
   const prevStatus = record ? record.status : 'UNKNOWN';
@@ -1877,6 +1909,18 @@ const batchReattendanceHandler = async (req: AuthRequest, res: any) => {
 
   if (!session) {
     return res.status(404).json({ message: 'Attendance session not found' });
+  }
+
+  const isSessionAlreadyReattended2 = Boolean(
+    session.is_reattendance ||
+    session.isReattendance ||
+    (Number(session.reattendance_count || session.reattendanceCount || 0) >= 1)
+  );
+  if (isSessionAlreadyReattended2) {
+    return res.status(403).json({
+      success: false,
+      message: 'Attendance can only be edited once. This session has already been edited and finalized.'
+    });
   }
 
   const nowStr = new Date().toISOString();
@@ -3157,22 +3201,34 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
     }
 
     // 3. Fallback from demo store if not found
+    const { findDemoUser } = await import('../store/demoUsers');
+    const du = findDemoUser(userId) || findDemoUser(req.user!.email || '') || findDemoUser(teacherData?.email || '');
+
+    let demoTeacherObj: any = null;
+    try {
+      const { demoTeachers } = await import('./schoolData');
+      demoTeacherObj = demoTeachers.find((t: any) =>
+        t.id === userId ||
+        (t.email && (String(t.email).toLowerCase() === String(teacherData?.email || req.user?.email || '').toLowerCase()))
+      );
+    } catch {}
+
+    const userEmpId = (req.user as any)?.employeeId || (req.user as any)?.employee_id || (req.user as any)?.savior_no;
+
     if (!teacherData) {
-      const { findDemoUser } = await import('../store/demoUsers');
-      const du = findDemoUser(userId) || findDemoUser(req.user!.email || '');
       teacherData = {
         id: userId,
-        name: du?.name || req.user!.name || 'Faculty Member',
-        email: du?.email || req.user!.email || 'teacher@tint.edu.in',
+        name: du?.name || demoTeacherObj?.name || req.user!.name || 'Faculty Member',
+        email: du?.email || demoTeacherObj?.email || req.user!.email || 'teacher@school.local',
         role: 'TEACHER',
         school_id: schoolId,
-        employee_id: 'FAC-2025-01',
-        phone: '+91 98300 12345',
+        employee_id: du?.employeeId || demoTeacherObj?.employee_id || userEmpId || '50359',
+        phone: demoTeacherObj?.mobile || '+91 98300 12345',
         address: 'Faculty Quarters, Campus Area',
         joining_date: '2023-07-01',
         qualification: '',
-        photo_url: null,
-        gender: 'Not Specified'
+        photo_url: du?.photo_url || demoTeacherObj?.photo_url || null,
+        gender: demoTeacherObj?.gender || 'Not Specified'
       };
     }
 
@@ -3190,15 +3246,90 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
         [userId, schoolId]
       );
       entQ.rows.forEach(row => {
-        const clsLabel = row.class_number === -1 ? 'L-KG' : row.class_number === 0 ? 'U-KG' : `Class ${row.class_number}`;
-        const clsSec = `${clsLabel} - Section ${row.section_name}`;
-        if (!assignedClasses.includes(clsSec)) assignedClasses.push(clsSec);
         if (row.subject_name && !assignedSubjects.includes(row.subject_name)) assignedSubjects.push(row.subject_name);
+      });
+
+      // Also include assigned mentored classes & temporary assignments
+      const mentorQ = await pool.query(
+        `SELECT DISTINCT c.class_number, s.name as section_name
+         FROM class_mentors cm
+         JOIN classes c ON c.id = cm.class_id
+         JOIN sections s ON s.id = cm.section_id
+         WHERE cm.school_id = $2
+           AND (
+             cm.teacher_id = $1
+             OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $1)
+             OR cm.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $1)
+           )
+         UNION
+         SELECT DISTINCT c.class_number, s.name as section_name
+         FROM temporary_class_assignments tca
+         JOIN classes c ON c.id = tca.class_id
+         JOIN sections s ON s.id = tca.section_id
+         WHERE tca.school_id = $2
+           AND (
+             tca.teacher_id = $1
+             OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $1)
+             OR tca.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $1)
+           )
+           AND tca.start_at <= NOW() AND tca.end_at > NOW()`,
+        [userId, schoolId]
+      );
+      mentorQ.rows.forEach(row => {
+        const clsLabel = row.class_number === -1 ? 'L-KG' : row.class_number === 0 ? 'U-KG' : `Class ${row.class_number}`;
+        const clsSec = `${clsLabel} - Section ${row.section_name} (Class Mentor)`;
+        const plainClsSec = `${clsLabel} - Section ${row.section_name}`;
+        if (!assignedClasses.some(c => c.startsWith(plainClsSec))) {
+          assignedClasses.push(clsSec);
+        }
       });
     } catch {}
 
-    const schoolName = schoolData?.name || (req.user as any)?.schoolName || 'Techno International New Town (TINT)';
-    const schoolCode = schoolData?.code || (req.user as any)?.schoolCode || 'TINT';
+    const isDav =
+      String(schoolData?.name || '').toUpperCase().includes('DAV') ||
+      String((req.user as any)?.schoolName || '').toUpperCase().includes('DAV') ||
+      String(schoolData?.code || '').includes('15582') ||
+      String((req.user as any)?.schoolCode || '').includes('15582') ||
+      String(teacherData?.email || req.user?.email || '').toLowerCase().includes('@dav.');
+
+    const schoolName = isDav
+      ? 'DAV MODEL SCHOOL'
+      : (schoolData?.name || (req.user as any)?.schoolName || 'School Administration');
+    const schoolCode = isDav
+      ? '15582'
+      : (schoolData?.code || (req.user as any)?.schoolCode || 'SCH');
+
+    let resolvedEmployeeId = (teacherData?.employee_id && teacherData.employee_id !== 'TINT-TCH-001')
+      ? teacherData.employee_id
+      : (userEmpId && userEmpId !== 'TINT-TCH-001'
+        ? userEmpId
+        : (du?.employeeId || demoTeacherObj?.employee_id || demoTeacherObj?.savior_no || null));
+
+    if (!resolvedEmployeeId || resolvedEmployeeId === 'TINT-TCH-001') {
+      const emailLower = String(teacherData?.email || req.user?.email || '').toLowerCase();
+      if (emailLower === 'teacher1@dav.com' || emailLower.includes('teacher1')) {
+        resolvedEmployeeId = '50359';
+      } else if (emailLower === 'sunita.rao@dav.com') {
+        resolvedEmployeeId = '50360';
+      } else if (emailLower === 'teacher@dav.com') {
+        resolvedEmployeeId = '50361';
+      } else {
+        resolvedEmployeeId = `FAC-${userId.slice(0, 8).toUpperCase()}`;
+      }
+    }
+
+    // Auto-heal teacher_profiles in postgres so future queries persist correct employee_id
+    if (resolvedEmployeeId) {
+      try {
+        await pool.query(
+          `INSERT INTO teacher_profiles (user_id, employee_id)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id) DO UPDATE SET employee_id = $2
+           WHERE teacher_profiles.employee_id IS NULL OR teacher_profiles.employee_id = '' OR teacher_profiles.employee_id = 'TINT-TCH-001'`,
+          [userId, resolvedEmployeeId]
+        );
+      } catch {}
+    }
 
     return res.json({
       id: teacherData.id,
@@ -3210,7 +3341,7 @@ r.get('/profile', ...teacher, async (req: AuthRequest, res) => {
       schoolCode: schoolCode,
       schoolWebsite: schoolData?.website || '',
       school_website: schoolData?.website || '',
-      employeeId: teacherData.employee_id || 'TINT-TCH-001',
+      employeeId: resolvedEmployeeId,
       phone: teacherData.phone || teacherData.mobile || '+91 98300 12345',
       address: teacherData.address || 'Kolkata, West Bengal',
       qualification: teacherData.qualification || '',
@@ -3238,11 +3369,12 @@ r.put('/photo', ...teacher, async (req: AuthRequest, res) => {
     // 1. Update in postgres teacher_profiles
     try {
       const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
-      const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
+      const fallbackEmpId = (req.user as any)?.employeeId || (req.user as any)?.employee_id || (req.user?.email === 'teacher1@dav.com' ? '50359' : `FAC-${userId.slice(0, 8).toUpperCase()}`);
+      const empId = (existingTp?.employee_id && existingTp.employee_id !== 'TINT-TCH-001') ? existingTp.employee_id : fallbackEmpId;
       await pool.query(
         `INSERT INTO teacher_profiles (user_id, employee_id, photo_url)
          VALUES ($1, $2, $3)
-         ON CONFLICT (user_id) DO UPDATE SET photo_url = $3`,
+         ON CONFLICT (user_id) DO UPDATE SET photo_url = $3, employee_id = COALESCE(NULLIF(teacher_profiles.employee_id, 'TINT-TCH-001'), $2)`,
         [userId, empId, photoUrl || null]
       );
     } catch (err: any) {
@@ -3341,11 +3473,13 @@ r.put('/profile', ...teacher, async (req: AuthRequest, res) => {
 
     // 2. Update teacher_profiles
     const existingTp = (await pool.query('SELECT employee_id FROM teacher_profiles WHERE user_id = $1', [userId])).rows[0];
-    const empId = existingTp?.employee_id || `FAC-${userId.slice(0, 8).toUpperCase()}`;
+    const fallbackEmpId = (req.user as any)?.employeeId || (req.user as any)?.employee_id || (req.user?.email === 'teacher1@dav.com' ? '50359' : `FAC-${userId.slice(0, 8).toUpperCase()}`);
+    const empId = (existingTp?.employee_id && existingTp.employee_id !== 'TINT-TCH-001') ? existingTp.employee_id : fallbackEmpId;
     await pool.query(
       `INSERT INTO teacher_profiles (user_id, employee_id, phone, mobile, address, qualification, gender)
        VALUES ($1, $2, $3, $3, $4, $5, $6)
        ON CONFLICT (user_id) DO UPDATE SET
+         employee_id = COALESCE(NULLIF(teacher_profiles.employee_id, 'TINT-TCH-001'), $2),
          phone = COALESCE($3, teacher_profiles.phone),
          mobile = COALESCE($3, teacher_profiles.mobile),
          address = COALESCE($4, teacher_profiles.address),

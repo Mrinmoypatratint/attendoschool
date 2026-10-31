@@ -7,6 +7,7 @@ import {
   demoSubjects,
 } from "../routes/schoolData";
 import { isSameSchool, isTestSchool } from "../utils/tenant";
+import { inMemoryAssignments, checkHasAssignedDate } from "../routes/teacherAssignments";
 
 export interface ClassMentorRecord {
   id?: string;
@@ -84,6 +85,35 @@ export async function assignClassMentor(
         [schoolId, classId, sectionId, teacherId],
       );
 
+      // Sync teacher_profiles: resolve class_number and section_name
+      try {
+        const cRes = await client.query('SELECT class_number FROM classes WHERE id = $1', [classId]);
+        const sRes = await client.query('SELECT name FROM sections WHERE id = $1', [sectionId]);
+        const classNum = cRes.rows[0]?.class_number;
+        const secName = sRes.rows[0]?.name;
+        if (classNum !== undefined && secName) {
+          const formattedCls = classNum === -1 ? 'Class L-KG' : classNum === 0 ? 'Class U-KG' : `Class ${classNum}`;
+          // Clear this class-section from any previous teacher's profile
+          await client.query(
+            `UPDATE teacher_profiles
+             SET class_name = NULL, section_name = NULL
+             WHERE (class_name = $1 OR class_name = $2)
+               AND section_name = $3
+               AND user_id != $4 AND id != $4`,
+            [formattedCls, `Class ${classNum}`, secName, teacherId]
+          );
+          // Set on new mentor profile
+          await client.query(
+            `UPDATE teacher_profiles
+             SET class_name = $1, section_name = $2
+             WHERE user_id = $3 OR id = $3`,
+            [formattedCls, secName, teacherId]
+          );
+        }
+      } catch (e: any) {
+        console.warn('[MentorService] Profile sync error:', e.message);
+      }
+
       await client.query("COMMIT");
       return upsertRes.rows[0];
     } catch (err: any) {
@@ -145,6 +175,23 @@ export async function removeClassMentor(
         `DELETE FROM class_mentors WHERE school_id = $1 AND class_id = $2 AND section_id = $3`,
         [schoolId, classId, sectionId],
       );
+      try {
+        const cRes = await pool.query('SELECT class_number FROM classes WHERE id = $1', [classId]);
+        const sRes = await pool.query('SELECT name FROM sections WHERE id = $1', [sectionId]);
+        const classNum = cRes.rows[0]?.class_number;
+        const secName = sRes.rows[0]?.name;
+        if (classNum !== undefined && secName) {
+          const formattedCls = classNum === -1 ? 'Class L-KG' : classNum === 0 ? 'Class U-KG' : `Class ${classNum}`;
+          await pool.query(
+            `UPDATE teacher_profiles
+             SET class_name = NULL, section_name = NULL
+             WHERE (class_name = $1 OR class_name = $2) AND section_name = $3`,
+            [formattedCls, `Class ${classNum}`, secName]
+          );
+        }
+      } catch (e: any) {
+        console.warn('[MentorService] Profile clear error:', e.message);
+      }
       return { success: true };
     } catch (err: any) {
       console.error(
@@ -894,4 +941,314 @@ export async function getTeacherEligiblePublishingOptions(
   }
 
   return result;
+}
+
+
+export interface TeacherAssignmentItem {
+  id: string;
+  title: string;
+  assigned_date: string;
+  due_date?: string;
+  created_at?: string;
+}
+
+export interface TeacherAssignmentOverview {
+  school_id: string;
+  class_id: string;
+  section_id: string;
+  subject_id: string;
+  subject_name: string;
+  teacher_id: string;
+  teacher_name: string;
+  role_type: 'Primary Teacher' | 'Alternate Teacher' | 'Subject Teacher';
+  is_primary: boolean;
+  is_alternate: boolean;
+  assignment_count: number;
+  assignments: TeacherAssignmentItem[];
+}
+
+/**
+ * 10. Teacher Mentor Workspace: Get overview of teachers taking classes in section & assignments given
+ */
+export async function getMentorTeacherAssignmentsOverview(
+  schoolId: string,
+  mentorTeacherId: string,
+  classId: string,
+  sectionId: string,
+  fromDate?: string,
+  toDate?: string,
+  bypassMentorCheck: boolean = false
+): Promise<TeacherAssignmentOverview[]> {
+  if (!bypassMentorCheck) {
+    const isMentor = await isClassMentor(schoolId, classId, sectionId, mentorTeacherId);
+    if (!isMentor) {
+      const err: any = new Error("Access denied: User is not the designated Class Teacher for this section");
+      err.status = 403;
+      err.code = "NOT_CLASS_MENTOR";
+      throw err;
+    }
+  }
+
+  const result: TeacherAssignmentOverview[] = [];
+  const seenTeacherSubject = new Map<string, TeacherAssignmentOverview>();
+
+  // 1. Gather teachers allocated in timetable
+  if (isPostgresConfigured) {
+    try {
+      const qAlloc = await pool.query(
+        `SELECT 
+           te.subject_id,
+           sub.name AS subject_name,
+           te.teacher_id,
+           u.name AS teacher_name,
+           te.substitute_teacher_id,
+           su.name AS alt_teacher_name
+         FROM timetable_entries te
+         LEFT JOIN subjects sub ON sub.id = te.subject_id AND sub.school_id = te.school_id
+         LEFT JOIN users u ON u.id = te.teacher_id AND u.school_id = te.school_id
+         LEFT JOIN users su ON su.id = te.substitute_teacher_id AND su.school_id = te.school_id
+         WHERE te.school_id = $1 AND te.class_id = $2 AND te.section_id = $3
+           AND te.subject_id IS NOT NULL
+           AND (te.status IS NULL OR te.status != 'CANCELLED')
+         ORDER BY sub.name ASC, u.name ASC`,
+        [schoolId, classId, sectionId]
+      );
+
+      for (const r of qAlloc.rows) {
+        if (r.teacher_id) {
+          const key = `${r.teacher_id}:${r.subject_id}`;
+          if (!seenTeacherSubject.has(key)) {
+            const entry: TeacherAssignmentOverview = {
+              school_id: schoolId,
+              class_id: classId,
+              section_id: sectionId,
+              subject_id: r.subject_id,
+              subject_name: r.subject_name || 'Subject',
+              teacher_id: r.teacher_id,
+              teacher_name: r.teacher_name || 'Primary Teacher',
+              role_type: 'Primary Teacher',
+              is_primary: true,
+              is_alternate: false,
+              assignment_count: 0,
+              assignments: []
+            };
+            seenTeacherSubject.set(key, entry);
+            result.push(entry);
+          }
+        }
+        if (r.substitute_teacher_id && r.substitute_teacher_id !== r.teacher_id) {
+          const aKey = `${r.substitute_teacher_id}:${r.subject_id}`;
+          if (!seenTeacherSubject.has(aKey)) {
+            const entry: TeacherAssignmentOverview = {
+              school_id: schoolId,
+              class_id: classId,
+              section_id: sectionId,
+              subject_id: r.subject_id,
+              subject_name: r.subject_name || 'Subject',
+              teacher_id: r.substitute_teacher_id,
+              teacher_name: r.alt_teacher_name || 'Alternate Teacher',
+              role_type: 'Alternate Teacher',
+              is_primary: false,
+              is_alternate: true,
+              assignment_count: 0,
+              assignments: []
+            };
+            seenTeacherSubject.set(aKey, entry);
+            result.push(entry);
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[MentorService] DB error fetching timetable allocations:', err.message);
+    }
+  }
+
+  // 2. Demo fallback if no records found or Postgres unconfigured
+  if (result.length === 0) {
+    const allocs = demoTeacherAssignments.filter(
+      (a) =>
+        isSameSchool(a.school_id || schoolId, schoolId) &&
+        (a.class_id === classId || String(a.class_number) === String(classId)) &&
+        (a.section_id === sectionId || String(a.section_name).toLowerCase() === String(sectionId).toLowerCase())
+    );
+
+    for (const a of allocs) {
+      if (a.teacher_id) {
+        const key = `${a.teacher_id}:${a.subject_id}`;
+        if (!seenTeacherSubject.has(key)) {
+          const entry: TeacherAssignmentOverview = {
+            school_id: schoolId,
+            class_id: classId,
+            section_id: sectionId,
+            subject_id: a.subject_id,
+            subject_name: a.subject_name || 'Subject',
+            teacher_id: a.teacher_id,
+            teacher_name: a.teacher_name || 'Primary Teacher',
+            role_type: 'Primary Teacher',
+            is_primary: true,
+            is_alternate: false,
+            assignment_count: 0,
+            assignments: []
+          };
+          seenTeacherSubject.set(key, entry);
+          result.push(entry);
+        }
+      }
+      if (a.alt_teacher_id) {
+        const aKey = `${a.alt_teacher_id}:${a.subject_id}`;
+        if (!seenTeacherSubject.has(aKey)) {
+          const entry: TeacherAssignmentOverview = {
+            school_id: schoolId,
+            class_id: classId,
+            section_id: sectionId,
+            subject_id: a.subject_id,
+            subject_name: a.subject_name || 'Subject',
+            teacher_id: a.alt_teacher_id,
+            teacher_name: a.alt_teacher_name || 'Alternate Teacher',
+            role_type: 'Alternate Teacher',
+            is_primary: false,
+            is_alternate: true,
+            assignment_count: 0,
+            assignments: []
+          };
+          seenTeacherSubject.set(aKey, entry);
+          result.push(entry);
+        }
+      }
+    }
+  }
+
+  // 3. Query all assignments created for this class & section in the date range
+  const fetchedAssignments: {
+    id: string;
+    teacher_id: string;
+    teacher_name?: string;
+    subject_id?: string;
+    subject_name?: string;
+    title: string;
+    assigned_date: string;
+    due_date?: string;
+    created_at?: string;
+  }[] = [];
+
+  if (isPostgresConfigured) {
+    try {
+      const hasAssigned = await checkHasAssignedDate();
+      const dateCol = hasAssigned ? 'COALESCE(sa.assigned_date, sa.created_at::date)' : 'sa.created_at::date';
+
+      const qAssignments = await pool.query(
+        `SELECT 
+           sa.id,
+           sa.teacher_id,
+           sa.subject_id,
+           sa.title,
+           ${dateCol}::text AS assigned_date,
+           sa.due_date,
+           sa.created_at,
+           COALESCE(u.name, 'Teacher') AS teacher_name,
+           COALESCE(sub.name, 'General') AS subject_name
+         FROM student_assignments sa
+         LEFT JOIN users u ON u.id = sa.teacher_id AND u.school_id = sa.school_id
+         LEFT JOIN subjects sub ON sub.id = sa.subject_id AND sub.school_id = sa.school_id
+         WHERE sa.school_id = $1
+           AND (sa.class_id = $2 OR sa.class_id::text = $2)
+           AND (sa.section_id = $3 OR sa.section_id::text = $3 OR sa.section_id IS NULL)
+           AND ($4::date IS NULL OR ${dateCol} >= $4::date)
+           AND ($5::date IS NULL OR ${dateCol} <= $5::date)
+         ORDER BY ${dateCol} DESC, sa.created_at DESC`,
+        [schoolId, classId, sectionId, fromDate || null, toDate || null]
+      );
+
+      for (const row of qAssignments.rows) {
+        fetchedAssignments.push({
+          id: row.id,
+          teacher_id: row.teacher_id,
+          teacher_name: row.teacher_name,
+          subject_id: row.subject_id,
+          subject_name: row.subject_name,
+          title: row.title,
+          assigned_date: row.assigned_date ? String(row.assigned_date).slice(0, 10) : '',
+          due_date: row.due_date ? String(row.due_date).slice(0, 10) : undefined,
+          created_at: row.created_at
+        });
+      }
+    } catch (err: any) {
+      console.warn('[MentorService] DB error fetching student assignments:', err.message);
+    }
+  }
+
+  // 4. In-memory assignments check
+  for (const a of inMemoryAssignments) {
+    if (!isSameSchool(a.school_id || schoolId, schoolId)) continue;
+    const matchClass = a.class_id === classId || String(a.class_number) === String(classId);
+    const matchSec = !a.section_id || a.section_id === sectionId || String(a.section_name).toLowerCase() === String(sectionId).toLowerCase();
+    if (!matchClass || !matchSec) continue;
+
+    const aDate = a.assigned_date || (a.created_at ? a.created_at.slice(0, 10) : '');
+    if (fromDate && aDate && aDate < fromDate) continue;
+    if (toDate && aDate && aDate > toDate) continue;
+
+    if (!fetchedAssignments.some(f => f.id === a.id)) {
+      fetchedAssignments.push({
+        id: a.id,
+        teacher_id: a.teacher_id,
+        teacher_name: a.teacher_name,
+        subject_id: a.subject_id || undefined,
+        subject_name: a.subject_name,
+        title: a.title,
+        assigned_date: aDate,
+        due_date: a.due_date,
+        created_at: a.created_at
+      });
+    }
+  }
+
+  // 5. Match fetched assignments to teachers
+  for (const fa of fetchedAssignments) {
+    const key = `${fa.teacher_id}:${fa.subject_id || ''}`;
+    let match = seenTeacherSubject.get(key);
+    if (!match) {
+      match = Array.from(seenTeacherSubject.values()).find(e => e.teacher_id === fa.teacher_id);
+    }
+
+    if (match) {
+      match.assignments.push({
+        id: fa.id,
+        title: fa.title,
+        assigned_date: fa.assigned_date,
+        due_date: fa.due_date,
+        created_at: fa.created_at
+      });
+      match.assignment_count = match.assignments.length;
+    } else {
+      const newEntry: TeacherAssignmentOverview = {
+        school_id: schoolId,
+        class_id: classId,
+        section_id: sectionId,
+        subject_id: fa.subject_id || 'general',
+        subject_name: fa.subject_name || 'General',
+        teacher_id: fa.teacher_id,
+        teacher_name: fa.teacher_name || 'Subject Teacher',
+        role_type: 'Subject Teacher',
+        is_primary: true,
+        is_alternate: false,
+        assignment_count: 1,
+        assignments: [{
+          id: fa.id,
+          title: fa.title,
+          assigned_date: fa.assigned_date,
+          due_date: fa.due_date,
+          created_at: fa.created_at
+        }]
+      };
+      seenTeacherSubject.set(`${fa.teacher_id}:${fa.subject_id || 'general'}`, newEntry);
+      result.push(newEntry);
+    }
+  }
+
+  return result.sort((a, b) => {
+    const sCmp = a.subject_name.localeCompare(b.subject_name);
+    if (sCmp !== 0) return sCmp;
+    return a.teacher_name.localeCompare(b.teacher_name);
+  });
 }
