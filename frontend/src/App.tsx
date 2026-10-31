@@ -8044,7 +8044,7 @@ function Students() {
                   {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
                 </td>
                 <td>
-                  <StudentProfileHoverCard student={x} activeSession={activeSession}>
+                  <StudentProfileHoverCard student={x} activeSession={activeSession} mode="student">
                     <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
                   </StudentProfileHoverCard>
                 </td>
