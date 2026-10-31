@@ -661,9 +661,9 @@ export default function Timetable() {
 
   const formAltTeachers = formAvailableTeachers.filter(t => t.id !== entryForm.teacherId);
 
-  if (loading) return <div className="feature-page"><p className="muted" style={{ padding: 40, textAlign: 'center' }}>Loading timetable data...</p></div>;
+  if (loading) return <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}><p className="muted" style={{ padding: 40, textAlign: 'center' }}>Loading timetable data...</p></div>;
 
-  return <div className="feature-page">
+  return <div className="feature-page" style={{ width: '100%', maxWidth: 'none', margin: 0, padding: '0 0 40px 0' }}>
     {/* ── Header ── */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
       <div>
