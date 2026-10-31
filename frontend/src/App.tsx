@@ -4450,8 +4450,8 @@ function AdminHome() {
             </div>
           </div>
           <div className="hero-actions">
-            <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
-              <ClipboardCheck size={16} /> Take Today's Attendance
+            <button className="action-btn-primary" onClick={() => nav('/teachers')}>
+              <UserPlus size={16} /> Enroll Teacher
             </button>
             <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
               <UserPlus size={16} /> Enroll Student
@@ -9984,6 +9984,24 @@ function Teachers() {
     scrollToDirectoryTop();
   }, [directoryPage, scrollToDirectoryTop]);
   const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
+
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
+        setEditingTeacher(null);
+        setF({
+          countryCode: '+91',
+          gender: 'MALE',
+          class_id: '',
+          class_number: '',
+          section_id: '',
+          section_name: '',
+          section: ''
+        });
+        setOpen(true);
+      }
+    } catch {}
+  }, [user]);
 
   // Universal Preview State for Teacher Add/Edit
   const [teacherPreview, setTeacherPreview] = useState<{
