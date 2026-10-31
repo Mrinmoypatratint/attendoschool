@@ -4895,6 +4895,9 @@ function TeacherHome() {
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
   const [schoolDate, setSchoolDate] = useState<string>('');
+  const [activeSession, setActiveSession] = useState<string>(() => {
+    return localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+  });
 
   // 1-second interval timer for live digital clock widget with cleanup on unmount
   useEffect(() => {
@@ -4902,14 +4905,17 @@ function TeacherHome() {
     return () => clearInterval(timer);
   }, []);
 
-  async function loadSchedule(showSpinner = true) {
+  async function loadSchedule(showSpinner = true, sessionOverride?: string) {
     if (showSpinner) setLoading(true);
     try {
-      const [routineRes, historyRes, noticesRes, authSecRes] = await Promise.all([
+      const currentSession = sessionOverride || activeSession || localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+
+      const [routineRes, historyRes, noticesRes, authSecRes, routineWeekRes] = await Promise.all([
         api.get('/teacher/routine/today').catch(() => ({ data: [] })),
         api.get('/teacher/attendance/history').catch(() => ({ data: [] })),
         api.get('/communication/teacher/inbox').catch(() => ({ data: [] })),
-        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } }))
+        api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } })),
+        api.get('/teacher/routine/week').catch(() => ({ data: [] }))
       ]);
 
       const secData = Array.isArray(authSecRes.data?.sections) ? authSecRes.data.sections : [];
@@ -4926,18 +4932,69 @@ function TeacherHome() {
       const rawNotices = Array.isArray(noticesRes.data) ? noticesRes.data : [];
       setNotices(rawNotices.filter((n: any) => !n.read_at));
 
-      // Calculate distinct active students across teacher's assigned classes
-      if (routineData.length > 0) {
-        const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
-        routineData.forEach((item: any) => {
-          const key = `${item.class_id || item.class_number}_${item.section_id || item.section_name}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: item.class_id || item.class_number, sectionId: item.section_id || item.section_name });
-          }
-        });
+      // Distinct class and section pairs assigned to this teacher
+      const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
 
+      // 1. Authorized sections (Class Mentor / Temporary Assignments)
+      secData.forEach((s: any) => {
+        const cId = s.classId || s.class_id || s.classNumber || s.class_number;
+        const sId = s.sectionId || s.section_id || s.sectionName || s.section_name;
+        if (cId && sId) {
+          const key = `${cId}_${sId}`;
+          if (!uniqueClassSecs.has(key)) {
+            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
+          }
+        }
+      });
+
+      // 2. Today's routine classes
+      routineData.forEach((item: any) => {
+        const cId = item.class_id || item.classId || item.class_number || item.classNumber;
+        const sId = item.section_id || item.sectionId || item.section_name || item.sectionName;
+        if (cId && sId) {
+          const key = `${cId}_${sId}`;
+          if (!uniqueClassSecs.has(key)) {
+            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
+          }
+        }
+      });
+
+      // 3. Weekly timetable entries (covers classes taught on other days of the week)
+      const weekData = Array.isArray(routineWeekRes.data) ? routineWeekRes.data : [];
+      weekData.forEach((item: any) => {
+        const cId = item.class_id || item.classId || item.class_number || item.classNumber;
+        const sId = item.section_id || item.sectionId || item.section_name || item.sectionName;
+        if (cId && sId) {
+          const key = `${cId}_${sId}`;
+          if (!uniqueClassSecs.has(key)) {
+            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
+          }
+        }
+      });
+
+      // 4. Assigned class/section from user profile (if any)
+      if (user) {
+        const uClass = (user as any).assigned_class_id || (user as any).assigned_class || (user as any).assignedClass;
+        const uSec = (user as any).assigned_section_id || (user as any).assigned_section || (user as any).assignedSection;
+        if (uClass && uSec) {
+          const key = `${uClass}_${uSec}`;
+          if (!uniqueClassSecs.has(key)) {
+            uniqueClassSecs.set(key, { classId: String(uClass), sectionId: String(uSec) });
+          }
+        }
+      }
+
+      // Calculate distinct active students across teacher's assigned classes for the selected session
+      if (uniqueClassSecs.size > 0) {
         const studentRequests = Array.from(uniqueClassSecs.values()).map(cs =>
-          api.get('/teacher/students', { params: { classId: cs.classId, sectionId: cs.sectionId } }).catch(() => ({ data: [] }))
+          api.get('/teacher/students', {
+            params: {
+              classId: cs.classId,
+              sectionId: cs.sectionId,
+              session: currentSession
+            },
+            headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+          }).catch(() => ({ data: [] }))
         );
 
         const studentResponses = await Promise.all(studentRequests);
@@ -4965,15 +5022,29 @@ function TeacherHome() {
     loadSchedule(true);
     const onFocus = () => loadSchedule(false);
     const onAnnouncementsUpdated = () => loadSchedule(false);
+    const onSessionChanged = (e: any) => {
+      const sessName = typeof e?.detail === 'object' ? (e.detail?.name || '') : (typeof e?.detail === 'string' ? e.detail : '');
+      const finalSess = sessName || localStorage.getItem('attendo_academic_session') || '';
+      if (finalSess) setActiveSession(finalSess);
+      loadSchedule(false, finalSess);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'attendo_academic_session' || e.key === 'attendo_active_academic_year') {
+        const val = e.newValue || localStorage.getItem('attendo_academic_session') || '';
+        if (val) setActiveSession(val);
+        loadSchedule(false, val);
+      }
+    };
+
     window.addEventListener('focus', onFocus);
     window.addEventListener('announcements-read', onAnnouncementsUpdated);
-    window.addEventListener('storage', onAnnouncementsUpdated);
-    window.addEventListener('sessionChanged', onAnnouncementsUpdated);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('sessionChanged', onSessionChanged);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('announcements-read', onAnnouncementsUpdated);
-      window.removeEventListener('storage', onAnnouncementsUpdated);
-      window.removeEventListener('sessionChanged', onAnnouncementsUpdated);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('sessionChanged', onSessionChanged);
     };
   }, []);
 

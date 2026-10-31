@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { pool, isPostgresConfigured } from '../db';
 import { requireAuth, requireRoles, AuthRequest } from '../middleware/auth';
 import { queueAbsentSms, sendSms } from '../services/smsService';
-import { demoStudents, demoClasses, demoSections, demoSubjects, demoTeachers } from './schoolData';
+import { demoStudents, demoClasses, demoSections, demoSubjects, demoTeachers, isSameSession, toCanonicalSession } from './schoolData';
 import { syncAttendanceToFirestore, syncAttendanceAuditLogToFirestore } from '../services/firestoreSync';
 import { isSameSchool, isTestSchool } from './auth';
 import { collections, isFirebaseConfigured } from '../firebase';
@@ -550,6 +550,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
 
   let targetYearId: string | null = null;
   let targetYearName: string | null = null;
+  let isActiveYear = false;
 
   if (isPostgresConfigured) {
     try {
@@ -557,25 +558,33 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSession);
         if (isUuid) {
           targetYearId = rawSession;
-        } else {
-          const cleanSessionName = rawSession.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
-          const ayMatch = await pool.query(
-            `SELECT id, name FROM academic_years 
-             WHERE school_id = $1::uuid AND (
-               LOWER(name) = LOWER($2) 
-               OR name ILIKE '%' || $3 || '%'
-               OR LOWER(code) = LOWER($2)
-               OR code ILIKE '%' || $3 || '%'
-             )
-             LIMIT 1`,
-            [sid, rawSession, cleanSessionName]
+          const ayCheck = await pool.query(
+            `SELECT name, is_active FROM academic_years WHERE id = $1::uuid AND school_id = $2::uuid LIMIT 1`,
+            [rawSession, sid]
           );
-          if (ayMatch.rowCount && ayMatch.rowCount > 0) {
-            targetYearId = ayMatch.rows[0].id;
-            targetYearName = ayMatch.rows[0].name;
-          } else {
-            // Specified session does not exist in DB -> force zero results, never leak older session data
-            targetYearId = '00000000-0000-0000-0000-000000000000';
+          if (ayCheck.rowCount && ayCheck.rowCount > 0) {
+            targetYearName = ayCheck.rows[0].name;
+            isActiveYear = Boolean(ayCheck.rows[0].is_active);
+          }
+        } else {
+          const ayList = await pool.query(
+            `SELECT id, name, is_active FROM academic_years WHERE school_id = $1::uuid`,
+            [sid]
+          );
+          if (ayList.rowCount && ayList.rowCount > 0) {
+            const matched = ayList.rows.find((r: any) =>
+              r.id === rawSession ||
+              isSameSession(r.name, rawSession) ||
+              toCanonicalSession(r.name) === toCanonicalSession(rawSession)
+            );
+            if (matched) {
+              targetYearId = matched.id;
+              targetYearName = matched.name;
+              isActiveYear = Boolean(matched.is_active);
+            } else {
+              // Specified session does not exist in DB -> force zero results, never leak other session data
+              targetYearId = '00000000-0000-0000-0000-000000000000';
+            }
           }
         }
       }
@@ -583,12 +592,13 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
       // If no session specified at all, default to the school's active academic year
       if (!targetYearId && !rawSession) {
         const activeAy = await pool.query(
-          `SELECT id, name FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
+          `SELECT id, name, is_active FROM academic_years WHERE school_id = $1::uuid AND is_active = true LIMIT 1`,
           [sid]
         );
         if (activeAy.rowCount && activeAy.rowCount > 0) {
           targetYearId = activeAy.rows[0].id;
           targetYearName = activeAy.rows[0].name;
+          isActiveYear = true;
         }
       }
     } catch (err: any) {
@@ -611,7 +621,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
   }
   cleanSec = cleanSec.replace(/section\s*/i, '').trim().toUpperCase() || 'A';
 
-  // SECURITY CHECK: If requesting user is a TEACHER, verify they are the assigned class mentor or active temporary substitute
+  // SECURITY CHECK: If requesting user is a TEACHER, verify they are authorized for this class and section
   if (req.user?.role === 'TEACHER' && isPostgresConfigured) {
     try {
       const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classParam);
@@ -621,7 +631,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
          JOIN classes c ON c.id = cm.class_id
          JOIN sections s ON s.id = cm.section_id
          WHERE cm.school_id = $1
-           AND (cm.teacher_id = $2 OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (cm.teacher_id = $2 OR cm.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR cm.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
            AND (cm.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
            AND (cm.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
          UNION ALL
@@ -629,10 +639,33 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
          JOIN classes c ON c.id = tca.class_id
          JOIN sections s ON s.id = tca.section_id
          WHERE tca.school_id = $1
-           AND (tca.teacher_id = $2 OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2))
+           AND (tca.teacher_id = $2 OR tca.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR tca.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
            AND (tca.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
            AND (tca.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
-           AND tca.start_at <= NOW() AND tca.end_at > NOW()`,
+           AND tca.start_at <= NOW() AND tca.end_at > NOW()
+         UNION ALL
+         SELECT 1 FROM timetable_entries te
+         JOIN classes c ON c.id = te.class_id
+         JOIN sections s ON s.id = te.section_id
+         WHERE te.school_id = $1
+           AND (te.teacher_id = $2 OR te.substitute_teacher_id = $2 OR te.teacher_id IN (SELECT id FROM teacher_profiles WHERE user_id = $2) OR te.teacher_id IN (SELECT user_id FROM teacher_profiles WHERE id = $2))
+           AND (te.class_id = $3::uuid OR ($4::smallint IS NOT NULL AND c.class_number = $4::smallint))
+           AND (te.section_id = $5::uuid OR UPPER(s.name) = UPPER($6))
+         UNION ALL
+         SELECT 1 FROM teacher_profiles tp
+         LEFT JOIN classes c ON c.id = tp.assigned_class_id
+         LEFT JOIN sections s ON s.id = tp.assigned_section_id
+         WHERE tp.school_id = $1
+           AND (tp.user_id = $2 OR tp.id = $2)
+           AND (
+             tp.assigned_class_id = $3::uuid 
+             OR ($4::smallint IS NOT NULL AND (c.class_number = $4::smallint OR tp.assigned_class = 'Class ' || $4::smallint OR tp.assigned_class = $4::text))
+           )
+           AND (
+             tp.assigned_section_id = $5::uuid 
+             OR (UPPER(s.name) = UPPER($6) OR UPPER(tp.assigned_section) = UPPER($6))
+           )
+         LIMIT 1`,
         [
           sid,
           req.user.id,
@@ -650,7 +683,7 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
     }
   }
 
-  const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}:${targetYearId || 'all'}`;
+  const cacheKey = `teacher:students:${sid}:${classParam}:${cleanSec}:${targetYearId || rawSession || 'all'}`;
   const cached = fastCache.get<any>(cacheKey);
   if (cached) return res.json(cached);
 
@@ -672,9 +705,14 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
            AND (
              $7::uuid IS NULL 
              OR academic_year_id = $7::uuid
+             OR ($8::boolean = TRUE AND academic_year_id IS NULL)
+             OR id IN (
+               SELECT student_id FROM student_enrollment_history_v28 
+               WHERE academic_year_id = $7::uuid AND school_id = $1::uuid
+             )
            )
          ORDER BY roll_number`,
-        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase(), targetYearId]
+        [sid, classUuidVal, classNum, secUuidVal, cleanSec, cleanSec.toLowerCase(), targetYearId, isActiveYear]
       );
       if (q.rows) {
         const uniqueStudents = new Map<string, any>();
@@ -710,13 +748,16 @@ const getStudentsHandler = async (req: AuthRequest, res: any) => {
           const matchSchool = (s.school_id && isSameSchool(s.school_id, sid)) || (s.schoolId && isSameSchool(s.schoolId, sid));
           if (!matchSchool) return false;
 
-          if (targetYearId || targetYearName) {
+          if (targetYearId || targetYearName || rawSession) {
             const sAyId = s.academic_year_id || s.academicYearId;
             const sAyName = s.session || s.session_name || s.academic_year || s.academicYear;
+            const targetSession = targetYearName || rawSession;
             if (sAyId || sAyName) {
               const matchesId = targetYearId && (sAyId === targetYearId);
-              const matchesName = targetYearName && sAyName && (String(sAyName).toLowerCase().includes(targetYearName.toLowerCase()));
+              const matchesName = targetSession && (isSameSession(sAyName, targetSession) || toCanonicalSession(sAyName) === toCanonicalSession(targetSession));
               if (!matchesId && !matchesName) return false;
+            } else if (!isActiveYear && rawSession && !/^all/i.test(rawSession)) {
+              return false;
             }
           }
 
