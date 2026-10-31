@@ -365,8 +365,8 @@ export default function PeopleManagement() {
       alert('Validation Error: Last Name is required.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -1303,7 +1303,7 @@ export default function PeopleManagement() {
                   const lnVal = teacherForm.lastName || '';
                   const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
                   const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-                  const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+                  const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
                   return (
                     <>
@@ -1372,14 +1372,14 @@ export default function PeopleManagement() {
                           <input
                             required
                             placeholder="e.g. Sharma"
-                            maxLength={15}
+                            maxLength={20}
                             value={lnVal}
                             style={{
                               borderColor: isLnInvalid ? '#ef4444' : undefined,
                               boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                             }}
                             onChange={e => {
-                              const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                              const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
                               const fullName = formatCapitalizedName(fnVal, mnVal, ln);
                               setTeacherForm({ ...teacherForm, lastName: ln, name: fullName });
                             }}
@@ -1388,9 +1388,9 @@ export default function PeopleManagement() {
                             <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                               Enter a string not a number
                             </span>
-                          ) : lnVal && lnVal.length < 3 ? (
+                          ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                             <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                              Must be 3 to 15 characters
+                              Must be 2 to 20 characters
                             </span>
                           ) : null}
                         </label>

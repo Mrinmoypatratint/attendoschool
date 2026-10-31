@@ -6127,8 +6127,8 @@ function Students() {
       alert('Validation Error: Please enter student last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -8354,7 +8354,7 @@ function Students() {
       const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       const isDobYearInvalidInUi = Boolean(
         f.dob && (String(f.dob).split('-')[0]?.length > 4 || parseInt(String(f.dob).split('-')[0], 10) > 9999)
@@ -8462,14 +8462,14 @@ function Students() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       borderColor: isLnInvalid ? '#ef4444' : undefined,
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20);
                       const fullName = formatStudentFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -8478,9 +8478,9 @@ function Students() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
@@ -10377,8 +10377,8 @@ function Teachers() {
       alert('Validation Error: Please enter faculty member last name.');
       return;
     }
-    if (lastName.length < 3 || lastName.length > 15) {
-      alert('Validation Error: Last Name must be between 3 and 15 characters.');
+    if (lastName.length < 2 || lastName.length > 20) {
+      alert('Validation Error: Last Name must be between 2 and 20 characters.');
       return;
     }
     if (/\d/.test(lastName)) {
@@ -11668,7 +11668,7 @@ function Teachers() {
       const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
-      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
+      const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 2 || lnVal.length > 20));
 
       return (
         <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={() => { setOpen(false); setEditingTeacher(null); setF({}); }}>
@@ -11769,7 +11769,7 @@ function Teachers() {
                   <input
                     required
                     placeholder="e.g. Sharma"
-                    maxLength={15}
+                    maxLength={20}
                     value={lnVal || ''}
                     style={{
                       textTransform: 'uppercase',
@@ -11777,7 +11777,7 @@ function Teachers() {
                       boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
                     }}
                     onChange={e => {
-                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 20).toUpperCase();
                       const fullName = formatTeacherFullName(fnVal, mnVal, ln);
                       setF({ ...f, lastName: ln, name: fullName });
                     }}
@@ -11786,9 +11786,9 @@ function Teachers() {
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
                       Enter a string not a number
                     </span>
-                  ) : lnVal && lnVal.length < 3 ? (
+                  ) : lnVal && (lnVal.length < 2 || lnVal.length > 20) ? (
                     <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                      Must be 3 to 15 characters
+                      Must be 2 to 20 characters
                     </span>
                   ) : null}
                 </label>
