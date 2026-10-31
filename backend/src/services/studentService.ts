@@ -1247,13 +1247,7 @@ export async function getStudentTimetable(schoolId: string, userId: string) {
   }
 
   // 3. Fallback for test school
-  if (isTestSchool(schoolId)) {
-    return [
-      { id: 'tt-1', day_of_week: 1, start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', room: 'Room 101' },
-      { id: 'tt-2', day_of_week: 1, start_time: '10:00', end_time: '10:45', subject_name: 'Science', teacher_name: 'Rahul Sharma', room: 'Lab 2' },
-      { id: 'tt-3', day_of_week: 2, start_time: '09:00', end_time: '09:45', subject_name: 'Mathematics', teacher_name: 'Rahul Sharma', room: 'Room 101' }
-    ];
-  }
+  return [];
 
   return [];
 }

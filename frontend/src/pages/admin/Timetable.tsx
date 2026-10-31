@@ -1043,7 +1043,7 @@ export default function Timetable() {
                       <td><PersonProfileLink kind="teacher" id={e.teacher_id || e.teacherId} name={e.teacher_name || e.teacherName || '—'} person={e as any} /></td>
                       <td>{e.substitute_teacher_name ? <PersonProfileLink kind="teacher" id={e.substitute_teacher_id || e.altTeacherId} name={e.substitute_teacher_name} person={e as any} /> : '—'}</td>
                       <td>{e.room_name || '—'}</td>
-                      <td><span className={`badge ${e.status === 'PUBLISHED' ? 'sent' : 'queued'}`}>{e.status}</span></td>
+                      <td><span className={`badge ${(e.status === 'PUBLISHED' || e.status === 'ASSIGNED' || !e.status) ? 'sent' : 'queued'}`}>{(e.status === 'PUBLISHED' || !e.status) ? 'ASSIGNED' : e.status}</span></td>
                       {(isSchoolAdmin || isTeacher) && (
                         <td style={{ textAlign: 'right' }}>
                           {isTeacher && isMyEntry(e) && (
