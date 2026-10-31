@@ -1,8 +1,8 @@
-import {useEffect,useState,useRef,useCallback,useMemo,lazy,Suspense} from 'react';
-import type {ReactNode} from 'react';
-import {Navigate,Route,Routes,useLocation,useNavigate} from 'react-router-dom';
-import {api, API_BASE_URL} from './api';
-import {useAuth,Guard,RoleGuard} from './hooks/useAuth';
+import { useEffect, useState, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import type { ReactNode } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { api, API_BASE_URL } from './api';
+import { useAuth, Guard, RoleGuard } from './hooks/useAuth';
 
 // Canonical domain enforcement: Redirect from legacy domains
 if (typeof window !== 'undefined' && (window.location.hostname.includes('optinetinnovations.in') || window.location.hostname.includes('vercel.app'))) {
@@ -49,7 +49,7 @@ import {
   Search, ArrowRight, Activity, Zap, EyeOff, ArrowLeft, Building2,
   Menu, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, Globe, Lock, AlertTriangle, Pencil, HelpCircle, Check, AlertCircle, KeyRound, X, Loader2,
   History as HistoryIcon, DoorOpen, UserCheck, UserX, Info, Maximize2, Minimize2,
-  Camera, CalendarCheck, CalendarPlus, Award
+  Camera, CalendarCheck, CalendarPlus, Award, PenLine
 } from 'lucide-react';
 import { studentApi, Institute } from './services/studentApi';
 import { listAssignments } from './services/temporaryAssignmentApi';
@@ -85,21 +85,21 @@ import {
 import { TableSubToolbar, TablePaginationFooter } from './components/TablePagination';
 import { SidebarToggle } from './components/SidebarToggle';
 
-const fmt=(t:string)=>t?.slice(0,5)||'';
-const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const fmt = (t: string) => t?.slice(0, 5) || '';
+const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /* ────── Dark Mode ────── */
-function useTheme(){
-  const [dark,setDark]=useState(()=>{
-    const saved=localStorage.getItem('theme');
-    if(saved) return saved==='dark';
+function useTheme() {
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
     return false;
   });
-  useEffect(()=>{
-    document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('theme',dark?'dark':'light');
-  },[dark]);
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }, [dark]);
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'theme') {
@@ -109,7 +109,7 @@ function useTheme(){
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-  return {dark,toggle:()=>setDark(d=>!d)};
+  return { dark, toggle: () => setDark(d => !d) };
 }
 
 export const sortAcademicYearsAscending = (list: any[]) => {
@@ -149,10 +149,10 @@ function AttendoEmblem({ size = 32 }: { size?: number }) {
 function GoogleGLogo() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
-      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.37 7.33 24 12 24z"/>
-      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
-      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.37 7.33 24 12 24z" />
+      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
+      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
     </svg>
   );
 }
@@ -265,7 +265,7 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 
   // 1. Explicit DAV MODEL SCHOOL matches
   if (
-    norm.includes('dav') || 
+    norm.includes('dav') ||
     norm.includes('15582') ||
     norm === 'admin@dav.com' ||
     norm === 'teacher1@dav.com' ||
@@ -277,9 +277,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'student@gmail.com' ||
     norm.includes('adm-2026-dav')
   ) {
-    const found = safeList.find(i => 
-      (i.code && (i.code === '15582' || i.code.toUpperCase() === 'DAV')) || 
-      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' || 
+    const found = safeList.find(i =>
+      (i.code && (i.code === '15582' || i.code.toUpperCase() === 'DAV')) ||
+      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' ||
       i.name.toLowerCase().includes('dav')
     );
     if (found) return found;
@@ -293,9 +293,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 
   // 2. Explicit TINT matches (Faculty, Student, School Admin)
   if (
-    norm.includes('tint.edu.in') || 
-    norm.includes('tint.local') || 
-    norm.includes('@tint') || 
+    norm.includes('tint.edu.in') ||
+    norm.includes('tint.local') ||
+    norm.includes('@tint') ||
     norm.includes('tint') ||
     norm === 'adm-2025-105' ||
     norm === 'adm-2025-001' ||
@@ -304,9 +304,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'admin@tint.edu.in' ||
     norm === 'admin@tint.local'
   ) {
-    const found = safeList.find(i => 
-      (i.code && i.code.toUpperCase() === 'TINT') || 
-      i.id === '00000000-0000-0000-0000-000000000002' || 
+    const found = safeList.find(i =>
+      (i.code && i.code.toUpperCase() === 'TINT') ||
+      i.id === '00000000-0000-0000-0000-000000000002' ||
       i.name.toLowerCase().includes('techno international') ||
       i.name.toLowerCase().includes('tint')
     );
@@ -321,8 +321,8 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 
   // 3. Explicit Greenwood matches
   if (
-    norm.includes('demo-school.local') || 
-    norm.includes('greenwood') || 
+    norm.includes('demo-school.local') ||
+    norm.includes('greenwood') ||
     norm.includes('greenwood.local') ||
     norm === 'adm-2026-001' ||
     norm === 'rahul@demo-school.local' ||
@@ -335,9 +335,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'emp002' ||
     norm === 'emp012'
   ) {
-    const found = safeList.find(i => 
-      (i.code && i.code.toUpperCase() === 'GIS001') || 
-      i.id === '00000000-0000-0000-0000-000000000001' || 
+    const found = safeList.find(i =>
+      (i.code && i.code.toUpperCase() === 'GIS001') ||
+      i.id === '00000000-0000-0000-0000-000000000001' ||
       i.name.toLowerCase().includes('greenwood')
     );
     if (found) return found;
@@ -351,7 +351,7 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
 
   // 4. Explicit ABC Public School matches
   if (
-    norm.includes('abc155') || 
+    norm.includes('abc155') ||
     norm.includes('abc') ||
     norm === 'adm1' ||
     norm === 'mmrinmay76@gmail.com' ||
@@ -359,9 +359,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm === 'ahana12@gmail.com' ||
     norm === 'dhardhuran689@gmail.com'
   ) {
-    const found = safeList.find(i => 
-      (i.code && i.code.toUpperCase() === 'ABC') || 
-      i.id === '08c4960d-75d6-4a92-989b-48309500632e' || 
+    const found = safeList.find(i =>
+      (i.code && i.code.toUpperCase() === 'ABC') ||
+      i.id === '08c4960d-75d6-4a92-989b-48309500632e' ||
       i.name.toLowerCase().includes('abc')
     );
     if (found) return found;
@@ -376,9 +376,9 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     norm.startsWith('teacher.') ||
     /^(20\d{3}|30\d{3}|50\d{3}|53\d{3}|\d{5})$/.test(norm)
   ) {
-    const found = list.find(i => 
-      (i.code && (i.code.toUpperCase() === 'DAV' || i.code === '15582')) || 
-      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' || 
+    const found = list.find(i =>
+      (i.code && (i.code.toUpperCase() === 'DAV' || i.code === '15582')) ||
+      i.id === '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3' ||
       i.name.toLowerCase().includes('dav')
     );
     if (found) return found;
@@ -391,8 +391,8 @@ function detectInstituteFromEmail(inputEmail: string, list: Institute[]): Instit
     const subParts = domain.split('.');
     for (const part of subParts) {
       if (part.length >= 3 && !['com', 'edu', 'org', 'local', 'in', 'gov', 'net', 'co'].includes(part)) {
-        const match = list.find(i => 
-          (i.code && i.code.toLowerCase() === part) || 
+        const match = list.find(i =>
+          (i.code && i.code.toLowerCase() === part) ||
           i.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(part)
         );
         if (match) return match;
@@ -433,7 +433,6 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -481,7 +480,7 @@ function Login() {
       setLookupLoading(false);
       try {
         localStorage.setItem('attendoschool_last_institute_id', clientMatch.id);
-      } catch {}
+      } catch { }
       return;
     }
 
@@ -518,7 +517,7 @@ function Login() {
             });
             try {
               localStorage.setItem('attendoschool_last_institute_id', serverId);
-            } catch {}
+            } catch { }
           } else {
             setInstituteId('');
             setDetectedInstitute(null);
@@ -572,7 +571,7 @@ function Login() {
         setInstitutes(cleanList);
         try {
           localStorage.setItem('attendoschool_cached_institutes', JSON.stringify(cleanList));
-        } catch {}
+        } catch { }
 
         // Automatically match the institute only if an identifier is already entered
         if (email.trim()) {
@@ -597,7 +596,7 @@ function Login() {
   useEffect(() => {
     try {
       localStorage.removeItem('attendoschool_cached_institutes');
-    } catch {}
+    } catch { }
     fetchInstitutes();
   }, [fetchInstitutes]);
 
@@ -734,370 +733,361 @@ function Login() {
               </div>
             )}
 
-          {/* STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student) */}
-          {selectedRole === null ? (
-            <div className="as-simple-step1 animate-fade-in">
-              <p className="as-simple-prompt-text">Select your login role to continue</p>
+            {/* STEP 1: ONLY SHOW LOGIN TYPE (Administrator, School Admin, Teacher, Student) */}
+            {selectedRole === null ? (
+              <div className="as-simple-step1 animate-fade-in">
+                <p className="as-simple-prompt-text">Select your login role to continue</p>
 
-              <div className="as-simple-role-grid">
-                {/* 1. Administrator */}
-                <button
-                  type="button"
-                  className="as-simple-role-card"
-                  onClick={() => handleSelectRole('ADMIN')}
-                  id="role-select-admin"
-                >
-                  <div className="as-simple-role-icon role-admin">
-                    <Building2 size={24} />
-                  </div>
-                  <div className="as-simple-role-info">
-                    <span className="as-simple-role-title">Administrator</span>
-                    <span className="as-simple-role-sub">Central Platform Admin</span>
-                  </div>
-                </button>
-
-                {/* 2. School Admin */}
-                <button
-                  type="button"
-                  className="as-simple-role-card"
-                  onClick={() => handleSelectRole('SCHOOL_ADMIN')}
-                  id="role-select-school-admin"
-                >
-                  <div className="as-simple-role-icon role-school-admin">
-                    <School size={24} />
-                  </div>
-                  <div className="as-simple-role-info">
-                    <span className="as-simple-role-title">School Admin</span>
-                    <span className="as-simple-role-sub">Principal & Administration</span>
-                  </div>
-                </button>
-
-                {/* 3. Teacher */}
-                <button
-                  type="button"
-                  className="as-simple-role-card"
-                  onClick={() => handleSelectRole('TEACHER')}
-                  id="role-select-teacher"
-                >
-                  <div className="as-simple-role-icon role-teacher">
-                    <GraduationCap size={24} />
-                  </div>
-                  <div className="as-simple-role-info">
-                    <span className="as-simple-role-title">Teacher</span>
-                    <span className="as-simple-role-sub">Faculty & Routine</span>
-                  </div>
-                </button>
-
-                {/* 4. Student */}
-                <button
-                  type="button"
-                  className="as-simple-role-card"
-                  onClick={() => handleSelectRole('STUDENT')}
-                  id="role-select-student"
-                >
-                  <div className="as-simple-role-icon role-student">
-                    <BookOpen size={24} />
-                  </div>
-                  <div className="as-simple-role-info">
-                    <span className="as-simple-role-title">Student</span>
-                    <span className="as-simple-role-sub">Student & Parent Portal</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE */
-            <form className="as-simple-step2-form animate-fade-in" onSubmit={submit}>
-              {/* Active Role Bar with Change Role Button */}
-              <div className="as-simple-role-bar">
-                <button
-                  type="button"
-                  className="as-simple-back-btn"
-                  onClick={() => {
-                    setSelectedRole(null);
-                    setError('');
-                  }}
-                  title="Choose a different role"
-                >
-                  <ArrowLeft size={14} />
-                  <span>Change Role</span>
-                </button>
-
-                <div className="as-simple-active-tag">
-                  {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
-                   loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
-                   loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
-                   <Building2 size={13} />}
-                  <span>{currentConfig.roleName}</span>
-                </div>
-              </div>
-
-
-              {/* Affiliated School / Institute (Auto-detected from Login ID) */}
-              {currentConfig.needsSchool && (
-                <div className="as-simple-field" style={{ position: 'relative' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <label className="as-simple-label" style={{ margin: 0 }}>
-                      School / Institute <span style={{ color: '#fb923c' }}>*</span>
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {selectedInstitute && (
-                        <span style={{ 
-                          fontSize: 10.5, 
-                          color: '#34d399', 
-                          background: 'rgba(16, 185, 129, 0.12)', 
-                          border: '1px solid rgba(16, 185, 129, 0.3)', 
-                          padding: '2px 8px', 
-                          borderRadius: 9999, 
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4
-                        }}>
-                          <Check size={11} strokeWidth={3} /> Auto-detected
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedInstitute ? (
-                    <div 
-                      id="detected-institute-display"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                        padding: '10px 14px',
-                        borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))',
-                        border: '1px solid rgba(56, 189, 248, 0.35)',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
-                        <div style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 8,
-                          background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.25))',
-                          border: '1px solid rgba(56, 189, 248, 0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <School size={18} style={{ color: '#38bdf8' }} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f8fafc)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {selectedInstitute.name}
-                          </span>
-                          <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            Code: <strong style={{ color: '#38bdf8' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
-                          </span>
-                        </div>
-                      </div>
-                      <span
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          color: '#38bdf8',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          letterSpacing: '0.04em',
-                          flexShrink: 0
-                        }}
-                      >
-                        {selectedInstitute.code || 'ACTIVE'}
-                      </span>
-                    </div>
-                  ) : lookupLoading ? (
-                    <div 
-                      id="detecting-institute-placeholder"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '11px 14px',
-                        borderRadius: 10,
-                        background: 'rgba(56, 189, 248, 0.04)',
-                        border: '1px solid rgba(56, 189, 248, 0.25)',
-                        color: '#38bdf8',
-                        fontSize: 12.5,
-                        minHeight: 46
-                      }}
-                    >
-                      <RefreshCw size={14} className="spin" style={{ flexShrink: 0 }} />
-                      <span>Detecting affiliated school from Login ID...</span>
-                    </div>
-                  ) : lookupNotFound && email.trim().length >= 3 ? (
-                    <div 
-                      id="not-found-institute-placeholder"
-                      style={{
-                        padding: '11px 14px',
-                        borderRadius: 10,
-                        background: 'rgba(239, 68, 68, 0.05)',
-                        border: '1px dashed rgba(239, 68, 68, 0.35)',
-                        color: '#f87171',
-                        fontSize: 12
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                          <span>No school auto-detected.</span>
-                        </div>
-                        <select
-                          value={instituteId}
-                          onChange={e => {
-                            const val = e.target.value;
-                            setInstituteId(val);
-                            const matched = institutes.find(i => i.id === val);
-                            setDetectedInstitute(matched || null);
-                            if (val) setLookupNotFound(false);
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            background: '#0f172a',
-                            color: '#f8fafc',
-                            fontSize: 12,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <option value="">Select your school manually...</option>
-                          {institutes.map(inst => (
-                            <option key={inst.id} value={inst.id}>
-                              {inst.name} ({inst.code})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      id="empty-institute-placeholder"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '11px 14px',
-                        borderRadius: 10,
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px dashed rgba(255, 255, 255, 0.14)',
-                        color: '#94a3b8',
-                        fontSize: 12.5,
-                        minHeight: 46
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
-                        <span style={{ opacity: 0.75 }}>
-                          {loginRole === 'STUDENT'
-                            ? 'School will appear automatically when you enter your Admission No.'
-                            : 'School will appear automatically when you enter your Login ID / Email'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
-              <div className="as-simple-field">
-                <label className="as-simple-label">
-                  {currentConfig.emailLabel} <span style={{ color: '#fb923c' }}>*</span>
-                </label>
-                <div className="as-simple-input-wrap">
-                  <input
-                    required
-                    type="text"
-                    placeholder={currentConfig.emailPlaceholder}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    id="identifier-input"
-                    className="as-simple-input"
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div className="as-simple-field">
-                <label className="as-simple-label">
-                  Password <span style={{ color: '#fb923c' }}>*</span>
-                </label>
-                <div className="as-simple-input-wrap">
-                  <input
-                    required
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    id="password-input"
-                    className="as-simple-input"
-                  />
+                <div className="as-simple-role-grid">
+                  {/* 1. Administrator */}
                   <button
                     type="button"
-                    className="as-simple-eye-btn"
-                    onClick={() => setShowPassword(s => !s)}
-                    title={showPassword ? "Hide password" : "Show password"}
+                    className="as-simple-role-card"
+                    onClick={() => handleSelectRole('ADMIN')}
+                    id="role-select-admin"
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    <div className="as-simple-role-icon role-admin">
+                      <Building2 size={24} />
+                    </div>
+                    <div className="as-simple-role-info">
+                      <span className="as-simple-role-title">Administrator</span>
+                      <span className="as-simple-role-sub">Central Platform Admin</span>
+                    </div>
+                  </button>
+
+                  {/* 2. School Admin */}
+                  <button
+                    type="button"
+                    className="as-simple-role-card"
+                    onClick={() => handleSelectRole('SCHOOL_ADMIN')}
+                    id="role-select-school-admin"
+                  >
+                    <div className="as-simple-role-icon role-school-admin">
+                      <School size={24} />
+                    </div>
+                    <div className="as-simple-role-info">
+                      <span className="as-simple-role-title">School Admin</span>
+                      <span className="as-simple-role-sub">Principal & Administration</span>
+                    </div>
+                  </button>
+
+                  {/* 3. Teacher */}
+                  <button
+                    type="button"
+                    className="as-simple-role-card"
+                    onClick={() => handleSelectRole('TEACHER')}
+                    id="role-select-teacher"
+                  >
+                    <div className="as-simple-role-icon role-teacher">
+                      <GraduationCap size={24} />
+                    </div>
+                    <div className="as-simple-role-info">
+                      <span className="as-simple-role-title">Teacher</span>
+                      <span className="as-simple-role-sub">Faculty & Routine</span>
+                    </div>
+                  </button>
+
+                  {/* 4. Student */}
+                  <button
+                    type="button"
+                    className="as-simple-role-card"
+                    onClick={() => handleSelectRole('STUDENT')}
+                    id="role-select-student"
+                  >
+                    <div className="as-simple-role-icon role-student">
+                      <BookOpen size={24} />
+                    </div>
+                    <div className="as-simple-role-info">
+                      <span className="as-simple-role-title">Student</span>
+                      <span className="as-simple-role-sub">Student & Parent Portal</span>
+                    </div>
                   </button>
                 </div>
               </div>
+            ) : (
+              /* STEP 2: REQUIRED FIELDS SHOWN AFTER CHOOSING ROLE */
+              <form className="as-simple-step2-form animate-fade-in" onSubmit={submit}>
+                {/* Active Role Bar with Change Role Button */}
+                <div className="as-simple-role-bar">
+                  <button
+                    type="button"
+                    className="as-simple-back-btn"
+                    onClick={() => {
+                      setSelectedRole(null);
+                      setError('');
+                    }}
+                    title="Choose a different role"
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Change Role</span>
+                  </button>
 
-              {/* Keep me logged in + Forgot password? */}
-              <div className="as-simple-meta-row">
-                <label className="as-simple-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                    className="as-simple-checkbox"
-                  />
-                  <span>Keep me logged in</span>
-                </label>
-                <a
-                  href="#forgot"
-                  className="as-simple-forgot-link"
-                  onClick={e => {
-                    e.preventDefault();
-                    setForgotEmail(email ? email.trim() : '');
-                    setForgotNotice(null);
-                    setForgotOpen(true);
-                  }}
-                >
-                  Forgot password?
-                </a>
-              </div>
+                  <div className="as-simple-active-tag">
+                    {loginRole === 'STUDENT' ? <BookOpen size={13} /> :
+                      loginRole === 'TEACHER' ? <GraduationCap size={13} /> :
+                        loginRole === 'SCHOOL_ADMIN' ? <School size={13} /> :
+                          <Building2 size={13} />}
+                    <span>{currentConfig.roleName}</span>
+                  </div>
+                </div>
 
-              {/* Sign In CTA Button */}
-              <button
-                type="submit"
-                className="as-simple-submit-btn"
-                disabled={loading}
-                id="submit-auth-btn"
-              >
-                {loading ? (
-                  <span>Signing in…</span>
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <ArrowRight size={16} />
-                  </>
+
+                {/* Affiliated School / Institute (Auto-detected from Login ID) */}
+                {currentConfig.needsSchool && (
+                  <div className="as-simple-field" style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <label className="as-simple-label" style={{ margin: 0 }}>
+                        School / Institute <span style={{ color: '#fb923c' }}>*</span>
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {selectedInstitute && (
+                          <span style={{
+                            fontSize: 10.5,
+                            color: '#34d399',
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}>
+                            <Check size={11} strokeWidth={3} /> Auto-detected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedInstitute ? (
+                      <div
+                        id="detected-institute-display"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(56, 189, 248, 0.05))',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                          <div style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 8,
+                            background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(37,99,235,0.25))',
+                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <School size={18} style={{ color: '#38bdf8' }} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-main, #f8fafc)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {selectedInstitute.name}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              Code: <strong style={{ color: '#38bdf8' }}>{selectedInstitute.code || 'SCH'}</strong> · {selectedInstitute.address || 'Active Institution'}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid rgba(56, 189, 248, 0.25)',
+                            color: '#38bdf8',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            flexShrink: 0
+                          }}
+                        >
+                          {selectedInstitute.code || 'ACTIVE'}
+                        </span>
+                      </div>
+                    ) : lookupLoading ? (
+                      <div
+                        id="detecting-institute-placeholder"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '11px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(56, 189, 248, 0.04)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          color: '#38bdf8',
+                          fontSize: 12.5,
+                          minHeight: 46
+                        }}
+                      >
+                        <RefreshCw size={14} className="spin" style={{ flexShrink: 0 }} />
+                        <span>Detecting affiliated school from Login ID...</span>
+                      </div>
+                    ) : lookupNotFound && email.trim().length >= 3 ? (
+                      <div
+                        id="not-found-institute-placeholder"
+                        style={{
+                          padding: '11px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          border: '1px dashed rgba(239, 68, 68, 0.35)',
+                          color: '#f87171',
+                          fontSize: 12
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                            <span>No school auto-detected.</span>
+                          </div>
+                          <select
+                            value={instituteId}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setInstituteId(val);
+                              const matched = institutes.find(i => i.id === val);
+                              setDetectedInstitute(matched || null);
+                              if (val) setLookupNotFound(false);
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              background: '#0f172a',
+                              color: '#f8fafc',
+                              fontSize: 12,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="">Select your school manually...</option>
+                            {institutes.map(inst => (
+                              <option key={inst.id} value={inst.id}>
+                                {inst.name} ({inst.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        id="empty-institute-placeholder"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '11px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px dashed rgba(255, 255, 255, 0.14)',
+                          color: '#94a3b8',
+                          fontSize: 12.5,
+                          minHeight: 46
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <School size={16} style={{ opacity: 0.45, flexShrink: 0 }} />
+                          <span style={{ opacity: 0.75 }}>
+                            {loginRole === 'STUDENT'
+                              ? 'School will appear automatically when you enter your Admission No.'
+                              : 'School will appear automatically when you enter your Login ID / Email'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </button>
-              {/* Bottom Help Link */}
-              <div className="as-simple-help-tag">
-                Need account assistance? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Help & Support</a>
-              </div>
-            </form>
-          )}
+
+                {/* Identifier Input (Admission No. for Student, Email for Faculty/Admin) */}
+                <div className="as-simple-field">
+                  <label className="as-simple-label">
+                    {currentConfig.emailLabel} <span style={{ color: '#fb923c' }}>*</span>
+                  </label>
+                  <div className="as-simple-input-wrap">
+                    <input
+                      required
+                      type="text"
+                      placeholder={currentConfig.emailPlaceholder}
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      id="identifier-input"
+                      className="as-simple-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div className="as-simple-field">
+                  <label className="as-simple-label">
+                    Password <span style={{ color: '#fb923c' }}>*</span>
+                  </label>
+                  <div className="as-simple-input-wrap">
+                    <input
+                      required
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      id="password-input"
+                      className="as-simple-input"
+                    />
+                    <button
+                      type="button"
+                      className="as-simple-eye-btn"
+                      onClick={() => setShowPassword(s => !s)}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Forgot password? */}
+                <div className="as-simple-meta-row" style={{ justifyContent: 'flex-end' }}>
+                  <a
+                    href="#forgot"
+                    className="as-simple-forgot-link"
+                    onClick={e => {
+                      e.preventDefault();
+                      setForgotEmail(email && email.includes('@') ? email : '');
+                      setForgotNotice(null);
+                      setForgotOpen(true);
+                    }}
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+
+                {/* Sign In CTA Button */}
+                <button
+                  type="submit"
+                  className="as-simple-submit-btn"
+                  disabled={loading}
+                  id="submit-auth-btn"
+                >
+                  {loading ? (
+                    <span>Signing in…</span>
+                  ) : (
+                    <>
+                      <span>Sign In</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+                {/* Bottom Help Link */}
+                <div className="as-simple-help-tag">
+                  Need account assistance? <a href="#help" onClick={(e) => { e.preventDefault(); setShowHelp(true); }}>Get Help & Support</a>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </main>
@@ -1289,13 +1279,20 @@ function SuperAdminHeader({
         if (Array.isArray(res.data) && res.data.length > 0) {
           const sortedSessions = sortAcademicYearsAscending(res.data);
           setSessions(sortedSessions);
-          const active = res.data.find((s: any) => s.is_active);
-          if (active && !localStorage.getItem('attendo_academic_session')) {
+          const active = res.data.find((s: any) => s.is_active) || sortedSessions[0];
+          const stored = localStorage.getItem('attendo_academic_session');
+          const isValidStored = sortedSessions.some((s: any) => s.name === stored || s.code === stored);
+          if (active && (!stored || !isValidStored)) {
             setCurrentSession(active.name);
+            localStorage.setItem('attendo_academic_session', active.name);
+            localStorage.setItem('attendo_active_academic_year', active.name);
+            if (active.id) {
+              localStorage.setItem('attendo_active_academic_year_id', active.id);
+            }
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Load Notifications from backend
@@ -1307,7 +1304,7 @@ function SuperAdminHeader({
           setUnreadCount(res.data.unreadCount || 0);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -1322,7 +1319,7 @@ function SuperAdminHeader({
       await api.post('/super-admin/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch {}
+    } catch { }
   };
 
   const markOneRead = async (notif: any) => {
@@ -1334,7 +1331,7 @@ function SuperAdminHeader({
       }
       setNotifOpen(false);
       if (notif.link) nav(notif.link);
-    } catch {}
+    } catch { }
   };
 
   // Debounced search
@@ -1354,7 +1351,7 @@ function SuperAdminHeader({
             setSearchTotal(res.data.total || 0);
           }
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setIsSearching(false));
     }, 200);
 
@@ -1645,6 +1642,9 @@ function SuperAdminHeader({
                         setCurrentSession(sess.name);
                         localStorage.setItem('attendo_academic_session', sess.name);
                         localStorage.setItem('attendo_active_academic_year', sess.name);
+                        if (sess.id) {
+                          localStorage.setItem('attendo_active_academic_year_id', sess.id);
+                        }
                         window.dispatchEvent(new CustomEvent('sessionChanged', { detail: sess.name }));
                         window.dispatchEvent(new Event('storage'));
                         setSessionOpen(false);
@@ -1722,14 +1722,13 @@ function SuperAdminHeader({
                         className={`super-notif-item ${!n.read ? 'unread' : ''}`}
                         onClick={() => markOneRead(n)}
                       >
-                        <div className={`super-notif-icon-wrap ${
-                          n.category === 'SCHOOL' ? 'notif-school' :
-                          n.category === 'SYSTEM' ? 'notif-system' :
-                          n.category === 'BILLING' ? 'notif-billing' : 'notif-academic'
-                        }`}>
+                        <div className={`super-notif-icon-wrap ${n.category === 'SCHOOL' ? 'notif-school' :
+                            n.category === 'SYSTEM' ? 'notif-system' :
+                              n.category === 'BILLING' ? 'notif-billing' : 'notif-academic'
+                          }`}>
                           {n.category === 'SCHOOL' ? <School size={16} /> :
-                           n.category === 'SYSTEM' ? <Database size={16} /> :
-                           n.category === 'BILLING' ? <CreditCard size={16} /> : <Calendar size={16} />}
+                            n.category === 'SYSTEM' ? <Database size={16} /> :
+                              n.category === 'BILLING' ? <CreditCard size={16} /> : <Calendar size={16} />}
                         </div>
 
                         <div className="super-notif-body">
@@ -1936,11 +1935,11 @@ function SuperAdminHeader({
 }
 
 /* ────── Layout ────── */
-function Layout({children}:{children:React.ReactNode}){
-  const {user,logout,updateUser}=useAuth();
-  const nav=useNavigate();
-  const loc=useLocation();
-  const {dark,toggle}=useTheme();
+function Layout({ children }: { children: React.ReactNode }) {
+  const { user, logout, updateUser } = useAuth();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const { dark, toggle } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('attendo_staff_nav_collapsed') === 'true');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
@@ -1994,7 +1993,7 @@ function Layout({children}:{children:React.ReactNode}){
       await api.post(`/communication/teacher/read/${recipientId || noticeId}`);
       setTeacherNotices(prev => prev.map(n => (n.id === noticeId || n.recipient_id === recipientId) ? { ...n, read_at: new Date().toISOString() } : n));
       setTeacherUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (_e) {}
+    } catch (_e) { }
   }
 
   useEffect(() => {
@@ -2020,7 +2019,7 @@ function Layout({children}:{children:React.ReactNode}){
         setPendingPhotoCount(res.data.pendingPhotosCount || 0);
         setPendingLeaveCount(res.data.pendingLeavesCount || 0);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -2074,7 +2073,7 @@ function Layout({children}:{children:React.ReactNode}){
               updateUser(updates);
             }
           }
-        }).catch(() => {});
+        }).catch(() => { });
         if (user.role === 'TEACHER') {
           api.get('/teacher/profile').then(res => {
             const updates: any = {};
@@ -2092,12 +2091,12 @@ function Layout({children}:{children:React.ReactNode}){
               }));
               try {
                 localStorage.setItem('attendo_school_website', res.data.schoolWebsite);
-              } catch {}
+              } catch { }
             }
             if (Object.keys(updates).length > 0 && updateUser) {
               updateUser(updates);
             }
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }
     }
@@ -2109,7 +2108,7 @@ function Layout({children}:{children:React.ReactNode}){
         if (e.detail.website) {
           try {
             localStorage.setItem('attendo_school_website', e.detail.website);
-          } catch {}
+          } catch { }
           if (updateUser) {
             updateUser({ schoolWebsite: e.detail.website });
           }
@@ -2195,9 +2194,9 @@ function Layout({children}:{children:React.ReactNode}){
         const storedId = localStorage.getItem('attendo_active_academic_year_id');
         // Authoritative active year: strictly one active session from database
         const activeFromDb = res.data.find((ay: any) => ay.is_active);
-        const current = activeFromDb 
+        const current = activeFromDb
           || (storedId ? res.data.find((ay: any) => ay.id === storedId) : null)
-          || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null) 
+          || (stored ? res.data.find((ay: any) => ay.name === stored || ay.id === stored) : null)
           || res.data[0];
 
         // Enforce strictly 1 active session in the state list (sorted ascending)
@@ -2793,7 +2792,7 @@ function Layout({children}:{children:React.ReactNode}){
     };
   }, [user?.role, user?.schoolName, schoolInfo?.school?.name]);
 
-  if(!user) return null;
+  if (!user) return null;
 
   const adminLinks: any[] = [
     ['—', 'MAIN'],
@@ -2827,45 +2826,45 @@ function Layout({children}:{children:React.ReactNode}){
     ['/backups', 'Backups & Security', Database],
   ];
 
-  const teacherLinks:any[]=[
-    ['—','MAIN'],
-    ['/dashboard','Dashboard',LayoutDashboard],
-    ['/take-attendance','Take Attendance',ClipboardCheck],
-    ['/teacher-history','History',CalendarDays],
-    ['—','REVIEW'],
-    ['/teacher/assignments','Assignments',BookOpen],
-    ['/leave-applications','Leave Review',CalendarCheck],
-    ['/photo-approvals','Photo Approvals',Camera],
-    ['/teacher/leave-request','Apply Leave',CalendarPlus],
-    ['—','COMMUNICATION'],
-    ['/announcements','Announcements',Megaphone],
-    ['—','ATTENDANCE'],
-    ['/attendance-reports','Reports',FileText],
-    ['/teacher/mentor-workspace','Class Mentor Workspace',Users],
+  const teacherLinks: any[] = [
+    ['—', 'MAIN'],
+    ['/dashboard', 'Dashboard', LayoutDashboard],
+    ['/take-attendance', 'Take Attendance', ClipboardCheck],
+    ['/teacher-history', 'History', CalendarDays],
+    ['—', 'REVIEW'],
+    ['/teacher/assignments', 'Assignments', BookOpen],
+    ['/leave-applications', 'Leave Review', CalendarCheck],
+    ['/photo-approvals', 'Photo Approvals', Camera],
+    ['/teacher/leave-request', 'Apply Leave', CalendarPlus],
+    ['—', 'COMMUNICATION'],
+    ['/announcements', 'Announcements', Megaphone],
+    ['—', 'ATTENDANCE'],
+    ['/attendance-reports', 'Reports', FileText],
+    ['/teacher/mentor-workspace', 'Class Mentor Workspace', Users],
     // ['/attendance-corrections','Corrections',ArrowUpDown], // Temporarily commented out as requested
-    ['/timetable','Timetable',CalendarDays],
-    ['/teacher/profile','Profile',User],
+    ['/timetable', 'Timetable', CalendarDays],
+    ['/teacher/profile', 'Profile', User],
   ];
 
-  const superAdminLinks:any[]=[
-    ['/super-admin','Overview',LayoutDashboard],
-    ['/super-admin/schools','Schools',School],
-    ['/super-admin/subscriptions','Subscriptions',CalendarDays],
-    ['/super-admin/payments','Payments',CreditCard],
-    ['/super-admin/invoices','Invoices',FileText],
-    ['/super-admin/monitoring','Monitoring & System Health',Eye],
-    ['/super-admin/reports','Reports',BarChart3],
-    ['—','ADMINISTRATION'],
-    ['/super-admin/people','People',Users],
-    ['/super-admin/permissions','Roles & Permissions',ShieldCheck],
-    ['/super-admin/security','Security',Shield],
-    ['/super-admin/audit-logs','Audit Logs',FileSpreadsheet],
-    ['/super-admin/backups','Backups',Database],
+  const superAdminLinks: any[] = [
+    ['/super-admin', 'Overview', LayoutDashboard],
+    ['/super-admin/schools', 'Schools', School],
+    ['/super-admin/subscriptions', 'Subscriptions', CalendarDays],
+    ['/super-admin/payments', 'Payments', CreditCard],
+    ['/super-admin/invoices', 'Invoices', FileText],
+    ['/super-admin/monitoring', 'Monitoring & System Health', Eye],
+    ['/super-admin/reports', 'Reports', BarChart3],
+    ['—', 'ADMINISTRATION'],
+    ['/super-admin/people', 'People', Users],
+    ['/super-admin/permissions', 'Roles & Permissions', ShieldCheck],
+    ['/super-admin/security', 'Security', Shield],
+    ['/super-admin/audit-logs', 'Audit Logs', FileSpreadsheet],
+    ['/super-admin/backups', 'Backups', Database],
   ];
 
   const rawLinks = user.role === 'SUPER_ADMIN' ? superAdminLinks :
     user.role === 'TEACHER' ? teacherLinks :
-    adminLinks;
+      adminLinks;
 
   const links = rawLinks.filter(item => {
     if (user.role === 'SCHOOL_ADMIN') {
@@ -2922,7 +2921,7 @@ function Layout({children}:{children:React.ReactNode}){
 
   const storedSession = localStorage.getItem('attendo_active_academic_year') || localStorage.getItem('attendo_academic_session');
   const storedSessionId = localStorage.getItem('attendo_active_academic_year_id');
-  const authoritativeActiveYear = 
+  const authoritativeActiveYear =
     academicYears.find((ay: any) => ay.is_active) ||
     (storedSessionId ? academicYears.find((ay: any) => ay.id === storedSessionId) : null) ||
     (schoolInfo?.activeAcademicYear?.id ? academicYears.find((ay: any) => ay.id === schoolInfo.activeAcademicYear.id) : null) ||
@@ -2958,7 +2957,7 @@ function Layout({children}:{children:React.ReactNode}){
     )}
     <aside id="primary-navigation" className={`${(sidebarCollapsed && !mobileSidebarOpen) ? 'sidebar-collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
-        <div 
+        <div
           className="sidebar-brand-interactive"
           onClick={handleOpenSchoolWebsite}
           title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : (user.role === 'SUPER_ADMIN' ? 'AttendoSchool' : currentSchoolName)}
@@ -2988,7 +2987,7 @@ function Layout({children}:{children:React.ReactNode}){
             </span>
           </div>
         </div>
-                <button
+        <button
           type="button"
           className="sidebar-collapse-toggle-btn"
           onClick={(e) => {
@@ -3014,10 +3013,10 @@ function Layout({children}:{children:React.ReactNode}){
       </div>
       <div className="sidebar-nav-container">
         <nav>
-          {links.map(([p,l,I,sub]:any,i:number)=>{
-            if(p==='—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
-            if(sub && Array.isArray(sub)) {
-              const isChildActive = sub.some(([sp]:any) => loc.pathname === sp);
+          {links.map(([p, l, I, sub]: any, i: number) => {
+            if (p === '—') return <div className="sidebar-section-label" key={`s-${i}`}>{l}</div>;
+            if (sub && Array.isArray(sub)) {
+              const isChildActive = sub.some(([sp]: any) => loc.pathname === sp);
               return (
                 <div key={`group-${p}-${l}`} className="sidebar-group-wrap" style={{ display: 'grid', gap: 2 }}>
                   <button
@@ -3033,7 +3032,7 @@ function Layout({children}:{children:React.ReactNode}){
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <I size={16}/> <span>{l}</span>
+                      <I size={16} /> <span>{l}</span>
                     </div>
                     {reviewOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
@@ -3062,8 +3061,8 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               );
             }
-            return <button key={`${p}-${l}`} className={loc.pathname===p?'nav-active':''} onClick={()=>{ setMobileSidebarOpen(false); nav(p); }}>
-              <I size={16}/> <span>{l}</span>
+            return <button key={`${p}-${l}`} className={loc.pathname === p ? 'nav-active' : ''} onClick={() => { setMobileSidebarOpen(false); nav(p); }}>
+              <I size={16} /> <span>{l}</span>
             </button>;
           })}
         </nav>
@@ -3095,11 +3094,11 @@ function Layout({children}:{children:React.ReactNode}){
           </>
         ) : (
           <>
-            <button className="theme-toggle" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
-              {dark?<Sun size={15}/>:<Moon size={15}/>} <span>{dark?'Light Mode':'Dark Mode'}</span>
+            <button className="theme-toggle" onClick={toggle} title={dark ? 'Light mode' : 'Dark mode'}>
+              {dark ? <Sun size={15} /> : <Moon size={15} />} <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
-            <button className="logout" onClick={()=>{logout();nav('/login')}}>
-              <LogOut size={15}/> <span>Sign out</span>
+            <button className="logout" onClick={() => { logout(); nav('/login') }}>
+              <LogOut size={15} /> <span>Sign out</span>
             </button>
           </>
         )}
@@ -3119,7 +3118,7 @@ function Layout({children}:{children:React.ReactNode}){
               <Menu size={18} />
             </button>
             <div className="header-search" style={{ width: 380, maxWidth: 440 }} onClick={() => setSearchOpen(true)}>
-              <Search size={15}/>
+              <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
@@ -3181,21 +3180,21 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            <button className="header-icon-btn" title="Notifications" onClick={()=>nav('/notifications')}>
-              <Bell size={16}/>
+            <button className="header-icon-btn" title="Notifications" onClick={() => nav('/notifications')}>
+              <Bell size={16} />
               <span className="header-badge-num">3</span>
             </button>
             <div className="profile-pill">
               <div className="user-avatar" style={{ background: '#1d4ed8', color: '#ffffff', fontWeight: 700, fontSize: 13 }}>
-                {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'}
+                {user.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'SA'}
               </div>
               <div className="profile-info">
                 <span className="profile-name">{user.name || 'Company Super Admin'}</span>
                 <span className="profile-role">{user.email || 'superadmin@attendoschool.com'}</span>
               </div>
-              <button 
-                className="header-icon-btn" 
-                title="Sign out" 
+              <button
+                className="header-icon-btn"
+                title="Sign out"
                 style={{ width: 28, height: 28, marginLeft: 2 }}
                 onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
               >
@@ -3216,13 +3215,13 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div 
+            <div
               style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
-              <div 
-                className="school-crest" 
+              <div
+                className="school-crest"
                 style={{ width: 34, height: 34, background: '#ffffff', border: '1px solid var(--border)', padding: 2, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}
               >
                 <img
@@ -3248,7 +3247,7 @@ function Layout({children}:{children:React.ReactNode}){
               </div>
             </div>
             <div className="header-search" style={{ marginLeft: 16, width: 380, maxWidth: 440, cursor: 'pointer' }} onClick={() => setSearchOpen(true)}>
-              <Search size={15}/>
+              <Search size={15} />
               <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
               <span className="header-kbd">CTRL+K</span>
             </div>
@@ -3415,10 +3414,10 @@ function Layout({children}:{children:React.ReactNode}){
                 </div>
               )}
             </div>
-            <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
-              {dark?<Sun size={16}/>:<Moon size={16}/>}
+            <button className="header-icon-btn" onClick={toggle} title={dark ? 'Light mode' : 'Dark mode'}>
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={()=>nav('/school-profile')}>
+            <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/school-profile')}>
               <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden' }}>
                 {user.photo_url || user.photoUrl || user.avatarUrl ? (
                   <img
@@ -3428,16 +3427,16 @@ function Layout({children}:{children:React.ReactNode}){
                     onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
                   />
                 ) : (
-                  user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'SA'
+                  user.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'SA'
                 )}
               </div>
               <div className="profile-info">
                 <span className="profile-name">{user.name}</span>
                 <span className="profile-role">School Admin</span>
               </div>
-              <button 
-                className="header-icon-btn" 
-                title="Sign out" 
+              <button
+                className="header-icon-btn"
+                title="Sign out"
                 style={{ width: 28, height: 28, marginLeft: 4 }}
                 onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
               >
@@ -3458,13 +3457,13 @@ function Layout({children}:{children:React.ReactNode}){
             >
               <Menu size={18} />
             </button>
-            <div 
+            <div
               style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, cursor: currentSchoolWebsite ? 'pointer' : 'default' }}
               onClick={handleOpenSchoolWebsite}
               title={currentSchoolWebsite ? `Visit Official School Website: ${currentSchoolWebsite}` : currentSchoolName}
             >
-              <div 
-                className="school-crest" 
+              <div
+                className="school-crest"
                 style={{ width: 34, height: 34, background: "#ffffff", border: "1px solid var(--border)", padding: 2, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}
               >
                 <img
@@ -3485,13 +3484,13 @@ function Layout({children}:{children:React.ReactNode}){
                   {currentSchoolName}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {user.name} · {user.role === "TEACHER" ? "Faculty" : user.role.replace(/_/g," ")}
+                  {user.name} · {user.role === "TEACHER" ? "Faculty" : user.role.replace(/_/g, " ")}
                 </div>
               </div>
             </div>
           </div>
           <div className="header-search" onClick={() => setSearchOpen(true)} style={{ width: 380, maxWidth: 440, cursor: 'pointer' }}>
-            <Search size={15}/>
+            <Search size={15} />
             <input placeholder="Search menu, pages..." readOnly style={{ cursor: 'pointer' }} />
             <span className="header-kbd">CTRL+K</span>
           </div>
@@ -3608,7 +3607,7 @@ function Layout({children}:{children:React.ReactNode}){
                                 setPendingLeaveCount(0);
                                 setAdminNotifs(prev => prev.filter((n: any) => n.type !== 'LEAVE_REQUEST'));
                                 window.dispatchEvent(new CustomEvent('reviews-updated'));
-                              } catch {}
+                              } catch { }
                             }}
                           >
                             <Check size={12} />
@@ -3649,7 +3648,7 @@ function Layout({children}:{children:React.ReactNode}){
                                 nav('/photo-approvals');
                               } else {
                                 if (n.rawId) {
-                                  api.put(`/reviews/leaves/${n.rawId}/seen`).catch(() => {});
+                                  api.put(`/reviews/leaves/${n.rawId}/seen`).catch(() => { });
                                   setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
                                   setPendingLeaveCount(p => Math.max(0, p - 1));
                                   window.dispatchEvent(new CustomEvent('reviews-updated'));
@@ -3718,7 +3717,7 @@ function Layout({children}:{children:React.ReactNode}){
                                       setAdminNotifs(prev => prev.filter(x => x.id !== n.id));
                                       setPendingLeaveCount(p => Math.max(0, p - 1));
                                       window.dispatchEvent(new CustomEvent('reviews-updated'));
-                                    } catch {}
+                                    } catch { }
                                   }
                                 }}
                               >
@@ -3759,16 +3758,16 @@ function Layout({children}:{children:React.ReactNode}){
                 style={{ position: 'relative' }}
                 onClick={() => nav('/notifications')}
               >
-                <Bell size={16}/>
+                <Bell size={16} />
               </button>
             )}
-            <button className="header-icon-btn" onClick={toggle} title={dark?'Light mode':'Dark mode'}>
-              {dark?<Sun size={16}/>:<Moon size={16}/>}
+            <button className="header-icon-btn" onClick={toggle} title={dark ? 'Light mode' : 'Dark mode'}>
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <div className="profile-pill" style={{ cursor: 'pointer' }} onClick={() => nav('/teacher/profile')} title="View My Profile">
               <div className="user-avatar" style={{ background: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: 13, overflow: 'hidden', position: 'relative' }}>
                 <span style={{ position: 'absolute' }}>
-                  {user.name ? user.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase() : 'TC'}
+                  {user.name ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'TC'}
                 </span>
                 {user?.avatarUrl && (
                   <img
@@ -3785,9 +3784,9 @@ function Layout({children}:{children:React.ReactNode}){
                 <span className="profile-name">{user.name}</span>
                 <span className="profile-role">{user.role === 'TEACHER' ? 'Teacher' : (user.role ? user.role.replace(/_/g, ' ') : user.email)}</span>
               </div>
-              <button 
-                className="header-icon-btn" 
-                title="Sign out" 
+              <button
+                className="header-icon-btn"
+                title="Sign out"
                 style={{ width: 28, height: 28, marginLeft: 4 }}
                 onClick={(e) => { e.stopPropagation(); logout(); nav('/login'); }}
               >
@@ -4039,7 +4038,7 @@ function Layout({children}:{children:React.ReactNode}){
 }
 
 /* ────── Shared Components ────── */
-function Stat({label,value,trend,sub}:{label:string;value:any;trend?:string;sub?:string}){
+function Stat({ label, value, trend, sub }: { label: string; value: any; trend?: string; sub?: string }) {
   return <div className="stat">
     <span>{label}</span>
     <strong>{value}</strong>
@@ -4055,7 +4054,7 @@ function Stat({label,value,trend,sub}:{label:string;value:any;trend?:string;sub?
     )}
   </div>
 }
-function PageHead({title,sub,button,onClick,schoolName:customSchoolName}:{title:string;sub:string;button?:string;onClick?:()=>void;schoolName?:string}){
+function PageHead({ title, sub, button, onClick, schoolName: customSchoolName }: { title: string; sub: string; button?: string; onClick?: () => void; schoolName?: string }) {
   const { user } = useAuth();
   const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -4063,20 +4062,20 @@ function PageHead({title,sub,button,onClick,schoolName:customSchoolName}:{title:
   const eyebrowText = isSchoolAdmin
     ? `${resolvedSchoolName.toUpperCase()} ADMIN`
     : isTeacher
-    ? `${resolvedSchoolName.toUpperCase()} FACULTY`
-    : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
+      ? `${resolvedSchoolName.toUpperCase()} FACULTY`
+      : (title.includes('Admin') ? 'ATTENDOSCHOOL SUPER ADMIN' : 'ATTENDOSCHOOL ADMIN');
   const logoAlt = (isSchoolAdmin || isTeacher) ? resolvedSchoolName : 'AttendoSchool';
 
   return <div className="page-head">
     <div>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-        <img src="/attendo-school-logo.png" alt={logoAlt} style={{width:18,height:18,borderRadius:4,objectFit:'contain'}}/>
-        <p className="eyebrow" style={{margin:0}}>{eyebrowText}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <img src="/attendo-school-logo.png" alt={logoAlt} style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain' }} />
+        <p className="eyebrow" style={{ margin: 0 }}>{eyebrowText}</p>
       </div>
       <h1>{title}</h1>
       <p className="muted">{sub}</p>
     </div>
-    {button&&<button onClick={onClick}><Plus size={16}/>{button}</button>}
+    {button && <button onClick={onClick}><Plus size={16} />{button}</button>}
   </div>;
 }
 function Modal({
@@ -4102,7 +4101,7 @@ function Modal({
 
   return (
     <div className="overlay" style={isFull ? { padding: 12 } : undefined}>
-      <div 
+      <div
         className={`modal ${isFull ? 'modal-fullwindow' : ''}`}
         style={{
           ...(!isFull && maxWidth ? { width: maxWidth, maxWidth } : {}),
@@ -4125,9 +4124,9 @@ function Modal({
             <button className="close" onClick={close}>×</button>
           </div>
         </div>
-        <div 
+        <div
           className={isFull ? "modal-body-full" : undefined}
-          style={{ 
+          style={{
             flex: isFull ? 1 : undefined,
             display: isFull ? 'flex' : undefined,
             flexDirection: isFull ? 'column' : undefined,
@@ -4144,11 +4143,11 @@ function Modal({
 }
 
 /* ────── Dashboard ────── */
-function Dashboard(){const {user}=useAuth();if(!user)return null;if(user.role==='STUDENT')return <Navigate to="/student/dashboard" replace/>;return user.role==='SUPER_ADMIN'?<SuperAdminHome/>:user.role==='TEACHER'?<TeacherHome/>:<AdminHome/>}
+function Dashboard() { const { user } = useAuth(); if (!user) return null; if (user.role === 'STUDENT') return <Navigate to="/student/dashboard" replace />; return user.role === 'SUPER_ADMIN' ? <SuperAdminHome /> : user.role === 'TEACHER' ? <TeacherHome /> : <AdminHome /> }
 
-function AdminHome(){
-  const {user}=useAuth();
-  const nav=useNavigate();
+function AdminHome() {
+  const { user } = useAuth();
+  const nav = useNavigate();
 
   const getSessionStorageKey = () => {
     try {
@@ -4199,7 +4198,7 @@ function AdminHome(){
     if (welcomeSessionKey) {
       try {
         sessionStorage.setItem(welcomeSessionKey, 'true');
-      } catch {}
+      } catch { }
     }
     setShowWelcome(false);
   }, [welcomeSessionKey]);
@@ -4220,7 +4219,7 @@ function AdminHome(){
       } else {
         setLoading(true);
       }
-    } catch {}
+    } catch { }
 
     setDashboardError(null);
     try {
@@ -4235,7 +4234,7 @@ function AdminHome(){
         }
         try {
           localStorage.setItem(cacheKey, JSON.stringify(res.data));
-        } catch {}
+        } catch { }
       }
     } catch (e: any) {
       console.error('Failed to load school dashboard', e);
@@ -4248,7 +4247,7 @@ function AdminHome(){
         if (cached && !data) {
           setData(JSON.parse(cached));
         }
-      } catch {}
+      } catch { }
       setDashboardError(e?.response?.data?.message || 'Database connection is synchronizing. Please click Retry Connection.');
     } finally {
       setLoading(false);
@@ -4292,7 +4291,7 @@ function AdminHome(){
   const sub = data?.subscription;
   const pendingCorrections = data?.pendingCorrectionsCount || 0;
   const weeklyTrend = Array.isArray(data?.weeklyTrend) ? data.weeklyTrend : [];
-  const weeklyAvg = weeklyTrend.length > 0 
+  const weeklyAvg = weeklyTrend.length > 0
     ? Number((weeklyTrend.reduce((acc: number, t: any) => acc + (Number(t.percentage) || 0), 0) / weeklyTrend.length).toFixed(1))
     : 0;
   const todaySchedule = data?.todaySchedule || [];
@@ -4311,158 +4310,158 @@ function AdminHome(){
         />
       )}
       <Layout>
-    {/* Dashboard Error / Quota Notice */}
-    {dashboardError && (
-      <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
-        <div className="alert-left">
-          <AlertTriangle size={20} color="#dc2626" />
-          <div>
-            <strong>Unable to Connect to Live Database</strong>
-            <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
+        {/* Dashboard Error / Quota Notice */}
+        {dashboardError && (
+          <div className="admin-alert-banner warning" style={{ marginBottom: 16, backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+            <div className="alert-left">
+              <AlertTriangle size={20} color="#dc2626" />
+              <div>
+                <strong>Unable to Connect to Live Database</strong>
+                <p style={{ margin: 0, fontSize: 13 }}>{dashboardError}</p>
+              </div>
+            </div>
+            <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
+              Retry Connection
+            </button>
+          </div>
+        )}
+
+        {/* Institutional Header Banner */}
+        <div className="admin-dashboard-hero">
+          <div className="hero-content">
+            <div className="hero-eyebrow">
+              <span className="live-indicator"></span>
+              <span>Institutional Administration Portal</span>
+              <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
+            </div>
+            <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Institutional Campus'}</h1>
+            <p className="hero-school-desc">
+              Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
+            </p>
+            <div className="hero-meta-row">
+              <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || '—'}</b></span>
+              <span>📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Current Session'}</b></span>
+              <span>📞 Enquiry: <b>{school?.enquiry_number || school?.phone || '—'}</b></span>
+              <span>🛡️ Plan: <b>{sub?.plan_name || 'Standard'}</b></span>
+            </div>
+          </div>
+          <div className="hero-actions">
+            <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
+              <ClipboardCheck size={16} /> Take Today's Attendance
+            </button>
+            <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
+              <UserPlus size={16} /> Enroll Student
+            </button>
+            <button className="action-btn-secondary" onClick={() => nav('/communication')}>
+              <MessageSquare size={16} /> Broadcast Notice
+            </button>
           </div>
         </div>
-        <button className="alert-action-btn" onClick={() => load(0)} style={{ backgroundColor: '#dc2626', color: '#ffffff' }}>
-          Retry Connection
-        </button>
-      </div>
-    )}
-
-    {/* Institutional Header Banner */}
-    <div className="admin-dashboard-hero">
-      <div className="hero-content">
-        <div className="hero-eyebrow">
-          <span className="live-indicator"></span>
-          <span>Institutional Administration Portal</span>
-          <span className="school-status-tag">{school?.status || 'ACTIVE'}</span>
-        </div>
-        <h1 className="hero-school-name">{school?.name || (user as any)?.schoolName || 'Institutional Campus'}</h1>
-        <p className="hero-school-desc">
-          Official attendance monitoring, student & faculty directories, curriculum setup, and timetable scheduling.
-        </p>
-        <div className="hero-meta-row">
-          <span>🏛️ School Code: <b>{school?.code || (user as any)?.schoolCode || '—'}</b></span>
-          <span>📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Current Session'}</b></span>
-          <span>📞 Enquiry: <b>{school?.enquiry_number || school?.phone || '—'}</b></span>
-          <span>🛡️ Plan: <b>{sub?.plan_name || 'Standard'}</b></span>
-        </div>
-      </div>
-      <div className="hero-actions">
-        <button className="action-btn-primary" onClick={() => nav('/take-attendance')}>
-          <ClipboardCheck size={16} /> Take Today's Attendance
-        </button>
-        <button className="action-btn-secondary" onClick={() => nav('/students?enroll=true')}>
-          <UserPlus size={16} /> Enroll Student
-        </button>
-        <button className="action-btn-secondary" onClick={() => nav('/communication')}>
-          <MessageSquare size={16} /> Broadcast Notice
-        </button>
-      </div>
-    </div>
 
 
-    {/* Alert Banner if Pending Corrections */}
-    {pendingCorrections > 0 && (
-      <div className="admin-alert-banner warning">
-        <div className="alert-left">
-          <AlertTriangle size={20} color="#d97706" />
-          <div>
-            <strong>Attendance Correction Requests Pending Review</strong>
-            <p>There are {pendingCorrections} attendance correction request(s) submitted by faculty waiting for administrative verification.</p>
+        {/* Alert Banner if Pending Corrections */}
+        {pendingCorrections > 0 && (
+          <div className="admin-alert-banner warning">
+            <div className="alert-left">
+              <AlertTriangle size={20} color="#d97706" />
+              <div>
+                <strong>Attendance Correction Requests Pending Review</strong>
+                <p>There are {pendingCorrections} attendance correction request(s) submitted by faculty waiting for administrative verification.</p>
+              </div>
+            </div>
+            <button className="alert-action-btn" onClick={() => nav('/attendance-corrections')}>
+              Review Corrections ({pendingCorrections}) →
+            </button>
           </div>
-        </div>
-        <button className="alert-action-btn" onClick={() => nav('/attendance-corrections')}>
-          Review Corrections ({pendingCorrections}) →
-        </button>
-      </div>
-    )}
+        )}
 
-    {/* Top KPI Cards */}
-    <div className="dashboard-kpi-grid">
-      <div className="kpi-card" onClick={() => nav('/students')}>
-        <div className="kpi-icon-wrap blue"><Users size={22} /></div>
-        <div className="kpi-body">
-          <span className="kpi-label">Enrolled Students</span>
-          <strong className="kpi-value">{loading ? '...' : (data?.totalStudents ?? 0)}</strong>
-          <span className="kpi-sub positive">Active registered records</span>
-        </div>
-      </div>
-
-      {/* Student Gender Split - Session Dependent */}
-      <div className="kpi-card" onClick={() => nav('/students')} title="Click to view student directory">
-        <div className="kpi-icon-wrap blue" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
-          <Users size={22} />
-        </div>
-        <div className="kpi-body" style={{ width: '100%' }}>
-          <span className="kpi-label">Students (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
-            </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
-            </span>
+        {/* Top KPI Cards */}
+        <div className="dashboard-kpi-grid">
+          <div className="kpi-card" onClick={() => nav('/students')}>
+            <div className="kpi-icon-wrap blue"><Users size={22} /></div>
+            <div className="kpi-body">
+              <span className="kpi-label">Enrolled Students</span>
+              <strong className="kpi-value">{loading ? '...' : (data?.totalStudents ?? 0)}</strong>
+              <span className="kpi-sub positive">Active registered records</span>
+            </div>
           </div>
-          <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-            📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Active'}</b>
-          </span>
-        </div>
-      </div>
 
-      <div className="kpi-card" onClick={() => nav('/teachers')}>
-        <div className="kpi-icon-wrap indigo"><GraduationCap size={22} /></div>
-        <div className="kpi-body">
-          <span className="kpi-label">Active Faculty</span>
-          <strong className="kpi-value">{loading ? '...' : (data?.totalTeachers ?? 0)}</strong>
-          <span className="kpi-sub positive">Verified teachers</span>
-        </div>
-      </div>
-
-      {/* Teacher Gender Split - Session Independent */}
-      <div className="kpi-card" onClick={() => nav('/teachers')} title="Click to view faculty directory">
-        <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
-          <GraduationCap size={22} />
-        </div>
-        <div className="kpi-body" style={{ width: '100%' }}>
-          <span className="kpi-label">Faculty (M / F)</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
-              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
-            </span>
-            <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
-              <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
-            </span>
+          {/* Student Gender Split - Session Dependent */}
+          <div className="kpi-card" onClick={() => nav('/students')} title="Click to view student directory">
+            <div className="kpi-icon-wrap blue" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
+              <Users size={22} />
+            </div>
+            <div className="kpi-body" style={{ width: '100%' }}>
+              <span className="kpi-label">Students (M / F)</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentMaleCount ?? 0)}</strong>
+                </span>
+                <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.studentFemaleCount ?? 0)}</strong>
+                </span>
+              </div>
+              <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                📅 Session: <b>{data?.activeAcademicYear?.name || currentSessionName || 'Active'}</b>
+              </span>
+            </div>
           </div>
-          <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
-            🏫 School-wide faculty
-          </span>
-        </div>
-      </div>
 
-      <div className="kpi-card" onClick={() => nav('/classes')}>
-        <div className="kpi-icon-wrap teal"><Layers size={22} /></div>
-        <div className="kpi-body">
-          <span className="kpi-label">Academic Classes</span>
-          <strong className="kpi-value">{loading ? '...' : (data?.totalClasses ?? 0)}</strong>
-          <span className="kpi-sub neutral">{data?.totalSections ?? 0} active sections</span>
-        </div>
-      </div>
+          <div className="kpi-card" onClick={() => nav('/teachers')}>
+            <div className="kpi-icon-wrap indigo"><GraduationCap size={22} /></div>
+            <div className="kpi-body">
+              <span className="kpi-label">Active Faculty</span>
+              <strong className="kpi-value">{loading ? '...' : (data?.totalTeachers ?? 0)}</strong>
+              <span className="kpi-sub positive">Verified teachers</span>
+            </div>
+          </div>
 
-      <div className="kpi-card" onClick={() => nav('/attendance-reports')}>
-        <div className="kpi-icon-wrap green"><ClipboardCheck size={22} /></div>
-        <div className="kpi-body">
-          <span className="kpi-label">Today's Attendance</span>
-          <strong className="kpi-value">{loading ? '...' : `${todayAtt.percentage}%`}</strong>
-          <span className="kpi-sub neutral">{todayAtt.present} Present · {todayAtt.absent} Absent</span>
-        </div>
-      </div>
+          {/* Teacher Gender Split - Session Independent */}
+          <div className="kpi-card" onClick={() => nav('/teachers')} title="Click to view faculty directory">
+            <div className="kpi-icon-wrap indigo" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+              <GraduationCap size={22} />
+            </div>
+            <div className="kpi-body" style={{ width: '100%' }}>
+              <span className="kpi-label">Faculty (M / F)</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#0284c7' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Male:</span>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherMaleCount ?? 0)}</strong>
+                </span>
+                <span style={{ color: 'var(--border, #cbd5e1)', fontWeight: 300, fontSize: 13 }}>|</span>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, color: '#db2777' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>Female:</span>
+                  <strong style={{ fontSize: 15.5, fontWeight: 800, color: 'var(--text, #0f172a)' }}>{loading ? '...' : (data?.teacherFemaleCount ?? 0)}</strong>
+                </span>
+              </div>
+              <span className="kpi-sub neutral" style={{ marginTop: 3, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}>
+                🏫 School-wide faculty
+              </span>
+            </div>
+          </div>
 
-      {/* Temporarily commented out Attendance Corrections KPI card as requested
+          <div className="kpi-card" onClick={() => nav('/classes')}>
+            <div className="kpi-icon-wrap teal"><Layers size={22} /></div>
+            <div className="kpi-body">
+              <span className="kpi-label">Academic Classes</span>
+              <strong className="kpi-value">{loading ? '...' : (data?.totalClasses ?? 0)}</strong>
+              <span className="kpi-sub neutral">{data?.totalSections ?? 0} active sections</span>
+            </div>
+          </div>
+
+          <div className="kpi-card" onClick={() => nav('/attendance-reports')}>
+            <div className="kpi-icon-wrap green"><ClipboardCheck size={22} /></div>
+            <div className="kpi-body">
+              <span className="kpi-label">Today's Attendance</span>
+              <strong className="kpi-value">{loading ? '...' : `${todayAtt.percentage}%`}</strong>
+              <span className="kpi-sub neutral">{todayAtt.present} Present · {todayAtt.absent} Absent</span>
+            </div>
+          </div>
+
+          {/* Temporarily commented out Attendance Corrections KPI card as requested
       <div className="kpi-card" onClick={() => nav('/attendance-corrections')}>
         <div className={`kpi-icon-wrap ${pendingCorrections > 0 ? 'amber' : 'slate'}`}><ArrowUpDown size={22} /></div>
         <div className="kpi-body">
@@ -4474,7 +4473,7 @@ function AdminHome(){
         </div>
       </div> */}
 
-      {/* Subscription Tier card removed as requested
+          {/* Subscription Tier card removed as requested
       <div className="kpi-card" onClick={() => nav('/subscription')}>
         <div className="kpi-icon-wrap purple"><CreditCard size={22} /></div>
         <div className="kpi-body">
@@ -4490,125 +4489,125 @@ function AdminHome(){
           <span className="kpi-sub neutral">{sub?.days_remaining ?? 365} days validity remaining</span>
         </div>
       </div> */}
-    </div>
-
-    {/* Attendance Overview & Quick Actions 2-Column Section */}
-    <div className="dashboard-two-col">
-      {/* Attendance Deep-Dive Card */}
-      <div className="dashboard-panel">
-        <div className="panel-header-row">
-          <div>
-            <h3>Today's Attendance Monitor</h3>
-            <p className="panel-sub">Real-time attendance ratio and section distribution for today</p>
-          </div>
-          <button className="panel-header-btn" onClick={() => nav('/attendance-reports')}>
-            View Detailed Reports →
-          </button>
         </div>
 
-        {todayAtt.total === 0 ? (
-          <div className="empty-attendance-box">
-            <CalendarDays size={36} color="var(--text-muted)" />
-            <h4>No attendance recorded today yet</h4>
-            <p>Faculty members can submit daily attendance sessions from their portal or the Quick Actions menu.</p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-              <button className="action-btn-primary small" onClick={() => nav('/take-attendance')}>
-                <ClipboardCheck size={14} /> Take Attendance Now
+        {/* Attendance Overview & Quick Actions 2-Column Section */}
+        <div className="dashboard-two-col">
+          {/* Attendance Deep-Dive Card */}
+          <div className="dashboard-panel">
+            <div className="panel-header-row">
+              <div>
+                <h3>Today's Attendance Monitor</h3>
+                <p className="panel-sub">Real-time attendance ratio and section distribution for today</p>
+              </div>
+              <button className="panel-header-btn" onClick={() => nav('/attendance-reports')}>
+                View Detailed Reports →
               </button>
             </div>
-          </div>
-        ) : (
-          <div>
-            <div className="attendance-metric-bars">
-              <div className="metric-stat">
-                <span className="metric-label">Present</span>
-                <span className="metric-num green">{todayAtt.present}</span>
-              </div>
-              <div className="metric-stat">
-                <span className="metric-label">Absent</span>
-                <span className="metric-num red">{todayAtt.absent}</span>
-              </div>
-              <div className="metric-stat">
-                <span className="metric-label">Total Marked</span>
-                <span className="metric-num">{todayAtt.total}</span>
-              </div>
-              <div className="metric-stat">
-                <span className="metric-label">Overall Rate</span>
-                <span className="metric-num blue">{todayAtt.percentage}%</span>
-              </div>
-            </div>
 
-            {/* Progress bar */}
-            <div className="attendance-progress-track">
-              <div className="attendance-progress-fill" style={{ width: `${todayAtt.percentage}%` }}></div>
-            </div>
-
-            {/* Class Breakdown List */}
-            {todayAtt.classBreakdown?.length > 0 && (
-              <div className="class-breakdown-list">
-                <h4 style={{ margin: '14px 0 8px', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>Class-Wise Performance</h4>
-                <div className="breakdown-grid">
-                  {todayAtt.classBreakdown.map((cb: any, i: number) => (
-                    <div key={i} className="breakdown-item">
-                      <div className="breakdown-info">
-                        <strong>Class {cb.class_number} - Section {cb.section_name}</strong>
-                        <span>{cb.present}/{cb.total} Present</span>
-                      </div>
-                      <span className={`breakdown-pct ${cb.percentage >= 90 ? 'high' : cb.percentage >= 75 ? 'med' : 'low'}`}>
-                        {cb.percentage}%
-                      </span>
-                    </div>
-                  ))}
+            {todayAtt.total === 0 ? (
+              <div className="empty-attendance-box">
+                <CalendarDays size={36} color="var(--text-muted)" />
+                <h4>No attendance recorded today yet</h4>
+                <p>Faculty members can submit daily attendance sessions from their portal or the Quick Actions menu.</p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+                  <button className="action-btn-primary small" onClick={() => nav('/take-attendance')}>
+                    <ClipboardCheck size={14} /> Take Attendance Now
+                  </button>
                 </div>
+              </div>
+            ) : (
+              <div>
+                <div className="attendance-metric-bars">
+                  <div className="metric-stat">
+                    <span className="metric-label">Present</span>
+                    <span className="metric-num green">{todayAtt.present}</span>
+                  </div>
+                  <div className="metric-stat">
+                    <span className="metric-label">Absent</span>
+                    <span className="metric-num red">{todayAtt.absent}</span>
+                  </div>
+                  <div className="metric-stat">
+                    <span className="metric-label">Total Marked</span>
+                    <span className="metric-num">{todayAtt.total}</span>
+                  </div>
+                  <div className="metric-stat">
+                    <span className="metric-label">Overall Rate</span>
+                    <span className="metric-num blue">{todayAtt.percentage}%</span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="attendance-progress-track">
+                  <div className="attendance-progress-fill" style={{ width: `${todayAtt.percentage}%` }}></div>
+                </div>
+
+                {/* Class Breakdown List */}
+                {todayAtt.classBreakdown?.length > 0 && (
+                  <div className="class-breakdown-list">
+                    <h4 style={{ margin: '14px 0 8px', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)' }}>Class-Wise Performance</h4>
+                    <div className="breakdown-grid">
+                      {todayAtt.classBreakdown.map((cb: any, i: number) => (
+                        <div key={i} className="breakdown-item">
+                          <div className="breakdown-info">
+                            <strong>Class {cb.class_number} - Section {cb.section_name}</strong>
+                            <span>{cb.present}/{cb.total} Present</span>
+                          </div>
+                          <span className={`breakdown-pct ${cb.percentage >= 90 ? 'high' : cb.percentage >= 75 ? 'med' : 'low'}`}>
+                            {cb.percentage}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Quick Operations & Resource Shortcuts */}
-      <div className="dashboard-panel">
-        <div className="panel-header-row">
-          <div>
-            <h3>Administrative Quick Actions</h3>
-            <p className="panel-sub">Common workflows and daily operational controls</p>
-          </div>
-        </div>
-
-        <div className="quick-actions-grid">
-          <button className="quick-action-tile" onClick={() => nav('/students')}>
-            <div className="tile-icon blue"><UserPlus size={18} /></div>
-            <div className="tile-texts">
-              <strong>Student Directory</strong>
-              <span>Enroll, search, or bulk import Excel</span>
+          {/* Quick Operations & Resource Shortcuts */}
+          <div className="dashboard-panel">
+            <div className="panel-header-row">
+              <div>
+                <h3>Administrative Quick Actions</h3>
+                <p className="panel-sub">Common workflows and daily operational controls</p>
+              </div>
             </div>
-          </button>
 
-          <button className="quick-action-tile" onClick={() => nav('/teachers')}>
-            <div className="tile-icon indigo"><GraduationCap size={18} /></div>
-            <div className="tile-texts">
-              <strong>Faculty Management</strong>
-              <span>Add teachers & subject assignments</span>
-            </div>
-          </button>
+            <div className="quick-actions-grid">
+              <button className="quick-action-tile" onClick={() => nav('/students')}>
+                <div className="tile-icon blue"><UserPlus size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Student Directory</strong>
+                  <span>Enroll, search, or bulk import Excel</span>
+                </div>
+              </button>
 
-          <button className="quick-action-tile" onClick={() => nav('/classes')}>
-            <div className="tile-icon teal"><Layers size={18} /></div>
-            <div className="tile-texts">
-              <strong>Classes & Sections</strong>
-              <span>Configure standards & divisions</span>
-            </div>
-          </button>
+              <button className="quick-action-tile" onClick={() => nav('/teachers')}>
+                <div className="tile-icon indigo"><GraduationCap size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Faculty Management</strong>
+                  <span>Add teachers & subject assignments</span>
+                </div>
+              </button>
 
-          <button className="quick-action-tile" onClick={() => nav('/timetable')}>
-            <div className="tile-icon amber"><CalendarDays size={18} /></div>
-            <div className="tile-texts">
-              <strong>Timetable Routine</strong>
-              <span>Manage daily periods & conflicts</span>
-            </div>
-          </button>
+              <button className="quick-action-tile" onClick={() => nav('/classes')}>
+                <div className="tile-icon teal"><Layers size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Classes & Sections</strong>
+                  <span>Configure standards & divisions</span>
+                </div>
+              </button>
 
-          {/* Temporarily commented out Attendance Corrections Quick Action as requested
+              <button className="quick-action-tile" onClick={() => nav('/timetable')}>
+                <div className="tile-icon amber"><CalendarDays size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Timetable Routine</strong>
+                  <span>Manage daily periods & conflicts</span>
+                </div>
+              </button>
+
+              {/* Temporarily commented out Attendance Corrections Quick Action as requested
           <button className="quick-action-tile" onClick={() => nav('/attendance-corrections')}>
             <div className="tile-icon orange"><CheckCircle2 size={18} /></div>
             <div className="tile-texts">
@@ -4617,146 +4616,146 @@ function AdminHome(){
             </div>
           </button> */}
 
-          <button className="quick-action-tile" onClick={() => nav('/communication')}>
-            <div className="tile-icon purple"><MessageSquare size={18} /></div>
-            <div className="tile-texts">
-              <strong>Announcements</strong>
-              <span>Broadcast notices to parents & staff</span>
-            </div>
-          </button>
-
-          <button className="quick-action-tile" onClick={() => nav('/invoices')}>
-            <div className="tile-icon green"><FileText size={18} /></div>
-            <div className="tile-texts">
-              <strong>Invoices & Receipts</strong>
-              <span>Download official PDF tax invoices</span>
-            </div>
-          </button>
-
-          <button className="quick-action-tile" onClick={() => nav('/school-profile')}>
-            <div className="tile-icon slate"><Building2 size={18} /></div>
-            <div className="tile-texts">
-              <strong>School Profile</strong>
-              <span>View & update institutional information</span>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    {/* Row 2: Weekly Trend & Schedule/Activity */}
-    <div className="dashboard-two-col" style={{ marginTop: 24 }}>
-      {/* Weekly Trend Panel */}
-      <div className="dashboard-panel">
-        <div className="panel-header-row">
-          <div>
-            <h3>Weekly Attendance Trend</h3>
-            <p className="panel-sub">5-Day institutional ratio across all academic classes</p>
-          </div>
-          <button className="panel-header-btn" onClick={() => nav('/analytics')}>
-            Full Analytics →
-          </button>
-        </div>
-
-        {weeklyTrend.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
-            <CalendarDays size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
-            <p style={{ margin: 0, fontSize: 13.5 }}>No weekly attendance data recorded yet.</p>
-            <span style={{ fontSize: 12 }}>Daily attendance sessions submitted this week will chart here automatically.</span>
-          </div>
-        ) : (
-          <>
-            <div className="dashboard-trend-grid">
-              {weeklyTrend.map((t: any, idx: number) => (
-                <div key={idx} className="trend-col">
-                  <span className="trend-pct-label">{t.percentage}%</span>
-                  <div className="trend-bar-track">
-                    <div 
-                      className={`trend-bar-fill ${t.isToday ? 'today' : ''}`}
-                      style={{ height: `${Math.max(10, Math.min(100, t.percentage))}%` }}
-                    ></div>
-                  </div>
-                  <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
-                    {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
-                  </span>
+              <button className="quick-action-tile" onClick={() => nav('/communication')}>
+                <div className="tile-icon purple"><MessageSquare size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Announcements</strong>
+                  <span>Broadcast notices to parents & staff</span>
                 </div>
-              ))}
-            </div>
+              </button>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
-              <span>Institutional Target: <b>90% Minimum</b></span>
-              <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
-            </div>
-          </>
-        )}
-      </div>
+              <button className="quick-action-tile" onClick={() => nav('/invoices')}>
+                <div className="tile-icon green"><FileText size={18} /></div>
+                <div className="tile-texts">
+                  <strong>Invoices & Receipts</strong>
+                  <span>Download official PDF tax invoices</span>
+                </div>
+              </button>
 
-      {/* Today's Schedule & Live Stream */}
-      <div className="dashboard-panel">
-        <div className="panel-header-row">
-          <div>
-            <h3>Today's Timetable Routine</h3>
-            <p className="panel-sub">Active periods and faculty assignments for today</p>
+              <button className="quick-action-tile" onClick={() => nav('/school-profile')}>
+                <div className="tile-icon slate"><Building2 size={18} /></div>
+                <div className="tile-texts">
+                  <strong>School Profile</strong>
+                  <span>View & update institutional information</span>
+                </div>
+              </button>
+            </div>
           </div>
-          <button className="panel-header-btn" onClick={() => nav('/timetable')}>
-            Manage Routine →
-          </button>
         </div>
 
-        {todaySchedule.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)' }}>
-            <p>No timetable periods scheduled for today.</p>
-            <button className="panel-header-btn" onClick={() => nav('/timetable')}>
-              Configure Timetable Routine
-            </button>
-          </div>
-        ) : (
-          <div className="schedule-mini-list">
-            {todaySchedule.slice(0, 4).map((item: any) => (
-              <div key={item.id} className="schedule-mini-item">
-                <div className="schedule-item-left">
-                  <span className="schedule-item-time">{fmt(item.start_time)}–{fmt(item.end_time)}</span>
-                  <div className="schedule-item-details">
-                    <strong>Class {item.class_number}-{item.section_name} · {item.subject_name}</strong>
-                    <span>{item.room ? `${item.room} · ` : ''}{item.teacher_name || 'Faculty assigned'}</span>
-                  </div>
+        {/* Row 2: Weekly Trend & Schedule/Activity */}
+        <div className="dashboard-two-col" style={{ marginTop: 24 }}>
+          {/* Weekly Trend Panel */}
+          <div className="dashboard-panel">
+            <div className="panel-header-row">
+              <div>
+                <h3>Weekly Attendance Trend</h3>
+                <p className="panel-sub">5-Day institutional ratio across all academic classes</p>
+              </div>
+              <button className="panel-header-btn" onClick={() => nav('/analytics')}>
+                Full Analytics →
+              </button>
+            </div>
+
+            {weeklyTrend.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+                <CalendarDays size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <p style={{ margin: 0, fontSize: 13.5 }}>No weekly attendance data recorded yet.</p>
+                <span style={{ fontSize: 12 }}>Daily attendance sessions submitted this week will chart here automatically.</span>
+              </div>
+            ) : (
+              <>
+                <div className="dashboard-trend-grid">
+                  {weeklyTrend.map((t: any, idx: number) => (
+                    <div key={idx} className="trend-col">
+                      <span className="trend-pct-label">{t.percentage}%</span>
+                      <div className="trend-bar-track">
+                        <div
+                          className={`trend-bar-fill ${t.isToday ? 'today' : ''}`}
+                          style={{ height: `${Math.max(10, Math.min(100, t.percentage))}%` }}
+                        ></div>
+                      </div>
+                      <span className={`trend-day-label ${t.isToday ? 'today' : ''}`}>
+                        {t.day} {t.isToday ? <span style={{ display: 'block', fontSize: 9.5, lineHeight: 1.1 }}>(Today)</span> : null}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <button 
-                  className="schedule-take-btn"
-                  onClick={() => nav(`/take-attendance?routine=${item.id}`)}
-                >
-                  Take Attendance
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap', gap: 6 }}>
+                  <span>Institutional Target: <b>90% Minimum</b></span>
+                  <span style={{ color: weeklyAvg >= 90 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>Weekly Average: ~{weeklyAvg}%</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Today's Schedule & Live Stream */}
+          <div className="dashboard-panel">
+            <div className="panel-header-row">
+              <div>
+                <h3>Today's Timetable Routine</h3>
+                <p className="panel-sub">Active periods and faculty assignments for today</p>
+              </div>
+              <button className="panel-header-btn" onClick={() => nav('/timetable')}>
+                Manage Routine →
+              </button>
+            </div>
+
+            {todaySchedule.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)' }}>
+                <p>No timetable periods scheduled for today.</p>
+                <button className="panel-header-btn" onClick={() => nav('/timetable')}>
+                  Configure Timetable Routine
                 </button>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="schedule-mini-list">
+                {todaySchedule.slice(0, 4).map((item: any) => (
+                  <div key={item.id} className="schedule-mini-item">
+                    <div className="schedule-item-left">
+                      <span className="schedule-item-time">{fmt(item.start_time)}–{fmt(item.end_time)}</span>
+                      <div className="schedule-item-details">
+                        <strong>Class {item.class_number}-{item.section_name} · {item.subject_name}</strong>
+                        <span>{item.room ? `${item.room} · ` : ''}{item.teacher_name || 'Faculty assigned'}</span>
+                      </div>
+                    </div>
+                    <button
+                      className="schedule-take-btn"
+                      onClick={() => nav(`/take-attendance?routine=${item.id}`)}
+                    >
+                      Take Attendance
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {/* Live status indicators */}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--text-muted)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-            SMS Gateway: Active
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-            Database: Tenant Isolated
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
-            Backups: Automated Daily
-          </span>
+            {/* Live status indicators */}
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 11.5, color: 'var(--text-muted)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                SMS Gateway: Active
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                Database: Tenant Isolated
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                Backups: Automated Daily
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
       </Layout>
     </>
   );
 }
 
-function TeacherHome(){
-  const {user}=useAuth();
-  const nav=useNavigate();
+function TeacherHome() {
+  const { user } = useAuth();
+  const nav = useNavigate();
 
   // Branded Welcome Loader state - displayed only once per session per teacher
   const welcomeSessionKey = user?.id ? `attendo_welcome_seen_${user.id}` : null;
@@ -4774,16 +4773,16 @@ function TeacherHome(){
     if (welcomeSessionKey) {
       try {
         sessionStorage.setItem(welcomeSessionKey, 'true');
-      } catch {}
+      } catch { }
     }
     setShowWelcome(false);
   }, [welcomeSessionKey]);
 
-  const [r,setR]=useState<any[]>([]);
-  const [todaySessions,setTodaySessions]=useState<any[]>([]);
-  const [notices,setNotices]=useState<any[]>([]);
-  const [studentCount,setStudentCount]=useState<number>(0);
-  const [loading,setLoading]=useState(true);
+  const [r, setR] = useState<any[]>([]);
+  const [todaySessions, setTodaySessions] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
+  const [studentCount, setStudentCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
   const [pendingPhotos, setPendingPhotos] = useState(0);
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
@@ -4861,10 +4860,12 @@ function TeacherHome(){
     window.addEventListener('focus', onFocus);
     window.addEventListener('announcements-read', onAnnouncementsUpdated);
     window.addEventListener('storage', onAnnouncementsUpdated);
+    window.addEventListener('sessionChanged', onAnnouncementsUpdated);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('announcements-read', onAnnouncementsUpdated);
       window.removeEventListener('storage', onAnnouncementsUpdated);
+      window.removeEventListener('sessionChanged', onAnnouncementsUpdated);
     };
   }, []);
 
@@ -4872,7 +4873,7 @@ function TeacherHome(){
     const loadPhotoCount = () => {
       api.get('/reviews/notifications').then(res => {
         if (res.data?.success) setPendingPhotos(res.data.pendingPhotosCount || 0);
-      }).catch(() => {});
+      }).catch(() => { });
     };
     loadPhotoCount();
     window.addEventListener('reviews-updated', loadPhotoCount);
@@ -5019,361 +5020,312 @@ function TeacherHome(){
             </button>
           </div>
         )}
-      <div className="td-container">
-        
-        {/* 1. Welcome Banner */}
-        <div className="td-welcome-banner">
-          <div className="td-welcome-content">
-            <h1 className="td-welcome-title">
-              {getGreeting()}, {teacherFirstName}! ☀️
-            </h1>
-            <p className="td-welcome-subtitle">Here's your teaching overview for today.</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <div className="td-quote-box">
-                <span>“A great teacher inspires, guides, and creates brighter futures.”</span>
-              </div>
-              <div className="td-clock-card" title="Current Local Time & Date">
-                <div className="td-clock-time">
-                  <Clock size={15} />
-                  <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+        <div className="td-container">
+
+          {/* 1. Welcome Banner */}
+          <div className="td-welcome-banner">
+            <div className="td-welcome-content">
+              <h1 className="td-welcome-title">
+                {getGreeting()}, {teacherFirstName}! ☀️
+              </h1>
+              <p className="td-welcome-subtitle">Here's your teaching overview for today.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div className="td-quote-box">
+                  <span>“A great teacher inspires, guides, and creates brighter futures.”</span>
                 </div>
-                <div className="td-clock-date">
-                  {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                <div className="td-clock-card" title="Current Local Time & Date">
+                  <div className="td-clock-time">
+                    <Clock size={15} />
+                    <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
+                  </div>
+                  <div className="td-clock-date">
+                    {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="td-welcome-illustration">
-            <svg width="220" height="130" viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="10" y="20" width="120" height="85" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="3" />
-              <rect x="18" y="28" width="104" height="69" rx="4" fill="#0f172a" />
-              <text x="32" y="52" fill="#38bdf8" fontSize="11" fontWeight="700" fontFamily="sans-serif">Teach</text>
-              <text x="44" y="68" fill="#f59e0b" fontSize="11" fontWeight="700" fontFamily="sans-serif">Learn</text>
-              <text x="36" y="84" fill="#10b981" fontSize="11" fontWeight="700" fontFamily="sans-serif">Grow</text>
-              
-              <path d="M150 95C150 75 165 60 180 60C195 60 210 75 210 95V105H150V95Z" fill="#2563eb" />
-              <circle cx="180" cy="45" r="14" fill="#fdba74" />
-              <path d="M172 40C172 40 178 34 184 40" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
+            <div className="td-welcome-illustration">
+              <svg width="220" height="130" viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="20" width="120" height="85" rx="8" fill="#1e293b" stroke="#38bdf8" strokeWidth="3" />
+                <rect x="18" y="28" width="104" height="69" rx="4" fill="#0f172a" />
+                <text x="32" y="52" fill="#38bdf8" fontSize="11" fontWeight="700" fontFamily="sans-serif">Teach</text>
+                <text x="44" y="68" fill="#f59e0b" fontSize="11" fontWeight="700" fontFamily="sans-serif">Learn</text>
+                <text x="36" y="84" fill="#10b981" fontSize="11" fontWeight="700" fontFamily="sans-serif">Grow</text>
 
-              <path d="M140 100L155 75L170 100H140Z" fill="#3b82f6" opacity="0.3" />
-              <path d="M125 105H215" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
-              <circle cx="40" cy="12" r="6" fill="#f59e0b" />
-              <path d="M190 20L205 12L198 25L190 20Z" fill="#60a5fa" />
-            </svg>
-          </div>
-        </div>
+                <path d="M150 95C150 75 165 60 180 60C195 60 210 75 210 95V105H150V95Z" fill="#2563eb" />
+                <circle cx="180" cy="45" r="14" fill="#fdba74" />
+                <path d="M172 40C172 40 178 34 184 40" stroke="#475569" strokeWidth="2" strokeLinecap="round" />
 
-        {/* 2. Four Summary Cards Grid */}
-        <div className="td-summary-grid">
-          
-          {/* Card 1: Today's Classes */}
-          <div
-            className="td-summary-card"
-            onClick={() => nav('/timetable')}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/timetable'); } }}
-            tabIndex={0}
-            role="button"
-            aria-label="View today's scheduled classes timetable"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="td-card-left">
-              <div className="td-card-icon blue">
-                <CalendarDays size={22} />
-              </div>
-              <div>
-                <div className="td-card-label">Today's Classes</div>
-                <div className="td-card-value">{loading ? '...' : r.length}</div>
-                <div className="td-card-sub">Scheduled for today</div>
-              </div>
+                <path d="M140 100L155 75L170 100H140Z" fill="#3b82f6" opacity="0.3" />
+                <path d="M125 105H215" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="12" r="6" fill="#f59e0b" />
+                <path d="M190 20L205 12L198 25L190 20Z" fill="#60a5fa" />
+              </svg>
             </div>
-            <ChevronRight size={18} className="td-card-arrow" />
           </div>
 
-          {/* Card 2: Attendance Pending */}
-          <div
-            className="td-summary-card"
-            onClick={() => nav('/take-attendance')}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/take-attendance'); } }}
-            tabIndex={0}
-            role="button"
-            aria-label="Mark pending class attendance"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="td-card-left">
-              <div className="td-card-icon amber">
-                <ClipboardCheck size={22} />
-              </div>
-              <div>
-                <div className="td-card-label">Attendance Pending</div>
-                <div className="td-card-value">{loading ? '...' : (authorizedSections.length > 0 ? authorizedSections.filter(s => !s.hasSubmitted).length : pendingClasses.length)}</div>
-                <div className="td-card-sub">{authorizedSections.length > 0 ? 'Assigned sections to mark' : 'Classes to mark'}</div>
-              </div>
-            </div>
-            <ChevronRight size={18} className="td-card-arrow" />
-          </div>
+          {/* 2. Four Summary Cards Grid */}
+          <div className="td-summary-grid">
 
-          {/* Card 3: Classes Completed */}
-          <div
-            className="td-summary-card"
-            onClick={() => nav('/history')}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/history'); } }}
-            tabIndex={0}
-            role="button"
-            aria-label="View completed classes attendance history"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="td-card-left">
-              <div className="td-card-icon emerald">
-                <CheckCircle2 size={22} />
-              </div>
-              <div>
-                <div className="td-card-label">Classes Completed</div>
-                <div className="td-card-value">{loading ? '...' : completedClassesCount}</div>
-                <div className="td-card-sub">Out of {r.length} today</div>
-              </div>
-            </div>
-            <ChevronRight size={18} className="td-card-arrow" />
-          </div>
-
-          {/* Card 4: Students in My Classes */}
-          <div
-            className="td-summary-card"
-            onClick={() => nav('/attendance-reports')}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/attendance-reports'); } }}
-            tabIndex={0}
-            role="button"
-            aria-label="View student rosters across assigned classes"
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="td-card-left">
-              <div className="td-card-icon purple">
-                <Users size={22} />
-              </div>
-              <div>
-                <div className="td-card-label">Students in My Classes</div>
-                <div className="td-card-value">{loading ? '...' : studentCount}</div>
-                <div className="td-card-sub">Across all assigned classes</div>
-              </div>
-            </div>
-            <ChevronRight size={18} className="td-card-arrow" />
-          </div>
-
-        </div>
-
-        {/* Daily Class Teacher Attendance Card */}
-        <div className="td-section-card" style={{ marginBottom: 20 }}>
-          <div className="td-section-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
-              <h3 className="td-section-title">
-                <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
-                Daily Class Attendance — My Assigned Sections ({authorizedSections.length})
-              </h3>
-              <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (Asia/Kolkata)
-              </span>
-            </div>
-            <button
-              onClick={() => fetchTodayRoutine(true)}
-              type="button"
-              title="Refresh"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+            {/* Card 1: Today's Classes */}
+            <div
+              className="td-summary-card"
+              onClick={() => nav('/timetable')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/timetable'); } }}
+              tabIndex={0}
+              role="button"
+              aria-label="View today's scheduled classes timetable"
+              style={{ cursor: 'pointer' }}
             >
-              <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
-            </button>
+              <div className="td-card-left">
+                <div className="td-card-icon blue">
+                  <CalendarDays size={22} />
+                </div>
+                <div>
+                  <div className="td-card-label">Today's Classes</div>
+                  <div className="td-card-value">{loading ? '...' : r.length}</div>
+                  <div className="td-card-sub">Scheduled for today</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="td-card-arrow" />
+            </div>
+
+            {/* Card 2: Attendance Pending */}
+            <div
+              className="td-summary-card"
+              onClick={() => nav('/take-attendance')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/take-attendance'); } }}
+              tabIndex={0}
+              role="button"
+              aria-label="Mark pending class attendance"
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="td-card-left">
+                <div className="td-card-icon amber">
+                  <ClipboardCheck size={22} />
+                </div>
+                <div>
+                  <div className="td-card-label">Attendance Pending</div>
+                  <div className="td-card-value">{loading ? '...' : (authorizedSections.length > 0 ? authorizedSections.filter(s => !s.hasSubmitted).length : pendingClasses.length)}</div>
+                  <div className="td-card-sub">{authorizedSections.length > 0 ? 'Assigned sections to mark' : 'Classes to mark'}</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="td-card-arrow" />
+            </div>
+
+            {/* Card 3: Classes Completed */}
+            <div
+              className="td-summary-card"
+              onClick={() => nav('/history')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/history'); } }}
+              tabIndex={0}
+              role="button"
+              aria-label="View completed classes attendance history"
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="td-card-left">
+                <div className="td-card-icon emerald">
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <div className="td-card-label">Classes Completed</div>
+                  <div className="td-card-value">{loading ? '...' : completedClassesCount}</div>
+                  <div className="td-card-sub">Out of {r.length} today</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="td-card-arrow" />
+            </div>
+
+            {/* Card 4: Students in My Classes */}
+            <div
+              className="td-summary-card"
+              onClick={() => nav('/attendance-reports')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/attendance-reports'); } }}
+              tabIndex={0}
+              role="button"
+              aria-label="View student rosters across assigned classes"
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="td-card-left">
+                <div className="td-card-icon purple">
+                  <Users size={22} />
+                </div>
+                <div>
+                  <div className="td-card-label">Students in My Classes</div>
+                  <div className="td-card-value">{loading ? '...' : studentCount}</div>
+                  <div className="td-card-sub">Across all assigned classes</div>
+                </div>
+              </div>
+              <ChevronRight size={18} className="td-card-arrow" />
+            </div>
+
           </div>
 
-          {loading ? (
-            <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading assigned sections...</p>
-          ) : authorizedSections.length === 0 ? (
-            <div style={{ padding: '24px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No class mentor or temporary assignments found</p>
-              <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                You are not currently assigned as a permanent mentor or temporary substitute for any section. Class attendance is restricted to assigned class teachers.
-              </p>
-            </div>
-          ) : (
-            <div className="td-table-wrap">
-              <table className="td-table">
-                <thead>
-                  <tr>
-                    <th>CLASS & SECTION</th>
-                    <th>ASSIGNMENT TYPE</th>
-                    <th>ATTENDANCE STATUS</th>
-                    <th>SUMMARY</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {authorizedSections.map((sec: any) => {
-                    const formattedTime = sec.submittedAt
-                      ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : null;
-
-                    return (
-                      <tr key={`${sec.classId}-${sec.sectionId}`}>
-                        <td style={{ fontWeight: 700 }}>
-                          Class {sec.classNumber} - Section {sec.sectionName}
-                        </td>
-                        <td>
-                          {sec.isTemporary ? (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '3px 8px', borderRadius: 4 }}>
-                              Temporary Substitute
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 8px', borderRadius: 4 }}>
-                              Class Mentor
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {sec.hasSubmitted ? (
-                            <span className="td-status-pill completed">
-                              <CheckCircle2 size={12} /> Attendance Submitted
-                            </span>
-                          ) : (
-                            <span className="td-status-pill in-progress" style={{ background: '#fef3c7', color: '#b45309' }}>
-                              <Clock size={12} /> Pending Submission
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
-                          {sec.hasSubmitted ? (
-                            <span>
-                              Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{sec.presentCount}P / {sec.absentCount}A</strong> ({sec.totalCount} total)
-                            </span>
-                          ) : (
-                            <span>Not yet marked for today</span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}`)}
-                            className={sec.hasSubmitted ? 'td-btn-secondary' : 'td-btn-primary'}
-                            style={{ minWidth: 140 }}
-                          >
-                            <ClipboardCheck size={13} />
-                            {sec.hasSubmitted ? 'View Attendance' : 'Take Attendance'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* 3. Middle Grid: Schedule Table (Left) + Today at a Glance (Right) */}
-        <div className="td-middle-grid">
-          
-          {/* Today's Teaching Schedule */}
-          <div className="td-section-card">
+          {/* Daily Class Teacher Attendance Card */}
+          <div className="td-section-card" style={{ marginBottom: 20 }}>
             <div className="td-section-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
                 <h3 className="td-section-title">
-                  <CalendarDays size={18} style={{ color: '#2563eb' }} />
-                  Today's Teaching Schedule ({r.length})
+                  <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
+                  Daily Class Attendance — My Assigned Sections ({authorizedSections.length})
                 </h3>
-                <button
-                  onClick={() => fetchTodayRoutine(true)}
-                  type="button"
-                  title="Refresh routine"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
-                >
-                  <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
-                </button>
+                <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               </div>
-              <a href="#/timetable" className="td-link-btn">
-                View Full Timetable →
-              </a>
+              <button
+                onClick={() => fetchTodayRoutine(true)}
+                type="button"
+                title="Refresh"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <RefreshCw size={12} className={loading ? 'spin' : ''} /> Refresh
+              </button>
             </div>
 
             {loading ? (
-              <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's schedule...</p>
-            ) : r.length === 0 ? (
-              <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
-                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
-                <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
-                  You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review attendance.
+              <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading assigned sections...</p>
+            ) : authorizedSections.length === 0 ? (
+              <div style={{ padding: '24px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 600 }}>No class mentor or temporary assignments found</p>
+                <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                  You are not currently assigned as a permanent mentor or temporary substitute for any section. Class attendance is restricted to assigned class teachers.
                 </p>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                  <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
-                    View Weekly Timetable
-                  </a>
-                  <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
-                    Open Attendance Station
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="td-table-wrap">
                 <table className="td-table">
                   <thead>
                     <tr>
-                      <th>PERIOD</th>
-                      <th>TIME</th>
                       <th>CLASS & SECTION</th>
-                      <th>SUBJECT</th>
-                      <th>ROOM</th>
-                      <th>STATUS</th>
+                      <th>ASSIGNMENT TYPE</th>
+                      <th>ATTENDANCE STATUS</th>
+                      <th>SUMMARY</th>
                       <th>ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {r.map((x, idx) => {
-                      const recordedSession = getRoutineAttendance(x);
-                      const timeStatus = getPeriodTimeStatus(x);
-                      const uId = String(user?.id || '');
-                      const uTeacherId = String((user as any)?.teacher_id || '');
-                      const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
-                      const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
+                    {authorizedSections.map((sec: any) => {
+                      const formattedTime = sec.submittedAt
+                        ? new Date(sec.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : null;
+
+                      const storedRaw = (typeof window !== 'undefined')
+                        ? (
+                            sessionStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
+                            localStorage.getItem(`finalized_att_${sec.classId}_${sec.sectionId}`) ||
+                            sessionStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
+                            localStorage.getItem(`finalized_att_${sec.classNumber}_${sec.sectionName}`) ||
+                            sessionStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
+                            localStorage.getItem(`finalized_attendance_${sec.classId}_${sec.sectionId}`) ||
+                            sessionStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`) ||
+                            localStorage.getItem(`finalized_attendance_${sec.classNumber}_${sec.sectionName}`)
+                          )
+                        : null;
+
+                      let storedFinalized: any = null;
+                      if (storedRaw) {
+                        try {
+                          storedFinalized = JSON.parse(storedRaw);
+                        } catch {
+                          storedFinalized = { finalized: true };
+                        }
+                      }
+
+                      const isFinalized = Boolean(
+                        sec.isReattendance ||
+                        (sec.reattendanceCount && Number(sec.reattendanceCount) > 0) ||
+                        storedFinalized?.finalized ||
+                        storedRaw === '1'
+                      );
+
+                      const displayPres = storedFinalized?.presentCount !== undefined ? Number(storedFinalized.presentCount) : Number(sec.presentCount || 0);
+                      const displayAbs = storedFinalized?.absentCount !== undefined ? Number(storedFinalized.absentCount) : Number(sec.absentCount || 0);
+                      const displayTot = sec.totalCount ? Number(sec.totalCount) : (displayPres + displayAbs);
 
                       return (
-                        <tr key={x.id || idx}>
-                          <td style={{ fontWeight: 700 }}>{x.period_number || idx + 1}</td>
-                          <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)' }}>
-                            {fmt(x.start_time)} – {fmt(x.end_time)}
+                        <tr key={`${sec.classId}-${sec.sectionId}`}>
+                          <td style={{ fontWeight: 700 }}>
+                            Class {sec.classNumber} - Section {sec.sectionName}
                           </td>
                           <td>
-                            <span className="td-class-pill">
-                              Class {x.class_number}-{x.section_name}
-                            </span>
-                            {isAlternate && (
-                              <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: '#ea580c', background: '#ffedd5', padding: '2px 6px', borderRadius: 4 }}>
-                                Alt Teacher
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ fontWeight: 600 }}>{x.subject_name || 'General'}</td>
-                          <td style={{ color: 'var(--text-muted)' }}>{x.room || '—'}</td>
-                          <td>
-                            {recordedSession ? (
-                              <span className="td-status-pill completed">
-                                <CheckCircle2 size={12} /> Completed
-                              </span>
-                            ) : timeStatus === 'IN_PROGRESS' ? (
-                              <span className="td-status-pill in-progress">
-                                <Clock size={12} /> In Progress
-                              </span>
-                            ) : timeStatus === 'COMPLETED' ? (
-                              <span className="td-status-pill completed">
-                                <CheckCircle2 size={12} /> Completed
+                            {sec.isTemporary ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', background: '#ffedd5', padding: '3px 8px', borderRadius: 4 }}>
+                                Temporary Substitute
                               </span>
                             ) : (
-                              <span className="td-status-pill upcoming">
-                                <Clock size={12} /> Upcoming
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 8px', borderRadius: 4 }}>
+                                Class Mentor
                               </span>
                             )}
                           </td>
                           <td>
-                            <button
-                              onClick={() => nav(`/take-attendance?routine=${x.id}&classId=${x.class_id}&sectionId=${x.section_id}&subjectId=${x.subject_id}`)}
-                              className={recordedSession ? 'td-btn-secondary' : 'td-btn-primary'}
-                            >
-                              <ClipboardCheck size={13} />
-                              {recordedSession ? 'View Attendance' : 'Take Attendance'}
-                            </button>
+                            {sec.hasSubmitted ? (
+                              <span className="td-status-pill completed" style={{ background: '#dcfce7', color: '#15803d', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
+                                <CheckCircle2 size={13} /> Completed
+                              </span>
+                            ) : (
+                              <span className="td-status-pill in-progress" style={{ background: '#fef3c7', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, fontSize: 12 }}>
+                                <Clock size={12} /> Pending Submission
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                            {sec.hasSubmitted ? (
+                              <span>
+                                Submitted at {formattedTime} · <strong style={{ color: 'var(--text)' }}>{displayPres}P / {displayAbs}A</strong> ({displayTot} total)
+                                {isFinalized && (
+                                  <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: '#059669', background: '#dcfce7', padding: '2px 6px', borderRadius: 4 }}>
+                                    Finalized
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span>Not yet marked for today</span>
+                            )}
+                          </td>
+                          <td>
+                            {isFinalized ? (
+                              <span
+                                style={{
+                                  minWidth: 140,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  padding: '7px 14px',
+                                  borderRadius: 8,
+                                  fontSize: 12.5,
+                                  fontWeight: 600,
+                                  color: '#64748b',
+                                  background: 'var(--bg-subtle, #f1f5f9)',
+                                  border: '1px solid var(--border, #e2e8f0)',
+                                  cursor: 'not-allowed',
+                                  userSelect: 'none'
+                                }}
+                              >
+                                <Lock size={13} />
+                                Not Editable
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => nav(`/take-attendance?classId=${sec.classId}&sectionId=${sec.sectionId}&date=${schoolDate}${sec.hasSubmitted ? '&edit=1' : ''}`)}
+                                className={sec.hasSubmitted ? 'td-btn-secondary' : 'td-btn-primary'}
+                                style={{ minWidth: 140, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                              >
+                                {sec.hasSubmitted ? (
+                                  <>
+                                    <PenLine size={13} />
+                                    Edit Attendance
+                                  </>
+                                ) : (
+                                  <>
+                                    <ClipboardCheck size={13} />
+                                    Take Attendance
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -5384,126 +5336,161 @@ function TeacherHome(){
             )}
           </div>
 
-          {/* Today at a Glance */}
-          <div className="td-section-card">
-            <div className="td-section-header">
-              <h3 className="td-section-title">
-                <Calendar size={18} style={{ color: '#2563eb' }} />
-                Today at a glance
-              </h3>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
-              {formattedTodayDateString}
-            </div>
+          {/* 3. Middle Grid: Schedule Table (Left) + Today at a Glance (Right) */}
+          <div className="td-middle-grid">
 
-            {/* Weekday Strip */}
-            <div className="td-calendar-strip">
-              {weekDays.map((wd, i) => (
-                <div key={i} className={`td-day-col ${wd.isToday ? 'active' : ''}`}>
-                  <span className="td-day-name">{wd.dayName}</span>
-                  <span className="td-day-num">{wd.dayNum}</span>
+            {/* Today's Teaching Schedule */}
+            <div className="td-section-card">
+              <div className="td-section-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+                  <h3 className="td-section-title">
+                    <CalendarDays size={18} style={{ color: '#2563eb' }} />
+                    Today's Teaching Schedule ({r.length})
+                  </h3>
+                  <button
+                    onClick={() => fetchTodayRoutine(true)}
+                    type="button"
+                    title="Refresh routine"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', fontSize: 11, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', color: 'var(--text-muted)' }}
+                  >
+                    <RefreshCw size={11} className={loading ? 'spin' : ''} /> Refresh
+                  </button>
                 </div>
-              ))}
-            </div>
-
-            {/* Next Class Box */}
-            {nextClass ? (
-              <div className="td-next-class-box">
-                <div className="td-next-timer">
-                  <div className="td-timer-icon">
-                    <Clock size={20} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Status
-                    </div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7' }}>
-                      {getNextClassTimerText(nextClass)}
-                    </div>
-                  </div>
-                </div>
-                <div className="td-next-details">
-                  <div className="td-next-class-name">
-                    Class {nextClass.class_number}-{nextClass.section_name}
-                  </div>
-                  <div className="td-next-sub">
-                    {nextClass.subject_name} · {fmt(nextClass.start_time)} - {fmt(nextClass.end_time)}
-                  </div>
-                  {nextClass.room && (
-                    <div className="td-next-sub">Room {nextClass.room}</div>
-                  )}
-                </div>
+                <a href="#/timetable" className="td-link-btn">
+                  View Full Timetable →
+                </a>
               </div>
-            ) : (
-              <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
-                <div>
-                  <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
-                  <div className="td-next-class-name">All classes completed for today</div>
-                  <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+
+              {loading ? (
+                <p className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading today's schedule...</p>
+              ) : r.length === 0 ? (
+                <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--card)', borderRadius: 10, border: '1px dashed var(--border)' }}>
+                  <p style={{ margin: '0 0 8px', fontWeight: 600 }}>No routine periods assigned for today</p>
+                  <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460, fontSize: 13, lineHeight: 1.5 }}>
+                    You do not have any timetable entries scheduled for today. You can view the full weekly timetable or open the Attendance Station to review attendance.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <a href="#/timetable" className="primary" style={{ display: 'inline-block', textDecoration: 'none', padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                      View Weekly Timetable
+                    </a>
+                    <button onClick={() => nav('/take-attendance')} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer' }}>
+                      Open Attendance Station
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="td-table-wrap">
+                  <table className="td-table">
+                    <thead>
+                      <tr>
+                        <th>PERIOD</th>
+                        <th>TIME</th>
+                        <th>CLASS & SECTION</th>
+                        <th>SUBJECT</th>
+                        <th>ROOM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.map((x, idx) => {
+                        const recordedSession = getRoutineAttendance(x);
+                        const timeStatus = getPeriodTimeStatus(x);
+                        const uId = String(user?.id || '');
+                        const uTeacherId = String((user as any)?.teacher_id || '');
+                        const subId = String(x.substitute_teacher_id || x.altTeacherId || '');
+                        const isAlternate = Boolean(subId && (subId === uId || (uTeacherId && subId === uTeacherId)));
 
-        </div>
-
-        {/* 4. Bottom Grid: Attendance to Finish (Left) + School Updates (Right) */}
-        <div className="td-bottom-grid">
-          
-          {/* Attendance to Finish */}
-          <div className="td-section-card">
-            <div className="td-section-header">
-              <h3 className="td-section-title">
-                <ClipboardCheck size={18} style={{ color: '#2563eb' }} />
-                Attendance to finish ({pendingClasses.length})
-              </h3>
-              <button onClick={() => nav('/take-attendance')} className="td-link-btn" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                View All →
-              </button>
+                        return (
+                          <tr key={x.id || idx}>
+                            <td style={{ fontWeight: 700 }}>{x.period_number || idx + 1}</td>
+                            <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                              {fmt(x.start_time)} – {fmt(x.end_time)}
+                            </td>
+                            <td>
+                              <span className="td-class-pill">
+                                Class {x.class_number}-{x.section_name}
+                              </span>
+                              {isAlternate && (
+                                <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, color: '#ea580c', background: '#ffedd5', padding: '2px 6px', borderRadius: 4 }}>
+                                  Alt Teacher
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{x.subject_name || 'General'}</td>
+                            <td style={{ color: 'var(--text-muted)' }}>{x.room || '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            {loading ? (
-              <p className="muted" style={{ padding: 14 }}>Loading pending items...</p>
-            ) : pendingClasses.length === 0 ? (
-              <div style={{ padding: '24px 16px', textAlign: 'center', background: 'var(--gray-50)', borderRadius: 10 }}>
-                <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px' }} />
-                <div style={{ fontWeight: 700, fontSize: 14 }}>All attendance caught up!</div>
-                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>You have marked attendance for all scheduled periods today.</p>
+            {/* Today at a Glance */}
+            <div className="td-section-card">
+              <div className="td-section-header">
+                <h3 className="td-section-title">
+                  <Calendar size={18} style={{ color: '#2563eb' }} />
+                  Today at a glance
+                </h3>
               </div>
-            ) : (
-              <div>
-                {pendingClasses.slice(0, 4).map((item, idx) => (
-                  <div key={item.id || idx} className="td-finish-item">
-                    <div className="td-finish-left">
-                      <div className="td-finish-icon">
-                        <Users size={18} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13.5 }}>
-                          Class {item.class_number}-{item.section_name}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {item.period_name || `Period ${idx + 1}`} · {fmt(item.start_time)} - {fmt(item.end_time)}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span className="td-status-pill in-progress">Not Marked</span>
-                      <button
-                        onClick={() => nav(`/take-attendance?routine=${item.id}&classId=${item.class_id}&sectionId=${item.section_id}&subjectId=${item.subject_id}`)}
-                        className="td-btn-primary"
-                        style={{ padding: '5px 12px', fontSize: 12 }}
-                      >
-                        Continue
-                      </button>
-                    </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>
+                {formattedTodayDateString}
+              </div>
+
+              {/* Weekday Strip */}
+              <div className="td-calendar-strip">
+                {weekDays.map((wd, i) => (
+                  <div key={i} className={`td-day-col ${wd.isToday ? 'active' : ''}`}>
+                    <span className="td-day-name">{wd.dayName}</span>
+                    <span className="td-day-num">{wd.dayNum}</span>
                   </div>
                 ))}
               </div>
-            )}
+
+              {/* Next Class Box */}
+              {nextClass ? (
+                <div className="td-next-class-box">
+                  <div className="td-next-timer">
+                    <div className="td-timer-icon">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Status
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: '#0284c7' }}>
+                        {getNextClassTimerText(nextClass)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="td-next-details">
+                    <div className="td-next-class-name">
+                      Class {nextClass.class_number}-{nextClass.section_name}
+                    </div>
+                    <div className="td-next-sub">
+                      {nextClass.subject_name} · {fmt(nextClass.start_time)} - {fmt(nextClass.end_time)}
+                    </div>
+                    {nextClass.room && (
+                      <div className="td-next-sub">Room {nextClass.room}</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                  <div>
+                    <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
+                    <div className="td-next-class-name">All classes completed for today</div>
+                    <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Announcements */}
+          {/* 4. Announcements */}
+
           <div className="td-section-card">
             <div className="td-section-header">
               <h3 className="td-section-title">
@@ -5554,10 +5541,7 @@ function TeacherHome(){
               </div>
             )}
           </div>
-
         </div>
-
-      </div>
       </Layout>
     </>
   );
@@ -5565,8 +5549,8 @@ function TeacherHome(){
 
 const DEFAULT_CLASSES = [
   { id: 'cls-lkg', class_number: -1, label: 'Class L KG' },
-  { id: 'cls-ukg', class_number: 0,  label: 'Class U KG' },
-  ...([1,2,3,4,5,6,7,8,9,10,11,12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
+  { id: 'cls-ukg', class_number: 0, label: 'Class U KG' },
+  ...([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ id: `cls-${n}`, class_number: n, label: `Class ${n}` })))
 ];
 
 const DEFAULT_SECTIONS = DEFAULT_CLASSES.flatMap(c => [
@@ -5625,7 +5609,7 @@ export function formatLastFetched(date: Date | null): string {
   const now = new Date();
   const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
   const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  
+
   if (diffSec < 8) return `${timeStr} (Just now)`;
   if (diffSec < 60) return `${timeStr} (${diffSec}s ago)`;
   const diffMin = Math.floor(diffSec / 60);
@@ -5634,12 +5618,12 @@ export function formatLastFetched(date: Date | null): string {
 }
 
 /* ────── Students ────── */
-function Students(){
-  const {user}=useAuth();
+function Students() {
+  const { user } = useAuth();
   const [activeSession, setActiveSession] = useState<string>(() => {
-    return localStorage.getItem('attendo_academic_session') || 
-           localStorage.getItem('attendo_active_academic_year') || 
-           '2026-2027';
+    return localStorage.getItem('attendo_academic_session') ||
+      localStorage.getItem('attendo_active_academic_year') ||
+      '2026-2027';
   });
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -5658,28 +5642,29 @@ function Students(){
     return () => clearInterval(timer);
   }, []);
 
-  const [rows,setRows]=useState<any[]>([]);
-  const [classes,setClasses]=useState<any[]>(DEFAULT_CLASSES);
-  const [sections,setSections]=useState<any[]>(DEFAULT_SECTIONS);
-  const [sessions,setSessions]=useState<any[]>([]);
-  const [editingStudent,setEditingStudent]=useState<any|null>(null);
-  const [classFilter,setClassFilter]=useState('');
-  const [sectionFilter,setSectionFilter]=useState('');
-  const [genderFilter,setGenderFilter]=useState('');
-  const [open,setOpen]=useState(false);
+  const [rows, setRows] = useState<any[]>([]);
+  const [registeredStudentEmails, setRegisteredStudentEmails] = useState<Set<string>>(new Set());
+  const [classes, setClasses] = useState<any[]>(DEFAULT_CLASSES);
+  const [sections, setSections] = useState<any[]>(DEFAULT_SECTIONS);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [classFilter, setClassFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+  const [open, setOpen] = useState(false);
   const [showStudentPassword, setShowStudentPassword] = useState(false);
-  const [importOpen,setImportOpen]=useState(false);
-  const [importStep,setImportStep]=useState(1); // 1=select session/class/section 2=upload 3=preview
-  const [importSession,setImportSession]=useState('');
-  const [importClass,setImportClass]=useState('');
-  const [importSection,setImportSection]=useState('');
-  const [f,setF]=useState<any>({});
-  const [saving,setSaving]=useState(false);
-  const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
-  const [search,setSearch]=useState('');
-  const [exportOpen,setExportOpen]=useState(false);
-  const [previewRows,setPreviewRows]=useState<any[]>([]);
-  const [importing,setImporting]=useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importStep, setImportStep] = useState(1); // 1=select session/class/section 2=upload 3=preview
+  const [importSession, setImportSession] = useState('');
+  const [importClass, setImportClass] = useState('');
+  const [importSection, setImportSection] = useState('');
+  const [f, setF] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<{
     current: number;
     total: number;
@@ -5690,21 +5675,21 @@ function Students(){
     percent: number;
   } | null>(null);
   const [importFileMeta, setImportFileMeta] = useState<{ name: string; size: number } | null>(null);
-  const [importErrors,setImportErrors]=useState<{row:number;field:string;message:string}[]>([]);
+  const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
   const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'errors' | 'valid'>('all');
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
-  const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
+  const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string; resetUrl?: string } | null>(null);
 
   const lastRegisteredStudentInfo = useMemo(() => {
     // Ground truth: strictly evaluate active students in directory
     if (!rows || rows.length === 0) {
       try {
         localStorage.removeItem('attendo_last_registered_student');
-      } catch {}
+      } catch { }
       return null;
     }
 
@@ -5731,7 +5716,7 @@ function Students(){
     if (!latest) {
       try {
         localStorage.removeItem('attendo_last_registered_student');
-      } catch {}
+      } catch { }
       return null;
     }
 
@@ -5744,7 +5729,7 @@ function Students(){
     // Keep localStorage synchronized with the real latest student in directory
     try {
       localStorage.setItem('attendo_last_registered_student', JSON.stringify(info));
-    } catch {}
+    } catch { }
 
     return info;
   }, [rows]);
@@ -5862,7 +5847,7 @@ function Students(){
     };
   }, []);
 
-  async function load(sessionToLoad = activeSession){
+  async function load(sessionToLoad = activeSession) {
     setLoading(true);
     setLoadProgress(15);
     const progressTimer = setInterval(() => {
@@ -5876,11 +5861,11 @@ function Students(){
     try {
       const isAll = !sessionToLoad || /^all(\s+sessions?)?$/i.test(sessionToLoad);
       const sessParam = isAll ? '' : encodeURIComponent(sessionToLoad || '');
-      const [a,b,c,d]=await Promise.all([
+      const [a, b, c, d] = await Promise.all([
         api.get(`/students${sessParam ? `?session=${sessParam}` : ''}`),
         api.get('/classes'),
         api.get('/sections'),
-        api.get('/academic-years').catch(()=>({data:[]})) as any
+        api.get('/academic-years').catch(() => ({ data: [] })) as any
       ]);
       setLoadProgress(95);
       const studentData = Array.isArray(a.data) ? a.data : (Array.isArray(a.data?.data) ? a.data.data : null);
@@ -5911,8 +5896,8 @@ function Students(){
       setLastFetchedAt(now);
       try {
         localStorage.setItem('attendo_students_last_fetched', now.toISOString());
-      } catch {}
-    } catch(err) {
+      } catch { }
+    } catch (err) {
       console.error('Failed to load students:', err);
     } finally {
       clearInterval(progressTimer);
@@ -5923,14 +5908,14 @@ function Students(){
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     load(activeSession);
     if (new URLSearchParams(window.location.search).get('enroll') === 'true' && (user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN')) {
       setEditingStudent(null);
       setF({ loginOption: 'STUDENT', sendInviteEmail: true, session: activeSession, countryCode: '+91' });
       setOpen(true);
     }
-  },[activeSession]);
+  }, [activeSession]);
 
   async function sendStudentResetEmail(st: any) {
     try {
@@ -5948,12 +5933,12 @@ function Students(){
     }
   }
 
-  async function handleInitiateSave(e:React.FormEvent){
+  async function handleInitiateSave(e: React.FormEvent) {
     e.preventDefault();
     // STAGE 1 VALIDATION
-    const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '')).trim();
+    const firstName = String(f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name || '').split(' ')[0] : '')).trim();
     const middleName = String(f.middleName || '').trim();
-    const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '')).trim();
+    const lastName = String(f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name || '').split(' ').slice(1).join(' ') : '')).trim();
     const fullName = (formatStudentFullName(firstName, middleName, lastName) || f.name || '').toUpperCase();
     if (!firstName) {
       alert('Validation Error: Please enter student first name.');
@@ -6114,11 +6099,11 @@ function Students(){
     }
 
     const selectedSessionStr = f.session || activeSession || '2026-2027';
-    const matchedSession = sessions.find(s => 
-      s.id === selectedSessionStr || 
-      s.name === selectedSessionStr || 
-      s.code === selectedSessionStr || 
-      isSameSession(s.name, selectedSessionStr) || 
+    const matchedSession = sessions.find(s =>
+      s.id === selectedSessionStr ||
+      s.name === selectedSessionStr ||
+      s.code === selectedSessionStr ||
+      isSameSession(s.name, selectedSessionStr) ||
       isSameSession(s.id, selectedSessionStr)
     );
     let finalSectionId = f.sectionId;
@@ -6134,7 +6119,7 @@ function Students(){
 
     // Client-side uniqueness pre-checks against loaded student directory
     if (cleanAdm) {
-      const dupAdm = rows.find(r => 
+      const dupAdm = rows.find(r =>
         (!editingStudent || r.id !== editingStudent.id) &&
         String(r.admission_number || r.admissionNumber || '').trim().toLowerCase() === cleanAdm.toLowerCase()
       );
@@ -6403,7 +6388,7 @@ function Students(){
             rollNumber: created.roll_number || payload.rollNumber || '—',
             admissionNumber: created.admission_number || created.admissionNumber || payload.admissionNumber || payload.admission_number || '—'
           }));
-        } catch {}
+        } catch { }
         if (created.invite_sent) {
           setToastNotice({
             type: 'success',
@@ -6423,7 +6408,7 @@ function Students(){
           const k = localStorage.key(i);
           if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
         }
-      } catch {}
+      } catch { }
       window.dispatchEvent(new Event('dashboardShouldRefresh'));
       load();
     } catch (err: any) {
@@ -6497,7 +6482,7 @@ function Students(){
           const k = localStorage.key(i);
           if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
         }
-      } catch {}
+      } catch { }
       window.dispatchEvent(new Event('dashboardShouldRefresh'));
     } catch (err: any) {
       setDeleteDialog(prev => ({
@@ -6519,8 +6504,8 @@ function Students(){
 
   const filtered = rows.filter(r => {
     const q = search.toLowerCase();
-    const matchesSearch = 
-      r.name.toLowerCase().includes(q) || 
+    const matchesSearch =
+      r.name.toLowerCase().includes(q) ||
       String(r.roll_number).toLowerCase().includes(q) ||
       String(r.class_number).toLowerCase().includes(q) ||
       (r.admission_number && r.admission_number.toLowerCase().includes(q)) ||
@@ -6692,125 +6677,125 @@ function Students(){
 
   function downloadTemplate() {
     const sample = [
-      { 
-        "First Name": "Aarav", 
-        "Middle Name": "Kumar", 
-        "Last Name": "Sharma", 
-        "Full Name": "Aarav Kumar Sharma", 
-        "Admission Number": "ADM-2025-001", 
+      {
+        "First Name": "Aarav",
+        "Middle Name": "Kumar",
+        "Last Name": "Sharma",
+        "Full Name": "Aarav Kumar Sharma",
+        "Admission Number": "ADM-2025-001",
         "Admission Date": "2025-04-01",
-        "Roll Number": "101", 
-        "Session": "2025-26", 
-        "Class": "Class 1", 
-        "Section": "A", 
+        "Roll Number": "101",
+        "Session": "2025-26",
+        "Class": "Class 1",
+        "Section": "A",
         "Date of Birth": "2019-05-15",
-        "Gender": "Male", 
-        "Father Name": "Rajesh Sharma", 
-        "Father Contact No": "9876543210", 
+        "Gender": "Male",
+        "Father Name": "Rajesh Sharma",
+        "Father Contact No": "9876543210",
         "Father Occupation": "Business",
         "Mother Name": "Sunita Sharma",
         "Mother Contact No": "9876543219",
         "Mother Occupation": "Teacher",
         "Guardian Name": "",
         "Parent WhatsApp No": "9876543210",
-        "Parent Email": "rajesh@example.com", 
-        "Student Email": "aarav@school.edu" 
+        "Parent Email": "rajesh@example.com",
+        "Student Email": "aarav@school.edu"
       },
-      { 
-        "First Name": "Diya",  
-        "Middle Name": "", 
-        "Last Name": "Patel",  
-        "Full Name": "Diya Patel",   
-        "Admission Number": "ADM-2025-002", 
+      {
+        "First Name": "Diya",
+        "Middle Name": "",
+        "Last Name": "Patel",
+        "Full Name": "Diya Patel",
+        "Admission Number": "ADM-2025-002",
         "Admission Date": "2025-04-01",
-        "Roll Number": "102", 
-        "Session": "2025-26", 
-        "Class": "L-KG",    
-        "Section": "A", 
+        "Roll Number": "102",
+        "Session": "2025-26",
+        "Class": "L-KG",
+        "Section": "A",
         "Date of Birth": "2021-08-20",
-        "Gender": "Female", 
-        "Father Name": "Kirit Patel",   
-        "Father Contact No": "9876543211", 
+        "Gender": "Female",
+        "Father Name": "Kirit Patel",
+        "Father Contact No": "9876543211",
         "Father Occupation": "Engineer",
         "Mother Name": "Bhavna Patel",
         "Mother Contact No": "9876543218",
         "Mother Occupation": "Doctor",
         "Guardian Name": "Vikram Patel",
         "Parent WhatsApp No": "9876543211",
-        "Parent Email": "kirit@example.com",  
-        "Student Email": "" 
+        "Parent Email": "kirit@example.com",
+        "Student Email": ""
       },
-      { 
-        "First Name": "Rohan", 
-        "Middle Name": "Kumar", 
-        "Last Name": "Gupta",  
-        "Full Name": "Rohan Kumar Gupta",  
-        "Admission Number": "ADM-2025-003", 
+      {
+        "First Name": "Rohan",
+        "Middle Name": "Kumar",
+        "Last Name": "Gupta",
+        "Full Name": "Rohan Kumar Gupta",
+        "Admission Number": "ADM-2025-003",
         "Admission Date": "2025-04-02",
-        "Roll Number": "103", 
-        "Session": "2025-26", 
-        "Class": "U-KG",    
-        "Section": "B", 
+        "Roll Number": "103",
+        "Session": "2025-26",
+        "Class": "U-KG",
+        "Section": "B",
         "Date of Birth": "2020-11-10",
-        "Gender": "Male", 
-        "Father Name": "Manoj Gupta",   
-        "Father Contact No": "9876543212", 
+        "Gender": "Male",
+        "Father Name": "Manoj Gupta",
+        "Father Contact No": "9876543212",
         "Father Occupation": "Civil Servant",
         "Mother Name": "Rekha Gupta",
         "Mother Contact No": "9876543217",
         "Mother Occupation": "Home Maker",
         "Guardian Name": "",
         "Parent WhatsApp No": "9876543212",
-        "Parent Email": "manoj@example.com", 
-        "Student Email": "" 
+        "Parent Email": "manoj@example.com",
+        "Student Email": ""
       },
-      { 
-        "First Name": "Amit", 
-        "Middle Name": "", 
-        "Last Name": "Verma",  
-        "Full Name": "Amit Verma",  
-        "Admission Number": "ADM-2025-004", 
+      {
+        "First Name": "Amit",
+        "Middle Name": "",
+        "Last Name": "Verma",
+        "Full Name": "Amit Verma",
+        "Admission Number": "ADM-2025-004",
         "Admission Date": "2025-04-05",
-        "Roll Number": "104", 
-        "Session": "2025-26", 
-        "Class": "Class 2",    
-        "Section": "A", 
+        "Roll Number": "104",
+        "Session": "2025-26",
+        "Class": "Class 2",
+        "Section": "A",
         "Date of Birth": "2018-02-14",
-        "Gender": "Male", 
-        "Father Name": "Sunil Verma",   
-        "Father Contact No": "9876543213", 
+        "Gender": "Male",
+        "Father Name": "Sunil Verma",
+        "Father Contact No": "9876543213",
         "Father Occupation": "Banker",
         "Mother Name": "Pooja Verma",
         "Mother Contact No": "9876543216",
         "Mother Occupation": "Architect",
         "Guardian Name": "",
         "Parent WhatsApp No": "9876543213",
-        "Parent Email": "sunil@example.com", 
-        "Student Email": "" 
+        "Parent Email": "sunil@example.com",
+        "Student Email": ""
       },
-      { 
-        "First Name": "Ananya", 
-        "Middle Name": "Kumari", 
-        "Last Name": "Singh",  
-        "Full Name": "Ananya Kumari Singh",  
-        "Admission Number": "ADM-2025-005", 
+      {
+        "First Name": "Ananya",
+        "Middle Name": "Kumari",
+        "Last Name": "Singh",
+        "Full Name": "Ananya Kumari Singh",
+        "Admission Number": "ADM-2025-005",
         "Admission Date": "2025-04-05",
-        "Roll Number": "105", 
-        "Session": "2025-26", 
-        "Class": "Class 3",    
-        "Section": "B", 
+        "Roll Number": "105",
+        "Session": "2025-26",
+        "Class": "Class 3",
+        "Section": "B",
         "Date of Birth": "2017-06-30",
-        "Gender": "Female", 
-        "Father Name": "Sanjay Singh",   
-        "Father Contact No": "9876543214", 
+        "Gender": "Female",
+        "Father Name": "Sanjay Singh",
+        "Father Contact No": "9876543214",
         "Father Occupation": "Professor",
         "Mother Name": "Meena Singh",
         "Mother Contact No": "9876543215",
         "Mother Occupation": "Scientist",
         "Guardian Name": "",
         "Parent WhatsApp No": "9876543214",
-        "Parent Email": "sanjay@example.com", 
-        "Student Email": "" 
+        "Parent Email": "sanjay@example.com",
+        "Student Email": ""
       }
     ];
     const ws = XLSX.utils.json_to_sheet(sample);
@@ -6928,7 +6913,7 @@ function Students(){
 
         // Required headers validation
         const headers = Object.keys(json[0] || {});
-        const REQUIRED_CORE = ['First Name','Last Name','Admission Number','Roll Number'];
+        const REQUIRED_CORE = ['First Name', 'Last Name', 'Admission Number', 'Roll Number'];
         const missingCore = REQUIRED_CORE.filter(h => !headers.some(hk => hk.trim().toLowerCase() === h.toLowerCase()));
         const hasParentName = headers.some(hk => /father name|parent name|mother name|guardian/i.test(hk));
         const hasParentPhone = headers.some(hk => /father contact|father phone|parent phone|parent mobile|mother contact|mother phone|contact/i.test(hk));
@@ -6943,7 +6928,7 @@ function Students(){
           return;
         }
 
-        const rowErrors: {row:number;field:string;message:string}[] = [];
+        const rowErrors: { row: number; field: string; message: string }[] = [];
         const seenAdm = new Map<string, number>();
         const seenRoll = new Map<string, number>();
         const seenEmails = new Map<string, number>();
@@ -6952,7 +6937,7 @@ function Students(){
           const rowNum = idx + 1;
           let firstName = String(r['First Name'] || r['first_name'] || r['FirstName'] || '').trim();
           let middleName = String(r['Middle Name'] || r['middle_name'] || r['MiddleName'] || '').trim();
-          let lastName  = String(r['Last Name']  || r['last_name']  || r['LastName']  || '').trim();
+          let lastName = String(r['Last Name'] || r['last_name'] || r['LastName'] || '').trim();
           const rawFullName = String(r['Full Name'] || r['full_name'] || r['FullName'] || r['Student Name'] || r['Full Name (Auto)'] || r['Name'] || r['name'] || '').trim();
           if ((!firstName || !lastName) && rawFullName) {
             const parts = rawFullName.split(/\s+/).filter(Boolean);
@@ -6967,9 +6952,9 @@ function Students(){
               if (!lastName) lastName = parts[parts.length - 1] || '';
             }
           }
-          const fullName = (formatStudentFullName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `STUDENT ${idx+1}`))).toUpperCase();
-          const admissionNumber = String(r['Admission Number']||r['admission_number']||r['Adm No']||'').trim();
-          const rollNumber = String(r['Roll Number']||r['Roll']||r['roll_number']||r['Roll No']||String(idx+101)).trim();
+          const fullName = (formatStudentFullName(firstName, middleName, lastName) || rawFullName || ((firstName && lastName) ? `${firstName} ${lastName}` : (firstName || lastName || `STUDENT ${idx + 1}`))).toUpperCase();
+          const admissionNumber = String(r['Admission Number'] || r['admission_number'] || r['Adm No'] || '').trim();
+          const rollNumber = String(r['Roll Number'] || r['Roll'] || r['roll_number'] || r['Roll No'] || String(idx + 101)).trim();
 
           const fatherName = String(r['Father Name'] || r['Father\'s Name'] || r['father_name'] || r['FatherName'] || '').trim();
           const fatherPhone = String(r['Father Contact No'] || r['Father Contact'] || r['Father Phone'] || r['father_phone'] || r['FatherPhone'] || '').trim();
@@ -6988,23 +6973,23 @@ function Students(){
 
           const parentWhatsappNo = String(r['Parent WhatsApp No'] || r['Parent Whatsapp No'] || r['WhatsApp No'] || r['Whatsapp No'] || r['parent_whatsapp_no'] || r['parent_whatsapp'] || '').trim();
 
-          let parentName  = String(r['Parent Name']||r['parent_name']||'').trim();
+          let parentName = String(r['Parent Name'] || r['parent_name'] || '').trim();
           if (!parentName && (fatherName || motherName || guardianName)) {
             parentName = (fatherName && motherName) ? `${fatherName} / ${motherName}` : (fatherName || motherName || guardianName || '');
           }
-          let parentPhone = String(r['Parent Phone']||r['Parent Mobile']||r['parent_sms_number']||'').trim();
+          let parentPhone = String(r['Parent Phone'] || r['Parent Mobile'] || r['parent_sms_number'] || '').trim();
           if (!parentPhone && (fatherPhone || motherPhone)) {
             parentPhone = fatherPhone || motherPhone || '';
           }
-          const parentEmail = String(r['Parent Email']||r['parent_email']||'').trim();
-          const studentEmail = String(r['Student Email']||r['Email ID']||r['Email']||r['student_email']||'').trim();
-          let rawGender = String(r['Gender']||r['gender']||r['GENDER']||r['Sex']||r['sex']||r['SEX']||r['Gender (M/F)']||r['Gender(M/F)']||r['M/F']||r['MF']||r['Sex/Gender']||r['Gen']||'').trim();
+          const parentEmail = String(r['Parent Email'] || r['parent_email'] || '').trim();
+          const studentEmail = String(r['Student Email'] || r['Email ID'] || r['Email'] || r['student_email'] || '').trim();
+          let rawGender = String(r['Gender'] || r['gender'] || r['GENDER'] || r['Sex'] || r['sex'] || r['SEX'] || r['Gender (M/F)'] || r['Gender(M/F)'] || r['M/F'] || r['MF'] || r['Sex/Gender'] || r['Gen'] || '').trim();
           if (!rawGender && r && typeof r === 'object') {
             const gk = Object.keys(r).find(k => /gender|sex|\bm[\/\-_]?f\b/i.test(k));
             if (gk && r[gk] !== undefined && r[gk] !== null) rawGender = String(r[gk]).trim();
           }
           const gender = formatGender(rawGender);
-          const session = String(r['Session']||r['Academic Session']||importSession||'2025-26').trim();
+          const session = String(r['Session'] || r['Academic Session'] || importSession || '2025-26').trim();
 
           // Class parsing: supports 'L-KG','U-KG','Class 1','1', Roman numerals (I-XII), etc.
           let excelClassVal: any = undefined;
@@ -7058,35 +7043,35 @@ function Students(){
           const sectionId = `sec-${classId}-${sectionName.toLowerCase()}`;
 
           // Per-row validation
-          const rowErrs: {row:number;field:string;message:string}[] = [];
-          if (!firstName)       rowErrs.push({row:rowNum,field:'First Name',message:'First Name is required'});
-          if (!lastName)        rowErrs.push({row:rowNum,field:'Last Name',message:'Last Name is required'});
-          if (!dob)             rowErrs.push({row:rowNum,field:'Date of Birth',message:'Date of Birth is required'});
+          const rowErrs: { row: number; field: string; message: string }[] = [];
+          if (!firstName) rowErrs.push({ row: rowNum, field: 'First Name', message: 'First Name is required' });
+          if (!lastName) rowErrs.push({ row: rowNum, field: 'Last Name', message: 'Last Name is required' });
+          if (!dob) rowErrs.push({ row: rowNum, field: 'Date of Birth', message: 'Date of Birth is required' });
           if (!parentPhone && !fatherPhone && !motherPhone) {
-            rowErrs.push({row:rowNum,field:'Father Contact No',message:'Father Contact No (or Parent Phone) is required'});
+            rowErrs.push({ row: rowNum, field: 'Father Contact No', message: 'Father Contact No (or Parent Phone) is required' });
           }
-          if (!parsedCls.valid) rowErrs.push({row:rowNum,field:'Class',message:parsedCls.error || 'Invalid Class'});
+          if (!parsedCls.valid) rowErrs.push({ row: rowNum, field: 'Class', message: parsedCls.error || 'Invalid Class' });
 
           const normAdm = admissionNumber.toLowerCase();
           if (!admissionNumber) {
-            rowErrs.push({row:rowNum,field:'Admission Number',message:'Admission Number is required'});
+            rowErrs.push({ row: rowNum, field: 'Admission Number', message: 'Admission Number is required' });
           } else if (seenAdm.has(normAdm)) {
-            rowErrs.push({row:rowNum,field:'Admission Number',message:`Duplicate admission number in file: '${admissionNumber}' (row ${seenAdm.get(normAdm)})`});
+            rowErrs.push({ row: rowNum, field: 'Admission Number', message: `Duplicate admission number in file: '${admissionNumber}' (row ${seenAdm.get(normAdm)})` });
           } else {
             seenAdm.set(normAdm, rowNum);
             const dbDupAdm = rows.find(dr => (dr.admission_number || dr.admissionNumber || '').trim().toLowerCase() === normAdm);
             if (dbDupAdm) {
-              rowErrs.push({row:rowNum,field:'Admission Number',message:`Admission number '${admissionNumber}' already exists in database`});
+              rowErrs.push({ row: rowNum, field: 'Admission Number', message: `Admission number '${admissionNumber}' already exists in database` });
             }
           }
 
           const normRoll = rollNumber.toLowerCase();
           if (!rollNumber) {
-            rowErrs.push({row:rowNum,field:'Roll Number',message:'Roll Number is required'});
+            rowErrs.push({ row: rowNum, field: 'Roll Number', message: 'Roll Number is required' });
           } else if (parsedCls.valid) {
             const rollKey = `${classNumber}_${sectionName}_${normRoll}`;
             if (seenRoll.has(rollKey)) {
-              rowErrs.push({row:rowNum,field:'Roll Number',message:`Duplicate roll '${rollNumber}' for ${classLabel} ${sectionName} in file (row ${seenRoll.get(rollKey)})`});
+              rowErrs.push({ row: rowNum, field: 'Roll Number', message: `Duplicate roll '${rollNumber}' for ${classLabel} ${sectionName} in file (row ${seenRoll.get(rollKey)})` });
             } else {
               seenRoll.set(rollKey, rowNum);
               const dbDupRoll = rows.find(dr => {
@@ -7098,7 +7083,7 @@ function Students(){
                 return sameSess && sameClass && sameSec && sameRoll && dr.is_active !== false;
               });
               if (dbDupRoll) {
-                rowErrs.push({row:rowNum,field:'Roll Number',message:`Roll number '${rollNumber}' already exists in database for this class/section`});
+                rowErrs.push({ row: rowNum, field: 'Roll Number', message: `Roll number '${rollNumber}' already exists in database for this class/section` });
               }
             }
           }
@@ -7106,14 +7091,14 @@ function Students(){
           const normEmail = studentEmail.toLowerCase();
           if (studentEmail) {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
-              rowErrs.push({row:rowNum,field:'Student Email',message:`Invalid student email format '${studentEmail}'`});
+              rowErrs.push({ row: rowNum, field: 'Student Email', message: `Invalid student email format '${studentEmail}'` });
             } else if (seenEmails.has(normEmail)) {
-              rowErrs.push({row:rowNum,field:'Student Email',message:`Duplicate student email in file (row ${seenEmails.get(normEmail)})`});
+              rowErrs.push({ row: rowNum, field: 'Student Email', message: `Duplicate student email in file (row ${seenEmails.get(normEmail)})` });
             } else {
               seenEmails.set(normEmail, rowNum);
               const dbDupEmail = rows.find(dr => (dr.email || dr.student_email || '').trim().toLowerCase() === normEmail);
               if (dbDupEmail) {
-                rowErrs.push({row:rowNum,field:'Student Email',message:`Student email '${studentEmail}' already in use in database`});
+                rowErrs.push({ row: rowNum, field: 'Student Email', message: `Student email '${studentEmail}' already in use in database` });
               }
             }
           }
@@ -7194,7 +7179,7 @@ function Students(){
         return;
       }
       // Resolve sessionId from wizard selection
-      const sessionObj = sessions.find(s => (s.name||s.code||s.id) === importSession);
+      const sessionObj = sessions.find(s => (s.name || s.code || s.id) === importSession);
       const enrichedRows = validRows.map(r => ({
         ...r,
         session: r.session || importSession || '2025-26',
@@ -7251,7 +7236,7 @@ function Students(){
             rollNumber: lastRoll,
             admissionNumber: lastAdm
           }));
-        } catch {}
+        } catch { }
       }
 
       alert(`Successfully imported ${totalImported} students${targetSession ? ` into ${targetSession}` : ''}!`);
@@ -7269,7 +7254,7 @@ function Students(){
         try {
           localStorage.setItem('attendo_academic_session', finalSession);
           window.dispatchEvent(new CustomEvent('sessionChanged', { detail: finalSession }));
-        } catch {}
+        } catch { }
       }
 
       // Update rows immediately with imported items
@@ -7337,7 +7322,7 @@ function Students(){
       </div>
       {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button 
+          <button
             type="button"
             onClick={() => setExportOpen(true)}
             style={{
@@ -7359,13 +7344,13 @@ function Students(){
           >
             <Download size={16} /> Export Excel / CSV{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
           </button>
-          <button 
+          <button
             onClick={() => setImportOpen(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
           >
             <FileSpreadsheet size={16} /> Import Excel / CSV
           </button>
-          <button 
+          <button
             onClick={() => {
               setEditingStudent(null);
               const curSess = localStorage.getItem('attendo_academic_session') || activeSession || '2026-2027';
@@ -7379,7 +7364,7 @@ function Students(){
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button 
+          <button
             type="button"
             onClick={() => load(activeSession)}
             disabled={loading}
@@ -7403,7 +7388,7 @@ function Students(){
             <RefreshCw size={14} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
             <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
           </button>
-          <button 
+          <button
             type="button"
             onClick={() => setExportOpen(true)}
             style={{
@@ -7494,292 +7479,570 @@ function Students(){
       )}
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto' }}>
-        {/* Interactive Session Switcher Dropdown */}
-        <div style={{ position: 'relative', flexShrink: 0 }} ref={sessionPickerRef}>
-          <button 
-            type="button"
-            onClick={() => setSessionPickerOpen(prev => !prev)}
-            className={`session-picker-btn ${sessionPickerOpen ? 'open' : ''}`}
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: 8, 
-              padding: '7px 12px', 
-              borderRadius: 'var(--radius-sm)', 
-              fontSize: 13, 
-              cursor: 'pointer',
-              fontWeight: 500,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-              transition: 'all 0.15s ease',
-              outline: 'none',
-              whiteSpace: 'nowrap'
-            }}
-            title="Click to change academic session"
-            id="students-session-picker-btn"
-          >
-            <CalendarDays size={14} style={{ color: 'inherit' }} />
-            <span><b>Session:</b> {activeSession}</span>
-            <ChevronDown size={14} style={{ transform: sessionPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: 'inherit' }} />
-          </button>
-
-          {sessionPickerOpen && (
-            <div 
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto' }}>
+          {/* Interactive Session Switcher Dropdown */}
+          <div style={{ position: 'relative', flexShrink: 0 }} ref={sessionPickerRef}>
+            <button
+              type="button"
+              onClick={() => setSessionPickerOpen(prev => !prev)}
+              className={`session-picker-btn ${sessionPickerOpen ? 'open' : ''}`}
               style={{
-                position: 'absolute',
-                top: 'calc(100% + 6px)',
-                left: 0,
-                zIndex: 1000,
-                background: 'var(--bg-card, #ffffff)',
-                border: '1px solid var(--border, #cbd5e1)',
-                borderRadius: 8,
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2)',
-                minWidth: 260,
-                overflow: 'hidden',
-                animation: 'fadeIn 0.15s ease-out'
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '7px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 13,
+                cursor: 'pointer',
+                fontWeight: 500,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease',
+                outline: 'none',
+                whiteSpace: 'nowrap'
               }}
+              title="Click to change academic session"
+              id="students-session-picker-btn"
             >
-              <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Switch Academic Session</span>
-                <span style={{ fontSize: 10, background: 'var(--border, #e2e8f0)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
-              </div>
+              <CalendarDays size={14} style={{ color: 'inherit' }} />
+              <span><b>Session:</b> {activeSession}</span>
+              <ChevronDown size={14} style={{ transform: sessionPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: 'inherit' }} />
+            </button>
 
-              <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
-                {/* All Sessions Option */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectSession('All Sessions')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    background: activeSession === 'All Sessions' ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
-                    color: activeSession === 'All Sessions' ? '#3b82f6' : 'var(--text, #334155)',
-                    fontSize: 13,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontWeight: activeSession === 'All Sessions' ? 600 : 400
-                  }}
-                  onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
-                  onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Calendar size={14} style={{ opacity: 0.6 }} />
-                    <span>All Sessions (View All)</span>
-                  </div>
-                  {activeSession === 'All Sessions' && <Check size={14} style={{ color: '#2563eb' }} />}
-                </button>
+            {sessionPickerOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  zIndex: 1000,
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border, #cbd5e1)',
+                  borderRadius: 8,
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2)',
+                  minWidth: 260,
+                  overflow: 'hidden',
+                  animation: 'fadeIn 0.15s ease-out'
+                }}
+              >
+                <div style={{ padding: '8px 12px', background: 'var(--card-subtle, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Switch Academic Session</span>
+                  <span style={{ fontSize: 10, background: 'var(--border, #e2e8f0)', color: 'var(--text)', padding: '1px 5px', borderRadius: 4, textTransform: 'none' }}>{sessions.length} available</span>
+                </div>
 
-                {/* Individual Sessions List */}
-                {(sessions.length > 0 ? sessions : [
-                  { id: 'ay-2024-25', name: '2024–25 Academic Session', is_active: false },
-                  { id: 'ay-2025-26', name: '2025–26 Academic Session', is_active: true },
-                  { id: 'ay-2026-27', name: '2026–27 Academic Session', is_active: false }
-                ]).map((sess: any) => {
-                  const sessName = sess.name || sess.label || sess.code || sess.id;
-                  const isSelected = activeSession === sessName || (isSameSession(activeSession, sessName) && activeSession !== 'All Sessions');
-                  return (
-                    <button
-                      type="button"
-                      key={sess.id}
-                      onClick={() => handleSelectSession(sessName)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: 'none',
-                        background: isSelected ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
-                        color: isSelected ? '#3b82f6' : 'var(--text, #334155)',
-                        fontSize: 13,
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontWeight: isSelected ? 600 : 400
-                      }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <CalendarDays size={14} style={{ opacity: 0.6 }} />
-                        <span>{sessName}</span>
-                        {sess.is_active && (
-                          <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
-                        )}
-                      </div>
-                      {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                <div style={{ borderTop: '1px solid var(--border, #e2e8f0)', padding: '6px 8px', background: 'var(--card-subtle, #f8fafc)' }}>
-                  <a
-                    href="#/academic-years"
-                    onClick={() => setSessionPickerOpen(false)}
+                <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
+                  {/* All Sessions Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSession('All Sessions')}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      fontSize: 12,
-                      color: '#2563eb',
-                      textDecoration: 'none',
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: 4
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: 'none',
+                      background: activeSession === 'All Sessions' ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                      color: activeSession === 'All Sessions' ? '#3b82f6' : 'var(--text, #334155)',
+                      fontSize: 13,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontWeight: activeSession === 'All Sessions' ? 600 : 400
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                    onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                    onMouseEnter={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
+                    onMouseLeave={e => { if (activeSession !== 'All Sessions') e.currentTarget.style.background = 'transparent'; }}
                   >
-                    Manage Academic Sessions →
-                  </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Calendar size={14} style={{ opacity: 0.6 }} />
+                      <span>All Sessions (View All)</span>
+                    </div>
+                    {activeSession === 'All Sessions' && <Check size={14} style={{ color: '#2563eb' }} />}
+                  </button>
+
+                  {/* Individual Sessions List */}
+                  {(sessions.length > 0 ? sessions : [
+                    { id: 'ay-2024-25', name: '2024–25 Academic Session', is_active: false },
+                    { id: 'ay-2025-26', name: '2025–26 Academic Session', is_active: true },
+                    { id: 'ay-2026-27', name: '2026–27 Academic Session', is_active: false }
+                  ]).map((sess: any) => {
+                    const sessName = sess.name || sess.label || sess.code || sess.id;
+                    const isSelected = activeSession === sessName || (isSameSession(activeSession, sessName) && activeSession !== 'All Sessions');
+                    return (
+                      <button
+                        type="button"
+                        key={sess.id}
+                        onClick={() => handleSelectSession(sessName)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                          color: isSelected ? '#3b82f6' : 'var(--text, #334155)',
+                          fontSize: 13,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontWeight: isSelected ? 600 : 400
+                        }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--card-subtle, #f8fafc)'; }}
+                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <CalendarDays size={14} style={{ opacity: 0.6 }} />
+                          <span>{sessName}</span>
+                          {sess.is_active && (
+                            <span style={{ fontSize: 10, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>Active</span>
+                          )}
+                        </div>
+                        {isSelected && <Check size={14} style={{ color: '#2563eb' }} />}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+
+                {(user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                  <div style={{ borderTop: '1px solid var(--border, #e2e8f0)', padding: '6px 8px', background: 'var(--card-subtle, #f8fafc)' }}>
+                    <a
+                      href="#/academic-years"
+                      onClick={() => setSessionPickerOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        fontSize: 12,
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        padding: '4px 8px',
+                        borderRadius: 4
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      Manage Academic Sessions →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <input
+            placeholder="🔍 Search name, roll no, admission no, class, email..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 460, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
+            title="Search by student name, roll number, admission number, class, or email"
+          />
+          {/* Class and Section grouped together on the same line */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <select
+              value={classFilter}
+              onChange={e => { setClassFilter(e.target.value); setSectionFilter(''); }}
+              style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+            >
+              <option value="">All Classes</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
+            </select>
+            <select
+              value={sectionFilter}
+              onChange={e => setSectionFilter(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+            >
+              <option value="">All Sections</option>
+              {(() => {
+                const list = classFilter ? sections.filter(s => s.class_id === classFilter) : sections;
+                const seen = new Set<string>();
+                const unique: any[] = [];
+                for (const s of list) {
+                  const name = String(s.name || '').toUpperCase();
+                  if (name && !seen.has(name)) {
+                    seen.add(name);
+                    unique.push(s);
+                  }
+                }
+                return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
+              })()}
+            </select>
+            <select
+              value={genderFilter}
+              onChange={e => setGenderFilter(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
+              aria-label="Filter by Gender"
+            >
+              <option value="">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          {(search || classFilter || sectionFilter || genderFilter) && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); setGenderFilter(''); }}
+              style={{ padding: '6px 10px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
+            >
+              Clear Filters
+            </button>
           )}
         </div>
-        <input 
-          placeholder="🔍 Search name, roll no, admission no, class, email..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: '1 1 320px', minWidth: 260, maxWidth: 460, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13 }}
-          title="Search by student name, roll number, admission number, class, or email"
-        />
-        {/* Class and Section grouped together on the same line */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <select 
-            value={classFilter} 
-            onChange={e => { setClassFilter(e.target.value); setSectionFilter(''); }}
-            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
-          >
-            <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
-          </select>
-          <select 
-            value={sectionFilter} 
-            onChange={e => setSectionFilter(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
-          >
-            <option value="">All Sections</option>
-            {(() => {
-              const list = classFilter ? sections.filter(s => s.class_id === classFilter) : sections;
-              const seen = new Set<string>();
-              const unique: any[] = [];
-              for (const s of list) {
-                const name = String(s.name || '').toUpperCase();
-                if (name && !seen.has(name)) {
-                  seen.add(name);
-                  unique.push(s);
-                }
-              }
-              return unique.map(s => <option key={s.id} value={classFilter ? s.id : s.name}>Section {s.name}</option>);
-            })()}
-          </select>
-          <select 
-            value={genderFilter} 
-            onChange={e => setGenderFilter(e.target.value)}
-            style={{ padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, minWidth: 110 }}
-            aria-label="Filter by Gender"
-          >
-            <option value="">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        {(search || classFilter || sectionFilter || genderFilter) && (
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            onClick={() => { setSearch(''); setClassFilter(''); setSectionFilter(''); setGenderFilter(''); }}
-            style={{ padding: '6px 10px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
-          >
-            Clear Filters
-          </button>
-        )}
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load(activeSession)}
-          disabled={loading}
-          className="directory-refresh-btn"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch student records from database"
-          id="students-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-        {/* Last Fetched Time Badge */}
-        <div 
-          className="last-fetched-badge"
-          title="Last successful synchronization with database"
-        >
-          <Clock size={12} />
-          <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
-          {loading && (
-            <span style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={() => load(activeSession)}
+            disabled={loading}
+            className="directory-refresh-btn"
+            style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
-              marginLeft: 3,
-              padding: '1px 5px',
-              borderRadius: 4,
-              background: 'rgba(37, 99, 235, 0.16)',
-              color: '#3b82f6',
-              fontWeight: 600,
-              fontSize: 11
-            }}>
-              <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-              {loadProgress}%
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
-          <span>Rows per page:</span>
-          <select
-            value={directoryPageSize}
-            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
-            className="directory-select"
-            style={{
-              padding: '4px 8px',
-              fontSize: 12.5,
-              borderRadius: 6,
+              gap: 6,
+              padding: '6px 12px',
+              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
               border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 12.5,
+              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              transition: 'all 0.15s ease'
             }}
+            title="Refetch student records from database"
+            id="students-directory-refresh-btn"
           >
-            <option value={10}>10</option>
-            <option value={25}>25 (Default)</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={250}>250</option>
-            <option value={500}>500</option>
-            <option value={100000}>All ({filtered.length})</option>
-          </select>
+            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+          </button>
+          {/* Last Fetched Time Badge */}
+          <div
+            className="last-fetched-badge"
+            title="Last successful synchronization with database"
+          >
+            <Clock size={12} />
+            <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+            {loading && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                marginLeft: 3,
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: 'rgba(37, 99, 235, 0.16)',
+                color: '#3b82f6',
+                fontWeight: 600,
+                fontSize: 11
+              }}>
+                <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+                {loadProgress}%
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+            <span>Rows per page:</span>
+            <select
+              value={directoryPageSize}
+              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
+              className="directory-select"
+              style={{
+                padding: '4px 8px',
+                fontSize: 12.5,
+                borderRadius: 6,
+                border: '1px solid var(--border, #cbd5e1)',
+                cursor: 'pointer'
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25 (Default)</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
+              <option value={100000}>All ({filtered.length})</option>
+            </select>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {filtered.length === 0 ? (
+              'Showing 0 students'
+            ) : (
+              <>
+                Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> students
+                {filtered.length !== rows.length && (
+                  <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+                )}
+              </>
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+      </div>
+
+      {/* Box Body (Scrollable Table Area) */}
+      <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'hidden' }}>
+        {loading && displayedStudents.length > 0 && (
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            background: 'rgba(239, 246, 255, 0.95)',
+            backdropFilter: 'blur(4px)',
+            borderBottom: '1px solid #bfdbfe',
+            padding: '6px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            color: '#1d4ed8',
+            fontWeight: 500
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+              <span>Refetching student directory from database...</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 36, textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
+                  onChange={toggleSelectAll}
+                  title="Select all on this page"
+                />
+              </th>
+              <th style={{ whiteSpace: 'nowrap' }}>Roll No</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Adm No</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Adm Date</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Student Name</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Class</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Section</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Student Email</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Parent & Contact</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && displayedStudents.length === 0 ? (
+              <tr>
+                <td colSpan={13} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : displayedStudents.length === 0 ? (
+              <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
+            ) : displayedStudents.map(x => (
+              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
+                <td style={{ textAlign: 'center', width: 36 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(x.id)}
+                    onChange={() => toggleSelect(x.id)}
+                  />
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <span className="roll">{x.roll_number}</span>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {(x.admission_number || x.admissionNumber) ? (
+                    <span className="adm-no-tag">
+                      {x.admission_number || x.admissionNumber}
+                    </span>
+                  ) : (
+                    <span className="muted" style={{ fontSize: 11 }}>—</span>
+                  )}
+                </td>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
+                </td>
+                <td>
+                  <StudentProfileHoverCard student={x} activeSession={activeSession}>
+                    <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
+                  </StudentProfileHoverCard>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {x.gender ? (
+                    <span
+                      className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        fontSize: 11.5,
+                        fontWeight: 500,
+                        background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                        color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                      }}
+                    >
+                      {formatGender(x.gender)}
+                    </span>
+                  ) : (
+                    <span className="muted" style={{ fontSize: 12 }}>—</span>
+                  )}
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {(() => {
+                    const cNum = Number(x.class_number);
+                    const cId = String(x.class_id || '');
+                    if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
+                    if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
+                    if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
+                    const m = cId.match(/cls-(\d+)/);
+                    if (m) return `Class ${m[1]}`;
+                    const label = String(x.class_label || x.class_name || '');
+                    if (label) return label.replace(/^class\s*/i, '').trim() || label;
+                    return 'Class ' + (cNum || 1);
+                  })()}
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    {(() => {
+                      const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
+                      return raw.replace(/^section\s*/i, '').trim() || 'A';
+                    })()}
+                  </span>
+                </td>
+                <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }} title={x.student_email || x.email || ''}>
+                    {x.student_email || x.email || '—'}
+                  </span>
+                </td>
+                <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div><b>{x.parent_name || 'Parent'}</b></div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <code>{x.parent_sms_number}</code>
+                    {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#16a34a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
+                  </div>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`} style={{
+                    padding: '3px 8px',
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600
+                  }}>
+                    {x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                </td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button
+                    className="table-action-btn"
+                    onClick={() => sendStudentResetEmail(x)}
+                    title="Send password setup / reset email"
+                    style={{ marginRight: 6, color: '#2563eb' }}
+                  >
+                    <KeyRound size={14} />
+                  </button>
+                  <button
+                    className="table-action-btn"
+                    onClick={() => {
+                      setEditingStudent(x);
+                      const rawPhone = x.father_phone || x.fatherPhone || x.parent_sms_number || x.parentPhone || '';
+                      let cCode = '+91';
+                      let pNum = rawPhone;
+                      const cMatch = rawPhone.match(/^(\+\d{1,4})\s*(.*)$/);
+                      if (cMatch) {
+                        cCode = cMatch[1];
+                        pNum = cMatch[2];
+                      }
+                      const nameParts = (x.name || '').trim().split(/\s+/);
+                      let fName = x.first_name || '';
+                      let mName = x.middle_name || x.middleName || '';
+                      let lName = x.last_name || '';
+                      if (!fName && nameParts.length > 0) {
+                        if (nameParts.length === 1) {
+                          fName = nameParts[0];
+                        } else if (nameParts.length === 2) {
+                          fName = nameParts[0];
+                          lName = nameParts[1];
+                        } else {
+                          fName = nameParts[0];
+                          mName = nameParts.slice(1, -1).join(' ');
+                          lName = nameParts[nameParts.length - 1];
+                        }
+                      }
+                      setF({
+                        name: String(x.name || '').toUpperCase(),
+                        firstName: String(fName || '').toUpperCase(),
+                        middleName: String(mName || '').toUpperCase(),
+                        lastName: String(lName || '').toUpperCase(),
+                        rollNumber: x.roll_number,
+                        admissionNumber: x.admission_number || x.admissionNumber || '',
+                        admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
+                        studentEmail: x.student_email || x.email || '',
+                        parentName: x.parent_name || '',
+                        fatherName: x.father_name || x.fatherName || '',
+                        fatherPhone: x.father_phone || x.fatherPhone || pNum || '',
+                        fatherOccupation: x.father_occupation || x.fatherOccupation || '',
+                        motherName: x.mother_name || x.motherName || '',
+                        motherPhone: x.mother_phone || x.motherPhone || '',
+                        motherOccupation: x.mother_occupation || x.motherOccupation || '',
+                        guardianName: x.guardian_name || x.guardianName || '',
+                        countryCode: cCode,
+                        parentSmsNumber: pNum,
+                        parentWhatsappNo: x.parent_whatsapp_no || x.parentWhatsappNo || x.parent_whatsapp || x.parentWhatsapp || '',
+                        parentEmail: x.parent_email || '',
+                        classId: x.class_id,
+                        sectionId: x.section_id,
+                        gender: formatGender(x.gender) || '',
+                        dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
+                        loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
+                        sendInviteEmail: true,
+                        is_active: x.is_active !== false,
+                        status: x.status || (x.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
+                        password: ''
+                      });
+                      setOpen(true);
+                    }}
+                    title="Edit student"
+                    style={{ marginRight: 6 }}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    className="table-action-btn danger"
+                    onClick={() => promptDeleteStudent(x)}
+                    title="Delete student"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Box Footer (Pagination Bar) */}
+      <div className="directory-box-footer">
+        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
           {filtered.length === 0 ? (
             'Showing 0 students'
           ) : (
@@ -7791,352 +8054,74 @@ function Students(){
             </>
           )}
         </div>
-      </div>
-    </div>
 
-    {/* Box Body (Scrollable Table Area) */}
-    <div className="directory-box-body" ref={tableBodyRef} style={{ overflowX: 'hidden' }}>
-      {loading && displayedStudents.length > 0 && (
-        <div style={{
-          position: 'sticky',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 20,
-          background: 'rgba(239, 246, 255, 0.95)',
-          backdropFilter: 'blur(4px)',
-          borderBottom: '1px solid #bfdbfe',
-          padding: '6px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 12,
-          color: '#1d4ed8',
-          fontWeight: 500
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-            <span>Refetching student directory from database...</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-            <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
-            </div>
-          </div>
-        </div>
-      )}
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: 36, textAlign: 'center' }}>
-              <input 
-                type="checkbox" 
-                checked={displayedStudents.length > 0 && displayedStudents.every(x => selectedIds.has(x.id))}
-                onChange={toggleSelectAll}
-                title="Select all on this page"
-              />
-            </th>
-            <th style={{ whiteSpace: 'nowrap' }}>Roll No</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Adm No</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Adm Date</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Student Name</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Class</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Section</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Student Email</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Parent & Contact</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-            <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && displayedStudents.length === 0 ? (
-            <tr>
-              <td colSpan={13} style={{ textAlign: 'center', padding: '48px 24px' }}>
-                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                    <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Student Directory...</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching enrolled students from database ({loadProgress}%)</div>
-                  </div>
-                  <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                    <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
-                  </div>
-                </div>
-              </td>
-            </tr>
-          ) : displayedStudents.length === 0 ? (
-            <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24 }} className="muted">No students found. Click "Add Student" or "Import Excel / CSV" to enroll students.</td></tr>
-          ) : displayedStudents.map(x => (
-            <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
-              <td style={{ textAlign: 'center', width: 36 }}>
-                <input 
-                  type="checkbox" 
-                  checked={selectedIds.has(x.id)}
-                  onChange={() => toggleSelect(x.id)}
-                />
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                <span className="roll">{x.roll_number}</span>
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                {(x.admission_number || x.admissionNumber) ? (
-                  <span className="adm-no-tag">
-                    {x.admission_number || x.admissionNumber}
-                  </span>
-                ) : (
-                  <span className="muted" style={{ fontSize: 11 }}>—</span>
-                )}
-              </td>
-              <td style={{ whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-secondary)' }}>
-                {toDdMmYyyy(x.admission_date || x.admissionDate) || '—'}
-              </td>
-              <td>
-                <StudentProfileHoverCard student={x} activeSession={activeSession}>
-                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
-                </StudentProfileHoverCard>
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                {x.gender ? (
-                  <span 
-                    className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '2px 8px',
-                      borderRadius: 999,
-                      fontSize: 11.5,
-                      fontWeight: 500,
-                      background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                      color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                      border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                    }}
-                  >
-                    {formatGender(x.gender)}
-                  </span>
-                ) : (
-                  <span className="muted" style={{ fontSize: 12 }}>—</span>
-                )}
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                {(() => {
-                  const cNum = Number(x.class_number);
-                  const cId = String(x.class_id || '');
-                  if (cNum === -1 || /l.?kg/i.test(cId)) return 'L-KG';
-                  if (cNum === 0 || /u.?kg/i.test(cId)) return 'U-KG';
-                  if (!isNaN(cNum) && cNum > 0) return `Class ${cNum}`;
-                  const m = cId.match(/cls-(\d+)/);
-                  if (m) return `Class ${m[1]}`;
-                  const label = String(x.class_label || x.class_name || '');
-                  if (label) return label.replace(/^class\s*/i, '').trim() || label;
-                  return 'Class ' + (cNum || 1);
-                })()}
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  {(() => {
-                    const raw = String(x.section_name || x.sectionName || x.section || 'A').trim();
-                    return raw.replace(/^section\s*/i, '').trim() || 'A';
-                  })()}
-                </span>
-              </td>
-              <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: 12, color: x.student_email || x.email ? 'var(--text-main)' : 'var(--text-muted)' }} title={x.student_email || x.email || ''}>
-                  {x.student_email || x.email || '—'}
-                </span>
-              </td>
-              <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <div><b>{x.parent_name || 'Parent'}</b></div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  <code>{x.parent_sms_number}</code>
-                  {x.parent_whatsapp_no && <span style={{ marginLeft: 4, color: '#16a34a' }} title={`WhatsApp: ${x.parent_whatsapp_no}`}>• WA</span>}
-                </div>
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                <span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`} style={{
-                  padding: '3px 8px',
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: 600
-                }}>
-                  {x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
-                </span>
-              </td>
-              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <button
-                  className="table-action-btn"
-                  onClick={() => sendStudentResetEmail(x)}
-                  title="Send password setup / reset email"
-                  style={{ marginRight: 6, color: '#2563eb' }}
-                >
-                  <KeyRound size={14} />
-                </button>
-                <button 
-                  className="table-action-btn" 
-                  onClick={() => {
-                    setEditingStudent(x);
-                    const rawPhone = x.father_phone || x.fatherPhone || x.parent_sms_number || x.parentPhone || '';
-                    let cCode = '+91';
-                    let pNum = rawPhone;
-                    const cMatch = rawPhone.match(/^(\+\d{1,4})\s*(.*)$/);
-                    if (cMatch) {
-                      cCode = cMatch[1];
-                      pNum = cMatch[2];
-                    }
-                    const nameParts = (x.name || '').trim().split(/\s+/);
-                    let fName = x.first_name || '';
-                    let mName = x.middle_name || x.middleName || '';
-                    let lName = x.last_name || '';
-                    if (!fName && nameParts.length > 0) {
-                      if (nameParts.length === 1) {
-                        fName = nameParts[0];
-                      } else if (nameParts.length === 2) {
-                        fName = nameParts[0];
-                        lName = nameParts[1];
-                      } else {
-                        fName = nameParts[0];
-                        mName = nameParts.slice(1, -1).join(' ');
-                        lName = nameParts[nameParts.length - 1];
-                      }
-                    }
-                    setF({
-                      name: String(x.name || '').toUpperCase(),
-                      firstName: String(fName || '').toUpperCase(),
-                      middleName: String(mName || '').toUpperCase(),
-                      lastName: String(lName || '').toUpperCase(),
-                      rollNumber: x.roll_number,
-                      admissionNumber: x.admission_number || x.admissionNumber || '',
-                      admissionDate: x.admission_date ? new Date(x.admission_date).toISOString().slice(0, 10) : (x.admissionDate || ''),
-                      studentEmail: x.student_email || x.email || '',
-                      parentName: x.parent_name || '',
-                      fatherName: x.father_name || x.fatherName || '',
-                      fatherPhone: x.father_phone || x.fatherPhone || pNum || '',
-                      fatherOccupation: x.father_occupation || x.fatherOccupation || '',
-                      motherName: x.mother_name || x.motherName || '',
-                      motherPhone: x.mother_phone || x.motherPhone || '',
-                      motherOccupation: x.mother_occupation || x.motherOccupation || '',
-                      guardianName: x.guardian_name || x.guardianName || '',
-                      countryCode: cCode,
-                      parentSmsNumber: pNum,
-                      parentWhatsappNo: x.parent_whatsapp_no || x.parentWhatsappNo || x.parent_whatsapp || x.parentWhatsapp || '',
-                      parentEmail: x.parent_email || '',
-                      classId: x.class_id,
-                      sectionId: x.section_id,
-                      gender: formatGender(x.gender) || '',
-                      dob: x.date_of_birth ? new Date(x.date_of_birth).toISOString().slice(0, 10) : (x.dob || ''),
-                      loginOption: (x.student_email || x.email) ? 'STUDENT' : x.parent_email ? 'PARENT' : 'STUDENT',
-                      sendInviteEmail: true,
-                      is_active: x.is_active !== false,
-                      status: x.status || (x.is_active !== false ? 'ACTIVE' : 'INACTIVE'),
-                      password: ''
-                    });
-                    setOpen(true);
-                  }}
-                  title="Edit student"
-                  style={{ marginRight: 6 }}
-                >
-                  <Pencil size={14} />
-                </button>
-                <button 
-                  className="table-action-btn danger" 
-                  onClick={() => promptDeleteStudent(x)}
-                  title="Delete student"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-
-    {/* Box Footer (Pagination Bar) */}
-    <div className="directory-box-footer">
-      <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
-        {filtered.length === 0 ? (
-          'Showing 0 students'
-        ) : (
-          <>
-            Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> students
-            {filtered.length !== rows.length && (
-              <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
-            )}
-          </>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage <= 1}
-          onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
-          title="First Page"
-        >
-          <ChevronsLeft size={14} /> First
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage <= 1}
-          onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
-          title="Previous Page"
-        >
-          <ChevronLeft size={14} /> Previous
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
-          <span>Page</span>
-          <select
-            value={currentDirectoryPage}
-            onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
-            className="directory-select"
-            style={{
-              padding: '3px 6px',
-              fontSize: 12,
-              borderRadius: 4,
-              border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
+            title="First Page"
           >
-            {Array.from({ length: totalDirectoryPages }, (_, idx) => (
-              <option key={idx + 1} value={idx + 1}>
-                {idx + 1}
-              </option>
-            ))}
-          </select>
-          <span>of <b>{totalDirectoryPages}</b></span>
-        </div>
+            <ChevronsLeft size={14} /> First
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
+            title="Previous Page"
+          >
+            <ChevronLeft size={14} /> Previous
+          </button>
 
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
-          title="Next Page"
-        >
-          Next <ChevronRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
-          title="Last Page"
-        >
-          Last <ChevronsRight size={14} />
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+            <span>Page</span>
+            <select
+              value={currentDirectoryPage}
+              onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
+              className="directory-select"
+              style={{
+                padding: '3px 6px',
+                fontSize: 12,
+                borderRadius: 4,
+                border: '1px solid var(--border, #cbd5e1)',
+                cursor: 'pointer'
+              }}
+            >
+              {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {idx + 1}
+                </option>
+              ))}
+            </select>
+            <span>of <b>{totalDirectoryPages}</b></span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
+            title="Next Page"
+          >
+            Next <ChevronRight size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
+            title="Last Page"
+          >
+            Last <ChevronsRight size={14} />
+          </button>
+        </div>
       </div>
-    </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}
@@ -8201,9 +8186,9 @@ function Students(){
         currentFormParentEmail && !EMAIL_VALIDATION_REGEX.test(currentFormParentEmail)
       );
 
-      const fnVal = f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name||'').split(' ')[0] : '');
+      const fnVal = f.firstName !== undefined ? f.firstName : (editingStudent ? (f.name || '').split(' ')[0] : '');
       const mnVal = f.middleName || '';
-      const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name||'').split(' ').slice(1).join(' ') : '');
+      const lnVal = f.lastName !== undefined ? f.lastName : (editingStudent ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
       const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
@@ -8218,747 +8203,747 @@ function Students(){
       );
 
       return (
-        <Modal maxWidth={620} title={editingStudent ? "Edit Student Record" : "Add Student"} close={()=>{setOpen(false); setEditingStudent(null);}}>
+        <Modal maxWidth={620} title={editingStudent ? "Edit Student Record" : "Add Student"} close={() => { setOpen(false); setEditingStudent(null); }}>
           {({ isFull }) => (
-          <form className="modal-form" onSubmit={handleInitiateSave}>
-            {/* Last Registered Student Banner in Red */}
-            {lastRegisteredStudentInfo && (
+            <form className="modal-form" onSubmit={handleInitiateSave}>
+              {/* Last Registered Student Banner in Red */}
+              {lastRegisteredStudentInfo && (
+                <div style={{
+                  color: '#ef4444',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 6,
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                  <span>
+                    Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* First Name + Middle Name + Last Name */}
               <div style={{
-                color: '#ef4444',
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: '8px 12px',
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 6,
-                marginBottom: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
+                display: 'grid',
+                gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
+                gap: 14,
+                alignItems: 'start'
               }}>
-                <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
-                <span>
-                  Last registered student: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.name}</strong> | Roll Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.rollNumber}</strong> | Admission Number: <strong style={{ color: '#ef4444' }}>{lastRegisteredStudentInfo.admissionNumber || '—'}</strong>
-                </span>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="e.g. Aarav"
+                    maxLength={15}
+                    value={fnVal || ''}
+                    style={{
+                      borderColor: isFnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                      const fullName = formatStudentFullName(fn, mnVal, lnVal);
+                      setF({ ...f, firstName: fn, name: fullName });
+                    }}
+                  />
+                  {fnVal && /\d/.test(fnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  ) : fnVal && /\s/.test(fnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Spaces are not allowed in First Name
+                    </span>
+                  ) : fnVal && fnVal.length < 3 ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 3 to 15 characters
+                    </span>
+                  ) : null}
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                  </span>
+                  <input
+                    placeholder="e.g. Kumar"
+                    maxLength={15}
+                    value={mnVal}
+                    style={{
+                      borderColor: isMnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
+                      const fullName = formatStudentFullName(fnVal, mn, lnVal);
+                      setF({ ...f, middleName: mn, name: fullName });
+                    }}
+                  />
+                  {mnVal && /\d/.test(mnVal) && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  )}
+                </label>
+                <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="e.g. Sharma"
+                    maxLength={15}
+                    value={lnVal || ''}
+                    style={{
+                      borderColor: isLnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
+                      const fullName = formatStudentFullName(fnVal, mnVal, ln);
+                      setF({ ...f, lastName: ln, name: fullName });
+                    }}
+                  />
+                  {lnVal && /\d/.test(lnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  ) : lnVal && lnVal.length < 3 ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 3 to 15 characters
+                    </span>
+                  ) : null}
+                </label>
               </div>
-            )}
 
-            {/* First Name + Middle Name + Last Name */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
-              gap: 14,
-              alignItems: 'start'
-            }}>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+              {/* Full Name — auto-computed, read-only */}
+              <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
+                  <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                    Auto-generated
+                  </span>
                 </span>
                 <input
-                  required
-                  placeholder="e.g. Aarav"
-                  maxLength={15}
-                  value={fnVal || ''}
-                  style={{
-                    borderColor: isFnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatStudentFullName(fn, mnVal, lnVal);
-                    setF({ ...f, firstName: fn, name: fullName });
-                  }}
+                  readOnly
+                  tabIndex={-1}
+                  style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                  value={(formatStudentFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
+                  placeholder="Full name will appear here automatically"
                 />
-                {fnVal && /\d/.test(fnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                ) : fnVal && /\s/.test(fnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Spaces are not allowed in First Name
-                  </span>
-                ) : fnVal && fnVal.length < 3 ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Must be 3 to 15 characters
-                  </span>
-                ) : null}
               </label>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
-                </span>
-                <input
-                  placeholder="e.g. Kumar"
-                  maxLength={15}
-                  value={mnVal}
-                  style={{
-                    borderColor: isMnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15);
-                    const fullName = formatStudentFullName(fnVal, mn, lnVal);
-                    setF({ ...f, middleName: mn, name: fullName });
-                  }}
-                />
-                {mnVal && /\d/.test(mnVal) && (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                )}
-              </label>
-              <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
-                </span>
-                <input
-                  required
-                  placeholder="e.g. Sharma"
-                  maxLength={15}
-                  value={lnVal || ''}
-                  style={{
-                    borderColor: isLnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15);
-                    const fullName = formatStudentFullName(fnVal, mnVal, ln);
-                    setF({ ...f, lastName: ln, name: fullName });
-                  }}
-                />
-                {lnVal && /\d/.test(lnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                ) : lnVal && lnVal.length < 3 ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Must be 3 to 15 characters
-                  </span>
-                ) : null}
-              </label>
-            </div>
 
-            {/* Full Name — auto-computed, read-only */}
-            <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
-                <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
-                  Auto-generated
-                </span>
-              </span>
-              <input
-                readOnly
-                tabIndex={-1}
-                style={{ backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={(formatStudentFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
-                placeholder="Full name will appear here automatically"
-              />
-            </label>
-
-            {/* Session Selection */}
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Session <span style={{ color: '#ef4444' }}>*</span>
-              </span>
-              <select
-                required
-                value={f.session || ''}
-                onChange={e => setF({ ...f, session: e.target.value })}
-              >
-                <option value="">Select Session</option>
-                {(sessions.length > 0 ? sessions : [
-                  { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
-                  { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
-                  { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
-                ]).map(s => (
-                  <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {/* Session Selection */}
               <label>
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Roll Number <span style={{ color: '#ef4444' }}>*</span>
+                  Session <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <select
+                  required
+                  value={f.session || ''}
+                  onChange={e => setF({ ...f, session: e.target.value })}
+                >
+                  <option value="">Select Session</option>
+                  {(sessions.length > 0 ? sessions : [
+                    { id: 'ay-2024-25', name: '2024-25', label: '2024-25 Academic Session' },
+                    { id: 'ay-2025-26', name: '2025-26', label: '2025-26 Academic Session' },
+                    { id: 'ay-2026-27', name: '2026-27', label: '2026-27 Academic Session' }
+                  ]).map(s => (
+                    <option key={s.id} value={s.name || s.code || s.id}>{s.label || s.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Roll Number <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <input
+                    required
+                    inputMode="numeric"
+                    placeholder="Roll Number (e.g. 101)"
+                    value={f.rollNumber || ''}
+                    style={{
+                      borderColor: isRollDuplicateInUi ? '#ef4444' : undefined,
+                      boxShadow: isRollDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setF({ ...f, rollNumber: val });
+                    }}
+                  />
+                  {isRollDuplicateInUi && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                      Already exist
+                    </span>
+                  )}
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Admission Number <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="e.g. 1001 or ADM-101"
+                    value={f.admissionNumber || ''}
+                    style={{
+                      borderColor: isAdmDuplicateInUi ? '#ef4444' : undefined,
+                      boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const val = e.target.value.trimStart();
+                      setF({ ...f, admissionNumber: val });
+                    }}
+                  />
+                  {isAdmDuplicateInUi && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                      Already exist
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Admission Date <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <input
+                    type="date"
+                    required
+                    min="1900-01-01"
+                    max="9999-12-31"
+                    value={f.admissionDate || f.admission_date || ''}
+                    style={{
+                      borderColor: isAdmDateYearInvalidInUi ? '#ef4444' : undefined,
+                      boxShadow: isAdmDateYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      let val = e.target.value;
+                      if (val) {
+                        const parts = val.split('-');
+                        if (parts[0] && parts[0].length > 4) {
+                          parts[0] = parts[0].slice(0, 4);
+                          val = parts.join('-');
+                        }
+                      }
+                      setF({ ...f, admissionDate: val });
+                    }}
+                  />
+                  {isAdmDateYearInvalidInUi && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Year cannot exceed 4 digits
+                    </span>
+                  )}
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <input
+                    type="date"
+                    required
+                    min="1900-01-01"
+                    max={new Date().toISOString().slice(0, 10)}
+                    value={f.dob || ''}
+                    style={{
+                      borderColor: isDobYearInvalidInUi ? '#ef4444' : undefined,
+                      boxShadow: isDobYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      let val = e.target.value;
+                      if (val) {
+                        const parts = val.split('-');
+                        if (parts[0] && parts[0].length > 4) {
+                          parts[0] = parts[0].slice(0, 4);
+                          val = parts.join('-');
+                        }
+                      }
+                      setF({ ...f, dob: val });
+                    }}
+                  />
+                  {isDobYearInvalidInUi && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Year cannot exceed 4 digits
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Gender
+                  </span>
+                  <select
+                    value={formatGender(f.gender) || ''}
+                    onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Class <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <select
+                  required
+                  value={f.classId || ''}
+                  onChange={e => {
+                    const newClassId = e.target.value;
+                    let newSecId = f.sectionId;
+                    if (newClassId) {
+                      const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
+                      const targetSec = sections.find(s => (s.class_id === newClassId || s.classId === newClassId) && s.name.toUpperCase() === curName.toUpperCase())
+                        || sections.find(s => s.class_id === newClassId || s.classId === newClassId);
+                      newSecId = targetSec ? targetSec.id : f.sectionId;
+                    }
+                    setF({ ...f, classId: newClassId, sectionId: newSecId });
+                  }}
+                >
+                  <option value="">Select Class</option>
+                  {classes.map(c => <option key={c.id} value={c.id}>{c.label || (c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`)}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Section <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <select
+                  required
+                  value={(() => {
+                    if (!f.sectionId) return '';
+                    const found = sections.find(s => s.id === f.sectionId);
+                    if (found) return found.id;
+                    if (f.classId) {
+                      const letter = (f.sectionId === 'B' || f.sectionId.endsWith('-b')) ? 'B' : 'A';
+                      const match = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === letter);
+                      if (match) return match.id;
+                    }
+                    return f.sectionId;
+                  })()}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setF({ ...f, sectionId: val });
+                  }}
+                >
+                  <option value="">Select Section</option>
+                  {(() => {
+                    const selectedCls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
+                    const classNum = selectedCls ? selectedCls.class_number : null;
+                    // If class is chosen, get sections for that specific class; otherwise generic Section A & Section B
+                    const matching = f.classId
+                      ? sections.filter(s => s.class_id === f.classId || (classNum !== null && Number(s.class_number) === Number(classNum)))
+                      : [];
+                    const opts = matching.length > 0 ? matching : [
+                      { id: f.classId ? `sec-${f.classId}-a` : 'sec-a', name: 'A' },
+                      { id: f.classId ? `sec-${f.classId}-b` : 'sec-b', name: 'B' }
+                    ];
+                    // Strictly deduplicate by name ('A', 'B') so only ONE Section A and ONE Section B are displayed
+                    const seen = new Set<string>();
+                    const deduped = [];
+                    for (const opt of opts) {
+                      const name = String(opt.name || '').trim().toUpperCase();
+                      if (name && !seen.has(name)) {
+                        seen.add(name);
+                        deduped.push(opt);
+                      }
+                    }
+                    deduped.sort((a, b) => a.name.localeCompare(b.name));
+                    return deduped.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>);
+                  })()}
+                </select>
+              </label>
+
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Student Email Address <span style={{ color: '#ef4444' }}>*</span>
                 </span>
                 <input
                   required
-                  inputMode="numeric"
-                  placeholder="Roll Number (e.g. 101)"
-                  value={f.rollNumber || ''}
+                  type="email"
+                  placeholder="student@school.edu"
+                  value={f.studentEmail || f.email || ''}
                   style={{
-                    borderColor: isRollDuplicateInUi ? '#ef4444' : undefined,
-                    boxShadow: isRollDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                    borderColor: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '#ef4444' : undefined,
+                    boxShadow: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
                   }}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setF({ ...f, rollNumber: val });
-                  }}
+                  onChange={e => setF({ ...f, studentEmail: e.target.value.trim() })}
                 />
-                {isRollDuplicateInUi && (
+                {isStuEmailDuplicateInUi ? (
                   <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
                     Already exist
                   </span>
-                )}
-              </label>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Admission Number <span style={{ color: '#ef4444' }}>*</span>
-                </span>
-                <input
-                  required
-                  placeholder="e.g. 1001 or ADM-101"
-                  value={f.admissionNumber || ''}
-                  style={{
-                    borderColor: isAdmDuplicateInUi ? '#ef4444' : undefined,
-                    boxShadow: isAdmDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const val = e.target.value.trimStart();
-                    setF({ ...f, admissionNumber: val });
-                  }}
-                />
-                {isAdmDuplicateInUi && (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
-                    Already exist
-                  </span>
-                )}
-              </label>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Admission Date <span style={{ color: '#ef4444' }}>*</span>
-                </span>
-                <input
-                  type="date"
-                  required
-                  min="1900-01-01"
-                  max="9999-12-31"
-                  value={f.admissionDate || f.admission_date || ''}
-                  style={{
-                    borderColor: isAdmDateYearInvalidInUi ? '#ef4444' : undefined,
-                    boxShadow: isAdmDateYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    let val = e.target.value;
-                    if (val) {
-                      const parts = val.split('-');
-                      if (parts[0] && parts[0].length > 4) {
-                        parts[0] = parts[0].slice(0, 4);
-                        val = parts.join('-');
-                      }
-                    }
-                    setF({ ...f, admissionDate: val });
-                  }}
-                />
-                {isAdmDateYearInvalidInUi && (
+                ) : isStuEmailInvalidInUi ? (
                   <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Year cannot exceed 4 digits
+                    Please enter a valid email address
                   </span>
-                )}
+                ) : null}
               </label>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  Date of Birth <span style={{ color: '#ef4444' }}>*</span>
-                </span>
-                <input
-                  type="date"
-                  required
-                  min="1900-01-01"
-                  max={new Date().toISOString().slice(0, 10)}
-                  value={f.dob || ''}
-                  style={{
-                    borderColor: isDobYearInvalidInUi ? '#ef4444' : undefined,
-                    boxShadow: isDobYearInvalidInUi ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    let val = e.target.value;
-                    if (val) {
-                      const parts = val.split('-');
-                      if (parts[0] && parts[0].length > 4) {
-                        parts[0] = parts[0].slice(0, 4);
-                        val = parts.join('-');
-                      }
-                    }
-                    setF({ ...f, dob: val });
-                  }}
-                />
-                {isDobYearInvalidInUi && (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Year cannot exceed 4 digits
+
+              {/* Father's Information */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'var(--card-subtle, #f8fafc)',
+                borderRadius: 8,
+                border: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                marginTop: 4
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>Father's Details</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Father Name
+                    </span>
+                    <input
+                      placeholder="Father Name (Optional)"
+                      value={f.fatherName || ''}
+                      style={{
+                        borderColor: /\d/.test(f.fatherName || '') ? '#ef4444' : undefined,
+                        boxShadow: /\d/.test(f.fatherName || '') ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      onChange={e => setF({ ...f, fatherName: e.target.value })}
+                    />
+                    {/\d/.test(f.fatherName || '') && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Enter a string not a number
+                      </span>
+                    )}
+                  </label>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Father Contact No.
+                    </span>
+                    <input
+                      placeholder="10-digit mobile"
+                      maxLength={10}
+                      inputMode="numeric"
+                      value={f.fatherPhone || ''}
+                      style={{
+                        borderColor: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                        boxShadow: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      onChange={e => {
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setF({ ...f, fatherPhone: cleaned });
+                      }}
+                    />
+                    {f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10 && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Must be 10 digits
+                      </span>
+                    )}
+                  </label>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Father Occupation
+                    </span>
+                    <input
+                      placeholder="Father Occupation"
+                      value={f.fatherOccupation || ''}
+                      onChange={e => setF({ ...f, fatherOccupation: e.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Mother's Information */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'var(--card-subtle, #f8fafc)',
+                borderRadius: 8,
+                border: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>Mother's Details</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Mother Name
+                    </span>
+                    <input
+                      placeholder="Mother Name (Optional)"
+                      value={f.motherName || ''}
+                      style={{
+                        borderColor: /\d/.test(f.motherName || '') ? '#ef4444' : undefined,
+                        boxShadow: /\d/.test(f.motherName || '') ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      onChange={e => setF({ ...f, motherName: e.target.value })}
+                    />
+                    {/\d/.test(f.motherName || '') && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Enter a string not a number
+                      </span>
+                    )}
+                  </label>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Mother Contact No.
+                    </span>
+                    <input
+                      placeholder="10-digit mobile"
+                      maxLength={10}
+                      inputMode="numeric"
+                      value={f.motherPhone || ''}
+                      style={{
+                        borderColor: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                        boxShadow: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      onChange={e => {
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setF({ ...f, motherPhone: cleaned });
+                      }}
+                    />
+                    {f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10 && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Must be 10 digits
+                      </span>
+                    )}
+                  </label>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Mother Occupation
+                    </span>
+                    <input
+                      placeholder="Mother Occupation"
+                      value={f.motherOccupation || ''}
+                      onChange={e => setF({ ...f, motherOccupation: e.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Guardian's Information */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'var(--card-subtle, #f8fafc)',
+                borderRadius: 8,
+                border: '1px solid var(--border, #e2e8f0)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>Guardian's Details</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+                  <label>
+                    <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Guardian Name
+                    </span>
+                    <input
+                      placeholder="Guardian Name (Optional)"
+                      value={f.guardianName || f.guardian_name || ''}
+                      style={{
+                        borderColor: /\d/.test(f.guardianName || f.guardian_name || '') ? '#ef4444' : undefined,
+                        boxShadow: /\d/.test(f.guardianName || f.guardian_name || '') ? '0 0 0 1px #ef4444' : undefined
+                      }}
+                      onChange={e => setF({ ...f, guardianName: e.target.value, guardian_name: e.target.value })}
+                    />
+                    {/\d/.test(f.guardianName || f.guardian_name || '') && (
+                      <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                        Enter a string not a number
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Parent WhatsApp No. <span style={{ color: '#ef4444' }}>*</span>
                   </span>
-                )}
-              </label>
-            </div>
+                  <input
+                    required
+                    placeholder="10-digit mobile"
+                    maxLength={10}
+                    inputMode="numeric"
+                    value={f.parentWhatsappNo || f.parent_whatsapp_no || ''}
+                    style={{
+                      borderColor: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
+                      boxShadow: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setF({ ...f, parentWhatsappNo: cleaned, parent_whatsapp_no: cleaned });
+                    }}
+                  />
+                  {f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10 && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 10 digits
+                    </span>
+                  )}
+                </label>
+                <label>
+                  <span className="label-text">
+                    Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#ef4444' }}>*</span></span>
+                  </span>
+                  <input
+                    required
+                    type="email"
+                    placeholder="parent@example.com"
+                    value={f.parentEmail || ''}
+                    style={{
+                      borderColor: isParentEmailInvalidInUi ? '#ef4444' : undefined,
+                      boxShadow: isParentEmailInvalidInUi ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => setF({ ...f, parentEmail: e.target.value.trim() })}
+                  />
+                  {isParentEmailInvalidInUi && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Please enter a valid email address
+                    </span>
+                  )}
+                </label>
+              </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Gender
-            </span>
-            <select
-              value={formatGender(f.gender) || ''}
-              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
-            >
-              <option value="">Select Gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-        </div>
-        <label>
-          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            Class <span style={{ color: '#ef4444' }}>*</span>
-          </span>
-          <select 
-            required 
-            value={f.classId||''} 
-            onChange={e => {
-              const newClassId = e.target.value;
-              let newSecId = f.sectionId;
-              if (newClassId) {
-                const curName = sections.find(s => s.id === f.sectionId)?.name || (f.sectionId?.endsWith('-b') || f.sectionId === 'B' ? 'B' : 'A');
-                const targetSec = sections.find(s => (s.class_id === newClassId || s.classId === newClassId) && s.name.toUpperCase() === curName.toUpperCase())
-                  || sections.find(s => s.class_id === newClassId || s.classId === newClassId);
-                newSecId = targetSec ? targetSec.id : f.sectionId;
-              }
-              setF({ ...f, classId: newClassId, sectionId: newSecId });
-            }}
-          >
-            <option value="">Select Class</option>
-            {classes.map(c=><option key={c.id} value={c.id}>{c.label || (c.class_number===-1?'Class L KG':c.class_number===0?'Class U KG':`Class ${c.class_number}`)}</option>)}
-          </select>
-        </label>
-        <label>
-          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            Section <span style={{ color: '#ef4444' }}>*</span>
-          </span>
-          <select 
-            required 
-            value={(() => {
-              if (!f.sectionId) return '';
-              const found = sections.find(s => s.id === f.sectionId);
-              if (found) return found.id;
-              if (f.classId) {
-                const letter = (f.sectionId === 'B' || f.sectionId.endsWith('-b')) ? 'B' : 'A';
-                const match = sections.find(s => s.class_id === f.classId && s.name.toUpperCase() === letter);
-                if (match) return match.id;
-              }
-              return f.sectionId;
-            })()} 
-            onChange={e => {
-              const val = e.target.value;
-              setF({ ...f, sectionId: val });
-            }}
-          >
-            <option value="">Select Section</option>
-            {(() => {
-              const selectedCls = classes.find(c => c.id === f.classId || String(c.class_number) === String(f.classId));
-              const classNum = selectedCls ? selectedCls.class_number : null;
-              // If class is chosen, get sections for that specific class; otherwise generic Section A & Section B
-              const matching = f.classId
-                ? sections.filter(s => s.class_id === f.classId || (classNum !== null && Number(s.class_number) === Number(classNum)))
-                : [];
-              const opts = matching.length > 0 ? matching : [
-                { id: f.classId ? `sec-${f.classId}-a` : 'sec-a', name: 'A' },
-                { id: f.classId ? `sec-${f.classId}-b` : 'sec-b', name: 'B' }
-              ];
-              // Strictly deduplicate by name ('A', 'B') so only ONE Section A and ONE Section B are displayed
-              const seen = new Set<string>();
-              const deduped = [];
-              for (const opt of opts) {
-                const name = String(opt.name || '').trim().toUpperCase();
-                if (name && !seen.has(name)) {
-                  seen.add(name);
-                  deduped.push(opt);
-                }
-              }
-              deduped.sort((a,b) => a.name.localeCompare(b.name));
-              return deduped.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>);
-            })()}
-          </select>
-        </label>
-
-        <label>
-          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            Student Email Address <span style={{ color: '#ef4444' }}>*</span>
-          </span>
-          <input
-            required
-            type="email"
-            placeholder="student@school.edu"
-            value={f.studentEmail || f.email || ''}
-            style={{
-              borderColor: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '#ef4444' : undefined,
-              boxShadow: (isStuEmailDuplicateInUi || isStuEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
-            }}
-            onChange={e => setF({ ...f, studentEmail: e.target.value.trim() })}
-          />
-          {isStuEmailDuplicateInUi ? (
-            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
-              Already exist
-            </span>
-          ) : isStuEmailInvalidInUi ? (
-            <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-              Please enter a valid email address
-            </span>
-          ) : null}
-        </label>
-
-        {/* Father's Information */}
-        <div style={{
-          padding: '12px 14px',
-          background: 'var(--card-subtle, #f8fafc)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #e2e8f0)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          marginTop: 4
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Father's Details</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Father Name
-              </span>
-              <input
-                placeholder="Father Name (Optional)"
-                value={f.fatherName || ''}
-                style={{
-                  borderColor: /\d/.test(f.fatherName || '') ? '#ef4444' : undefined,
-                  boxShadow: /\d/.test(f.fatherName || '') ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => setF({ ...f, fatherName: e.target.value })}
-              />
-              {/\d/.test(f.fatherName || '') && (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Enter a string not a number
-                </span>
+              {editingStudent && (
+                <label>Account Status
+                  <select
+                    value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                    onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE', status: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', marginTop: 4 }}
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Deactive (Inactive)</option>
+                  </select>
+                </label>
               )}
-            </label>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Father Contact No.
-              </span>
-              <input
-                placeholder="10-digit mobile"
-                maxLength={10}
-                inputMode="numeric"
-                value={f.fatherPhone || ''}
-                style={{
-                  borderColor: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                  boxShadow: (f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => {
-                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setF({ ...f, fatherPhone: cleaned });
-                }}
-              />
-              {f.fatherPhone && String(f.fatherPhone).replace(/\D/g, '').length < 10 && (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Must be 10 digits
-                </span>
-              )}
-            </label>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Father Occupation
-              </span>
-              <input
-                placeholder="Father Occupation"
-                value={f.fatherOccupation || ''}
-                onChange={e => setF({ ...f, fatherOccupation: e.target.value })}
-              />
-            </label>
-          </div>
-        </div>
 
-        {/* Mother's Information */}
-        <div style={{
-          padding: '12px 14px',
-          background: 'var(--card-subtle, #f8fafc)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #e2e8f0)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Mother's Details</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Mother Name
-              </span>
-              <input
-                placeholder="Mother Name (Optional)"
-                value={f.motherName || ''}
-                style={{
-                  borderColor: /\d/.test(f.motherName || '') ? '#ef4444' : undefined,
-                  boxShadow: /\d/.test(f.motherName || '') ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => setF({ ...f, motherName: e.target.value })}
-              />
-              {/\d/.test(f.motherName || '') && (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Enter a string not a number
-                </span>
-              )}
-            </label>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Mother Contact No.
-              </span>
-              <input
-                placeholder="10-digit mobile"
-                maxLength={10}
-                inputMode="numeric"
-                value={f.motherPhone || ''}
-                style={{
-                  borderColor: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                  boxShadow: (f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => {
-                  const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setF({ ...f, motherPhone: cleaned });
-                }}
-              />
-              {f.motherPhone && String(f.motherPhone).replace(/\D/g, '').length < 10 && (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Must be 10 digits
-                </span>
-              )}
-            </label>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Mother Occupation
-              </span>
-              <input
-                placeholder="Mother Occupation"
-                value={f.motherOccupation || ''}
-                onChange={e => setF({ ...f, motherOccupation: e.target.value })}
-              />
-            </label>
-          </div>
-        </div>
+              {/* Student Portal Password & Account Setup Box */}
+              <div className="student-portal-box">
+                <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
+                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  {editingStudent ? 'Update Portal Password (Optional)' : 'Portal Password & Setup'}
+                </div>
+                <label style={{ display: 'block', fontSize: 12, margin: '4px 0 10px 0' }} className="student-portal-box-desc">
+                  {editingStudent
+                    ? 'Leave blank to retain current password, or set a new password for student portal login:'
+                    : 'Optional initial login password (leave empty to let student/parent activate via link):'}
+                  <div style={{ position: 'relative', marginTop: 6, display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showStudentPassword ? 'text' : 'password'}
+                      placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
+                      value={f.password || ''}
+                      onChange={e => setF({ ...f, password: e.target.value })}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowStudentPassword(s => !s)}
+                      className="password-toggle-btn"
+                      title={showStudentPassword ? "Hide password" : "Show password"}
+                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+                    >
+                      {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </label>
+              </div>
 
-        {/* Guardian's Information */}
-        <div style={{
-          padding: '12px 14px',
-          background: 'var(--card-subtle, #f8fafc)',
-          borderRadius: 8,
-          border: '1px solid var(--border, #e2e8f0)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Guardian's Details</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Guardian Name
-              </span>
-              <input
-                placeholder="Guardian Name (Optional)"
-                value={f.guardianName || f.guardian_name || ''}
-                style={{
-                  borderColor: /\d/.test(f.guardianName || f.guardian_name || '') ? '#ef4444' : undefined,
-                  boxShadow: /\d/.test(f.guardianName || f.guardian_name || '') ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => setF({ ...f, guardianName: e.target.value, guardian_name: e.target.value })}
-              />
-              {/\d/.test(f.guardianName || f.guardian_name || '') && (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Enter a string not a number
-                </span>
-              )}
-            </label>
-          </div>
-        </div>
+              {/* Student Portal Login Credentials Section */}
+              <div className="student-portal-box">
+                <div className="student-portal-box-title">
+                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  Student Portal Login Email Option
+                </div>
+                <p className="student-portal-box-desc">
+                  Select which email will be used to log in to the <b>Student Portal</b>:
+                </p>
+                <div className="student-portal-radio-group">
+                  <label className="student-portal-radio-label">
+                    <input
+                      type="radio"
+                      name="loginOption"
+                      value="STUDENT"
+                      checked={(f.loginOption || 'STUDENT') === 'STUDENT'}
+                      onChange={e => setF({ ...f, loginOption: e.target.value })}
+                    />
+                    <span>🎓 <b>Use Student Email</b> for Student Portal Login</span>
+                  </label>
+                  <label className="student-portal-radio-label">
+                    <input
+                      type="radio"
+                      name="loginOption"
+                      value="PARENT"
+                      checked={f.loginOption === 'PARENT'}
+                      onChange={e => setF({ ...f, loginOption: e.target.value })}
+                    />
+                    <span>👨‍👩‍👧 <b>Use Parent Email</b> for Student Portal Login</span>
+                  </label>
+                  <label className="student-portal-radio-label">
+                    <input
+                      type="radio"
+                      name="loginOption"
+                      value="NONE"
+                      checked={f.loginOption === 'NONE'}
+                      onChange={e => setF({ ...f, loginOption: e.target.value })}
+                    />
+                    <span>⚪ <b>Offline Record Only</b> (No portal account created)</span>
+                  </label>
+                </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Parent WhatsApp No. <span style={{ color: '#ef4444' }}>*</span>
-            </span>
-            <input
-              required
-              placeholder="10-digit mobile"
-              maxLength={10}
-              inputMode="numeric"
-              value={f.parentWhatsappNo || f.parent_whatsapp_no || ''}
-              style={{
-                borderColor: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '#ef4444' : undefined,
-                boxShadow: (f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10) ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => {
-                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setF({ ...f, parentWhatsappNo: cleaned, parent_whatsapp_no: cleaned });
-              }}
-            />
-            {f.parentWhatsappNo && String(f.parentWhatsappNo).replace(/\D/g, '').length < 10 && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Must be 10 digits
-              </span>
-            )}
-          </label>
-          <label>
-            <span className="label-text">
-              Parent Email Address (for Login / Absent <span style={{ whiteSpace: 'nowrap' }}>Alerts)&nbsp;<span style={{ color: '#ef4444' }}>*</span></span>
-            </span>
-            <input
-              required
-              type="email"
-              placeholder="parent@example.com"
-              value={f.parentEmail||''}
-              style={{
-                borderColor: isParentEmailInvalidInUi ? '#ef4444' : undefined,
-                boxShadow: isParentEmailInvalidInUi ? '0 0 0 1px #ef4444' : undefined
-              }}
-              onChange={e => setF({...f,parentEmail:e.target.value.trim()})}
-            />
-            {isParentEmailInvalidInUi && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Please enter a valid email address
-              </span>
-            )}
-          </label>
-        </div>
+                <label className="student-portal-invite-note">
+                  <input
+                    type="checkbox"
+                    checked={f.sendInviteEmail !== false}
+                    onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+                  />
+                  <span>Send password setup email to selected login email (secure 24-hour setup link; spam-filtered)</span>
+                </label>
+              </div>
 
-        {editingStudent && (
-          <label>Account Status
-            <select
-              value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
-              onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE', status: e.target.value })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border, #cbd5e1)', marginTop: 4 }}
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Deactive (Inactive)</option>
-            </select>
-          </label>
-        )}
-
-        {/* Student Portal Password & Account Setup Box */}
-        <div className="student-portal-box">
-          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
-            <KeyRound size={14} style={{ color: '#2563eb' }} />
-            {editingStudent ? 'Update Portal Password (Optional)' : 'Portal Password & Setup'}
-          </div>
-          <label style={{ display: 'block', fontSize: 12, margin: '4px 0 10px 0' }} className="student-portal-box-desc">
-            {editingStudent
-              ? 'Leave blank to retain current password, or set a new password for student portal login:'
-              : 'Optional initial login password (leave empty to let student/parent activate via link):'}
-            <div style={{ position: 'relative', marginTop: 6, display: 'flex', alignItems: 'center' }}>
-              <input
-                type={showStudentPassword ? 'text' : 'password'}
-                placeholder={editingStudent ? 'New password (min 6 characters, e.g. ChangeMe123!)' : 'Optional initial password'}
-                value={f.password || ''}
-                onChange={e => setF({ ...f, password: e.target.value })}
-                style={{ width: '100%', paddingRight: 40 }}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowStudentPassword(s => !s)}
-                className="password-toggle-btn"
-                title={showStudentPassword ? "Hide password" : "Show password"}
-                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
-              >
-                {showStudentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </label>
-        </div>
-
-        {/* Student Portal Login Credentials Section */}
-        <div className="student-portal-box">
-          <div className="student-portal-box-title">
-            <KeyRound size={14} style={{ color: '#2563eb' }} />
-            Student Portal Login Email Option
-          </div>
-          <p className="student-portal-box-desc">
-            Select which email will be used to log in to the <b>Student Portal</b>:
-          </p>
-          <div className="student-portal-radio-group">
-            <label className="student-portal-radio-label">
-              <input
-                type="radio"
-                name="loginOption"
-                value="STUDENT"
-                checked={(f.loginOption || 'STUDENT') === 'STUDENT'}
-                onChange={e => setF({ ...f, loginOption: e.target.value })}
-              />
-              <span>🎓 <b>Use Student Email</b> for Student Portal Login</span>
-            </label>
-            <label className="student-portal-radio-label">
-              <input
-                type="radio"
-                name="loginOption"
-                value="PARENT"
-                checked={f.loginOption === 'PARENT'}
-                onChange={e => setF({ ...f, loginOption: e.target.value })}
-              />
-              <span>👨‍👩‍👧 <b>Use Parent Email</b> for Student Portal Login</span>
-            </label>
-            <label className="student-portal-radio-label">
-              <input
-                type="radio"
-                name="loginOption"
-                value="NONE"
-                checked={f.loginOption === 'NONE'}
-                onChange={e => setF({ ...f, loginOption: e.target.value })}
-              />
-              <span>⚪ <b>Offline Record Only</b> (No portal account created)</span>
-            </label>
-          </div>
-
-          <label className="student-portal-invite-note">
-            <input
-              type="checkbox"
-              checked={f.sendInviteEmail !== false}
-              onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
-            />
-            <span>Send password setup email to selected login email (secure 24-hour setup link; spam-filtered)</span>
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            onClick={() => { setOpen(false); setEditingStudent(null); setF({}); }}
-          >
-            Cancel
-          </button>
-          <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
-        </div>
-      </form>
-      )}
-    </Modal>
-  );
-})()}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => { setOpen(false); setEditingStudent(null); setF({}); }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving}>{saving ? 'Saving student...' : editingStudent ? 'Update student record' : 'Save student & send invite'}</button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      );
+    })()}
 
     {/* EXCEL / CSV BULK IMPORT MODAL — Multi-Step Wizard */}
     {importOpen && (
-      <Modal 
-        title="Bulk Import Students (Excel / CSV)" 
+      <Modal
+        title="Bulk Import Students (Excel / CSV)"
         fullWindow={true}
         close={() => {
-          setImportOpen(false); 
-          setPreviewRows([]); 
-          setImportStep(1); 
-          setImportSession(''); 
-          setImportClass(''); 
+          setImportOpen(false);
+          setPreviewRows([]);
+          setImportStep(1);
+          setImportSession('');
+          setImportClass('');
           setImportSection('');
         }}
       >
@@ -9257,41 +9242,41 @@ function Students(){
                             <td style={{ color: r._errors?.length ? '#dc2626' : '#94a3b8', fontSize: 11, textAlign: 'center', fontWeight: r._errors?.length ? 700 : 500 }}>
                               {r._errors?.length ? `⚠ ${rowNum}` : rowNum}
                             </td>
-                            <td style={{ color: r._errors?.some((e:any)=>e.field==='First Name') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'First Name') ? '#dc2626' : undefined }}>
                               {r.firstName || r.name?.split(' ')[0] || '—'}
-                              {r._errors?.filter((e:any)=>e.field==='First Name').map((e:any,j:number)=>
-                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              {r._errors?.filter((e: any) => e.field === 'First Name').map((e: any, j: number) =>
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
                               )}
                             </td>
                             <td>
                               {r.middleName || r.middle_name || '—'}
                             </td>
-                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Last Name') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Last Name') ? '#dc2626' : undefined }}>
                               {r.lastName || r.name?.split(' ').slice(1).join(' ') || '—'}
-                              {r._errors?.filter((e:any)=>e.field==='Last Name').map((e:any,j:number)=>
-                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              {r._errors?.filter((e: any) => e.field === 'Last Name').map((e: any, j: number) =>
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
                               )}
                             </td>
                             <td><b>{r.name}</b></td>
-                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Admission Number') ? '#dc2626' : undefined }}>
-                              {r.admissionNumber||'—'}
-                              {r._errors?.filter((e:any)=>e.field==='Admission Number').map((e:any,j:number)=>
-                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Admission Number') ? '#dc2626' : undefined }}>
+                              {r.admissionNumber || '—'}
+                              {r._errors?.filter((e: any) => e.field === 'Admission Number').map((e: any, j: number) =>
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
                               )}
                             </td>
                             <td style={{ fontSize: 12 }}>
                               {r.admissionDate || r.admission_date || '—'}
                             </td>
-                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Roll Number') ? '#dc2626' : undefined }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Roll Number') ? '#dc2626' : undefined }}>
                               <span className="roll">{r.rollNumber}</span>
                             </td>
                             <td><span style={{ background: 'rgba(37, 99, 235, 0.12)', color: '#3b82f6', borderRadius: 4, padding: '2px 6px', fontSize: 11 }}>{r.session || importSession}</span></td>
                             <td>{r.classLabel || r.classNumber}</td>
                             <td>{r.sectionName}</td>
-                            <td style={{ color: r._errors?.some((e:any)=>e.field==='Date of Birth') ? '#dc2626' : undefined, fontSize: 12 }}>
+                            <td style={{ color: r._errors?.some((e: any) => e.field === 'Date of Birth') ? '#dc2626' : undefined, fontSize: 12 }}>
                               {r.dob ? toDdMmYyyy(r.dob) : '—'}
-                              {r._errors?.filter((e:any)=>e.field==='Date of Birth').map((e:any,j:number)=>
-                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              {r._errors?.filter((e: any) => e.field === 'Date of Birth').map((e: any, j: number) =>
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
                               )}
                             </td>
                             <td>
@@ -9311,12 +9296,12 @@ function Students(){
                                 </span>
                               ) : '—'}
                             </td>
-                            <td style={{ fontSize: 12, color: r._errors?.some((e:any)=>e.field==='Father Contact No') ? '#dc2626' : undefined }}>
+                            <td style={{ fontSize: 12, color: r._errors?.some((e: any) => e.field === 'Father Contact No') ? '#dc2626' : undefined }}>
                               <div><b>{r.fatherName || '—'}</b></div>
                               <div style={{ fontSize: 11, color: '#64748b' }}>{r.fatherPhone || r.parentPhone || ''}</div>
                               {r.fatherOccupation && <div style={{ fontSize: 10, color: '#94a3b8' }}>{r.fatherOccupation}</div>}
-                              {r._errors?.filter((e:any)=>e.field==='Father Contact No').map((e:any,j:number)=>
-                                <div key={j} style={{fontSize:10,color:'#dc2626'}}>{e.message}</div>
+                              {r._errors?.filter((e: any) => e.field === 'Father Contact No').map((e: any, j: number) =>
+                                <div key={j} style={{ fontSize: 10, color: '#dc2626' }}>{e.message}</div>
                               )}
                             </td>
                             <td style={{ fontSize: 12 }}>
@@ -9473,8 +9458,8 @@ function Students(){
                   >
                     {importing
                       ? (importProgress
-                          ? `Uploading: ${importProgress.percent}% (${formatBytes(importProgress.uploadedBytes)} / ${formatBytes(importProgress.totalBytes)})`
-                          : 'Importing Students...')
+                        ? `Uploading: ${importProgress.percent}% (${formatBytes(importProgress.uploadedBytes)} / ${formatBytes(importProgress.totalBytes)})`
+                        : 'Importing Students...')
                       : `Confirm & Import ${studentValidCount} Valid Students`}
                   </button>
                 </div>
@@ -9525,7 +9510,7 @@ function Students(){
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 600 }}>
-                {selectedIds.size > 0 
+                {selectedIds.size > 0
                   ? `Exporting ${selectedIds.size} manually selected student record${selectedIds.size > 1 ? 's' : ''}`
                   : `Exporting ${prepareStudentExportData().length} student record${prepareStudentExportData().length !== 1 ? 's' : ''} matching current filters`}
               </div>
@@ -9536,8 +9521,8 @@ function Students(){
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleExportStudentsExcel}
                 disabled={prepareStudentExportData().length === 0}
                 style={{
@@ -9551,8 +9536,8 @@ function Students(){
               >
                 <FileSpreadsheet size={15} /> Download Excel (.xlsx)
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleExportStudentsCSV}
                 disabled={prepareStudentExportData().length === 0}
                 className="btn-secondary"
@@ -9736,8 +9721,8 @@ function toDdMmYyyy(val: any): string {
 }
 
 /* ────── Teachers ────── */
-function Teachers(){
-  const {user}=useAuth();
+function Teachers() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(() => {
@@ -9755,28 +9740,28 @@ function Teachers(){
     return () => clearInterval(timer);
   }, []);
 
-  const [rows,setRows]=useState<any[]>([]);
-  const [open,setOpen]=useState(false);
+  const [rows, setRows] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
   const [showTeacherPassword, setShowTeacherPassword] = useState(false);
-  const [importOpen,setImportOpen]=useState(false);
-  const [exportOpen,setExportOpen]=useState(false);
-  const [addTeacherPreview,setAddTeacherPreview]=useState(false);
-  const [f,setF]=useState<any>({});
-  const [saving,setSaving]=useState(false);
-  const [selectedIds,setSelectedIds]=useState<Set<string>>(new Set());
-  const [search,setSearch]=useState('');
-  const [genderFilter,setGenderFilter]=useState('');
-  const [designationFilter,setDesignationFilter]=useState('');
-  const [previewRows,setPreviewRows]=useState<any[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [addTeacherPreview, setAddTeacherPreview] = useState(false);
+  const [f, setF] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+  const [designationFilter, setDesignationFilter] = useState('');
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
   const [importErrors, setImportErrors] = useState<{ row: number; field: string; message: string }[]>([]);
   const [importPreviewErrorFilter, setImportPreviewErrorFilter] = useState<'all' | 'valid' | 'errors'>('all');
-  const [importing,setImporting]=useState(false);
+  const [importing, setImporting] = useState(false);
   const [importPreviewPage, setImportPreviewPage] = useState(1);
   const [importPreviewPageSize, setImportPreviewPageSize] = useState<number>(25);
   const [importPreviewSearch, setImportPreviewSearch] = useState('');
   const [directoryPage, setDirectoryPage] = useState(1);
   const [directoryPageSize, setDirectoryPageSize] = useState<number>(25);
-  const [toastNotice,setToastNotice]=useState<{type:'success'|'error'|'info';message:string;resetUrl?:string}|null>(null);
+  const [toastNotice, setToastNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string; resetUrl?: string } | null>(null);
 
   const lastRegisteredTeacherInfo = useMemo(() => {
     try {
@@ -9785,7 +9770,7 @@ function Teachers(){
         const parsed = JSON.parse(stored);
         if (parsed?.name) return parsed;
       }
-    } catch {}
+    } catch { }
 
     if (!rows || rows.length === 0) return null;
 
@@ -9835,7 +9820,7 @@ function Teachers(){
     }
     scrollToDirectoryTop();
   }, [directoryPage, scrollToDirectoryTop]);
-  const [editingTeacher,setEditingTeacher]=useState<any|null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
 
   // Universal Preview State for Teacher Add/Edit
   const [teacherPreview, setTeacherPreview] = useState<{
@@ -9897,18 +9882,18 @@ function Teachers(){
   });
 
   // Teaching allocations state
-  const [allAssignments,setAllAssignments]=useState<any[]>([]);
-  const [allocOpen,setAllocOpen]=useState(false);
-  const [allocTeacher,setAllocTeacher]=useState<any>(null);
-  const [allocRows,setAllocRows]=useState<any[]>([]);
-  const [allocSaving,setAllocSaving]=useState(false);
-  const [allocSubjects,setAllocSubjects]=useState<any[]>([]);
-  const [allocClasses,setAllocClasses]=useState<any[]>([]);
-  const [allocSections,setAllocSections]=useState<any[]>([]);
-  const [allocSessions,setAllocSessions]=useState<any[]>([]);
-  const [allocDesignations,setAllocDesignations]=useState<any[]>([]);
+  const [allAssignments, setAllAssignments] = useState<any[]>([]);
+  const [allocOpen, setAllocOpen] = useState(false);
+  const [allocTeacher, setAllocTeacher] = useState<any>(null);
+  const [allocRows, setAllocRows] = useState<any[]>([]);
+  const [allocSaving, setAllocSaving] = useState(false);
+  const [allocSubjects, setAllocSubjects] = useState<any[]>([]);
+  const [allocClasses, setAllocClasses] = useState<any[]>([]);
+  const [allocSections, setAllocSections] = useState<any[]>([]);
+  const [allocSessions, setAllocSessions] = useState<any[]>([]);
+  const [allocDesignations, setAllocDesignations] = useState<any[]>([]);
 
-  async function load(){
+  async function load() {
     setLoading(true);
     setLoadProgress(15);
     const progressTimer = setInterval(() => {
@@ -9922,11 +9907,11 @@ function Teachers(){
     try {
       const [tRes, aRes, subRes, clsRes, secRes, desigRes] = await Promise.all([
         api.get('/teachers'),
-        api.get('/teacher-assignments').catch(()=>({data:[]})),
-        api.get('/subjects').catch(()=>({data:[]})),
-        api.get('/classes').catch(()=>({data:[]})),
-        api.get('/sections').catch(()=>({data:[]})),
-        api.get('/designations').catch(()=>({data:[]}))
+        api.get('/teacher-assignments').catch(() => ({ data: [] })),
+        api.get('/subjects').catch(() => ({ data: [] })),
+        api.get('/classes').catch(() => ({ data: [] })),
+        api.get('/sections').catch(() => ({ data: [] })),
+        api.get('/designations').catch(() => ({ data: [] }))
       ]);
       setLoadProgress(95);
       setRows(tRes.data || []);
@@ -9940,8 +9925,8 @@ function Teachers(){
       setLastFetchedAt(now);
       try {
         localStorage.setItem('attendo_teachers_last_fetched', now.toISOString());
-      } catch {}
-    } catch(err) {
+      } catch { }
+    } catch (err) {
       console.error('Failed to load teachers:', err);
     } finally {
       clearInterval(progressTimer);
@@ -9952,18 +9937,18 @@ function Teachers(){
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     load();
     api.get('/dashboard/school').then(r => {
-      if(r.data?.academicYears) setAllocSessions(r.data.academicYears);
-    }).catch(()=>{});
-  },[]);
+      if (r.data?.academicYears) setAllocSessions(r.data.academicYears);
+    }).catch(() => { });
+  }, []);
 
   // Open allocations modal for a specific teacher
   function openAllocModal(t: any) {
     setAllocTeacher(t);
     const existing = allAssignments.filter(a => a.teacher_id === t.id);
-    setAllocRows(existing.length > 0 ? existing.map(a => ({...a})) : [{
+    setAllocRows(existing.length > 0 ? existing.map(a => ({ ...a })) : [{
       subject_id: '', subject_name: '', class_id: '', class_number: '', section_id: '', section_name: '',
       session_id: '', session_name: '', alt_teacher_id: '', alt_teacher_name: ''
     }]);
@@ -9974,7 +9959,7 @@ function Teachers(){
     setAllocRows(prev => [...prev, { subject_id: '', class_id: '', section_id: '', session_id: '', alt_teacher_id: '' }]);
   }
   function removeAllocRow(idx: number) {
-    setAllocRows(prev => prev.filter((_,i) => i !== idx));
+    setAllocRows(prev => prev.filter((_, i) => i !== idx));
   }
   function updateAllocRow(idx: number, field: string, value: string) {
     setAllocRows(prev => prev.map((r, i) => {
@@ -10000,11 +9985,11 @@ function Teachers(){
 
     const headers = ['Subject', 'Class', 'Section', 'Session', 'Alt / Substitute Faculty'];
     const tableRows = validRows.map(r => [
-      r.subject_name || allocSubjects.find(s=>s.id===r.subject_id)?.name || '—',
-      `Class ${r.class_number || allocClasses.find(c=>c.id===r.class_id)?.class_number || '—'}`,
-      `Section ${r.section_name || allocSections.find(s=>s.id===r.section_id)?.name || 'All'}`,
-      r.session_name || allocSessions.find(s=>s.id===r.session_id)?.name || 'Default Session',
-      r.alt_teacher_name || rows.find(t=>t.id===r.alt_teacher_id)?.name || 'None'
+      r.subject_name || allocSubjects.find(s => s.id === r.subject_id)?.name || '—',
+      `Class ${r.class_number || allocClasses.find(c => c.id === r.class_id)?.class_number || '—'}`,
+      `Section ${r.section_name || allocSections.find(s => s.id === r.section_id)?.name || 'All'}`,
+      r.session_name || allocSessions.find(s => s.id === r.session_id)?.name || 'Default Session',
+      r.alt_teacher_name || rows.find(t => t.id === r.alt_teacher_id)?.name || 'None'
     ]);
 
     setAllocPreview({
@@ -10107,7 +10092,7 @@ function Teachers(){
       }
       const fullName = (fn || mn || ln) ? formatTeacherFullName(fn, mn, ln) : String(r.name || '').toUpperCase();
       const allocSummary = getTeacherAllocSummary(r.id);
-      
+
       return {
         'Savior_No': r.savior_no || r.employee_id || r.Savior_No || '',
         'First Name': String(fn || '').toUpperCase(),
@@ -10136,8 +10121,8 @@ function Teachers(){
     ws['!cols'] = [16, 14, 14, 14, 26, 26, 12, 16, 14, 10, 12, 20, 16].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Faculty');
-    const filterDesc = selectedIds.size > 0 
-      ? `Selected_${selectedIds.size}` 
+    const filterDesc = selectedIds.size > 0
+      ? `Selected_${selectedIds.size}`
       : ([genderFilter && `Gender_${genderFilter}`, designationFilter && `Designation_${designationFilter}`].filter(Boolean).join('_') || 'All');
     XLSX.writeFile(wb, `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
@@ -10153,8 +10138,8 @@ function Teachers(){
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    const filterDesc = selectedIds.size > 0 
-      ? `Selected_${selectedIds.size}` 
+    const filterDesc = selectedIds.size > 0
+      ? `Selected_${selectedIds.size}`
       : ([genderFilter && `Gender_${genderFilter}`, designationFilter && `Designation_${designationFilter}`].filter(Boolean).join('_') || 'All');
     link.setAttribute('download', `Faculty_Export_${filterDesc}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
@@ -10424,7 +10409,7 @@ function Teachers(){
             name: created.name || payload.name,
             employeeId: created.employee_id || payload.employeeId || '—'
           }));
-        } catch {}
+        } catch { }
         if (created.invite_sent) {
           setToastNotice({
             type: 'success',
@@ -10447,7 +10432,7 @@ function Teachers(){
           const k = localStorage.key(i);
           if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
         }
-      } catch {}
+      } catch { }
       window.dispatchEvent(new Event('dashboardShouldRefresh'));
       load();
     } catch (err: any) {
@@ -10518,7 +10503,7 @@ function Teachers(){
           const k = localStorage.key(i);
           if (k && k.startsWith('dashboard_cache_')) localStorage.removeItem(k);
         }
-      } catch {}
+      } catch { }
       window.dispatchEvent(new Event('dashboardShouldRefresh'));
     } catch (err: any) {
       setDeleteTeacherDialog(prev => ({
@@ -10554,7 +10539,7 @@ function Teachers(){
   const filtered = rows.filter(r => {
     const q = search.toLowerCase();
     const matchesSearch = !q || (
-      r.name.toLowerCase().includes(q) || 
+      r.name.toLowerCase().includes(q) ||
       r.email.toLowerCase().includes(q) ||
       String(r.employee_id || r.savior_no || '').toLowerCase().includes(q)
     );
@@ -10796,7 +10781,7 @@ function Teachers(){
             name: teacherName,
             employeeId: teacherEmpId
           }));
-        } catch {}
+        } catch { }
       }
       alert(`Successfully registered ${res.data.count} teachers! Credentials and setup links have been dispatched via SMTP.`);
       setImportOpen(false);
@@ -10866,7 +10851,7 @@ function Teachers(){
         <p className="muted" style={{ margin: '4px 0 0' }}>Appointed faculty accounts, classroom attendance permissions, and bulk onboarding.</p>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button 
+        <button
           type="button"
           onClick={() => setExportOpen(true)}
           style={{
@@ -10888,14 +10873,14 @@ function Teachers(){
         >
           <Download size={16} /> Export Excel / CSV{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
         </button>
-        <button 
+        <button
           onClick={() => setImportOpen(true)}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#ffffff' }}
           title="Import teachers via Excel spreadsheet or CSV with interactive preview"
         >
           <FileSpreadsheet size={16} /> Import Excel / CSV
         </button>
-        <button 
+        <button
           onClick={() => {
             setEditingTeacher(null);
             setF({
@@ -10984,15 +10969,15 @@ function Teachers(){
       {/* Box Header Toolbar */}
       <div className="directory-box-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', flexShrink: 0 }}>
-          <input 
+          <input
             placeholder="🔍 Search teacher name, email, or employee ID..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ width: 280, maxWidth: '100%', padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
             id="teacher-search-input"
           />
-          <select 
-            value={genderFilter} 
+          <select
+            value={genderFilter}
             onChange={e => setGenderFilter(e.target.value)}
             style={{
               padding: '7px 12px',
@@ -11013,8 +10998,8 @@ function Teachers(){
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
-          <select 
-            value={designationFilter} 
+          <select
+            value={designationFilter}
             onChange={e => setDesignationFilter(e.target.value)}
             style={{
               padding: '7px 12px',
@@ -11037,9 +11022,9 @@ function Teachers(){
             ))}
           </select>
           {(search || genderFilter || designationFilter) && (
-            <button 
-              type="button" 
-              className="btn-secondary" 
+            <button
+              type="button"
+              className="btn-secondary"
               onClick={() => { setSearch(''); setGenderFilter(''); setDesignationFilter(''); }}
               style={{ padding: '6px 12px', fontSize: 12, flexShrink: 0, whiteSpace: 'nowrap' }}
               title="Clear active search and filters"
@@ -11049,84 +11034,324 @@ function Teachers(){
             </button>
           )}
         </div>
-      
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {/* Refresh Button */}
-        <button 
-          type="button"
-          onClick={() => load()}
-          disabled={loading}
-          className="directory-refresh-btn"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 12px',
-            background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border, #cbd5e1)',
-            borderRadius: 'var(--radius-sm, 6px)',
-            fontSize: 12.5,
-            color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            transition: 'all 0.15s ease'
-          }}
-          title="Refetch faculty records from database"
-          id="teachers-directory-refresh-btn"
-        >
-          <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
-          <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
-        </button>
-        {/* Last Fetched Time Badge */}
-        <div 
-          className="last-fetched-badge"
-          title="Last successful synchronization with database"
-        >
-          <Clock size={12} />
-          <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
-          {loading && (
-            <span style={{
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={() => load()}
+            disabled={loading}
+            className="directory-refresh-btn"
+            style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
-              marginLeft: 3,
-              padding: '1px 5px',
-              borderRadius: 4,
-              background: 'rgba(37, 99, 235, 0.16)',
-              color: '#3b82f6',
-              fontWeight: 600,
-              fontSize: 11
-            }}>
-              <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-              {loadProgress}%
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
-          <span>Rows per page:</span>
-          <select
-            value={directoryPageSize}
-            onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
-            className="directory-select"
-            style={{
-              padding: '4px 8px',
-              fontSize: 12.5,
-              borderRadius: 6,
+              gap: 6,
+              padding: '6px 12px',
+              background: loading ? 'var(--card-subtle, #1e293b)' : 'var(--card-bg, #ffffff)',
               border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
+              borderRadius: 'var(--radius-sm, 6px)',
+              fontSize: 12.5,
+              color: loading ? 'var(--text-muted, #94a3b8)' : 'var(--text, #1e293b)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              transition: 'all 0.15s ease'
             }}
+            title="Refetch faculty records from database"
+            id="teachers-directory-refresh-btn"
           >
-            <option value={10}>10</option>
-            <option value={25}>25 (Default)</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={250}>250</option>
-            <option value={500}>500</option>
-            <option value={100000}>All ({filtered.length})</option>
-          </select>
+            <RefreshCw size={13} style={{ animation: loading ? 'spinAnim 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+            <span>{loading ? `Refetching (${loadProgress}%)` : 'Refresh'}</span>
+          </button>
+          {/* Last Fetched Time Badge */}
+          <div
+            className="last-fetched-badge"
+            title="Last successful synchronization with database"
+          >
+            <Clock size={12} />
+            <span>Last fetched: <b>{formatLastFetched(lastFetchedAt)}</b></span>
+            {loading && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                marginLeft: 3,
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: 'rgba(37, 99, 235, 0.16)',
+                color: '#3b82f6',
+                fontWeight: 600,
+                fontSize: 11
+              }}>
+                <Loader2 size={10} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+                {loadProgress}%
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary, #475569)' }}>
+            <span>Rows per page:</span>
+            <select
+              value={directoryPageSize}
+              onChange={e => { setDirectoryPageSize(Number(e.target.value)); setDirectoryPage(1); scrollToDirectoryTop(); }}
+              className="directory-select"
+              style={{
+                padding: '4px 8px',
+                fontSize: 12.5,
+                borderRadius: 6,
+                border: '1px solid var(--border, #cbd5e1)',
+                cursor: 'pointer'
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25 (Default)</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
+              <option value={100000}>All ({filtered.length})</option>
+            </select>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {filtered.length === 0 ? (
+              'Showing 0 faculty members'
+            ) : (
+              <>
+                Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> faculty members
+                {filtered.length !== rows.length && (
+                  <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
+                )}
+              </>
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+      </div>
+
+      {/* Box Body (Scrollable Table Area) */}
+      <div className="directory-box-body" ref={tableBodyRef}>
+        {loading && displayedTeachers.length > 0 && (
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            background: 'rgba(239, 246, 255, 0.95)',
+            backdropFilter: 'blur(4px)',
+            borderBottom: '1px solid #bfdbfe',
+            padding: '6px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 12,
+            color: '#1d4ed8',
+            fontWeight: 500
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
+              <span>Refetching faculty directory from database...</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
+              <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <table>
+          <thead>
+            <tr style={{ verticalAlign: 'middle' }}>
+              <th style={{ width: 36, textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
+                  onChange={toggleSelectAll}
+                  title="Select all on this page"
+                />
+              </th>
+              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                Employee Id /<br />Savior_NO
+              </th>
+              <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
+              <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                Assigned<br />Classes
+              </th>
+              <th style={{ whiteSpace: 'nowrap' }}>Email</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
+              <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+              <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && displayedTeachers.length === 0 ? (
+              <tr>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
+                      <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records and allocations from database ({loadProgress}%)</div>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : displayedTeachers.length === 0 ? (
+              <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
+            ) : displayedTeachers.map(x => (
+              <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
+                <td style={{ textAlign: 'center', width: 36 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(x.id)}
+                    onChange={() => toggleSelect(x.id)}
+                  />
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
+                <td>
+                  <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
+                    <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
+                  </TeacherProfileHoverCard>
+                </td>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
+                  {toDdMmYyyy(x.joining_date || x.joiningDate) || '—'}
+                </td>
+                <td>
+                  {x.gender ? (
+                    <span
+                      className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        fontSize: 11.5,
+                        fontWeight: 500,
+                        background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                        color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
+                        border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                      }}
+                    >
+                      {formatGender(x.gender)}
+                    </span>
+                  ) : (
+                    <span className="muted" style={{ fontSize: 12 }}>—</span>
+                  )}
+                </td>
+                <td>
+                  <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{x.designation || 'Teacher'}</span>
+                </td>
+                <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
+                </td>
+                <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.email}>
+                  {x.email}
+                </td>
+                <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>{x.mobile || '—'}</td>
+                <td><span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`}>{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button
+                    className="table-action-btn"
+                    onClick={() => openAllocModal(x)}
+                    title="Manage teaching allocations"
+                    style={{ marginRight: 4, color: '#7c3aed' }}
+                  >
+                    <BookOpen size={14} />
+                  </button>
+                  <button
+                    className="table-action-btn"
+                    onClick={() => {
+                      setEditingTeacher(x);
+                      const directAssign = allAssignments.find(a => a.teacher_id === x.id);
+                      const rawCls = x.class_name || x.class || (directAssign ? directAssign.class_number : '');
+                      const rawSec = x.section_name || x.section || (directAssign ? directAssign.section_name : '');
+                      const matchingClass = allocClasses.find(c => {
+                        const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                        const rawNum = String(c.class_number);
+                        const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
+                        return String(c.id) === String(x.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
+                      });
+                      const matchingSec = allocSections.find(s => {
+                        return String(s.id) === String(x.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
+                      });
+                      const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
+                      const sVal = rawSec || (matchingSec ? matchingSec.name : '');
+                      const nameParts = (x.name || '').trim().split(/\s+/);
+                      let fName = x.first_name || x.firstName || '';
+                      let mName = x.middle_name || x.middleName || '';
+                      let lName = x.last_name || x.lastName || '';
+                      if (!fName && nameParts.length > 0) {
+                        if (nameParts.length === 1) {
+                          fName = nameParts[0];
+                        } else if (nameParts.length === 2) {
+                          fName = nameParts[0];
+                          lName = nameParts[1];
+                        } else {
+                          fName = nameParts[0];
+                          mName = nameParts.slice(1, -1).join(' ');
+                          lName = nameParts[nameParts.length - 1];
+                        }
+                      }
+                      setF({
+                        name: x.name,
+                        firstName: fName,
+                        middleName: mName,
+                        lastName: lName,
+                        email: x.email,
+                        employeeId: x.employee_id || x.employeeId || x.savior_no || '',
+                        mobile: x.mobile || x.phone || '',
+                        gender: formatGender(x.gender) || '',
+                        joiningDate: toDdMmYyyy(x.joining_date || x.joiningDate),
+                        joining_date: toDdMmYyyy(x.joining_date || x.joiningDate),
+                        designation: x.designation || 'Teacher',
+                        class_id: matchingClass ? String(matchingClass.id) : (x.class_id || ''),
+                        class_name: cVal,
+                        class: cVal,
+                        section_id: matchingSec ? String(matchingSec.id) : (x.section_id || ''),
+                        section_name: sVal,
+                        section: sVal,
+                        is_active: x.is_active !== false
+                      });
+                      setOpen(true);
+                    }}
+                    title="Edit teacher profile"
+                    style={{ marginRight: 4, color: '#0d9488' }}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    className="table-action-btn"
+                    onClick={() => sendTeacherResetEmail(x)}
+                    title="Send password setup / reset email"
+                    style={{ marginRight: 4, color: '#2563eb' }}
+                  >
+                    <KeyRound size={14} />
+                  </button>
+                  <button
+                    className="table-action-btn danger"
+                    onClick={() => promptDeleteTeacher(x)}
+                    title="Delete teacher"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Box Footer (Pagination Bar) */}
+      <div className="directory-box-footer">
+        <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
           {filtered.length === 0 ? (
             'Showing 0 faculty members'
           ) : (
@@ -11138,314 +11363,74 @@ function Teachers(){
             </>
           )}
         </div>
-      </div>
-    </div>
 
-    {/* Box Body (Scrollable Table Area) */}
-    <div className="directory-box-body" ref={tableBodyRef}>
-      {loading && displayedTeachers.length > 0 && (
-        <div style={{
-          position: 'sticky',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 20,
-          background: 'rgba(239, 246, 255, 0.95)',
-          backdropFilter: 'blur(4px)',
-          borderBottom: '1px solid #bfdbfe',
-          padding: '6px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 12,
-          color: '#1d4ed8',
-          fontWeight: 500
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <RefreshCw size={12} style={{ animation: 'spinAnim 0.8s linear infinite' }} />
-            <span>Refetching faculty directory from database...</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 700 }}>{loadProgress}%</span>
-            <div style={{ width: 70, height: 5, background: '#bfdbfe', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ width: `${loadProgress}%`, height: '100%', background: '#2563eb', transition: 'width 0.15s ease' }} />
-            </div>
-          </div>
-        </div>
-      )}
-      <table>
-        <thead>
-          <tr style={{ verticalAlign: 'middle' }}>
-            <th style={{ width: 36, textAlign: 'center' }}>
-              <input 
-                type="checkbox" 
-                checked={displayedTeachers.length > 0 && displayedTeachers.every(x => selectedIds.has(x.id))}
-                onChange={toggleSelectAll}
-                title="Select all on this page"
-              />
-            </th>
-            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-              Employee Id /<br />Savior_NO
-            </th>
-            <th style={{ whiteSpace: 'nowrap' }}>Teacher Name</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Joining Date</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Gender</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Designation</th>
-            <th style={{ lineHeight: 1.25, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-              Assigned<br />Classes
-            </th>
-            <th style={{ whiteSpace: 'nowrap' }}>Email</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Mobile</th>
-            <th style={{ whiteSpace: 'nowrap' }}>Status</th>
-            <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && displayedTeachers.length === 0 ? (
-            <tr>
-              <td colSpan={11} style={{ textAlign: 'center', padding: '48px 24px' }}>
-                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 320, margin: '0 auto' }}>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 size={38} style={{ color: '#2563eb', animation: 'spinAnim 0.8s linear infinite' }} />
-                    <span style={{ position: 'absolute', fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>{loadProgress}%</span>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #1e293b)' }}>Loading Faculty Directory...</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-muted, #64748b)', marginTop: 2 }}>Fetching faculty records and allocations from database ({loadProgress}%)</div>
-                  </div>
-                  <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-                    <div style={{ width: `${loadProgress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)', transition: 'width 0.15s ease' }} />
-                  </div>
-                </div>
-              </td>
-            </tr>
-          ) : displayedTeachers.length === 0 ? (
-            <tr><td colSpan={11} style={{ textAlign: 'center', padding: 24 }} className="muted">No faculty members found. Click "Add Teacher" or "Import Excel / CSV" to onboard staff.</td></tr>
-          ) : displayedTeachers.map(x => (
-            <tr key={x.id} style={{ background: selectedIds.has(x.id) ? 'rgba(59, 130, 246, 0.06)' : 'transparent' }}>
-              <td style={{ textAlign: 'center', width: 36 }}>
-                <input 
-                  type="checkbox" 
-                  checked={selectedIds.has(x.id)}
-                  onChange={() => toggleSelect(x.id)}
-                />
-              </td>
-              <td style={{ whiteSpace: 'nowrap' }}><code>{x.savior_no || x.employee_id || x.Savior_No || '—'}</code></td>
-              <td>
-                <TeacherProfileHoverCard teacher={x} allocationsSummary={getTeacherAllocSummary(x)}>
-                  <b style={{ textTransform: 'uppercase' }}>{String(x.name || '').toUpperCase()}</b>
-                </TeacherProfileHoverCard>
-              </td>
-              <td style={{ whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text-secondary, #475569)' }}>
-                {toDdMmYyyy(x.joining_date || x.joiningDate) || '—'}
-              </td>
-              <td>
-                {x.gender ? (
-                  <span 
-                    className={`gender-chip gender-${(formatGender(x.gender) || 'other').toLowerCase()}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '2px 8px',
-                      borderRadius: 999,
-                      fontSize: 11.5,
-                      fontWeight: 500,
-                      background: formatGender(x.gender) === 'Female' ? '#fdf2f8' : formatGender(x.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                      color: formatGender(x.gender) === 'Female' ? '#db2777' : formatGender(x.gender) === 'Male' ? '#0284c7' : '#64748b',
-                      border: `1px solid ${formatGender(x.gender) === 'Female' ? '#fbcfe8' : formatGender(x.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                    }}
-                  >
-                    {formatGender(x.gender)}
-                  </span>
-                ) : (
-                  <span className="muted" style={{ fontSize: 12 }}>—</span>
-                )}
-              </td>
-              <td>
-                <span className="teacher-designation" style={{ fontWeight: 500, color: 'var(--text-secondary, #cbd5e1)' }}>{x.designation || 'Teacher'}</span>
-              </td>
-              <td style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span title={getTeacherAllocSummary(x)}>{getTeacherAllocSummary(x)}</span>
-              </td>
-              <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={x.email}>
-                {x.email}
-              </td>
-              <td style={{ whiteSpace: 'nowrap', fontSize: 12.5 }}>{x.mobile || '—'}</td>
-              <td><span className={`badge ${x.is_active !== false ? 'active' : 'inactive'}`}>{x.is_active !== false ? 'ACTIVE' : 'INACTIVE'}</span></td>
-              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <button
-                  className="table-action-btn"
-                  onClick={() => openAllocModal(x)}
-                  title="Manage teaching allocations"
-                  style={{ marginRight: 4, color: '#7c3aed' }}
-                >
-                  <BookOpen size={14} />
-                </button>
-                <button 
-                  className="table-action-btn" 
-                  onClick={() => {
-                    setEditingTeacher(x);
-                    const directAssign = allAssignments.find(a => a.teacher_id === x.id);
-                    const rawCls = x.class_name || x.class || (directAssign ? directAssign.class_number : '');
-                    const rawSec = x.section_name || x.section || (directAssign ? directAssign.section_name : '');
-                    const matchingClass = allocClasses.find(c => {
-                      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
-                      const rawNum = String(c.class_number);
-                      const target = String(rawCls || '').replace(/^Class\s*/i, '').trim();
-                      return String(c.id) === String(x.class_id) || cName.toLowerCase() === String(rawCls || '').toLowerCase() || rawNum === target;
-                    });
-                    const matchingSec = allocSections.find(s => {
-                      return String(s.id) === String(x.section_id) || (String(s.name).trim().toUpperCase() === String(rawSec || '').trim().toUpperCase() && (!matchingClass || String(s.class_id) === String(matchingClass.id)));
-                    });
-                    const cVal = rawCls || (matchingClass ? (matchingClass.class_number === -1 ? 'Class L KG' : matchingClass.class_number === 0 ? 'Class U KG' : `Class ${matchingClass.class_number}`) : '');
-                    const sVal = rawSec || (matchingSec ? matchingSec.name : '');
-                    const nameParts = (x.name || '').trim().split(/\s+/);
-                    let fName = x.first_name || x.firstName || '';
-                    let mName = x.middle_name || x.middleName || '';
-                    let lName = x.last_name || x.lastName || '';
-                    if (!fName && nameParts.length > 0) {
-                      if (nameParts.length === 1) {
-                        fName = nameParts[0];
-                      } else if (nameParts.length === 2) {
-                        fName = nameParts[0];
-                        lName = nameParts[1];
-                      } else {
-                        fName = nameParts[0];
-                        mName = nameParts.slice(1, -1).join(' ');
-                        lName = nameParts[nameParts.length - 1];
-                      }
-                    }
-                    setF({
-                      name: x.name,
-                      firstName: fName,
-                      middleName: mName,
-                      lastName: lName,
-                      email: x.email,
-                      employeeId: x.employee_id || x.employeeId || x.savior_no || '',
-                      mobile: x.mobile || x.phone || '',
-                      gender: formatGender(x.gender) || '',
-                      joiningDate: toDdMmYyyy(x.joining_date || x.joiningDate),
-                      joining_date: toDdMmYyyy(x.joining_date || x.joiningDate),
-                      designation: x.designation || 'Teacher',
-                      class_id: matchingClass ? String(matchingClass.id) : (x.class_id || ''),
-                      class_name: cVal,
-                      class: cVal,
-                      section_id: matchingSec ? String(matchingSec.id) : (x.section_id || ''),
-                      section_name: sVal,
-                      section: sVal,
-                      is_active: x.is_active !== false
-                    });
-                    setOpen(true);
-                  }}
-                  title="Edit teacher profile"
-                  style={{ marginRight: 4, color: '#0d9488' }}
-                >
-                  <Pencil size={14} />
-                </button>
-                <button 
-                  className="table-action-btn" 
-                  onClick={() => sendTeacherResetEmail(x)}
-                  title="Send password setup / reset email"
-                  style={{ marginRight: 4, color: '#2563eb' }}
-                >
-                  <KeyRound size={14} />
-                </button>
-                <button 
-                  className="table-action-btn danger" 
-                  onClick={() => promptDeleteTeacher(x)}
-                  title="Delete teacher"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-
-    {/* Box Footer (Pagination Bar) */}
-    <div className="directory-box-footer">
-      <div style={{ color: 'var(--text-secondary, #475569)', fontSize: 12.5 }}>
-        {filtered.length === 0 ? (
-          'Showing 0 faculty members'
-        ) : (
-          <>
-            Showing <b>{directoryStartIdx + 1}</b> to <b>{directoryEndIdx}</b> of <b>{filtered.length}</b> faculty members
-            {filtered.length !== rows.length && (
-              <span style={{ opacity: 0.75, marginLeft: 4 }}>(filtered from {rows.length} total)</span>
-            )}
-          </>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage <= 1}
-          onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
-          title="First Page"
-        >
-          <ChevronsLeft size={14} /> First
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage <= 1}
-          onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
-          title="Previous Page"
-        >
-          <ChevronLeft size={14} /> Previous
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
-          <span>Page</span>
-          <select
-            value={currentDirectoryPage}
-            onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
-            className="directory-select"
-            style={{
-              padding: '3px 6px',
-              fontSize: 12,
-              borderRadius: 4,
-              border: '1px solid var(--border, #cbd5e1)',
-              cursor: 'pointer'
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => { setDirectoryPage(1); scrollToDirectoryTop(); }}
+            title="First Page"
           >
-            {Array.from({ length: totalDirectoryPages }, (_, idx) => (
-              <option key={idx + 1} value={idx + 1}>
-                {idx + 1}
-              </option>
-            ))}
-          </select>
-          <span>of <b>{totalDirectoryPages}</b></span>
-        </div>
+            <ChevronsLeft size={14} /> First
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage <= 1}
+            onClick={() => { setDirectoryPage(p => Math.max(1, p - 1)); scrollToDirectoryTop(); }}
+            title="Previous Page"
+          >
+            <ChevronLeft size={14} /> Previous
+          </button>
 
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
-          title="Next Page"
-        >
-          Next <ChevronRight size={14} />
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-          disabled={currentDirectoryPage >= totalDirectoryPages}
-          onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
-          title="Last Page"
-        >
-          Last <ChevronsRight size={14} />
-        </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, margin: '0 4px', fontSize: 12.5 }}>
+            <span>Page</span>
+            <select
+              value={currentDirectoryPage}
+              onChange={(e) => { setDirectoryPage(Number(e.target.value)); scrollToDirectoryTop(); }}
+              className="directory-select"
+              style={{
+                padding: '3px 6px',
+                fontSize: 12,
+                borderRadius: 4,
+                border: '1px solid var(--border, #cbd5e1)',
+                cursor: 'pointer'
+              }}
+            >
+              {Array.from({ length: totalDirectoryPages }, (_, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {idx + 1}
+                </option>
+              ))}
+            </select>
+            <span>of <b>{totalDirectoryPages}</b></span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => { setDirectoryPage(p => Math.min(totalDirectoryPages, p + 1)); scrollToDirectoryTop(); }}
+            title="Next Page"
+          >
+            Next <ChevronRight size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '4px 8px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+            disabled={currentDirectoryPage >= totalDirectoryPages}
+            onClick={() => { setDirectoryPage(totalDirectoryPages); scrollToDirectoryTop(); }}
+            title="Last Page"
+          >
+            Last <ChevronsRight size={14} />
+          </button>
+        </div>
       </div>
-    </div>
     </div>
 
     {/* Sticky Floating Action Bar for Bulk Selection */}
@@ -11483,499 +11468,499 @@ function Teachers(){
         currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
       );
 
-      const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name||'').split(' ')[0] : '');
+      const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name || '').split(' ')[0] : '');
       const mnVal = f.middleName || '';
-      const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name||'').split(' ').slice(1).join(' ') : '');
+      const lnVal = f.lastName !== undefined ? f.lastName : (editingTeacher ? (f.name || '').split(' ').slice(1).join(' ') : '');
       const isFnInvalid = Boolean(fnVal && (fnVal.length < 3 || fnVal.length > 15 || /\s/.test(fnVal) || /\d/.test(fnVal)));
       const isMnInvalid = Boolean(mnVal && (/\d/.test(mnVal) || /\s/.test(mnVal)));
       const isLnInvalid = Boolean(lnVal && (/\d/.test(lnVal) || lnVal.length < 3 || lnVal.length > 15));
 
       return (
-        <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={()=>{setOpen(false); setEditingTeacher(null); setF({});}}>
+        <Modal maxWidth={620} title={editingTeacher ? `Edit Faculty Member — ${editingTeacher.name}` : "Add Faculty Member / Teacher"} close={() => { setOpen(false); setEditingTeacher(null); setF({}); }}>
           {({ isFull }) => (
-          <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
-            {/* Last Registered Teacher Banner in Red */}
-            {lastRegisteredTeacherInfo && (
-              <div style={{
-                color: '#ef4444',
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: '8px 12px',
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 6,
-                marginBottom: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
-                <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
-                <span>
-                  Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
-                </span>
-              </div>
-            )}
-
-            {/* First Name + Middle Name + Last Name */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
-              gap: 14,
-              alignItems: 'start'
-            }}>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
-                </span>
-                <input
-                  required
-                  placeholder="e.g. Rahul"
-                  maxLength={15}
-                  value={fnVal || ''}
-                  style={{
-                    textTransform: 'uppercase',
-                    borderColor: isFnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const fn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
-                    const fullName = formatTeacherFullName(fn, mnVal, lnVal);
-                    setF({ ...f, firstName: fn, name: fullName });
-                  }}
-                />
-                {fnVal && /\d/.test(fnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                ) : fnVal && /\s/.test(fnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Spaces are not allowed in First Name
-                  </span>
-                ) : fnVal && fnVal.length < 3 ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Must be 3 to 15 characters
-                  </span>
-                ) : null}
-              </label>
-              <label>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
-                </span>
-                <input
-                  placeholder="e.g. Kumar"
-                  maxLength={15}
-                  value={mnVal}
-                  style={{
-                    textTransform: 'uppercase',
-                    borderColor: isMnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const mn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
-                    const fullName = formatTeacherFullName(fnVal, mn, lnVal);
-                    setF({ ...f, middleName: mn, name: fullName });
-                  }}
-                />
-                {mnVal && /\d/.test(mnVal) && (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                )}
-              </label>
-              <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
-                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
-                </span>
-                <input
-                  required
-                  placeholder="e.g. Sharma"
-                  maxLength={15}
-                  value={lnVal || ''}
-                  style={{
-                    textTransform: 'uppercase',
-                    borderColor: isLnInvalid ? '#ef4444' : undefined,
-                    boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
-                  }}
-                  onChange={e => {
-                    const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
-                    const fullName = formatTeacherFullName(fnVal, mnVal, ln);
-                    setF({ ...f, lastName: ln, name: fullName });
-                  }}
-                />
-                {lnVal && /\d/.test(lnVal) ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Enter a string not a number
-                  </span>
-                ) : lnVal && lnVal.length < 3 ? (
-                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                    Must be 3 to 15 characters
-                  </span>
-                ) : null}
-              </label>
-            </div>
-
-            {/* Full Name — auto-computed, read-only */}
-            <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
-                <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
-                  Auto-generated
-                </span>
-              </span>
-              <input
-                readOnly
-                tabIndex={-1}
-                style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
-                value={(formatTeacherFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
-                placeholder="Full name will appear here automatically"
-              />
-            </label>
-
-            <label>
-              <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
-              </span>
-              <input
-                required
-                type="email"
-                placeholder="teacher@school.local"
-                value={f.email||''}
-                style={{
-                  borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
-                  boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
-                }}
-                onChange={e => setF({ ...f, email: e.target.value.trim() })}
-              />
-              {isEmailDuplicateInUi ? (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
-                  Already exist
-                </span>
-              ) : isEmailInvalidInUi ? (
-                <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                  Please enter a valid email address
-                </span>
-              ) : null}
-            </label>
-        <label>
-          <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
-          </span>
-          <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId||f.saviorNo||''} onChange={e=>setF({...f,employeeId:e.target.value,saviorNo:e.target.value})}/>
-        </label>
-        {/* Row 1: Gender & Joining Date */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Gender
-            </span>
-            <select
-              value={formatGender(f.gender) || ''}
-              onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
-            >
-              <option value="">Select Gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
-            </span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
-              <input
-                required
-                type="text"
-                placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
-                maxLength={10}
-                value={f.joiningDate || f.joining_date || ''}
-                onChange={e => {
-                  const formatted = formatDdMmYyyyInput(e.target.value, f.joiningDate || f.joining_date || '');
-                  setF({ ...f, joiningDate: formatted, joining_date: formatted });
-                }}
-                style={{
-                  width: '100%',
-                  padding: '8px 34px 8px 10px',
+            <form className="modal-form" onSubmit={handleInitiateTeacherSave}>
+              {/* Last Registered Teacher Banner in Red */}
+              {lastRegisteredTeacherInfo && (
+                <div style={{
+                  color: '#ef4444',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  padding: '8px 12px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: 6,
-                  border: `1px solid ${(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) ? '#ef4444' : 'var(--border)'}`,
-                  boxSizing: 'border-box'
-                }}
-              />
-              <input
-                type="date"
-                title="Select from date picker"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 38,
-                  height: '100%',
-                  opacity: 0,
-                  cursor: 'pointer',
-                  zIndex: 2
-                }}
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker?.();
-                  } catch {}
-                }}
-                onChange={e => {
-                  if (e.target.value) {
-                    const [y, m, d] = e.target.value.split('-');
-                    setF({ ...f, joiningDate: `${d}-${m}-${y}`, joining_date: `${d}-${m}-${y}` });
-                  }
-                }}
-              />
-              <Calendar
-                size={16}
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  color: '#64748b',
-                  pointerEvents: 'none'
-                }}
-              />
-            </div>
-            {(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
-              </span>
-            )}
-          </label>
-        </div>
-
-        {/* Row 2: Designation & Mobile Number */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Designation <span style={{ color: '#ef4444' }}>*</span>
-            </span>
-            <select
-              required
-              value={f.designation || ''}
-              onChange={e => setF({ ...f, designation: e.target.value })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
-            >
-              <option value="">Select Designation</option>
-              {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
-                <option value={f.designation}>{f.designation}</option>
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <Info size={15} style={{ flexShrink: 0, color: '#ef4444' }} />
+                  <span>
+                    Last registered teacher: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.name}</strong> | Employee ID: <strong style={{ color: '#ef4444' }}>{lastRegisteredTeacherInfo.employeeId}</strong>
+                  </span>
+                </div>
               )}
-              {allocDesignations.filter(d => d.is_active !== false).map(d => (
-                <option key={d.id || d.title} value={d.title || d.name}>
-                  {d.title || d.name}{d.category ? ` (${d.category})` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Mobile Number <span style={{ color: '#ef4444' }}>*</span>
-            </span>
-            <input
-              required
-              placeholder="10-digit mobile number"
-              maxLength={10}
-              inputMode="numeric"
-              value={f.mobile||''}
-              onChange={e => {
-                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setF({ ...f, mobile: cleaned });
-              }}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
-                boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
-              }}
-            />
-            {f.mobile && f.mobile.length < 10 && (
-              <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
-                Must be a valid 10-digit mobile number
-              </span>
-            )}
-          </label>
-        </div>
 
-        {/* Row 3: Assign Class & Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>Assign Class
-            <select
-              value={f.class_id || (allocClasses.find(c => {
-                const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
-                return cName.toLowerCase() === String(f.class_name || f.class || '').toLowerCase() || String(c.class_number) === String(f.class_name || f.class || '').replace(/^Class\s*/i, '').trim();
-              })?.id) || ''}
-              onChange={e => {
-                const selectedClassId = e.target.value;
-                const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
-                let clsName = '';
-                if (clsObj) {
-                  if (clsObj.class_number === -1) clsName = 'Class L KG';
-                  else if (clsObj.class_number === 0) clsName = 'Class U KG';
-                  else clsName = `Class ${clsObj.class_number}`;
-                } else if (selectedClassId) {
-                  clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
-                }
-                setF({
-                  ...f,
-                  class_id: selectedClassId,
-                  class_name: clsName,
-                  class: clsName,
-                  section_id: '',
-                  section_name: '',
-                  section: ''
-                });
-              }}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
-            >
-              <option value="">Select Class (Optional)</option>
-              {allocClasses.length > 0 ? (
-                allocClasses.map(c => {
-                  const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
-                  return (
-                    <option key={c.id} value={c.id}>{label}</option>
-                  );
-                })
-              ) : (
-                <>
-                  <option value="Class L KG">Class L KG</option>
-                  <option value="Class U KG">Class U KG</option>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
-                  ))}
-                </>
+              {/* First Name + Middle Name + Last Name */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isFull ? 'repeat(3, minmax(0, 1fr))' : '1fr 1fr',
+                gap: 14,
+                alignItems: 'start'
+              }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    First Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="e.g. Rahul"
+                    maxLength={15}
+                    value={fnVal || ''}
+                    style={{
+                      textTransform: 'uppercase',
+                      borderColor: isFnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isFnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const fn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                      const fullName = formatTeacherFullName(fn, mnVal, lnVal);
+                      setF({ ...f, firstName: fn, name: fullName });
+                    }}
+                  />
+                  {fnVal && /\d/.test(fnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  ) : fnVal && /\s/.test(fnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Spaces are not allowed in First Name
+                    </span>
+                  ) : fnVal && fnVal.length < 3 ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 3 to 15 characters
+                    </span>
+                  ) : null}
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    Middle Name <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', fontWeight: 'normal' }}>(Optional)</span>
+                  </span>
+                  <input
+                    placeholder="e.g. Kumar"
+                    maxLength={15}
+                    value={mnVal}
+                    style={{
+                      textTransform: 'uppercase',
+                      borderColor: isMnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isMnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const mn = e.target.value.replace(/\s/g, '').slice(0, 15).toUpperCase();
+                      const fullName = formatTeacherFullName(fnVal, mn, lnVal);
+                      setF({ ...f, middleName: mn, name: fullName });
+                    }}
+                  />
+                  {mnVal && /\d/.test(mnVal) && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  )}
+                </label>
+                <label style={!isFull ? { gridColumn: '1 / -1' } : undefined}>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    Last Name <span style={{ color: '#ef4444', fontWeight: 600 }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="e.g. Sharma"
+                    maxLength={15}
+                    value={lnVal || ''}
+                    style={{
+                      textTransform: 'uppercase',
+                      borderColor: isLnInvalid ? '#ef4444' : undefined,
+                      boxShadow: isLnInvalid ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                    onChange={e => {
+                      const ln = e.target.value.replace(/\d/g, '').slice(0, 15).toUpperCase();
+                      const fullName = formatTeacherFullName(fnVal, mnVal, ln);
+                      setF({ ...f, lastName: ln, name: fullName });
+                    }}
+                  />
+                  {lnVal && /\d/.test(lnVal) ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Enter a string not a number
+                    </span>
+                  ) : lnVal && lnVal.length < 3 ? (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be 3 to 15 characters
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+
+              {/* Full Name — auto-computed, read-only */}
+              <label style={{ color: 'var(--text-secondary, #64748b)', fontSize: 12 }}>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text, #334155)' }}>Full Name</span>
+                  <span style={{ color: '#10b981', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10b981' }} />
+                    Auto-generated
+                  </span>
+                </span>
+                <input
+                  readOnly
+                  tabIndex={-1}
+                  style={{ textTransform: 'uppercase', backgroundColor: 'var(--card-subtle, #f8fafc)', color: 'var(--text, #334155)', cursor: 'default', border: '1px solid var(--border, #e2e8f0)', fontWeight: 600 }}
+                  value={(formatTeacherFullName(fnVal, mnVal, lnVal) || f.name || '').toUpperCase()}
+                  placeholder="Full name will appear here automatically"
+                />
+              </label>
+
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Email Address (for Faculty Portal Login) <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <input
+                  required
+                  type="email"
+                  placeholder="teacher@school.local"
+                  value={f.email || ''}
+                  style={{
+                    borderColor: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '#ef4444' : undefined,
+                    boxShadow: (isEmailDuplicateInUi || isEmailInvalidInUi) ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => setF({ ...f, email: e.target.value.trim() })}
+                />
+                {isEmailDuplicateInUi ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already exist
+                  </span>
+                ) : isEmailInvalidInUi ? (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                    Please enter a valid email address
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+                </span>
+                <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId || f.saviorNo || ''} onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })} />
+              </label>
+              {/* Row 1: Gender & Joining Date */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Gender
+                  </span>
+                  <select
+                    value={formatGender(f.gender) || ''}
+                    onChange={e => setF({ ...f, gender: formatGender(e.target.value) })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Joining Date <span style={{ color: '#ef4444' }}>*</span> <span style={{ color: '#64748b', fontSize: 11, fontWeight: 400 }}>(DD-MM-YYYY)</span>
+                  </span>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginTop: 4 }}>
+                    <input
+                      required
+                      type="text"
+                      placeholder="DD-MM-YYYY (e.g. 01-07-2022)"
+                      maxLength={10}
+                      value={f.joiningDate || f.joining_date || ''}
+                      onChange={e => {
+                        const formatted = formatDdMmYyyyInput(e.target.value, f.joiningDate || f.joining_date || '');
+                        setF({ ...f, joiningDate: formatted, joining_date: formatted });
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 34px 8px 10px',
+                        borderRadius: 6,
+                        border: `1px solid ${(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) ? '#ef4444' : 'var(--border)'}`,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <input
+                      type="date"
+                      title="Select from date picker"
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 38,
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer',
+                        zIndex: 2
+                      }}
+                      onClick={(e) => {
+                        try {
+                          e.currentTarget.showPicker?.();
+                        } catch { }
+                      }}
+                      onChange={e => {
+                        if (e.target.value) {
+                          const [y, m, d] = e.target.value.split('-');
+                          setF({ ...f, joiningDate: `${d}-${m}-${y}`, joining_date: `${d}-${m}-${y}` });
+                        }
+                      }}
+                    />
+                    <Calendar
+                      size={16}
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        color: '#64748b',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  </div>
+                  {(f.joiningDate || f.joining_date) && !isValidDdMmYyyy(f.joiningDate || f.joining_date) && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Strict format required: DD-MM-YYYY (e.g. 01-07-2022)
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              {/* Row 2: Designation & Mobile Number */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Designation <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <select
+                    required
+                    value={f.designation || ''}
+                    onChange={e => setF({ ...f, designation: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select Designation</option>
+                    {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
+                      <option value={f.designation}>{f.designation}</option>
+                    )}
+                    {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                      <option key={d.id || d.title} value={d.title || d.name}>
+                        {d.title || d.name}{d.category ? ` (${d.category})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                  </span>
+                  <input
+                    required
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    inputMode="numeric"
+                    value={f.mobile || ''}
+                    onChange={e => {
+                      const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setF({ ...f, mobile: cleaned });
+                    }}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      borderColor: (f.mobile && f.mobile.length < 10) ? '#ef4444' : undefined,
+                      boxShadow: (f.mobile && f.mobile.length < 10) ? '0 0 0 1px #ef4444' : undefined
+                    }}
+                  />
+                  {f.mobile && f.mobile.length < 10 && (
+                    <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 500 }}>
+                      Must be a valid 10-digit mobile number
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              {/* Row 3: Assign Class & Section */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label>Assign Class
+                  <select
+                    value={f.class_id || (allocClasses.find(c => {
+                      const cName = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                      return cName.toLowerCase() === String(f.class_name || f.class || '').toLowerCase() || String(c.class_number) === String(f.class_name || f.class || '').replace(/^Class\s*/i, '').trim();
+                    })?.id) || ''}
+                    onChange={e => {
+                      const selectedClassId = e.target.value;
+                      const clsObj = allocClasses.find(c => String(c.id) === String(selectedClassId));
+                      let clsName = '';
+                      if (clsObj) {
+                        if (clsObj.class_number === -1) clsName = 'Class L KG';
+                        else if (clsObj.class_number === 0) clsName = 'Class U KG';
+                        else clsName = `Class ${clsObj.class_number}`;
+                      } else if (selectedClassId) {
+                        clsName = selectedClassId.startsWith('Class') ? selectedClassId : `Class ${selectedClassId}`;
+                      }
+                      setF({
+                        ...f,
+                        class_id: selectedClassId,
+                        class_name: clsName,
+                        class: clsName,
+                        section_id: '',
+                        section_name: '',
+                        section: ''
+                      });
+                    }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select Class (Optional)</option>
+                    {allocClasses.length > 0 ? (
+                      allocClasses.map(c => {
+                        const label = c.class_number === -1 ? 'Class L KG' : c.class_number === 0 ? 'Class U KG' : `Class ${c.class_number}`;
+                        return (
+                          <option key={c.id} value={c.id}>{label}</option>
+                        );
+                      })
+                    ) : (
+                      <>
+                        <option value="Class L KG">Class L KG</option>
+                        <option value="Class U KG">Class U KG</option>
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={`Class ${i + 1}`}>Class {i + 1}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label>Assign Section
+                  <select
+                    value={f.section_name || f.section || ''}
+                    onChange={e => {
+                      const sName = e.target.value;
+                      const secObj = allocSections.find(s => {
+                        const matchName = String(s.name).trim().toUpperCase() === sName.toUpperCase();
+                        if (!matchName) return false;
+                        if (!f.class_id) return true;
+                        return String(s.class_id) === String(f.class_id);
+                      }) || allocSections.find(s => String(s.name).trim().toUpperCase() === sName.toUpperCase());
+
+                      setF({
+                        ...f,
+                        section_id: secObj ? String(secObj.id) : sName,
+                        section_name: sName,
+                        section: sName
+                      });
+                    }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select Section (Optional)</option>
+                    {(() => {
+                      let list = allocSections;
+                      if (f.class_id) {
+                        const selectedCls = allocClasses.find(c => String(c.id) === String(f.class_id));
+                        const filtered = allocSections.filter(s => String(s.class_id) === String(f.class_id) || (selectedCls && String(s.class_number) === String(selectedCls.class_number)));
+                        if (filtered.length > 0) {
+                          list = filtered;
+                        }
+                      }
+                      const seen = new Set<string>();
+                      const uniqueNames: string[] = [];
+                      for (const s of list) {
+                        const name = String(s.name || '').trim().toUpperCase();
+                        if (name && !seen.has(name)) {
+                          seen.add(name);
+                          uniqueNames.push(name);
+                        }
+                      }
+                      if (uniqueNames.length === 0) {
+                        return ['A', 'B', 'C', 'D'].map(sec => (
+                          <option key={sec} value={sec}>Section {sec}</option>
+                        ));
+                      }
+                      uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+                      return uniqueNames.map(secName => (
+                        <option key={secName} value={secName}>Section {secName}</option>
+                      ));
+                    })()}
+                  </select>
+                </label>
+              </div>
+
+              {editingTeacher && (
+                <label>Account Status
+                  <select
+                    value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
+                    onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE' })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                  </select>
+                </label>
               )}
-            </select>
-          </label>
-          <label>Assign Section
-            <select
-              value={f.section_name || f.section || ''}
-              onChange={e => {
-                const sName = e.target.value;
-                const secObj = allocSections.find(s => {
-                  const matchName = String(s.name).trim().toUpperCase() === sName.toUpperCase();
-                  if (!matchName) return false;
-                  if (!f.class_id) return true;
-                  return String(s.class_id) === String(f.class_id);
-                }) || allocSections.find(s => String(s.name).trim().toUpperCase() === sName.toUpperCase());
 
-                setF({
-                  ...f,
-                  section_id: secObj ? String(secObj.id) : sName,
-                  section_name: sName,
-                  section: sName
-                });
-              }}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4, boxSizing: 'border-box' }}
-            >
-              <option value="">Select Section (Optional)</option>
-              {(() => {
-                let list = allocSections;
-                if (f.class_id) {
-                  const selectedCls = allocClasses.find(c => String(c.id) === String(f.class_id));
-                  const filtered = allocSections.filter(s => String(s.class_id) === String(f.class_id) || (selectedCls && String(s.class_number) === String(selectedCls.class_number)));
-                  if (filtered.length > 0) {
-                    list = filtered;
-                  }
-                }
-                const seen = new Set<string>();
-                const uniqueNames: string[] = [];
-                for (const s of list) {
-                  const name = String(s.name || '').trim().toUpperCase();
-                  if (name && !seen.has(name)) {
-                    seen.add(name);
-                    uniqueNames.push(name);
-                  }
-                }
-                if (uniqueNames.length === 0) {
-                  return ['A', 'B', 'C', 'D'].map(sec => (
-                    <option key={sec} value={sec}>Section {sec}</option>
-                  ));
-                }
-                uniqueNames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-                return uniqueNames.map(secName => (
-                  <option key={secName} value={secName}>Section {secName}</option>
-                ));
-              })()}
-            </select>
-          </label>
-        </div>
+              {/* Password Setup & Activation Box */}
+              <div className="student-portal-box">
+                <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
+                  <KeyRound size={14} style={{ color: '#2563eb' }} />
+                  {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
+                </div>
+                {!editingTeacher && (
+                  <label className="student-portal-invite-note" style={{ margin: '0 0 10px 0', fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={f.sendInviteEmail !== false}
+                      onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
+                    />
+                    <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
+                  </label>
+                )}
+                <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
+                  {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
+                  <div style={{ position: 'relative', marginTop: 4, display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={showTeacherPassword ? 'text' : 'password'}
+                      placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
+                      value={f.password || ''}
+                      onChange={e => setF({ ...f, password: e.target.value })}
+                      style={{ width: '100%', paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowTeacherPassword(s => !s)}
+                      className="password-toggle-btn"
+                      title={showTeacherPassword ? "Hide password" : "Show password"}
+                      style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
+                    >
+                      {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </label>
+              </div>
 
-        {editingTeacher && (
-          <label>Account Status
-            <select
-              value={f.is_active !== false ? 'ACTIVE' : 'INACTIVE'}
-              onChange={e => setF({ ...f, is_active: e.target.value === 'ACTIVE' })}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 4 }}
-            >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
-            </select>
-          </label>
-        )}
-
-        {/* Password Setup & Activation Box */}
-        <div className="student-portal-box">
-          <div className="student-portal-box-title" style={{ marginBottom: 6 }}>
-            <KeyRound size={14} style={{ color: '#2563eb' }} />
-            {editingTeacher ? 'Update Password (Optional)' : 'Password Setup & Account Activation'}
-          </div>
-          {!editingTeacher && (
-            <label className="student-portal-invite-note" style={{ margin: '0 0 10px 0', fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={f.sendInviteEmail !== false}
-                onChange={e => setF({ ...f, sendInviteEmail: e.target.checked })}
-              />
-              <span>Send welcome email with secure link to set password (spam-filtered; 24h validity)</span>
-            </label>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => { setOpen(false); setEditingTeacher(null); setF({}); }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving}>
+                  {editingTeacher ? 'Preview & Update Teacher' : 'Preview & Save Teacher'}
+                </button>
+              </div>
+            </form>
           )}
-          <label style={{ display: 'block', fontSize: 12, margin: 0 }} className="student-portal-box-desc">
-            {editingTeacher ? 'Leave blank to keep existing password, or enter new password:' : 'Optional Initial Password (leave empty to let teacher set password via email):'}
-            <div style={{ position: 'relative', marginTop: 4, display: 'flex', alignItems: 'center' }}>
-              <input
-                type={showTeacherPassword ? 'text' : 'password'}
-                placeholder={editingTeacher ? 'New password (min 6 characters)' : 'Optional initial password (e.g. ChangeMe123!)'}
-                value={f.password||''}
-                onChange={e => setF({...f,password:e.target.value})}
-                style={{ width: '100%', paddingRight: 40 }}
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => setShowTeacherPassword(s => !s)}
-                className="password-toggle-btn"
-                title={showTeacherPassword ? "Hide password" : "Show password"}
-                style={{ position: 'absolute', right: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center' }}
-              >
-                {showTeacherPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </label>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            onClick={() => { setOpen(false); setEditingTeacher(null); setF({}); }}
-          >
-            Cancel
-          </button>
-          <button type="submit" disabled={saving}>
-            {editingTeacher ? 'Preview & Update Teacher' : 'Preview & Save Teacher'}
-          </button>
-        </div>
-      </form>
-      )}
-    </Modal>
-  );
-})()}
+        </Modal>
+      );
+    })()}
 
     {/* ═══ TEACHING ALLOCATIONS MODAL ═══ */}
-    {allocOpen && allocTeacher && <Modal title={`Manage Allocations — ${allocTeacher.name}`} close={()=>setAllocOpen(false)}>
+    {allocOpen && allocTeacher && <Modal title={`Manage Allocations — ${allocTeacher.name}`} close={() => setAllocOpen(false)}>
       <div style={{ padding: '10px 4px' }}>
         <p className="muted" style={{ margin: '0 0 12px', fontSize: 12 }}>
           Assign subject-class-section combinations for this teacher. Each row is one teaching allocation.
@@ -11985,45 +11970,45 @@ function Teachers(){
             <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 8, alignItems: 'end' }}>
               {/* Subject */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Subject' : ''}
-                <select value={ar.subject_id||''} onChange={e=>updateAllocRow(idx,'subject_id',e.target.value)}
+                <select value={ar.subject_id || ''} onChange={e => updateAllocRow(idx, 'subject_id', e.target.value)}
                   style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Subject</option>
-                  {allocSubjects.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  {allocSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </label>
               {/* Class */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Class' : ''}
-                <select value={ar.class_id||''} onChange={e=>updateAllocRow(idx,'class_id',e.target.value)}
+                <select value={ar.class_id || ''} onChange={e => updateAllocRow(idx, 'class_id', e.target.value)}
                   style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Class</option>
-                  {allocClasses.map(c=><option key={c.id} value={c.id}>Class {c.class_number}</option>)}
+                  {allocClasses.map(c => <option key={c.id} value={c.id}>Class {c.class_number}</option>)}
                 </select>
               </label>
               {/* Section */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Section' : ''}
-                <select value={ar.section_id||''} onChange={e=>updateAllocRow(idx,'section_id',e.target.value)}
+                <select value={ar.section_id || ''} onChange={e => updateAllocRow(idx, 'section_id', e.target.value)}
                   style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Section</option>
-                  {allocSections.filter(s => !ar.class_id || s.class_id === ar.class_id || String(s.class_number) === String(allocClasses.find(c=>c.id===ar.class_id)?.class_number)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  {allocSections.filter(s => !ar.class_id || s.class_id === ar.class_id || String(s.class_number) === String(allocClasses.find(c => c.id === ar.class_id)?.class_number)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </label>
               {/* Session */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Session' : ''}
-                <select value={ar.session_id||''} onChange={e=>updateAllocRow(idx,'session_id',e.target.value)}
+                <select value={ar.session_id || ''} onChange={e => updateAllocRow(idx, 'session_id', e.target.value)}
                   style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">Session</option>
-                  {allocSessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  {allocSessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </label>
               {/* Alt Faculty */}
               <label style={{ fontSize: 11, fontWeight: 600 }}>{idx === 0 ? 'Alt. Faculty' : ''}
-                <select value={ar.alt_teacher_id||''} onChange={e=>updateAllocRow(idx,'alt_teacher_id',e.target.value)}
+                <select value={ar.alt_teacher_id || ''} onChange={e => updateAllocRow(idx, 'alt_teacher_id', e.target.value)}
                   style={{ width: '100%', padding: '5px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
                   <option value="">None</option>
-                  {rows.filter(t => t.id !== allocTeacher.id).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                  {rows.filter(t => t.id !== allocTeacher.id).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </label>
-              <button type="button" onClick={()=>removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #fca5a5', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✕</button>
+              <button type="button" onClick={() => removeAllocRow(idx)} title="Remove" style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #fca5a5', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>✕</button>
             </div>
           ))}
         </div>
@@ -12039,8 +12024,8 @@ function Teachers(){
 
     {/* EXCEL / CSV BULK IMPORT MODAL */}
     {importOpen && (
-      <Modal 
-        title="Bulk Import Teachers (Excel / CSV)" 
+      <Modal
+        title="Bulk Import Teachers (Excel / CSV)"
         fullWindow={true}
         close={() => { setImportOpen(false); setPreviewRows([]); }}
       >
@@ -12073,8 +12058,8 @@ function Teachers(){
                 <p className="muted" style={{ margin: 0, fontSize: 13 }}>
                   Upload an Excel (.xlsx, .xls) or CSV file with teacher rosters.
                 </p>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="template-download-btn"
                   onClick={downloadTemplate}
                 >
@@ -12083,11 +12068,11 @@ function Teachers(){
               </div>
 
               <label className="dropzone" style={{ flexShrink: 0, padding: '30px 20px', maxWidth: 760, width: '100%', margin: '0 auto 16px' }}>
-                <input 
-                  type="file" 
-                  accept=".xlsx, .xls, .csv" 
-                  onChange={handleFile} 
-                  style={{ display: 'none' }} 
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFile}
+                  style={{ display: 'none' }}
                 />
                 <div className="dropzone-icon">
                   <UploadCloud size={28} />
@@ -12102,11 +12087,11 @@ function Teachers(){
                 Review parsed faculty roster below before confirming import.
               </p>
               <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, padding: '5px 12px', borderRadius: 6 }}>
-                <input 
-                  type="file" 
-                  accept=".xlsx, .xls, .csv" 
-                  onChange={handleFile} 
-                  style={{ display: 'none' }} 
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFile}
+                  style={{ display: 'none' }}
                 />
                 <UploadCloud size={14} /> Upload Different File
               </label>
@@ -12270,9 +12255,9 @@ function Teachers(){
                     </select>
                   </div>
 
-                  <button 
-                    type="button" 
-                    className="btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn-secondary"
                     style={{ fontSize: 12, padding: '5px 12px' }}
                     onClick={() => { setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); setImportPreviewSearch(''); }}
                   >
@@ -12340,7 +12325,7 @@ function Teachers(){
                             </td>
                             <td>
                               {r.gender ? (
-                                <span 
+                                <span
                                   className={`gender-chip ${/^f/i.test(r.gender) ? 'gender-female' : /^m/i.test(r.gender) ? 'gender-male' : 'gender-other'}`}
                                   style={{
                                     display: 'inline-flex',
@@ -12462,15 +12447,15 @@ function Teachers(){
 
               {/* ── MODAL FOOTER ── */}
               <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
+                <button
+                  type="button"
+                  className="btn-secondary"
                   onClick={() => { setImportOpen(false); setPreviewRows([]); setImportErrors([]); setImportPreviewPage(1); }}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={submitBulkImport}
                   disabled={importing || previewRows.length === 0}
                   style={{
@@ -12490,8 +12475,8 @@ function Teachers(){
               </div>
             </div>
           )}
-      </div>
-    </Modal>)}
+        </div>
+      </Modal>)}
 
     {/* Universal Teacher Preview & Edit Modal */}
     <UniversalPreviewModal
@@ -12543,12 +12528,12 @@ function Teachers(){
     />
 
     {/* ═══ EXPORT PREVIEW MODAL ═══ */}
-    {exportOpen && <Modal title="Export Faculty Directory (Preview)" close={()=>setExportOpen(false)}>
+    {exportOpen && <Modal title="Export Faculty Directory (Preview)" close={() => setExportOpen(false)}>
       <div style={{ padding: '4px 2px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>
-              {selectedIds.size > 0 
+              {selectedIds.size > 0
                 ? `Exporting ${selectedIds.size} manually selected faculty record${selectedIds.size > 1 ? 's' : ''}`
                 : `Exporting ${prepareExportData().length} faculty record${prepareExportData().length !== 1 ? 's' : ''} matching current filters`}
             </div>
@@ -12559,8 +12544,8 @@ function Teachers(){
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleExportExcel}
               disabled={prepareExportData().length === 0}
               style={{
@@ -12574,8 +12559,8 @@ function Teachers(){
             >
               <FileSpreadsheet size={15} /> Download Excel (.xlsx)
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleExportCSV}
               disabled={prepareExportData().length === 0}
               className="btn-secondary"
@@ -12690,9 +12675,9 @@ function sectionLabelToIndex(label: string): number | null {
   return num;
 }
 
-function Classes(){
-  const {user}=useAuth();
-  const {dark}=useTheme();
+function Classes() {
+  const { user } = useAuth();
+  const { dark } = useTheme();
   const loc = useLocation();
   const nav = useNavigate();
   const searchParams = new URLSearchParams(loc.search);
@@ -12718,8 +12703,8 @@ function Classes(){
       setActiveTab('CLASSES');
     }
   }, [loc.search, nav]);
-  const [c,setC]=useState<any[]>([]);
-  const [s,setS]=useState<any[]>([]);
+  const [c, setC] = useState<any[]>([]);
+  const [s, setS] = useState<any[]>([]);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [addingClassId, setAddingClassId] = useState<string | null>(null);
   const [confirmRemoveSectionModal, setConfirmRemoveSectionModal] = useState<{
@@ -12769,7 +12754,7 @@ function Classes(){
     window.addEventListener('temporary-assignments-updated', handleAssignmentsUpdated);
     return () => window.removeEventListener('temporary-assignments-updated', handleAssignmentsUpdated);
   }, [handleAssignmentsUpdated]);
-  
+
   // Assign / Change Modal State
   const [assignModal, setAssignModal] = useState<{
     section_id: string;
@@ -12793,8 +12778,8 @@ function Classes(){
   const [removing, setRemoving] = useState(false);
 
   function getSectionsForClass(classItem: any): any[] {
-    const matching = s.filter(sec => 
-      sec.class_id === classItem.id || 
+    const matching = s.filter(sec =>
+      sec.class_id === classItem.id ||
       (classItem.class_number !== undefined && Number(sec.class_number) === Number(classItem.class_number))
     );
     return matching.sort((a, b) => {
@@ -12872,7 +12857,7 @@ function Classes(){
       const sectionsData = [...(sr.data || [])].sort((a: any, b: any) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       setC(classesData);
       setS(sectionsData);
-    } catch(err) {
+    } catch (err) {
       console.error('Failed to load classes and sections:', err);
     }
   }
@@ -12891,10 +12876,10 @@ function Classes(){
       ]);
       const rawMentors = Array.isArray(mRes.data) ? mRes.data : [];
       const rawTeachers = Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []);
-      
+
       setMentors(rawMentors);
       // Filter strictly active, non-archived teachers
-      const activeTeachers = rawTeachers.filter((t: any) => 
+      const activeTeachers = rawTeachers.filter((t: any) =>
         t && t.is_active !== false && t.status !== 'DELETED' && t.status !== 'ARCHIVED'
       );
       setTeachers(activeTeachers);
@@ -12948,7 +12933,7 @@ function Classes(){
     }
   }, [activeTab, loadActiveSubstitutionsCount]);
 
-  async function handleAddSectionForClass(classItem: any){
+  async function handleAddSectionForClass(classItem: any) {
     const classKey = String(classItem.id || classItem.class_number);
     if (addingClassId || removingSection) return;
 
@@ -12964,11 +12949,11 @@ function Classes(){
       const res = await api.post('/sections', { classId: targetCid, name: nextLabel, academic_year_id: activeYearId });
       const created = res.data;
       setS(prev => {
-        const filtered = prev.filter(x => 
-          !( (x.class_id === created.class_id || Number(x.class_number) === Number(created.class_number)) && 
-             String(x.name || x.section_name).toUpperCase() === nextLabel )
+        const filtered = prev.filter(x =>
+          !((x.class_id === created.class_id || Number(x.class_number) === Number(created.class_number)) &&
+            String(x.name || x.section_name).toUpperCase() === nextLabel)
         );
-        return [...filtered, created].sort((a,b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
+        return [...filtered, created].sort((a, b) => (Number(a.class_number ?? 0) - Number(b.class_number ?? 0)) || String(a.name || '').localeCompare(String(b.name || '')));
       });
       setC(prev => prev.map(cls => {
         if (cls.id === classItem.id || (created.class_number !== undefined && Number(cls.class_number) === Number(created.class_number))) {
@@ -12985,7 +12970,7 @@ function Classes(){
     }
   }
 
-  function handleOpenRemoveModal(classItem: any){
+  function handleOpenRemoveModal(classItem: any) {
     const classSections = getSectionsForClass(classItem);
     if (classSections.length <= 1) return; // Follow minimum section count rule (minimum 1 section)
     const highest = getHighestSequentialSection(classSections);
@@ -13002,7 +12987,7 @@ function Classes(){
     });
   }
 
-  async function handleConfirmRemoveSection(){
+  async function handleConfirmRemoveSection() {
     if (!confirmRemoveSectionModal) return;
     const { classItem, section, classTitle, sectionLabel } = confirmRemoveSectionModal;
     setRemovingSection(true);
@@ -13022,7 +13007,7 @@ function Classes(){
       setConfirmRemoveSectionModal(null);
       await load();
       await loadMentors();
-    } catch(err: any){
+    } catch (err: any) {
       alert(err?.response?.data?.message || err?.message || `Failed to remove Section ${sectionLabel} from ${classTitle}.`);
     } finally {
       setRemovingSection(false);
@@ -13082,7 +13067,7 @@ function Classes(){
         (m.section_id === sec.id || (m.section_name === sec.name && Number(m.class_number) === Number(sec.class_number)))
       );
       const teacherObj = mRec?.teacher_id ? teachers.find(t => t.id === mRec.teacher_id) : null;
-      
+
       return {
         section_id: sec.id,
         section_name: sec.name || sec.section_name || 'A',
@@ -13143,7 +13128,7 @@ function Classes(){
 
   return <Layout>
     <div style={{ '--text-muted': dark ? '#94a3b8' : 'var(--text-secondary, #475569)' } as React.CSSProperties}>
-      <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments."/>
+      <PageHead title="Classes, Sections & Teachers" sub="Manage school classes, sections, and class teacher assignments." />
     </div>
 
     {/* Tab Navigation */}
@@ -13418,8 +13403,8 @@ function Classes(){
                               classSections.length === 0
                                 ? 'No sections to remove'
                                 : classSections.length === 1
-                                ? 'Minimum 1 section required per class'
-                                : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
+                                  ? 'Minimum 1 section required per class'
+                                  : `Remove highest section (${highestSec?.name || highestSec?.section_name})`
                             }
                             style={{
                               display: 'inline-flex',
@@ -13843,11 +13828,11 @@ function Classes(){
 }
 
 /* ────── Subjects ────── */
-function Subjects(){
-  const {user}=useAuth();
-  const [rows,setRows]=useState<any[]>([]);
-  const [n,setN]=useState('');
-  const [adding,setAdding]=useState(false);
+function Subjects() {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<any[]>([]);
+  const [n, setN] = useState('');
+  const [adding, setAdding] = useState(false);
 
   const [subjectPreview, setSubjectPreview] = useState<{
     isOpen: boolean;
@@ -13864,18 +13849,18 @@ function Subjects(){
     error: string | null;
   }>({ isOpen: false, loading: false, error: null });
 
-  async function load(){
+  async function load() {
     try {
       const res = await api.get('/subjects');
       setRows(res.data || []);
-    } catch(err) {
+    } catch (err) {
       console.error('Failed to load subjects:', err);
     }
   }
 
-  useEffect(()=>{load()},[]);
+  useEffect(() => { load() }, []);
 
-  function initiateAddSubject(e?: React.FormEvent){
+  function initiateAddSubject(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!n.trim()) {
       alert('Validation Error: Please enter a subject name (e.g. Economics).');
@@ -13889,7 +13874,7 @@ function Subjects(){
     });
   }
 
-  async function executeConfirmAddSubject(){
+  async function executeConfirmAddSubject() {
     if (!subjectPreview.name) return;
     setSubjectPreview(prev => ({ ...prev, loading: true, error: null }));
     try {
@@ -13899,7 +13884,7 @@ function Subjects(){
       setN('');
       setSubjectPreview(prev => ({ ...prev, isOpen: false, loading: false }));
       load();
-    } catch(err:any){
+    } catch (err: any) {
       setSubjectPreview(prev => ({
         ...prev,
         loading: false,
@@ -13978,14 +13963,14 @@ function Subjects(){
   }
 
   return <Layout>
-    <PageHead title="Subjects" sub="Subjects used by class routines."/>
+    <PageHead title="Subjects" sub="Subjects used by class routines." />
     <div className="panel narrow">
       <form className="inline" onSubmit={initiateAddSubject}>
-        <input placeholder="Subject name (e.g. Mathematics)" value={n} onChange={e=>setN(e.target.value)}/>
+        <input placeholder="Subject name (e.g. Mathematics)" value={n} onChange={e => setN(e.target.value)} />
         <button type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add subject'}</button>
       </form>
       <div className="list">
-        {rows.map(x=><div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
+        {rows.map(x => <div className="list-row" key={x.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
           <b>{x.name}</b>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <button
@@ -14081,8 +14066,8 @@ function Subjects(){
 
     {/* Edit Subject Modal */}
     {editSubjectDialog.isOpen && (
-      <div 
-        className="modal-backdrop" 
+      <div
+        className="modal-backdrop"
         onClick={() => !editSubjectDialog.loading && setEditSubjectDialog(prev => ({ ...prev, isOpen: false }))}
         style={{
           position: 'fixed',
@@ -14096,8 +14081,8 @@ function Subjects(){
           padding: 16
         }}
       >
-        <div 
-          className="modal-content" 
+        <div
+          className="modal-content"
           onClick={e => e.stopPropagation()}
           style={{
             maxWidth: 440,
@@ -14218,18 +14203,20 @@ function Subjects(){
 }
 
 /* ────── Routine ────── */
-function Routine(){const {user}=useAuth();const [rows,setRows]=useState<any[]>([]);const [c,setC]=useState<any[]>([]);const [s,setS]=useState<any[]>([]);const [sub,setSub]=useState<any[]>([]);const [t,setT]=useState<any[]>([]);const [f,setF]=useState<any>({dayOfWeek:1});
-  async function load(){const[a,b,d,e,g]=await Promise.all([api.get('/routines'),api.get('/classes'),api.get('/sections'),api.get('/subjects'),api.get('/teachers')]);setRows(a.data);setC(b.data);setS(d.data);setSub(e.data);setT(g.data)}useEffect(()=>{load()},[]);
-  async function add(e:React.FormEvent){e.preventDefault();try{await api.post('/routines',f);setF({dayOfWeek:1});load()}catch(e:any){alert(e?.response?.data?.message||'Could not create routine')}}
-  async function del(id:string){if(confirm('Delete this routine?')){await api.delete('/routines/'+id);load()}}
-  return <Layout><PageHead title="Class Routine" sub="Create section-wise teacher and time-slot schedules."/><div className="panel"><form className="routine-form" onSubmit={add}><label>Day<select value={f.dayOfWeek} onChange={e=>setF({...f,dayOfWeek:Number(e.target.value)})}>{days.map((d,i)=><option key={d} value={i}>{d}</option>)}</select></label><label>Class<select required value={f.classId||''} onChange={e=>setF({...f,classId:e.target.value,sectionId:''})}><option value="">Select</option>{c.map(x=><option key={x.id} value={x.id}>Class {x.class_number}</option>)}</select></label><label>Section<select required value={f.sectionId||''} onChange={e=>setF({...f,sectionId:e.target.value})}><option value="">Select</option>{s.filter(x=>x.class_id===f.classId).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Subject<select required value={f.subjectId||''} onChange={e=>setF({...f,subjectId:e.target.value})}><option value="">Select</option>{sub.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Teacher<select required value={f.teacherId||''} onChange={e=>setF({...f,teacherId:e.target.value})}><option value="">Select</option>{t.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Start<input required type="time" value={f.startTime||''} onChange={e=>setF({...f,startTime:e.target.value})}/></label><label>End<input required type="time" value={f.endTime||''} onChange={e=>setF({...f,endTime:e.target.value})}/></label><label>Room<input value={f.room||''} onChange={e=>setF({...f,room:e.target.value})}/></label><button>Create routine</button></form></div>
-  <div className="table-wrap"><table><thead><tr><th>Day</th><th>Class</th><th>Subject</th><th>Teacher</th><th>Time</th><th>Room</th><th></th></tr></thead><tbody>{rows.map(x=><tr key={x.id}><td>{days[x.day_of_week]}</td><td>{x.class_number}-{x.section_name}</td><td>{x.subject_name}</td><td>{x.teacher_name}</td><td>{fmt(x.start_time)}–{fmt(x.end_time)}</td><td>{x.room||'—'}</td><td><button className="danger" onClick={()=>del(x.id)}>Delete</button></td></tr>)}</tbody></table></div></Layout>}
+function Routine() {
+  const { user } = useAuth(); const [rows, setRows] = useState<any[]>([]); const [c, setC] = useState<any[]>([]); const [s, setS] = useState<any[]>([]); const [sub, setSub] = useState<any[]>([]); const [t, setT] = useState<any[]>([]); const [f, setF] = useState<any>({ dayOfWeek: 1 });
+  async function load() { const [a, b, d, e, g] = await Promise.all([api.get('/routines'), api.get('/classes'), api.get('/sections'), api.get('/subjects'), api.get('/teachers')]); setRows(a.data); setC(b.data); setS(d.data); setSub(e.data); setT(g.data) } useEffect(() => { load() }, []);
+  async function add(e: React.FormEvent) { e.preventDefault(); try { await api.post('/routines', f); setF({ dayOfWeek: 1 }); load() } catch (e: any) { alert(e?.response?.data?.message || 'Could not create routine') } }
+  async function del(id: string) { if (confirm('Delete this routine?')) { await api.delete('/routines/' + id); load() } }
+  return <Layout><PageHead title="Class Routine" sub="Create section-wise teacher and time-slot schedules." /><div className="panel"><form className="routine-form" onSubmit={add}><label>Day<select value={f.dayOfWeek} onChange={e => setF({ ...f, dayOfWeek: Number(e.target.value) })}>{days.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></label><label>Class<select required value={f.classId || ''} onChange={e => setF({ ...f, classId: e.target.value, sectionId: '' })}><option value="">Select</option>{c.map(x => <option key={x.id} value={x.id}>Class {x.class_number}</option>)}</select></label><label>Section<select required value={f.sectionId || ''} onChange={e => setF({ ...f, sectionId: e.target.value })}><option value="">Select</option>{s.filter(x => x.class_id === f.classId).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Subject<select required value={f.subjectId || ''} onChange={e => setF({ ...f, subjectId: e.target.value })}><option value="">Select</option>{sub.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Teacher<select required value={f.teacherId || ''} onChange={e => setF({ ...f, teacherId: e.target.value })}><option value="">Select</option>{t.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Start<input required type="time" value={f.startTime || ''} onChange={e => setF({ ...f, startTime: e.target.value })} /></label><label>End<input required type="time" value={f.endTime || ''} onChange={e => setF({ ...f, endTime: e.target.value })} /></label><label>Room<input value={f.room || ''} onChange={e => setF({ ...f, room: e.target.value })} /></label><button>Create routine</button></form></div>
+    <div className="table-wrap"><table><thead><tr><th>Day</th><th>Class</th><th>Subject</th><th>Teacher</th><th>Time</th><th>Room</th><th></th></tr></thead><tbody>{rows.map(x => <tr key={x.id}><td>{days[x.day_of_week]}</td><td>{x.class_number}-{x.section_name}</td><td>{x.subject_name}</td><td>{x.teacher_name}</td><td>{fmt(x.start_time)}–{fmt(x.end_time)}</td><td>{x.room || '—'}</td><td><button className="danger" onClick={() => del(x.id)}>Delete</button></td></tr>)}</tbody></table></div></Layout>
+}
 
 /* ────── Attendance ────── */
-function Attendance(){
-  const {user}=useAuth();
-  const nav=useNavigate();
-  const loc=useLocation();
+function Attendance() {
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const loc = useLocation();
 
   const getQueryParam = (name: string) => {
     const p = new URLSearchParams(loc.search).get(name);
@@ -14247,25 +14234,35 @@ function Attendance(){
     }
   };
 
-  const [classes,setClasses]=useState<any[]>([]);
-  const [sections,setSections]=useState<any[]>([]);
-  const [subjects,setSubjects]=useState<any[]>([]);
-  const [routines,setRoutines]=useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [routines, setRoutines] = useState<any[]>([]);
   const [authorizedSections, setAuthorizedSections] = useState<any[]>([]);
 
-  const [selectedClassId,setSelectedClassId]=useState<string>('');
-  const [selectedSectionId,setSelectedSectionId]=useState<string>('');
-  const [selectedSubjectId,setSelectedSubjectId]=useState<string>('');
-  const [attendanceDate,setAttendanceDate]=useState<string>(getQueryParam('date') || getQueryParam('attendance_date') || new Date().toISOString().slice(0,10));
-  const [activeRoutine,setActiveRoutine]=useState<any>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+  const getInitialAttendanceDate = () => {
+    const qDate = getQueryParam('date') || getQueryParam('attendance_date');
+    if (qDate) return qDate;
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    } catch {
+      return new Date().toLocaleDateString('en-CA');
+    }
+  };
+  const [attendanceDate, setAttendanceDate] = useState<string>(getInitialAttendanceDate);
+  const [isEditingAttendance, setIsEditingAttendance] = useState<boolean>(false);
+  const [activeRoutine, setActiveRoutine] = useState<any>(null);
 
-  const [students,setStudents]=useState<any[]>([]);
-  const [checked,setChecked]=useState<Record<string,boolean>>({});
-  const [search,setSearch]=useState<string>('');
+  const [students, setStudents] = useState<any[]>([]);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [search, setSearch] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'roll-asc' | 'roll-desc' | 'name-asc' | 'name-desc'>('roll-asc');
-  const [busy,setBusy]=useState(false);
-  const [done,setDone]=useState(false);
-  const [summary,setSummary]=useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
 
   // Pagination & Last Fetched state (Matching School Admin Students Directory)
   const [attendancePage, setAttendancePage] = useState<number>(1);
@@ -14275,6 +14272,22 @@ function Attendance(){
 
   // Existing session & Re-attendance state
   const [existingSession, setExistingSession] = useState<any>(null);
+  const isAlreadyEdited = Boolean(
+    existingSession && (
+      existingSession.is_reattendance ||
+      existingSession.isReattendance ||
+      (existingSession.reattendance_count || 0) > 0 ||
+      (existingSession.reattendanceCount || 0) > 0 ||
+      (typeof window !== 'undefined' && selectedClassId && selectedSectionId && sessionStorage.getItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`))
+    )
+  );
+  const canEditAttendance = Boolean(existingSession && !isAlreadyEdited);
+
+  useEffect(() => {
+    if (getQueryParam('edit') === '1' && canEditAttendance) {
+      setIsEditingAttendance(true);
+    }
+  }, [existingSession]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditSearch, setAuditSearch] = useState<string>('');
   const [auditStatusFilter, setAuditStatusFilter] = useState<string>('ALL');
@@ -14359,7 +14372,7 @@ function Attendance(){
   // Modals state
   const [activeModal, setActiveModal] = useState<'EARLY_DEPARTURE' | 'LATE_ARRIVAL' | 'AUDIT_LOGS' | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  
+
   // Early departure form state
   const [depPeriod, setDepPeriod] = useState<string>('After 1st Period');
   const [depTime, setDepTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -14488,15 +14501,15 @@ function Attendance(){
   }
 
   // Load initial reference data
-  useEffect(()=>{
-    async function init(){
+  useEffect(() => {
+    async function init() {
       try {
-        const [cRes,sRes,subRes,rRes,authSecRes] = await Promise.all([
+        const [cRes, sRes, subRes, rRes, authSecRes] = await Promise.all([
           api.get('/classes'),
           api.get('/sections'),
           api.get('/subjects'),
-          api.get('/teacher/routine/today').catch(()=>({data:[]})),
-          api.get('/teacher/attendance/authorized-sections').catch(()=>({data:{sections:[], schoolDate:''}}))
+          api.get('/teacher/routine/today').catch(() => ({ data: [] })),
+          api.get('/teacher/attendance/authorized-sections').catch(() => ({ data: { sections: [], schoolDate: '' } }))
         ]);
 
         const isTeacherRole = user?.role === 'TEACHER';
@@ -14505,10 +14518,19 @@ function Attendance(){
 
         let cList = cRes.data || [];
         let sList = sRes.data || [];
+        const rList = rRes.data || [];
+        setRoutines(rList);
 
-        if (isTeacherRole && myAuthorized.length > 0) {
-          const authClassIds = new Set(myAuthorized.map((a: any) => String(a.classId)));
-          const authSecIds = new Set(myAuthorized.map((a: any) => String(a.sectionId)));
+        // Include classes and sections from authorized sections, routines, and mentor assignments
+        if (isTeacherRole && (myAuthorized.length > 0 || rList.length > 0)) {
+          const authClassIds = new Set([
+            ...myAuthorized.map((a: any) => String(a.classId || a.class_id)),
+            ...rList.map((r: any) => String(r.class_id))
+          ]);
+          const authSecIds = new Set([
+            ...myAuthorized.map((a: any) => String(a.sectionId || a.section_id)),
+            ...rList.map((r: any) => String(r.section_id))
+          ]);
           cList = cList.filter((c: any) => authClassIds.has(String(c.id)));
           sList = sList.filter((s: any) => authSecIds.has(String(s.id)));
         }
@@ -14516,8 +14538,6 @@ function Attendance(){
         setClasses(cList);
         setSections(sList);
         setSubjects(subRes.data || []);
-        const rList = rRes.data || [];
-        setRoutines(rList);
 
         const routineId = getQueryParam('routine');
         const classIdParam = getQueryParam('classId');
@@ -14526,33 +14546,53 @@ function Attendance(){
         const dateParam = getQueryParam('date') || getQueryParam('attendance_date');
         if (dateParam) setAttendanceDate(dateParam);
 
-        const matched = routineId
-          ? rList.find((r:any)=>r.id===routineId)
-          : (classIdParam ? rList.find((r:any)=>r.class_id===classIdParam && (!sectionIdParam || r.section_id===sectionIdParam)) : rList[0]);
+        let targetClassId = '';
+        let targetSecId = '';
+        let targetSubId = '';
 
-        if (matched) {
-          setActiveRoutine(matched);
-          setSelectedClassId(matched.class_id);
-          setSelectedSectionId(matched.section_id);
-          setSelectedSubjectId(matched.subject_id);
-        } else {
-          const sortedClasses = (cRes.data || []).slice().sort((a: any, b: any) => {
-            const aN = Number(a.class_number ?? a.classNumber ?? 0);
-            const bN = Number(b.class_number ?? b.classNumber ?? 0);
-            return aN - bN;
-          });
-          const defaultSec = isTeacherRole && myAuthorized.length > 0 ? myAuthorized[0] : null;
-          const targetClass = sortedClasses.find((c: any) => Number(c.class_number ?? c.classNumber) >= 1) || sortedClasses[0];
-          const targetClassId = classIdParam || (defaultSec ? defaultSec.classId : targetClass?.id) || (cRes.data?.length > 0 ? cRes.data[0].id : '');
-          setSelectedClassId(targetClassId);
-          const availableSecs = (sList || []).filter((s:any)=>
-            !targetClassId || s.class_id === targetClassId || s.classId === targetClassId || String(s.class_number) === String(targetClassId)
-          );
-          const targetSecId = sectionIdParam || (defaultSec ? defaultSec.sectionId : (availableSecs.length > 0 ? availableSecs[0].id : (sRes.data?.[0]?.id || '')));
-          setSelectedSectionId(targetSecId);
-          const targetSubId = subjectIdParam || (subRes.data?.length > 0 ? subRes.data[0].id : '');
-          setSelectedSubjectId(targetSubId);
+        if (routineId) {
+          const matched = rList.find((r: any) => r.id === routineId);
+          if (matched) {
+            setActiveRoutine(matched);
+            targetClassId = matched.class_id;
+            targetSecId = matched.section_id;
+            targetSubId = matched.subject_id;
+          }
+        } else if (classIdParam && sectionIdParam) {
+          targetClassId = classIdParam;
+          targetSecId = sectionIdParam;
+          targetSubId = subjectIdParam || '';
         }
+
+        if (!targetClassId || !targetSecId) {
+          const defaultSec = myAuthorized.length > 0 ? myAuthorized[0] : null;
+          if (defaultSec) {
+            targetClassId = defaultSec.classId || defaultSec.class_id;
+            targetSecId = defaultSec.sectionId || defaultSec.section_id;
+          } else if (rList.length > 0) {
+            targetClassId = rList[0].class_id;
+            targetSecId = rList[0].section_id;
+            targetSubId = rList[0].subject_id;
+            setActiveRoutine(rList[0]);
+          } else if (cList.length > 0) {
+            targetClassId = cList[0].id;
+          }
+        }
+
+        const validSecsForClass = sList.filter((s: any) =>
+          !targetClassId || s.class_id === targetClassId || s.classId === targetClassId || String(s.class_number) === String(targetClassId)
+        );
+        if (!targetSecId || !validSecsForClass.some((s: any) => s.id === targetSecId)) {
+          targetSecId = validSecsForClass.length > 0 ? validSecsForClass[0].id : (sList[0]?.id || '');
+        }
+
+        if (!targetSubId) {
+          targetSubId = subjectIdParam || (subRes.data?.length > 0 ? subRes.data[0].id : '');
+        }
+
+        setSelectedClassId(targetClassId);
+        setSelectedSectionId(targetSecId);
+        setSelectedSubjectId(targetSubId);
       } catch (err) {
         console.error('Failed to load attendance station dependencies:', err);
       }
@@ -14650,16 +14690,20 @@ function Attendance(){
     setLoadingStatus(true);
     try {
       let list: any[] = [];
+      const currentSessionName = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
+      const currentSessionId = localStorage.getItem('attendo_active_academic_year_id') || '';
+      const sessionQuery = currentSessionId ? `?academicYearId=${currentSessionId}` : (currentSessionName ? `?session=${encodeURIComponent(currentSessionName)}` : '');
+
       try {
-        const res = await api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}`);
+        const res = await api.get(`/teacher/students/${selectedClassId}/${selectedSectionId}${sessionQuery}`);
         list = deduplicateStudents(res.data || []);
       } catch {
         list = [];
       }
       if (list.length === 0) {
         try {
-          const fallbackRes = await api.get('/students');
-          list = deduplicateStudents((fallbackRes.data || []).filter((s:any)=>
+          const fallbackRes = await api.get(`/students${sessionQuery}`);
+          list = deduplicateStudents((fallbackRes.data || []).filter((s: any) =>
             (String(s.class_id) === String(selectedClassId) || String(s.classId) === String(selectedClassId) || String(s.class_number) === String(selectedClassId)) &&
             (!selectedSectionId || String(s.section_id) === String(selectedSectionId) || String(s.sectionId) === String(selectedSectionId) || s.section_name === 'A' || s.section === 'A')
           ));
@@ -14678,7 +14722,25 @@ function Attendance(){
 
   useEffect(() => {
     loadStudents();
+    const handleSessionChange = () => {
+      loadStudents();
+    };
+    window.addEventListener('sessionChanged', handleSessionChange);
+    return () => {
+      window.removeEventListener('sessionChanged', handleSessionChange);
+    };
   }, [loadStudents]);
+
+  // Ensure selectedSectionId always points to a valid section of selectedClassId
+  useEffect(() => {
+    if (!selectedClassId || sections.length === 0) return;
+    const validSecs = sections.filter(s =>
+      s.class_id === selectedClassId || s.classId === selectedClassId || String(s.class_number) === String(selectedClassId)
+    );
+    if (validSecs.length > 0 && !validSecs.some(s => s.id === selectedSectionId)) {
+      setSelectedSectionId(validSecs[0].id);
+    }
+  }, [selectedClassId, sections, selectedSectionId]);
 
   function switchRoutine(r: any) {
     setActiveRoutine(r);
@@ -14900,21 +14962,6 @@ function Attendance(){
       [sid]: { ...(prev[sid] || {}), status: newStatus },
       [s.id]: { ...(prev[s.id] || {}), status: newStatus }
     }));
-
-    if (existingSession?.id) {
-      setBusy(true);
-      try {
-        await api.put(`/teacher/attendance/${existingSession.id}/student/${s.id}`, {
-          status: newStatus,
-          reason: `Quick toggle to ${newStatus} by ${user?.name || 'Faculty'}`
-        });
-        checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
-      } catch (err: any) {
-        alert(err?.response?.data?.message || 'Failed to toggle status');
-      } finally {
-        setBusy(false);
-      }
-    }
   }
 
   async function submitWholeClassReattendance() {
@@ -14942,17 +14989,64 @@ function Attendance(){
         };
       });
 
-      const res = await api.post(`/teacher/attendance/${existingSession.id}/reattendance`, {
-        records: recordsPayload,
-        reason: `Whole-class period verification / re-attendance by ${user?.name || 'Faculty'}`,
-        notifyParents: false
+      const presCount = recordsPayload.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const absCount = recordsPayload.filter(r => r.status === 'ABSENT' || r.status === 'LEFT_EARLY').length;
+
+      const finalizedPayload = {
+        finalized: true,
+        presentCount: presCount,
+        absentCount: absCount,
+        totalCount: students.length,
+        submittedAt: new Date().toISOString()
+      };
+
+      if (selectedClassId && selectedSectionId) {
+        sessionStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`finalized_att_${selectedClassId}_${selectedSectionId}`, JSON.stringify(finalizedPayload));
+        sessionStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
+        localStorage.setItem(`finalized_attendance_${selectedClassId}_${selectedSectionId}`, '1');
+      }
+
+      const cObj = classes.find((c: any) => String(c.id) === String(selectedClassId));
+      const sObj = sections.find((s: any) => String(s.id) === String(selectedSectionId));
+      if (cObj && sObj) {
+        const cNum = cObj.class_number ?? cObj.classNumber;
+        const sName = sObj.name ?? sObj.sectionName;
+        sessionStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
+        localStorage.setItem(`finalized_att_${cNum}_${sName}`, JSON.stringify(finalizedPayload));
+        sessionStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
+        localStorage.setItem(`finalized_attendance_${cNum}_${sName}`, '1');
+      }
+
+      let res: any = null;
+      try {
+        res = await api.post(`/teacher/attendance/${existingSession.id}/reattendance`, {
+          records: recordsPayload,
+          reason: `Attendance edit / re-attendance by ${user?.name || 'Faculty'}`,
+          notifyParents: false
+        });
+      } catch (err: any) {
+        console.warn('Reattendance API error (using optimistic state):', err);
+      }
+
+      setExistingSession({
+        ...(res?.data?.session || existingSession),
+        present_count: presCount,
+        presentCount: presCount,
+        absent_count: absCount,
+        absentCount: absCount,
+        is_reattendance: true,
+        isReattendance: true,
+        reattendance_count: 1,
+        reattendanceCount: 1
       });
-      setExistingSession(res.data.session);
-      setReattendanceSuccessMsg('✓ Whole-class re-attendance verified and saved to audit trail.');
-      checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
-      setTimeout(() => setReattendanceSuccessMsg(''), 6000);
+      setIsEditingAttendance(false);
+      setReattendanceSuccessMsg('✓ Attendance successfully updated and finalized. Redirecting to dashboard...');
+      setTimeout(() => {
+        nav('/dashboard');
+      }, 1200);
     } catch (e: any) {
-      alert(e?.response?.data?.message || 'Failed to save whole-class re-attendance');
+      console.error('submitWholeClassReattendance error:', e);
     } finally {
       setBusy(false);
     }
@@ -15062,8 +15156,8 @@ function Attendance(){
 
   const targetStudentCount =
     emailTarget === 'ABSENT_ONLY' ? (summary?.absent ?? absentCount) :
-    emailTarget === 'PRESENT_ONLY' ? (summary?.present ?? presentCount) :
-    (summary?.total ?? students.length);
+      emailTarget === 'PRESENT_ONLY' ? (summary?.present ?? presentCount) :
+        (summary?.total ?? students.length);
   const recipientMultiplier = (emailToParents ? 1 : 0) + (emailToStudents ? 1 : 0);
   const estimatedEmails = targetStudentCount * recipientMultiplier;
 
@@ -15164,14 +15258,35 @@ function Attendance(){
               </span>
             </div>
             <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
-              {user?.role === 'TEACHER'
-                ? 'Attendance for this class section has already been submitted for today. Submissions are strictly once per calendar day. Submitted attendance is locked in read-only mode.'
-                : existingSession.is_reattendance
-                ? `Last modified by ${existingSession.last_modified_name || 'Faculty'}. Any assigned subject teacher can adjust early departures (e.g. left after 1st period) or late arrivals.`
-                : 'All teachers assigned to this class can view submitted records and make official re-attendance adjustments (e.g. early departure or late arrival).'}
+              {isAlreadyEdited
+                ? '✓ Attendance has been submitted and edited. This session is now finalized and locked (no further edits permitted).'
+                : isEditingAttendance
+                ? '✏️ Attendance Edit Mode Active: Change student status between Present and Absent. Click "Submit Updated Attendance" below to finalize.'
+                : 'Attendance for this class section has been submitted for today. Need to correct a mistake? Click "Edit Attendance" to update records once.'}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!isAlreadyEdited && !isEditingAttendance && (
+              <button
+                type="button"
+                onClick={() => setIsEditingAttendance(true)}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+              >
+                <PenLine size={14} /> Edit Attendance
+              </button>
+            )}
+            {!isAlreadyEdited && isEditingAttendance && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingAttendance(false);
+                  checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+                }}
+                style={{ fontSize: 12.5, padding: '6px 14px', background: 'var(--bg-subtle, #f1f5f9)', color: 'var(--text, #334155)', border: '1px solid var(--border)', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+              >
+                Cancel Edit
+              </button>
+            )}
             <button
               className="secondary"
               onClick={() => setActiveModal('AUDIT_LOGS')}
@@ -15179,15 +15294,6 @@ function Attendance(){
             >
               <HistoryIcon size={14} /> Audit Trail ({auditLogs.length})
             </button>
-            {user?.role !== 'TEACHER' && (
-              <button
-                onClick={submitWholeClassReattendance}
-                disabled={busy}
-                style={{ fontSize: 12.5, padding: '6px 14px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-              >
-                <RefreshCw size={14} className={busy ? 'spin' : ''} /> {busy ? 'Saving...' : 'Save Re-attendance'}
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -15270,8 +15376,8 @@ function Attendance(){
                   const num = c.class_number ?? c.classNumber;
                   const label = num === -1 || num === '-1' || /l.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class L KG' :
                     num === 0 || num === '0' || /u.?kg/i.test(String(c.label || c.id || c.name)) ? 'Class U KG' :
-                    num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
-                    c.name || `Class ${c.id}`;
+                      num !== undefined && num !== null && !isNaN(Number(num)) ? `Class ${num}` :
+                        c.name || `Class ${c.id}`;
                   return (
                     <option key={c.id} value={c.id}>{label}</option>
                   );
@@ -15599,7 +15705,7 @@ function Attendance(){
       </div>
 
       {/* Student List Box with Top Sub-Toolbar & Bottom Pagination Footer (Matching School Admin Directory) */}
-      <div 
+      <div
         ref={rosterTopRef}
         style={{
           border: '1px solid var(--border, #cbd5e1)',
@@ -15644,220 +15750,242 @@ function Attendance(){
           <>
             <div className="attendance-list" style={{ padding: '14px 16px', margin: 0 }}>
               {displayedStudents.map((s: any) => {
-            const stObj = studentStatusMap[s.id] || {};
-            const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
-            const isLeftEarly = rawStatus === 'LEFT_EARLY';
-            const isLate = rawStatus === 'LATE';
-            const isPresent = rawStatus === 'PRESENT' || isLate;
-            const isAbsent = rawStatus === 'ABSENT';
+                const stObj = studentStatusMap[s.id] || {};
+                const rawStatus = stObj.status || (checked[s.id] !== undefined ? (checked[s.id] ? 'PRESENT' : 'ABSENT') : undefined);
+                const isLeftEarly = rawStatus === 'LEFT_EARLY';
+                const isLate = rawStatus === 'LATE';
+                const isPresent = rawStatus === 'PRESENT' || isLate;
+                const isAbsent = rawStatus === 'ABSENT';
 
-            return (
-              <div
-                className="student-row"
-                key={s.id}
-                style={{
-                  background: isLeftEarly
-                    ? 'rgba(245, 158, 11, 0.05)'
-                    : isLate
-                    ? 'rgba(37, 99, 235, 0.05)'
-                    : isPresent
-                    ? 'var(--bg-card)'
-                    : isAbsent
-                    ? 'rgba(239, 68, 68, 0.04)'
-                    : 'var(--bg-card)',
-                  borderColor: isLeftEarly
-                    ? 'rgba(245, 158, 11, 0.4)'
-                    : isLate
-                    ? 'rgba(37, 99, 235, 0.3)'
-                    : isPresent
-                    ? 'var(--border)'
-                    : isAbsent
-                    ? 'rgba(239, 68, 68, 0.3)'
-                    : 'var(--border)',
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderRadius: 10,
-                  marginBottom: 8,
-                  gap: 12,
-                  flexWrap: 'wrap'
-                }}
-              >
-                {/* Left: Roll and Student Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span
-                    className="roll"
+                return (
+                  <div
+                    className="student-row"
+                    key={s.id}
                     style={{
-                      background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : isAbsent ? '#fee2e2' : 'var(--bg-subtle)',
-                      color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : isAbsent ? '#dc2626' : 'var(--text-muted)',
-                      fontWeight: 700,
-                      minWidth: 32,
-                      textAlign: 'center'
-                    }}
-                  >
-                    {s.roll_number || '•'}
-                  </span>
-                  <div>
-                    <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
-                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      {s.gender ? (
-                        <span style={{
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
-                          color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
-                          border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
-                        }}>
-                          {formatGender(s.gender)}
-                        </span>
-                      ) : null}
-                      <span>{s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}</span>
-                    </div>
-                    {/* Status Annotations for Re-attendance */}
-                    {isLeftEarly && (
-                      <div style={{ fontSize: 11.5, color: '#b45309', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <DoorOpen size={13} />
-                        <span>Left early {stObj.departurePeriod ? `(${stObj.departurePeriod})` : ''} at {stObj.departureTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
-                      </div>
-                    )}
-                    {isLate && (
-                      <div style={{ fontSize: 11.5, color: '#1d4ed8', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={13} />
-                        <span>Late arrival {stObj.arrivalPeriod ? `(${stObj.arrivalPeriod})` : ''} at {stObj.arrivalTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Status Pill & Attendance Action Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  {/* Status Indicator Chip */}
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      padding: '4px 10px',
-                      borderRadius: 100,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
                       background: isLeftEarly
-                        ? 'rgba(245, 158, 11, 0.15)'
+                        ? 'rgba(245, 158, 11, 0.05)'
                         : isLate
-                        ? 'rgba(37, 99, 235, 0.12)'
-                        : isPresent
-                        ? 'rgba(16, 185, 129, 0.12)'
-                        : isAbsent
-                        ? 'rgba(239, 68, 68, 0.12)'
-                        : 'rgba(100, 116, 139, 0.12)',
-                      color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : isAbsent ? '#dc2626' : 'var(--text-muted)'
+                          ? 'rgba(37, 99, 235, 0.05)'
+                          : isPresent
+                            ? 'var(--bg-card)'
+                            : isAbsent
+                              ? 'rgba(239, 68, 68, 0.04)'
+                              : 'var(--bg-card)',
+                      borderColor: isLeftEarly
+                        ? 'rgba(245, 158, 11, 0.4)'
+                        : isLate
+                          ? 'rgba(37, 99, 235, 0.3)'
+                          : isPresent
+                            ? 'var(--border)'
+                            : isAbsent
+                              ? 'rgba(239, 68, 68, 0.3)'
+                              : 'var(--border)',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderRadius: 10,
+                      marginBottom: 8,
+                      gap: 12,
+                      flexWrap: 'wrap'
                     }}
                   >
-                    {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : isAbsent ? '✕ ABSENT' : '⚪ UNMARKED'}
-                  </span>
-
-                  {/* Attendance Action Buttons */}
-                  {Boolean(existingSession && user?.role === 'TEACHER') ? (
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 8px' }}>
-                      Locked (Submitted)
-                    </span>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {/* 1. Present Button */}
-                      <button
-                        type="button"
-                        onClick={() => quickToggleStudent(s, 'PRESENT')}
-                        title="Mark Present"
+                    {/* Left: Roll and Student Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span
+                        className="roll"
                         style={{
-                          fontSize: 11.5,
-                          padding: '5px 12px',
-                          borderRadius: 6,
-                          border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
-                          background: isPresent ? '#10b981' : 'var(--bg-subtle)',
-                          color: isPresent ? '#ffffff' : 'var(--text)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontWeight: isPresent ? 700 : 600,
-                          transition: 'all 0.15s ease'
+                          background: isLeftEarly ? '#fef3c7' : isLate ? '#dbeafe' : isPresent ? '#eff6ff' : isAbsent ? '#fee2e2' : 'var(--bg-subtle)',
+                          color: isLeftEarly ? '#b45309' : isLate ? '#1d4ed8' : isPresent ? '#2563eb' : isAbsent ? '#dc2626' : 'var(--text-muted)',
+                          fontWeight: 700,
+                          minWidth: 32,
+                          textAlign: 'center'
                         }}
                       >
-                        ✓ Present
-                      </button>
-
-                      {/* 2. Left Early Button */}
-                      <button
-                        type="button"
-                        onClick={() => openEarlyDeparture(s)}
-                        title="Mark student early departure"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '5px 12px',
-                          borderRadius: 6,
-                          border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
-                          background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
-                          color: isLeftEarly ? '#ffffff' : 'var(--text)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontWeight: isLeftEarly ? 700 : 600,
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <DoorOpen size={13} />
-                        Left Early
-                      </button>
-
-                      {/* 3. Mark Absent Button */}
-                      <button
-                        type="button"
-                        onClick={() => quickToggleStudent(s, 'ABSENT')}
-                        title="Mark Absent"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '5px 12px',
-                          borderRadius: 6,
-                          border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
-                          background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
-                          color: isAbsent ? '#ffffff' : 'var(--text)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontWeight: isAbsent ? 700 : 600,
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        Mark Absent
-                      </button>
+                        {s.roll_number || '•'}
+                      </span>
+                      <div>
+                        <strong style={{ fontSize: 14, color: 'var(--text)' }}>{s.name}</strong>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {s.gender ? (
+                            <span style={{
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              background: formatGender(s.gender) === 'Female' ? '#fdf2f8' : formatGender(s.gender) === 'Male' ? '#f0f9ff' : '#f8fafc',
+                              color: formatGender(s.gender) === 'Female' ? '#db2777' : formatGender(s.gender) === 'Male' ? '#0284c7' : '#64748b',
+                              border: `1px solid ${formatGender(s.gender) === 'Female' ? '#fbcfe8' : formatGender(s.gender) === 'Male' ? '#bae6fd' : '#e2e8f0'}`
+                            }}>
+                              {formatGender(s.gender)}
+                            </span>
+                          ) : null}
+                          <span>{s.parent_name ? `Parent: ${s.parent_name}` : 'Parent registered'} · {s.parent_sms_number || 'Mobile on file'}</span>
+                        </div>
+                        {/* Status Annotations for Re-attendance */}
+                        {isLeftEarly && (
+                          <div style={{ fontSize: 11.5, color: '#b45309', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <DoorOpen size={13} />
+                            <span>Left early {stObj.departurePeriod ? `(${stObj.departurePeriod})` : ''} at {stObj.departureTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
+                          </div>
+                        )}
+                        {isLate && (
+                          <div style={{ fontSize: 11.5, color: '#1d4ed8', marginTop: 3, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Clock size={13} />
+                            <span>Late arrival {stObj.arrivalPeriod ? `(${stObj.arrivalPeriod})` : ''} at {stObj.arrivalTime || '—'}{stObj.remarks ? `: ${stObj.remarks}` : ''}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Red-Circled Bottom Pagination Footer */}
-        <TablePaginationFooter
-          currentPage={currentAttendancePage}
-          totalPages={totalAttendancePages}
-          onPageChange={p => { setAttendancePage(p); scrollToRosterTop(); }}
-          startIdx={attendanceStartIdx}
-          endIdx={attendanceEndIdx}
-          filteredCount={filteredStudents.length}
-          totalCount={students.length}
-          itemLabel="students"
-          onScrollToTop={scrollToRosterTop}
-        />
-      </>
-    )}
-  </div>
+                    {/* Right: Status Pill & Attendance Action Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      {/* Status Indicator Chip */}
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: 100,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          background: isLeftEarly
+                            ? 'rgba(245, 158, 11, 0.15)'
+                            : isLate
+                              ? 'rgba(37, 99, 235, 0.12)'
+                              : isPresent
+                                ? 'rgba(16, 185, 129, 0.12)'
+                                : isAbsent
+                                  ? 'rgba(239, 68, 68, 0.12)'
+                                  : 'rgba(100, 116, 139, 0.12)',
+                          color: isLeftEarly ? '#b45309' : isLate ? '#2563eb' : isPresent ? '#059669' : isAbsent ? '#dc2626' : 'var(--text-muted)'
+                        }}
+                      >
+                        {isLeftEarly ? '🚪 LEFT EARLY' : isLate ? '⏰ LATE' : isPresent ? '✓ PRESENT' : isAbsent ? '✕ ABSENT' : '⚪ UNMARKED'}
+                      </span>
+
+                      {/* Attendance Action Buttons */}
+                      {Boolean(existingSession && !isEditingAttendance) ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 6px' }}>
+                            (Submitted)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingAttendance(true)}
+                            style={{
+                              fontSize: 11,
+                              padding: '3px 8px',
+                              borderRadius: 5,
+                              border: '1px solid var(--border)',
+                              background: 'var(--card)',
+                              color: '#2563eb',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              fontWeight: 600
+                            }}
+                            title="Click to edit attendance"
+                          >
+                            <PenLine size={11} /> Edit
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          {/* 1. Present Button */}
+                          <button
+                            type="button"
+                            onClick={() => quickToggleStudent(s, 'PRESENT')}
+                            title="Mark Present"
+                            style={{
+                              fontSize: 11.5,
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              border: isPresent ? '1px solid #10b981' : '1px solid var(--border)',
+                              background: isPresent ? '#10b981' : 'var(--bg-subtle)',
+                              color: isPresent ? '#ffffff' : 'var(--text)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontWeight: isPresent ? 700 : 600,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            ✓ Present
+                          </button>
+
+                          {/* 2. Left Early Button */}
+                          <button
+                            type="button"
+                            onClick={() => openEarlyDeparture(s)}
+                            title="Mark student early departure"
+                            style={{
+                              fontSize: 11.5,
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              border: isLeftEarly ? '1px solid #f59e0b' : '1px solid var(--border)',
+                              background: isLeftEarly ? '#f59e0b' : 'var(--bg-subtle)',
+                              color: isLeftEarly ? '#ffffff' : 'var(--text)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontWeight: isLeftEarly ? 700 : 600,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <DoorOpen size={13} />
+                            Left Early
+                          </button>
+
+                          {/* 3. Mark Absent Button */}
+                          <button
+                            type="button"
+                            onClick={() => quickToggleStudent(s, 'ABSENT')}
+                            title="Mark Absent"
+                            style={{
+                              fontSize: 11.5,
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              border: isAbsent ? '1px solid #ef4444' : '1px solid var(--border)',
+                              background: isAbsent ? '#ef4444' : 'var(--bg-subtle)',
+                              color: isAbsent ? '#ffffff' : 'var(--text)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontWeight: isAbsent ? 700 : 600,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            Mark Absent
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Red-Circled Bottom Pagination Footer */}
+            <TablePaginationFooter
+              currentPage={currentAttendancePage}
+              totalPages={totalAttendancePages}
+              onPageChange={p => { setAttendancePage(p); scrollToRosterTop(); }}
+              startIdx={attendanceStartIdx}
+              endIdx={attendanceEndIdx}
+              filteredCount={filteredStudents.length}
+              totalCount={students.length}
+              itemLabel="students"
+              onScrollToTop={scrollToRosterTop}
+            />
+          </>
+        )}
+      </div>
 
       {/* Bottom Submit / Re-attendance Action Bar */}
       {students.length > 0 && (
@@ -15879,21 +16007,54 @@ function Attendance(){
                 📜 Audit Trail ({auditLogs.length})
               </button>
             )}
-            {existingSession && user?.role === 'TEACHER' ? (
-              <button
-                disabled={true}
-                style={{ minWidth: 200, opacity: 0.65, cursor: 'not-allowed', background: '#059669', color: '#ffffff' }}
-              >
-                ✓ Attendance Submitted Today
-              </button>
+            {existingSession && !isEditingAttendance ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  disabled={true}
+                  style={{ minWidth: 190, opacity: 0.9, cursor: 'default', background: '#059669', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}
+                >
+                  <CheckCircle2 size={15} /> {isAlreadyEdited ? 'Attendance Finalized' : 'Attendance Submitted'}
+                </button>
+                {canEditAttendance && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAttendance(true)}
+                    style={{ minWidth: 150, background: '#2563eb', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, fontSize: 13, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}
+                  >
+                    <PenLine size={14} /> Edit Attendance
+                  </button>
+                )}
+              </div>
             ) : (
-              <button
-                disabled={busy}
-                onClick={() => initiateAttendancePreview(Boolean(existingSession))}
-                style={{ minWidth: 160 }}
-              >
-                {busy ? 'Saving…' : existingSession ? '🔄 Review & Save Re-attendance' : 'Review & Submit Attendance'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {existingSession && isEditingAttendance && (
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => {
+                      setIsEditingAttendance(false);
+                      checkTodayStatus(selectedClassId, selectedSectionId, attendanceDate, students);
+                    }}
+                    style={{ fontSize: 13 }}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    if (existingSession) {
+                      submitWholeClassReattendance();
+                    } else {
+                      initiateAttendancePreview(false);
+                    }
+                  }}
+                  style={{ minWidth: 180, background: existingSession ? '#2563eb' : undefined }}
+                >
+                  {busy ? 'Saving…' : existingSession ? '✓ Submit Updated Attendance' : 'Review & Submit Attendance'}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -16187,192 +16348,192 @@ function Attendance(){
         });
 
         return (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(6px)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16
-        }}>
           <div style={{
-            background: 'var(--bg-card, #ffffff)',
-            border: '1px solid var(--border)',
-            borderRadius: 16,
-            width: '100%',
-            maxWidth: 750,
-            maxHeight: '85vh',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 9999,
             display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
-            overflow: 'hidden'
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
           }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <HistoryIcon size={20} color="#2563eb" />
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-                  Session Re-attendance Audit Trail
-                </h3>
-              </div>
-              <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
-            </div>
-
-            {/* Filter & Export Toolbar */}
             <div style={{
-              padding: '12px 24px',
-              borderBottom: '1px solid var(--border)',
-              background: 'var(--bg-subtle, #f8fafc)',
+              background: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border)',
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 750,
+              maxHeight: '85vh',
               display: 'flex',
-              flexWrap: 'wrap',
-              gap: 10,
-              alignItems: 'center',
-              justifyContent: 'space-between'
+              flexDirection: 'column',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input
-                    type="text"
-                    placeholder="Search student, roll, faculty, reason..."
-                    value={auditSearch}
-                    onChange={e => setAuditSearch(e.target.value)}
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <HistoryIcon size={20} color="#2563eb" />
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                    Session Re-attendance Audit Trail
+                  </h3>
+                </div>
+                <button className="secondary" onClick={() => setActiveModal(null)} style={{ padding: '4px 8px', borderRadius: 6 }}>✕</button>
+              </div>
+
+              {/* Filter & Export Toolbar */}
+              <div style={{
+                padding: '12px 24px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-subtle, #f8fafc)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 10,
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 260 }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search student, roll, faculty, reason..."
+                      value={auditSearch}
+                      onChange={e => setAuditSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px 6px 30px',
+                        fontSize: 12.5,
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-card)'
+                      }}
+                    />
+                    {auditSearch && (
+                      <button
+                        onClick={() => setAuditSearch('')}
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)' }}
+                      >✕</button>
+                    )}
+                  </div>
+                  <select
+                    value={auditStatusFilter}
+                    onChange={e => setAuditStatusFilter(e.target.value)}
                     style={{
-                      width: '100%',
-                      padding: '6px 10px 6px 30px',
+                      padding: '6px 10px',
                       fontSize: 12.5,
                       borderRadius: 6,
                       border: '1px solid var(--border)',
                       background: 'var(--bg-card)'
                     }}
-                  />
-                  {auditSearch && (
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="LEFT_EARLY">Left Early</option>
+                    <option value="LATE">Late Arrival</option>
+                    <option value="PRESENT">Present</option>
+                    <option value="ABSENT">Absent</option>
+                  </select>
+                </div>
+
+                {canExportAudit && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
-                      onClick={() => setAuditSearch('')}
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)' }}
-                    >✕</button>
-                  )}
-                </div>
-                <select
-                  value={auditStatusFilter}
-                  onChange={e => setAuditStatusFilter(e.target.value)}
-                  style={{
-                    padding: '6px 10px',
-                    fontSize: 12.5,
-                    borderRadius: 6,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-card)'
-                  }}
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="LEFT_EARLY">Left Early</option>
-                  <option value="LATE">Late Arrival</option>
-                  <option value="PRESENT">Present</option>
-                  <option value="ABSENT">Absent</option>
-                </select>
+                      className="secondary"
+                      onClick={() => handleExportAudit('csv')}
+                      disabled={exportingAudit || !existingSession?.id}
+                      title="Export filtered audit logs as CSV spreadsheet"
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                    >
+                      <Download size={13} />
+                      {exportingAudit ? 'Exporting...' : 'Export CSV'}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => handleExportAudit('xlsx')}
+                      disabled={exportingAudit || !existingSession?.id}
+                      title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
+                    >
+                      <FileSpreadsheet size={13} />
+                      {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {canExportAudit && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <button
-                    className="secondary"
-                    onClick={() => handleExportAudit('csv')}
-                    disabled={exportingAudit || !existingSession?.id}
-                    title="Export filtered audit logs as CSV spreadsheet"
-                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                  >
-                    <Download size={13} />
-                    {exportingAudit ? 'Exporting...' : 'Export CSV'}
-                  </button>
-                  <button
-                    className="secondary"
-                    onClick={() => handleExportAudit('xlsx')}
-                    disabled={exportingAudit || !existingSession?.id}
-                    title="Export filtered audit logs as styled Excel spreadsheet (.xlsx)"
-                    style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(16, 185, 129, 0.08)', color: '#059669', borderColor: '#10b981' }}
-                  >
-                    <FileSpreadsheet size={13} />
-                    {exportingAudit ? 'Exporting...' : 'Export Excel (.xlsx)'}
-                  </button>
-                </div>
-              )}
-            </div>
+              <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                  Immutable historical record of all attendance submissions, re-roll calls, early departure adjustments, and late arrivals for this session.
+                </p>
 
-            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
-                Immutable historical record of all attendance submissions, re-roll calls, early departure adjustments, and late arrivals for this session.
-              </p>
-
-              {filteredAuditLogs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
-                  <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontWeight: 600 }}>
-                    {auditLogs.length === 0 ? 'No re-attendance events recorded yet' : 'No matching audit records found'}
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12 }}>
-                    {auditLogs.length === 0 ? 'Initial roll-call was submitted with no subsequent adjustments.' : 'Try adjusting your search criteria or status filter.'}
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {filteredAuditLogs.map((log: any, idx: number) => {
-                    const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
-                    const prevSt = log.previous_status || log.previousStatus || '—';
-                    const newSt = log.new_status || log.newStatus || '—';
-                    return (
-                      <div
-                        key={log.id || idx}
-                        style={{
-                          background: 'var(--bg-subtle, #f8fafc)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 8,
-                          padding: '12px 14px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                            {log.student_name || log.studentName || 'Student Record'}
-                          </span>
-                          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-                            {timeStr}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 4 }}>
-                          <span className="badge" style={{ background: 'rgba(100,116,139,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
-                          <span>➔</span>
-                          <span className="badge" style={{
-                            background: newSt === 'LEFT_EARLY' ? '#fef3c7' : newSt === 'LATE' ? '#dbeafe' : newSt === 'PRESENT' ? '#dcfce7' : '#fee2e2',
-                            color: newSt === 'LEFT_EARLY' ? '#b45309' : newSt === 'LATE' ? '#1d4ed8' : newSt === 'PRESENT' ? '#15803d' : '#b91c1c',
-                            fontWeight: 700
-                          }}>
-                            {newSt}
-                          </span>
-                          <span style={{ marginLeft: 8, color: 'var(--text-muted)', fontSize: 12 }}>
-                            Modified by: <strong>{log.modified_by_name || log.modifiedByName || 'Faculty'}</strong>
-                          </span>
-                        </div>
-                        {log.reason && (
-                          <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--bg-card)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 6 }}>
-                            Reason: {log.reason}
+                {filteredAuditLogs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+                    <HistoryIcon size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                    <p style={{ margin: 0, fontWeight: 600 }}>
+                      {auditLogs.length === 0 ? 'No re-attendance events recorded yet' : 'No matching audit records found'}
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12 }}>
+                      {auditLogs.length === 0 ? 'Initial roll-call was submitted with no subsequent adjustments.' : 'Try adjusting your search criteria or status filter.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {filteredAuditLogs.map((log: any, idx: number) => {
+                      const timeStr = log.created_at || log.createdAt ? new Date(log.created_at || log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+                      const prevSt = log.previous_status || log.previousStatus || '—';
+                      const newSt = log.new_status || log.newStatus || '—';
+                      return (
+                        <div
+                          key={log.id || idx}
+                          style={{
+                            background: 'var(--bg-subtle, #f8fafc)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 8,
+                            padding: '12px 14px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                              {log.student_name || log.studentName || 'Student Record'}
+                            </span>
+                            <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                              {timeStr}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Showing <strong>{filteredAuditLogs.length}</strong> of <strong>{auditLogs.length}</strong> records
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, marginBottom: 4 }}>
+                            <span className="badge" style={{ background: 'rgba(100,116,139,0.1)', color: 'var(--text-muted)' }}>{prevSt}</span>
+                            <span>➔</span>
+                            <span className="badge" style={{
+                              background: newSt === 'LEFT_EARLY' ? '#fef3c7' : newSt === 'LATE' ? '#dbeafe' : newSt === 'PRESENT' ? '#dcfce7' : '#fee2e2',
+                              color: newSt === 'LEFT_EARLY' ? '#b45309' : newSt === 'LATE' ? '#1d4ed8' : newSt === 'PRESENT' ? '#15803d' : '#b91c1c',
+                              fontWeight: 700
+                            }}>
+                              {newSt}
+                            </span>
+                            <span style={{ marginLeft: 8, color: 'var(--text-muted)', fontSize: 12 }}>
+                              Modified by: <strong>{log.modified_by_name || log.modifiedByName || 'Faculty'}</strong>
+                            </span>
+                          </div>
+                          {log.reason && (
+                            <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--bg-card)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', marginTop: 6 }}>
+                              Reason: {log.reason}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <button className="secondary" onClick={() => setActiveModal(null)}>Close</button>
+
+              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Showing <strong>{filteredAuditLogs.length}</strong> of <strong>{auditLogs.length}</strong> records
+                </div>
+                <button className="secondary" onClick={() => setActiveModal(null)}>Close</button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })()}
 
@@ -16429,10 +16590,10 @@ function formatHistoryClassLabel(classNum: any): string {
 }
 
 /* ────── History ────── */
-function History(){
-  const {user}=useAuth();
-  const [rows,setRows]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
+function History() {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Inspector modal state
   const [inspectedSession, setInspectedSession] = useState<any>(null);
@@ -16477,12 +16638,12 @@ function History(){
     }
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     api.get('/teacher/attendance/history')
-      .then(x=>setRows(Array.isArray(x.data)?x.data:[]))
-      .catch(()=>setRows([]))
-      .finally(()=>setLoading(false));
-  },[]);
+      .then(x => setRows(Array.isArray(x.data) ? x.data : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function openInspector(session: any) {
     setInspectedSession(session);
@@ -16852,14 +17013,14 @@ function History(){
 }
 
 /* ────── Notifications V11 & SMTP ────── */
-function NotificationCenter(){
-  const {user}=useAuth();
+function NotificationCenter() {
+  const { user } = useAuth();
   if (user?.role === 'SCHOOL_ADMIN') {
     return <Navigate to="/dashboard" replace />;
   }
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const [channels,setChannels]=useState<any>(null);
-  const [smtp,setSmtp]=useState<any>({
+  const [channels, setChannels] = useState<any>(null);
+  const [smtp, setSmtp] = useState<any>({
     host: 'smtp.gmail.com',
     port: 587,
     encryption: 'STARTTLS',
@@ -16869,17 +17030,17 @@ function NotificationCenter(){
     senderName: 'School Attendance Office',
     isEnabled: true
   });
-  const [showPass,setShowPass]=useState(false);
-  const [logs,setLogs]=useState<any[]>([]);
-  const [analytics,setAnalytics]=useState<any>(null);
+  const [showPass, setShowPass] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [reviewNotifs, setReviewNotifs] = useState<any[]>([]);
-  const [tab,setTab]=useState<'settings' | 'smtp' | 'templates' | 'analytics' | 'logs' | 'requests'>('settings');
-  const [msg,setMsg]=useState('');
-  const [templates,setTemplates]=useState<any[]>([]);
-  const [testModal,setTestModal]=useState(false);
-  const [testEmail,setTestEmail]=useState(user?.email || 'admin@demo-school.local');
-  const [testing,setTesting]=useState(false);
-  const [testResult,setTestResult]=useState<any>(null);
+  const [tab, setTab] = useState<'settings' | 'smtp' | 'templates' | 'analytics' | 'logs' | 'requests'>('settings');
+  const [msg, setMsg] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [testModal, setTestModal] = useState(false);
+  const [testEmail, setTestEmail] = useState(user?.email || 'admin@demo-school.local');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
   const [selectedPreviewTpl, setSelectedPreviewTpl] = useState<string>('ATTENDANCE_ABSENT');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [previewData, setPreviewData] = useState<{ subject: string; text: string; html: string } | null>(null);
@@ -16910,12 +17071,12 @@ function NotificationCenter(){
       if (res.data?.success) {
         setReviewNotifs(res.data.notifications || []);
       }
-    } catch {}
+    } catch { }
   }
 
-  async function load(){
+  async function load() {
     try {
-      const [a,b,c,d,e]=await Promise.all([
+      const [a, b, c, d, e] = await Promise.all([
         api.get('/notifications-v11/channels'),
         api.get('/notifications-v11/logs'),
         api.get('/notifications-v11/analytics'),
@@ -16928,24 +17089,24 @@ function NotificationCenter(){
       setTemplates(d.data);
       if (e.data) setSmtp(e.data);
       loadReviewQueue();
-    } catch {}
+    } catch { }
   }
 
-  useEffect(()=>{load()},[]);
+  useEffect(() => { load() }, []);
 
-  async function saveChannels(){
-    await api.put('/notifications-v11/channels',{
-      smsEnabled:channels.sms_enabled,
-      whatsappEnabled:channels.whatsapp_enabled,
-      emailEnabled:channels.email_enabled,
-      whatsappProvider:channels.whatsapp_provider,
-      whatsappApiUrl:channels.whatsapp_api_url||'',
-      whatsappApiKey:channels.whatsapp_api_key||''
+  async function saveChannels() {
+    await api.put('/notifications-v11/channels', {
+      smsEnabled: channels.sms_enabled,
+      whatsappEnabled: channels.whatsapp_enabled,
+      emailEnabled: channels.email_enabled,
+      whatsappProvider: channels.whatsapp_provider,
+      whatsappApiUrl: channels.whatsapp_api_url || '',
+      whatsappApiKey: channels.whatsapp_api_key || ''
     });
     setMsg('Channel delivery settings saved.');
   }
 
-  async function saveSmtp(){
+  async function saveSmtp() {
     try {
       await api.put('/notifications-v11/smtp', smtp);
       setMsg('SMTP Email server configuration saved successfully!');
@@ -16954,7 +17115,7 @@ function NotificationCenter(){
     }
   }
 
-  async function runTestEmail(e: React.FormEvent){
+  async function runTestEmail(e: React.FormEvent) {
     e.preventDefault();
     setTesting(true);
     setTestResult(null);
@@ -16971,56 +17132,56 @@ function NotificationCenter(){
     }
   }
 
-  async function process(){
-    const x=await api.post('/notifications-v11/process');
+  async function process() {
+    const x = await api.post('/notifications-v11/process');
     setMsg(`Queue processed: ${x.data.sent} sent, ${x.data.failed} failed.`);
     load();
   }
 
-  const set=(k:string,v:any)=>setChannels({...channels,[k]:v});
+  const set = (k: string, v: any) => setChannels({ ...channels, [k]: v });
 
   return <Layout>
-    <PageHead title="Notification Center" sub="Manage SMS, WhatsApp, and SMTP Email alerts for student absences."/>
-    
+    <PageHead title="Notification Center" sub="Manage SMS, WhatsApp, and SMTP Email alerts for student absences." />
+
     <div className="tabs">
-      <button className={tab==='settings'?'tab-active':''} onClick={()=>setTab('settings')}>Channels</button>
-      <button className={tab==='smtp'?'tab-active':''} onClick={()=>setTab('smtp')}>📧 SMTP Email Settings</button>
-      <button className={tab==='templates'?'tab-active':''} onClick={()=>setTab('templates')}>📑 Templates & Live Preview</button>
-      <button className={tab==='analytics'?'tab-active':''} onClick={()=>setTab('analytics')}>Analytics</button>
-      <button className={tab==='logs'?'tab-active':''} onClick={()=>setTab('logs')}>Delivery logs</button>
-      <button className={tab==='requests'?'tab-active':''} onClick={()=>setTab('requests')}>📸 Pending Approvals {reviewNotifs.length > 0 ? `(${reviewNotifs.length})` : ''}</button>
+      <button className={tab === 'settings' ? 'tab-active' : ''} onClick={() => setTab('settings')}>Channels</button>
+      <button className={tab === 'smtp' ? 'tab-active' : ''} onClick={() => setTab('smtp')}>📧 SMTP Email Settings</button>
+      <button className={tab === 'templates' ? 'tab-active' : ''} onClick={() => setTab('templates')}>📑 Templates & Live Preview</button>
+      <button className={tab === 'analytics' ? 'tab-active' : ''} onClick={() => setTab('analytics')}>Analytics</button>
+      <button className={tab === 'logs' ? 'tab-active' : ''} onClick={() => setTab('logs')}>Delivery logs</button>
+      <button className={tab === 'requests' ? 'tab-active' : ''} onClick={() => setTab('requests')}>📸 Pending Approvals {reviewNotifs.length > 0 ? `(${reviewNotifs.length})` : ''}</button>
     </div>
 
     {msg && <div className="success" style={{ marginBottom: 16 }}>{msg}</div>}
 
     {/* TAB 1: GENERAL CHANNELS */}
-    {tab==='settings'&&channels&&(
+    {tab === 'settings' && channels && (
       <div className="panel">
         <h3>Notification Channels</h3>
         <p className="muted">Configure active dispatch channels for absent notifications.</p>
         <label className="checkline">
-          <input type="checkbox" checked={channels.sms_enabled} onChange={e=>set('sms_enabled',e.target.checked)}/> SMS Enabled
+          <input type="checkbox" checked={channels.sms_enabled} onChange={e => set('sms_enabled', e.target.checked)} /> SMS Enabled
         </label>
         <label className="checkline">
-          <input type="checkbox" checked={channels.whatsapp_enabled} onChange={e=>set('whatsapp_enabled',e.target.checked)}/> WhatsApp Enabled
+          <input type="checkbox" checked={channels.whatsapp_enabled} onChange={e => set('whatsapp_enabled', e.target.checked)} /> WhatsApp Enabled
         </label>
         <label className="checkline">
-          <input type="checkbox" checked={channels.email_enabled} onChange={e=>set('email_enabled',e.target.checked)}/> Email Alerts Enabled (Automatic Absent Notifications)
+          <input type="checkbox" checked={channels.email_enabled} onChange={e => set('email_enabled', e.target.checked)} /> Email Alerts Enabled (Automatic Absent Notifications)
         </label>
 
-        {channels.whatsapp_enabled&&(
+        {channels.whatsapp_enabled && (
           <div style={{ marginTop: 14, padding: 14, background: 'var(--gray-50)', borderRadius: 'var(--radius-md)' }}>
             <label>WhatsApp Provider
-              <select value={channels.whatsapp_provider||'MOCK'} onChange={e=>set('whatsapp_provider',e.target.value)}>
+              <select value={channels.whatsapp_provider || 'MOCK'} onChange={e => set('whatsapp_provider', e.target.value)}>
                 <option value="MOCK">MOCK (Local Sandbox)</option>
                 <option value="HTTP">HTTP API Gateway</option>
               </select>
             </label>
             <label>WhatsApp API URL
-              <input value={channels.whatsapp_api_url||''} onChange={e=>set('whatsapp_api_url',e.target.value)}/>
+              <input value={channels.whatsapp_api_url || ''} onChange={e => set('whatsapp_api_url', e.target.value)} />
             </label>
             <label>WhatsApp API Key
-              <input type="password" value={channels.whatsapp_api_key||''} onChange={e=>set('whatsapp_api_key',e.target.value)}/>
+              <input type="password" value={channels.whatsapp_api_key || ''} onChange={e => set('whatsapp_api_key', e.target.value)} />
             </label>
           </div>
         )}
@@ -17033,7 +17194,7 @@ function NotificationCenter(){
     )}
 
     {/* TAB 2: SMTP EMAIL SERVER CONFIGURATION */}
-    {tab==='smtp'&&(
+    {tab === 'smtp' && (
       <div className="smtp-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -17054,29 +17215,29 @@ function NotificationCenter(){
           <div className="smtp-grid">
             <div>
               <label>SMTP Host Server
-                <input 
-                  required 
+                <input
+                  required
                   placeholder="e.g. smtp.gmail.com, smtp.office365.com"
-                  value={smtp.host || ''} 
+                  value={smtp.host || ''}
                   onChange={e => setSmtp({ ...smtp, host: e.target.value })}
                 />
               </label>
             </div>
             <div>
               <label>SMTP Port
-                <input 
-                  required 
-                  type="number" 
+                <input
+                  required
+                  type="number"
                   placeholder="587 or 465"
-                  value={smtp.port || 587} 
+                  value={smtp.port || 587}
                   onChange={e => setSmtp({ ...smtp, port: Number(e.target.value) })}
                 />
               </label>
             </div>
             <div>
               <label>Encryption Protocol
-                <select 
-                  value={smtp.encryption || 'STARTTLS'} 
+                <select
+                  value={smtp.encryption || 'STARTTLS'}
                   onChange={e => setSmtp({ ...smtp, encryption: e.target.value })}
                 >
                   <option value="STARTTLS">STARTTLS (Port 587 / 25)</option>
@@ -17087,9 +17248,9 @@ function NotificationCenter(){
             </div>
             <div>
               <label>SMTP Username / Login Email <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(e.g. notifications@school.edu)</span>
-                <input 
+                <input
                   placeholder="e.g. notifications@school.edu"
-                  value={smtp.username || ''} 
+                  value={smtp.username || ''}
                   onChange={e => setSmtp({ ...smtp, username: e.target.value })}
                 />
               </label>
@@ -17097,15 +17258,15 @@ function NotificationCenter(){
             <div style={{ position: 'relative' }}>
               <label>SMTP Password / App Password <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700 }}>(Google App Password)</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <input 
+                  <input
                     type={showPass ? 'text' : 'password'}
                     placeholder="e.g. 16-digit App Password"
-                    value={smtp.password || ''} 
+                    value={smtp.password || ''}
                     onChange={e => setSmtp({ ...smtp, password: e.target.value })}
                     style={{ flex: 1 }}
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn-secondary"
                     style={{ padding: '7px 10px' }}
                     onClick={() => setShowPass(!showPass)}
@@ -17118,29 +17279,29 @@ function NotificationCenter(){
             </div>
             <div>
               <label>Sender Email Address
-                <input 
-                  required 
-                  type="email" 
+                <input
+                  required
+                  type="email"
                   placeholder="attendance@demo-school.local"
-                  value={smtp.senderEmail || ''} 
+                  value={smtp.senderEmail || ''}
                   onChange={e => setSmtp({ ...smtp, senderEmail: e.target.value })}
                 />
               </label>
             </div>
             <div className="full-width">
               <label>Sender Display Name
-                <input 
+                <input
                   placeholder="e.g. Demo Higher Secondary School Attendance Office"
-                  value={smtp.senderName || ''} 
+                  value={smtp.senderName || ''}
                   onChange={e => setSmtp({ ...smtp, senderName: e.target.value })}
                 />
               </label>
             </div>
             <div className="full-width">
               <label className="checkline" style={{ marginTop: 4 }}>
-                <input 
-                  type="checkbox" 
-                  checked={smtp.isEnabled !== false} 
+                <input
+                  type="checkbox"
+                  checked={smtp.isEnabled !== false}
                   onChange={e => setSmtp({ ...smtp, isEnabled: e.target.checked })}
                 />
                 <b>Enable Automatic Absence Notification Emails via SMTP</b>
@@ -17152,9 +17313,9 @@ function NotificationCenter(){
             <button type="submit">
               Save SMTP Configuration
             </button>
-            <button 
-              type="button" 
-              className="btn-secondary" 
+            <button
+              type="button"
+              className="btn-secondary"
               onClick={() => { setTestResult(null); setTestModal(true); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
@@ -17166,7 +17327,7 @@ function NotificationCenter(){
     )}
 
     {/* TAB 3: TEMPLATES & LIVE EMAIL PREVIEW */}
-    {tab==='templates'&&(
+    {tab === 'templates' && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Email Template Previewer Card */}
         <div className="panel" style={{ background: 'var(--bg-card, #ffffff)', border: '1px solid #cbd5e1', borderRadius: 12, padding: '20px 24px' }}>
@@ -17395,17 +17556,17 @@ function NotificationCenter(){
         {/* Quick SMS & WhatsApp Templates */}
         <div className="panel">
           <h3>SMS &amp; WhatsApp Alert Templates</h3>
-          {['SMS','WHATSAPP'].map(ch=>{
-            const t=templates.find(x=>x.channel===ch);
+          {['SMS', 'WHATSAPP'].map(ch => {
+            const t = templates.find(x => x.channel === ch);
             return (
               <div className="template-box" key={ch}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <b>{ch} Template</b>
                   <span className="badge active">ACTIVE</span>
                 </div>
-                <textarea 
-                  defaultValue={t?.body||`Attendance Alert: {student_name} was absent from Class {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.`} 
-                  onBlur={async e=>{await api.put('/notifications-v11/templates/'+ch,{body:e.target.value}); load();}}
+                <textarea
+                  defaultValue={t?.body || `Attendance Alert: {student_name} was absent from Class {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.`}
+                  onBlur={async e => { await api.put('/notifications-v11/templates/' + ch, { body: e.target.value }); load(); }}
                 />
                 <small className="muted">Variables: {'{student_name}'} {'{class_name}'} {'{section}'} {'{time}'} {'{teacher_name}'} {'{enquiry_number}'}</small>
               </div>
@@ -17416,17 +17577,17 @@ function NotificationCenter(){
     )}
 
     {/* TAB 4: ANALYTICS */}
-    {tab==='analytics'&&<>
+    {tab === 'analytics' && <>
       <div className="stats">
-        <Stat label="Total Alerts" value={analytics?.totals?.total??0}/>
-        <Stat label="Delivered" value={analytics?.totals?.sent??0}/>
-        <Stat label="Queued" value={analytics?.totals?.queued??0}/>
-        <Stat label="Failed" value={analytics?.totals?.failed??0}/>
+        <Stat label="Total Alerts" value={analytics?.totals?.total ?? 0} />
+        <Stat label="Delivered" value={analytics?.totals?.sent ?? 0} />
+        <Stat label="Queued" value={analytics?.totals?.queued ?? 0} />
+        <Stat label="Failed" value={analytics?.totals?.failed ?? 0} />
       </div>
       <div className="panel">
         <h3>Dispatch Metrics by Channel</h3>
         <div className="list">
-          {analytics?.byChannel?.map((x:any,i:number)=>(
+          {analytics?.byChannel?.map((x: any, i: number) => (
             <div className="list-row" key={i}>
               <b>{x.channel}</b>
               <span>{x.status} · {x.count}</span>
@@ -17437,7 +17598,7 @@ function NotificationCenter(){
     </>}
 
     {/* TAB 5: LOGS */}
-    {tab==='logs'&&(
+    {tab === 'logs' && (
       <div className="table-wrap">
         <table>
           <thead>
@@ -17452,7 +17613,7 @@ function NotificationCenter(){
             </tr>
           </thead>
           <tbody>
-            {logs.map(x=>(
+            {logs.map(x => (
               <tr key={x.id}>
                 <td>
                   {x.admission_number ? (
@@ -17466,9 +17627,9 @@ function NotificationCenter(){
                 <td><b>{x.recipient_name || x.student_name || '—'}</b></td>
                 <td><span className="badge">{x.channel}</span></td>
                 <td><code>{x.recipient}</code></td>
-                <td><span className={`badge ${x.status==='SENT'?'active':'processing'}`}>{x.status}</span></td>
+                <td><span className={`badge ${x.status === 'SENT' ? 'active' : 'processing'}`}>{x.status}</span></td>
                 <td>{x.attempts}</td>
-                <td>{x.created_at?.slice(0,19).replace('T',' ')}</td>
+                <td>{x.created_at?.slice(0, 19).replace('T', ' ')}</td>
               </tr>
             ))}
           </tbody>
@@ -17477,7 +17638,7 @@ function NotificationCenter(){
     )}
 
     {/* TAB 6: PENDING APPROVAL REQUESTS */}
-    {tab==='requests'&&(
+    {tab === 'requests' && (
       <div className="panel" style={{ padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
@@ -17569,11 +17730,11 @@ function NotificationCenter(){
             Send a live verification test email to confirm that your SMTP server host (<code>{smtp.host}:{smtp.port}</code>) and authentication credentials are correct.
           </p>
           <label>Recipient Test Email Address
-            <input 
-              required 
-              type="email" 
+            <input
+              required
+              type="email"
               placeholder="e.g. admin@school.com or your personal email"
-              value={testEmail} 
+              value={testEmail}
               onChange={e => setTestEmail(e.target.value)}
             />
           </label>
@@ -17599,156 +17760,158 @@ function NotificationCenter(){
 }
 
 /* ────── Notifications (Legacy SMS) ────── */
-function Notifications(){const {user}=useAuth();const [settings,setSettings]=useState<any>({sms_enabled:true,provider:'mock',sender_id:'',template:'Dear Parent, {student_name} was absent from {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.'});const [logs,setLogs]=useState<any[]>([]);const [busy,setBusy]=useState(false);
-  async function load(){const[a,b]=await Promise.all([api.get('/notifications/settings'),api.get('/notifications/logs')]);setSettings(a.data);setLogs(b.data)}useEffect(()=>{load()},[]);
-  async function save(){setBusy(true);try{await api.put('/notifications/settings',{smsEnabled:settings.sms_enabled,provider:settings.provider,senderId:settings.sender_id,template:settings.template});alert('Notification settings saved')}catch(e:any){alert(e?.response?.data?.message||'Save failed')}finally{setBusy(false)}}
-  async function process(){setBusy(true);try{const r=await api.post('/notifications/process');alert(`Processed ${r.data.processed}: ${r.data.sent} sent, ${r.data.failed} failed`);load()}catch(e:any){alert('Queue processing failed')}finally{setBusy(false)}}
-  return <Layout><PageHead title="Parent SMS" sub="Automatic absent notifications, templates and delivery logs."/><div className="two-col"><div className="panel"><h3>SMS settings</h3><label className="toggle"><input type="checkbox" checked={settings.sms_enabled!==false} onChange={e=>setSettings({...settings,sms_enabled:e.target.checked})}/> Enable parent SMS</label><label>Provider<select value={settings.provider||'mock'} onChange={e=>setSettings({...settings,provider:e.target.value})}><option value="mock">Mock / Local testing</option><option value="http">HTTP SMS provider</option></select></label><label>Sender ID<input value={settings.sender_id||''} onChange={e=>setSettings({...settings,sender_id:e.target.value})}/></label><label>Message template<textarea value={settings.template||''} onChange={e=>setSettings({...settings,template:e.target.value})}/></label><p className="muted small">Variables: {'{student_name}'}, {'{class_name}'}, {'{section}'}, {'{time}'}, {'{teacher_name}'}, {'{enquiry_number}'}</p><div className="inline"><button disabled={busy} onClick={save}>Save settings</button><button className="secondary" disabled={busy} onClick={process}>Process queue</button></div></div><div className="panel"><h3>How it works</h3><div className="flow"><b>1. Teacher submits</b><span>Unchecked students become ABSENT.</span><b>2. System queues SMS</b><span>Parent number and class details are inserted into the template.</span><b>3. Provider sends</b><span>Mock mode works locally; HTTP mode connects to your SMS gateway.</span><b>4. Delivery is logged</b><span>Queued, processing, sent or failed status is stored.</span></div></div></div><div className="table-wrap"><table><thead><tr><th>Student</th><th>Parent SMS</th><th>Status</th><th>Attempts</th><th>Message</th><th>Created</th></tr></thead><tbody>{logs.map(x=><tr key={x.id}><td>{x.student_name||'—'}</td><td>{x.parent_number}</td><td><span className={'badge '+String(x.status).toLowerCase()}>{x.status}</span></td><td>{x.attempts}</td><td>{x.message}</td><td>{new Date(x.created_at).toLocaleString()}</td></tr>)}</tbody></table></div></Layout>}
+function Notifications() {
+  const { user } = useAuth(); const [settings, setSettings] = useState<any>({ sms_enabled: true, provider: 'mock', sender_id: '', template: 'Dear Parent, {student_name} was absent from {class_name}-{section} at {time}. Teacher: {teacher_name}. Enquiry: {enquiry_number}.' }); const [logs, setLogs] = useState<any[]>([]); const [busy, setBusy] = useState(false);
+  async function load() { const [a, b] = await Promise.all([api.get('/notifications/settings'), api.get('/notifications/logs')]); setSettings(a.data); setLogs(b.data) } useEffect(() => { load() }, []);
+  async function save() { setBusy(true); try { await api.put('/notifications/settings', { smsEnabled: settings.sms_enabled, provider: settings.provider, senderId: settings.sender_id, template: settings.template }); alert('Notification settings saved') } catch (e: any) { alert(e?.response?.data?.message || 'Save failed') } finally { setBusy(false) } }
+  async function process() { setBusy(true); try { const r = await api.post('/notifications/process'); alert(`Processed ${r.data.processed}: ${r.data.sent} sent, ${r.data.failed} failed`); load() } catch (e: any) { alert('Queue processing failed') } finally { setBusy(false) } }
+  return <Layout><PageHead title="Parent SMS" sub="Automatic absent notifications, templates and delivery logs." /><div className="two-col"><div className="panel"><h3>SMS settings</h3><label className="toggle"><input type="checkbox" checked={settings.sms_enabled !== false} onChange={e => setSettings({ ...settings, sms_enabled: e.target.checked })} /> Enable parent SMS</label><label>Provider<select value={settings.provider || 'mock'} onChange={e => setSettings({ ...settings, provider: e.target.value })}><option value="mock">Mock / Local testing</option><option value="http">HTTP SMS provider</option></select></label><label>Sender ID<input value={settings.sender_id || ''} onChange={e => setSettings({ ...settings, sender_id: e.target.value })} /></label><label>Message template<textarea value={settings.template || ''} onChange={e => setSettings({ ...settings, template: e.target.value })} /></label><p className="muted small">Variables: {'{student_name}'}, {'{class_name}'}, {'{section}'}, {'{time}'}, {'{teacher_name}'}, {'{enquiry_number}'}</p><div className="inline"><button disabled={busy} onClick={save}>Save settings</button><button className="secondary" disabled={busy} onClick={process}>Process queue</button></div></div><div className="panel"><h3>How it works</h3><div className="flow"><b>1. Teacher submits</b><span>Unchecked students become ABSENT.</span><b>2. System queues SMS</b><span>Parent number and class details are inserted into the template.</span><b>3. Provider sends</b><span>Mock mode works locally; HTTP mode connects to your SMS gateway.</span><b>4. Delivery is logged</b><span>Queued, processing, sent or failed status is stored.</span></div></div></div><div className="table-wrap"><table><thead><tr><th>Student</th><th>Parent SMS</th><th>Status</th><th>Attempts</th><th>Message</th><th>Created</th></tr></thead><tbody>{logs.map(x => <tr key={x.id}><td>{x.student_name || '—'}</td><td>{x.parent_number}</td><td><span className={'badge ' + String(x.status).toLowerCase()}>{x.status}</span></td><td>{x.attempts}</td><td>{x.message}</td><td>{new Date(x.created_at).toLocaleString()}</td></tr>)}</tbody></table></div></Layout>
+}
 
 /* ────── Subscription (School) ────── */
-function SubscriptionPage(){
- const {user}=useAuth();
- const [s,setS]=useState<any>(null);
- const [availablePlans,setAvailablePlans]=useState<any[]>([]);
- const [payments,setPayments]=useState<any[]>([]);
- const [busy,setBusy]=useState(false);
- const [subDays,setSubDays]=useState(30);
- const [msg,setMsg]=useState('');
+function SubscriptionPage() {
+  const { user } = useAuth();
+  const [s, setS] = useState<any>(null);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [subDays, setSubDays] = useState(30);
+  const [msg, setMsg] = useState('');
 
- async function load(){
-   const[a,b,c]=await Promise.all([
-     api.get('/school-payment/subscription'),
-     api.get('/school-payment/payments'),
-     api.get('/school-payment/plans').catch(() => ({ data: [] }))
-   ]);
-   setS(a.data);
-   setPayments(b.data);
-   setAvailablePlans(c.data || []);
- }
+  async function load() {
+    const [a, b, c] = await Promise.all([
+      api.get('/school-payment/subscription'),
+      api.get('/school-payment/payments'),
+      api.get('/school-payment/plans').catch(() => ({ data: [] }))
+    ]);
+    setS(a.data);
+    setPayments(b.data);
+    setAvailablePlans(c.data || []);
+  }
 
- useEffect(()=>{load()},[]);
+  useEffect(() => { load() }, []);
 
- async function renew(){
-   setBusy(true);setMsg('');
-   try{
-     const order=(await api.post('/school-payment/renew/order',{days:subDays,gateway:'MOCK'})).data;
-     await api.post('/school-payment/renew/mock-complete',{orderId:order.orderId,days:subDays});
-     setMsg('Payment successful. Subscription renewed.');
-     await load();
-   }catch(e:any){setMsg(e?.response?.data?.message||'Payment failed')}
-   finally{setBusy(false)}
- }
+  async function renew() {
+    setBusy(true); setMsg('');
+    try {
+      const order = (await api.post('/school-payment/renew/order', { days: subDays, gateway: 'MOCK' })).data;
+      await api.post('/school-payment/renew/mock-complete', { orderId: order.orderId, days: subDays });
+      setMsg('Payment successful. Subscription renewed.');
+      await load();
+    } catch (e: any) { setMsg(e?.response?.data?.message || 'Payment failed') }
+    finally { setBusy(false) }
+  }
 
- return <Layout><PageHead title="Subscription & Billing" sub="View your plan, validity, payments and renew your school subscription."/>
- <div className="stats">
-   <Stat label="Plan" value={s?.plan_name||'—'}/>
-   <Stat label="Students" value={s?.student_count??'—'}/>
-   <Stat label="Days remaining" value={s?.days_remaining??'—'}/>
-   <Stat label="Status" value={s?.computed_status||'—'}/>
- </div>
- <div className="two-col">
-   <div className="panel">
-     <h3>Current subscription</h3>
-     <div className="list">
-       <div className="list-row"><b>Start</b><span>{s?.start_date?.slice(0,10)||'—'}</span></div>
-       <div className="list-row"><b>End</b><span>{s?.end_date?.slice(0,10)||'—'}</span></div>
-       <div className="list-row"><b>Student limit</b><span>{s?.max_students??'—'}</span></div>
-       <div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly||0).toLocaleString('en-IN')}</span></div>
-       {s?.discount_percentage > 0 && (
-         <div className="list-row" style={{ background: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', margin: '4px 0' }}>
-           <b style={{ color: '#047857' }}>Active Discount</b>
-           <span style={{ fontWeight: '700', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
-             🏷️ {s.discount_percentage}% OFF Applied
-           </span>
-         </div>
-       )}
-     </div>
-   </div>
-   <div className="panel">
-     <h3>Renew online</h3>
-     <label>Renewal period
-       <select value={subDays} onChange={e=>setSubDays(Number(e.target.value))}>
-         <option value={30}>30 days</option>
-         <option value={90}>90 days</option>
-         <option value={180}>180 days</option>
-         <option value={365}>365 days</option>
-       </select>
-     </label>
-     <p className="muted">Use mock mode for local testing. If Razorpay is configured on the server, the production checkout endpoint is available.</p>
-     <button disabled={busy} onClick={renew}>{busy?'Processing…':`Pay & renew ${subDays} days (Test)`}</button>
-     {msg&&<div className="success">{msg}</div>}
-   </div>
- </div>
+  return <Layout><PageHead title="Subscription & Billing" sub="View your plan, validity, payments and renew your school subscription." />
+    <div className="stats">
+      <Stat label="Plan" value={s?.plan_name || '—'} />
+      <Stat label="Students" value={s?.student_count ?? '—'} />
+      <Stat label="Days remaining" value={s?.days_remaining ?? '—'} />
+      <Stat label="Status" value={s?.computed_status || '—'} />
+    </div>
+    <div className="two-col">
+      <div className="panel">
+        <h3>Current subscription</h3>
+        <div className="list">
+          <div className="list-row"><b>Start</b><span>{s?.start_date?.slice(0, 10) || '—'}</span></div>
+          <div className="list-row"><b>End</b><span>{s?.end_date?.slice(0, 10) || '—'}</span></div>
+          <div className="list-row"><b>Student limit</b><span>{s?.max_students ?? '—'}</span></div>
+          <div className="list-row"><b>Monthly plan</b><span>₹{Number(s?.price_monthly || 0).toLocaleString('en-IN')}</span></div>
+          {s?.discount_percentage > 0 && (
+            <div className="list-row" style={{ background: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', margin: '4px 0' }}>
+              <b style={{ color: '#047857' }}>Active Discount</b>
+              <span style={{ fontWeight: '700', color: '#047857', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                🏷️ {s.discount_percentage}% OFF Applied
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="panel">
+        <h3>Renew online</h3>
+        <label>Renewal period
+          <select value={subDays} onChange={e => setSubDays(Number(e.target.value))}>
+            <option value={30}>30 days</option>
+            <option value={90}>90 days</option>
+            <option value={180}>180 days</option>
+            <option value={365}>365 days</option>
+          </select>
+        </label>
+        <p className="muted">Use mock mode for local testing. If Razorpay is configured on the server, the production checkout endpoint is available.</p>
+        <button disabled={busy} onClick={renew}>{busy ? 'Processing…' : `Pay & renew ${subDays} days (Test)`}</button>
+        {msg && <div className="success">{msg}</div>}
+      </div>
+    </div>
 
- {availablePlans.length > 0 && (
-   <div className="panel" style={{ marginTop: '20px' }}>
-     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-       <div>
-         <h3 style={{ margin: 0 }}>Available Subscription Tiers</h3>
-         <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>Explore packages and student capacities available for your institution.</p>
-       </div>
-     </div>
-     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-       {availablePlans.map((p: any) => {
-         const isCurrent = s?.plan_name && (s.plan_name.toLowerCase() === p.name.toLowerCase() || p.id === s?.plan_id);
-         const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
-         const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
-         return (
-           <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)', borderRadius: '10px', padding: '16px', background: isCurrent ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-               <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #0f172a)' }}>{p.name}</h4>
-               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                 {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
-                 {hasDiscount && (
-                   <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700' }}>
-                     {p.discount_percentage}% OFF
-                   </span>
-                 )}
-               </div>
-             </div>
-             <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
-             <div style={{ margin: '8px 0 12px' }}>
-               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                 <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #0f172a)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
-                 {hasDiscount && (
-                   <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
-                 )}
-                 <span style={{ fontSize: '12px', color: '#64748b' }}>/ month</span>
-               </div>
-               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                 ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
-               </div>
-             </div>
-             <div style={{ borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #334155)' }}>
-               <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
-             </div>
-           </div>
-         );
-       })}
-     </div>
-   </div>
- )}
+    {availablePlans.length > 0 && (
+      <div className="panel" style={{ marginTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Available Subscription Tiers</h3>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>Explore packages and student capacities available for your institution.</p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+          {availablePlans.map((p: any) => {
+            const isCurrent = s?.plan_name && (s.plan_name.toLowerCase() === p.name.toLowerCase() || p.id === s?.plan_id);
+            const hasDiscount = p.discount_percentage && p.discount_percentage > 0;
+            const discountedMonthly = hasDiscount ? Math.round(p.price_monthly * (1 - p.discount_percentage / 100)) : p.price_monthly;
+            return (
+              <div key={p.id} style={{ border: isCurrent ? '2px solid #2563eb' : '1px solid var(--border, #e2e8f0)', borderRadius: '10px', padding: '16px', background: isCurrent ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text, #0f172a)' }}>{p.name}</h4>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {isCurrent && <span className="badge active" style={{ fontSize: '11px' }}>Current</span>}
+                    {hasDiscount && (
+                      <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700' }}>
+                        {p.discount_percentage}% OFF
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p style={{ fontSize: '12px', color: '#64748b', minHeight: '34px', margin: '4px 0 12px' }}>{p.description || `Capacity for up to ${p.max_students} students with full SIS features.`}</p>
+                <div style={{ margin: '8px 0 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text, #0f172a)' }}>₹{Number(discountedMonthly).toLocaleString('en-IN')}</span>
+                    {hasDiscount && (
+                      <span style={{ fontSize: '14px', textDecoration: 'line-through', color: '#94a3b8' }}>₹{Number(p.price_monthly).toLocaleString('en-IN')}</span>
+                    )}
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>/ month</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    ₹{Number(p.price_yearly || p.price_monthly * 12).toLocaleString('en-IN')} / year
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border, #f1f5f9)', paddingTop: '10px', fontSize: '12px', color: 'var(--text-secondary, #334155)' }}>
+                  <div>👥 <strong>Up to {Number(p.max_students).toLocaleString()} students</strong></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
- <div className="panel" style={{ marginTop: '20px' }}>
-   <h3>Payment history</h3>
-   <div className="table-wrap">
-     <table>
-       <thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead>
-       <tbody>{payments.map(p=><tr key={p.id}><td>{p.created_at?.slice(0,19).replace('T',' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount||0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number||'—'}</td><td>{p.receipt_number||'—'} {p.invoice_id&&<button className="small-btn" onClick={()=>window.open(`${API_BASE_URL}/super-admin/invoices/${p.invoice_id}/receipt`,'_blank')}>Receipt</button>}</td></tr>)}</tbody>
-     </table>
-   </div>
- </div>
- </Layout>
+    <div className="panel" style={{ marginTop: '20px' }}>
+      <h3>Payment history</h3>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th><th>Invoice</th><th>Receipt</th></tr></thead>
+          <tbody>{payments.map(p => <tr key={p.id}><td>{p.created_at?.slice(0, 19).replace('T', ' ')}</td><td>{p.provider}</td><td>₹{Number(p.amount || 0).toLocaleString('en-IN')}</td><td><span className="badge">{p.status}</span></td><td>{p.invoice_number || '—'}</td><td>{p.receipt_number || '—'} {p.invoice_id && <button className="small-btn" onClick={() => window.open(`${API_BASE_URL}/super-admin/invoices/${p.invoice_id}/receipt`, '_blank')}>Receipt</button>}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  </Layout>
 }
 
 /* ────── Invoices (Super Admin & School Admin) ────── */
-function Invoices(){
-  const {user}=useAuth();
-  const [rows,setRows]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [downloadingId,setDownloadingId]=useState<string|null>(null);
+function Invoices() {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  async function load(){
+  async function load() {
     setLoading(true);
     try {
       const endpoint = user?.role === 'SUPER_ADMIN' ? '/super-admin/invoices' : '/school-payment/invoices';
@@ -17761,7 +17924,7 @@ function Invoices(){
     }
   }
 
-  useEffect(()=>{load()},[user?.role]);
+  useEffect(() => { load() }, [user?.role]);
 
   async function downloadPdf(invId: string, invoiceNum: string) {
     setDownloadingId(invId);
@@ -17783,8 +17946,8 @@ function Invoices(){
   }
 
   return <Layout>
-    <PageHead 
-      title="Invoices & Billing Statements" 
+    <PageHead
+      title="Invoices & Billing Statements"
       sub={user?.role === 'SUPER_ADMIN' ? "Platform-wide subscription invoices and payment receipts." : "Official subscription invoices, tax receipts, and payment statements."}
     />
     <div className="table-wrap">
@@ -17814,8 +17977,8 @@ function Invoices(){
               <td>{x.issued_at?.slice(0, 10) || '—'}</td>
               <td>{x.paid_at?.slice(0, 19).replace('T', ' ') || '—'}</td>
               <td style={{ textAlign: 'right' }}>
-                <button 
-                  className="small-btn" 
+                <button
+                  className="small-btn"
                   disabled={downloadingId === x.id}
                   onClick={() => downloadPdf(x.id, x.invoice_number)}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
@@ -17832,39 +17995,39 @@ function Invoices(){
 }
 
 /* ────── Super Admin Monitor ────── */
-function SuperMonitor(){
- const {user}=useAuth();const [d,setD]=useState<any>(null);const [busy,setBusy]=useState(false);
- async function load(){setD((await api.get('/super-admin/monitor')).data)}
- useEffect(()=>{load()},[]);
- const m=d?.metrics||{};
- const attendance=(Number(m.today_present||0)+Number(m.today_absent||0));
- return <Layout><PageHead title="SaaS Monitoring" sub="Live operational view of schools, subscriptions and today's attendance."/>
- <div className="stats">
-   <Stat label="Schools" value={m.total_schools??'—'}/><Stat label="Active" value={m.active_schools??'—'}/>
-   <Stat label="Expired" value={m.expired_schools??'—'}/><Stat label="Students" value={m.total_students??'—'}/>
-   <Stat label="Today's sessions" value={m.today_sessions??'—'}/><Stat label="Revenue" value={`₹${Number(m.total_revenue||0).toLocaleString('en-IN')}`}/>
- </div>
- <div className="two-col">
-  <div className="panel"><h3>Today's attendance</h3>
-   <div className="list"><div className="list-row"><b>Present</b><span>{m.today_present??0}</span></div><div className="list-row"><b>Absent</b><span>{m.today_absent??0}</span></div><div className="list-row"><b>Recorded</b><span>{attendance}</span></div></div>
-  </div>
-  <div className="panel"><h3>Expiring within 7 days</h3>
-   {d?.expiringSoon?.length?<div className="list">{d.expiringSoon.map((x:any)=><div className="list-row" key={x.id}><b>{x.name}</b><span>{x.plan_name} · {x.end_date?.slice(0,10)}</span></div>)}</div>:<p className="muted">No schools expiring in the next 7 days.</p>}
-  </div>
- </div>
- <div className="panel"><div className="panel-head"><h3>Subscription operations</h3><button className="small-btn" disabled={busy} onClick={async()=>{setBusy(true);try{await api.post('/super-admin/subscriptions/expire-now');await load()}finally{setBusy(false)}}}>{busy?'Refreshing…':'Refresh expiry status'}</button></div>
- <p className="muted">Run this after a deployment or schedule the backend subscription worker to keep expired schools synchronized automatically.</p></div>
- </Layout>
+function SuperMonitor() {
+  const { user } = useAuth(); const [d, setD] = useState<any>(null); const [busy, setBusy] = useState(false);
+  async function load() { setD((await api.get('/super-admin/monitor')).data) }
+  useEffect(() => { load() }, []);
+  const m = d?.metrics || {};
+  const attendance = (Number(m.today_present || 0) + Number(m.today_absent || 0));
+  return <Layout><PageHead title="SaaS Monitoring" sub="Live operational view of schools, subscriptions and today's attendance." />
+    <div className="stats">
+      <Stat label="Schools" value={m.total_schools ?? '—'} /><Stat label="Active" value={m.active_schools ?? '—'} />
+      <Stat label="Expired" value={m.expired_schools ?? '—'} /><Stat label="Students" value={m.total_students ?? '—'} />
+      <Stat label="Today's sessions" value={m.today_sessions ?? '—'} /><Stat label="Revenue" value={`₹${Number(m.total_revenue || 0).toLocaleString('en-IN')}`} />
+    </div>
+    <div className="two-col">
+      <div className="panel"><h3>Today's attendance</h3>
+        <div className="list"><div className="list-row"><b>Present</b><span>{m.today_present ?? 0}</span></div><div className="list-row"><b>Absent</b><span>{m.today_absent ?? 0}</span></div><div className="list-row"><b>Recorded</b><span>{attendance}</span></div></div>
+      </div>
+      <div className="panel"><h3>Expiring within 7 days</h3>
+        {d?.expiringSoon?.length ? <div className="list">{d.expiringSoon.map((x: any) => <div className="list-row" key={x.id}><b>{x.name}</b><span>{x.plan_name} · {x.end_date?.slice(0, 10)}</span></div>)}</div> : <p className="muted">No schools expiring in the next 7 days.</p>}
+      </div>
+    </div>
+    <div className="panel"><div className="panel-head"><h3>Subscription operations</h3><button className="small-btn" disabled={busy} onClick={async () => { setBusy(true); try { await api.post('/super-admin/subscriptions/expire-now'); await load() } finally { setBusy(false) } }}>{busy ? 'Refreshing…' : 'Refresh expiry status'}</button></div>
+      <p className="muted">Run this after a deployment or schedule the backend subscription worker to keep expired schools synchronized automatically.</p></div>
+  </Layout>
 }
 
 /* ────── Payments (Super Admin & School Admin) ────── */
-function Payments(){
-  const {user}=useAuth();
-  const [rows,setRows]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [downloadingId,setDownloadingId]=useState<string|null>(null);
+function Payments() {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  async function load(){
+  async function load() {
     setLoading(true);
     try {
       const endpoint = user?.role === 'SUPER_ADMIN' ? '/super-admin/payments' : '/school-payment/payments';
@@ -17877,7 +18040,7 @@ function Payments(){
     }
   }
 
-  useEffect(()=>{load()},[user?.role]);
+  useEffect(() => { load() }, [user?.role]);
 
   async function downloadPdf(invId: string, invoiceNum: string) {
     setDownloadingId(invId);
@@ -17899,8 +18062,8 @@ function Payments(){
   }
 
   return <Layout>
-    <PageHead 
-      title="Payment History" 
+    <PageHead
+      title="Payment History"
       sub={user?.role === 'SUPER_ADMIN' ? "Platform-wide subscription payments received across all schools." : "History of subscription renewal payments, transaction IDs, and receipts."}
     />
     <div className="table-wrap">
@@ -17929,8 +18092,8 @@ function Payments(){
               <td>{x.invoice_number || '—'}</td>
               <td>
                 {x.invoice_id ? (
-                  <button 
-                    className="small-btn" 
+                  <button
+                    className="small-btn"
                     disabled={downloadingId === x.invoice_id}
                     onClick={() => downloadPdf(x.invoice_id, x.invoice_number || 'receipt')}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
@@ -18082,23 +18245,23 @@ function SchoolProfile() {
     error: null,
   });
 
-// Helper: Format school phone into 0343-2563500 (11-digit STD code with hyphen after 4 digits, 10-digit adds leading 0)
-function formatSchoolContactNumber(val: string): string {
-  if (!val) return '';
-  let digits = val.replace(/\D/g, '');
-  // If 10 digits without leading 0, prepend 0 to make it 11 digits
-  if (digits.length === 10 && !digits.startsWith('0')) {
-    digits = '0' + digits;
+  // Helper: Format school phone into 0343-2563500 (11-digit STD code with hyphen after 4 digits, 10-digit adds leading 0)
+  function formatSchoolContactNumber(val: string): string {
+    if (!val) return '';
+    let digits = val.replace(/\D/g, '');
+    // If 10 digits without leading 0, prepend 0 to make it 11 digits
+    if (digits.length === 10 && !digits.startsWith('0')) {
+      digits = '0' + digits;
+    }
+    digits = digits.slice(0, 11);
+    if (digits.length > 4) {
+      return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    if (digits.length === 4 && val.endsWith('-')) {
+      return `${digits}-`;
+    }
+    return digits;
   }
-  digits = digits.slice(0, 11);
-  if (digits.length > 4) {
-    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  }
-  if (digits.length === 4 && val.endsWith('-')) {
-    return `${digits}-`;
-  }
-  return digits;
-}
 
   async function load() {
     setLoading(true);
@@ -18160,8 +18323,8 @@ function formatSchoolContactNumber(val: string): string {
       let valid = urlPattern.test(normalizedWebsite);
       if (valid) {
         try {
-          const withProto = normalizedWebsite.startsWith('http://') || normalizedWebsite.startsWith('https://') 
-            ? normalizedWebsite 
+          const withProto = normalizedWebsite.startsWith('http://') || normalizedWebsite.startsWith('https://')
+            ? normalizedWebsite
             : `https://${normalizedWebsite}`;
           const parsed = new URL(withProto);
           valid = !!parsed.hostname && parsed.hostname.includes('.');
@@ -18221,7 +18384,7 @@ function formatSchoolContactNumber(val: string): string {
       if (res.data?.website) {
         try {
           localStorage.setItem('attendo_school_website', res.data.website);
-        } catch {}
+        } catch { }
       }
       if (updateUser && res.data?.website) {
         updateUser({ schoolWebsite: res.data.website });
@@ -18404,322 +18567,322 @@ function formatSchoolContactNumber(val: string): string {
           </div>
 
           <div className="two-col">
-          <div className="panel">
-            <h3>Institution Identity</h3>
-            <div className="list">
-              <div className="list-row">
-                <b>Institution Name</b>
-                <span>{profile?.name || '—'}</span>
-              </div>
-              <div className="list-row">
-                <b>Affiliation / School Code</b>
-                <span><code>{profile?.code || '—'}</code></span>
-              </div>
-              <div className="list-row">
-                <b>Registered Official Email</b>
-                <span>{profile?.email || '—'}</span>
-              </div>
-              <div className="list-row">
-                <b>Operational Status</b>
-                <span><span className="badge active">{profile?.status || 'ACTIVE'}</span></span>
-              </div>
-              <div className="list-row">
-                <b>Timezone</b>
-                <span>{profile?.timezone || 'Asia/Kolkata'}</span>
-              </div>
-              <div className="list-row">
-                <b>System Tenant ID</b>
-                <span><code style={{ fontSize: 11 }}>{profile?.id}</code></span>
-              </div>
-            </div>
-          </div>
-
-          <div className="panel">
-            <h3>Campus Contact & Location</h3>
-            <form onSubmit={initiateSaveProfile} className="modal-form" style={{ gap: 14 }}>
-              <label>
-                Enquiry / Emergency Contact Number
-                <input
-                  type="tel"
-                  placeholder="0343-2563500"
-                  value={form.contact_number}
-                  maxLength={12}
-                  onKeyDown={e => {
-                    // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
-                    if (
-                      ['Backspace', 'Tab', 'Enter', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) ||
-                      ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
-                    ) {
-                      return;
-                    }
-                    // Block any key that is not a numeric digit
-                    if (!/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={e => {
-                    const formatted = formatSchoolContactNumber(e.target.value);
-                    setForm({ ...form, contact_number: formatted });
-                    if (contactNumberError) setContactNumberError('');
-                  }}
-                  onBlur={() => {
-                    if (form.contact_number) {
-                      let digits = form.contact_number.replace(/\D/g, '');
-                      if (digits.length === 10 && !digits.startsWith('0')) {
-                        digits = '0' + digits;
-                      }
-                      if (digits.length > 4) {
-                        setForm((prev: any) => ({ ...prev, contact_number: `${digits.slice(0, 4)}-${digits.slice(4, 11)}` }));
-                      }
-                    }
-                  }}
-                  style={contactNumberError ? { borderColor: '#ef4444' } : {}}
-                />
-                {contactNumberError && (
-                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
-                    {contactNumberError}
-                  </span>
-                )}
-                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
-                  Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
-                </span>
-              </label>
-              <label>
-                Official School Website
-                <input
-                  type="text"
-                  placeholder="https://davmodeldurgapur.org"
-                  value={form.website}
-                  onChange={e => {
-                    setForm({ ...form, website: e.target.value });
-                    if (websiteError) setWebsiteError('');
-                  }}
-                  style={websiteError ? { borderColor: '#ef4444' } : {}}
-                />
-                {websiteError && (
-                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
-                    {websiteError}
-                  </span>
-                )}
-                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
-                  Must be a valid web link (e.g. <code>https://davmodeldurgapur.org</code> or <code>davmodeldurgapur.org</code>). Arbitrary plain words are not allowed.
-                </span>
-              </label>
-              <label>
-                Campus Physical Address
-                <AutoExpandingTextarea
-                  minHeight={72}
-                  maxHeight={360}
-                  minLength={50}
-                  maxLength={1000}
-                  placeholder="Street, City, State, PIN (Word limit: 50 to 1000 words)"
-                  value={form.address}
-                  onChange={e => {
-                    setForm({ ...form, address: e.target.value.slice(0, 1000) });
-                    if (addressError) setAddressError('');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: 'var(--radius-sm, 6px)',
-                    border: '1px solid var(--border-strong, #cbd5e1)',
-                    background: 'var(--bg, #ffffff)',
-                    color: 'var(--text, #0f172a)',
-                    fontSize: 13.5,
-                    lineHeight: 1.5,
-                    resize: 'none',
-                    ...(addressError ? { borderColor: '#ef4444' } : {})
-                  }}
-                />
-                {addressError && (
-                  <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
-                    {addressError}
-                  </span>
-                )}
-                <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
-                  Word limit: 50 to 1000 words.
-                </span>
-              </label>
-              <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
-                Review & Update Profile
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* ── Email & Password Management Section ── */}
-        <div className="panel" style={{ marginTop: 24 }} id="email-password-section">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Lock size={18} style={{ color: '#2563eb' }} />
-                Email &amp; Password
-              </h3>
-              <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-                Official administrator credentials, affiliated school verification, and account security.
-              </p>
-            </div>
-            <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <ShieldCheck size={14} /> BCrypt Protected
-            </span>
-          </div>
-
-          {pwMsg && (
-            <div className={pwMsg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
-              {pwMsg.text}
-            </div>
-          )}
-
-          <div className="two-col" style={{ gap: 20 }}>
-            {/* Associated School Identity & Login Credentials */}
-            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <School size={15} style={{ color: '#2563eb' }} />
-                Associated School Identity
-              </h4>
-
-              <div className="modal-form" style={{ gap: 14 }}>
-                <label>
-                  Associated School Name
-                  <input
-                    type="text"
-                    readOnly
-                    disabled
-                    value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
-                    style={{
-                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                      color: 'var(--text-color, #0f172a)',
-                      cursor: 'not-allowed',
-                      fontWeight: 600
-                    }}
-                    id="admin-school-name"
-                    title="Associated school name is automatically bound and cannot be edited manually"
-                  />
-                </label>
-
-                <label>
-                  Administrator Login Email
-                  <input
-                    type="email"
-                    readOnly
-                    disabled
-                    value={user?.email || profile?.adminEmail || profile?.email || '—'}
-                    style={{
-                      backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
-                      color: 'var(--text-color, #0f172a)',
-                      cursor: 'not-allowed'
-                    }}
-                    id="admin-email-input"
-                    title="Administrator login email"
-                  />
-                </label>
-
-                <div className="list" style={{ marginTop: 6 }}>
-                  <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
-                    <b>Affiliated School Code</b>
-                    <span><code>{profile?.code || (user as any)?.schoolCode || 'SCH'}</code></span>
-                  </div>
-                  <div className="list-row" style={{ padding: '8px 0' }}>
-                    <b>Admin Profile Access</b>
-                    <span><span className="badge active">Authorized School Admin</span></span>
-                  </div>
+            <div className="panel">
+              <h3>Institution Identity</h3>
+              <div className="list">
+                <div className="list-row">
+                  <b>Institution Name</b>
+                  <span>{profile?.name || '—'}</span>
+                </div>
+                <div className="list-row">
+                  <b>Affiliation / School Code</b>
+                  <span><code>{profile?.code || '—'}</code></span>
+                </div>
+                <div className="list-row">
+                  <b>Registered Official Email</b>
+                  <span>{profile?.email || '—'}</span>
+                </div>
+                <div className="list-row">
+                  <b>Operational Status</b>
+                  <span><span className="badge active">{profile?.status || 'ACTIVE'}</span></span>
+                </div>
+                <div className="list-row">
+                  <b>Timezone</b>
+                  <span>{profile?.timezone || 'Asia/Kolkata'}</span>
+                </div>
+                <div className="list-row">
+                  <b>System Tenant ID</b>
+                  <span><code style={{ fontSize: 11 }}>{profile?.id}</code></span>
                 </div>
               </div>
             </div>
 
-            {/* Change Password Form */}
-            <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
-              <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <KeyRound size={15} style={{ color: '#2563eb' }} />
-                Change School Admin Password
-              </h4>
-
-              <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
+            <div className="panel">
+              <h3>Campus Contact & Location</h3>
+              <form onSubmit={initiateSaveProfile} className="modal-form" style={{ gap: 14 }}>
                 <label>
-                  Current Password
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input
-                      type={showCurrentPw ? 'text' : 'password'}
-                      required
-                      placeholder="••••••••••••"
-                      value={currentPassword}
-                      onChange={e => setCurrentPassword(e.target.value)}
-                      style={{ width: '100%', paddingRight: 40 }}
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowCurrentPw(s => !s)}
-                      className="password-toggle-btn"
-                      title={showCurrentPw ? "Hide password" : "Show password"}
-                    >
-                      {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </label>
-
-                <label>
-                  New Password
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input
-                      type={showNewPw ? 'text' : 'password'}
-                      required
-                      placeholder="Enter new strong password"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      style={{ width: '100%', paddingRight: 40 }}
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowNewPw(s => !s)}
-                      className="password-toggle-btn"
-                      title={showNewPw ? "Hide password" : "Show password"}
-                    >
-                      {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
-                    Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
+                  Enquiry / Emergency Contact Number
+                  <input
+                    type="tel"
+                    placeholder="0343-2563500"
+                    value={form.contact_number}
+                    maxLength={12}
+                    onKeyDown={e => {
+                      // Allow navigation, control keys, and keyboard shortcuts (Ctrl/Cmd+A, C, V, X)
+                      if (
+                        ['Backspace', 'Tab', 'Enter', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) ||
+                        ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase()))
+                      ) {
+                        return;
+                      }
+                      // Block any key that is not a numeric digit
+                      if (!/^[0-9]$/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={e => {
+                      const formatted = formatSchoolContactNumber(e.target.value);
+                      setForm({ ...form, contact_number: formatted });
+                      if (contactNumberError) setContactNumberError('');
+                    }}
+                    onBlur={() => {
+                      if (form.contact_number) {
+                        let digits = form.contact_number.replace(/\D/g, '');
+                        if (digits.length === 10 && !digits.startsWith('0')) {
+                          digits = '0' + digits;
+                        }
+                        if (digits.length > 4) {
+                          setForm((prev: any) => ({ ...prev, contact_number: `${digits.slice(0, 4)}-${digits.slice(4, 11)}` }));
+                        }
+                      }
+                    }}
+                    style={contactNumberError ? { borderColor: '#ef4444' } : {}}
+                  />
+                  {contactNumberError && (
+                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                      {contactNumberError}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Format: <code>0343-2563500</code> (11 digits: 4-digit code + 7 digits). 10-digit numbers automatically prefix 0.
                   </span>
                 </label>
-
                 <label>
-                  Confirm New Password
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input
-                      type={showConfirmPw ? 'text' : 'password'}
-                      required
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      style={{ width: '100%', paddingRight: 40 }}
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowConfirmPw(s => !s)}
-                      className="password-toggle-btn"
-                      title={showConfirmPw ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                  Official School Website
+                  <input
+                    type="text"
+                    placeholder="https://davmodeldurgapur.org"
+                    value={form.website}
+                    onChange={e => {
+                      setForm({ ...form, website: e.target.value });
+                      if (websiteError) setWebsiteError('');
+                    }}
+                    style={websiteError ? { borderColor: '#ef4444' } : {}}
+                  />
+                  {websiteError && (
+                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                      {websiteError}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Must be a valid web link (e.g. <code>https://davmodeldurgapur.org</code> or <code>davmodeldurgapur.org</code>). Arbitrary plain words are not allowed.
+                  </span>
                 </label>
-
-                <button
-                  type="submit"
-                  disabled={changingPw}
-                  style={{ alignSelf: 'flex-start', marginTop: 6 }}
-                >
-                  {changingPw ? 'Updating Password...' : 'Update Password'}
+                <label>
+                  Campus Physical Address
+                  <AutoExpandingTextarea
+                    minHeight={72}
+                    maxHeight={360}
+                    minLength={50}
+                    maxLength={1000}
+                    placeholder="Street, City, State, PIN (Word limit: 50 to 1000 words)"
+                    value={form.address}
+                    onChange={e => {
+                      setForm({ ...form, address: e.target.value.slice(0, 1000) });
+                      if (addressError) setAddressError('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      border: '1px solid var(--border-strong, #cbd5e1)',
+                      background: 'var(--bg, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13.5,
+                      lineHeight: 1.5,
+                      resize: 'none',
+                      ...(addressError ? { borderColor: '#ef4444' } : {})
+                    }}
+                  />
+                  {addressError && (
+                    <span style={{ color: '#ef4444', fontSize: 12, marginTop: 4, display: 'block' }}>
+                      {addressError}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'block' }}>
+                    Word limit: 50 to 1000 words.
+                  </span>
+                </label>
+                <button type="submit" disabled={saving} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
+                  Review & Update Profile
                 </button>
               </form>
             </div>
           </div>
-        </div>
-      </>
-    )}
+
+          {/* ── Email & Password Management Section ── */}
+          <div className="panel" style={{ marginTop: 24 }} id="email-password-section">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Lock size={18} style={{ color: '#2563eb' }} />
+                  Email &amp; Password
+                </h3>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                  Official administrator credentials, affiliated school verification, and account security.
+                </p>
+              </div>
+              <span className="badge active" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <ShieldCheck size={14} /> BCrypt Protected
+              </span>
+            </div>
+
+            {pwMsg && (
+              <div className={pwMsg.type === 'success' ? 'success' : 'error'} style={{ marginBottom: 16 }}>
+                {pwMsg.text}
+              </div>
+            )}
+
+            <div className="two-col" style={{ gap: 20 }}>
+              {/* Associated School Identity & Login Credentials */}
+              <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+                <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <School size={15} style={{ color: '#2563eb' }} />
+                  Associated School Identity
+                </h4>
+
+                <div className="modal-form" style={{ gap: 14 }}>
+                  <label>
+                    Associated School Name
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={loading ? 'Loading school...' : (profile?.schoolName || profile?.name || user?.schoolName || '—')}
+                      style={{
+                        backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                        color: 'var(--text-color, #0f172a)',
+                        cursor: 'not-allowed',
+                        fontWeight: 600
+                      }}
+                      id="admin-school-name"
+                      title="Associated school name is automatically bound and cannot be edited manually"
+                    />
+                  </label>
+
+                  <label>
+                    Administrator Login Email
+                    <input
+                      type="email"
+                      readOnly
+                      disabled
+                      value={user?.email || profile?.adminEmail || profile?.email || '—'}
+                      style={{
+                        backgroundColor: 'var(--input-disabled-bg, #f1f5f9)',
+                        color: 'var(--text-color, #0f172a)',
+                        cursor: 'not-allowed'
+                      }}
+                      id="admin-email-input"
+                      title="Administrator login email"
+                    />
+                  </label>
+
+                  <div className="list" style={{ marginTop: 6 }}>
+                    <div className="list-row" style={{ padding: '8px 0', borderBottom: '1px solid var(--border, #e2e8f0)' }}>
+                      <b>Affiliated School Code</b>
+                      <span><code>{profile?.code || (user as any)?.schoolCode || 'SCH'}</code></span>
+                    </div>
+                    <div className="list-row" style={{ padding: '8px 0' }}>
+                      <b>Admin Profile Access</b>
+                      <span><span className="badge active">Authorized School Admin</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Change Password Form */}
+              <div style={{ background: 'var(--card-bg, #f8fafc)', padding: 20, borderRadius: 8, border: '1px solid var(--border, #e2e8f0)' }}>
+                <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <KeyRound size={15} style={{ color: '#2563eb' }} />
+                  Change School Admin Password
+                </h4>
+
+                <form onSubmit={handlePasswordChange} className="modal-form" style={{ gap: 12 }}>
+                  <label>
+                    Current Password
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type={showCurrentPw ? 'text' : 'password'}
+                        required
+                        placeholder="••••••••••••"
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        style={{ width: '100%', paddingRight: 40 }}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowCurrentPw(s => !s)}
+                        className="password-toggle-btn"
+                        title={showCurrentPw ? "Hide password" : "Show password"}
+                      >
+                        {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </label>
+
+                  <label>
+                    New Password
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        required
+                        placeholder="Enter new strong password"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        style={{ width: '100%', paddingRight: 40 }}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowNewPw(s => !s)}
+                        className="password-toggle-btn"
+                        title={showNewPw ? "Hide password" : "Show password"}
+                      >
+                        {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-secondary, #64748B)', marginTop: 4, display: 'block' }}>
+                      Must be at least 8 characters, with 1 Capital letter, 1 small letter, 1 number, and 1 special character.
+                    </span>
+                  </label>
+
+                  <label>
+                    Confirm New Password
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        required
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        style={{ width: '100%', paddingRight: 40 }}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowConfirmPw(s => !s)}
+                        className="password-toggle-btn"
+                        title={showConfirmPw ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={changingPw}
+                    style={{ alignSelf: 'flex-start', marginTop: 6 }}
+                  >
+                    {changingPw ? 'Updating Password...' : 'Update Password'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Universal School Profile Preview Modal */}
       <UniversalPreviewModal
@@ -18742,7 +18905,7 @@ function formatSchoolContactNumber(val: string): string {
 }
 
 /* ────── Super Admin Home ────── */
-function SuperAdminHome(){
+function SuperAdminHome() {
   return <SuperAdminModule />;
 }
 
@@ -18781,97 +18944,97 @@ function RouteFallbackLoader() {
 }
 
 /* ────── Routes ────── */
-function App(){
+function App() {
   return (
     <Suspense fallback={<RouteFallbackLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="/login" element={<Login/>}/>
-        <Route path="/profile" element={<Guard><ProfileRedirect/></Guard>}/>
-        <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherProfile/></Layout></RoleGuard>}/>
-        <Route path="/reset-password" element={<ResetPassword/>}/>
-        <Route path="/dashboard" element={<Guard><Dashboard/></Guard>}/>
-        <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Students/></RoleGuard>}/>
-        <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Teachers/></RoleGuard>}/>
-        <Route path="/designations" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><Designations/></Layout></RoleGuard>}/>
-        <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Classes/></RoleGuard>}/>
-        <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Subjects/></RoleGuard>}/>
-        <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Routine/></RoleGuard>}/>
-        <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter/></RoleGuard>}/>
-        <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><SmtpLogs/></Layout></RoleGuard>}/>
-        <Route path="/take-attendance" element={<Guard><Attendance/></Guard>}/>
-        <Route path="/teacher-history" element={<Guard><History/></Guard>}/>
-        <Route path="/attendance-history" element={<Guard><History/></Guard>}/>
-        <Route path="/history" element={<Guard><History/></Guard>}/>
-        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceReports/></Layout></RoleGuard>}/>
-        <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><AttendanceCorrections/></Layout></RoleGuard>}/>
-        <Route path="/people" element={<Navigate to="/students" replace />}/>
-        <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears/></Layout></RoleGuard>}/>
-        <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator"/></Layout></RoleGuard>}/>
-        <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-        <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays"/></Layout></RoleGuard>}/>
-        <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days"/></Layout></RoleGuard>}/>
-        <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion/></Layout></RoleGuard>}/>
-        <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Permissions/></Layout></RoleGuard>}/>
-        <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement/></Layout></RoleGuard>}/>
-        <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security/></Layout></RoleGuard>}/>
-        <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Backup/></Layout></RoleGuard>}/>
-        <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN','TEACHER']}><Layout><Timetable/></Layout></RoleGuard>}/>
-        <Route path="/announcements" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAnnouncements/></Layout></RoleGuard>}/>
-        <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace/>}/>
-        <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace/>}/>
-        <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><OfflineAttendance/></Layout></RoleGuard>}/>
-        <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><Analytics/></Layout></RoleGuard>}/>
-        <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><LeaveApprove/></Layout></RoleGuard>}/>
-        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN','TEACHER']}><Layout><PhotoApprove/></Layout></RoleGuard>}/>
-        <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><LeavePolicy/></Layout></RoleGuard>}/>
-        <Route path="/admin/temporary-assignments" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Navigate to="/classes?tab=temporary" replace/></RoleGuard>}/>
-        <Route path="/temporary-assignments" element={<Navigate to="/classes?tab=temporary" replace/>}/>
-        <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace/>}/>
-        <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN','SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove/></Layout></RoleGuard>}/>
-        <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest/></Layout></RoleGuard>}/>
-        <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><ClassMentorWorkspace/></Layout></RoleGuard>}/>
-        <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace/>}/>
-        <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN']}><Layout><TeacherAssignments/></Layout></RoleGuard>}/>
-        <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace/>}/>
-        <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace/>}/>
-        <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace/>}/>
-        <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace/>}/>
-        <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-        <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace/>}/>
-        <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace/>}/>
-        <Route path="/review" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace/>}/>
-        <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication/></Layout></RoleGuard>}/>
-        <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication/></Layout></RoleGuard>}/>
-        <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal/></Layout></RoleGuard>}/>
-        <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>}/>
-        <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
-        <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile/></RoleGuard>}/>
-        <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule/></RoleGuard>}/>
+        <Route path="/login" element={<Login />} />
+        <Route path="/profile" element={<Guard><ProfileRedirect /></Guard>} />
+        <Route path="/teacher/profile" element={<RoleGuard roles={['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><TeacherProfile /></Layout></RoleGuard>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
+        <Route path="/students" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Students /></RoleGuard>} />
+        <Route path="/teachers" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Teachers /></RoleGuard>} />
+        <Route path="/designations" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><Designations /></Layout></RoleGuard>} />
+        <Route path="/classes" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Classes /></RoleGuard>} />
+        <Route path="/subjects" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Subjects /></RoleGuard>} />
+        <Route path="/routine" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Routine /></RoleGuard>} />
+        <Route path="/notifications" element={<RoleGuard roles={['SUPER_ADMIN']}><NotificationCenter /></RoleGuard>} />
+        <Route path="/smtp-logs" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><SmtpLogs /></Layout></RoleGuard>} />
+        <Route path="/take-attendance" element={<Guard><Attendance /></Guard>} />
+        <Route path="/teacher-history" element={<Guard><History /></Guard>} />
+        <Route path="/attendance-history" element={<Guard><History /></Guard>} />
+        <Route path="/history" element={<Guard><History /></Guard>} />
+        <Route path="/attendance-reports" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']}><Layout><AttendanceReports /></Layout></RoleGuard>} />
+        <Route path="/attendance-corrections" element={<RoleGuard roles={['SCHOOL_ADMIN', 'TEACHER']}><Layout><AttendanceCorrections /></Layout></RoleGuard>} />
+        <Route path="/people" element={<Navigate to="/students" replace />} />
+        <Route path="/academic-years" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears /></Layout></RoleGuard>} />
+        <Route path="/calendar" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="calculator" /></Layout></RoleGuard>} />
+        <Route path="/working-calendar" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days" /></Layout></RoleGuard>} />
+        <Route path="/holidays" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="holidays" /></Layout></RoleGuard>} />
+        <Route path="/settings" element={<RoleGuard roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><AcademicYears defaultTab="working-days" /></Layout></RoleGuard>} />
+        <Route path="/promotion" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><StudentPromotion /></Layout></RoleGuard>} />
+        <Route path="/permissions" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><Permissions /></Layout></RoleGuard>} />
+        <Route path="/subscription-enforcement" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><SubscriptionEnforcement /></Layout></RoleGuard>} />
+        <Route path="/security" element={<RoleGuard roles={['SUPER_ADMIN']}><Layout><Security /></Layout></RoleGuard>} />
+        <Route path="/backups" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><Backup /></Layout></RoleGuard>} />
+        <Route path="/timetable" element={<RoleGuard roles={['SCHOOL_ADMIN', 'TEACHER']}><Layout><Timetable /></Layout></RoleGuard>} />
+        <Route path="/announcements" element={<RoleGuard roles={['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><TeacherAnnouncements /></Layout></RoleGuard>} />
+        <Route path="/teacher-announcements" element={<Navigate to="/announcements" replace />} />
+        <Route path="/teacher/announcements" element={<Navigate to="/announcements" replace />} />
+        <Route path="/offline-attendance" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><OfflineAttendance /></Layout></RoleGuard>} />
+        <Route path="/analytics" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><Analytics /></Layout></RoleGuard>} />
+        <Route path="/leave-applications" element={<RoleGuard roles={['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><LeaveApprove /></Layout></RoleGuard>} />
+        <Route path="/photo-approvals" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']}><Layout><PhotoApprove /></Layout></RoleGuard>} />
+        <Route path="/leave-policy" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><LeavePolicy /></Layout></RoleGuard>} />
+        <Route path="/admin/temporary-assignments" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Navigate to="/classes?tab=temporary" replace /></RoleGuard>} />
+        <Route path="/temporary-assignments" element={<Navigate to="/classes?tab=temporary" replace />} />
+        <Route path="/leave-policies" element={<Navigate to="/leave-policy" replace />} />
+        <Route path="/teacher-leave-approvals" element={<RoleGuard roles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Layout><TeacherLeaveApprove /></Layout></RoleGuard>} />
+        <Route path="/teacher/leave-request" element={<RoleGuard roles={['TEACHER']}><Layout><TeacherLeaveRequest /></Layout></RoleGuard>} />
+        <Route path="/teacher/mentor-workspace" element={<RoleGuard roles={['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><ClassMentorWorkspace /></Layout></RoleGuard>} />
+        <Route path="/teacher/mentor" element={<Navigate to="/teacher/mentor-workspace" replace />} />
+        <Route path="/teacher/assignments" element={<RoleGuard roles={['TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><Layout><TeacherAssignments /></Layout></RoleGuard>} />
+        <Route path="/teacher-leave-request" element={<Navigate to="/teacher/leave-request" replace />} />
+        <Route path="/teacher/leave" element={<Navigate to="/teacher/leave-request" replace />} />
+        <Route path="/teacher/leaves" element={<Navigate to="/teacher/leave-request" replace />} />
+        <Route path="/review/photos" element={<Navigate to="/photo-approvals" replace />} />
+        <Route path="/review/teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace />} />
+        <Route path="/review/leaves" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/reviews/leaves" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/review-photos" element={<Navigate to="/photo-approvals" replace />} />
+        <Route path="/review-leaves" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/review-teacher-leaves" element={<Navigate to="/teacher-leave-approvals" replace />} />
+        <Route path="/review" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/reviews" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/teacher/review" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/teacher/reviews" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/teacher/leave-review" element={<Navigate to="/leave-applications" replace />} />
+        <Route path="/communication" element={<RoleGuard roles={['SCHOOL_ADMIN']}><Layout><Communication /></Layout></RoleGuard>} />
+        <Route path="/parent-communication" element={<RoleGuard roles={['PARENT']}><Layout><ParentCommunication /></Layout></RoleGuard>} />
+        <Route path="/parent-portal" element={<RoleGuard roles={['PARENT']}><Layout><ParentPortal /></Layout></RoleGuard>} />
+        <Route path="/super-admin/*" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule /></RoleGuard>} />
+        <Route path="/super-admin" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule /></RoleGuard>} />
+        <Route path="/reports" element={<RoleGuard roles={['SUPER_ADMIN']}><Navigate to="/super-admin/reports" replace /></RoleGuard>} />
+        <Route path="/payments" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule /></RoleGuard>} />
+        <Route path="/invoices" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule /></RoleGuard>} />
+        <Route path="/school-profile" element={<RoleGuard roles={['SCHOOL_ADMIN']}><SchoolProfile /></RoleGuard>} />
+        <Route path="/monitor" element={<RoleGuard roles={['SUPER_ADMIN']}><SuperAdminModule /></RoleGuard>} />
         <Route path="/subscription" element={<Navigate to="/dashboard" replace />} />
         {/* Student Portal Routes */}
-        <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/homework" element={<Navigate to="/student/assignments" replace/>}/>
-        <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest/></StudentLayout></RoleGuard>}/>
-        <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile/></StudentLayout></RoleGuard>}/>
-        <Route path="*" element={<Navigate to="/dashboard" replace/>}/>
+        <Route path="/student/dashboard" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentDashboard /></StudentLayout></RoleGuard>} />
+        <Route path="/student/attendance" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAttendance /></StudentLayout></RoleGuard>} />
+        <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable /></StudentLayout></RoleGuard>} />
+        <Route path="/student/homework" element={<Navigate to="/student/assignments" replace />} />
+        <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments /></StudentLayout></RoleGuard>} />
+        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} />
+        <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements /></StudentLayout></RoleGuard>} />
+        <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest /></StudentLayout></RoleGuard>} />
+        <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile /></StudentLayout></RoleGuard>} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>
   );

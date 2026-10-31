@@ -1461,6 +1461,27 @@ r.get("/students", ...reader, async (req: AuthRequest, res) => {
   return sendPaginatedStudents([]);
 });
 
+// GET /students/registered-emails — List all registered student emails across all sessions for duplicate prevention
+r.get("/students/registered-emails", ...reader, async (req: AuthRequest, res) => {
+  const userSchoolId = req.user?.schoolId;
+  if (!userSchoolId) return res.json([]);
+  try {
+    const q = await pool.query(
+      `SELECT DISTINCT LOWER(TRIM(email)) AS email
+       FROM (
+         SELECT email FROM students WHERE school_id = $1 AND email IS NOT NULL AND TRIM(email) != ''
+         UNION
+         SELECT email FROM users WHERE school_id = $1 AND role = 'STUDENT' AND email IS NOT NULL AND TRIM(email) != ''
+       ) e`,
+      [userSchoolId]
+    );
+    return res.json(q.rows.map((r: any) => r.email).filter(Boolean));
+  } catch (err: any) {
+    console.error("Error in GET /students/registered-emails:", err?.message);
+    return res.json([]);
+  }
+});
+
 // GET /students/template — download standardized Excel import template
 r.get("/students/template", ...reader, (_req, res) => {
   const XLSX = require("xlsx");
@@ -1804,9 +1825,32 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
 
   // Email format validation
   const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const schoolId = req.user!.schoolId;
+
   const cleanStudentEmail = String(studentEmail || "")
     .trim()
     .toLowerCase();
+
+  if (cleanStudentEmail && isPostgresConfigured) {
+    try {
+      const existingEmailQ = await pool.query(
+        `SELECT id FROM (
+           SELECT id FROM students WHERE school_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+           UNION
+           SELECT id FROM users WHERE school_id = $1 AND role = 'STUDENT' AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+         ) e LIMIT 1`,
+        [schoolId, cleanStudentEmail]
+      );
+      if (existingEmailQ.rowCount && existingEmailQ.rowCount > 0) {
+        return res.status(409).json({
+          message: `Student email '${cleanStudentEmail}' is already registered in this school.`
+        });
+      }
+    } catch (err: any) {
+      console.warn('[CreateStudent] Email duplicate check warning:', err.message);
+    }
+  }
+
   const cleanParentEmail = String(parentEmail || "")
     .trim()
     .toLowerCase();
@@ -1835,7 +1879,6 @@ r.post("/students", ...admin, async (req: AuthRequest, res) => {
   // Mandatory session binding — resolve academic_year_id
   const { getInMemoryAcademicYears, getInMemoryActiveAcademicYear } =
     await import("./academicYears");
-  const schoolId = req.user!.schoolId;
   await ensureSchoolClassesAndSections(schoolId);
 
   const rawSession = String(sessionId || "").trim();

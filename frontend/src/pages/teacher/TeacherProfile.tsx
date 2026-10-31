@@ -10,14 +10,9 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-  GraduationCap,
-  BookOpen,
   Calendar,
   Phone,
   Mail,
-  MapPin,
-  Briefcase,
-  Layers,
   Edit3,
   Save,
   X,
@@ -45,19 +40,19 @@ export interface ITeacherProfile {
   schoolWebsite?: string;
   school_website?: string;
   address: string;
-  qualification: string;
+  qualification?: string;
   joiningDate: string;
   photoUrl: string;
   gender: string;
   department: string;
   designation: string;
   academicSession: string;
-  assignedClasses: string[];
-  assignedSubjects: string[];
+  assignedClasses?: string[];
+  assignedSubjects?: string[];
 }
 
 export function TeacherProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<ITeacherProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,10 +61,10 @@ export function TeacherProfile() {
 
   // Edit details state
   const [editing, setEditing] = useState(false);
+  const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editGender, setEditGender] = useState('');
   const [editAddress, setEditAddress] = useState('');
-  const [editQualification, setEditQualification] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsMsg, setDetailsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -88,10 +83,10 @@ export function TeacherProfile() {
       const res = await api.get('/teacher/profile');
       if (res.data) {
         setProfile(res.data);
+        setEditEmail(res.data.email || '');
         setEditPhone(res.data.phone || '');
         setEditGender(formatGender(res.data.gender) || '');
         setEditAddress(res.data.address || '');
-        setEditQualification(res.data.qualification || '');
       }
     } catch (err) {
       console.error('Failed to load teacher profile:', err);
@@ -196,22 +191,25 @@ export function TeacherProfile() {
     setDetailsMsg(null);
     try {
       await api.put('/teacher/profile', {
+        email: editEmail.trim(),
         phone: editPhone.trim(),
         address: editAddress.trim(),
-        qualification: editQualification.trim(),
         gender: editGender
       });
       setProfile((prev) =>
         prev
           ? {
               ...prev,
+              email: editEmail.trim(),
               phone: editPhone.trim(),
               address: editAddress.trim(),
-              qualification: editQualification.trim(),
               gender: editGender
             }
           : null
       );
+      if (updateUser) {
+        updateUser({ email: editEmail.trim() });
+      }
       setEditing(false);
       setDetailsMsg({ type: 'success', text: 'Profile details updated successfully!' });
       setTimeout(() => setDetailsMsg(null), 4000);
@@ -279,7 +277,7 @@ export function TeacherProfile() {
           </Link>
           <h1 className="student-subpage-title">Faculty Profile & Credentials</h1>
           <p className="student-subpage-desc">
-            Personal identity, academic credentials, teaching allocations, and account security.
+            Personal identity, institutional details, and account security.
           </p>
         </div>
       </div>
@@ -442,6 +440,28 @@ export function TeacherProfile() {
               <div className="teacher-edit-grid">
                 <label style={{ display: 'grid', gap: 4 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
+                    Official Email:
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="teacher@school.com"
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      backgroundColor: 'var(--bg-card, #ffffff)',
+                      color: 'var(--text, #0f172a)',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                     Contact Mobile Number:
                   </span>
                   <input
@@ -488,27 +508,6 @@ export function TeacherProfile() {
 
               <label style={{ display: 'grid', gap: 4 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
-                  Highest Qualification:
-                </span>
-                <input
-                  type="text"
-                  value={editQualification}
-                  onChange={(e) => setEditQualification(e.target.value)}
-                  placeholder="M.Tech / M.Sc Computer Science"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border, #cbd5e1)',
-                    backgroundColor: 'var(--bg-card, #ffffff)',
-                    color: 'var(--text, #0f172a)',
-                    fontSize: 13,
-                    outline: 'none'
-                  }}
-                />
-              </label>
-
-              <label style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text, #334155)' }}>
                   Campus / Residential Address:
                 </span>
                 <textarea
@@ -534,10 +533,10 @@ export function TeacherProfile() {
                   type="button"
                   onClick={() => {
                     setEditing(false);
+                    setEditEmail(profile?.email || '');
                     setEditPhone(profile?.phone || '');
                     setEditGender(formatGender(profile?.gender) || '');
                     setEditAddress(profile?.address || '');
-                    setEditQualification(profile?.qualification || '');
                   }}
                   style={{
                     display: 'inline-flex',
@@ -599,14 +598,10 @@ export function TeacherProfile() {
                 <span className="detail-val">{profile?.joiningDate || '—'}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Qualification</span>
-                <span className="detail-val">{profile?.qualification || '—'}</span>
-              </div>
-              <div className="detail-item">
                 <span className="detail-label">Gender</span>
                 <span className="detail-val">{formatGender(profile?.gender) || 'Not Specified'}</span>
               </div>
-              <div className="detail-item">
+              <div className="detail-item" style={{ gridColumn: 'span 2' }}>
                 <span className="detail-label">Official School Website</span>
                 <span className="detail-val" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
                   {(profile?.schoolWebsite || (profile as any)?.school_website) ? (
@@ -642,33 +637,6 @@ export function TeacherProfile() {
               </div>
             </div>
           )}
-
-          {/* Teaching Allocations Section */}
-          <div className="student-card-header" style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--edu-border, #E2E8F0)' }}>
-            <div className="student-card-title-wrap">
-              <GraduationCap size={18} />
-              <h3 className="student-card-title">Teaching Allocations & Curriculum</h3>
-            </div>
-          </div>
-
-          <div className="student-details-grid">
-            <div className="detail-item">
-              <span className="detail-label">Assigned Classes</span>
-              <span className="detail-val">
-                {profile?.assignedClasses && profile.assignedClasses.length > 0
-                  ? profile.assignedClasses.join(', ')
-                  : 'Class 10 - Section A, Class 9 - Section B'}
-              </span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Subjects Taught</span>
-              <span className="detail-val">
-                {profile?.assignedSubjects && profile.assignedSubjects.length > 0
-                  ? profile.assignedSubjects.join(', ')
-                  : 'Mathematics, Computer Science'}
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* 3. Change Password / Account Security Card */}

@@ -156,10 +156,11 @@ export function addInMemoryAcademicYear(schoolId: string | null | undefined, dat
   return newItem;
 }
 
-import { requireRoles } from '../middleware/auth';
+import { requireAuth, requireRoles } from '../middleware/auth';
 import { fastCache } from '../utils/cache';
 
 const router = Router();
+router.use(requireAuth);
 const schoolId = (req: Request) => (req as any).user?.schoolId;
 const staffOrAdmin = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER');
 const adminOnly = requireRoles('SCHOOL_ADMIN', 'SUPER_ADMIN');

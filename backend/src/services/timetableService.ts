@@ -84,7 +84,7 @@ export async function createEntry(schoolId:string,userId:string,d:any){
   const { rows } = await pool.query(
     `INSERT INTO timetable_entries
      (school_id, academic_year_id, class_id, section_id, subject_id, teacher_id, substitute_teacher_id, period_id, day_of_week, room_name, status, notes, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PUBLISHED', $11, $12) RETURNING *`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ASSIGNED', $11, $12) RETURNING *`,
     [
       schoolId,
       academicYearId,
@@ -192,7 +192,7 @@ export async function listEntries(schoolId:string,filters:any={}){
 }
 
 export async function publish(schoolId:string,id:string){
- const {rows}=await pool.query(`UPDATE timetable_entries SET status='PUBLISHED',updated_at=NOW()
+ const {rows}=await pool.query(`UPDATE timetable_entries SET status='ASSIGNED',updated_at=NOW()
  WHERE id=$1 AND school_id=$2 RETURNING *`,[id,schoolId]); if(!rows.length)throw new Error('Entry not found'); return rows[0];
 }
 

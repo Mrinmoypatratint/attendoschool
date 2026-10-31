@@ -487,7 +487,7 @@ async function fetchTimetableEntries(sid: string, query: any = {}) {
               substitute_teacher_id: e.substitute_teacher_id || e.altTeacherId || null,
               substitute_teacher_name: e.substitute_teacher_name || e.altTeacherName || null,
               room_name: e.room_name || e.roomName || null,
-              status: e.status || 'PUBLISHED',
+              status: e.status || 'ASSIGNED',
               notes: e.notes || null
             });
           }
@@ -632,7 +632,7 @@ router.post('/entries', requireAdmin, async (req, res) => {
     substitute_teacher_id: d.altTeacherId || null,
     substitute_teacher_name: altTeacher?.name || d.altTeacherName || null,
     room_name: d.roomName || null,
-    status: 'PUBLISHED',
+    status: 'ASSIGNED',
     notes: d.notes || null
   };
   memEntries.push(entry);
@@ -800,10 +800,10 @@ router.post('/entries/:id/publish', requireAdmin, async (req, res) => {
   } catch (_e) {}
   const entry = memEntries.find(e => e.id === id);
   if (entry) {
-    entry.status = 'PUBLISHED';
+    entry.status = 'ASSIGNED';
     syncTimetableEntryToFirestore(entry).catch(() => {});
   }
-  res.json(entry || { id, status: 'PUBLISHED' });
+  res.json(entry || { id, status: 'ASSIGNED' });
 });
 
 // ── SUBSTITUTES ──

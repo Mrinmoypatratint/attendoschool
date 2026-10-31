@@ -27,14 +27,6 @@ export async function requireAttendanceTeacher(req: Request, res: Response, next
   const teacherId = user.id;
   const schoolId = user.schoolId;
 
-  // Enforce read-only post-submission for teachers on PUT/PATCH/DELETE
-  if (user.role === 'TEACHER' && req.method !== 'POST') {
-    return res.status(403).json({
-      message: 'Attendance session is already submitted and locked for editing. Please submit an attendance correction request.',
-      code: 'ATTENDANCE_SESSION_LOCKED',
-    });
-  }
-
   // Determine classId/sectionId based on route
   let classId: string | undefined;
   let sectionId: string | undefined;
