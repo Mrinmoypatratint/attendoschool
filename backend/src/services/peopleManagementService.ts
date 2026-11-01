@@ -229,7 +229,7 @@ export async function updateStudent(schoolId: string, id: string, body: any) {
     try {
       const { rows } = await pool.query(
         `UPDATE students SET ${fields.join(', ')}, updated_at=NOW()
-         WHERE id=$${values.length-1} AND school_id=$${values.length}
+         WHERE id=$${values.length - 1} AND school_id=$${values.length}
          RETURNING *`,
         values
       );
@@ -391,12 +391,12 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       userValues.push(id, schoolId);
       await client.query(
         `UPDATE users SET ${userFields.join(', ')}, updated_at=NOW()
-         WHERE id=$${userValues.length-1} AND school_id=$${userValues.length}`,
+         WHERE id=$${userValues.length - 1} AND school_id=$${userValues.length}`,
         userValues
       );
     }
 
-    const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url','class_name','section_name'];
+    const allowed = ['employee_id', 'phone', 'gender', 'address', 'joining_date', 'qualification', 'designation', 'photo_url', 'class_name', 'section_name'];
     const newEmp = body.employee_id || body.employeeId || body.saviorNo || body.savior_no;
     if (newEmp && String(newEmp).trim()) {
       const existing = await client.query(
@@ -411,7 +411,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     const values: any[] = [];
     for (const key of allowed) {
       const aliasKey = key === 'joining_date' ? (body.joining_date !== undefined ? 'joining_date' : 'joiningDate')
-                     : key;
+        : key;
       if (Object.prototype.hasOwnProperty.call(body, aliasKey)) {
         let val = body[aliasKey] === '' ? null : body[aliasKey];
         if (key === 'gender') val = normalizeGender(val);
@@ -423,7 +423,7 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
       values.push(id);
       await client.query(
         `INSERT INTO teacher_profiles (user_id, ${allowed.filter(k => Object.prototype.hasOwnProperty.call(body, k) || (k === 'joining_date' && body.joiningDate !== undefined)).join(', ')})
-         VALUES ($${values.length}, ${values.slice(0,-1).map((_,i)=>'$'+(i+1)).join(', ')})
+         VALUES ($${values.length}, ${values.slice(0, -1).map((_, i) => '$' + (i + 1)).join(', ')})
          ON CONFLICT (user_id) DO UPDATE SET ${fields.join(', ')}`,
         values
       );
