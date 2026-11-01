@@ -2738,7 +2738,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         { path: '/student/attendance', label: 'My Attendance', category: 'Student Portal', description: 'Personal attendance records & statistics', icon: ClipboardCheck, keywords: ['attendance', 'presence'] },
         { path: '/student/timetable', label: 'My Timetable', category: 'Student Portal', description: 'Class schedule & routine', icon: CalendarDays, keywords: ['timetable', 'schedule'] },
         { path: '/student/assignments', label: 'Assignments', category: 'Student Portal', description: 'Class homework & tasks', icon: BookOpen, keywords: ['assignments', 'homework'] },
-        { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
+        // { path: '/student/exams', label: 'Exams', category: 'Student Portal', description: 'Exam schedules & results', icon: FileText, keywords: ['exams', 'tests'] },
         { path: '/student/announcements', label: 'Announcements', category: 'Student Portal', description: 'School announcements & circulars', icon: Megaphone, keywords: ['announcements', 'notices'] },
         { path: '/student/leave-request', label: 'Apply Leave', category: 'Student Portal', description: 'Apply for leave & check status', icon: CalendarPlus, keywords: ['leave', 'sick leave'] },
         { path: '/student/profile', label: 'My Profile', category: 'Student Portal', description: 'Personal profile & account', icon: User, keywords: ['profile', 'account'] }
@@ -19537,7 +19537,7 @@ function App() {
         <Route path="/student/timetable" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentTimetable /></StudentLayout></RoleGuard>} />
         <Route path="/student/homework" element={<Navigate to="/student/assignments" replace />} />
         <Route path="/student/assignments" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAssignments /></StudentLayout></RoleGuard>} />
-        <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} />
+        {/* <Route path="/student/exams" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentExams /></StudentLayout></RoleGuard>} /> */}
         <Route path="/student/announcements" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentAnnouncements /></StudentLayout></RoleGuard>} />
         <Route path="/student/leave-request" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentLeaveRequest /></StudentLayout></RoleGuard>} />
         <Route path="/student/profile" element={<RoleGuard roles={['STUDENT']}><StudentLayout><StudentProfile /></StudentLayout></RoleGuard>} />

@@ -303,7 +303,8 @@ export function StudentDashboard() {
           </div>
         </Link>
 
-        {/* Exams KPI */}
+        {/* Exams KPI — commented out from frontend; backend preserved for future */}
+        {/*
         <Link to="/student/exams" className="student-kpi-card exams-kpi">
           <div className="student-kpi-card-top">
             <div className="student-kpi-icon-wrap coral-icon">
@@ -317,6 +318,7 @@ export function StudentDashboard() {
             <div className="student-kpi-sub">{kpis?.upcomingExamTitle?.includes('-') ? kpis.upcomingExamTitle.split('-')[1].trim() : (kpis?.upcomingExamTitle || 'No upcoming exam scheduled')}</div>
           </div>
         </Link>
+        */}
 
         {/* Announcements KPI */}
         <Link to="/student/announcements" className="student-kpi-card announcements-kpi">
