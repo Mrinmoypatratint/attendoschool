@@ -244,8 +244,8 @@ r.get('/routine/today', ...teacher, async (req: AuthRequest, res) => {
   const isTeacher = req.user!.role === 'TEACHER';
   const now = new Date();
   const rawDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  const dayParam = req.query.day ? Number(req.query.day) : null;
-  const targetDay = dayParam !== null ? dayParam : (rawDay === 0 ? 1 : rawDay);
+  const dayParam = req.query.day !== undefined && req.query.day !== null && req.query.day !== '' ? Number(req.query.day) : null;
+  const targetDay = dayParam !== null && !isNaN(dayParam) ? dayParam : rawDay;
 
   const cacheKey = `teacher:routine:today:${sid}:${req.user!.id}:${targetDay}`;
   const cached = fastCache.get<any>(cacheKey);

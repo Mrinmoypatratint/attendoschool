@@ -633,7 +633,7 @@ export async function getStudentDashboard(schoolId: string, userId: string, stud
   if (!st) throw new Error('Student record not found');
   const now = new Date();
   const todayDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const targetDay = todayDay === 0 ? 1 : todayDay; // Default to Monday if Sunday
+  const targetDay = todayDay;
 
   // Run all PostgreSQL queries concurrently
   const [attQ, timeQ, recQ, annQ, assignQ, nextExamQ] = await Promise.all([

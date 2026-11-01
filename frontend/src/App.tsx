@@ -5714,8 +5714,14 @@ function TeacherHome() {
                 <div className="td-next-class-box" style={{ justifyContent: 'center', textAlign: 'center' }}>
                   <div>
                     <CheckCircle2 size={24} style={{ color: '#10b981', margin: '0 auto 6px' }} />
-                    <div className="td-next-class-name">All classes completed for today</div>
-                    <div className="td-next-sub">Great job! No more upcoming routine periods.</div>
+                    <div className="td-next-class-name">
+                      {r.length === 0 ? 'No classes scheduled today' : 'All classes completed for today'}
+                    </div>
+                    <div className="td-next-sub">
+                      {r.length === 0
+                        ? (currentDayOfWeek === 0 ? 'Sunday is a weekend off. No routine periods scheduled.' : 'No routine periods assigned for today.')
+                        : 'Great job! No more upcoming routine periods.'}
+                    </div>
                   </div>
                 </div>
               )}
