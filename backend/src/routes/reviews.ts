@@ -80,12 +80,13 @@ async function ensureReviewTables() {
 }
 
 import { inMemoryLeaves, inMemoryTeacherLeaves } from '../store/leavesStore';
-import { isTintSchool, isTestSchool, isSameSchool } from '../utils/tenant';
+import { isDavSchool, isTintSchool, isGreenwoodSchool, isSameSchool, canonicalSchoolId } from '../utils/tenant';
 
 function resolvePostgresSchoolId(sid: string | null | undefined): string | null {
   if (!sid) return null;
+  if (isDavSchool(sid)) return '5c96ee99-88e6-44f1-bbb2-1cf8bc651ca3';
   if (isTintSchool(sid)) return '00000000-0000-0000-0000-000000000002';
-  if (isTestSchool(sid)) return '00000000-0000-0000-0000-000000000001';
+  if (isGreenwoodSchool(sid)) return '00000000-0000-0000-0000-000000000001';
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid)) return sid;
   return null;
 }
@@ -1721,7 +1722,7 @@ function formatLeaveDate(d: any) {
 router.get('/notifications', async (req: AuthRequest, res: Response) => {
   try {
     await ensureReviewTables();
-    const schoolId = req.user?.schoolId || (req.user as any)?.school_id || (req.headers['x-school-id'] as string) || (req.headers['x-tenant-id'] as string) || '00000000-0000-0000-0000-000000000001';
+    const schoolId = req.user?.schoolId || (req.user as any)?.school_id || (req.headers['x-school-id'] as string) || (req.headers['x-tenant-id'] as string);
     const userRole = req.user?.role;
     if (!schoolId) {
       return res.json({ success: true, pendingPhotosCount: 0, pendingLeavesCount: 0, pendingTeacherLeavesCount: 0, totalPendingCount: 0, notifications: [] });
@@ -1991,13 +1992,8 @@ router.get('/notifications', async (req: AuthRequest, res: Response) => {
             return false;
           }
 
-          // Flexible multi-tenant school matching
-          const matchesSchool = !a.school_id || !schoolId ||
-            isSameSchool(a.school_id, schoolId) ||
-            a.school_id === schoolId ||
-            String(a.school_id).toLowerCase() === String(schoolId).toLowerCase() ||
-            a.school_id === '00000000-0000-0000-0000-000000000001' ||
-            schoolId === '00000000-0000-0000-0000-000000000001';
+          // Strict multi-tenant school matching
+          const matchesSchool = isSameSchool(a.school_id, schoolId);
 
           if (!matchesSchool) return false;
 

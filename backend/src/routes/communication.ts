@@ -1,22 +1,22 @@
 import { Router, Request } from 'express';
 import * as svc from '../services/communicationService';
-import { isTestSchool } from './auth';
+import { isTestSchool, canonicalSchoolId, isGreenwoodSchool } from '../utils/tenant';
 
 const router = Router();
 const u = (r: Request) => (r as any).user;
 
 function resolveSchoolId(req: Request): string {
   const user = u(req);
-  return (
+  const raw = (
     user?.schoolId ||
     user?.school_id ||
     (req.headers['x-school-id'] as string) ||
     (req.headers['x-tenant-id'] as string) ||
     req.body?.schoolId ||
     req.body?.school_id ||
-    (req.query?.schoolId as string) ||
-    '00000000-0000-0000-0000-000000000001'
+    (req.query?.schoolId as string)
   );
+  return canonicalSchoolId(raw) || raw || '00000000-0000-0000-0000-000000000001';
 }
 
 router.use((req, res, next) => {
@@ -129,7 +129,7 @@ router.get('/', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
   } catch (_e: any) {
-    if (isTestSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(u(req).schoolId)) {
       return res.json([
         {
           id: 'ann-1',
@@ -154,7 +154,7 @@ router.get('/announcements', async (req, res) => {
   try {
     res.json(await svc.listSchoolAnnouncements(u(req).schoolId));
   } catch (_e: any) {
-    if (isTestSchool(u(req).schoolId)) {
+    if (isGreenwoodSchool(u(req).schoolId)) {
       return res.json([
         {
           id: 'ann-1',
