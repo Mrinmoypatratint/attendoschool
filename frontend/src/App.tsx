@@ -4932,82 +4932,120 @@ function TeacherHome() {
       const rawNotices = Array.isArray(noticesRes.data) ? noticesRes.data : [];
       setNotices(rawNotices.filter((n: any) => !n.read_at));
 
-      // Distinct class and section pairs assigned to this teacher
-      const uniqueClassSecs = new Map<string, { classId: string; sectionId: string }>();
+      // Teacher's assigned classes:
+      // Priority 1: Mentored / Authorized sections (Class Mentor / Temporary Assignments)
+      const assignedClassSecs = new Map<string, { classId?: string; sectionId?: string; classNumber?: number; sectionName?: string }>();
 
-      // 1. Authorized sections (Class Mentor / Temporary Assignments)
       secData.forEach((s: any) => {
-        const cId = s.classId || s.class_id || s.classNumber || s.class_number;
-        const sId = s.sectionId || s.section_id || s.sectionName || s.section_name;
-        if (cId && sId) {
-          const key = `${cId}_${sId}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
-          }
+        const cId = s.classId || s.class_id;
+        const sId = s.sectionId || s.section_id;
+        const cNum = s.classNumber ?? s.class_number;
+        const sName = s.sectionName || s.section_name;
+        const key = `${cNum ?? cId}_${sName ?? sId}`;
+        if (!assignedClassSecs.has(key)) {
+          assignedClassSecs.set(key, {
+            classId: cId ? String(cId) : undefined,
+            sectionId: sId ? String(sId) : undefined,
+            classNumber: cNum !== undefined ? Number(cNum) : undefined,
+            sectionName: sName ? String(sName) : undefined
+          });
         }
       });
 
-      // 2. Today's routine classes
-      routineData.forEach((item: any) => {
-        const cId = item.class_id || item.classId || item.class_number || item.classNumber;
-        const sId = item.section_id || item.sectionId || item.section_name || item.sectionName;
-        if (cId && sId) {
-          const key = `${cId}_${sId}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
-          }
-        }
-      });
-
-      // 3. Weekly timetable entries (covers classes taught on other days of the week)
-      const weekData = Array.isArray(routineWeekRes.data) ? routineWeekRes.data : [];
-      weekData.forEach((item: any) => {
-        const cId = item.class_id || item.classId || item.class_number || item.classNumber;
-        const sId = item.section_id || item.sectionId || item.section_name || item.sectionName;
-        if (cId && sId) {
-          const key = `${cId}_${sId}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: String(cId), sectionId: String(sId) });
-          }
-        }
-      });
-
-      // 4. Assigned class/section from user profile (if any)
+      // Priority 2: Profile assigned class/section (if teacher profile explicitly specifies an assigned class)
       if (user) {
         const uClass = (user as any).assigned_class_id || (user as any).assigned_class || (user as any).assignedClass;
         const uSec = (user as any).assigned_section_id || (user as any).assigned_section || (user as any).assignedSection;
         if (uClass && uSec) {
           const key = `${uClass}_${uSec}`;
-          if (!uniqueClassSecs.has(key)) {
-            uniqueClassSecs.set(key, { classId: String(uClass), sectionId: String(uSec) });
+          if (!assignedClassSecs.has(key)) {
+            assignedClassSecs.set(key, {
+              classId: String(uClass),
+              sectionId: String(uSec)
+            });
           }
         }
       }
 
-      // Calculate distinct active students across teacher's assigned classes for the selected session
-      if (uniqueClassSecs.size > 0) {
-        const studentRequests = Array.from(uniqueClassSecs.values()).map(cs =>
-          api.get('/teacher/students', {
-            params: {
-              classId: cs.classId,
-              sectionId: cs.sectionId,
-              session: currentSession
-            },
-            headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
-          }).catch(() => ({ data: [] }))
-        );
-
-        const studentResponses = await Promise.all(studentRequests);
-        const uniqueStudentIds = new Set<string>();
-        studentResponses.forEach(res => {
-          if (Array.isArray(res.data)) {
-            res.data.forEach((st: any) => {
-              const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
-              if (stKey) uniqueStudentIds.add(stKey);
-            });
+      // Priority 3: If teacher has NO assigned/mentored sections at all, fall back to today's teaching routine / timetable
+      if (assignedClassSecs.size === 0) {
+        routineData.forEach((item: any) => {
+          const cId = item.class_id || item.classId;
+          const sId = item.section_id || item.sectionId;
+          const cNum = item.class_number ?? item.classNumber;
+          const sName = item.section_name || item.sectionName;
+          if (cNum !== undefined || cId) {
+            const key = `${cNum ?? cId}_${sName ?? sId}`;
+            if (!assignedClassSecs.has(key)) {
+              assignedClassSecs.set(key, {
+                classId: cId ? String(cId) : undefined,
+                sectionId: sId ? String(sId) : undefined,
+                classNumber: cNum !== undefined ? Number(cNum) : undefined,
+                sectionName: sName ? String(sName) : undefined
+              });
+            }
           }
         });
-        setStudentCount(uniqueStudentIds.size);
+      }
+
+      // Calculate distinct active students across teacher's assigned classes for the selected session
+      // Dynamically fetches from the School Admin Student Directory (/people/students)
+      if (assignedClassSecs.size > 0) {
+        let counted = false;
+        try {
+          const peopleRes = await api.get('/people/students', {
+            params: { session: currentSession || undefined },
+            headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+          });
+
+          const studentList = Array.isArray(peopleRes.data) ? peopleRes.data : [];
+          const uniqueStudentIds = new Set<string>();
+
+          studentList.forEach((st: any) => {
+            for (const target of assignedClassSecs.values()) {
+              const matchClass = (target.classId && String(st.class_id) === String(target.classId)) ||
+                                 (target.classNumber !== undefined && Number(st.class_number) === Number(target.classNumber));
+              const matchSec = (target.sectionId && String(st.section_id) === String(target.sectionId)) ||
+                               (target.sectionName && String(st.section_name || '').toUpperCase() === String(target.sectionName || '').toUpperCase());
+              if (matchClass && matchSec) {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+                break;
+              }
+            }
+          });
+
+          setStudentCount(uniqueStudentIds.size);
+          counted = true;
+        } catch (err) {
+          console.warn('[TeacherDashboard] Could not fetch student count from /people/students:', err);
+        }
+
+        // Secondary fallback to /teacher/students if needed
+        if (!counted) {
+          const studentRequests = Array.from(assignedClassSecs.values()).map(cs =>
+            api.get('/teacher/students', {
+              params: {
+                classId: cs.classId || cs.classNumber,
+                sectionId: cs.sectionId || cs.sectionName,
+                session: currentSession
+              },
+              headers: currentSession ? { 'x-academic-session': encodeURIComponent(currentSession) } : undefined
+            }).catch(() => ({ data: [] }))
+          );
+
+          const studentResponses = await Promise.all(studentRequests);
+          const uniqueStudentIds = new Set<string>();
+          studentResponses.forEach(res => {
+            if (Array.isArray(res.data)) {
+              res.data.forEach((st: any) => {
+                const stKey = String(st.id || st.admission_number || st.roll_number || st.name);
+                if (stKey) uniqueStudentIds.add(stKey);
+              });
+            }
+          });
+          setStudentCount(uniqueStudentIds.size);
+        }
       } else {
         setStudentCount(0);
       }

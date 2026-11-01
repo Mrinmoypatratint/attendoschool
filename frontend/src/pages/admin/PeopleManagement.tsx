@@ -289,8 +289,14 @@ export default function PeopleManagement() {
     }, 120);
 
     try {
+      const activeSession = localStorage.getItem('attendo_academic_session') || localStorage.getItem('attendo_active_academic_year') || '';
       const endpoint = tab === 'students' ? '/people/students' : '/teachers';
-      const res = await api.get(endpoint, { params: { search: search.trim() || undefined } });
+      const res = await api.get(endpoint, {
+        params: {
+          search: search.trim() || undefined,
+          session: tab === 'students' && activeSession ? activeSession : undefined
+        }
+      });
       setLoadProgress(95);
       setRows(res.data || []);
       setLoadProgress(100);
@@ -315,6 +321,16 @@ export default function PeopleManagement() {
     api.get('/classes').then(r => setAllocClasses(r.data || [])).catch(() => { });
     api.get('/sections').then(r => setAllocSections(r.data || [])).catch(() => { });
     api.get('/designations').then(r => setAllocDesignations(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => { });
+
+    const onSessionChanged = () => {
+      load();
+    };
+    window.addEventListener('sessionChanged', onSessionChanged);
+    window.addEventListener('storage', onSessionChanged);
+    return () => {
+      window.removeEventListener('sessionChanged', onSessionChanged);
+      window.removeEventListener('storage', onSessionChanged);
+    };
   }, [tab]);
 
   function handleSearchSubmit(e: React.FormEvent) {

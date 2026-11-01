@@ -9,22 +9,22 @@ import { pool } from '../db';
 import { validateStudentUniqueness } from '../utils/studentValidation';
 import { normalizeGender } from '../utils/gender';
 
-export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '') {
+export async function listStudents(schoolId: string, search = '', activeOnly = true, session = '', academicYearId = '', classId = '', sectionId = '') {
   const params: any[] = [schoolId];
   let where = 'WHERE st.school_id=$1';
   if (activeOnly) where += ' AND st.is_active=TRUE';
   if (search.trim()) {
     params.push(`%${search.trim()}%`);
-    where += ` AND (st.name ILIKE ${params.length} OR CAST(st.roll_number AS TEXT) ILIKE ${params.length} OR COALESCE(st.admission_number,'') ILIKE ${params.length} OR COALESCE(st.gender,'') ILIKE ${params.length})`;
+    where += ` AND (st.name ILIKE $${params.length} OR CAST(st.roll_number AS TEXT) ILIKE $${params.length} OR COALESCE(st.admission_number,'') ILIKE $${params.length} OR COALESCE(st.gender,'') ILIKE $${params.length})`;
   }
   if (academicYearId) {
     params.push(academicYearId);
-    where += ` AND st.academic_year_id = ${params.length}::uuid`;
+    where += ` AND st.academic_year_id = $${params.length}::uuid`;
   } else if (session && !/^all(\s+sessions?)?$/i.test(session)) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session);
     if (isUuid) {
       params.push(session);
-      where += ` AND st.academic_year_id = ${params.length}::uuid`;
+      where += ` AND st.academic_year_id = $${params.length}::uuid`;
     } else {
       const cleanSessionName = session.replace(/\b(academic\s+)?sessions?\b/gi, '').trim();
       params.push(session);
@@ -34,11 +34,32 @@ export async function listStudents(schoolId: string, search = '', activeOnly = t
       where += ` AND (
         st.academic_year_id IN (
           SELECT id FROM academic_years 
-          WHERE school_id = $1::uuid AND (LOWER(name) = LOWER(${sIdx}) OR name ILIKE ${cIdx} OR LOWER(code) = LOWER(${sIdx}) OR code ILIKE ${cIdx})
+          WHERE school_id = $1::uuid AND (LOWER(name) = LOWER($${sIdx}) OR name ILIKE $${cIdx})
         )
-        OR ay.name ILIKE ${cIdx}
-        OR ay.code ILIKE ${cIdx}
+        OR ay.name ILIKE $${cIdx}
       )`;
+    }
+  }
+  if (classId && classId.trim()) {
+    const isClassUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId.trim());
+    const cNum = parseInt(classId.replace(/\D/g, ''), 10);
+    if (isClassUuid) {
+      params.push(classId.trim());
+      where += ` AND st.class_id = $${params.length}::uuid`;
+    } else if (!isNaN(cNum)) {
+      params.push(cNum);
+      where += ` AND c.class_number = $${params.length}`;
+    }
+  }
+  if (sectionId && sectionId.trim()) {
+    const isSecUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sectionId.trim());
+    if (isSecUuid) {
+      params.push(sectionId.trim());
+      where += ` AND st.section_id = $${params.length}::uuid`;
+    } else {
+      const cleanSec = sectionId.replace(/section\s*/i, '').trim().toUpperCase();
+      params.push(cleanSec);
+      where += ` AND UPPER(sec.name) = $${params.length}`;
     }
   }
   const { rows } = await pool.query(
