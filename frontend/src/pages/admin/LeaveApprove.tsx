@@ -15,8 +15,11 @@ import {
   GraduationCap,
   AlertTriangle,
   FileText,
-  Eye
+  Eye,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { api } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { PersonProfileLink } from '../../components/PersonProfileLink';
@@ -38,6 +41,53 @@ interface LeaveRequest {
   reviewer_name?: string;
   review_notes?: string;
   created_at: string;
+  roll_number?: string;
+  admission_number?: string;
+  class_number?: number | string;
+  class_name?: string;
+  section_name?: string;
+  leave_count?: number;
+  total_leave_days?: number;
+}
+
+// Pure helper functions
+function calculateDays(start: string, end: string) {
+  if (!start || !end) return 1;
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  const diff = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+  return diff > 0 ? diff : 1;
+}
+
+function formatDate(d: string) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return d;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getStudentClass(leave: LeaveRequest) {
+  if (leave.class_number !== undefined && leave.class_number !== null && String(leave.class_number).trim() !== '') {
+    const num = Number(leave.class_number);
+    if (num === -1) return 'Class L KG';
+    if (num === 0) return 'Class U KG';
+    return `Class ${num}`;
+  }
+  if (leave.class_name) return leave.class_name;
+  if (leave.detail) {
+    const match = leave.detail.match(/Class\s+[^-\s]+/i);
+    if (match) return match[0];
+  }
+  return '—';
+}
+
+function getStudentSection(leave: LeaveRequest) {
+  if (leave.section_name) return leave.section_name;
+  if (leave.detail && leave.detail.includes('-')) {
+    const parts = leave.detail.split('-');
+    if (parts.length > 1) return parts[parts.length - 1].trim();
+  }
+  return '—';
 }
 
 export default function LeaveApprove() {
@@ -51,6 +101,7 @@ export default function LeaveApprove() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>(isTeacher ? 'STUDENT' : 'ALL');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectedLeaveIds, setSelectedLeaveIds] = useState<Set<string>>(new Set());
 
   // View Details Modal State
   const [viewingLeave, setViewingLeave] = useState<LeaveRequest | null>(null);
@@ -106,22 +157,24 @@ export default function LeaveApprove() {
     }
   };
 
-  // Calculate day difference
-  const calculateDays = (start: string, end: string) => {
-    if (!start || !end) return 1;
-    const s = new Date(start).getTime();
-    const e = new Date(end).getTime();
-    const diff = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
-    return diff > 0 ? diff : 1;
-  };
 
-  // Format date helper
-  const formatDate = (d: string) => {
-    if (!d) return '';
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return d;
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+
+  const studentLeavesCountMap = useMemo(() => {
+    const map = new Map<string, { count: number; totalDays: number }>();
+    leaves.forEach((l) => {
+      if (l.applicant_type === 'STUDENT' && l.applicant_id) {
+        const d = calculateDays(l.start_date, l.end_date);
+        const curr = map.get(l.applicant_id) || { count: 0, totalDays: 0 };
+        map.set(l.applicant_id, {
+          count: curr.count + 1,
+          totalDays: curr.totalDays + d
+        });
+      }
+    });
+    return map;
+  }, [leaves]);
+
+
 
   // Filter leaves based on active tab, role, and search
   const filteredLeaves = useMemo(() => {
@@ -149,7 +202,11 @@ export default function LeaveApprove() {
         const nameMatch = l.applicant_name?.toLowerCase().includes(q);
         const idMatch = l.identifier?.toLowerCase().includes(q);
         const reasonMatch = l.reason?.toLowerCase().includes(q);
-        if (!nameMatch && !idMatch && !reasonMatch) return false;
+        const rollMatch = l.roll_number?.toLowerCase().includes(q);
+        const admMatch = l.admission_number?.toLowerCase().includes(q);
+        const classMatch = getStudentClass(l).toLowerCase().includes(q);
+        const secMatch = getStudentSection(l).toLowerCase().includes(q);
+        if (!nameMatch && !idMatch && !reasonMatch && !rollMatch && !admMatch && !classMatch && !secMatch) return false;
       }
 
       return true;
@@ -165,6 +222,118 @@ export default function LeaveApprove() {
     return { all, pending, seen, approved: 0, rejected: 0 };
   }, [isTeacher, counts, leaves]);
 
+const toggleSelectLeave = (id: string) => {
+    setSelectedLeaveIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllVisibleSelected = filteredLeaves.length > 0 && filteredLeaves.every((l) => selectedLeaveIds.has(l.id));
+  const isSomeVisibleSelected = filteredLeaves.some((l) => selectedLeaveIds.has(l.id)) && !isAllVisibleSelected;
+
+  const toggleSelectAllVisible = () => {
+    if (isAllVisibleSelected) {
+      setSelectedLeaveIds((prev) => {
+        const next = new Set(prev);
+        filteredLeaves.forEach((l) => next.delete(l.id));
+        return next;
+      });
+    } else {
+      setSelectedLeaveIds((prev) => {
+        const next = new Set(prev);
+        filteredLeaves.forEach((l) => next.add(l.id));
+        return next;
+      });
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedLeaveIds(new Set());
+  };
+
+  const exportToExcel = () => {
+    try {
+      const targetLeaves = selectedLeaveIds.size > 0
+        ? filteredLeaves.filter((l) => selectedLeaveIds.has(l.id))
+        : filteredLeaves;
+
+      if (targetLeaves.length === 0) {
+        setFeedback({ type: 'error', message: 'No student leave applications available to export.' });
+        return;
+      }
+
+      const rows = targetLeaves.map((leave, index) => {
+        const days = calculateDays(leave.start_date, leave.end_date);
+        const className = getStudentClass(leave);
+        const sectionName = getStudentSection(leave);
+        const rollNo = leave.roll_number || '—';
+        const admNo = leave.admission_number || leave.identifier || '—';
+        const studentStats = studentLeavesCountMap.get(leave.applicant_id);
+        const countLeaves = leave.leave_count !== undefined ? Number(leave.leave_count) : (studentStats?.count || 1);
+        const totalDays = leave.total_leave_days !== undefined ? Number(leave.total_leave_days) : (studentStats?.totalDays || days);
+
+        return {
+          'SL No.': index + 1,
+          'Student Name': leave.applicant_name,
+          'Class': className,
+          'Section': sectionName,
+          'Roll No': rollNo,
+          'Admission No': admNo,
+          'Leave Start Date': leave.start_date ? formatDate(leave.start_date) : '—',
+          'Leave End Date': leave.end_date ? formatDate(leave.end_date) : '—',
+          'Duration (Days)': days,
+          'Total Leave Count': `${countLeaves} (${totalDays}d)`,
+          'Reason': leave.reason || '—',
+          'Status': leave.status,
+          'Applied Date': leave.created_at ? formatDate(leave.created_at) : '—',
+          'Reviewed By': leave.reviewer_name || (leave.status === 'SEEN' ? 'Seen by Faculty' : '—')
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      ws['!cols'] = [
+        { wch: 8 },  // SL No.
+        { wch: 22 }, // Student Name
+        { wch: 12 }, // Class
+        { wch: 10 }, // Section
+        { wch: 12 }, // Roll No
+        { wch: 16 }, // Admission No
+        { wch: 16 }, // Start Date
+        { wch: 16 }, // End Date
+        { wch: 16 }, // Duration (Days)
+        { wch: 18 }, // Total Leave Count
+        { wch: 34 }, // Reason
+        { wch: 14 }, // Status
+        { wch: 16 }, // Applied Date
+        { wch: 20 }, // Reviewed By
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Student Leave Applications');
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const suffix = selectedLeaveIds.size > 0 ? `_${selectedLeaveIds.size}_Selected_Students` : '_All';
+      const filename = `Student_Leave_Applications_${dateStr}${suffix}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+
+      setFeedback({
+        type: 'success',
+        message: selectedLeaveIds.size > 0
+          ? `Exported ${selectedLeaveIds.size} selected student leave application(s) to Excel.`
+          : `Exported ${targetLeaves.length} student leave application(s) to Excel.`
+      });
+    } catch (err: any) {
+      console.error('Failed to export to Excel:', err);
+      setFeedback({ type: 'error', message: 'Failed to export leave applications to Excel.' });
+    }
+  };
+
+
   return (
     <div className="student-subpage" style={{ width: '100%', paddingBottom: 40 }}>
       {/* ── Page Header (Matching screenshot style) ── */}
@@ -178,20 +347,60 @@ export default function LeaveApprove() {
           </h1>
           <p className="student-subpage-desc" style={{ fontSize: 14, color: 'var(--text-secondary, #64748B)', margin: 0 }}>
             {isTeacher
-              ? 'Review, evaluate, and approve submitted student leave applications for your mentored class-section.'
+              ? 'Review and view submitted student leave applications for your mentored class-section.'
               : 'Review, evaluate, and approve submitted student leave applications.'}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadLeaves}
-          className="student-btn-secondary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)', background: 'var(--surface, #FFF)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}
-        >
-          <RefreshCw size={14} className={loading ? 'spin' : ''} />
-          <span>Refresh</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={exportToExcel}
+              disabled={filteredLeaves.length === 0}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 8,
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#10B981',
+                cursor: filteredLeaves.length === 0 ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 600,
+                opacity: filteredLeaves.length === 0 ? 0.5 : 1,
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                if (filteredLeaves.length > 0) {
+                  e.currentTarget.style.background = '#10B981';
+                  e.currentTarget.style.color = '#FFF';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (filteredLeaves.length > 0) {
+                  e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)';
+                  e.currentTarget.style.color = '#10B981';
+                }
+              }}
+            >
+              <FileSpreadsheet size={15} />
+              <span>{selectedLeaveIds.size > 0 ? `Export Excel (${selectedLeaveIds.size})` : 'Export Excel'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={loadLeaves}
+            className="student-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border, #E2E8F0)', background: 'var(--surface, #FFF)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text, #0F172A)' }}
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Feedback Banner */}
@@ -377,8 +586,337 @@ export default function LeaveApprove() {
               : activeTab === 'PENDING' ? 'No pending leave applications awaiting approval.' : 'No leave records to display.'}
           </p>
         </div>
+      ) : isTeacher ? (
+        /* ── Teacher Portal Table Format (Student Name, Class, Section, Roll No, Adm No, Duration, Leave Count, Leave Reason, Status, Actions) ── */
+        <div>
+          {selectedLeaveIds.size > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 16px',
+                background: 'rgba(37, 99, 235, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: 10,
+                marginBottom: 14,
+                fontSize: 13,
+                color: '#3B82F6'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{selectedLeaveIds.size}</span>
+                <span>student application(s) selected</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={exportToExcel}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: '#2563EB',
+                    color: '#FFF',
+                    border: 'none',
+                    padding: '6px 14px',
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>Download Selected Excel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'transparent',
+                    color: 'var(--text-secondary, #94A3B8)',
+                    border: '1px solid var(--border, #334155)',
+                    padding: '5px 12px',
+                    borderRadius: 6,
+                    fontSize: 12.5,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={13} />
+                  <span>Clear Selection</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="student-table-wrap" style={{ width: '100%', overflowX: 'auto', background: 'var(--surface, #1e293b)', borderRadius: 12, border: '1px solid var(--border, #334155)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+          <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
+            <thead>
+              <tr style={{ background: 'var(--table-header, rgba(255, 255, 255, 0.03))', borderBottom: '1px solid var(--border, #334155)' }}>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 180 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={isAllVisibleSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeVisibleSelected;
+                      }}
+                      onChange={toggleSelectAllVisible}
+                      title={isAllVisibleSelected ? 'Deselect all visible applications' : 'Select all visible applications for export'}
+                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB', margin: 0, flexShrink: 0 }}
+                    />
+                    <span>STUDENT NAME</span>
+                  </div>
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 90 }}>
+                  CLASS
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 80 }}>
+                  SECTION
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 90 }}>
+                  ROLL NO
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 100 }}>
+                  ADM NO
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 140 }}>
+                  DURATION
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 110 }}>
+                  LEAVE COUNT
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 160 }}>
+                  LEAVE REASON
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', minWidth: 90 }}>
+                  STATUS
+                </th>
+                <th style={{ padding: '12px 14px', fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary, #94A3B8)', textTransform: 'uppercase', textAlign: 'right', minWidth: 90 }}>
+                  ACTIONS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLeaves.map((leave) => {
+                const days = calculateDays(leave.start_date, leave.end_date);
+                const className = getStudentClass(leave);
+                const sectionName = getStudentSection(leave);
+                const rollNo = leave.roll_number || '—';
+                const admNo = leave.admission_number || leave.identifier || '—';
+                const studentStats = studentLeavesCountMap.get(leave.applicant_id);
+                const countLeaves = leave.leave_count !== undefined ? Number(leave.leave_count) : (studentStats?.count || 1);
+                const totalDays = leave.total_leave_days !== undefined ? Number(leave.total_leave_days) : (studentStats?.totalDays || days);
+
+                return (
+                  <tr
+                    key={leave.id}
+                    style={{
+                      background: selectedLeaveIds.has(leave.id) ? 'rgba(37, 99, 235, 0.08)' : undefined,
+                      borderBottom: '1px solid var(--border, #334155)',
+                      transition: 'background 0.15s'
+                    }}
+                  >
+                    {/* Student Name & Checkbox */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeaveIds.has(leave.id)}
+                          onChange={() => toggleSelectLeave(leave.id)}
+                          title={`Select ${leave.applicant_name}`}
+                          style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#2563EB', margin: 0, flexShrink: 0 }}
+                        />
+                        {leave.photo_url ? (
+                          <img
+                            src={leave.photo_url}
+                            alt={leave.applicant_name}
+                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '1px solid #BFDBFE', flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: '50%',
+                              background: selectedLeaveIds.has(leave.id) ? '#DBEAFE' : 'rgba(37, 99, 235, 0.12)',
+                              color: '#3B82F6',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: 13,
+                              flexShrink: 0,
+                              border: selectedLeaveIds.has(leave.id) ? '1px solid #3B82F6' : '1px solid rgba(59, 130, 246, 0.25)'
+                            }}
+                          >
+                            {(leave.applicant_name || 'ST').slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text, #0F172A)' }}>
+                            <PersonProfileLink kind="student" id={leave.applicant_id} name={leave.applicant_name} person={leave as any} />
+                          </div>
+                          {leave.identifier && (
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)' }}>
+                              ID: {leave.identifier}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Class */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0F172A)' }}>
+                        {className}
+                      </span>
+                    </td>
+
+                    {/* Section */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 11.5,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(37, 99, 235, 0.1)',
+                          color: '#3B82F6',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
+                          display: 'inline-block'
+                        }}
+                      >
+                        {sectionName}
+                      </span>
+                    </td>
+
+                    {/* Roll No */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text, #0F172A)' }}>
+                        {rollNo}
+                      </span>
+                    </td>
+
+                    {/* Adm No */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <span style={{ fontSize: 12.5, color: 'var(--text-secondary, #64748B)' }}>
+                        {admNo}
+                      </span>
+                    </td>
+
+                    {/* Duration */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text, #0F172A)' }}>
+                        {formatDate(leave.start_date)} → {formatDate(leave.end_date)}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Calendar size={11} />
+                        <span>{days} {days === 1 ? 'Day' : 'Days'}</span>
+                      </div>
+                    </td>
+
+                    {/* Leave Count */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: countLeaves > 1 ? '#2563EB' : 'var(--text-secondary, #64748B)',
+                          background: countLeaves > 1 ? 'rgba(37, 99, 235, 0.1)' : 'var(--surface-muted, #F1F5F9)',
+                          border: `1px solid ${countLeaves > 1 ? 'rgba(37, 99, 235, 0.25)' : 'var(--border, #E2E8F0)'}`,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                        title={`${countLeaves} total leave request(s) (${totalDays} total day(s))`}
+                      >
+                        <FileText size={11} />
+                        <span>{countLeaves} {countLeaves === 1 ? 'Leave' : 'Leaves'} ({totalDays}d)</span>
+                      </span>
+                    </td>
+
+                    {/* Leave Reason */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ maxWidth: 220 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text, #0F172A)', lineHeight: 1.35, wordBreak: 'break-word' }}>
+                          {leave.reason || '—'}
+                        </div>
+                        {leave.created_at && (
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary, #64748B)', marginTop: 2 }}>
+                            Applied: {formatDate(leave.created_at)}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                      {leave.status === 'PENDING' ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                          <Clock size={11} /> Pending
+                        </span>
+                      ) : (leave.status === 'SEEN' || isTeacher) ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                          <Eye size={11} /> Seen
+                        </span>
+                      ) : leave.status === 'APPROVED' ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                          <CheckCircle2 size={11} /> Approved
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '3px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+                          <XCircle size={11} /> Rejected
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions - View Only */}
+                    <td style={{ padding: '12px 14px', verticalAlign: 'middle', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleViewLeave(leave)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          background: 'rgba(37, 99, 235, 0.12)',
+                          color: '#3B82F6',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: 6,
+                          padding: '5px 12px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#2563EB';
+                          e.currentTarget.style.color = '#FFF';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(37, 99, 235, 0.12)';
+                          e.currentTarget.style.color = '#3B82F6';
+                        }}
+                      >
+                        <Eye size={13} />
+                        <span>View</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        </div>
       ) : (
-        /* Leave Cards Grid */
+        /* Leave Cards Grid for Non-Teachers */
         <div
           style={{
             display: 'grid',
@@ -721,7 +1259,7 @@ export default function LeaveApprove() {
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748B)' }}>
-                  {viewingLeave.detail || `Admission No: ${viewingLeave.identifier || 'N/A'}`}
+                  {viewingLeave.detail || 'Student'}{viewingLeave.roll_number ? ` · Roll No: ${viewingLeave.roll_number}` : ''}{viewingLeave.admission_number || viewingLeave.identifier ? ` · Adm No: ${viewingLeave.admission_number || viewingLeave.identifier}` : ''}
                 </div>
               </div>
 
