@@ -1606,7 +1606,7 @@ export default function PeopleManagement() {
                       {teacherForm.designation && !allocDesignations.some(d => (d.title || d.name) === teacherForm.designation) && (
                         <option value={teacherForm.designation}>{teacherForm.designation}</option>
                       )}
-                      {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                      {allocDesignations.map(d => (
                         <option key={d.id || d.title} value={d.title || d.name}>
                           {d.title || d.name}{d.category ? ` (${d.category})` : ''}
                         </option>

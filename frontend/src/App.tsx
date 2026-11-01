@@ -12062,7 +12062,7 @@ function Teachers() {
                     {f.designation && !allocDesignations.some(d => (d.title || d.name) === f.designation) && (
                       <option value={f.designation}>{f.designation}</option>
                     )}
-                    {allocDesignations.filter(d => d.is_active !== false).map(d => (
+                    {allocDesignations.map(d => (
                       <option key={d.id || d.title} value={d.title || d.name}>
                         {d.title || d.name}{d.category ? ` (${d.category})` : ''}
                       </option>
