@@ -376,6 +376,16 @@ export async function updateTeacher(schoolId: string, id: string, body: any) {
     }
 
     const allowed = ['employee_id','phone','gender','address','joining_date','qualification','designation','photo_url','class_name','section_name'];
+    const newEmp = body.employee_id || body.employeeId || body.saviorNo || body.savior_no;
+    if (newEmp && String(newEmp).trim()) {
+      const existing = await client.query(
+        `SELECT tp.id FROM teacher_profiles tp JOIN users u ON u.id = tp.user_id WHERE u.school_id = $1 AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2)) AND u.id != $3 LIMIT 1`,
+        [schoolId, String(newEmp).trim(), id]
+      );
+      if (existing.rowCount && existing.rowCount > 0) {
+        throw new Error(`Employee ID '${newEmp}' is already registered to another teacher.`);
+      }
+    }
     const fields: string[] = [];
     const values: any[] = [];
     for (const key of allowed) {

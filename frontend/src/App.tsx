@@ -10474,6 +10474,21 @@ function Teachers() {
       alert('Validation Error: Please enter Employee ID / Savior_No.');
       return;
     }
+    const currentEmpIdTrimmed = employeeId.trim().toLowerCase();
+    const dupEmpId = rows.find(r => {
+      const isSameRecord = editingTeacher && (
+        r.id === editingTeacher.id ||
+        (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+        (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+      );
+      if (isSameRecord) return false;
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      return rEmp && rEmp === currentEmpIdTrimmed;
+    });
+    if (dupEmpId) {
+      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered to teacher '${dupEmpId.name || 'Existing Teacher'}'.`);
+      return;
+    }
     const joiningDateVal = f.joiningDate || f.joining_date;
     if (!joiningDateVal) {
       alert('Validation Error: Joining Date is a required field.');
@@ -10973,6 +10988,11 @@ function Teachers() {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
           } else if (seenSavior.has(saviorNo)) {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else if (rows.some(r => {
+            const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+            return rEmp && rEmp === saviorNo.trim().toLowerCase();
+          })) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Employee ID / Savior_No '${saviorNo}' already exists in system` });
           } else {
             seenSavior.add(saviorNo);
           }
@@ -11716,6 +11736,7 @@ function Teachers() {
     {open && (() => {
       const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       const currentTeacherEmail = String(f.email || '').trim().toLowerCase();
+      const currentTeacherEmpId = String(f.employeeId || f.saviorNo || f.employee_id || '').trim().toLowerCase();
       const isEmailDuplicateInUi = Boolean(
         currentTeacherEmail &&
         rows.some(r => {
@@ -11732,6 +11753,19 @@ function Teachers() {
       );
       const isEmailInvalidInUi = Boolean(
         currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
+      );
+      const isEmpIdDuplicateInUi = Boolean(
+        currentTeacherEmpId &&
+        rows.some(r => {
+          const rowEmpId = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+          const matches = rowEmpId && rowEmpId === currentTeacherEmpId;
+          const isSameRecord = editingTeacher && (
+            r.id === editingTeacher.id ||
+            (editingTeacher.id && r.id && String(r.id) === String(editingTeacher.id)) ||
+            (editingTeacher.user_id && r.user_id && String(r.user_id) === String(editingTeacher.user_id))
+          );
+          return matches && !isSameRecord;
+        })
       );
 
       const fnVal = f.firstName !== undefined ? f.firstName : (editingTeacher ? (f.name || '').split(' ')[0] : '');
@@ -11912,7 +11946,21 @@ function Teachers() {
                 <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
                 </span>
-                <input required placeholder="e.g. EMP001 or SAVIOR_101" value={f.employeeId || f.saviorNo || ''} onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })} />
+                <input
+                  required
+                  placeholder="e.g. EMP001 or SAVIOR_101"
+                  value={f.employeeId || f.saviorNo || ''}
+                  style={{
+                    borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
+                    boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                  }}
+                  onChange={e => setF({ ...f, employeeId: e.target.value, saviorNo: e.target.value })}
+                />
+                {isEmpIdDuplicateInUi && (
+                  <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                    Already existed
+                  </span>
+                )}
               </label>
               {/* Row 1: Gender & Joining Date */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

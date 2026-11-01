@@ -390,6 +390,15 @@ export default function PeopleManagement() {
       return;
     }
 
+    const cleanEmpId = employeeId.trim().toLowerCase();
+    if (rows && rows.some((r: any) => {
+      const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+      return rEmp && rEmp === cleanEmpId;
+    })) {
+      alert(`Validation Error: Employee ID already exists. Employee ID '${employeeId}' is already registered.`);
+      return;
+    }
+
     if (!teacherForm.designation || !String(teacherForm.designation).trim()) {
       alert('Validation Error: Designation is a required field. Please select a designation.');
       return;
@@ -579,6 +588,11 @@ export default function PeopleManagement() {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: 'Savior_No / Employee ID is required' });
           } else if (seenSavior.has(saviorNo)) {
             rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Duplicate Savior_No '${saviorNo}' in file` });
+          } else if (rows && rows.some((r: any) => {
+            const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+            return rEmp && rEmp === saviorNo.trim().toLowerCase();
+          })) {
+            rowErrs.push({ row: rowNum, field: 'Savior_No', message: `Employee ID / Savior_No '${saviorNo}' already exists in system` });
           } else {
             seenSavior.add(saviorNo);
           }
@@ -1263,7 +1277,27 @@ export default function PeopleManagement() {
               </button>
             </div>
             {!addTeacherPreview ? (
-              <form className="modal-form" onSubmit={(e) => { e.preventDefault(); setAddTeacherPreview(true); }}>
+              <form className="modal-form" onSubmit={(e) => {
+                e.preventDefault();
+                const em = String(teacherForm.email || '').trim().toLowerCase();
+                if (rows && rows.some((r: any) => String(r.email || '').trim().toLowerCase() === em)) {
+                  alert('Validation Error: A teacher with this email address already exists.');
+                  return;
+                }
+                const emp = String(teacherForm.employeeId || teacherForm.saviorNo || '').trim().toLowerCase();
+                if (!emp) {
+                  alert('Validation Error: Please enter Employee ID / Savior_No.');
+                  return;
+                }
+                if (rows && rows.some((r: any) => {
+                  const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+                  return rEmp && rEmp === emp;
+                })) {
+                  alert(`Validation Error: Employee ID already exists. Employee ID '${teacherForm.employeeId || teacherForm.saviorNo}' is already registered.`);
+                  return;
+                }
+                setAddTeacherPreview(true);
+              }}>
                 {/* Last Registered Teacher Banner in Red */}
                 {lastRegisteredTeacherInfo && (
                   <div style={{
@@ -1290,12 +1324,20 @@ export default function PeopleManagement() {
                 {(() => {
                   const EMAIL_VALIDATION_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
                   const currentTeacherEmail = String(teacherForm.email || '').trim().toLowerCase();
+                  const currentTeacherEmpId = String(teacherForm.employeeId || teacherForm.saviorNo || teacherForm.employee_id || '').trim().toLowerCase();
                   const isEmailDuplicateInUi = Boolean(
                     currentTeacherEmail &&
                     rows.some((r: any) => String(r.email || '').trim().toLowerCase() === currentTeacherEmail)
                   );
                   const isEmailInvalidInUi = Boolean(
                     currentTeacherEmail && !EMAIL_VALIDATION_REGEX.test(currentTeacherEmail)
+                  );
+                  const isEmpIdDuplicateInUi = Boolean(
+                    currentTeacherEmpId &&
+                    rows.some((r: any) => {
+                      const rowEmpId = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+                      return rowEmpId && rowEmpId === currentTeacherEmpId;
+                    })
                   );
 
                   const fnVal = teacherForm.firstName || '';
@@ -1439,21 +1481,30 @@ export default function PeopleManagement() {
                           </span>
                         ) : null}
                       </label>
+
+                      <label>
+                        <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
+                        </span>
+                        <input
+                          required
+                          placeholder="e.g. EMP001 or SAVIOR_101"
+                          value={teacherForm.employeeId || teacherForm.saviorNo || ''}
+                          style={{
+                            borderColor: isEmpIdDuplicateInUi ? '#ef4444' : undefined,
+                            boxShadow: isEmpIdDuplicateInUi ? '0 0 0 1px #ef4444' : undefined
+                          }}
+                          onChange={e => setTeacherForm({ ...teacherForm, employeeId: e.target.value, saviorNo: e.target.value })}
+                        />
+                        {isEmpIdDuplicateInUi && (
+                          <span style={{ color: '#ef4444', fontSize: 11, marginTop: 4, display: 'block', fontWeight: 600 }}>
+                            Already existed
+                          </span>
+                        )}
+                      </label>
                     </>
                   );
                 })()}
-
-                <label>
-                  <span className="label-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Employee ID / Savior_NO <span style={{ color: '#ef4444' }}>*</span>
-                  </span>
-                  <input
-                    required
-                    placeholder="e.g. EMP001 or SAVIOR_101"
-                    value={teacherForm.employeeId || teacherForm.saviorNo || ''}
-                    onChange={e => setTeacherForm({ ...teacherForm, employeeId: e.target.value, saviorNo: e.target.value })}
-                  />
-                </label>
 
                 {/* Row 1: Gender & Joining Date */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1748,7 +1799,15 @@ export default function PeopleManagement() {
                         alert('Validation Error: A teacher with this email address already exists.');
                         return;
                       }
-                      if (!(teacherForm.employeeId || teacherForm.saviorNo)) { alert('Please enter Employee Id/Savior_NO.'); return; }
+                      const emp = String(teacherForm.employeeId || teacherForm.saviorNo || '').trim().toLowerCase();
+                      if (!emp) { alert('Validation Error: Please enter Employee ID / Savior_No.'); return; }
+                      if (rows && rows.some((r: any) => {
+                        const rEmp = String(r.employee_id || r.employeeId || r.savior_no || r.saviorNo || '').trim().toLowerCase();
+                        return rEmp && rEmp === emp;
+                      })) {
+                        alert(`Validation Error: Employee ID already exists. Employee ID '${teacherForm.employeeId || teacherForm.saviorNo}' is already registered.`);
+                        return;
+                      }
                       const jVal = teacherForm.joiningDate || teacherForm.joining_date;
                       if (jVal && !isValidDdMmYyyy(jVal)) { alert('Validation Error: Joining Date must follow DD-MM-YYYY format (e.g. 01-07-2022).'); return; }
                       setAddTeacherPreview(true);

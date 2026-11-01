@@ -5326,14 +5326,33 @@ r.post("/teachers", ...admin, async (req: AuthRequest, res) => {
   }
 
   // Check unique Employee ID / Savior_No within school tenant
+  const cleanEmp = String(employeeId || "").trim();
+  if (cleanEmp && isPostgresConfigured) {
+    try {
+      const existingEmp = await pool.query(
+        `SELECT tp.id FROM teacher_profiles tp JOIN users u ON u.id = tp.user_id WHERE u.school_id = $1::uuid AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2)) LIMIT 1`,
+        [req.user!.schoolId, cleanEmp]
+      );
+      if (existingEmp.rowCount && existingEmp.rowCount > 0) {
+        return res
+          .status(409)
+          .json({
+            message: `Employee ID / Savior_NO '${cleanEmp}' already exists for this school.`,
+          });
+      }
+    } catch (err: any) {
+      console.warn("[POST /teachers] Error checking duplicate employee_id in DB:", err.message);
+    }
+  }
+
   const dup = demoTeachers.find(
     (t) =>
       t.school_id === req.user!.schoolId &&
-      (t.employee_id === employeeId || t.savior_no === employeeId),
+      (String(t.employee_id || "").toLowerCase() === cleanEmp.toLowerCase() || String(t.savior_no || "").toLowerCase() === cleanEmp.toLowerCase()),
   );
   if (dup) {
     return res
-      .status(400)
+      .status(409)
       .json({
         message: `Employee ID / Savior_NO '${employeeId}' already exists for this school.`,
       });
@@ -6869,6 +6888,32 @@ r.put("/teachers/:id", ...admin, async (req: AuthRequest, res) => {
         "[Teacher Edit] Error querying previous designation from DB:",
         e,
       );
+    }
+  }
+
+  const newEmpId = (employeeId || employee_id || req.body?.saviorNo || req.body?.savior_no || "").trim();
+  if (newEmpId) {
+    if (isPostgresConfigured && effectiveSchoolId) {
+      try {
+        const dupEmp = await pool.query(
+          `SELECT tp.id FROM teacher_profiles tp JOIN users u ON u.id = tp.user_id WHERE u.school_id = $1::uuid AND LOWER(TRIM(tp.employee_id)) = LOWER(TRIM($2)) AND u.id != $3 LIMIT 1`,
+          [effectiveSchoolId, newEmpId, tid]
+        );
+        if (dupEmp.rowCount && dupEmp.rowCount > 0) {
+          return res.status(409).json({ message: `Employee ID / Savior_NO '${newEmpId}' is already registered to another teacher.` });
+        }
+      } catch (e: any) {
+        console.warn("[PUT /teachers/:id] Error checking duplicate employee_id in DB:", e.message);
+      }
+    }
+    const dupDemo = demoTeachers.find(
+      (t) =>
+        t.school_id === effectiveSchoolId &&
+        t.id !== tid &&
+        (String(t.employee_id || "").toLowerCase() === newEmpId.toLowerCase() || String(t.savior_no || "").toLowerCase() === newEmpId.toLowerCase())
+    );
+    if (dupDemo) {
+      return res.status(409).json({ message: `Employee ID / Savior_NO '${newEmpId}' is already registered to another teacher.` });
     }
   }
 
